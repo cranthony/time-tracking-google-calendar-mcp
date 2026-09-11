@@ -26,27 +26,27 @@ class TestGetCalendarId:
 
 
 class TestGetCredentialsPath:
-    def test_defaults_to_render_secret_file_path(self, monkeypatch):
+    def test_defaults_to_gitignored_local_filename(self, monkeypatch):
         monkeypatch.delenv("GOOGLE_OAUTH_CREDENTIALS_PATH", raising=False)
+
+        assert config.get_credentials_path() == Path("credentials.json")
+
+    def test_uses_env_var_when_set(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_OAUTH_CREDENTIALS_PATH", "/etc/secrets/credentials.json")
 
         assert config.get_credentials_path() == Path("/etc/secrets/credentials.json")
 
-    def test_uses_env_var_when_set(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_OAUTH_CREDENTIALS_PATH", "creds.json")
-
-        assert config.get_credentials_path() == Path("creds.json")
-
 
 class TestGetTokenPath:
-    def test_defaults_to_render_secret_file_path(self, monkeypatch):
+    def test_defaults_to_gitignored_local_filename(self, monkeypatch):
         monkeypatch.delenv("GOOGLE_OAUTH_TOKEN_PATH", raising=False)
 
-        assert config.get_token_path() == Path("/etc/secrets/token.json")
+        assert config.get_token_path() == Path("token.json")
 
     def test_uses_env_var_when_set(self, monkeypatch):
-        monkeypatch.setenv("GOOGLE_OAUTH_TOKEN_PATH", "tok.json")
+        monkeypatch.setenv("GOOGLE_OAUTH_TOKEN_PATH", "/etc/secrets/token.json")
 
-        assert config.get_token_path() == Path("tok.json")
+        assert config.get_token_path() == Path("/etc/secrets/token.json")
 
 
 class TestBuildCalendarClient:

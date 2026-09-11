@@ -16,33 +16,38 @@ class ConfigError(RuntimeError):
 
 def get_calendar_id() -> str:
     """The Google Calendar to operate on, from the GOOGLE_CALENDAR_ID
-    environment variable. There is no default: set it to "primary" to use
-    the account's main calendar, or to a specific calendar's ID otherwise.
+    environment variable. There is no default. This must be the ID of a
+    calendar this app has created itself (run create_calendar.py) — see the
+    README's "Calendar access model". "primary" and other pre-existing
+    calendars will not work.
     """
     value = os.environ.get("GOOGLE_CALENDAR_ID")
     if not value:
         raise ConfigError(
-            "GOOGLE_CALENDAR_ID is not set. Set it to a specific calendar ID, "
-            'or to "primary" to use the account\'s main calendar.'
+            "GOOGLE_CALENDAR_ID is not set. Set it to the ID of a calendar "
+            "this app has created itself (see the README's \"Calendar "
+            'access model" — "primary" will not work).'
         )
     return value
 
 
 def get_credentials_path() -> Path:
     """Path to the OAuth client secret file, from
-    GOOGLE_OAUTH_CREDENTIALS_PATH (default: /etc/secrets/credentials.json,
-    matching a Render Secret File mount). See the README's "Google OAuth
+    GOOGLE_OAUTH_CREDENTIALS_PATH (default: credentials.json, a gitignored
+    filename for local development). When deployed, override this to
+    somewhere with real protections, e.g. a Render Secret File mount
+    (/etc/secrets/credentials.json). See the README's "Google OAuth
     credentials" and "Deploying" sections."""
-    return Path(
-        os.environ.get("GOOGLE_OAUTH_CREDENTIALS_PATH", "/etc/secrets/credentials.json")
-    )
+    return Path(os.environ.get("GOOGLE_OAUTH_CREDENTIALS_PATH", "credentials.json"))
 
 
 def get_token_path() -> Path:
     """Path to the cached OAuth user token, from GOOGLE_OAUTH_TOKEN_PATH
-    (default: /etc/secrets/token.json, matching a Render Secret File mount).
-    See the README's "Google OAuth credentials" and "Deploying" sections."""
-    return Path(os.environ.get("GOOGLE_OAUTH_TOKEN_PATH", "/etc/secrets/token.json"))
+    (default: token.json, a gitignored filename for local development).
+    When deployed, override this to somewhere with real protections, e.g.
+    a Render Secret File mount (/etc/secrets/token.json). See the README's
+    "Google OAuth credentials" and "Deploying" sections."""
+    return Path(os.environ.get("GOOGLE_OAUTH_TOKEN_PATH", "token.json"))
 
 
 def build_calendar_client() -> CalendarClient:

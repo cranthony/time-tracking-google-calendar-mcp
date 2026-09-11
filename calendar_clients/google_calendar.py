@@ -11,7 +11,21 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.events.owned"]
+SCOPES = ["https://www.googleapis.com/auth/calendar.app.created"]
+"""This app requests calendar.app.created, not the broader
+calendar.events/calendar.events.owned scopes. This means that the app can only
+read and write events on calendars that it has created; it has no access to the
+user's existing calendars, including their "primary" calendar.
+
+This is deliberate: a compromised or misbehaving instance of this app cannot
+read or touch anything outside the dedicated calendar(s) it made for itself.
+
+Run create_calendar.py (at the project root) to create that dedicated calendar
+and get the ID for the GOOGLE_CALENDAR_ID environment variable. See the
+README's "Calendar access model" section.
+
+See https://developers.google.com/workspace/calendar/api/auth for the scope
+reference."""
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +111,44 @@ class Event:
         return self.start < other_end and other_start < self.end
 
 
+@dataclass(kw_only=True)
+class Calendar:
+    """A Google Calendar, decoupled from the API's raw resource shape.
+
+    Because this app requests the calendar.app.created scope (see SCOPES
+    above), it only ever sees/creates calendars of this kind that it made
+    itself — never the user's existing calendars.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/calendars
+    and https://developers.google.com/workspace/calendar/api/v3/reference/calendarList
+    """
+
+    id: str | None = None
+    """Uniquely identifies the calendar. `None` until the calendar has been
+    created; create_calendar.py assigns this ID (from the API response)
+    when the calendar is created. This is the value to use as
+    GOOGLE_CALENDAR_ID once you have one."""
+
+    summary: str
+    """The calendar's display name/title."""
+
+    description: str | None = None
+    """Optional free-text description of the calendar."""
+
+    @classmethod
+    def from_api(cls, data: dict) -> "Calendar":
+        return cls(
+            id=data.get("id"),
+            summary=data.get("summary", ""),
+            description=data.get("description"),
+        )
+
+    def to_api_body(self) -> dict:
+        body: dict = {"summary": self.summary}
+        if self.description is not None:
+            body["description"] = self.description
+        return body
+
+
 def _parse_datetime(value: dict) -> datetime:
     raw = value.get("dateTime")
     if raw is None:
@@ -172,10 +224,11 @@ def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
 class CalendarClient:
     """Wraps the Google Calendar API behind a small, mockable interface.
 
-    calendar_id: the Google Calendar to operate on. Supply "primary" to
-        represent the main calendar associated with the authenticated
-        user's Google account, or a specific calendar's ID otherwise.
-        There is deliberately no default — callers must decide explicitly.
+    calendar_id: the Google Calendar to operate on. Because this app
+        requests the calendar.app.created scope, this must be the ID of a
+        calendar the app has created itself (run create_calendar.py) —
+        "primary" or any other pre-existing calendar will not work. There
+        is deliberately no default — callers must decide explicitly.
     """
 
     def __init__(self, service, calendar_id: str):

@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from calendar_clients import google_calendar
-from calendar_clients.google_calendar import CalendarClient, Event, load_credentials
+from calendar_clients.google_calendar import Calendar, CalendarClient, Event, load_credentials
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
@@ -260,6 +260,37 @@ class TestEvent:
                 datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
                 datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
             )
+
+
+class TestCalendar:
+    def test_from_api_parses_fields(self):
+        calendar = Calendar.from_api(
+            {"id": "cal123", "summary": "Time tracking", "description": "Work blocks"}
+        )
+
+        assert calendar.id == "cal123"
+        assert calendar.summary == "Time tracking"
+        assert calendar.description == "Work blocks"
+
+    def test_from_api_defaults_optional_fields_to_none(self):
+        calendar = Calendar.from_api({"summary": "Time tracking"})
+
+        assert calendar.id is None
+        assert calendar.description is None
+
+    def test_to_api_body_omits_description_when_absent(self):
+        calendar = Calendar(summary="Time tracking")
+
+        body = calendar.to_api_body()
+
+        assert body == {"summary": "Time tracking"}
+
+    def test_to_api_body_includes_description_when_present(self):
+        calendar = Calendar(summary="Time tracking", description="Work blocks")
+
+        body = calendar.to_api_body()
+
+        assert body == {"summary": "Time tracking", "description": "Work blocks"}
 
 
 class TestCalendarClientListEvents:
