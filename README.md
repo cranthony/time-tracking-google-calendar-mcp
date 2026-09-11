@@ -56,13 +56,15 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 
 | Tool | Signature | Status |
 | --- | --- | --- |
-| `list_events` | `(min_time, max_time) -> list[Event]` | Implemented |
-| `get_event` | `(id) -> Event` | Implemented |
-| `update_event` | `(event: Event) -> list[Event]` | Raises `NotImplementedError` |
-| `create_event` | `(event: Event) -> list[Event]` | Raises `NotImplementedError` |
-| `delete_event` | `(id) -> list[Event]` | Raises `NotImplementedError` |
+| `list_events` | `(min_time, max_time) -> list[PublicEvent]` | Implemented |
+| `get_event` | `(id) -> PublicEvent` | Implemented |
+| `update_event` | `(event: PublicEvent) -> list[PublicEvent]` | Raises `NotImplementedError` |
+| `create_event` | `(event: PublicEvent) -> list[PublicEvent]` | Raises `NotImplementedError` |
+| `delete_event` | `(id) -> list[PublicEvent]` | Raises `NotImplementedError` |
 
-`update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[Event]` rather than a single `Event`.
+`update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[PublicEvent]` rather than a single `PublicEvent`.
+
+Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `HIDDEN_FROM_MCP` (currently just `is_end_of_day_sleep`). Since the MCP SDK builds both the schema advertised via `tools/list` and every tool result straight from the function's type annotations, a field missing from `PublicEvent` never appears in either — the agent has no way to know it exists, not just that its value is hidden. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
