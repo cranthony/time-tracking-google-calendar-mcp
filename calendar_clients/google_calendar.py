@@ -12,22 +12,20 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.app.created"]
-"""This app requests calendar.app.created, not the broader calendar.events/
-calendar.events.owned scopes. This means that the app can only read and write
-events on calendars that it has created; it has no access to the user's
-existing calendars, including their "primary"
-calendar.
+"""This app requests calendar.app.created, not the broader
+calendar.events/calendar.events.owned scopes. This means that the app can only
+read and write events on calendars that it has created; it has no access to the
+user's existing calendars, including their "primary" calendar.
 
-This is deliberate: a compromised or
-misbehaving instance of this app cannot read or touch anything outside the
-dedicated calendar(s) it made for itself.
+This is deliberate: a compromised or misbehaving instance of this app cannot
+read or touch anything outside the dedicated calendar(s) it made for itself.
 
-Run create_calendar.py (at the project root) to create that dedicated
-calendar and get the ID for the GOOGLE_CALENDAR_ID environment variable.
-See the README's "Calendar access model" section.
+Run create_calendar.py (at the project root) to create that dedicated calendar
+and get the ID for the GOOGLE_CALENDAR_ID environment variable. See the
+README's "Calendar access model" section.
 
-See https://developers.google.com/workspace/calendar/api/auth for the
-scope reference."""
+See https://developers.google.com/workspace/calendar/api/auth for the scope
+reference."""
 
 logger = logging.getLogger(__name__)
 

@@ -31,9 +31,9 @@ Google Calendar API access lives in [`calendar_clients/google_calendar.py`](cale
 
 ## Calendar access model
 
-This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py)) — not the broader `calendar`/`calendar.events` scopes. That has real consequences:
+This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py)) — not the broader `calendar.events`/`calendar.events.owned` scopes. That has real consequences:
 
-- This app can only see, create, modify, and delete calendars **it has created itself**, and events on them.
+- This app can only read and write events on calendars **it has created itself**.
 - It has **no access to the user's existing calendars** — not `"primary"`, not any calendar they made by hand in the Calendar UI. API calls against any calendar this app didn't create itself will fail.
 - This is a deliberate, Google-enforced isolation, not just a convention: even a compromised or misbehaving instance of this app cannot read or touch anything outside the dedicated calendar(s) it made for itself. The trade-off is that this app can never see someone's real, existing commitments — `has_overlap` only ever checks against events this app itself created, not the user's actual full schedule.
 
