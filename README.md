@@ -126,7 +126,7 @@ A [`render.yaml`](render.yaml) blueprint is included, covering the build/start c
 
 To set that up:
 
-1. Sign up at [workos.com](https://workos.com/) and create an application (the free tier covers a single-user personal tool like this one).
+1. Sign up at [workos.com](https://workos.com/) and create an **OAuth** application (not **Machine-to-Machine**: M2M is for server-to-server calls with no user involved, but here *you* are the user — you'll log in and consent interactively the first time Claude.ai connects, via the standard `authorization_code` flow OAuth applications use). The free tier covers a single-user personal tool like this one.
 2. Under **Connect → Configuration**, turn on **"Allow MCP clients to authenticate using Dynamic Client Registration (DCR) or Client ID Metadata Document (CIMD)"** — this is required: it's off by default, and it's what lets Claude.ai register itself as a client automatically, instead of you pre-registering one by hand.
 3. Add this server's deployed URL plus `/mcp` (e.g. `https://your-service.onrender.com/mcp`) as a **Resource Indicator**, and mark it as the default one.
 4. Set `WORKOS_AUTHKIT_DOMAIN` on Render to your application's AuthKit domain (shown in the WorkOS dashboard, e.g. `https://your-tenant.authkit.app`).
