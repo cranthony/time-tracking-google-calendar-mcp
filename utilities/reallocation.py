@@ -66,13 +66,20 @@ see `ReallocationOptions.resolved()`):
    `start`, and before any event (e.g. a continuation from step 1) with
    the same `start`.
 
-3. **Compute how much time is needed.** `duration_to_reclaim =
-   _duration(new_event)`.
+3. **Compute how much time is needed.** `new_event` displaces whatever
+   already-scheduled time its own span overlaps -- not necessarily its
+   full duration, since part (or all) of it may land in already-free
+   time, which costs nothing. `duration_to_reclaim` is the total overlap
+   between `new_event`'s span and every event in the original
+   `day_events`, minus however much of that overlap the immediately
+   preceding event's shrink in step 1 already resolved (that overlap is
+   exactly what step 1 shrinks it by, so it isn't reclaimed twice).
 
-4. **Build the reclaim pool.** Walk `day_events` in order, building one
-   `Span` per event plus one per non-zero gap between them
-   (`event=None`, `min_duration=0`), grouped by priority (a gap's is
-   `math.inf`).
+4. **Build the reclaim pool.** Walk `day_events` (as of step 2) in order,
+   building a singly linked list of `Span`s -- one per event, plus one
+   per non-zero gap between them (`event=None`, `min_duration=0`) -- so
+   step 7 can walk them in order. Group them by priority as they're built
+   (a gap's is `math.inf`).
 
 5. **Reclaim greedily.** Process spans by priority, worst (highest
    number, `math.inf` first) to best, in the order they were built within
@@ -86,14 +93,20 @@ see `ReallocationOptions.resolved()`):
    the same-or-lower-priority events already at their `min_duration`
    floor (by descending `min_duration`).
 
-7. **Apply the plan.** Every event is independently anchored at its own
-   (possibly new, per step 1) `start`, which never changes here -- so
-   reclaiming from one span never repositions any other event. For each
-   span with an event: if its duration was reclaimed down to `0`, mark
-   the event `status = "cancelled"` (if not already) instead of resizing
-   it; otherwise, if its duration changed from the event's original,
-   set `end = start + duration`. Return every changed or newly-created
-   event, sorted by `start`.
+7. **Compact into a layout.** Walk the `Span` list from its head,
+   tracking the current end time (starting at the earliest event's
+   original `start`). A span with an event reduced to `0` duration is
+   marked `status = "cancelled"` (if not already) instead of moved;
+   otherwise it's placed starting at the current end time (which then
+   advances by its duration). A gap span just advances the current end
+   time by its duration. This is what lets reclaiming from a span that
+   doesn't immediately border `new_event` still ripple forward exactly
+   as far as it needs to, and no further: once a span's original
+   duration survives untouched, the running position it produces already
+   matches that span's own original start, so nothing after it moves.
+
+8. **Report the plan.** Return every changed or newly-created event,
+   sorted by `start`.
 """
 
 from __future__ import annotations
@@ -129,6 +142,13 @@ def _duration(event: Schedulable) -> timedelta:
     return event.end - event.start
 
 
+def _overlap(event: Schedulable, new_event: Schedulable) -> timedelta:
+    """How much of `new_event`'s span falls within `event`'s span, `0` if
+    none (step 3)."""
+    overlap = min(event.end, new_event.end) - max(event.start, new_event.start)
+    return max(timedelta(0), overlap)
+
+
 def _effective_priority(event: Schedulable) -> float:
     """`event.priority`, or `1` if unset (see "Priority" above)."""
     return event.priority if event.priority is not None else 1
@@ -162,12 +182,14 @@ def _reclaimable_minutes(event: Schedulable) -> float:
 
 @dataclass
 class Span:
-    """One event or gap on `day_events`' timeline (step 4). `event` is
-    `None` for a gap."""
+    """One event or gap on `day_events`' timeline, in chronological order
+    (step 4). `event` is `None` for a gap. `next` links to the following
+    `Span`, forming a singly linked list for step 7's walk."""
 
     event: Schedulable | None
     duration: timedelta
     min_duration: timedelta
+    next: "Span | None" = None
 
 
 @dataclass(kw_only=True)
@@ -236,12 +258,16 @@ class _Reallocation:
         }
 
         self.spans_by_priority: dict[float, list[Span]] = defaultdict(list)
+        self.head: Span | None = None
+        self.tail: Span | None = None
 
     def run(self) -> list[Schedulable]:
         self._validate()
-        self._resolve_preceding_overlap()
+        duration_to_reclaim = sum(
+            (_overlap(event, self.new_event) for event in self.day_events), timedelta(0)
+        )
+        duration_to_reclaim -= self._resolve_preceding_overlap()
         self._insert_new_event()
-        duration_to_reclaim = _duration(self.new_event)
         self._build_reclaim_pool()
         remaining = self._reclaim(duration_to_reclaim)
         if remaining > timedelta(0):
@@ -268,7 +294,9 @@ class _Reallocation:
         if not self.day_events or self.day_events[-1].end <= self.new_event.end:
             raise ValueError("day_events must contain something ending after new_event.end")
 
-    def _resolve_preceding_overlap(self) -> None:
+    def _resolve_preceding_overlap(self) -> timedelta:
+        """Step 1. Returns how much of the total overlap (step 3) this
+        resolves, so `run` doesn't reclaim it a second time."""
         new_event = self.new_event
         preceding_index = next(
             (
@@ -279,7 +307,7 @@ class _Reallocation:
             None,
         )
         if preceding_index is None:
-            return
+            return timedelta(0)
         if preceding_index > 0:
             raise ValueError("day_events must start at the new event's start time")
 
@@ -293,6 +321,7 @@ class _Reallocation:
                 f"below its min_duration of {preceding_min}."
             )
 
+        preceding_overlap = _overlap(preceding, new_event)
         time_consumed = new_event.end - preceding.start
         overlap_after_new_event = preceding.end - new_event.end
         split_threshold = timedelta(minutes=self.options.split_threshold_minutes)
@@ -308,6 +337,7 @@ class _Reallocation:
             self.day_events.insert(preceding_index + 1, continuation)
 
         preceding.end = new_event.start
+        return preceding_overlap
 
     def _insert_new_event(self) -> None:
         new_event = self.new_event
@@ -329,14 +359,18 @@ class _Reallocation:
                     self._add_span(Span(event=None, duration=gap, min_duration=timedelta(0)))
 
     def _add_span(self, span: Span) -> None:
+        if self.tail is None:
+            self.head = span
+        else:
+            self.tail.next = span
+        self.tail = span
         priority = math.inf if span.event is None else _effective_priority(span.event)
         self.spans_by_priority[priority].append(span)
 
     def _eligible_priorities(self) -> list[float]:
         threshold = self.new_event_priority
-        return sorted(
-            (priority for priority in self.spans_by_priority if priority >= threshold), reverse=True
-        )
+        eligible = (priority for priority in self.spans_by_priority if priority >= threshold)
+        return sorted(eligible, reverse=True)
 
     def _reclaim(self, duration_to_reclaim: timedelta) -> timedelta:
         remaining = duration_to_reclaim
@@ -384,22 +418,30 @@ class _Reallocation:
 
     def _apply_plan(self) -> list[Schedulable]:
         changed: list[Schedulable] = []
-        for spans in self.spans_by_priority.values():
-            for span in spans:
-                event = span.event
-                if event is None:
-                    continue
-                original = self.original_positions.get(id(event))
-                if span.duration <= timedelta(0):
-                    already_cancelled = original is not None and original[2] == "cancelled"
-                    event.status = "cancelled"
-                    if not already_cancelled:
-                        changed.append(event)
-                    continue
-                new_end = event.start + span.duration
-                if original is None or original[1] != new_end:
+        current_end = self.day_events[0].start
+        span = self.head
+        while span is not None:
+            event = span.event
+            if event is None:
+                current_end += span.duration
+                span = span.next
+                continue
+
+            original = self.original_positions.get(id(event))
+            if span.duration <= timedelta(0):
+                already_cancelled = original is not None and original[2] == "cancelled"
+                event.status = "cancelled"
+                if not already_cancelled:
+                    changed.append(event)
+            else:
+                new_start = current_end
+                new_end = new_start + span.duration
+                if original is None or original[0] != new_start or original[1] != new_end:
+                    event.start = new_start
                     event.end = new_end
                     changed.append(event)
+                current_end = new_end
+            span = span.next
         return sorted(changed, key=lambda event: event.start)
 
 
@@ -410,7 +452,7 @@ def reallocate_for_new_event(
     lowest-priority events (and free time) in `day_events` — the complete
     list of events for `new_event`'s day, gathered by the caller. Returns
     every event that needs to be created or updated to realize the
-    result, sorted by `start` (step 7). Doesn't apply the plan itself (no
+    result, sorted by `start` (step 8). Doesn't apply the plan itself (no
     `create_event`/`update_event` calls) — that's the caller's job.
 
     Raises `ValueError` if `day_events` fails step 0's validation (not

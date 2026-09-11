@@ -9,6 +9,7 @@ from utilities.reallocation import (
     _duration,
     _effective_min_duration,
     _effective_priority,
+    _overlap,
     _reclaimable_minutes,
     reallocate_for_new_event,
 )
@@ -34,6 +35,56 @@ class TestDuration:
         )
 
         assert _duration(event) == timedelta(hours=1, minutes=30)
+
+
+class TestOverlap:
+    def test_zero_when_disjoint(self):
+        event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 11, 30, tzinfo=UTC),
+        )
+
+        assert _overlap(event, new_event) == timedelta(0)
+
+    def test_zero_when_merely_adjacent(self):
+        event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+        )
+
+        assert _overlap(event, new_event) == timedelta(0)
+
+    def test_partial_overlap(self):
+        event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 40, tzinfo=UTC),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+        )
+
+        assert _overlap(event, new_event) == timedelta(minutes=10)
+
+    def test_new_event_entirely_within_event(self):
+        event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+        )
+
+        assert _overlap(event, new_event) == timedelta(minutes=30)
 
 
 class TestEffectivePriority:
@@ -238,28 +289,52 @@ class TestReallocateForNewEvent:
         with pytest.raises(ValueError):
             reallocate_for_new_event([first, second], new_event, ReallocationOptions())
 
-    def test_raises_on_shortfall_when_nothing_is_reclaimable(self):
-        anchor = _event(
-            id="a1",
-            start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
-            priority=1,
-            min_duration=timedelta(hours=1),
-        )
-        new_event = _event(
+    def test_cascades_through_untouched_events_until_a_gap_absorbs_it(self):
+        # The exact case that motivated the cumulative walk: inserting a
+        # new event where `first` already sits displaces `first`, which
+        # displaces `second` in turn, until the natural hour of free time
+        # before `third` absorbs the remaining 30 minutes -- third never
+        # moves.
+        first = _event(
+            id="f1",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            priority=1,
+        )
+        second = _event(
+            id="s1",
+            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
             end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
             priority=1,
         )
+        third = _event(
+            id="t1",
+            start=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 11, 30, tzinfo=UTC),
+            priority=1,
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            priority=1,
+        )
 
-        with pytest.raises(ReallocationError) as exc_info:
-            reallocate_for_new_event([anchor], new_event, ReallocationOptions())
+        result = reallocate_for_new_event(
+            [first, second, third], new_event, ReallocationOptions()
+        )
 
-        assert exc_info.value.remaining == timedelta(hours=1)
-        assert exc_info.value.higher_priority_events == []
-        assert exc_info.value.events_at_floor == [anchor]
+        assert new_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert new_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert first.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert first.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+        assert second.start == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+        assert second.end == datetime(2026, 1, 1, 10, 30, tzinfo=UTC)
+        assert third.start == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
+        assert third.end == datetime(2026, 1, 1, 11, 30, tzinfo=UTC)
+        assert third not in result
+        assert {e.id for e in result} == {"f1", "s1", None}
 
-    def test_reclaims_from_a_gap_without_moving_the_untouched_event(self):
+    def test_inserting_into_free_time_costs_nothing(self):
         existing = _event(
             id="e1",
             start=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
@@ -274,10 +349,11 @@ class TestReallocateForNewEvent:
 
         result = reallocate_for_new_event([existing], new_event, ReallocationOptions())
 
+        # new_event's whole span was already free time (nothing overlaps
+        # it), so nothing needs to be reclaimed -- existing is untouched.
         assert result == [new_event]
         assert new_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert new_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
-        # Only the gap was reclaimed from -- existing itself is untouched.
         assert existing.start == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
         assert existing.end == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 
@@ -305,12 +381,13 @@ class TestReallocateForNewEvent:
 
         # Only a 10-minute overlap (below the 15-minute default split
         # threshold), so preceding just shrinks -- no continuation event.
+        # The 10 minutes new_event actually displaced is exactly what
+        # preceding's own shrink already resolves, so nothing further
+        # needs reclaiming -- later is untouched.
         assert preceding.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert preceding.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
         assert new_event.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
         assert new_event.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
-        # The 30 minutes new_event needed came from the gap after it, not
-        # from later itself -- later doesn't move.
         assert later.start == datetime(2026, 1, 1, 10, 30, tzinfo=UTC)
         assert later.end == datetime(2026, 1, 1, 11, 30, tzinfo=UTC)
         assert later not in result
@@ -348,11 +425,12 @@ class TestReallocateForNewEvent:
         assert continuation is not preceding
         assert continuation.id is None
         assert continuation.summary == "Long meeting (continued)"
-        # Starts right where new_event ends (not where new_event starts --
-        # that would overlap it), and gave up the 30 minutes new_event
-        # needed off its own (originally 1-hour) remainder.
+        # new_event landed entirely inside preceding's own original span,
+        # with room on both sides -- preceding's split already accounts
+        # for new_event's whole duration, so nothing extra is reclaimed
+        # from continuation: it keeps its full remaining hour.
         assert continuation.start == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
-        assert continuation.end == datetime(2026, 1, 1, 10, 30, tzinfo=UTC)
+        assert continuation.end == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
 
     def test_raises_when_preceding_event_cannot_shrink_enough(self):
         preceding = _event(
@@ -375,7 +453,7 @@ class TestReallocateForNewEvent:
         assert preceding.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert preceding.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
 
-    def test_raises_on_shortfall_with_structured_details(self):
+    def test_raises_on_shortfall_when_nothing_is_reclaimable(self):
         existing = _event(
             id="e1",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
@@ -385,14 +463,14 @@ class TestReallocateForNewEvent:
         )
         anchor = _event(
             id="a1",
-            start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
-            priority=1,
-            min_duration=timedelta(hours=1),
-        )
-        new_event = _event(
             start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
             end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=1,
+            min_duration=timedelta(minutes=30),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
             priority=1,
         )
 
@@ -401,19 +479,60 @@ class TestReallocateForNewEvent:
 
         assert exc_info.value.remaining == timedelta(minutes=30)
         assert exc_info.value.higher_priority_events == []
-        assert exc_info.value.events_at_floor == [anchor, existing]
+        assert exc_info.value.events_at_floor == [existing, anchor]
+
+    def test_raises_on_shortfall_with_structured_details(self):
+        higher = _event(
+            id="h1",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            priority=1,
+        )
+        protected = _event(
+            id="p1",
+            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=2,
+            min_duration=timedelta(minutes=30),
+        )
+        anchor = _event(
+            id="a1",
+            start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
+            priority=2,
+            min_duration=timedelta(minutes=30),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=2,
+        )
+
+        with pytest.raises(ReallocationError) as exc_info:
+            reallocate_for_new_event([higher, protected, anchor], new_event, ReallocationOptions())
+
+        assert exc_info.value.remaining == timedelta(hours=1)
+        assert exc_info.value.higher_priority_events == [higher]
+        assert exc_info.value.events_at_floor == [protected, anchor]
         # Nothing should have been mutated.
-        assert existing.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
-        assert existing.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert higher.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert protected.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
 
     def test_marks_fully_reclaimed_event_as_cancelled(self):
         # A strictly lower priority (higher number) than new_event's, so
         # the cancellation isn't riding on a tie-break.
         existing = _event(
             id="e1",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            priority=5,
+        )
+        anchor = _event(
+            id="a1",
             start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
             end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-            priority=5,
+            priority=1,
+            min_duration=timedelta(minutes=30),
         )
         new_event = _event(
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
@@ -421,19 +540,24 @@ class TestReallocateForNewEvent:
             priority=1,
         )
 
-        result = reallocate_for_new_event([existing], new_event, ReallocationOptions())
+        result = reallocate_for_new_event([existing, anchor], new_event, ReallocationOptions())
 
         assert existing.status == "cancelled"
         assert existing in result
         # Cancelling doesn't reposition it.
-        assert existing.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
-        assert existing.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+        assert existing.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert existing.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        # anchor was protected (at its min_duration floor already) and not
+        # otherwise touched, so it doesn't move either.
+        assert anchor.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert anchor.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+        assert anchor not in result
 
     def test_shortfall_without_min_duration_override(self):
         later = _event(
             id="e1",
-            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
             priority=1,
             min_duration=timedelta(minutes=45),
         )
@@ -451,8 +575,8 @@ class TestReallocateForNewEvent:
     def test_min_duration_override_enables_reclaim_that_would_otherwise_shortfall(self):
         later = _event(
             id="e1",
-            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
             priority=1,
             min_duration=timedelta(minutes=45),
         )
@@ -468,8 +592,9 @@ class TestReallocateForNewEvent:
 
         assert new_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert new_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
-        # later doesn't move -- it shrinks from its own end, keeping its
-        # own start.
+        # later started tied with new_event, so new_event claims the
+        # first 30 minutes and later is pushed to start right after it,
+        # keeping its original end.
         assert later.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
         assert later.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
         assert later in result
