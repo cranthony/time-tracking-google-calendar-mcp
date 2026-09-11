@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from calendar_clients import google_calendar
-from calendar_clients.google_calendar import CalendarClient, Event, load_credentials
+from calendar_clients.google_calendar import Calendar, CalendarClient, Event, load_credentials
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
@@ -260,6 +260,49 @@ class TestEvent:
                 datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
                 datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
             )
+
+
+class TestCalendar:
+    def test_from_api_parses_fields(self):
+        calendar = Calendar.from_api(
+            {
+                "id": "cal123",
+                "summary": "Time tracking",
+                "description": "Work blocks",
+                "timeZone": "America/New_York",
+            }
+        )
+
+        assert calendar.id == "cal123"
+        assert calendar.summary == "Time tracking"
+        assert calendar.description == "Work blocks"
+        assert calendar.time_zone == "America/New_York"
+
+    def test_from_api_defaults_optional_fields_to_none(self):
+        calendar = Calendar.from_api({"id": "cal123", "summary": "Time tracking"})
+
+        assert calendar.description is None
+        assert calendar.time_zone is None
+
+    def test_to_api_body_omits_optional_fields_when_absent(self):
+        calendar = Calendar(summary="Time tracking")
+
+        body = calendar.to_api_body()
+
+        assert body == {"summary": "Time tracking"}
+
+    def test_to_api_body_includes_optional_fields_when_present(self):
+        calendar = Calendar(
+            summary="Time tracking", description="Work blocks", time_zone="America/New_York"
+        )
+
+        body = calendar.to_api_body()
+
+        assert body == {
+            "summary": "Time tracking",
+            "description": "Work blocks",
+            "timeZone": "America/New_York",
+        }
 
 
 class TestCalendarClientListEvents:

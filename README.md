@@ -27,7 +27,23 @@ pip install -r requirements-dev.txt
 
 ## Project layout
 
-Google Calendar API access lives in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), behind a `CalendarClient` class and a plain `Event` dataclass. `server.py`'s MCP tools call into this module rather than talking to `googleapiclient`/OAuth directly, so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead.
+Google Calendar API access lives in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), behind a `CalendarClient` class and a plain `Event` dataclass. `server.py`'s MCP tools call into this module rather than talking to `googleapiclient`/OAuth directly, so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead. [`create_calendar.py`](create_calendar.py) is a standalone bootstrap script (not an MCP tool) — see [Calendar access model](#calendar-access-model) below.
+
+## Calendar access model
+
+This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py)) — not the broader `calendar`/`calendar.events` scopes. That has real consequences:
+
+- This app can only see, create, modify, and delete calendars **it has created itself**, and events on them.
+- It has **no access to the user's existing calendars** — not `"primary"`, not any calendar they made by hand in the Calendar UI. API calls against any calendar this app didn't create itself will fail.
+- This is a deliberate, Google-enforced isolation, not just a convention: even a compromised or misbehaving instance of this app cannot read or touch anything outside the dedicated calendar(s) it made for itself. The trade-off is that this app can never see someone's real, existing commitments — `has_overlap` only ever checks against events this app itself created, not the user's actual full schedule.
+
+**Bootstrapping:** there's no calendar to operate on until this app creates one. Run [`create_calendar.py`](create_calendar.py) once — it only needs `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` (see [Configuration](#configuration) below), not `GOOGLE_CALENDAR_ID` — and it prints the new calendar's ID:
+
+```bash
+python create_calendar.py "Time Tracking"
+```
+
+Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used to create a calendar yet — including the very first time you set this up — this is the step to run first.
 
 ## MCP tools
 
@@ -42,6 +58,8 @@ Google Calendar API access lives in [`calendar_clients/google_calendar.py`](cale
 | `delete_event` | `(id) -> list[Event]` | Raises `NotImplementedError` |
 
 `update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[Event]` rather than a single `Event`.
+
+Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
 ### Why tools, not resources
 
@@ -65,7 +83,7 @@ Both paths are required arguments (no defaults), so where they live is up to wha
 
 | Variable | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `GOOGLE_CALENDAR_ID` | Yes | — | The calendar to operate on. Use `primary` for the account's main calendar, or a specific calendar's ID (Google Calendar → Settings → *[calendar name]* → Integrate calendar → Calendar ID). |
+| `GOOGLE_CALENDAR_ID` | Yes | — | The calendar to operate on — must be the ID of a calendar this app created itself; see [Calendar access model](#calendar-access-model) above. Run `create_calendar.py` if you don't have one yet. |
 | `GOOGLE_OAUTH_CREDENTIALS_PATH` | No | `/etc/secrets/credentials.json` | Path to the OAuth client secret file — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to a Render Secret File mount (see [Deploying](#deploying)); override if running locally. |
 | `GOOGLE_OAUTH_TOKEN_PATH` | No | `/etc/secrets/token.json` | Path to the cached OAuth user token — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to a Render Secret File mount (see [Deploying](#deploying)); override if running locally. |
 
@@ -78,7 +96,7 @@ If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) in
 On a platform like [Render](https://render.com/), don't put `credentials.json`/`token.json` in the repo or in a regular env var — Render's **Secret Files** feature is built for exactly this: add each file under the service's Environment tab, and Render mounts it at `/etc/secrets/<filename>` at runtime, separate from your source and the regular env var list.
 
 - `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` already default to `/etc/secrets/credentials.json`/`/etc/secrets/token.json`, matching those mounts — no need to set them explicitly on Render, only if running locally with the files somewhere else.
-- Generate `token.json` once locally (via the interactive consent flow — run the server locally the first time so a browser can open), then paste its contents into the `token.json` Secret File.
+- Run `python create_calendar.py` locally first — it needs an interactive browser for the OAuth consent flow, so it can't run on Render itself. This both generates `token.json` and creates the dedicated calendar in one step; paste the resulting `token.json` into the Secret File, and set `GOOGLE_CALENDAR_ID` on Render to the ID it printed.
 - Secret File mounts may be read-only, so `token.json`'s refresh-and-rewrite (see [Google OAuth credentials](#google-oauth-credentials) above) is best-effort by design — a failed write there just means the next process restart refreshes again from the same cached refresh token, which Google doesn't rotate on a normal refresh.
 
 ## Running the server

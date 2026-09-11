@@ -16,14 +16,17 @@ class ConfigError(RuntimeError):
 
 def get_calendar_id() -> str:
     """The Google Calendar to operate on, from the GOOGLE_CALENDAR_ID
-    environment variable. There is no default: set it to "primary" to use
-    the account's main calendar, or to a specific calendar's ID otherwise.
+    environment variable. There is no default. This must be the ID of a
+    calendar this app has created itself (run create_calendar.py) — see the
+    README's "Calendar access model". "primary" and other pre-existing
+    calendars will not work.
     """
     value = os.environ.get("GOOGLE_CALENDAR_ID")
     if not value:
         raise ConfigError(
-            "GOOGLE_CALENDAR_ID is not set. Set it to a specific calendar ID, "
-            'or to "primary" to use the account\'s main calendar.'
+            "GOOGLE_CALENDAR_ID is not set. Set it to the ID of a calendar "
+            "this app has created itself (see the README's \"Calendar "
+            'access model" — "primary" will not work).'
         )
     return value
 
