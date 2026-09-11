@@ -56,13 +56,17 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 
 | Tool | Signature | Status |
 | --- | --- | --- |
-| `list_events` | `(min_time, max_time) -> list[Event]` | Implemented |
-| `get_event` | `(id) -> Event` | Implemented |
-| `update_event` | `(event: Event) -> list[Event]` | Raises `NotImplementedError` |
-| `create_event` | `(event: Event) -> list[Event]` | Raises `NotImplementedError` |
-| `delete_event` | `(id) -> list[Event]` | Raises `NotImplementedError` |
+| `list_events` | `(min_time, max_time) -> list[PublicEvent]` | Implemented |
+| `get_event` | `(id) -> PublicEvent` | Implemented |
+| `update_event` | `(event: PublicEvent) -> list[PublicEvent]` | Raises `NotImplementedError` |
+| `create_event` | `(event: PublicEvent) -> list[PublicEvent]` | Raises `NotImplementedError` |
+| `delete_event` | `(id) -> list[PublicEvent]` | Raises `NotImplementedError` |
 
-`update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[Event]` rather than a single `Event`.
+`update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[PublicEvent]` rather than a single `PublicEvent`.
+
+Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `INTERNAL_EVENT_FIELDS`. Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
+
+Cancelled events (`Event.status == "cancelled"`) are not surfaced as a `PublicEvent`: `list_events` omits them, and `get_event` raises a `ToolError` rather than returning one.
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
@@ -162,7 +166,7 @@ python calendar_cli.py update_properties <event-id> priority=1 location="Room A"
 
 `update_properties` takes one or more `key=value` pairs, where each `key` is an `Event` attribute (`summary`, `start`, `end`, `description`, `location`, `min_duration`, `is_fixed_duration`, `priority` — not `id`, since changing it would repoint the patch at a different event). It builds an `Event` with just those attributes set (everything else `None`) and patches it straight in, without fetching the event first — Calendar's `patch` semantics mean any attribute you don't mention is left exactly as it was server-side. `start`/`end` take an ISO 8601 datetime with a UTC offset (e.g. `2026-01-01T09:00:00-05:00`, or a trailing `Z`); `min_duration` takes a pytimeparse duration like `from`/`to` above; `is_fixed_duration` takes `true`/`false` (also `1`/`0`, `yes`/`no`).
 
-For a recurring event, the id from `list`/`get` names one specific *instance* — it ends with that occurrence's own datetime, `<...>_YYYYMMDDTHHMMSSZ`. Running `update_properties` against that id only changes that single occurrence. To update every occurrence of the series instead, use the part of the id *before* the `_YYYYMMDDTHHMMSSZ` suffix. See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for more on how instances and recurring events relate.
+For a recurring event, the id from `list`/`get` names one specific *instance*.  To change a property for the entire series of recurring events, use the `recurring_event_id` that's visible from `get`.  See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for more on how instances and recurring events relate.
 
 ## Running tests
 

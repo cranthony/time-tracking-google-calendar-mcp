@@ -43,9 +43,12 @@ class TestEvent:
         assert event.end == datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC)
         assert event.description is None
         assert event.location is None
+        assert event.status is None
+        assert event.recurring_event_id is None
         assert event.min_duration is None
         assert event.is_fixed_duration is None
         assert event.priority is None
+        assert event.is_end_of_day_sleep is None
 
     def test_from_api_parses_non_utc_offset(self):
         event = Event.from_api(
@@ -75,6 +78,28 @@ class TestEvent:
 
         assert event.location == "Conference Room A"
 
+    def test_from_api_extracts_status(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["status"] = "cancelled"
+
+        event = Event.from_api(data)
+
+        assert event.status == "cancelled"
+
+    def test_from_api_extracts_recurring_event_id(self):
+        data = api_event(
+            "abc123_20260101T090000Z",
+            "2026-01-01T09:00:00+00:00",
+            "2026-01-01T10:00:00+00:00",
+        )
+        data["recurringEventId"] = "abc123"
+
+        event = Event.from_api(data)
+
+        assert event.recurring_event_id == "abc123"
+
     def test_from_api_uses_timeZone_when_dateTime_is_naive(self):
         data = {
             "id": "abc123",
@@ -101,6 +126,7 @@ class TestEvent:
                 "cascading-time-tracker-min_duration": "30",
                 "cascading-time-tracker-is_fixed_duration": "true",
                 "cascading-time-tracker-priority": "2",
+                "cascading-time-tracker-is_end_of_day_sleep": "true",
             }
         }
 
@@ -109,6 +135,7 @@ class TestEvent:
         assert event.min_duration == timedelta(minutes=30)
         assert event.is_fixed_duration is True
         assert event.priority == 2
+        assert event.is_end_of_day_sleep is True
 
     def test_from_api_parses_is_fixed_duration_false(self):
         data = api_event(
@@ -133,6 +160,7 @@ class TestEvent:
         assert event.min_duration is None
         assert event.is_fixed_duration is None
         assert event.priority is None
+        assert event.is_end_of_day_sleep is None
 
     def test_from_api_raises_when_dateTime_missing_timezone(self):
         with pytest.raises(ValueError):
@@ -173,6 +201,8 @@ class TestEvent:
 
         assert "description" not in body
         assert "location" not in body
+        assert "status" not in body
+        assert "recurringEventId" not in body
         assert "extendedProperties" not in body
         assert body["summary"] == "Focus block"
         assert body["start"] == {"dateTime": "2026-01-01T09:00:00+00:00"}
@@ -210,6 +240,26 @@ class TestEvent:
 
         assert event.to_api_body()["location"] == "Conference Room A"
 
+    def test_to_api_body_includes_status_when_present(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            status="tentative",
+        )
+
+        assert event.to_api_body()["status"] == "tentative"
+
+    def test_to_api_body_never_includes_recurring_event_id(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            recurring_event_id="abc123",
+        )
+
+        assert "recurringEventId" not in event.to_api_body()
+
     def test_to_api_body_includes_app_properties_when_present(self):
         event = Event(
             summary="Focus block",
@@ -218,6 +268,7 @@ class TestEvent:
             min_duration=timedelta(minutes=30),
             is_fixed_duration=True,
             priority=2,
+            is_end_of_day_sleep=True,
         )
 
         assert event.to_api_body()["extendedProperties"] == {
@@ -225,6 +276,7 @@ class TestEvent:
                 "cascading-time-tracker-min_duration": "30",
                 "cascading-time-tracker-is_fixed_duration": "true",
                 "cascading-time-tracker-priority": "2",
+                "cascading-time-tracker-is_end_of_day_sleep": "true",
             }
         }
 
