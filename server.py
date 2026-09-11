@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from config import build_calendar_client
 
 mcp = MCPServer("time-tracking-google-calendar-mcp")
 
-HIDDEN_FROM_MCP = frozenset({"is_end_of_day_sleep"})
+HIDDEN_FROM_MCP = frozenset({"is_end_of_day_sleep", "status", "recurring_event_id"})
 """Event fields the agent talking to this server should never see or set,
 at all -- not just left null. Enforced by PublicEvent actually lacking
 these fields (so they never appear in a tool's schema or result), not by
@@ -80,13 +81,16 @@ def get_calendar_client() -> CalendarClient:
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     """List events between min_time and max_time."""
     events = get_calendar_client().list_events(min_time, max_time)
-    return [PublicEvent.from_event(event) for event in events]
+    return [PublicEvent.from_event(event) for event in events if event.status != "cancelled"]
 
 
 @mcp.tool()
 def get_event(id: str) -> PublicEvent:
     """Get a single event by its ID."""
-    return PublicEvent.from_event(get_calendar_client().get_event(id))
+    event = get_calendar_client().get_event(id)
+    if event.status == "cancelled":
+        raise ToolError(f"Event {id} has been cancelled.")
+    return PublicEvent.from_event(event)
 
 
 @mcp.tool()

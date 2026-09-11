@@ -43,6 +43,8 @@ class TestEvent:
         assert event.end == datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC)
         assert event.description is None
         assert event.location is None
+        assert event.status is None
+        assert event.recurring_event_id is None
         assert event.min_duration is None
         assert event.is_fixed_duration is None
         assert event.priority is None
@@ -75,6 +77,28 @@ class TestEvent:
         event = Event.from_api(data)
 
         assert event.location == "Conference Room A"
+
+    def test_from_api_extracts_status(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["status"] = "cancelled"
+
+        event = Event.from_api(data)
+
+        assert event.status == "cancelled"
+
+    def test_from_api_extracts_recurring_event_id(self):
+        data = api_event(
+            "abc123_20260101T090000Z",
+            "2026-01-01T09:00:00+00:00",
+            "2026-01-01T10:00:00+00:00",
+        )
+        data["recurringEventId"] = "abc123"
+
+        event = Event.from_api(data)
+
+        assert event.recurring_event_id == "abc123"
 
     def test_from_api_uses_timeZone_when_dateTime_is_naive(self):
         data = {
@@ -177,6 +201,8 @@ class TestEvent:
 
         assert "description" not in body
         assert "location" not in body
+        assert "status" not in body
+        assert "recurringEventId" not in body
         assert "extendedProperties" not in body
         assert body["summary"] == "Focus block"
         assert body["start"] == {"dateTime": "2026-01-01T09:00:00+00:00"}
@@ -213,6 +239,26 @@ class TestEvent:
         )
 
         assert event.to_api_body()["location"] == "Conference Room A"
+
+    def test_to_api_body_includes_status_when_present(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            status="tentative",
+        )
+
+        assert event.to_api_body()["status"] == "tentative"
+
+    def test_to_api_body_never_includes_recurring_event_id(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            recurring_event_id="abc123",
+        )
+
+        assert "recurringEventId" not in event.to_api_body()
 
     def test_to_api_body_includes_app_properties_when_present(self):
         event = Event(

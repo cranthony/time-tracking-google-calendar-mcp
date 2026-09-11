@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
 import server
 from calendar_clients.google_calendar import Event
@@ -42,6 +43,8 @@ class TestPublicEvent:
         field_names = {f.name for f in dataclasses.fields(PublicEvent)}
 
         assert "is_end_of_day_sleep" not in field_names
+        assert "status" not in field_names
+        assert "recurring_event_id" not in field_names
         assert field_names == {f.name for f in dataclasses.fields(Event)} - server.HIDDEN_FROM_MCP
 
     def test_from_event_drops_is_end_of_day_sleep(self):
@@ -86,6 +89,19 @@ class TestListEvents:
 
         assert not hasattr(result[0], "is_end_of_day_sleep")
 
+    def test_omits_cancelled_events(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.list_events.return_value = [
+            _event(id="abc123", status="confirmed"),
+            _event(id="def456", status="cancelled"),
+        ]
+
+        result = server.list_events(
+            datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+        )
+
+        assert [event.id for event in result] == ["abc123"]
+
 
 class TestGetEvent:
     def test_delegates_to_calendar_client(self, monkeypatch):
@@ -98,6 +114,13 @@ class TestGetEvent:
         assert result == PublicEvent.from_event(event)
         assert not hasattr(result, "is_end_of_day_sleep")
         client.get_event.assert_called_once_with("abc123")
+
+    def test_raises_tool_error_for_cancelled_event(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.get_event.return_value = _event(id="abc123", status="cancelled")
+
+        with pytest.raises(ToolError):
+            server.get_event("abc123")
 
 
 class TestUpdateEvent:

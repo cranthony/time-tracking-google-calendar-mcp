@@ -80,6 +80,20 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#location
     for more information."""
 
+    status: str | None = None
+    """One of "confirmed", "tentative", or "cancelled". A cancelled event
+    isn't removed from a calendar's results — it's returned with this
+    status.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#status
+    for more information."""
+
+    recurring_event_id: str | None = None
+    """For an instance of a recurring event, the id of that series' master
+    event. Read-only: assigned by Google when the event is created as part
+    of a series, never sent to the API — see `to_api_body`.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#recurringEventId
+    for more information."""
+
     min_duration: timedelta | None = None
     """The minimum duration this event may be shrunk to (e.g. by whatever
     resolves overlaps between events)."""
@@ -114,6 +128,8 @@ class Event:
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
             location=data.get("location"),
+            status=data.get("status"),
+            recurring_event_id=data.get("recurringEventId"),
             **app_properties,
         )
 
@@ -129,6 +145,10 @@ class Event:
             body["description"] = self.description
         if self.location is not None:
             body["location"] = self.location
+        if self.status is not None:
+            body["status"] = self.status
+        # recurring_event_id is deliberately never sent: it's assigned by
+        # Google, not something a client sets.
 
         private_properties = _format_properties(
             self,
