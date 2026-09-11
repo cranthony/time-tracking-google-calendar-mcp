@@ -33,4 +33,19 @@ Or launch it with the MCP Inspector for interactive testing:
 mcp dev server.py
 ```
 
+The Inspector is a Node.js tool launched via `npx`, so it requires Node.js/npm to be installed separately — this is unrelated to the Python virtual environment above, since a venv only manages Python packages and has no way to provide Node.js.
+
+**Installing Node.js (provides `npx`):**
+- **macOS:** `brew install node`
+- **Windows:** `winget install OpenJS.NodeJS.LTS` (or download the installer from [nodejs.org](https://nodejs.org))
+- **Linux:** use your distro's package manager (e.g. `sudo apt install nodejs npm`) or install via [nvm](https://github.com/nvm-sh/nvm)
+
+After installing, restart your terminal and verify with:
+
+```bash
+npx --version
+```
+
+If you only need to run the server (not the Inspector), `python server.py` works without Node.js.
+
 `server.py` currently contains a minimal scaffold (an `add` tool and a `greeting` resource) from the [MCP Python SDK quickstart](https://py.sdk.modelcontextprotocol.io/), ready to be extended with Google Calendar-backed tools.
