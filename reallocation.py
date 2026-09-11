@@ -117,7 +117,8 @@ the next thing to talk through, once this shape is agreed on.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
+from typing import Protocol
 
 from calendar_clients.google_calendar import CalendarClient, Event
 
@@ -125,6 +126,46 @@ WINDOW = timedelta(hours=24)
 """How far past `new_event.start` reallocation looks for events to
 reclaim time from. See "The window" above for why this is a fixed
 duration rather than a calendar-day boundary."""
+
+
+class Schedulable(Protocol):
+    """The fields of an event that reallocation's algorithm actually reads:
+    enough to place it in time, weigh it against other spans, and know how
+    far it can be shrunk. `Event` satisfies this structurally — Protocols
+    are duck-typed, so no inheritance is needed — and so would any other
+    event-shaped object with a matching set of attributes.
+
+    Typing reallocation's internal reasoning against `Schedulable` rather
+    than `Event` directly keeps its real dependency surface visible: none of
+    it needs `summary`, `description`, `location`, `id`, or
+    `is_end_of_day_sleep` to decide what gets reclaimed. Python has no way
+    to restrict a class's fields to one specific importer, so this is a
+    static-typing aid rather than a runtime restriction — nothing in this
+    codebase runs a type checker yet, so today it documents intent for a
+    reader rather than being enforced. A function typed to take a
+    `Schedulable` still receives a full `Event` at the call site; it just
+    isn't supposed to look past these fields.
+    """
+
+    start: datetime
+    end: datetime
+    priority: int | None
+    min_duration: timedelta | None
+    is_fixed_duration: bool | None
+
+
+def _reclaimable_seconds(span: Schedulable) -> float:
+    """How many seconds could be reclaimed from `span` (step 4 of the
+    algorithm above) if every one of them were needed: 0 if
+    `is_fixed_duration`, or if `min_duration` is unset (an unset
+    `min_duration` means "may not be shrunk," per the module docstring);
+    otherwise `(end - start) - min_duration`, floored at 0.
+
+    Only reads `span`'s `Schedulable` fields — it's given a window event or
+    `new_event` itself, never anything that needs `summary`/`description`/
+    `location`/`id`/`is_end_of_day_sleep` to answer this question.
+    """
+    raise NotImplementedError
 
 
 def reallocate_for_new_event(client: CalendarClient, new_event: Event) -> list[Event]:
