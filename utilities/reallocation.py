@@ -171,13 +171,24 @@ def _reclaimable_minutes(event: Schedulable) -> float:
     event.min_duration`, treating an unset `min_duration` as `0` (fully
     reclaimable), floored at 0.
 
-    Only reads `event`'s `Schedulable` fields, never `description`/
-    `location`/`is_end_of_day_sleep`. Doesn't apply `ReallocationOptions.
-    min_duration_overrides` itself -- that's `_effective_min_duration`'s
-    job.
+    Doesn't apply `ReallocationOptions.min_duration_overrides` itself
+    -- that's `_effective_min_duration`'s job.
     """
     minutes = (_duration(event) - (event.min_duration or timedelta(0))).total_seconds() / 60
     return max(0.0, minutes)
+
+
+def _validate_sorted_and_nonoverlapping(events: list[Schedulable], exception_type: type[Exception] = ValueError) -> None:
+    # Ignore cancelled events; we expect those to disappear.
+    events = [event for event in events if event.status != "cancelled"]
+
+    for earlier, later in zip(events, events[1:]):
+        if earlier.start > later.start:
+            raise exception_type(
+                f"events must be sorted by start: {earlier.id!r} starts after {later.id!r}"
+            )
+        if earlier.end > later.start:
+            raise exception_type(f"events must not overlap: {earlier.id!r} and {later.id!r}")
 
 
 @dataclass
@@ -213,10 +224,26 @@ class ReallocationOptions:
         )
 
 
-class ReallocationError(Exception):
+class ReallocationConflictError(Exception):
     """Raised by `reallocate_for_new_event` when the event immediately
-    preceding `new_event` can't shrink enough to clear its start (step 1),
-    or when `day_events` doesn't have enough reclaimable time to fit
+    preceding `new_event` can't shrink enough to clear its start."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        preceding_event: Schedulable,
+        preceding_min_duration: timedelta,
+        new_start_time: datetime
+    ) -> None:
+        super().__init__(message)
+        self.preceding_event = preceding_event
+        self.preceding_min_duration = preceding_min_duration
+        self.new_start_time = new_start_time
+
+
+class ReallocationShortfallError(Exception):
+    """Raised by `reallocate_for_new_event` when `day_events` doesn't have enough reclaimable time to fit
     `new_event` at all (step 6)."""
 
     def __init__(
@@ -258,15 +285,16 @@ class _Reallocation:
         }
 
         self.spans_by_priority: dict[float, list[Span]] = defaultdict(list)
+
+        # A singly linked list of spans, in order of ascending start time.
+        # This will be used for the compaction step.
         self.head: Span | None = None
         self.tail: Span | None = None
 
     def run(self) -> list[Schedulable]:
         self._validate()
-        duration_to_reclaim = sum(
-            (_overlap(event, self.new_event) for event in self.day_events), timedelta(0)
-        )
-        duration_to_reclaim -= self._resolve_preceding_overlap()
+        duration_to_reclaim = _duration(self.new_event)
+        self._resolve_preceding_overlap()
         self._insert_new_event()
         self._build_reclaim_pool()
         remaining = self._reclaim(duration_to_reclaim)
@@ -275,13 +303,7 @@ class _Reallocation:
         return self._apply_plan()
 
     def _validate(self) -> None:
-        for earlier, later in zip(self.day_events, self.day_events[1:]):
-            if earlier.start > later.start:
-                raise ValueError(
-                    f"day_events must be sorted by start: {earlier.id!r} starts after {later.id!r}"
-                )
-            if earlier.end > later.start:
-                raise ValueError(f"day_events must not overlap: {earlier.id!r} and {later.id!r}")
+        _validate_sorted_and_nonoverlapping(self.day_events)
 
         if self.new_event.id is not None:
             for event in self.day_events:
@@ -292,9 +314,11 @@ class _Reallocation:
                     )
 
         if not self.day_events or self.day_events[-1].end <= self.new_event.end:
-            raise ValueError("day_events must contain something ending after new_event.end")
+            raise ValueError(
+                "day_events must contain something ending after new_event.end but "
+                f"last event was {self.day_events[-1].id if self.day_events else None!r}")
 
-    def _resolve_preceding_overlap(self) -> timedelta:
+    def _resolve_preceding_overlap(self) -> None:
         """Step 1. Returns how much of the total overlap (step 3) this
         resolves, so `run` doesn't reclaim it a second time."""
         new_event = self.new_event
@@ -315,31 +339,36 @@ class _Reallocation:
         preceding_min = _effective_min_duration(preceding, self.options.min_duration_overrides)
         time_before_new_event = new_event.start - preceding.start
         if time_before_new_event < preceding_min:
-            raise ReallocationError(
+            raise ReallocationConflictError(
                 f"Can't make room for the new event starting at {new_event.start}: the "
                 f"preceding event ({preceding.id!r}, {preceding.summary!r}) can't shrink "
-                f"below its min_duration of {preceding_min}."
+                f"below its min_duration of {preceding_min}.",
+                preceding_event=preceding,
+                preceding_min_duration=preceding_min,
+                new_start_time=new_event.start
             )
 
-        preceding_overlap = _overlap(preceding, new_event)
-        time_consumed = new_event.end - preceding.start
-        overlap_after_new_event = preceding.end - new_event.end
+        new_preceding_duration = new_event.start - preceding.start
+        leftover_preceding_duration = _duration(preceding) - new_preceding_duration
         split_threshold = timedelta(minutes=self.options.split_threshold_minutes)
-        if overlap_after_new_event >= split_threshold:
+        if leftover_preceding_duration >= split_threshold:
+            # The leftover is big enough that we want to split it into a new event.
             continuation = preceding.clone()
             continuation.id = None
             suffix = " (continued)"
             if not (continuation.summary or "").endswith(suffix):
                 continuation.summary = f"{continuation.summary or ''}{suffix}"
-            continuation.min_duration = max(timedelta(0), preceding_min - time_consumed)
+            continuation.min_duration = max(timedelta(0), preceding_min - new_preceding_duration)
             continuation.start = new_event.end
             continuation.end = preceding.end
             self.day_events.insert(preceding_index + 1, continuation)
 
         preceding.end = new_event.start
-        return preceding_overlap
 
     def _insert_new_event(self) -> None:
+        # Insert the new event before any event that starts at the same time.
+        # The rest of the algorithm will preserve this order, keeping our new
+        # event's start time intact.
         new_event = self.new_event
         insert_at = next(
             (i for i, event in enumerate(self.day_events) if event.start >= new_event.start),
@@ -364,21 +393,26 @@ class _Reallocation:
         else:
             self.tail.next = span
         self.tail = span
+        # Treat spans representing empty space as the lowest possible priority.
         priority = math.inf if span.event is None else _effective_priority(span.event)
         self.spans_by_priority[priority].append(span)
 
     def _eligible_priorities(self) -> list[float]:
+        """Returns priorities that are eligible to reclaim, in order of lowest priority to highest."""
         threshold = self.new_event_priority
         eligible = (priority for priority in self.spans_by_priority if priority >= threshold)
         return sorted(eligible, reverse=True)
 
     def _reclaim(self, duration_to_reclaim: timedelta) -> timedelta:
+        """Mark the spans that will be reduced to claim space for the new event."""
         remaining = duration_to_reclaim
         for priority in self._eligible_priorities():
             for span in self.spans_by_priority[priority]:
                 if remaining <= timedelta(0):
                     break
                 if span.event is self.new_event:
+                    # Treat the new event as a higher priority than the existing
+                    # events at its priority.
                     continue
                 reclaimable = span.duration - span.min_duration
                 if reclaimable <= timedelta(0):
@@ -403,12 +437,13 @@ class _Reallocation:
                 span.event
                 for priority in self._eligible_priorities()
                 for span in self.spans_by_priority[priority]
+                # span.min_duration is already the effective min duration.
                 if span.event is not None and span.duration <= span.min_duration
             ),
             key=lambda event: _effective_min_duration(event, overrides),
             reverse=True,
         )
-        raise ReallocationError(
+        raise ReallocationShortfallError(
             f"Not enough reclaimable time for the new event: still short by "
             f"{remaining} after reclaiming everything eligible.",
             remaining=remaining,
@@ -437,12 +472,14 @@ class _Reallocation:
                 new_start = current_end
                 new_end = new_start + span.duration
                 if original is None or original[0] != new_start or original[1] != new_end:
-                    event.start = new_start
-                    event.end = new_end
                     changed.append(event)
+                event.start = new_start
+                event.end = new_end
                 current_end = new_end
             span = span.next
-        return sorted(changed, key=lambda event: event.start)
+
+        _validate_sorted_and_nonoverlapping(changed, exception_type=RuntimeError)
+        return changed
 
 
 def reallocate_for_new_event(

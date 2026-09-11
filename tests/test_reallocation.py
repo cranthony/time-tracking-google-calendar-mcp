@@ -4,7 +4,7 @@ import pytest
 
 from calendar_clients.google_calendar import Event
 from utilities.reallocation import (
-    ReallocationError,
+    ReallocationShortfallError,
     ReallocationOptions,
     _duration,
     _effective_min_duration,
@@ -171,7 +171,7 @@ class TestReallocationOptions:
 
 class TestReallocationError:
     def test_defaults(self):
-        error = ReallocationError("no room")
+        error = ReallocationShortfallError("no room")
 
         assert str(error) == "no room"
         assert error.remaining is None
@@ -181,7 +181,7 @@ class TestReallocationError:
     def test_carries_structured_fields(self):
         event = _event(id="abc123")
 
-        error = ReallocationError(
+        error = ReallocationShortfallError(
             "no room",
             remaining=timedelta(minutes=5),
             higher_priority_events=[event],
@@ -446,7 +446,7 @@ class TestReallocateForNewEvent:
             priority=1,
         )
 
-        with pytest.raises(ReallocationError):
+        with pytest.raises(ReallocationShortfallError):
             reallocate_for_new_event([preceding], new_event, ReallocationOptions())
 
         # Nothing should have been mutated before the exception.
@@ -474,7 +474,7 @@ class TestReallocateForNewEvent:
             priority=1,
         )
 
-        with pytest.raises(ReallocationError) as exc_info:
+        with pytest.raises(ReallocationShortfallError) as exc_info:
             reallocate_for_new_event([existing, anchor], new_event, ReallocationOptions())
 
         assert exc_info.value.remaining == timedelta(minutes=30)
@@ -508,7 +508,7 @@ class TestReallocateForNewEvent:
             priority=2,
         )
 
-        with pytest.raises(ReallocationError) as exc_info:
+        with pytest.raises(ReallocationShortfallError) as exc_info:
             reallocate_for_new_event([higher, protected, anchor], new_event, ReallocationOptions())
 
         assert exc_info.value.remaining == timedelta(hours=1)
@@ -567,7 +567,7 @@ class TestReallocateForNewEvent:
             priority=1,
         )
 
-        with pytest.raises(ReallocationError) as exc_info:
+        with pytest.raises(ReallocationShortfallError) as exc_info:
             reallocate_for_new_event([later], new_event, ReallocationOptions())
 
         assert exc_info.value.remaining == timedelta(minutes=15)
