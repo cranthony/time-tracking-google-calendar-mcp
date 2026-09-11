@@ -38,6 +38,20 @@ Google Calendar API access lives in [`calendar_clients/google_calendar.py`](cale
 
 Both paths are required arguments (no defaults), so where they live is up to whatever wires up the server.
 
+## Configuration
+
+[`config.py`](config.py) reads the server's configuration from environment variables, rather than anything being hardcoded or committed:
+
+| Variable | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `GOOGLE_CALENDAR_ID` | Yes | — | The calendar to operate on. Use `primary` for the account's main calendar, or a specific calendar's ID (Google Calendar → Settings → *[calendar name]* → Integrate calendar → Calendar ID). |
+| `GOOGLE_OAUTH_CREDENTIALS_PATH` | No | `credentials.json` | Path to the OAuth client secret file — see [Google OAuth credentials](#google-oauth-credentials) above. |
+| `GOOGLE_OAUTH_TOKEN_PATH` | No | `token.json` | Path to the cached OAuth user token — see [Google OAuth credentials](#google-oauth-credentials) above. |
+
+To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — `config.py` loads `.env` automatically (via `python-dotenv`) if one is present. `.env` is gitignored, so nothing personal ends up committed.
+
+If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) instead of run standalone, set these same variables in that host's server config under its `env` field — no `.env` file needed in that case.
+
 ## Running the server
 
 With the virtual environment activated, run the server directly:
