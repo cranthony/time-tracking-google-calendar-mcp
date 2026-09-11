@@ -34,9 +34,31 @@ Google Calendar API access lives in [`calendar_clients/google_calendar.py`](cale
 `CalendarClient.from_credentials`, in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), needs two files, neither of which should ever be committed:
 
 - **`credentials.json`** — the OAuth *client* secret, downloaded once from the [Google Cloud Console](https://console.cloud.google.com/) for the Google Cloud project you register this server under (APIs & Services → Credentials → create an OAuth client ID of type "Desktop app", then download its JSON). This identifies the application, not you as a user — you obtain it yourself and supply its path.
-- **`token.json`** — the *user's* actual access + refresh token. You don't create this yourself: the first time `load_credentials` runs without a valid cached token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. Every later run reads the cached file back and silently refreshes/rewrites it as the access token expires.
+- **`token.json`** — the *user's* actual access + refresh token. You don't create this yourself: the first time `load_credentials` runs without a valid cached token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. Every later run reads the cached file back and refreshes it as the access token expires; rewriting it back to `token_path` afterward is best-effort — if the path turns out not to be writable (see [Deploying](#deploying) below), the refresh still succeeds in memory, just without being persisted.
 
 Both paths are required arguments (no defaults), so where they live is up to whatever wires up the server.
+
+## Configuration
+
+[`config.py`](config.py) reads the server's configuration from environment variables, rather than anything being hardcoded or committed:
+
+| Variable | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `GOOGLE_CALENDAR_ID` | Yes | — | The calendar to operate on. Use `primary` for the account's main calendar, or a specific calendar's ID (Google Calendar → Settings → *[calendar name]* → Integrate calendar → Calendar ID). |
+| `GOOGLE_OAUTH_CREDENTIALS_PATH` | No | `/etc/secrets/credentials.json` | Path to the OAuth client secret file — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to a Render Secret File mount (see [Deploying](#deploying)); override if running locally. |
+| `GOOGLE_OAUTH_TOKEN_PATH` | No | `/etc/secrets/token.json` | Path to the cached OAuth user token — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to a Render Secret File mount (see [Deploying](#deploying)); override if running locally. |
+
+To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — `config.py` loads `.env` automatically (via `python-dotenv`) if one is present. `.env` is gitignored, so nothing personal ends up committed.
+
+If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) instead of run standalone, set these same variables in that host's server config under its `env` field — no `.env` file needed in that case.
+
+## Deploying
+
+On a platform like [Render](https://render.com/), don't put `credentials.json`/`token.json` in the repo or in a regular env var — Render's **Secret Files** feature is built for exactly this: add each file under the service's Environment tab, and Render mounts it at `/etc/secrets/<filename>` at runtime, separate from your source and the regular env var list.
+
+- `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` already default to `/etc/secrets/credentials.json`/`/etc/secrets/token.json`, matching those mounts — no need to set them explicitly on Render, only if running locally with the files somewhere else.
+- Generate `token.json` once locally (via the interactive consent flow — run the server locally the first time so a browser can open), then paste its contents into the `token.json` Secret File.
+- Secret File mounts may be read-only, so `token.json`'s refresh-and-rewrite (see [Google OAuth credentials](#google-oauth-credentials) above) is best-effort by design — a failed write there just means the next process restart refreshes again from the same cached refresh token, which Google doesn't rotate on a normal refresh.
 
 ## Running the server
 

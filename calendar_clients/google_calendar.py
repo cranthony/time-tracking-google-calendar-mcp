@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -11,6 +12,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(kw_only=True)
@@ -128,12 +131,21 @@ def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
         a browser for the user to log into Google and grant access, then
         writes the resulting credentials here. On every later run, the
         cached token is read back and — if the access token has expired — is
-        silently refreshed and rewritten to this same path. This file
-        contains live user credentials and must never be committed.
+        refreshed and, on a best-effort basis, rewritten to this same path
+        (see below). This file contains live user credentials and must
+        never be committed.
     credentials_path: path to the OAuth *client* secret file (conventionally
         `credentials.json`), downloaded once from the Google Cloud Console
         for the project this server registers as. It identifies the
         application, not the end user, but must still never be committed.
+
+    Rewriting token_path after a refresh is best-effort: if the path isn't
+    writable (e.g. a read-only mount, such as a Render Secret File), the
+    write is skipped with a warning rather than raising. This is safe
+    because a refresh doesn't change the refresh token itself, only the
+    short-lived access token — so an unwritable token_path just means the
+    next process start refreshes again from the same cached refresh token,
+    rather than reusing an unexpired access token.
     """
     creds = None
     if token_path.exists():
@@ -145,7 +157,14 @@ def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
         else:
             flow = InstalledAppFlow.from_client_secrets_file(str(credentials_path), SCOPES)
             creds = flow.run_local_server(port=0)
-        token_path.write_text(creds.to_json())
+        try:
+            token_path.write_text(creds.to_json())
+        except OSError:
+            logger.warning(
+                "Could not write refreshed credentials to %s; continuing "
+                "with in-memory credentials for this run.",
+                token_path,
+            )
 
     return creds
 
