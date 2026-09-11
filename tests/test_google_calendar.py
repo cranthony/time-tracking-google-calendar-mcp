@@ -124,7 +124,7 @@ class TestEvent:
         data["extendedProperties"] = {
             "private": {
                 "cascading-time-tracker-min_duration": "30",
-                "cascading-time-tracker-is_fixed_duration": "true",
+                "cascading-time-tracker-is_fixed_duration": "false",
                 "cascading-time-tracker-priority": "2",
                 "cascading-time-tracker-is_end_of_day_sleep": "true",
             }
@@ -133,9 +133,24 @@ class TestEvent:
         event = Event.from_api(data)
 
         assert event.min_duration == timedelta(minutes=30)
-        assert event.is_fixed_duration is True
+        assert event.is_fixed_duration is False
         assert event.priority == 2
         assert event.is_end_of_day_sleep is True
+
+    def test_from_api_forces_min_duration_to_full_duration_when_fixed(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["extendedProperties"] = {
+            "private": {
+                "cascading-time-tracker-min_duration": "30",
+                "cascading-time-tracker-is_fixed_duration": "true",
+            }
+        }
+
+        event = Event.from_api(data)
+
+        assert event.min_duration == timedelta(hours=1)
 
     def test_from_api_parses_is_fixed_duration_false(self):
         data = api_event(
@@ -397,6 +412,24 @@ class TestEvent:
                 datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
                 datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
             )
+
+    def test_clone_copies_fields_independently(self):
+        event = Event(
+            id="abc123",
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=2,
+        )
+
+        clone = event.clone()
+        clone.id = None
+        clone.priority = 5
+
+        assert clone.summary == "Focus block"
+        assert clone.start == event.start
+        assert event.id == "abc123"
+        assert event.priority == 2
 
 
 class TestCalendar:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -122,17 +122,29 @@ class Event:
                 "is_end_of_day_sleep": lambda s: s.lower() == "true",
             },
         )
+        start = _parse_datetime(data["start"])
+        end = _parse_datetime(data["end"])
+        if app_properties.get("is_fixed_duration"):
+            # A fixed-duration event may never be shrunk, so its
+            # min_duration is its own full duration -- not whatever was
+            # separately stored (or not) in extendedProperties.
+            app_properties["min_duration"] = end - start
         return cls(
             id=data.get("id"),
             summary=data.get("summary"),
-            start=_parse_datetime(data["start"]),
-            end=_parse_datetime(data["end"]),
+            start=start,
+            end=end,
             description=data.get("description"),
             location=data.get("location"),
             status=data.get("status"),
             recurring_event_id=data.get("recurringEventId"),
             **app_properties,
         )
+
+    def clone(self) -> "Event":
+        """A copy of this event, safe to mutate independently -- e.g. to
+        represent a split-off "(continued)" event during reallocation."""
+        return replace(self)
 
     def to_api_body(self) -> dict:
         body: dict = {}
