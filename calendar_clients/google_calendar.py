@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
@@ -29,13 +31,8 @@ reference."""
 
 _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 """Prefix for the extendedProperties.private keys this app uses to store its
-own per-event fields (see Event.min_duration/fixed_duration/priority),
-distinguishing them from any other private key that might exist on an
-event."""
-
-_MIN_DURATION_KEY = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}min_duration"
-_FIXED_DURATION_KEY = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}fixed_duration"
-_PRIORITY_KEY = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}priority"
+own per-event fields, distinguishing them from any other private key that
+might exist on an event."""
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +94,14 @@ class Event:
     @classmethod
     def from_api(cls, data: dict) -> "Event":
         private_properties = data.get("extendedProperties", {}).get("private", {})
+        app_properties = _parse_properties(
+            private_properties,
+            {
+                "min_duration": lambda s: timedelta(seconds=int(s)),
+                "fixed_duration": lambda s: s.lower() == "true",
+                "priority": int,
+            },
+        )
         return cls(
             id=data.get("id"),
             summary=data.get("summary", ""),
@@ -104,9 +109,9 @@ class Event:
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
             location=data.get("location"),
-            min_duration=_parse_min_duration(private_properties),
-            fixed_duration=_parse_fixed_duration(private_properties),
-            priority=_parse_priority(private_properties),
+            min_duration=app_properties.get("min_duration"),
+            fixed_duration=app_properties.get("fixed_duration"),
+            priority=app_properties.get("priority"),
         )
 
     def to_api_body(self) -> dict:
@@ -120,13 +125,14 @@ class Event:
         if self.location is not None:
             body["location"] = self.location
 
-        private_properties: dict[str, str] = {}
-        if self.min_duration is not None:
-            private_properties[_MIN_DURATION_KEY] = str(int(self.min_duration.total_seconds()))
-        if self.fixed_duration is not None:
-            private_properties[_FIXED_DURATION_KEY] = "true" if self.fixed_duration else "false"
-        if self.priority is not None:
-            private_properties[_PRIORITY_KEY] = str(self.priority)
+        private_properties = _format_properties(
+            self,
+            {
+                "min_duration": lambda d: str(int(d.total_seconds())),
+                "fixed_duration": lambda b: "true" if b else "false",
+                "priority": str,
+            },
+        )
         if private_properties:
             body["extendedProperties"] = {"private": private_properties}
 
@@ -200,25 +206,33 @@ def _format_datetime(value: datetime) -> dict:
     return {"dateTime": value.isoformat()}
 
 
-def _parse_min_duration(private_properties: dict) -> timedelta | None:
-    value = private_properties.get(_MIN_DURATION_KEY)
-    if value is None:
-        return None
-    return timedelta(seconds=int(value))
+def _parse_properties(
+    private_properties: dict[str, str], parsers: dict[str, Callable[[str], Any]]
+) -> dict[str, Any]:
+    """Parse whichever of this app's prefixed keys are present in
+    private_properties, using the given per-suffix parser functions. Returns
+    a dict keyed by suffix (not the prefixed key); a suffix whose key is
+    absent from private_properties is omitted from the result."""
+    parsed = {}
+    for suffix, parse in parsers.items():
+        raw = private_properties.get(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{suffix}")
+        if raw is not None:
+            parsed[suffix] = parse(raw)
+    return parsed
 
 
-def _parse_fixed_duration(private_properties: dict) -> bool | None:
-    value = private_properties.get(_FIXED_DURATION_KEY)
-    if value is None:
-        return None
-    return value.lower() == "true"
-
-
-def _parse_priority(private_properties: dict) -> int | None:
-    value = private_properties.get(_PRIORITY_KEY)
-    if value is None:
-        return None
-    return int(value)
+def _format_properties(
+    obj: Any, formatters: dict[str, Callable[[Any], str]]
+) -> dict[str, str]:
+    """Format whichever of obj's named attributes are not None, using the
+    given per-attribute formatter functions, into a dict of this app's
+    prefixed extendedProperties.private keys to their string values."""
+    formatted = {}
+    for attr, format_value in formatters.items():
+        value = getattr(obj, attr)
+        if value is not None:
+            formatted[f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{attr}"] = format_value(value)
+    return formatted
 
 
 def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
