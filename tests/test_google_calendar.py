@@ -7,10 +7,11 @@ from calendar_clients.google_calendar import CalendarClient, Event
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
+TEST_CALENDAR_ID = "my-calendar-id"
 
 
 def make_client(service: MagicMock) -> CalendarClient:
-    return CalendarClient(service, calendar_id="primary")
+    return CalendarClient(service, calendar_id=TEST_CALENDAR_ID)
 
 
 def api_event(event_id: str, start: str, end: str, summary: str = "Busy") -> dict:
@@ -213,7 +214,7 @@ class TestCalendarClientListEvents:
 
         assert [e.id for e in events] == ["1", "2"]
         service.events.return_value.list.assert_called_once_with(
-            calendarId="primary",
+            calendarId=TEST_CALENDAR_ID,
             timeMin="2026-01-01T00:00:00+00:00",
             timeMax="2026-01-02T00:00:00+00:00",
             singleEvents=True,
@@ -275,7 +276,7 @@ class TestCalendarClientCreateEvent:
 
         assert result.id == "new-id"
         service.events.return_value.insert.assert_called_once_with(
-            calendarId="primary", body=event.to_api_body()
+            calendarId=TEST_CALENDAR_ID, body=event.to_api_body()
         )
 
 
@@ -308,7 +309,7 @@ class TestCalendarClientUpdateEvent:
 
         assert result.end == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
         service.events.return_value.patch.assert_called_once_with(
-            calendarId="primary", eventId="abc123", body=event.to_api_body()
+            calendarId=TEST_CALENDAR_ID, eventId="abc123", body=event.to_api_body()
         )
 
 
@@ -320,6 +321,6 @@ class TestCalendarClientDeleteEvent:
         client.delete_event("abc123")
 
         service.events.return_value.delete.assert_called_once_with(
-            calendarId="primary", eventId="abc123"
+            calendarId=TEST_CALENDAR_ID, eventId="abc123"
         )
         service.events.return_value.delete.return_value.execute.assert_called_once()

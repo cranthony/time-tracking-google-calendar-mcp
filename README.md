@@ -29,6 +29,15 @@ pip install -r requirements-dev.txt
 
 Google Calendar API access lives in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), behind a `CalendarClient` class and a plain `Event` dataclass. `server.py`'s MCP tools call into this module rather than talking to `googleapiclient`/OAuth directly, so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead.
 
+## Google OAuth credentials
+
+`CalendarClient.from_credentials` needs two files, neither of which should ever be committed:
+
+- **`credentials.json`** — the OAuth *client* secret, downloaded once from the [Google Cloud Console](https://console.cloud.google.com/) for the Google Cloud project you register this server under (APIs & Services → Credentials → create an OAuth client ID of type "Desktop app", then download its JSON). This identifies the application, not you as a user — you obtain it yourself and supply its path.
+- **`token.json`** — the *user's* actual access + refresh token. You don't create this yourself: the first time `load_credentials` runs without a valid cached token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. Every later run reads the cached file back and silently refreshes/rewrites it as the access token expires.
+
+Both paths are required arguments (no defaults), so where they live is up to whatever wires up the server.
+
 ## Running the server
 
 With the virtual environment activated, run the server directly:

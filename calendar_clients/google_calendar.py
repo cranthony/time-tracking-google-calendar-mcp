@@ -12,15 +12,26 @@ from googleapiclient.discovery import build
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Event:
-    """A calendar event, decoupled from the Google API's raw resource shape."""
+    """A calendar event, decoupled from the Google API's raw resource shape.
+
+    See the Google Calendar API Events resource reference:
+    https://developers.google.com/calendar/api/v3/reference/events
+    """
+
+    id: str | None = None
+    """Uniquely identifies the event. `None` until the event has been
+    created; `CalendarClient.create_event` assigns this ID (from the API
+    response) when the event is created."""
 
     summary: str
     start: datetime
     end: datetime
-    id: str | None = None
+
     description: str | None = None
+    """Optional free-text description of the event."""
+
     extended_properties: dict[str, dict[str, str]] | None = None
     """Google Calendar's free-form key/value tags, shaped like the API's
     `extendedProperties`: `{"private": {...}, "shared": {...}}`."""
@@ -76,7 +87,22 @@ def _format_datetime(value: datetime) -> dict:
 
 
 def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
-    """Load cached OAuth credentials, refreshing or running the consent flow as needed."""
+    """Load cached OAuth credentials, refreshing or running the consent flow as needed.
+
+    token_path: where the user's OAuth token (access token + refresh token) is
+        cached, conventionally as `token.json`. This file does not need to
+        exist yet: on first run (or once the cached token can no longer be
+        refreshed), this function runs an interactive consent flow that opens
+        a browser for the user to log into Google and grant access, then
+        writes the resulting credentials here. On every later run, the
+        cached token is read back and — if the access token has expired — is
+        silently refreshed and rewritten to this same path. This file
+        contains live user credentials and must never be committed.
+    credentials_path: path to the OAuth *client* secret file (conventionally
+        `credentials.json`), downloaded once from the Google Cloud Console
+        for the project this server registers as. It identifies the
+        application, not the end user, but must still never be committed.
+    """
     creds = None
     if token_path.exists():
         creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
@@ -93,9 +119,15 @@ def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
 
 
 class CalendarClient:
-    """Wraps the Google Calendar API behind a small, mockable interface."""
+    """Wraps the Google Calendar API behind a small, mockable interface.
 
-    def __init__(self, service, calendar_id: str = "primary"):
+    calendar_id: the Google Calendar to operate on. Supply "primary" to
+        represent the main calendar associated with the authenticated
+        user's Google account, or a specific calendar's ID otherwise.
+        There is deliberately no default — callers must decide explicitly.
+    """
+
+    def __init__(self, service, calendar_id: str):
         self._service = service
         self._calendar_id = calendar_id
 
@@ -104,8 +136,10 @@ class CalendarClient:
         cls,
         token_path: Path,
         credentials_path: Path,
-        calendar_id: str = "primary",
+        calendar_id: str,
     ) -> "CalendarClient":
+        """See `load_credentials` for `token_path`/`credentials_path`, and
+        `CalendarClient` for `calendar_id`."""
         creds = load_credentials(token_path, credentials_path)
         service = build("calendar", "v3", credentials=creds)
         return cls(service, calendar_id=calendar_id)
