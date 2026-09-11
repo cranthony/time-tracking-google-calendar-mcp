@@ -11,6 +11,10 @@ its issuer/audience/expiry are right.
 See the README's "Deploying" section for the WorkOS AuthKit setup this
 depends on (enabling Dynamic Client Registration/Client ID Metadata
 Document, and registering this server's URL as a Resource Indicator).
+
+See WorkOS's own "Token Verification" guidance for MCP servers, which
+this module follows directly:
+https://workos.com/docs/authkit/mcp
 """
 
 from __future__ import annotations
@@ -29,6 +33,11 @@ class WorkOSTokenVerifier(TokenVerifier):
     def __init__(self, *, authkit_domain: str, resource: str) -> None:
         self._authkit_domain = authkit_domain
         self._resource = resource
+        # `{authkit_domain}/oauth2/jwks` is the JWKS endpoint WorkOS's own
+        # MCP docs use to verify these tokens (a different endpoint from
+        # regular AuthKit session tokens' JWKS, which lives under
+        # api.workos.com instead): https://workos.com/docs/authkit/mcp
+        #
         # cache_keys=True: fetch WorkOS's signing keys once and reuse them
         # by `kid` for `lifespan` seconds, rather than hitting the network
         # on every single request.
@@ -52,6 +61,9 @@ class WorkOSTokenVerifier(TokenVerifier):
 
     def _verify(self, token: str) -> dict:
         signing_key = self._jwks_client.get_signing_key_from_jwt(token)
+        # issuer=authkit_domain, audience=resource: the same two checks
+        # (alongside signature/expiry) WorkOS's own MCP docs' example does
+        # with the `jose` library's jwtVerify(): https://workos.com/docs/authkit/mcp
         return jwt.decode(
             token,
             signing_key.key,
