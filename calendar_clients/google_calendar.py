@@ -134,25 +134,18 @@ class Calendar:
     description: str | None = None
     """Optional free-text description of the calendar."""
 
-    time_zone: str | None = None
-    """Optional IANA time zone (e.g. "America/New_York") the calendar is
-    displayed in."""
-
     @classmethod
     def from_api(cls, data: dict) -> "Calendar":
         return cls(
             id=data.get("id"),
             summary=data.get("summary", ""),
             description=data.get("description"),
-            time_zone=data.get("timeZone"),
         )
 
     def to_api_body(self) -> dict:
         body: dict = {"summary": self.summary}
         if self.description is not None:
             body["description"] = self.description
-        if self.time_zone is not None:
-            body["timeZone"] = self.time_zone
         return body
 
 

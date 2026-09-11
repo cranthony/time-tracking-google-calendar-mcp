@@ -265,44 +265,32 @@ class TestEvent:
 class TestCalendar:
     def test_from_api_parses_fields(self):
         calendar = Calendar.from_api(
-            {
-                "id": "cal123",
-                "summary": "Time tracking",
-                "description": "Work blocks",
-                "timeZone": "America/New_York",
-            }
+            {"id": "cal123", "summary": "Time tracking", "description": "Work blocks"}
         )
 
         assert calendar.id == "cal123"
         assert calendar.summary == "Time tracking"
         assert calendar.description == "Work blocks"
-        assert calendar.time_zone == "America/New_York"
 
     def test_from_api_defaults_optional_fields_to_none(self):
-        calendar = Calendar.from_api({"id": "cal123", "summary": "Time tracking"})
+        calendar = Calendar.from_api({"summary": "Time tracking"})
 
+        assert calendar.id is None
         assert calendar.description is None
-        assert calendar.time_zone is None
 
-    def test_to_api_body_omits_optional_fields_when_absent(self):
+    def test_to_api_body_omits_description_when_absent(self):
         calendar = Calendar(summary="Time tracking")
 
         body = calendar.to_api_body()
 
         assert body == {"summary": "Time tracking"}
 
-    def test_to_api_body_includes_optional_fields_when_present(self):
-        calendar = Calendar(
-            summary="Time tracking", description="Work blocks", time_zone="America/New_York"
-        )
+    def test_to_api_body_includes_description_when_present(self):
+        calendar = Calendar(summary="Time tracking", description="Work blocks")
 
         body = calendar.to_api_body()
 
-        assert body == {
-            "summary": "Time tracking",
-            "description": "Work blocks",
-            "timeZone": "America/New_York",
-        }
+        assert body == {"summary": "Time tracking", "description": "Work blocks"}
 
 
 class TestCalendarClientListEvents:

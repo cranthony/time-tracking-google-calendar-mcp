@@ -8,12 +8,12 @@ to create that dedicated calendar, then set GOOGLE_CALENDAR_ID to the ID it
 prints.
 
 Usage:
-    python create_calendar.py ["Calendar name"]
+    python create_calendar.py ["Calendar name"] [--description "..."]
 """
 
 from __future__ import annotations
 
-import sys
+import argparse
 
 from googleapiclient.discovery import build
 
@@ -21,20 +21,26 @@ from calendar_clients.google_calendar import Calendar, load_credentials
 from config import get_credentials_path, get_token_path
 
 DEFAULT_SUMMARY = "Time Tracking"
+DEFAULT_DESCRIPTION = "Calendar managed by Cascading Time Tracker"
 
 
-def create_calendar(summary: str) -> Calendar:
+def create_calendar(summary: str, description: str | None = None) -> Calendar:
     creds = load_credentials(get_token_path(), get_credentials_path())
     service = build("calendar", "v3", credentials=creds)
-    response = (
-        service.calendars().insert(body=Calendar(summary=summary).to_api_body()).execute()
-    )
+    calendar = Calendar(summary=summary, description=description)
+    response = service.calendars().insert(body=calendar.to_api_body()).execute()
     return Calendar.from_api(response)
 
 
 def main() -> None:
-    summary = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_SUMMARY
-    calendar = create_calendar(summary)
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("summary", nargs="?", default=DEFAULT_SUMMARY, help="Calendar name")
+    parser.add_argument(
+        "--description", default=DEFAULT_DESCRIPTION, help="Calendar description"
+    )
+    args = parser.parse_args()
+
+    calendar = create_calendar(args.summary, args.description)
     print(f"Created calendar {calendar.summary!r} with id: {calendar.id}")
     print("Set GOOGLE_CALENDAR_ID to this value.")
 

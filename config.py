@@ -33,19 +33,21 @@ def get_calendar_id() -> str:
 
 def get_credentials_path() -> Path:
     """Path to the OAuth client secret file, from
-    GOOGLE_OAUTH_CREDENTIALS_PATH (default: /etc/secrets/credentials.json,
-    matching a Render Secret File mount). See the README's "Google OAuth
+    GOOGLE_OAUTH_CREDENTIALS_PATH (default: credentials.json, a gitignored
+    filename for local development). When deployed, override this to
+    somewhere with real protections, e.g. a Render Secret File mount
+    (/etc/secrets/credentials.json). See the README's "Google OAuth
     credentials" and "Deploying" sections."""
-    return Path(
-        os.environ.get("GOOGLE_OAUTH_CREDENTIALS_PATH", "/etc/secrets/credentials.json")
-    )
+    return Path(os.environ.get("GOOGLE_OAUTH_CREDENTIALS_PATH", "credentials.json"))
 
 
 def get_token_path() -> Path:
     """Path to the cached OAuth user token, from GOOGLE_OAUTH_TOKEN_PATH
-    (default: /etc/secrets/token.json, matching a Render Secret File mount).
-    See the README's "Google OAuth credentials" and "Deploying" sections."""
-    return Path(os.environ.get("GOOGLE_OAUTH_TOKEN_PATH", "/etc/secrets/token.json"))
+    (default: token.json, a gitignored filename for local development).
+    When deployed, override this to somewhere with real protections, e.g.
+    a Render Secret File mount (/etc/secrets/token.json). See the README's
+    "Google OAuth credentials" and "Deploying" sections."""
+    return Path(os.environ.get("GOOGLE_OAUTH_TOKEN_PATH", "token.json"))
 
 
 def build_calendar_client() -> CalendarClient:

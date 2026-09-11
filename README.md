@@ -27,7 +27,11 @@ pip install -r requirements-dev.txt
 
 ## Project layout
 
-Google Calendar API access lives in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), behind a `CalendarClient` class and a plain `Event` dataclass. `server.py`'s MCP tools call into this module rather than talking to `googleapiclient`/OAuth directly, so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead. [`create_calendar.py`](create_calendar.py) is a standalone bootstrap script (not an MCP tool) — see [Calendar access model](#calendar-access-model) below.
+- [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead.
+- [`server.py`](server.py) — the MCP server; its tools call into `calendar_clients/google_calendar.py` rather than talking to `googleapiclient`/OAuth directly.
+- [`create_calendar.py`](create_calendar.py) — a standalone bootstrap script (not an MCP tool) that creates the dedicated calendar this app needs — see [Calendar access model](#calendar-access-model) below.
+- [`config.py`](config.py) — reads configuration from environment variables — see [Configuration](#configuration) below.
+- [`tests/`](tests/) — unit tests for the above, mocking the Google API rather than hitting it.
 
 ## Calendar access model
 
@@ -35,7 +39,7 @@ This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [
 
 - This app can only read and write events on calendars **it has created itself**.
 - It has **no access to the user's existing calendars** — not `"primary"`, not any calendar they made by hand in the Calendar UI. API calls against any calendar this app didn't create itself will fail.
-- This is a deliberate, Google-enforced isolation, not just a convention: even a compromised or misbehaving instance of this app cannot read or touch anything outside the dedicated calendar(s) it made for itself. The trade-off is that this app can never see someone's real, existing commitments — `has_overlap` only ever checks against events this app itself created, not the user's actual full schedule.
+- This is deliberate: a compromised or misbehaving instance of this app cannot read or touch anything outside the dedicated calendar(s) it made for itself. The trade-off is that this app can never see someone's real, existing commitments — `has_overlap` only ever checks against events this app itself created, not the user's actual full schedule.
 
 **Bootstrapping:** there's no calendar to operate on until this app creates one. Run [`create_calendar.py`](create_calendar.py) once — it only needs `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` (see [Configuration](#configuration) below), not `GOOGLE_CALENDAR_ID` — and it prints the new calendar's ID:
 
@@ -84,8 +88,8 @@ Both paths are required arguments (no defaults), so where they live is up to wha
 | Variable | Required | Default | Meaning |
 | --- | --- | --- | --- |
 | `GOOGLE_CALENDAR_ID` | Yes | — | The calendar to operate on — must be the ID of a calendar this app created itself; see [Calendar access model](#calendar-access-model) above. Run `create_calendar.py` if you don't have one yet. |
-| `GOOGLE_OAUTH_CREDENTIALS_PATH` | No | `/etc/secrets/credentials.json` | Path to the OAuth client secret file — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to a Render Secret File mount (see [Deploying](#deploying)); override if running locally. |
-| `GOOGLE_OAUTH_TOKEN_PATH` | No | `/etc/secrets/token.json` | Path to the cached OAuth user token — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to a Render Secret File mount (see [Deploying](#deploying)); override if running locally. |
+| `GOOGLE_OAUTH_CREDENTIALS_PATH` | No | `credentials.json` | Path to the OAuth client secret file — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to the gitignored local filename; override to something with real protections when deployed (see [Deploying](#deploying)). |
+| `GOOGLE_OAUTH_TOKEN_PATH` | No | `token.json` | Path to the cached OAuth user token — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to the gitignored local filename; override to something with real protections when deployed (see [Deploying](#deploying)). |
 
 To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — `config.py` loads `.env` automatically (via `python-dotenv`) if one is present. `.env` is gitignored, so nothing personal ends up committed.
 
@@ -95,7 +99,7 @@ If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) in
 
 On a platform like [Render](https://render.com/), don't put `credentials.json`/`token.json` in the repo or in a regular env var — Render's **Secret Files** feature is built for exactly this: add each file under the service's Environment tab, and Render mounts it at `/etc/secrets/<filename>` at runtime, separate from your source and the regular env var list.
 
-- `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` already default to `/etc/secrets/credentials.json`/`/etc/secrets/token.json`, matching those mounts — no need to set them explicitly on Render, only if running locally with the files somewhere else.
+- `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` default to the gitignored local filenames (`credentials.json`/`token.json`), meant for local development — on Render, set them explicitly to `/etc/secrets/credentials.json`/`/etc/secrets/token.json` to match those mounts.
 - Run `python create_calendar.py` locally first — it needs an interactive browser for the OAuth consent flow, so it can't run on Render itself. This both generates `token.json` and creates the dedicated calendar in one step; paste the resulting `token.json` into the Secret File, and set `GOOGLE_CALENDAR_ID` on Render to the ID it printed.
 - Secret File mounts may be read-only, so `token.json`'s refresh-and-rewrite (see [Google OAuth credentials](#google-oauth-credentials) above) is best-effort by design — a failed write there just means the next process restart refreshes again from the same cached refresh token, which Google doesn't rotate on a normal refresh.
 
