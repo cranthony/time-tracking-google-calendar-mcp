@@ -159,8 +159,6 @@ class Span:
     duration: timedelta
     min_duration: timedelta
     next: "Span | None" = None
-    previous_schedulable: Schedulable | None = None
-    next_schedulable: Schedulable | None = None
 
 
 @dataclass(kw_only=True)
