@@ -27,7 +27,7 @@ no `priority` set is treated as priority `1`.
 ## Minimum duration
 
 An event's `min_duration` (default `0`, i.e. fully reclaimable) bounds how
-far step 4 may shrink it — except `0` always, if `is_fixed_duration`.
+far we may shrink it — except `0` always, if `is_fixed_duration`.
 `ReallocationOptions.min_duration_overrides` (event id → minutes) overrides
 an event's effective `min_duration` for this call only.
 
@@ -38,56 +38,66 @@ Given `day_events`, a candidate `new_event` with a real `start` and `end`
 `options: ReallocationOptions` (every field of which is itself optional —
 see `ReallocationOptions.resolved()`):
 
+0. **Validate inputs** Assert that the `day_events` object is sorted and
+   that none of its events overlap.
+
 1. **Resolve the immediately preceding overlap.** If an event in
    `day_events` starts before `new_event.start` and ends after it (at most
    one, since `day_events` is otherwise non-overlapping), it shrinks first
    so its `end` becomes `new_event.start`, respecting its effective
    `min_duration` — raising a well-structured exception if it can't shrink
    that far. If the portion of its original span after `new_event.start`
-   is at least `options.resolved().split_threshold_minutes`, a new `Event`
-   is also created: a copy of the preceding event, summary suffixed
-   `" (continued)"` (unless already present), `min_duration` reduced by
-   however much of the original event preceded `new_event.start`. It has
-   no `id`, so callers can tell it's new. Below the threshold, nothing is
-   carried forward.
+   is at least `options.resolved().split_threshold_minutes`, then a new `Event`
+   is created to represent this portion and inserted into `day_events`. The new split event is otherwise
+   a copy of the preceding event but with a summary suffixed with
+   `" (continued)"` (unless already present) and a `min_duration` reduced by
+   the duration of the other portion of this split event. It has
+   no `id`, so callers can tell it's new.
 
-2. **Compute how much time is needed.** `duration = _duration(new_event)`.
-   An empty (or mostly empty) day just means step 4 reclaims everything
-   from the lowest tier and never reaches a real event.
+2. **Insert new event into the list** Insert `new_event` into `day_events`,
+   after any event that has a small start time than it. To insert before a
+   split event created above, insert `new_event` before any event that has
+   the same start time.
 
-3. **Build the reclaim pool.** Walk `day_events` in ascending `start`
-   order into a singly linked list of `Span`s — one per event, plus one
-   per gap between/around them (`schedulable=None`, but tracking the
-   events on either side) — each carrying `duration`, effective
-   `min_duration`, and a `next` pointer (used by step 7's compaction).
-   Spans with strictly better priority than `new_event`'s are excluded;
-   every other span, gaps included, is eligible.
+3. **Compute how much time is needed.** `duration_to_reclaim = _duration(new_event)`.
 
-4. **Reclaim greedily.** Process spans from lowest priority (`math.inf`)
-   to highest, earliest-`start`-first within a tier, shrinking each down
-   to its `min_duration` (`0` for a gap) and accumulating the reclaimed
-   total, until it reaches the step 2 `duration`.
+4. **Build the reclaim pool.** Walk `day_events`, assuming that it's in
+   ascending `start` order, and build a singly linked list of `Span` objects.
+   Each `Span` object contains its parent `Schedulable`, a duration, a
+   `min_duration`, and a link to the next `Span` in the linked list.  `Span`s
+   are created for each non-zero-duration gap between `Schedulable`s,
+   these carry the same fields as other `Span`s, except are missing the `Schedulable`
+   and always have a `0` `min_duration`.
+   A `Span` is created for every event in `day_events`, and every non-zero-duration
+   gap. As `Span`s are created, they're appended into lists depending on
+   their priority.
 
-5. **Check for a shortfall.** If the eligible pool, fully reclaimed, still
-   falls short of `duration`, raise a well-structured exception listing
-   the higher-priority events (by descending duration) and the
-   same-or-lower-priority events already at their `min_duration` floor (by
+5. **Reclaim greedily.** Process spans from lowest priority (`math.inf`)
+   to highest, in the order in which they were appended into their lists. shrinking each down
+   to its `min_duration` and subtracting from our `duration_to_reclaim` until
+   it reaches `0`.
+
+6. **Check for a shortfall.** If the eligible pool, fully reclaimed, still
+   falls short of `duration_to_reclaim`, raise a well-structured exception listing
+   the remaining duration needed to reclaim, the higher-priority events (by descending duration)
+   and the same-or-lower-priority events already at their `min_duration` floor (by
    descending `min_duration`).
 
-6. **Recompute durations.** Each span reclaimed from in step 4 gets its
-   new, shrunk duration; one reduced to zero is marked cancelled
-   (`status = "cancelled"`) instead of left with a zero-length span.
-   Everything else is unchanged.
+7. **Compact into a layout.** Walk the singly-linked list of `Span`s generated
+   above, starting from its head, and tracking the current end time.  As this
+   list is traversed:
+     * if the span has a `Schedulable`:
+       * if it's 0 duration and wasn't marked as `"cancelled"`,
+         mark it as such and append it to the list of changed events.
+       * otherwise, compute the new start time as the current end time, and the
+         new end time as the new start time plus the span's `duration`. Set the
+         `Schedulable`'s start and end accordingly, and append the `Schedulable`
+         to the list of changed events if either of those fields changed.
+     * if the span doesn't have a `Schedulable`, simply add its duration to the
+       current end time and continue.
 
-7. **Compact into a layout.** Walk the original `day_events` order; place
-   `new_event` at its own `start`/`end`, then lay out the rest back-to-back
-   immediately after, in that same relative order, each keeping its step 6
-   duration. This single pass is what actually moves anything.
-
-8. **Report the plan.** Return every changed or new `Event`, sorted by
-   `start`: `new_event`, any event whose duration/position/status changed,
-   and any `(continued)` event from step 1. This module doesn't apply the
-   plan itself — that's the caller's job.
+9. **Report the plan.** Return the list of changed `Schedulable`s generated by
+   the previous step.
 """
 
 from __future__ import annotations
@@ -107,6 +117,12 @@ class Schedulable(Protocol):
     priority: int | None
     min_duration: timedelta | None
     is_fixed_duration: bool | None
+
+    def clone(self):
+        # TODO: implement.  This will be used when splitting a calendar event.
+        # It's important that this clones the underlying object, and not just
+        # the `Schedulable` view.
+        pass
 
 
 def _duration(span: Schedulable) -> timedelta:
