@@ -76,20 +76,13 @@ class Event:
 
     min_duration: timedelta | None = None
     """The minimum duration this event may be shrunk to (e.g. by whatever
-    resolves overlaps between events). Stored in extendedProperties.private
-    as whole seconds, under the "cascading-time-tracker-min_duration" key —
-    see _APP_EXTENDED_PROPERTY_KEY_PREFIX above."""
+    resolves overlaps between events)."""
 
-    fixed_duration: bool | None = None
-    """If true, this event's duration must never be changed. Stored in
-    extendedProperties.private under the
-    "cascading-time-tracker-fixed_duration" key — see
-    _APP_EXTENDED_PROPERTY_KEY_PREFIX above."""
+    is_fixed_duration: bool | None = None
+    """If true, then we shouldn't change the duration of this event."""
 
     priority: int | None = None
-    """This event's priority; lower values are higher priority. Stored in
-    extendedProperties.private under the "cascading-time-tracker-priority"
-    key — see _APP_EXTENDED_PROPERTY_KEY_PREFIX above."""
+    """This event's priority; lower values are higher priority."""
 
     @classmethod
     def from_api(cls, data: dict) -> "Event":
@@ -97,8 +90,8 @@ class Event:
         app_properties = _parse_properties(
             private_properties,
             {
-                "min_duration": lambda s: timedelta(seconds=int(s)),
-                "fixed_duration": lambda s: s.lower() == "true",
+                "min_duration": lambda s: timedelta(minutes=int(s)),
+                "is_fixed_duration": lambda s: s.lower() == "true",
                 "priority": int,
             },
         )
@@ -109,9 +102,7 @@ class Event:
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
             location=data.get("location"),
-            min_duration=app_properties.get("min_duration"),
-            fixed_duration=app_properties.get("fixed_duration"),
-            priority=app_properties.get("priority"),
+            **app_properties,
         )
 
     def to_api_body(self) -> dict:
@@ -128,8 +119,8 @@ class Event:
         private_properties = _format_properties(
             self,
             {
-                "min_duration": lambda d: str(int(d.total_seconds())),
-                "fixed_duration": lambda b: "true" if b else "false",
+                "min_duration": lambda d: str(int(d.total_seconds() / 60)),
+                "is_fixed_duration": lambda b: "true" if b else "false",
                 "priority": str,
             },
         )
@@ -210,14 +201,15 @@ def _parse_properties(
     private_properties: dict[str, str], parsers: dict[str, Callable[[str], Any]]
 ) -> dict[str, Any]:
     """Parse whichever of this app's prefixed keys are present in
-    private_properties, using the given per-suffix parser functions. Returns
-    a dict keyed by suffix (not the prefixed key); a suffix whose key is
-    absent from private_properties is omitted from the result."""
+    private_properties, using the given per-attribute parser functions.
+    Returns a dict keyed by attribute name (not the prefixed key) — suitable
+    for passing to Event(**parsed) — omitting any attribute whose key is
+    absent from private_properties."""
     parsed = {}
-    for suffix, parse in parsers.items():
-        raw = private_properties.get(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{suffix}")
+    for attr, parse in parsers.items():
+        raw = private_properties.get(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{attr}")
         if raw is not None:
-            parsed[suffix] = parse(raw)
+            parsed[attr] = parse(raw)
     return parsed
 
 
