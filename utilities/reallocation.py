@@ -283,13 +283,35 @@ class _Reallocation:
 
     def run(self) -> list[Schedulable]:
         self._validate()
+
         duration_to_reclaim = _duration(self.new_event)
+        original_new_event_end = self.new_event.end
         self._resolve_preceding_overlap()
-        self._insert_new_event()
-        self._build_reclaim_pool()
-        remaining = self._reclaim(duration_to_reclaim)
-        if remaining > timedelta(0):
-            self._raise_shortfall(remaining)
+        try:
+            # Now that we've resolved any overlap with a preceding event,
+            # shrink the new event temporarily.  This has the following
+            # benefits:
+            #  - we can insert it into our event list without causing
+            #    overlaps
+            #  - we avoid shrinking it; we want to treat the new event
+            #    as higher priority than the existing ones of its
+            #    priority
+            #  - identifying reclaimable free time gaps in the calendar
+            #    is easier when we know we have an event that starts at
+            #    the desired start time.
+            self.new_event.end = self.new_event.start
+            self._insert_new_event()
+            self._build_reclaim_pool()
+            remaining = self._reclaim(duration_to_reclaim)
+            if remaining > timedelta(0):
+                self._raise_shortfall(remaining)
+        finally:
+            # Restore its original size before we compact the calendar;
+            # we should have reclaimed enough time by now (or we're
+            # throwing an exception, in which case it's nice to restore
+            # the event to how it was).
+            self.new_event.end = original_new_event_end
+
         return self._apply_plan()
 
     def _validate(self) -> None:
@@ -401,10 +423,6 @@ class _Reallocation:
             for span in self.spans_by_priority[priority]:
                 if remaining <= timedelta(0):
                     break
-                if span.event is self.new_event:
-                    # Treat the new event as a higher priority than the existing
-                    # events at its priority.
-                    continue
                 reclaimable = span.duration - span.min_duration
                 if reclaimable <= timedelta(0):
                     continue
