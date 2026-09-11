@@ -448,7 +448,7 @@ class _Reallocation:
                 for priority in self._eligible_priorities()
                 for span in self.spans_by_priority[priority]
                 # span.min_duration is already the effective min duration.
-                if span.event is not None and span.duration <= span.min_duration
+                if span.event is not None and span.duration <= span.min_duration and span.event is not self.new_event
             ),
             key=lambda event: _effective_min_duration(event, overrides),
             reverse=True,
@@ -471,6 +471,11 @@ class _Reallocation:
                 current_end += span.duration
                 span = span.next
                 continue
+            if event is self.new_event:
+                # We changed this event's duration to 0 artificially and reclaimed
+                # its duration before getting to this step.  We can now expand the
+                # event again; it will fit.
+                span.duration = _duration(event)
 
             original = self.original_positions.get(id(event))
             if span.duration <= timedelta(0):
@@ -486,6 +491,8 @@ class _Reallocation:
                 event.start = new_start
                 event.end = new_end
                 current_end = new_end
+
+            logger.debug("Added %s to calendar", event)
             span = span.next
 
         _validate_sorted_and_nonoverlapping(changed, exception_type=RuntimeError)

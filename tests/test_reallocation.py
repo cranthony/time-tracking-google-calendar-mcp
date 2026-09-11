@@ -323,7 +323,7 @@ class TestReallocateForNewEvent:
 
         # new_event's whole span was already free time (nothing overlaps
         # it), so nothing needs to be reclaimed -- existing is untouched.
-        assert result == [new_event, existing]
+        assert result == [new_event]
         assert new_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert new_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
         assert existing.start == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
