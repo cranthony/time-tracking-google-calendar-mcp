@@ -42,9 +42,7 @@ class TestPublicEvent:
     def test_hides_is_end_of_day_sleep_from_its_fields(self):
         field_names = {f.name for f in dataclasses.fields(PublicEvent)}
 
-        assert "is_end_of_day_sleep" not in field_names
-        assert "status" not in field_names
-        assert "recurring_event_id" not in field_names
+        assert field_names.isdisjoint(server.HIDDEN_FROM_MCP)
         assert field_names == {f.name for f in dataclasses.fields(Event)} - server.HIDDEN_FROM_MCP
 
     def test_from_event_drops_is_end_of_day_sleep(self):

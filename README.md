@@ -64,9 +64,9 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 
 `update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[PublicEvent]` rather than a single `PublicEvent`.
 
-Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `HIDDEN_FROM_MCP` (currently `is_end_of_day_sleep`, `status`, and `recurring_event_id`). Since the MCP SDK builds both the schema advertised via `tools/list` and every tool result straight from the function's type annotations, a field missing from `PublicEvent` never appears in either — the agent has no way to know it exists, not just that its value is hidden. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
+Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `HIDDEN_FROM_MCP` (`is_end_of_day_sleep`, `status`, and `recurring_event_id`). Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
 
-Cancelled events (`Event.status == "cancelled"`) are never surfaced as a `PublicEvent`: `list_events` omits them, and `get_event` raises a `ToolError` rather than returning one.
+Cancelled events (`Event.status == "cancelled"`) are not surfaced as a `PublicEvent`: `list_events` omits them, and `get_event` raises a `ToolError` rather than returning one.
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
