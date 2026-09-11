@@ -11,16 +11,18 @@ from config import build_calendar_client
 
 mcp = MCPServer("time-tracking-google-calendar-mcp")
 
-HIDDEN_FROM_MCP = frozenset({"is_end_of_day_sleep", "status", "recurring_event_id"})
+INTERNAL_EVENT_FIELDS = frozenset({"is_end_of_day_sleep", "status", "recurring_event_id"})
 """Event fields the agent talking to this server should never see or set,
 at all -- not just left null. Enforced by PublicEvent actually lacking
 these fields (so they never appear in a tool's schema or result), not by
-convention -- see PublicEvent below."""
+convention -- see PublicEvent below. tests/test_server.py's
+TestPublicEvent asserts these are exactly the fields PublicEvent is
+missing relative to Event, so this stays in sync with PublicEvent."""
 
 
 @dataclass(kw_only=True)
 class PublicEvent:
-    """Event, minus the fields named in HIDDEN_FROM_MCP. Every MCP tool
+    """Event, minus the fields named in INTERNAL_EVENT_FIELDS. Every MCP tool
     returns/accepts this instead of Event directly, so those fields never
     appear in the tool schema the agent sees (via tools/list) or in any
     tool result -- the agent has no way to know they exist, not just that

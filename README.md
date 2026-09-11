@@ -64,7 +64,7 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 
 `update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[PublicEvent]` rather than a single `PublicEvent`.
 
-Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `HIDDEN_FROM_MCP`. Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
+Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `INTERNAL_EVENT_FIELDS`. Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
 
 Cancelled events (`Event.status == "cancelled"`) are not surfaced as a `PublicEvent`: `list_events` omits them, and `get_event` raises a `ToolError` rather than returning one.
 
