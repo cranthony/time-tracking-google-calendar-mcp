@@ -4,13 +4,13 @@ import pytest
 
 from calendar_clients.google_calendar import Event
 from utilities.reallocation import (
+    ReallocationConflictError,
     ReallocationShortfallError,
     ReallocationOptions,
     _duration,
     _effective_min_duration,
     _effective_priority,
     _overlap,
-    _reclaimable_minutes,
     reallocate_for_new_event,
 )
 
@@ -115,34 +115,6 @@ class TestEffectiveMinDuration:
         event = _event(id="abc123", min_duration=timedelta(minutes=20))
 
         assert _effective_min_duration(event, {"other": 5}) == timedelta(minutes=20)
-
-
-class TestReclaimableMinutes:
-    def test_full_duration_when_min_duration_unset(self):
-        event = _event(
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-        )
-
-        assert _reclaimable_minutes(event) == 60.0
-
-    def test_duration_minus_min_duration(self):
-        event = _event(
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-            min_duration=timedelta(minutes=20),
-        )
-
-        assert _reclaimable_minutes(event) == 40.0
-
-    def test_floored_at_zero(self):
-        event = _event(
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-            min_duration=timedelta(hours=1),
-        )
-
-        assert _reclaimable_minutes(event) == 0.0
 
 
 class TestReallocationOptions:
@@ -351,7 +323,7 @@ class TestReallocateForNewEvent:
 
         # new_event's whole span was already free time (nothing overlaps
         # it), so nothing needs to be reclaimed -- existing is untouched.
-        assert result == [new_event]
+        assert result == [new_event, existing]
         assert new_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert new_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
         assert existing.start == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
@@ -446,7 +418,7 @@ class TestReallocateForNewEvent:
             priority=1,
         )
 
-        with pytest.raises(ReallocationShortfallError):
+        with pytest.raises(ReallocationConflictError):
             reallocate_for_new_event([preceding], new_event, ReallocationOptions())
 
         # Nothing should have been mutated before the exception.

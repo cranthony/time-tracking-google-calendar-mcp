@@ -115,7 +115,10 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import logging
 from typing import Protocol
+
+logger = logging.getLogger(__name__)
 
 
 class Schedulable(Protocol):
@@ -163,19 +166,6 @@ def _effective_min_duration(
     if event.id is not None and event.id in min_duration_overrides:
         return timedelta(minutes=min_duration_overrides[event.id])
     return event.min_duration or timedelta(0)
-
-
-def _reclaimable_minutes(event: Schedulable) -> float:
-    """How many minutes could be reclaimed from `event` (step 5 of the
-    algorithm above) if every one of them were needed: `_duration(event) -
-    event.min_duration`, treating an unset `min_duration` as `0` (fully
-    reclaimable), floored at 0.
-
-    Doesn't apply `ReallocationOptions.min_duration_overrides` itself
-    -- that's `_effective_min_duration`'s job.
-    """
-    minutes = (_duration(event) - (event.min_duration or timedelta(0))).total_seconds() / 60
-    return max(0.0, minutes)
 
 
 def _validate_sorted_and_nonoverlapping(events: list[Schedulable], exception_type: type[Exception] = ValueError) -> None:
@@ -396,6 +386,7 @@ class _Reallocation:
         # Treat spans representing empty space as the lowest possible priority.
         priority = math.inf if span.event is None else _effective_priority(span.event)
         self.spans_by_priority[priority].append(span)
+        logger.debug("Added %s of duration %s at priority %f", span.event, span.duration, priority)
 
     def _eligible_priorities(self) -> list[float]:
         """Returns priorities that are eligible to reclaim, in order of lowest priority to highest."""
@@ -420,6 +411,7 @@ class _Reallocation:
                 taken = min(reclaimable, remaining)
                 span.duration -= taken
                 remaining -= taken
+                logger.debug("Taking %s from %s", taken, span.event)
             if remaining <= timedelta(0):
                 break
         return remaining
