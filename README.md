@@ -124,7 +124,7 @@ A [`render.yaml`](render.yaml) blueprint is included, covering the build/start c
 
 **2. A WorkOS AuthKit project**, to authenticate *callers* of this server. This app never issues tokens or holds a password itself — over `streamable-http` it's only an OAuth *Resource Server*, checking that a request's bearer token was really issued by WorkOS for this server ([`workos_auth.py`](workos_auth.py) does the actual JWT/JWKS verification). WorkOS AuthKit is the *Authorization Server*: it's what Claude.ai's connector UI talks to when it discovers this server needs auth, registers itself as a client, and runs the user through the login/consent flow — none of that is code in this repo.
 - Sign up at [workos.com](https://workos.com/) and create an AuthKit project (the free tier covers a single-user personal tool like this one).
-- Under **Connect → Configuration**, enable **Dynamic Client Registration** (or **Client ID Metadata Document**, which newer clients prefer) — this lets Claude.ai register itself automatically instead of you pre-registering a client by hand.
+- Under **Connect → Configuration**, turn on **"Allow MCP clients to authenticate using Dynamic Client Registration (DCR) or Client ID Metadata Document (CIMD)"** — this is required: it's off by default, and it's what lets Claude.ai register itself automatically instead of you pre-registering a client by hand.
 - Add this server's deployed URL plus `/mcp` (e.g. `https://your-service.onrender.com/mcp`) as a **Resource Indicator**, and mark it as the default one.
 - Set `WORKOS_AUTHKIT_DOMAIN` on Render to your project's AuthKit domain (shown in the WorkOS dashboard, e.g. `https://your-tenant.authkit.app`).
 
