@@ -102,8 +102,14 @@ class TestParseKeyValue:
 
 
 class TestUpdatableAttributeParsers:
-    def test_covers_every_event_attribute_except_id(self):
-        event_attributes = {f.name for f in dataclasses.fields(Event)} - {"id"}
+    def test_covers_every_event_attribute_except_id_and_recurring_event_id(self):
+        # id would repoint the patch at a different event; recurring_event_id
+        # is assigned by Google and never sent to the API, so setting it here
+        # would silently have no effect.
+        event_attributes = {f.name for f in dataclasses.fields(Event)} - {
+            "id",
+            "recurring_event_id",
+        }
 
         assert set(calendar_cli._UPDATABLE_ATTRIBUTE_PARSERS) == event_attributes
 

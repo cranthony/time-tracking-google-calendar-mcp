@@ -80,6 +80,21 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#location
     for more information."""
 
+    status: str | None = None
+    """One of "confirmed", "tentative", or "cancelled". A cancelled event
+    isn't removed from a calendar's results — it's returned with this
+    status. An instance of a recurring event should never be deleted --
+    set its status to "cancelled" instead.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#status
+    for more information."""
+
+    recurring_event_id: str | None = None
+    """For an instance of a recurring event, the id of that series' master
+    event. Read-only: assigned by Google when the event is created as part
+    of a series, never sent to the API — see `to_api_body`.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#recurringEventId
+    for more information."""
+
     min_duration: timedelta | None = None
     """The minimum duration this event may be shrunk to (e.g. by whatever
     resolves overlaps between events)."""
@@ -90,6 +105,11 @@ class Event:
     priority: int | None = None
     """This event's priority; lower values are higher priority."""
 
+    is_end_of_day_sleep: bool | None = None
+    """If true, this event is the user's end-of-day sleep block. A marker
+    for identifying that event specifically (e.g. among reallocation
+    candidates), independent of whatever `priority` it's also given."""
+
     @classmethod
     def from_api(cls, data: dict) -> "Event":
         private_properties = data.get("extendedProperties", {}).get("private", {})
@@ -99,6 +119,7 @@ class Event:
                 "min_duration": lambda s: timedelta(minutes=int(s)),
                 "is_fixed_duration": lambda s: s.lower() == "true",
                 "priority": int,
+                "is_end_of_day_sleep": lambda s: s.lower() == "true",
             },
         )
         return cls(
@@ -108,6 +129,8 @@ class Event:
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
             location=data.get("location"),
+            status=data.get("status"),
+            recurring_event_id=data.get("recurringEventId"),
             **app_properties,
         )
 
@@ -123,6 +146,10 @@ class Event:
             body["description"] = self.description
         if self.location is not None:
             body["location"] = self.location
+        if self.status is not None:
+            body["status"] = self.status
+        # recurring_event_id is deliberately never sent: it's assigned by
+        # Google, not something a client sets.
 
         private_properties = _format_properties(
             self,
@@ -130,6 +157,7 @@ class Event:
                 "min_duration": lambda d: str(int(d.total_seconds() / 60)),
                 "is_fixed_duration": lambda b: "true" if b else "false",
                 "priority": str,
+                "is_end_of_day_sleep": lambda b: "true" if b else "false",
             },
         )
         if private_properties:

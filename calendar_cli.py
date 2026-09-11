@@ -59,17 +59,21 @@ def _parse_iso_datetime(value: str) -> datetime:
 
 
 # Every Event attribute that update_properties may set, other than `id`
-# (changing id would repoint the patch at a different event), mapped to a
-# function parsing its command-line string value into the right type.
+# (changing id would repoint the patch at a different event) and
+# `recurring_event_id` (assigned by Google, never sent to the API -- setting
+# it here would silently have no effect), mapped to a function parsing its
+# command-line string value into the right type.
 _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "summary": str,
     "start": _parse_iso_datetime,
     "end": _parse_iso_datetime,
     "description": str,
     "location": str,
+    "status": str,
     "min_duration": lambda s: timedelta(seconds=_parse_duration(s)),
     "is_fixed_duration": _parse_bool,
     "priority": int,
+    "is_end_of_day_sleep": _parse_bool,
 }
 
 
