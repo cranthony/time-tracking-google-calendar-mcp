@@ -45,8 +45,8 @@ Both paths are required arguments (no defaults), so where they live is up to wha
 | Variable | Required | Default | Meaning |
 | --- | --- | --- | --- |
 | `GOOGLE_CALENDAR_ID` | Yes | — | The calendar to operate on. Use `primary` for the account's main calendar, or a specific calendar's ID (Google Calendar → Settings → *[calendar name]* → Integrate calendar → Calendar ID). |
-| `GOOGLE_OAUTH_CREDENTIALS_PATH` | No | `credentials.json` | Path to the OAuth client secret file — see [Google OAuth credentials](#google-oauth-credentials) above. |
-| `GOOGLE_OAUTH_TOKEN_PATH` | No | `token.json` | Path to the cached OAuth user token — see [Google OAuth credentials](#google-oauth-credentials) above. |
+| `GOOGLE_OAUTH_CREDENTIALS_PATH` | No | `/etc/secrets/credentials.json` | Path to the OAuth client secret file — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to a Render Secret File mount (see [Deploying](#deploying)); override if running locally. |
+| `GOOGLE_OAUTH_TOKEN_PATH` | No | `/etc/secrets/token.json` | Path to the cached OAuth user token — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to a Render Secret File mount (see [Deploying](#deploying)); override if running locally. |
 
 To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — `config.py` loads `.env` automatically (via `python-dotenv`) if one is present. `.env` is gitignored, so nothing personal ends up committed.
 
@@ -56,7 +56,7 @@ If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) in
 
 On a platform like [Render](https://render.com/), don't put `credentials.json`/`token.json` in the repo or in a regular env var — Render's **Secret Files** feature is built for exactly this: add each file under the service's Environment tab, and Render mounts it at `/etc/secrets/<filename>` at runtime, separate from your source and the regular env var list.
 
-- Set `GOOGLE_OAUTH_CREDENTIALS_PATH=/etc/secrets/credentials.json` and `GOOGLE_OAUTH_TOKEN_PATH=/etc/secrets/token.json` as regular env vars pointing at those mounts.
+- `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` already default to `/etc/secrets/credentials.json`/`/etc/secrets/token.json`, matching those mounts — no need to set them explicitly on Render, only if running locally with the files somewhere else.
 - Generate `token.json` once locally (via the interactive consent flow — run the server locally the first time so a browser can open), then paste its contents into the `token.json` Secret File.
 - Secret File mounts may be read-only, so `token.json`'s refresh-and-rewrite (see [Google OAuth credentials](#google-oauth-credentials) above) is best-effort by design — a failed write there just means the next process restart refreshes again from the same cached refresh token, which Google doesn't rotate on a normal refresh.
 
