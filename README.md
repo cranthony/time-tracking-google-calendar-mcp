@@ -127,11 +127,10 @@ A [`render.yaml`](render.yaml) blueprint is included, covering the build/start c
 To set that up:
 
 1. Sign up at [workos.com](https://workos.com/) and create an **OAuth** application (not **Machine-to-Machine**: M2M is for server-to-server calls with no user involved, but here *you* are the user — you'll log in and consent interactively the first time Claude.ai connects, via the standard `authorization_code` flow OAuth applications use). The free tier covers a single-user personal tool like this one.
-2. Under **Connect → Configuration**, turn on **"Allow MCP clients to authenticate using Dynamic Client Registration (DCR) or Client ID Metadata Document (CIMD)"** — this is required: it's off by default, and it's what lets Claude.ai register itself as a client automatically, instead of you pre-registering one by hand.
-3. Add this server's deployed URL plus `/mcp` (e.g. `https://your-service.onrender.com/mcp`) as a **Resource Indicator**, and mark it as the default one.
-4. Set `WORKOS_AUTHKIT_DOMAIN` on Render to your application's AuthKit domain (shown in the WorkOS dashboard, e.g. `https://your-tenant.authkit.app`).
-
-You do **not** need to separately create or configure an OAuth client/"application" of your own beyond that, and there's no PKCE setting to turn on: DCR/CIMD-registered clients (like Claude.ai) are OAuth *public* clients, and OAuth 2.1 — which the whole MCP authorization spec is built on — mandates PKCE for every authorization-code flow, unconditionally. It isn't a per-application toggle here; it just happens. (WorkOS Connect separately supports manually pre-registering OAuth applications yourself, with an explicit Public/Confidential choice where Public applications must use PKCE — but that's a different flow for pre-registering *your own* known clients, not what this project's DCR-based setup needs.)
+2. When creating it, you'll be asked whether to require PKCE — enable it. Claude.ai, as a Dynamic-Client-Registration-registered client, performs PKCE regardless (OAuth 2.1, which the MCP authorization spec is built on, mandates it for every authorization-code flow), so requiring it here costs nothing and rules out a real class of attack (authorization-code interception) instead of merely trusting the client to do it.
+3. Under **Connect → Configuration**, turn on **"Allow MCP clients to authenticate using Dynamic Client Registration (DCR) or Client ID Metadata Document (CIMD)"** — this is required: it's off by default, and it's what lets Claude.ai register itself as a client automatically, instead of you pre-registering one by hand.
+4. Add this server's deployed URL plus `/mcp` (e.g. `https://your-service.onrender.com/mcp`) as a **Resource Indicator**, and mark it as the default one.
+5. Set `WORKOS_AUTHKIT_DOMAIN` on Render to your application's AuthKit domain (shown in the WorkOS dashboard, e.g. `https://your-tenant.authkit.app`).
 
 With both in place, set `MCP_TRANSPORT=streamable-http` (already in `render.yaml`) and deploy. `MCP_PUBLIC_URL` doesn't need setting explicitly on Render — it's derived from `RENDER_EXTERNAL_URL`, which Render provides automatically.
 
