@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
@@ -26,6 +28,11 @@ README's "Calendar access model" section.
 
 See https://developers.google.com/workspace/calendar/api/auth for the scope
 reference."""
+
+_APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
+"""Prefix for the extendedProperties.private keys this app uses to store its
+own per-event fields, distinguishing them from any other private key that
+might exist on an event."""
 
 logger = logging.getLogger(__name__)
 
@@ -67,20 +74,27 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#location
     for more information."""
 
-    extended_properties: dict[str, dict[str, str]] | None = None
-    """Google Calendar's free-form key/value tags, shaped like the API's
-    `extendedProperties`: `{"private": {...}, "shared": {...}}`. "private"
-    and "shared" are the only valid top-level keys: properties under
-    "private" aren't shared with other copies of the event on other
-    calendars, while properties under "shared" are visible to other
-    attendees.
-    See https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties,
-    https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties.private,
-    and https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties.shared
-    for more information."""
+    min_duration: timedelta | None = None
+    """The minimum duration this event may be shrunk to (e.g. by whatever
+    resolves overlaps between events)."""
+
+    is_fixed_duration: bool | None = None
+    """If true, then we shouldn't change the duration of this event."""
+
+    priority: int | None = None
+    """This event's priority; lower values are higher priority."""
 
     @classmethod
     def from_api(cls, data: dict) -> "Event":
+        private_properties = data.get("extendedProperties", {}).get("private", {})
+        app_properties = _parse_properties(
+            private_properties,
+            {
+                "min_duration": lambda s: timedelta(minutes=int(s)),
+                "is_fixed_duration": lambda s: s.lower() == "true",
+                "priority": int,
+            },
+        )
         return cls(
             id=data.get("id"),
             summary=data.get("summary", ""),
@@ -88,7 +102,7 @@ class Event:
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
             location=data.get("location"),
-            extended_properties=data.get("extendedProperties"),
+            **app_properties,
         )
 
     def to_api_body(self) -> dict:
@@ -101,8 +115,18 @@ class Event:
             body["description"] = self.description
         if self.location is not None:
             body["location"] = self.location
-        if self.extended_properties is not None:
-            body["extendedProperties"] = self.extended_properties
+
+        private_properties = _format_properties(
+            self,
+            {
+                "min_duration": lambda d: str(int(d.total_seconds() / 60)),
+                "is_fixed_duration": lambda b: "true" if b else "false",
+                "priority": str,
+            },
+        )
+        if private_properties:
+            body["extendedProperties"] = {"private": private_properties}
+
         return body
 
     def overlaps(self, other_start: datetime, other_end: datetime) -> bool:
@@ -171,6 +195,36 @@ def _format_datetime(value: datetime) -> dict:
     if value.tzinfo is None:
         raise ValueError(f"datetime {value!r} must be timezone-aware")
     return {"dateTime": value.isoformat()}
+
+
+def _parse_properties(
+    private_properties: dict[str, str], parsers: dict[str, Callable[[str], Any]]
+) -> dict[str, Any]:
+    """Parse whichever of this app's prefixed keys are present in
+    private_properties, using the given per-attribute parser functions.
+    Returns a dict keyed by attribute name (not the prefixed key) — suitable
+    for passing to Event(**parsed) — omitting any attribute whose key is
+    absent from private_properties."""
+    parsed = {}
+    for attr, parse in parsers.items():
+        raw = private_properties.get(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{attr}")
+        if raw is not None:
+            parsed[attr] = parse(raw)
+    return parsed
+
+
+def _format_properties(
+    obj: Any, formatters: dict[str, Callable[[Any], str]]
+) -> dict[str, str]:
+    """Format whichever of obj's named attributes are not None, using the
+    given per-attribute formatter functions, into a dict of this app's
+    prefixed extendedProperties.private keys to their string values."""
+    formatted = {}
+    for attr, format_value in formatters.items():
+        value = getattr(obj, attr)
+        if value is not None:
+            formatted[f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{attr}"] = format_value(value)
+    return formatted
 
 
 def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
