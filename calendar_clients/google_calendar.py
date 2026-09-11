@@ -90,6 +90,11 @@ class Event:
     priority: int | None = None
     """This event's priority; lower values are higher priority."""
 
+    is_end_of_day_sleep: bool | None = None
+    """If true, this event is the user's end-of-day sleep block. A marker
+    for identifying that event specifically (e.g. among reallocation
+    candidates), independent of whatever `priority` it's also given."""
+
     @classmethod
     def from_api(cls, data: dict) -> "Event":
         private_properties = data.get("extendedProperties", {}).get("private", {})
@@ -99,6 +104,7 @@ class Event:
                 "min_duration": lambda s: timedelta(minutes=int(s)),
                 "is_fixed_duration": lambda s: s.lower() == "true",
                 "priority": int,
+                "is_end_of_day_sleep": lambda s: s.lower() == "true",
             },
         )
         return cls(
@@ -130,6 +136,7 @@ class Event:
                 "min_duration": lambda d: str(int(d.total_seconds() / 60)),
                 "is_fixed_duration": lambda b: "true" if b else "false",
                 "priority": str,
+                "is_end_of_day_sleep": lambda b: "true" if b else "false",
             },
         )
         if private_properties:

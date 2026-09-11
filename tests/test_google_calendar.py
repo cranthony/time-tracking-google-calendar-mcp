@@ -46,6 +46,7 @@ class TestEvent:
         assert event.min_duration is None
         assert event.is_fixed_duration is None
         assert event.priority is None
+        assert event.is_end_of_day_sleep is None
 
     def test_from_api_parses_non_utc_offset(self):
         event = Event.from_api(
@@ -101,6 +102,7 @@ class TestEvent:
                 "cascading-time-tracker-min_duration": "30",
                 "cascading-time-tracker-is_fixed_duration": "true",
                 "cascading-time-tracker-priority": "2",
+                "cascading-time-tracker-is_end_of_day_sleep": "true",
             }
         }
 
@@ -109,6 +111,7 @@ class TestEvent:
         assert event.min_duration == timedelta(minutes=30)
         assert event.is_fixed_duration is True
         assert event.priority == 2
+        assert event.is_end_of_day_sleep is True
 
     def test_from_api_parses_is_fixed_duration_false(self):
         data = api_event(
@@ -133,6 +136,7 @@ class TestEvent:
         assert event.min_duration is None
         assert event.is_fixed_duration is None
         assert event.priority is None
+        assert event.is_end_of_day_sleep is None
 
     def test_from_api_raises_when_dateTime_missing_timezone(self):
         with pytest.raises(ValueError):
@@ -218,6 +222,7 @@ class TestEvent:
             min_duration=timedelta(minutes=30),
             is_fixed_duration=True,
             priority=2,
+            is_end_of_day_sleep=True,
         )
 
         assert event.to_api_body()["extendedProperties"] == {
@@ -225,6 +230,7 @@ class TestEvent:
                 "cascading-time-tracker-min_duration": "30",
                 "cascading-time-tracker-is_fixed_duration": "true",
                 "cascading-time-tracker-priority": "2",
+                "cascading-time-tracker-is_end_of_day_sleep": "true",
             }
         }
 

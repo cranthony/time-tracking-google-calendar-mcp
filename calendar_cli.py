@@ -70,6 +70,7 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "min_duration": lambda s: timedelta(seconds=_parse_duration(s)),
     "is_fixed_duration": _parse_bool,
     "priority": int,
+    "is_end_of_day_sleep": _parse_bool,
 }
 
 
