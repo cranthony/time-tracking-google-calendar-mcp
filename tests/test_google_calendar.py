@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from calendar_clients.google_calendar import CalendarClient, Event
+from calendar_clients import google_calendar
+from calendar_clients.google_calendar import CalendarClient, Event, load_credentials
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
@@ -391,3 +393,50 @@ class TestCalendarClientDeleteEvent:
             calendarId=TEST_CALENDAR_ID, eventId="abc123"
         )
         service.events.return_value.delete.return_value.execute.assert_called_once()
+
+
+class TestLoadCredentials:
+    def _mock_expired_creds(self) -> MagicMock:
+        creds = MagicMock()
+        creds.valid = False
+        creds.expired = True
+        creds.refresh_token = "refresh-token"
+        creds.to_json.return_value = "{}"
+        return creds
+
+    def test_refreshes_and_rewrites_token_path(self, monkeypatch):
+        creds = self._mock_expired_creds()
+        monkeypatch.setattr(
+            google_calendar.Credentials,
+            "from_authorized_user_file",
+            MagicMock(return_value=creds),
+        )
+        token_path = MagicMock(spec=Path)
+        token_path.exists.return_value = True
+
+        result = load_credentials(token_path, Path("credentials.json"))
+
+        assert result is creds
+        creds.refresh.assert_called_once()
+        token_path.write_text.assert_called_once_with("{}")
+
+    def test_swallows_oserror_when_token_path_is_not_writable(self, monkeypatch, caplog):
+        creds = self._mock_expired_creds()
+        monkeypatch.setattr(
+            google_calendar.Credentials,
+            "from_authorized_user_file",
+            MagicMock(return_value=creds),
+        )
+        token_path = MagicMock(spec=Path)
+        token_path.exists.return_value = True
+        token_path.write_text.side_effect = OSError("Read-only file system")
+
+        with caplog.at_level("WARNING", logger="calendar_clients.google_calendar"):
+            result = load_credentials(token_path, Path("credentials.json"))
+
+        assert result is creds
+        creds.refresh.assert_called_once()
+        assert any(
+            "Could not write refreshed credentials" in record.message
+            for record in caplog.records
+        )
