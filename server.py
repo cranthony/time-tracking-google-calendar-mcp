@@ -8,6 +8,11 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from config import build_calendar_client
+from utilities.reallocation import (
+    ReallocationConflictError,
+    ReallocationOptions,
+    ReallocationShortfallError,
+)
 
 mcp = MCPServer("time-tracking-google-calendar-mcp")
 
@@ -104,7 +109,14 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
 @mcp.tool()
 def create_event(event: PublicEvent) -> list[PublicEvent]:
     """Create a new event. Returns the events affected by the creation."""
-    raise NotImplementedError
+    new_event = event.to_event()
+    try:
+        applied = get_calendar_client().create_event_with_reallocation(
+            new_event, ReallocationOptions()
+        )
+    except (ReallocationConflictError, ReallocationShortfallError, ValueError) as exc:
+        raise ToolError(str(exc)) from exc
+    return [PublicEvent.from_event(e) for e in applied if e.status != "cancelled"]
 
 
 @mcp.tool()

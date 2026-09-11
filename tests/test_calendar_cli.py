@@ -262,3 +262,77 @@ class TestMainUpdateProperties:
         assert sent_event.summary is None
         assert sent_event.description is None
         assert sent_event.location is None
+
+
+class TestMainCreate:
+    def test_builds_event_and_delegates_to_reallocation(self, capsys, monkeypatch):
+        client = MagicMock()
+        client.create_event_with_reallocation.return_value = [_event(summary="New")]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "calendar_cli.py",
+                "create",
+                "summary=New",
+                "start=2026-01-01T09:00:00Z",
+                "end=2026-01-01T09:30:00Z",
+                "priority=1",
+            ],
+        )
+
+        calendar_cli.main()
+
+        (sent_event, options), _ = client.create_event_with_reallocation.call_args
+        assert sent_event.id is None
+        assert sent_event.summary == "New"
+        assert sent_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert sent_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert sent_event.priority == 1
+        assert options.split_threshold_minutes is None
+        out = capsys.readouterr().out
+        assert "summary: New" in out
+
+    def test_prints_every_affected_event(self, monkeypatch, capsys):
+        client = MagicMock()
+        client.create_event_with_reallocation.return_value = [
+            _event(id="abc123", summary="New"),
+            _event(id="def456", summary="Shrunk"),
+        ]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "calendar_cli.py",
+                "create",
+                "summary=New",
+                "start=2026-01-01T09:00:00Z",
+                "end=2026-01-01T09:30:00Z",
+            ],
+        )
+
+        calendar_cli.main()
+
+        out = capsys.readouterr().out
+        assert "abc123" in out
+        assert "def456" in out
+
+    @pytest.mark.parametrize(
+        "properties",
+        [
+            ["start=2026-01-01T09:00:00Z", "end=2026-01-01T09:30:00Z"],
+            ["summary=New", "end=2026-01-01T09:30:00Z"],
+            ["summary=New", "start=2026-01-01T09:00:00Z"],
+        ],
+    )
+    def test_requires_summary_start_and_end(self, monkeypatch, properties):
+        client = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "create", *properties])
+
+        with pytest.raises(SystemExit):
+            calendar_cli.main()
+
+        client.create_event_with_reallocation.assert_not_called()

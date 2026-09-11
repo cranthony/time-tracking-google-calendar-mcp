@@ -13,6 +13,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
+from utilities.reallocation import ReallocationOptions, reallocate_for_new_event
+
 SCOPES = ["https://www.googleapis.com/auth/calendar.app.created"]
 """This app requests calendar.app.created, not the broader
 calendar.events/calendar.events.owned scopes. This means that the app can only
@@ -366,6 +368,38 @@ class CalendarClient:
 
     def has_overlap(self, start: datetime, end: datetime) -> bool:
         return any(event.overlaps(start, end) for event in self.list_events(start, end))
+
+    def list_day_events(self, start: datetime) -> list[Event]:
+        """The events reallocation should treat as `start`'s "day": everything
+        from `start` through roughly 24 hours later, truncated after the
+        first `is_end_of_day_sleep` event found (if any) -- see
+        utilities/reallocation.py's "The day"."""
+        events = self.list_events(start, start + timedelta(hours=24))
+        sleep_index = next(
+            (i for i, event in enumerate(events) if event.is_end_of_day_sleep), None
+        )
+        if sleep_index is not None:
+            events = events[: sleep_index + 1]
+        return events
+
+    def create_event_with_reallocation(
+        self, new_event: Event, options: ReallocationOptions
+    ) -> list[Event]:
+        """Create `new_event`, reallocating time from `list_day_events
+        (new_event.start)` as needed to make room for it (see
+        utilities/reallocation.py). Returns every `Event` created or
+        updated as a result -- `new_event` itself, plus whatever else
+        reallocation touched (shrunk, moved, split, or cancelled) to make
+        room -- each as the API's own response to creating/patching it.
+        """
+        if new_event.start is None or new_event.end is None:
+            raise ValueError("new_event.start and new_event.end are required to create an event")
+        day_events = self.list_day_events(new_event.start)
+        plan = reallocate_for_new_event(day_events, new_event, options)
+        return [
+            self.create_event(event) if event.id is None else self.update_event(event)
+            for event in plan
+        ]
 
     def get_event(self, event_id: str) -> Event:
         response = (

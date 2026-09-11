@@ -27,10 +27,11 @@ pip install -r requirements-dev.txt
 
 ## Project layout
 
-- [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead.
+- [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead. `CalendarClient.create_event_with_reallocation` is the shared entry point both `server.py` and `calendar_cli.py` use to create an event via `utilities/reallocation.py`.
+- [`utilities/reallocation.py`](utilities/reallocation.py) — the reallocation algorithm: how creating an event makes room for itself by reclaiming time from lower-priority events and free time in its day. Has no Calendar API dependency of its own — see the module docstring.
 - [`server.py`](server.py) — the MCP server; its tools call into `calendar_clients/google_calendar.py` rather than talking to `googleapiclient`/OAuth directly.
 - [`create_calendar.py`](create_calendar.py) — a standalone bootstrap script (not an MCP tool) that creates the dedicated calendar this app needs — see [Calendar access model](#calendar-access-model) below.
-- [`calendar_cli.py`](calendar_cli.py) — a dev-only command-line tool for poking at the calendar directly (`list`/`get`/`update_properties`) without going through an MCP host — see [Command-line utilities](#command-line-utilities) below.
+- [`calendar_cli.py`](calendar_cli.py) — a dev-only command-line tool for poking at the calendar directly (`list`/`get`/`update_properties`/`create`) without going through an MCP host — see [Command-line utilities](#command-line-utilities) below.
 - [`config.py`](config.py) — reads configuration from environment variables — see [Configuration](#configuration) below.
 - [`tests/`](tests/) — unit tests for the above, mocking the Google API rather than hitting it.
 
@@ -59,10 +60,12 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 | `list_events` | `(min_time, max_time) -> list[PublicEvent]` | Implemented |
 | `get_event` | `(id) -> PublicEvent` | Implemented |
 | `update_event` | `(event: PublicEvent) -> list[PublicEvent]` | Raises `NotImplementedError` |
-| `create_event` | `(event: PublicEvent) -> list[PublicEvent]` | Raises `NotImplementedError` |
+| `create_event` | `(event: PublicEvent) -> list[PublicEvent]` | Implemented |
 | `delete_event` | `(id) -> list[PublicEvent]` | Raises `NotImplementedError` |
 
 `update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[PublicEvent]` rather than a single `PublicEvent`.
+
+`create_event` makes room for the new event via `utilities/reallocation.py`: it fetches the roughly 24 hours of events starting at the new event's own `start` (via `CalendarClient.list_day_events`, truncated after the first event marked `is_end_of_day_sleep`, if any — that's "the day" reallocation operates on), then calls `reallocate_for_new_event` and applies whatever it returns (creating the new event, and updating — shrinking, moving, splitting, or cancelling — whatever else needed to make room). A `ReallocationConflictError`/`ReallocationShortfallError`/`ValueError` from reallocation is surfaced as a `ToolError`. Cancelled events are never returned, consistent with `list_events`/`get_event`.
 
 Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `INTERNAL_EVENT_FIELDS`. Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
 
@@ -160,11 +163,16 @@ python calendar_cli.py get <event-id>
 
 # Set one or more properties on an existing event
 python calendar_cli.py update_properties <event-id> priority=1 location="Room A"
+
+# Create a new event, reallocating time from its day as needed
+python calendar_cli.py create summary="Focus block" start=2026-01-01T09:00:00-05:00 end=2026-01-01T10:00:00-05:00 priority=1
 ```
 
 `from`/`to` are each a duration relative to *now* — parsed with [pytimeparse](https://pypi.org/project/pytimeparse/) (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`) — giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
 
 `update_properties` takes one or more `key=value` pairs, where each `key` is an `Event` attribute (`summary`, `start`, `end`, `description`, `location`, `min_duration`, `is_fixed_duration`, `priority` — not `id`, since changing it would repoint the patch at a different event). It builds an `Event` with just those attributes set (everything else `None`) and patches it straight in, without fetching the event first — Calendar's `patch` semantics mean any attribute you don't mention is left exactly as it was server-side. `start`/`end` take an ISO 8601 datetime with a UTC offset (e.g. `2026-01-01T09:00:00-05:00`, or a trailing `Z`); `min_duration` takes a pytimeparse duration like `from`/`to` above; `is_fixed_duration` takes `true`/`false` (also `1`/`0`, `yes`/`no`).
+
+`create` takes the same `key=value` pairs as `update_properties` (`summary`, `start`, and `end` are required this time) and builds a new `Event` from them, then calls `CalendarClient.create_event_with_reallocation` — the same reallocation-aware creation path `server.py`'s `create_event` MCP tool uses (see [MCP tools](#mcp-tools) above). Prints every event the call created or changed, not just the new one.
 
 For a recurring event, the id from `list`/`get` names one specific *instance*.  To change a property for the entire series of recurring events, use the `recurring_event_id` that's visible from `get`.  See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for more on how instances and recurring events relate.
 

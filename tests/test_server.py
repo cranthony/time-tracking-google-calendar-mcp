@@ -8,6 +8,11 @@ from mcp.server.mcpserver.exceptions import ToolError
 import server
 from calendar_clients.google_calendar import Event
 from server import PublicEvent
+from utilities.reallocation import (
+    ReallocationConflictError,
+    ReallocationOptions,
+    ReallocationShortfallError,
+)
 
 UTC = timezone.utc
 
@@ -128,8 +133,64 @@ class TestUpdateEvent:
 
 
 class TestCreateEvent:
-    def test_raises_not_implemented(self):
-        with pytest.raises(NotImplementedError):
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        created = _event(id="abc123")
+        client.create_event_with_reallocation.return_value = [created]
+        new_public_event = _public_event()
+
+        result = server.create_event(new_public_event)
+
+        assert result == [PublicEvent.from_event(created)]
+        (call_new_event, call_options), _ = client.create_event_with_reallocation.call_args
+        assert call_new_event == new_public_event.to_event()
+        assert call_options == ReallocationOptions()
+
+    def test_result_includes_every_affected_event(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        created = _event(id="abc123")
+        shrunk = _event(id="def456", summary="Shrunk")
+        client.create_event_with_reallocation.return_value = [created, shrunk]
+
+        result = server.create_event(_public_event())
+
+        assert {e.id for e in result} == {"abc123", "def456"}
+
+    def test_omits_cancelled_events_from_result(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        created = _event(id="abc123")
+        cancelled = _event(id="def456", status="cancelled")
+        client.create_event_with_reallocation.return_value = [created, cancelled]
+
+        result = server.create_event(_public_event())
+
+        assert [e.id for e in result] == ["abc123"]
+
+    def test_wraps_reallocation_conflict_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        preceding = _event(id="abc123")
+        client.create_event_with_reallocation.side_effect = ReallocationConflictError(
+            "no room",
+            preceding_event=preceding,
+            preceding_min_duration=None,
+            new_start_time=preceding.start,
+        )
+
+        with pytest.raises(ToolError):
+            server.create_event(_public_event())
+
+    def test_wraps_reallocation_shortfall_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.create_event_with_reallocation.side_effect = ReallocationShortfallError("no room")
+
+        with pytest.raises(ToolError):
+            server.create_event(_public_event())
+
+    def test_wraps_value_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.create_event_with_reallocation.side_effect = ValueError("bad input")
+
+        with pytest.raises(ToolError):
             server.create_event(_public_event())
 
 

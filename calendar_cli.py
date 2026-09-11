@@ -6,6 +6,7 @@ Usage:
     python calendar_cli.py list [from] [to]
     python calendar_cli.py get <id>
     python calendar_cli.py update_properties <id> key=value [key=value ...]
+    python calendar_cli.py create key=value [key=value ...]
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -14,6 +15,12 @@ Usage:
 - `update_properties` sets the given attributes on the event and patches
   them in, without fetching it first — any attribute not given is left
   untouched.
+- `create` builds an Event from the given attributes (`summary`, `start`,
+  and `end` are required) and creates it via
+  CalendarClient.create_event_with_reallocation, reallocating time from
+  the rest of its day as needed to make room — see
+  utilities/reallocation.py. Prints every event that was created or
+  changed as a result.
 """
 
 from __future__ import annotations
@@ -28,6 +35,7 @@ import pytimeparse
 
 from calendar_clients.google_calendar import Event
 from config import build_calendar_client
+from utilities.reallocation import ReallocationOptions
 
 DEFAULT_WINDOW = "1h"
 
@@ -75,6 +83,10 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "priority": int,
     "is_end_of_day_sleep": _parse_bool,
 }
+
+
+_REQUIRED_CREATE_ATTRIBUTES = frozenset({"summary", "start", "end"})
+"""Event attributes `create` won't build an event without."""
 
 
 def _parse_key_value(value: str) -> tuple[str, Any]:
@@ -161,11 +173,27 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    create_parser = subparsers.add_parser(
+        "create", help="Create a new event, reallocating time from its day as needed."
+    )
+    create_parser.add_argument(
+        "properties",
+        metavar="key=value",
+        nargs="+",
+        type=_parse_key_value,
+        help=(
+            "One or more Event attribute=value pairs; "
+            f"{', '.join(sorted(_REQUIRED_CREATE_ATTRIBUTES))} are required. Valid "
+            f"attributes: {', '.join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))}."
+        ),
+    )
+
     return parser
 
 
 def main() -> None:
-    args = _build_parser().parse_args()
+    parser = _build_parser()
+    args = parser.parse_args()
     client = build_calendar_client()
 
     if args.command == "list":
@@ -184,6 +212,16 @@ def main() -> None:
             setattr(event, key, value)
         updated_event = client.update_event(event)
         print(_format_event_details(updated_event))
+    elif args.command == "create":
+        fields = dict(args.properties)
+        missing = _REQUIRED_CREATE_ATTRIBUTES - fields.keys()
+        if missing:
+            parser.error(f"create requires: {', '.join(sorted(missing))}")
+        new_event = Event(**fields)
+        applied_events = client.create_event_with_reallocation(new_event, ReallocationOptions())
+        for event in applied_events:
+            print(_format_event_details(event))
+            print()
 
 
 if __name__ == "__main__":
