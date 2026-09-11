@@ -21,6 +21,9 @@ class Event:
     end: datetime
     id: str | None = None
     description: str | None = None
+    extended_properties: dict[str, dict[str, str]] | None = None
+    """Google Calendar's free-form key/value tags, shaped like the API's
+    `extendedProperties`: `{"private": {...}, "shared": {...}}`."""
 
     @classmethod
     def from_api(cls, data: dict) -> "Event":
@@ -30,6 +33,7 @@ class Event:
             start=_parse_datetime(data["start"]),
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
+            extended_properties=data.get("extendedProperties"),
         )
 
     def to_api_body(self) -> dict:
@@ -40,18 +44,34 @@ class Event:
         }
         if self.description is not None:
             body["description"] = self.description
+        if self.extended_properties is not None:
+            body["extendedProperties"] = self.extended_properties
         return body
 
     def overlaps(self, other_start: datetime, other_end: datetime) -> bool:
+        assert self.start < self.end
+        assert other_start < other_end
         return self.start < other_end and other_start < self.end
 
 
 def _parse_datetime(value: dict) -> datetime:
-    raw = value.get("dateTime") or value.get("date")
-    return datetime.fromisoformat(raw)
+    raw = value.get("dateTime")
+    if raw is None:
+        raise ValueError(
+            "Event is missing a dateTime with a UTC offset; all-day (date-only) "
+            "events are not supported"
+        )
+    if raw.endswith("Z"):
+        raw = f"{raw[:-1]}+00:00"
+    parsed = datetime.fromisoformat(raw)
+    if parsed.tzinfo is None:
+        raise ValueError(f"datetime {raw!r} must include a UTC offset/timezone")
+    return parsed
 
 
 def _format_datetime(value: datetime) -> dict:
+    if value.tzinfo is None:
+        raise ValueError(f"datetime {value!r} must be timezone-aware")
     return {"dateTime": value.isoformat()}
 
 
