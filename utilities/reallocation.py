@@ -111,11 +111,11 @@ see `ReallocationOptions.resolved()`):
 
 from __future__ import annotations
 
+import logging
 import math
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import logging
 from typing import Protocol
 
 logger = logging.getLogger(__name__)
@@ -168,7 +168,9 @@ def _effective_min_duration(
     return event.min_duration or timedelta(0)
 
 
-def _validate_sorted_and_nonoverlapping(events: list[Schedulable], exception_type: type[Exception] = ValueError) -> None:
+def _validate_sorted_and_nonoverlapping(
+    events: list[Schedulable], exception_type: type[Exception] = ValueError
+) -> None:
     # Ignore cancelled events; we expect those to disappear.
     events = [event for event in events if event.status != "cancelled"]
 
@@ -224,7 +226,7 @@ class ReallocationConflictError(Exception):
         *,
         preceding_event: Schedulable,
         preceding_min_duration: timedelta,
-        new_start_time: datetime
+        new_start_time: datetime,
     ) -> None:
         super().__init__(message)
         self.preceding_event = preceding_event
@@ -328,7 +330,8 @@ class _Reallocation:
         if not self.day_events or self.day_events[-1].end <= self.new_event.end:
             raise ValueError(
                 "day_events must contain something ending after new_event.end but "
-                f"last event was {self.day_events[-1].id if self.day_events else None!r}")
+                f"last event was {self.day_events[-1].id if self.day_events else None!r}"
+            )
 
     def _resolve_preceding_overlap(self) -> None:
         """Step 1. Returns how much of the total overlap (step 3) this
@@ -357,7 +360,7 @@ class _Reallocation:
                 f"below its min_duration of {preceding_min}.",
                 preceding_event=preceding,
                 preceding_min_duration=preceding_min,
-                new_start_time=new_event.start
+                new_start_time=new_event.start,
             )
 
         new_preceding_duration = new_event.start - preceding.start
@@ -448,7 +451,9 @@ class _Reallocation:
                 for priority in self._eligible_priorities()
                 for span in self.spans_by_priority[priority]
                 # span.min_duration is already the effective min duration.
-                if span.event is not None and span.duration <= span.min_duration and span.event is not self.new_event
+                if span.event is not None
+                and span.duration <= span.min_duration
+                and span.event is not self.new_event
             ),
             key=lambda event: _effective_min_duration(event, overrides),
             reverse=True,

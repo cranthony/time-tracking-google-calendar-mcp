@@ -5,8 +5,8 @@ import pytest
 from calendar_clients.google_calendar import Event
 from utilities.reallocation import (
     ReallocationConflictError,
-    ReallocationShortfallError,
     ReallocationOptions,
+    ReallocationShortfallError,
     _duration,
     _effective_min_duration,
     _effective_priority,
@@ -291,9 +291,7 @@ class TestReallocateForNewEvent:
             priority=1,
         )
 
-        result = reallocate_for_new_event(
-            [first, second, third], new_event, ReallocationOptions()
-        )
+        result = reallocate_for_new_event([first, second, third], new_event, ReallocationOptions())
 
         assert new_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert new_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
@@ -513,6 +511,7 @@ class TestReallocateForNewEvent:
         )
 
         result = reallocate_for_new_event([existing, anchor], new_event, ReallocationOptions())
+        assert result == [new_event, existing]
 
         assert existing.status == "cancelled"
         assert existing in result
@@ -561,6 +560,7 @@ class TestReallocateForNewEvent:
         result = reallocate_for_new_event(
             [later], new_event, ReallocationOptions(min_duration_overrides={"e1": 15})
         )
+        assert result == [new_event, later]
 
         assert new_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert new_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
