@@ -7,6 +7,7 @@ import pytest
 
 from calendar_clients import google_calendar
 from calendar_clients.google_calendar import Calendar, CalendarClient, Event, load_credentials
+from utilities.reallocation import ReallocationOptions
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
@@ -597,6 +598,104 @@ class TestCalendarClientUpdateEvent:
         service.events.return_value.patch.assert_called_once_with(
             calendarId=TEST_CALENDAR_ID, eventId="abc123", body=event.to_api_body()
         )
+
+
+class TestCalendarClientListDayEvents:
+    def test_fetches_a_24_hour_window_from_start(self):
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[])
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+
+        client.list_day_events(start)
+
+        client.list_events.assert_called_once_with(start, start + timedelta(hours=24))
+
+    def test_truncates_after_the_end_of_day_sleep_event(self):
+        client = make_client(MagicMock())
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        kept = Event(id="k", start=start, end=start + timedelta(hours=1))
+        sleep = Event(
+            id="s",
+            start=start + timedelta(hours=1),
+            end=start + timedelta(hours=2),
+            is_end_of_day_sleep=True,
+        )
+        discarded = Event(id="d", start=start + timedelta(hours=3), end=start + timedelta(hours=4))
+        client.list_events = MagicMock(return_value=[kept, sleep, discarded])
+
+        events = client.list_day_events(start)
+
+        assert [e.id for e in events] == ["k", "s"]
+
+    def test_keeps_everything_when_no_sleep_event_found(self):
+        client = make_client(MagicMock())
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        events_in = [Event(id="a", start=start, end=start + timedelta(hours=1))]
+        client.list_events = MagicMock(return_value=events_in)
+
+        events = client.list_day_events(start)
+
+        assert events == events_in
+
+
+class TestCalendarClientCreateEventWithReallocation:
+    def test_requires_start_and_end(self):
+        client = make_client(MagicMock())
+
+        with pytest.raises(ValueError):
+            client.create_event_with_reallocation(Event(summary="No times"), ReallocationOptions())
+
+    def test_creates_new_event_when_day_is_otherwise_clear(self):
+        client = make_client(MagicMock())
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        end = start + timedelta(minutes=30)
+        anchor = Event(
+            id="a1", start=start + timedelta(hours=2), end=start + timedelta(hours=3), priority=1
+        )
+        client.list_events = MagicMock(return_value=[anchor])
+        created = Event(id="new-id", summary="New", start=start, end=end)
+        client.create_event = MagicMock(return_value=created)
+        client.update_event = MagicMock()
+
+        new_event = Event(summary="New", start=start, end=end, priority=1)
+        result = client.create_event_with_reallocation(new_event, ReallocationOptions())
+
+        assert result == [created]
+        client.create_event.assert_called_once_with(new_event)
+        client.update_event.assert_not_called()
+
+    def test_applies_update_for_events_reallocation_touches(self):
+        preceding = Event(
+            id="p1",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 40, tzinfo=UTC),
+            priority=1,
+            min_duration=timedelta(minutes=30),
+        )
+        later = Event(
+            id="l1",
+            start=datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 11, 30, tzinfo=UTC),
+            priority=1,
+        )
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[preceding, later])
+        client.create_event = MagicMock(side_effect=lambda event: event)
+        client.update_event = MagicMock(side_effect=lambda event: event)
+
+        new_event = Event(
+            summary="New",
+            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=1,
+        )
+        result = client.create_event_with_reallocation(new_event, ReallocationOptions())
+
+        client.create_event.assert_called_once_with(new_event)
+        client.update_event.assert_called_once_with(preceding)
+        # later is never reclaimed from (a gap absorbs it), so it's left
+        # out of the plan entirely -- not created, not updated.
+        assert result == [preceding, new_event]
 
 
 class TestCalendarClientDeleteEvent:

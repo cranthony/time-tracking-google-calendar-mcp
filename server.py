@@ -8,6 +8,11 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from config import build_calendar_client
+from utilities.reallocation import (
+    ReallocationConflictError,
+    ReallocationOptions,
+    ReallocationShortfallError,
+)
 
 mcp = MCPServer("time-tracking-google-calendar-mcp")
 
@@ -22,11 +27,17 @@ missing relative to Event, so this stays in sync with PublicEvent."""
 
 @dataclass(kw_only=True)
 class PublicEvent:
-    """Event, minus the fields named in INTERNAL_EVENT_FIELDS. Every MCP tool
+    """Event, minus the fields named in INTERNAL_EVENT_FIELDS, plus
+    is_cancelled (which has no Event equivalent -- Event's status is one
+    of INTERNAL_EVENT_FIELDS, hidden entirely). Every MCP tool
     returns/accepts this instead of Event directly, so those fields never
     appear in the tool schema the agent sees (via tools/list) or in any
     tool result -- the agent has no way to know they exist, not just that
-    their value is hidden."""
+    their value is hidden.
+
+    is_cancelled only ever moves from False to True: setting it False has
+    no effect (see to_event), since there's no way to un-cancel a
+    cancelled event."""
 
     id: str | None = None
     summary: str | None = None
@@ -37,6 +48,7 @@ class PublicEvent:
     min_duration: timedelta | None = None
     is_fixed_duration: bool | None = None
     priority: int | None = None
+    is_cancelled: bool = False
 
     @classmethod
     def from_event(cls, event: Event) -> "PublicEvent":
@@ -50,6 +62,7 @@ class PublicEvent:
             min_duration=event.min_duration,
             is_fixed_duration=event.is_fixed_duration,
             priority=event.priority,
+            is_cancelled=event.status == "cancelled",
         )
 
     def to_event(self) -> Event:
@@ -63,6 +76,7 @@ class PublicEvent:
             min_duration=self.min_duration,
             is_fixed_duration=self.is_fixed_duration,
             priority=self.priority,
+            status="cancelled" if self.is_cancelled else None,
         )
 
 
@@ -104,7 +118,14 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
 @mcp.tool()
 def create_event(event: PublicEvent) -> list[PublicEvent]:
     """Create a new event. Returns the events affected by the creation."""
-    raise NotImplementedError
+    new_event = event.to_event()
+    try:
+        applied = get_calendar_client().create_event_with_reallocation(
+            new_event, ReallocationOptions()
+        )
+    except (ReallocationConflictError, ReallocationShortfallError, ValueError) as exc:
+        raise ToolError(str(exc)) from exc
+    return [PublicEvent.from_event(e) for e in applied]
 
 
 @mcp.tool()
