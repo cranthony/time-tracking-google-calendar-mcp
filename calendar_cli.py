@@ -7,11 +7,13 @@ Usage:
     python calendar_cli.py get <id>
     python calendar_cli.py update_properties <id> key=value [key=value ...]
 
-`list` shows events between `from` before now and `to` after now, each a
-duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") — default
-window is 1 hour on each side of now. `get` shows a single event by its id.
-`update_properties` fetches the event by id, sets each given attribute to
-the given value, and patches it back.
+- `list` shows events between `from` before now and `to` after now, each a
+  duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
+  default window is 1 hour on each side of now.
+- `get` shows a single event by its id.
+- `update_properties` sets the given attributes on the event and patches
+  them in, without fetching it first — any attribute not given is left
+  untouched.
 """
 
 from __future__ import annotations
@@ -173,7 +175,7 @@ def main() -> None:
         event = client.get_event(args.id)
         print(_format_event_details(event))
     elif args.command == "update_properties":
-        event = client.get_event(args.id)
+        event = Event(id=args.id)
         for key, value in args.properties:
             setattr(event, key, value)
         updated_event = client.update_event(event)

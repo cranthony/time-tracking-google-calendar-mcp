@@ -52,16 +52,22 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#id
     for more information."""
 
-    summary: str
-    """See https://developers.google.com/workspace/calendar/api/v3/reference/events#summary
+    summary: str | None = None
+    """Required to create an event. `None` is only valid for a partial
+    update payload that doesn't touch summary — see `CalendarClient.update_event`.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#summary
     for more information."""
 
-    start: datetime
-    """See https://developers.google.com/workspace/calendar/api/v3/reference/events#start
+    start: datetime | None = None
+    """Required to create an event. `None` is only valid for a partial
+    update payload that doesn't touch start — see `CalendarClient.update_event`.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#start
     for more information."""
 
-    end: datetime
-    """See https://developers.google.com/workspace/calendar/api/v3/reference/events#end
+    end: datetime | None = None
+    """Required to create an event. `None` is only valid for a partial
+    update payload that doesn't touch end — see `CalendarClient.update_event`.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#end
     for more information."""
 
     description: str | None = None
@@ -97,7 +103,7 @@ class Event:
         )
         return cls(
             id=data.get("id"),
-            summary=data.get("summary", ""),
+            summary=data.get("summary"),
             start=_parse_datetime(data["start"]),
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
@@ -106,11 +112,13 @@ class Event:
         )
 
     def to_api_body(self) -> dict:
-        body: dict = {
-            "summary": self.summary,
-            "start": _format_datetime(self.start),
-            "end": _format_datetime(self.end),
-        }
+        body: dict = {}
+        if self.summary is not None:
+            body["summary"] = self.summary
+        if self.start is not None:
+            body["start"] = _format_datetime(self.start)
+        if self.end is not None:
+            body["end"] = _format_datetime(self.end)
         if self.description is not None:
             body["description"] = self.description
         if self.location is not None:

@@ -220,10 +220,8 @@ class TestMainGet:
 
 
 class TestMainUpdateProperties:
-    def test_fetches_sets_attributes_and_patches(self, capsys, monkeypatch):
+    def test_sets_attributes_and_patches_without_fetching_first(self, capsys, monkeypatch):
         client = MagicMock()
-        fetched = _event(priority=5)
-        client.get_event.return_value = fetched
         client.update_event.return_value = _event(priority=1, location="Room")
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
         monkeypatch.setattr(
@@ -234,21 +232,18 @@ class TestMainUpdateProperties:
 
         calendar_cli.main()
 
-        client.get_event.assert_called_once_with("abc123")
-        # The same Event fetched from get_event is mutated in place and
-        # passed straight to update_event.
-        client.update_event.assert_called_once_with(fetched)
-        assert fetched.priority == 1
-        assert fetched.location == "Room"
+        client.get_event.assert_not_called()
+        sent_event = client.update_event.call_args[0][0]
+        assert sent_event.id == "abc123"
+        assert sent_event.priority == 1
+        assert sent_event.location == "Room"
         out = capsys.readouterr().out
         assert "priority: 1" in out
         assert "location: Room" in out
 
-    def test_only_touches_the_given_attributes(self, monkeypatch):
+    def test_only_sets_the_given_attributes(self, monkeypatch):
         client = MagicMock()
-        fetched = _event(description="Existing", priority=5)
-        client.get_event.return_value = fetched
-        client.update_event.return_value = fetched
+        client.update_event.side_effect = lambda event: event
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
         monkeypatch.setattr(
             sys, "argv", ["calendar_cli.py", "update_properties", "abc123", "priority=1"]
@@ -256,5 +251,8 @@ class TestMainUpdateProperties:
 
         calendar_cli.main()
 
-        assert fetched.priority == 1
-        assert fetched.description == "Existing"
+        sent_event = client.update_event.call_args[0][0]
+        assert sent_event.priority == 1
+        assert sent_event.summary is None
+        assert sent_event.description is None
+        assert sent_event.location is None

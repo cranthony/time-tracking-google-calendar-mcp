@@ -151,6 +151,17 @@ class TestEvent:
         with pytest.raises(ValueError):
             Event.from_api(data)
 
+    def test_from_api_defaults_summary_to_none_when_absent(self):
+        data = {
+            "id": "abc123",
+            "start": {"dateTime": "2026-01-01T09:00:00+00:00"},
+            "end": {"dateTime": "2026-01-01T10:00:00+00:00"},
+        }
+
+        event = Event.from_api(data)
+
+        assert event.summary is None
+
     def test_to_api_body_omits_optional_fields_when_absent(self):
         event = Event(
             summary="Focus block",
@@ -166,6 +177,18 @@ class TestEvent:
         assert body["summary"] == "Focus block"
         assert body["start"] == {"dateTime": "2026-01-01T09:00:00+00:00"}
         assert body["end"] == {"dateTime": "2026-01-01T10:00:00+00:00"}
+
+    def test_to_api_body_for_a_partial_update_payload_without_summary_start_end(self):
+        event = Event(id="abc123", priority=1)
+
+        body = event.to_api_body()
+
+        assert "summary" not in body
+        assert "start" not in body
+        assert "end" not in body
+        assert body["extendedProperties"] == {
+            "private": {"cascading-time-tracker-priority": "1"}
+        }
 
     def test_to_api_body_includes_description_when_present(self):
         event = Event(
