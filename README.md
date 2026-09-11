@@ -19,6 +19,16 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+For running tests, install the dev dependencies instead (this also installs `requirements.txt`):
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+## Project layout
+
+Google Calendar API access lives in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), behind a `CalendarClient` class and a plain `Event` dataclass. `server.py`'s MCP tools call into this module rather than talking to `googleapiclient`/OAuth directly, so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead.
+
 ## Running the server
 
 With the virtual environment activated, run the server directly:
@@ -54,3 +64,11 @@ uv --version
 If you only need to run the server (not the Inspector), `python server.py` works without Node.js or uv.
 
 `server.py` currently contains a minimal scaffold (an `add` tool and a `greeting` resource) from the [MCP Python SDK quickstart](https://py.sdk.modelcontextprotocol.io/), ready to be extended with Google Calendar-backed tools.
+
+## Running tests
+
+With the dev dependencies installed:
+
+```bash
+pytest
+```
