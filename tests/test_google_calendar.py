@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -7,6 +8,9 @@ from calendar_clients.google_calendar import CalendarClient, Event
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
+CET = timezone(timedelta(hours=1))
+IST = timezone(timedelta(hours=5, minutes=30))
+JST = timezone(timedelta(hours=9))
 TEST_CALENDAR_ID = "my-calendar-id"
 
 
@@ -36,6 +40,7 @@ class TestEvent:
         assert event.start == datetime(2026, 1, 1, 9, 0, 0, tzinfo=UTC)
         assert event.end == datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC)
         assert event.description is None
+        assert event.location is None
         assert event.extended_properties is None
 
     def test_from_api_parses_non_utc_offset(self):
@@ -55,6 +60,33 @@ class TestEvent:
 
         assert event.start == datetime(2026, 1, 1, 9, 0, 0, tzinfo=UTC)
         assert event.end == datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC)
+
+    def test_from_api_extracts_location(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["location"] = "Conference Room A"
+
+        event = Event.from_api(data)
+
+        assert event.location == "Conference Room A"
+
+    def test_from_api_uses_timeZone_when_dateTime_is_naive(self):
+        data = {
+            "id": "abc123",
+            "summary": "Busy",
+            "start": {"dateTime": "2026-01-01T09:00:00", "timeZone": "America/New_York"},
+            "end": {"dateTime": "2026-01-01T10:00:00", "timeZone": "America/New_York"},
+        }
+
+        event = Event.from_api(data)
+
+        assert event.start == datetime(
+            2026, 1, 1, 9, 0, tzinfo=ZoneInfo("America/New_York")
+        )
+        assert event.end == datetime(
+            2026, 1, 1, 10, 0, tzinfo=ZoneInfo("America/New_York")
+        )
 
     def test_from_api_extracts_extended_properties(self):
         data = api_event(
@@ -95,6 +127,7 @@ class TestEvent:
         body = event.to_api_body()
 
         assert "description" not in body
+        assert "location" not in body
         assert "extendedProperties" not in body
         assert body["summary"] == "Focus block"
         assert body["start"] == {"dateTime": "2026-01-01T09:00:00+00:00"}
@@ -109,6 +142,16 @@ class TestEvent:
         )
 
         assert event.to_api_body()["description"] == "Deep work"
+
+    def test_to_api_body_includes_location_when_present(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            location="Conference Room A",
+        )
+
+        assert event.to_api_body()["location"] == "Conference Room A"
 
     def test_to_api_body_includes_extended_properties_when_present(self):
         event = Event(
@@ -165,6 +208,30 @@ class TestEvent:
         )
 
         assert event.overlaps(start, end) is expected
+
+    def test_overlaps_true_across_four_distinct_timezones(self):
+        event = Event(
+            summary="Existing",
+            start=datetime(2026, 1, 1, 4, 0, tzinfo=EST),  # 09:00 UTC
+            end=datetime(2026, 1, 1, 11, 0, tzinfo=CET),  # 10:00 UTC
+        )
+
+        assert event.overlaps(
+            datetime(2026, 1, 1, 15, 0, tzinfo=IST),  # 09:30 UTC
+            datetime(2026, 1, 1, 19, 30, tzinfo=JST),  # 10:30 UTC
+        )
+
+    def test_overlaps_false_across_four_distinct_timezones(self):
+        event = Event(
+            summary="Existing",
+            start=datetime(2026, 1, 1, 4, 0, tzinfo=EST),  # 09:00 UTC
+            end=datetime(2026, 1, 1, 11, 0, tzinfo=CET),  # 10:00 UTC
+        )
+
+        assert not event.overlaps(
+            datetime(2026, 1, 1, 16, 0, tzinfo=IST),  # 10:30 UTC
+            datetime(2026, 1, 1, 20, 30, tzinfo=JST),  # 11:30 UTC
+        )
 
     def test_overlaps_asserts_self_start_before_self_end(self):
         event = Event(

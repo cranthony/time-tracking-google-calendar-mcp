@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -23,18 +24,43 @@ class Event:
     id: str | None = None
     """Uniquely identifies the event. `None` until the event has been
     created; `CalendarClient.create_event` assigns this ID (from the API
-    response) when the event is created."""
+    response) when the event is created.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#id
+    for more information."""
 
     summary: str
+    """See https://developers.google.com/workspace/calendar/api/v3/reference/events#summary
+    for more information."""
+
     start: datetime
+    """See https://developers.google.com/workspace/calendar/api/v3/reference/events#start
+    for more information."""
+
     end: datetime
+    """See https://developers.google.com/workspace/calendar/api/v3/reference/events#end
+    for more information."""
 
     description: str | None = None
-    """Optional free-text description of the event."""
+    """Optional free-text description of the event. Can include HTML.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#description
+    for more information."""
+
+    location: str | None = None
+    """Optional free-text location of the event.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#location
+    for more information."""
 
     extended_properties: dict[str, dict[str, str]] | None = None
     """Google Calendar's free-form key/value tags, shaped like the API's
-    `extendedProperties`: `{"private": {...}, "shared": {...}}`."""
+    `extendedProperties`: `{"private": {...}, "shared": {...}}`. "private"
+    and "shared" are the only valid top-level keys: properties under
+    "private" aren't shared with other copies of the event on other
+    calendars, while properties under "shared" are visible to other
+    attendees.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties,
+    https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties.private,
+    and https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties.shared
+    for more information."""
 
     @classmethod
     def from_api(cls, data: dict) -> "Event":
@@ -44,6 +70,7 @@ class Event:
             start=_parse_datetime(data["start"]),
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
+            location=data.get("location"),
             extended_properties=data.get("extendedProperties"),
         )
 
@@ -55,6 +82,8 @@ class Event:
         }
         if self.description is not None:
             body["description"] = self.description
+        if self.location is not None:
+            body["location"] = self.location
         if self.extended_properties is not None:
             body["extendedProperties"] = self.extended_properties
         return body
@@ -76,7 +105,10 @@ def _parse_datetime(value: dict) -> datetime:
         raw = f"{raw[:-1]}+00:00"
     parsed = datetime.fromisoformat(raw)
     if parsed.tzinfo is None:
-        raise ValueError(f"datetime {raw!r} must include a UTC offset/timezone")
+        time_zone = value.get("timeZone")
+        if time_zone is None:
+            raise ValueError(f"datetime {raw!r} must include a UTC offset/timezone")
+        parsed = parsed.replace(tzinfo=ZoneInfo(time_zone))
     return parsed
 
 
