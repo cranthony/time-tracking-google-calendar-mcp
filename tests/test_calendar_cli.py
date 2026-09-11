@@ -1,4 +1,5 @@
 import argparse
+import dataclasses
 import sys
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
@@ -29,6 +30,82 @@ class TestParseDuration:
     def test_raises_on_unparseable_duration(self):
         with pytest.raises(argparse.ArgumentTypeError):
             calendar_cli._parse_duration("not a duration")
+
+
+class TestParseBool:
+    @pytest.mark.parametrize("value", ["true", "True", "1", "yes"])
+    def test_parses_truthy_values(self, value):
+        assert calendar_cli._parse_bool(value) is True
+
+    @pytest.mark.parametrize("value", ["false", "False", "0", "no"])
+    def test_parses_falsy_values(self, value):
+        assert calendar_cli._parse_bool(value) is False
+
+    def test_raises_on_unparseable_value(self):
+        with pytest.raises(ValueError):
+            calendar_cli._parse_bool("maybe")
+
+
+class TestParseIsoDatetime:
+    def test_parses_offset_datetime(self):
+        assert calendar_cli._parse_iso_datetime("2026-01-01T09:00:00-05:00") == datetime(
+            2026, 1, 1, 9, 0, tzinfo=timezone(timedelta(hours=-5))
+        )
+
+    def test_parses_z_suffix_as_utc(self):
+        assert calendar_cli._parse_iso_datetime("2026-01-01T09:00:00Z") == datetime(
+            2026, 1, 1, 9, 0, tzinfo=UTC
+        )
+
+    def test_raises_when_missing_timezone(self):
+        with pytest.raises(ValueError):
+            calendar_cli._parse_iso_datetime("2026-01-01T09:00:00")
+
+
+class TestParseKeyValue:
+    def test_parses_string_attribute(self):
+        assert calendar_cli._parse_key_value("summary=New title") == (
+            "summary",
+            "New title",
+        )
+
+    def test_parses_int_attribute(self):
+        assert calendar_cli._parse_key_value("priority=1") == ("priority", 1)
+
+    def test_parses_bool_attribute(self):
+        assert calendar_cli._parse_key_value("is_fixed_duration=true") == (
+            "is_fixed_duration",
+            True,
+        )
+
+    def test_parses_duration_attribute(self):
+        key, value = calendar_cli._parse_key_value("min_duration=30m")
+        assert key == "min_duration"
+        assert value == timedelta(minutes=30)
+
+    def test_parses_datetime_attribute(self):
+        key, value = calendar_cli._parse_key_value("start=2026-01-01T09:00:00Z")
+        assert key == "start"
+        assert value == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+
+    def test_raises_when_missing_equals_sign(self):
+        with pytest.raises(argparse.ArgumentTypeError):
+            calendar_cli._parse_key_value("priority")
+
+    def test_raises_on_unknown_attribute(self):
+        with pytest.raises(argparse.ArgumentTypeError):
+            calendar_cli._parse_key_value("id=new-id")
+
+    def test_raises_on_invalid_value_for_known_attribute(self):
+        with pytest.raises(argparse.ArgumentTypeError):
+            calendar_cli._parse_key_value("priority=not-a-number")
+
+
+class TestUpdatableAttributeParsers:
+    def test_covers_every_event_attribute_except_id(self):
+        event_attributes = {f.name for f in dataclasses.fields(Event)} - {"id"}
+
+        assert set(calendar_cli._UPDATABLE_ATTRIBUTE_PARSERS) == event_attributes
 
 
 class TestResolveWindow:
@@ -140,3 +217,44 @@ class TestMainGet:
 
         client.get_event.assert_called_once_with("abc123")
         assert "id: abc123" in capsys.readouterr().out
+
+
+class TestMainUpdateProperties:
+    def test_fetches_sets_attributes_and_patches(self, capsys, monkeypatch):
+        client = MagicMock()
+        fetched = _event(priority=5)
+        client.get_event.return_value = fetched
+        client.update_event.return_value = _event(priority=1, location="Room")
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["calendar_cli.py", "update_properties", "abc123", "priority=1", "location=Room"],
+        )
+
+        calendar_cli.main()
+
+        client.get_event.assert_called_once_with("abc123")
+        # The same Event fetched from get_event is mutated in place and
+        # passed straight to update_event.
+        client.update_event.assert_called_once_with(fetched)
+        assert fetched.priority == 1
+        assert fetched.location == "Room"
+        out = capsys.readouterr().out
+        assert "priority: 1" in out
+        assert "location: Room" in out
+
+    def test_only_touches_the_given_attributes(self, monkeypatch):
+        client = MagicMock()
+        fetched = _event(description="Existing", priority=5)
+        client.get_event.return_value = fetched
+        client.update_event.return_value = fetched
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "update_properties", "abc123", "priority=1"]
+        )
+
+        calendar_cli.main()
+
+        assert fetched.priority == 1
+        assert fetched.description == "Existing"

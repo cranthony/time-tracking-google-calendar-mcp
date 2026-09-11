@@ -30,7 +30,7 @@ pip install -r requirements-dev.txt
 - [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead.
 - [`server.py`](server.py) — the MCP server; its tools call into `calendar_clients/google_calendar.py` rather than talking to `googleapiclient`/OAuth directly.
 - [`create_calendar.py`](create_calendar.py) — a standalone bootstrap script (not an MCP tool) that creates the dedicated calendar this app needs — see [Calendar access model](#calendar-access-model) below.
-- [`calendar_cli.py`](calendar_cli.py) — a dev-only command-line tool for poking at the calendar directly (`list`/`get`) without going through an MCP host — see [Command-line utilities](#command-line-utilities) below.
+- [`calendar_cli.py`](calendar_cli.py) — a dev-only command-line tool for poking at the calendar directly (`list`/`get`/`update_properties`) without going through an MCP host — see [Command-line utilities](#command-line-utilities) below.
 - [`config.py`](config.py) — reads configuration from environment variables — see [Configuration](#configuration) below.
 - [`tests/`](tests/) — unit tests for the above, mocking the Google API rather than hitting it.
 
@@ -153,9 +153,14 @@ python calendar_cli.py list 30m 2h
 
 # A single event by id
 python calendar_cli.py get <event-id>
+
+# Set one or more properties on an existing event
+python calendar_cli.py update_properties <event-id> priority=1 location="Room A"
 ```
 
 `from`/`to` are each a duration relative to *now* — parsed with [pytimeparse](https://pypi.org/project/pytimeparse/) (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`) — giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
+
+`update_properties` takes one or more `key=value` pairs, where each `key` is an `Event` attribute (`summary`, `start`, `end`, `description`, `location`, `min_duration`, `is_fixed_duration`, `priority` — not `id`, since changing it would repoint the patch at a different event). It fetches the current event first, sets just the given attributes on it, and patches the result back — so any attribute you don't mention is left exactly as it was. `start`/`end` take an ISO 8601 datetime with a UTC offset (e.g. `2026-01-01T09:00:00-05:00`, or a trailing `Z`); `min_duration` takes a pytimeparse duration like `from`/`to` above; `is_fixed_duration` takes `true`/`false` (also `1`/`0`, `yes`/`no`).
 
 ## Running tests
 

@@ -5,17 +5,22 @@ This is a dev tool, not something the deployed server needs.
 Usage:
     python calendar_cli.py list [from] [to]
     python calendar_cli.py get <id>
+    python calendar_cli.py update_properties <id> key=value [key=value ...]
 
 `list` shows events between `from` before now and `to` after now, each a
 duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") — default
 window is 1 hour on each side of now. `get` shows a single event by its id.
+`update_properties` fetches the event by id, sets each given attribute to
+the given value, and patches it back.
 """
 
 from __future__ import annotations
 
 import argparse
 import dataclasses
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import pytimeparse
 
@@ -32,6 +37,56 @@ def _parse_duration(value: str) -> float:
     if seconds is None:
         raise argparse.ArgumentTypeError(f"could not parse duration: {value!r}")
     return seconds
+
+
+def _parse_bool(value: str) -> bool:
+    lowered = value.lower()
+    if lowered in ("true", "1", "yes"):
+        return True
+    if lowered in ("false", "0", "no"):
+        return False
+    raise ValueError(f"could not parse boolean: {value!r}")
+
+
+def _parse_iso_datetime(value: str) -> datetime:
+    raw = value[:-1] + "+00:00" if value.endswith("Z") else value
+    parsed = datetime.fromisoformat(raw)
+    if parsed.tzinfo is None:
+        raise ValueError(f"datetime {value!r} must include a UTC offset/timezone")
+    return parsed
+
+
+# Every Event attribute that update_properties may set, other than `id`
+# (changing id would repoint the patch at a different event), mapped to a
+# function parsing its command-line string value into the right type.
+_UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
+    "summary": str,
+    "start": _parse_iso_datetime,
+    "end": _parse_iso_datetime,
+    "description": str,
+    "location": str,
+    "min_duration": lambda s: timedelta(seconds=_parse_duration(s)),
+    "is_fixed_duration": _parse_bool,
+    "priority": int,
+}
+
+
+def _parse_key_value(value: str) -> tuple[str, Any]:
+    """Parse a "key=value" command-line argument into (attribute name,
+    parsed value), for use as an argparse `type`."""
+    if "=" not in value:
+        raise argparse.ArgumentTypeError(f"expected key=value, got {value!r}")
+    key, raw_value = value.split("=", 1)
+    parse = _UPDATABLE_ATTRIBUTE_PARSERS.get(key)
+    if parse is None:
+        valid = ", ".join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))
+        raise argparse.ArgumentTypeError(
+            f"unknown Event attribute {key!r}; expected one of: {valid}"
+        )
+    try:
+        return key, parse(raw_value)
+    except (ValueError, argparse.ArgumentTypeError) as exc:
+        raise argparse.ArgumentTypeError(f"invalid value for {key!r}: {exc}") from exc
 
 
 def resolve_window(
@@ -85,6 +140,21 @@ def _build_parser() -> argparse.ArgumentParser:
     get_parser = subparsers.add_parser("get", help="Get a single event by id.")
     get_parser.add_argument("id", help="The event id.")
 
+    update_parser = subparsers.add_parser(
+        "update_properties", help="Set one or more properties on an existing event."
+    )
+    update_parser.add_argument("id", help="The event id.")
+    update_parser.add_argument(
+        "properties",
+        metavar="key=value",
+        nargs="+",
+        type=_parse_key_value,
+        help=(
+            "One or more Event attribute=value pairs to set. Valid "
+            f"attributes: {', '.join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))}."
+        ),
+    )
+
     return parser
 
 
@@ -102,6 +172,12 @@ def main() -> None:
     elif args.command == "get":
         event = client.get_event(args.id)
         print(_format_event_details(event))
+    elif args.command == "update_properties":
+        event = client.get_event(args.id)
+        for key, value in args.properties:
+            setattr(event, key, value)
+        updated_event = client.update_event(event)
+        print(_format_event_details(updated_event))
 
 
 if __name__ == "__main__":
