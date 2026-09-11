@@ -61,12 +61,14 @@ class TestFormatEventLine:
 
 class TestFormatEventDetails:
     def test_includes_required_fields_only_when_optional_fields_absent(self):
-        details = calendar_cli._format_event_details(_event())
+        event = _event()
+
+        details = calendar_cli._format_event_details(event)
 
         assert "id: abc123" in details
         assert "summary: Focus block" in details
-        assert "start: 2026-01-01T09:00:00+00:00" in details
-        assert "end: 2026-01-01T10:00:00+00:00" in details
+        assert f"start: {event.start}" in details
+        assert f"end: {event.end}" in details
         assert "description" not in details
         assert "location" not in details
         assert "min_duration" not in details

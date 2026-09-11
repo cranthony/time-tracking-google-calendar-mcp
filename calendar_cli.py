@@ -1,7 +1,6 @@
 """Command-line utilities for the Google Calendar API, via CalendarClient.
 
-This is a dev tool (see requirements-dev.txt for its one extra dependency,
-pytimeparse), not something the deployed server needs.
+This is a dev tool, not something the deployed server needs.
 
 Usage:
     python calendar_cli.py list [from] [to]
@@ -15,6 +14,7 @@ window is 1 hour on each side of now. `get` shows a single event by its id.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 from datetime import datetime, timedelta, timezone
 
 import pytimeparse
@@ -49,22 +49,11 @@ def _format_event_line(event: Event) -> str:
 
 
 def _format_event_details(event: Event) -> str:
-    lines = [
-        f"id: {event.id}",
-        f"summary: {event.summary}",
-        f"start: {event.start.isoformat()}",
-        f"end: {event.end.isoformat()}",
-    ]
-    if event.description is not None:
-        lines.append(f"description: {event.description}")
-    if event.location is not None:
-        lines.append(f"location: {event.location}")
-    if event.min_duration is not None:
-        lines.append(f"min_duration: {event.min_duration}")
-    if event.is_fixed_duration is not None:
-        lines.append(f"is_fixed_duration: {event.is_fixed_duration}")
-    if event.priority is not None:
-        lines.append(f"priority: {event.priority}")
+    lines = []
+    for field in dataclasses.fields(event):
+        value = getattr(event, field.name)
+        if value is not None:
+            lines.append(f"{field.name}: {value}")
     return "\n".join(lines)
 
 
