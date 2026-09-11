@@ -28,18 +28,16 @@ missing relative to Event, so this stays in sync with PublicEvent."""
 @dataclass(kw_only=True)
 class PublicEvent:
     """Event, minus the fields named in INTERNAL_EVENT_FIELDS, plus
-    is_canceled (which has no Event equivalent -- Event's status is one of
-    INTERNAL_EVENT_FIELDS, hidden entirely). Every MCP tool returns/accepts
-    this instead of Event directly, so those fields never appear in the
-    tool schema the agent sees (via tools/list) or in any tool result --
-    the agent has no way to know they exist, not just that their value is
-    hidden.
+    is_cancelled (which has no Event equivalent -- Event's status is one
+    of INTERNAL_EVENT_FIELDS, hidden entirely). Every MCP tool
+    returns/accepts this instead of Event directly, so those fields never
+    appear in the tool schema the agent sees (via tools/list) or in any
+    tool result -- the agent has no way to know they exist, not just that
+    their value is hidden.
 
-    is_canceled only ever moves from False to True: setting it False has
+    is_cancelled only ever moves from False to True: setting it False has
     no effect (see to_event), since there's no way to un-cancel a
-    cancelled event. When an event is cancelled, every other field on its
-    PublicEvent is None -- id and is_canceled are the only ones a caller
-    can rely on."""
+    cancelled event."""
 
     id: str | None = None
     summary: str | None = None
@@ -50,12 +48,10 @@ class PublicEvent:
     min_duration: timedelta | None = None
     is_fixed_duration: bool | None = None
     priority: int | None = None
-    is_canceled: bool = False
+    is_cancelled: bool = False
 
     @classmethod
     def from_event(cls, event: Event) -> "PublicEvent":
-        if event.status == "cancelled":
-            return cls(id=event.id, is_canceled=True)
         return cls(
             id=event.id,
             summary=event.summary,
@@ -66,6 +62,7 @@ class PublicEvent:
             min_duration=event.min_duration,
             is_fixed_duration=event.is_fixed_duration,
             priority=event.priority,
+            is_cancelled=event.status == "cancelled",
         )
 
     def to_event(self) -> Event:
@@ -79,7 +76,7 @@ class PublicEvent:
             min_duration=self.min_duration,
             is_fixed_duration=self.is_fixed_duration,
             priority=self.priority,
-            status="cancelled" if self.is_canceled else None,
+            status="cancelled" if self.is_cancelled else None,
         )
 
 
