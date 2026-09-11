@@ -43,7 +43,9 @@ class TestEvent:
         assert event.end == datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC)
         assert event.description is None
         assert event.location is None
-        assert event.extended_properties is None
+        assert event.min_duration is None
+        assert event.fixed_duration is None
+        assert event.priority is None
 
     def test_from_api_parses_non_utc_offset(self):
         event = Event.from_api(
@@ -90,17 +92,47 @@ class TestEvent:
             2026, 1, 1, 10, 0, tzinfo=ZoneInfo("America/New_York")
         )
 
-    def test_from_api_extracts_extended_properties(self):
+    def test_from_api_extracts_app_properties(self):
         data = api_event(
             "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
         )
-        data["extendedProperties"] = {"private": {"project": "time-tracking-mcp"}}
+        data["extendedProperties"] = {
+            "private": {
+                "cascading-time-tracker-min_duration": "1800",
+                "cascading-time-tracker-fixed_duration": "true",
+                "cascading-time-tracker-priority": "2",
+            }
+        }
 
         event = Event.from_api(data)
 
-        assert event.extended_properties == {
-            "private": {"project": "time-tracking-mcp"}
+        assert event.min_duration == timedelta(minutes=30)
+        assert event.fixed_duration is True
+        assert event.priority == 2
+
+    def test_from_api_parses_fixed_duration_false(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["extendedProperties"] = {
+            "private": {"cascading-time-tracker-fixed_duration": "false"}
         }
+
+        event = Event.from_api(data)
+
+        assert event.fixed_duration is False
+
+    def test_from_api_ignores_other_private_keys(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["extendedProperties"] = {"private": {"someOtherApp-key": "value"}}
+
+        event = Event.from_api(data)
+
+        assert event.min_duration is None
+        assert event.fixed_duration is None
+        assert event.priority is None
 
     def test_from_api_raises_when_dateTime_missing_timezone(self):
         with pytest.raises(ValueError):
@@ -155,16 +187,46 @@ class TestEvent:
 
         assert event.to_api_body()["location"] == "Conference Room A"
 
-    def test_to_api_body_includes_extended_properties_when_present(self):
+    def test_to_api_body_includes_app_properties_when_present(self):
         event = Event(
             summary="Focus block",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
             end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-            extended_properties={"private": {"project": "time-tracking-mcp"}},
+            min_duration=timedelta(minutes=30),
+            fixed_duration=True,
+            priority=2,
         )
 
         assert event.to_api_body()["extendedProperties"] == {
-            "private": {"project": "time-tracking-mcp"}
+            "private": {
+                "cascading-time-tracker-min_duration": "1800",
+                "cascading-time-tracker-fixed_duration": "true",
+                "cascading-time-tracker-priority": "2",
+            }
+        }
+
+    def test_to_api_body_includes_fixed_duration_false(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            fixed_duration=False,
+        )
+
+        assert event.to_api_body()["extendedProperties"] == {
+            "private": {"cascading-time-tracker-fixed_duration": "false"}
+        }
+
+    def test_to_api_body_includes_only_the_app_properties_that_are_set(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=1,
+        )
+
+        assert event.to_api_body()["extendedProperties"] == {
+            "private": {"cascading-time-tracker-priority": "1"}
         }
 
     def test_to_api_body_raises_when_start_or_end_is_naive(self):

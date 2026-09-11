@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -26,6 +26,16 @@ README's "Calendar access model" section.
 
 See https://developers.google.com/workspace/calendar/api/auth for the scope
 reference."""
+
+_APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
+"""Prefix for the extendedProperties.private keys this app uses to store its
+own per-event fields (see Event.min_duration/fixed_duration/priority),
+distinguishing them from any other private key that might exist on an
+event."""
+
+_MIN_DURATION_KEY = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}min_duration"
+_FIXED_DURATION_KEY = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}fixed_duration"
+_PRIORITY_KEY = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}priority"
 
 logger = logging.getLogger(__name__)
 
@@ -67,20 +77,26 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#location
     for more information."""
 
-    extended_properties: dict[str, dict[str, str]] | None = None
-    """Google Calendar's free-form key/value tags, shaped like the API's
-    `extendedProperties`: `{"private": {...}, "shared": {...}}`. "private"
-    and "shared" are the only valid top-level keys: properties under
-    "private" aren't shared with other copies of the event on other
-    calendars, while properties under "shared" are visible to other
-    attendees.
-    See https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties,
-    https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties.private,
-    and https://developers.google.com/workspace/calendar/api/v3/reference/events#extendedProperties.shared
-    for more information."""
+    min_duration: timedelta | None = None
+    """The minimum duration this event may be shrunk to (e.g. by whatever
+    resolves overlaps between events). Stored in extendedProperties.private
+    as whole seconds, under the "cascading-time-tracker-min_duration" key —
+    see _APP_EXTENDED_PROPERTY_KEY_PREFIX above."""
+
+    fixed_duration: bool | None = None
+    """If true, this event's duration must never be changed. Stored in
+    extendedProperties.private under the
+    "cascading-time-tracker-fixed_duration" key — see
+    _APP_EXTENDED_PROPERTY_KEY_PREFIX above."""
+
+    priority: int | None = None
+    """This event's priority; lower values are higher priority. Stored in
+    extendedProperties.private under the "cascading-time-tracker-priority"
+    key — see _APP_EXTENDED_PROPERTY_KEY_PREFIX above."""
 
     @classmethod
     def from_api(cls, data: dict) -> "Event":
+        private_properties = data.get("extendedProperties", {}).get("private", {})
         return cls(
             id=data.get("id"),
             summary=data.get("summary", ""),
@@ -88,7 +104,9 @@ class Event:
             end=_parse_datetime(data["end"]),
             description=data.get("description"),
             location=data.get("location"),
-            extended_properties=data.get("extendedProperties"),
+            min_duration=_parse_min_duration(private_properties),
+            fixed_duration=_parse_fixed_duration(private_properties),
+            priority=_parse_priority(private_properties),
         )
 
     def to_api_body(self) -> dict:
@@ -101,8 +119,17 @@ class Event:
             body["description"] = self.description
         if self.location is not None:
             body["location"] = self.location
-        if self.extended_properties is not None:
-            body["extendedProperties"] = self.extended_properties
+
+        private_properties: dict[str, str] = {}
+        if self.min_duration is not None:
+            private_properties[_MIN_DURATION_KEY] = str(int(self.min_duration.total_seconds()))
+        if self.fixed_duration is not None:
+            private_properties[_FIXED_DURATION_KEY] = "true" if self.fixed_duration else "false"
+        if self.priority is not None:
+            private_properties[_PRIORITY_KEY] = str(self.priority)
+        if private_properties:
+            body["extendedProperties"] = {"private": private_properties}
+
         return body
 
     def overlaps(self, other_start: datetime, other_end: datetime) -> bool:
@@ -171,6 +198,27 @@ def _format_datetime(value: datetime) -> dict:
     if value.tzinfo is None:
         raise ValueError(f"datetime {value!r} must be timezone-aware")
     return {"dateTime": value.isoformat()}
+
+
+def _parse_min_duration(private_properties: dict) -> timedelta | None:
+    value = private_properties.get(_MIN_DURATION_KEY)
+    if value is None:
+        return None
+    return timedelta(seconds=int(value))
+
+
+def _parse_fixed_duration(private_properties: dict) -> bool | None:
+    value = private_properties.get(_FIXED_DURATION_KEY)
+    if value is None:
+        return None
+    return value.lower() == "true"
+
+
+def _parse_priority(private_properties: dict) -> int | None:
+    value = private_properties.get(_PRIORITY_KEY)
+    if value is None:
+        return None
+    return int(value)
 
 
 def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
