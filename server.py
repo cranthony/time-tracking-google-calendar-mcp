@@ -1,20 +1,48 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from calendar_clients.google_calendar import CalendarClient, Event
-from config import build_calendar_client
+from config import build_calendar_client, get_mcp_resource_url, get_workos_authkit_domain
 from utilities.reallocation import (
     ReallocationConflictError,
     ReallocationOptions,
     ReallocationShortfallError,
 )
+from workos_auth import WorkOSTokenVerifier
 
-mcp = MCPServer("time-tracking-google-calendar-mcp")
+# "stdio" (the default) is for local use -- a client spawns this process
+# directly (Claude Desktop's local config, `mcp dev`). "streamable-http" is
+# for hosting this remotely (e.g. on Render); see the README's "Deploying"
+# section. Read once, at import time, since it also decides how MCPServer
+# itself gets constructed below.
+_TRANSPORT = os.environ.get("MCP_TRANSPORT", "stdio")
+
+if _TRANSPORT == "streamable-http":
+    _resource_url = get_mcp_resource_url()
+    mcp = MCPServer(
+        "time-tracking-google-calendar-mcp",
+        token_verifier=WorkOSTokenVerifier(
+            authkit_domain=get_workos_authkit_domain(), resource=_resource_url
+        ),
+        auth=AuthSettings(
+            issuer_url=get_workos_authkit_domain(),
+            resource_server_url=_resource_url,
+            required_scopes=[],
+            # False: WorkOSTokenVerifier already checks the token's audience
+            # itself (via jwt.decode's audience=), so the SDK doesn't need
+            # to check AccessToken.resource against resource_server_url too.
+            validate_token_resource=False,
+        ),
+    )
+else:
+    mcp = MCPServer("time-tracking-google-calendar-mcp")
 
 INTERNAL_EVENT_FIELDS = frozenset({"is_end_of_day_sleep", "status", "recurring_event_id"})
 """Event fields the agent talking to this server should never see or set,
@@ -135,4 +163,13 @@ def delete_event(id: str) -> list[PublicEvent]:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    if _TRANSPORT == "streamable-http":
+        # Every Render web service must bind 0.0.0.0 and the $PORT it
+        # assigns (default 10000 locally, to match Render's own default).
+        mcp.run(
+            transport="streamable-http",
+            host="0.0.0.0",
+            port=int(os.environ.get("PORT", 10000)),
+        )
+    else:
+        mcp.run()

@@ -50,6 +50,42 @@ def get_token_path() -> Path:
     return Path(os.environ.get("GOOGLE_OAUTH_TOKEN_PATH", "token.json"))
 
 
+def get_workos_authkit_domain() -> str:
+    """The WorkOS AuthKit domain (e.g. https://your-tenant.authkit.app) that
+    issues and signs bearer tokens for this server's HTTP transport, from
+    the WORKOS_AUTHKIT_DOMAIN environment variable. Only needed when
+    MCP_TRANSPORT=streamable-http -- stdio (local dev, mcp dev) never reads
+    this. See the README's "Deploying" section."""
+    value = os.environ.get("WORKOS_AUTHKIT_DOMAIN")
+    if not value:
+        raise ConfigError(
+            "WORKOS_AUTHKIT_DOMAIN is not set. Set it to your WorkOS AuthKit "
+            'domain (e.g. "https://your-tenant.authkit.app") -- see the '
+            'README\'s "Deploying" section.'
+        )
+    return value
+
+
+def get_mcp_resource_url() -> str:
+    """The public URL this server's MCP endpoint is reachable at, used both
+    as the OAuth resource identifier and the audience bearer tokens must
+    carry. Prefers MCP_PUBLIC_URL; falls back to Render's own auto-injected
+    RENDER_EXTERNAL_URL (set on every Render web service) plus "/mcp". Only
+    needed when MCP_TRANSPORT=streamable-http."""
+    explicit = os.environ.get("MCP_PUBLIC_URL")
+    if explicit:
+        return explicit
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    if render_url:
+        return f"{render_url.rstrip('/')}/mcp"
+    raise ConfigError(
+        "Neither MCP_PUBLIC_URL nor RENDER_EXTERNAL_URL is set. Set "
+        "MCP_PUBLIC_URL to this server's public MCP endpoint URL (e.g. "
+        '"https://your-service.onrender.com/mcp") -- see the README\'s '
+        '"Deploying" section.'
+    )
+
+
 def build_calendar_client() -> CalendarClient:
     """Construct a CalendarClient from environment configuration (and a
     local .env file, if present)."""

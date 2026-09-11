@@ -49,6 +49,52 @@ class TestGetTokenPath:
         assert config.get_token_path() == Path("/etc/secrets/token.json")
 
 
+class TestGetWorkosAuthkitDomain:
+    def test_raises_when_unset(self, monkeypatch):
+        monkeypatch.delenv("WORKOS_AUTHKIT_DOMAIN", raising=False)
+
+        with pytest.raises(config.ConfigError):
+            config.get_workos_authkit_domain()
+
+    def test_raises_when_empty(self, monkeypatch):
+        monkeypatch.setenv("WORKOS_AUTHKIT_DOMAIN", "")
+
+        with pytest.raises(config.ConfigError):
+            config.get_workos_authkit_domain()
+
+    def test_returns_value_when_set(self, monkeypatch):
+        monkeypatch.setenv("WORKOS_AUTHKIT_DOMAIN", "https://my-tenant.authkit.app")
+
+        assert config.get_workos_authkit_domain() == "https://my-tenant.authkit.app"
+
+
+class TestGetMcpResourceUrl:
+    def test_prefers_explicit_public_url(self, monkeypatch):
+        monkeypatch.setenv("MCP_PUBLIC_URL", "https://explicit.example/mcp")
+        monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://from-render.onrender.com")
+
+        assert config.get_mcp_resource_url() == "https://explicit.example/mcp"
+
+    def test_falls_back_to_render_external_url(self, monkeypatch):
+        monkeypatch.delenv("MCP_PUBLIC_URL", raising=False)
+        monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://my-service.onrender.com")
+
+        assert config.get_mcp_resource_url() == "https://my-service.onrender.com/mcp"
+
+    def test_strips_trailing_slash_from_render_external_url(self, monkeypatch):
+        monkeypatch.delenv("MCP_PUBLIC_URL", raising=False)
+        monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://my-service.onrender.com/")
+
+        assert config.get_mcp_resource_url() == "https://my-service.onrender.com/mcp"
+
+    def test_raises_when_neither_is_set(self, monkeypatch):
+        monkeypatch.delenv("MCP_PUBLIC_URL", raising=False)
+        monkeypatch.delenv("RENDER_EXTERNAL_URL", raising=False)
+
+        with pytest.raises(config.ConfigError):
+            config.get_mcp_resource_url()
+
+
 class TestBuildCalendarClient:
     def test_passes_config_through_to_from_credentials(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")

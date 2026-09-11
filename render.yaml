@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: time-tracking-google-calendar-mcp
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /.well-known/oauth-protected-resource/mcp
+    envVars:
+      - key: MCP_TRANSPORT
+        value: streamable-http
+      - key: GOOGLE_CALENDAR_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CREDENTIALS_PATH
+        value: /etc/secrets/credentials.json
+      - key: GOOGLE_OAUTH_TOKEN_PATH
+        value: /etc/secrets/token.json
+      - key: WORKOS_AUTHKIT_DOMAIN
+        sync: false
+
+# This blueprint covers the build/start command and plain env vars only.
+# Two things still need to be done by hand in the Render dashboard after
+# the first deploy -- see the README's "Deploying" section:
+#   - Secret Files credentials.json/token.json (Render's Blueprint spec has
+#     no way to declare Secret File *contents*, by design).
+#   - The WorkOS AuthKit project itself (this repo has no WorkOS account to
+#     provision one from).
