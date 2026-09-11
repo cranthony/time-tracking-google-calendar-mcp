@@ -48,7 +48,12 @@ class TestPublicEvent:
         field_names = {f.name for f in dataclasses.fields(PublicEvent)}
 
         assert field_names.isdisjoint(server.INTERNAL_EVENT_FIELDS)
-        assert field_names == {f.name for f in dataclasses.fields(Event)} - server.INTERNAL_EVENT_FIELDS
+        # is_canceled has no Event equivalent -- it's derived from the
+        # hidden status field, not a field PublicEvent passes through.
+        event_derived_fields = field_names - {"is_canceled"}
+        assert event_derived_fields == {
+            f.name for f in dataclasses.fields(Event)
+        } - server.INTERNAL_EVENT_FIELDS
 
     def test_from_event_drops_is_end_of_day_sleep(self):
         event = _event(id="abc123", priority=1, is_end_of_day_sleep=True)
@@ -67,6 +72,41 @@ class TestPublicEvent:
         assert event.id == "abc123"
         assert event.priority == 1
         assert event.is_end_of_day_sleep is None
+
+    def test_from_event_exposes_cancellation_with_every_other_field_none(self):
+        event = _event(id="abc123", status="cancelled", priority=1, location="Room")
+
+        public_event = PublicEvent.from_event(event)
+
+        assert public_event.id == "abc123"
+        assert public_event.is_canceled is True
+        assert public_event.summary is None
+        assert public_event.start is None
+        assert public_event.end is None
+        assert public_event.priority is None
+        assert public_event.location is None
+
+    def test_from_event_is_canceled_false_for_a_confirmed_event(self):
+        event = _event(id="abc123", status="confirmed")
+
+        public_event = PublicEvent.from_event(event)
+
+        assert public_event.is_canceled is False
+        assert public_event.summary == event.summary
+
+    def test_to_event_maps_is_canceled_true_to_cancelled_status(self):
+        public_event = _public_event(id="abc123", is_canceled=True)
+
+        event = public_event.to_event()
+
+        assert event.status == "cancelled"
+
+    def test_to_event_setting_is_canceled_false_has_no_effect(self):
+        public_event = _public_event(id="abc123", is_canceled=False)
+
+        event = public_event.to_event()
+
+        assert event.status is None
 
 
 class TestListEvents:
@@ -156,15 +196,18 @@ class TestCreateEvent:
 
         assert {e.id for e in result} == {"abc123", "def456"}
 
-    def test_omits_cancelled_events_from_result(self, monkeypatch):
+    def test_includes_cancelled_events_marked_is_canceled(self, monkeypatch):
         client = _fake_client(monkeypatch)
         created = _event(id="abc123")
-        cancelled = _event(id="def456", status="cancelled")
+        cancelled = _event(id="def456", status="cancelled", summary="Should be hidden")
         client.create_event_with_reallocation.return_value = [created, cancelled]
 
         result = server.create_event(_public_event())
 
-        assert [e.id for e in result] == ["abc123"]
+        assert [e.id for e in result] == ["abc123", "def456"]
+        cancelled_public_event = result[1]
+        assert cancelled_public_event.is_canceled is True
+        assert cancelled_public_event.summary is None
 
     def test_wraps_reallocation_conflict_error_as_tool_error(self, monkeypatch):
         client = _fake_client(monkeypatch)
