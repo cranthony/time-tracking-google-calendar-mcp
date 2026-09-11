@@ -264,6 +264,8 @@ def reallocate_for_new_event(
         None,
     )
     if preceding_index is not None:
+        if preceding_index > 0:
+            raise ValueError("day_events must start at the new event's start time")
         preceding = day_events[preceding_index]
         preceding_min = _effective_min_duration(preceding, resolved_options.min_duration_overrides)
         time_before_new_event = new_event.start - preceding.start
@@ -305,30 +307,29 @@ def reallocate_for_new_event(
     head: Span | None = None
     tail: Span | None = None
 
-    def append_span(span: Span, *, poolable: bool) -> None:
+    def append_span(span: Span) -> None:
         nonlocal head, tail
         if tail is None:
             head = span
         else:
             tail.next = span
         tail = span
-        if poolable:
-            priority = (
-                math.inf if span.schedulable is None else _effective_priority(span.schedulable)
-            )
-            spans_by_priority[priority].append(span)
+        
+        priority = (
+            math.inf if span.schedulable is None else _effective_priority(span.schedulable)
+        )
+        spans_by_priority[priority].append(span)
 
     for i, event in enumerate(day_events):
         min_duration = _effective_min_duration(event, resolved_options.min_duration_overrides)
         append_span(
-            Span(schedulable=event, duration=_duration(event), min_duration=min_duration),
-            poolable=event is not new_event,
+            Span(schedulable=event, duration=_duration(event), min_duration=min_duration)
         )
         if i + 1 < len(day_events):
             gap = day_events[i + 1].start - event.end
             if gap > timedelta(0):
                 append_span(
-                    Span(schedulable=None, duration=gap, min_duration=timedelta(0)), poolable=True
+                    Span(schedulable=None, duration=gap, min_duration=timedelta(0))
                 )
 
     # Step 5: reclaim greedily, worst tier first.
@@ -392,9 +393,9 @@ def reallocate_for_new_event(
                 new_start = current_end
                 new_end = new_start + span.duration
                 if original is None or original[0] != new_start or original[1] != new_end:
-                    event.start = new_start
-                    event.end = new_end
                     changed.append(event)
+                event.start = new_start
+                event.end = new_end
                 current_end = new_end
         else:
             current_end += span.duration
