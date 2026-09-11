@@ -212,6 +212,14 @@ class CalendarClient:
     def has_overlap(self, start: datetime, end: datetime) -> bool:
         return any(event.overlaps(start, end) for event in self.list_events(start, end))
 
+    def get_event(self, event_id: str) -> Event:
+        response = (
+            self._service.events()
+            .get(calendarId=self._calendar_id, eventId=event_id)
+            .execute()
+        )
+        return Event.from_api(response)
+
     def create_event(self, event: Event) -> Event:
         response = (
             self._service.events()

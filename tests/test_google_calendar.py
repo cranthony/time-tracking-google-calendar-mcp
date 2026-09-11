@@ -302,6 +302,22 @@ class TestCalendarClientListEvents:
         assert events == []
 
 
+class TestCalendarClientGetEvent:
+    def test_get_event_returns_parsed_event(self):
+        service = MagicMock()
+        service.events.return_value.get.return_value.execute.return_value = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        client = make_client(service)
+
+        event = client.get_event("abc123")
+
+        assert event.id == "abc123"
+        service.events.return_value.get.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID, eventId="abc123"
+        )
+
+
 class TestCalendarClientHasOverlap:
     def test_has_overlap_true_when_existing_event_overlaps(self):
         service = MagicMock()

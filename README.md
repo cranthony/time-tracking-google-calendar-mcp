@@ -29,6 +29,27 @@ pip install -r requirements-dev.txt
 
 Google Calendar API access lives in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), behind a `CalendarClient` class and a plain `Event` dataclass. `server.py`'s MCP tools call into this module rather than talking to `googleapiclient`/OAuth directly, so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead.
 
+## MCP tools
+
+[`server.py`](server.py) exposes the calendar as five MCP tools:
+
+| Tool | Signature | Status |
+| --- | --- | --- |
+| `list_events` | `(min_time, max_time) -> list[Event]` | Implemented |
+| `get_event` | `(id) -> Event` | Implemented |
+| `update_event` | `(event: Event) -> list[Event]` | Raises `NotImplementedError` |
+| `create_event` | `(event: Event) -> list[Event]` | Raises `NotImplementedError` |
+| `delete_event` | `(id) -> list[Event]` | Raises `NotImplementedError` |
+
+`update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[Event]` rather than a single `Event`.
+
+### Why tools, not resources
+
+MCP has both **tools** (model-controlled: the model decides when to call one, with whatever arguments it computes, as part of its own reasoning) and **resources** (application-controlled: a human typically browses and attaches one via the host's UI, like Claude Desktop's "Attach from MCP" picker). This server only uses tools, for two reasons:
+
+- **Portability.** Resources depend on the host having built UI (or another bridging mechanism) for the model to reach them at all; a lot of MCP clients — agentic ones especially — only implement tool-calling and skip resources entirely. Tools work everywhere.
+- **Fit.** The natural workflow here is model-driven, not human-browsing-driven: the model discovers an event's ID via `list_events`, then immediately wants to act on it — fetch details, update, delete. That's a tool-calling pattern (one tool's output, the `id` field, feeds directly into the next tool's input) with no need for a resource-URI layer in between. Nobody is going to browse a picker UI for an event by its opaque Google Calendar ID.
+
 ## Google OAuth credentials
 
 `CalendarClient.from_credentials`, in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), needs two files, neither of which should ever be committed:
@@ -94,7 +115,7 @@ uv --version
 
 If you only need to run the server (not the Inspector), `python server.py` works without Node.js or uv.
 
-`server.py` currently contains a minimal scaffold (an `add` tool and a `greeting` resource) from the [MCP Python SDK quickstart](https://py.sdk.modelcontextprotocol.io/), ready to be extended with Google Calendar-backed tools.
+See [MCP tools](#mcp-tools) above for what `server.py` currently exposes.
 
 ## Running tests
 
