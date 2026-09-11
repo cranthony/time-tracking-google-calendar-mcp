@@ -30,6 +30,7 @@ pip install -r requirements-dev.txt
 - [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead.
 - [`server.py`](server.py) — the MCP server; its tools call into `calendar_clients/google_calendar.py` rather than talking to `googleapiclient`/OAuth directly.
 - [`create_calendar.py`](create_calendar.py) — a standalone bootstrap script (not an MCP tool) that creates the dedicated calendar this app needs — see [Calendar access model](#calendar-access-model) below.
+- [`calendar_cli.py`](calendar_cli.py) — a dev-only command-line tool for poking at the calendar directly (`list`/`get`) without going through an MCP host — see [Command-line utilities](#command-line-utilities) below.
 - [`config.py`](config.py) — reads configuration from environment variables — see [Configuration](#configuration) below.
 - [`tests/`](tests/) — unit tests for the above, mocking the Google API rather than hitting it.
 
@@ -138,6 +139,23 @@ uv --version
 If you only need to run the server (not the Inspector), `python server.py` works without Node.js or uv.
 
 See [MCP tools](#mcp-tools) above for what `server.py` currently exposes.
+
+## Command-line utilities
+
+[`calendar_cli.py`](calendar_cli.py) is a dev tool for calling the calendar directly from a terminal, without going through an MCP host — useful for poking around or debugging. It's not named `calendar.py`: that would shadow Python's stdlib `calendar` module, which `google-auth`/`httplib2` (both used by `calendar_clients/google_calendar.py`) import internally. Its one extra dependency, `pytimeparse`, lives in `requirements-dev.txt`, not `requirements.txt` — install the dev dependencies (see [Setup](#setup)) to use it.
+
+```bash
+# Events from 1 hour ago to 1 hour from now (the default window)
+python calendar_cli.py list
+
+# Events from 30 minutes ago to 2 hours from now
+python calendar_cli.py list 30m 2h
+
+# A single event by id
+python calendar_cli.py get <event-id>
+```
+
+`from`/`to` are each a duration relative to *now* — parsed with [pytimeparse](https://pypi.org/project/pytimeparse/) (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`) — giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
 
 ## Running tests
 
