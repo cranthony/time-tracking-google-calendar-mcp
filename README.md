@@ -39,7 +39,7 @@ This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [
 
 - This app can only read and write events on calendars **it has created itself**.
 - It has **no access to the user's existing calendars** — not `"primary"`, not any calendar they made by hand in the Calendar UI. API calls against any calendar this app didn't create itself will fail.
-- This is deliberate: a compromised or misbehaving instance of this app cannot read or touch anything outside the dedicated calendar(s) it made for itself. The trade-off is that this app can never see someone's real, existing commitments — `has_overlap` only ever checks against events this app itself created, not the user's actual full schedule.
+- This is deliberate: a compromised or misbehaving instance of this app cannot read or touch anything outside the dedicated calendar(s) it made for itself.
 
 **Bootstrapping:** there's no calendar to operate on until this app creates one. Run [`create_calendar.py`](create_calendar.py) once — it only needs `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` (see [Configuration](#configuration) below), not `GOOGLE_CALENDAR_ID` — and it prints the new calendar's ID:
 
