@@ -147,6 +147,10 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# Google OAuth credentials (see README: Google OAuth credentials)
+credentials.json
+token.json
+
 # Environments
 .env
 .envrc
