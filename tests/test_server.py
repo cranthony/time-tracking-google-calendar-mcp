@@ -288,12 +288,14 @@ class TestCreateEvent:
 class TestDeleteEvent:
     def test_delegates_to_calendar_client(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        client.get_event.return_value = _event(id="abc123", status="confirmed")
+        client.update_event.return_value = _event(id="abc123", status="cancelled")
 
         result = server.delete_event("abc123")
 
-        client.get_event.assert_called_once_with("abc123")
-        client.delete_event.assert_called_once_with("abc123")
+        sent_event = client.update_event.call_args[0][0]
+        assert sent_event.id == "abc123"
+        assert sent_event.status == "cancelled"
+        client.delete_event.assert_not_called()
         assert len(result) == 1
         assert result[0].id == "abc123"
         assert result[0].is_cancelled is True

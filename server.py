@@ -168,11 +168,8 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
 @mcp.tool()
 def delete_event(id: str) -> list[PublicEvent]:
     """Delete an event by its ID. Returns the events affected by the deletion."""
-    client = get_calendar_client()
-    event = client.get_event(id)
-    client.delete_event(id)
-    event.status = "cancelled"
-    return [PublicEvent.from_event(event)]
+    cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
+    return [PublicEvent.from_event(cancelled)]
 
 
 if __name__ == "__main__":
