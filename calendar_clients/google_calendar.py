@@ -405,15 +405,19 @@ class CalendarClient:
         needed to make room -- the same as `create_event_with_reallocation`,
         but for moving/resizing an event that already exists instead of
         creating a new one. `updated_event`'s own prior position is
-        excluded from `list_day_events(updated_event.start)` first, since
-        `reallocate_for_new_event` requires that a moved event not already
-        appear in `day_events` -- see its docstring.
+        excluded from `day_events` first, since `reallocate_for_new_event`
+        requires that a moved event not already appear in `day_events` --
+        see its docstring.
 
         `updated_event.start`/`.end` may be given individually -- either
-        may be left `None` to mean "keep this event's current value",
-        which is looked up (see `_current_event`) and filled in before
-        reallocating. At least one of the two must be given, since
-        reallocation needs a real span to make room for.
+        may be left `None` to mean "keep this event's current value". At
+        least one of the two must be given, since reallocation needs a
+        real span to make room for. Whichever is missing is filled in from
+        `list_day_events`'s own result below (the same call already made
+        for reallocation -- no second fetch) if this event is in it,
+        falling back to a direct `get_event` only if it isn't (e.g. the
+        one given value put it on a different day than its prior
+        position).
         """
         if updated_event.id is None:
             raise ValueError("updated_event.id is required to update an event with reallocation")
@@ -422,34 +426,21 @@ class CalendarClient:
                 "updated_event.start and/or updated_event.end are required to update an "
                 "event with reallocation"
             )
+
+        day_events = self.list_day_events(updated_event.start or updated_event.end)
+
         if updated_event.start is None or updated_event.end is None:
-            current = self._current_event(
-                updated_event.id, updated_event.start or updated_event.end
-            )
+            current = next(
+                (event for event in day_events if event.id == updated_event.id),
+                None,
+            ) or self.get_event(updated_event.id)
             if updated_event.start is None:
                 updated_event.start = current.start
             if updated_event.end is None:
                 updated_event.end = current.end
 
-        day_events = [
-            event
-            for event in self.list_day_events(updated_event.start)
-            if event.id != updated_event.id
-        ]
+        day_events = [event for event in day_events if event.id != updated_event.id]
         return self._apply_reallocation(day_events, updated_event, options)
-
-    def _current_event(self, event_id: str, anchor: datetime) -> Event:
-        """`event_id`'s current (pre-update) state, for
-        `update_event_and_reallocate` to fill in whichever of `start`/`end`
-        its caller left unset. Looks for it in `list_day_events(anchor)`
-        first -- cheap when `anchor` is a real `start`, since that's the
-        same day reallocation itself needs -- falling back to a direct
-        `get_event` only if it's not there (e.g. `anchor` was actually the
-        new `end`, or the event moved outside that window)."""
-        for event in self.list_day_events(anchor):
-            if event.id == event_id:
-                return event
-        return self.get_event(event_id)
 
     def _apply_reallocation(
         self, day_events: list[Event], event: Event, options: ReallocationOptions

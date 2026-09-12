@@ -741,6 +741,7 @@ class TestCalendarClientUpdateEventAndReallocate:
 
         assert captured["event"].end == current_end
         client.get_event.assert_not_called()
+        client.list_events.assert_called_once()
 
     def test_fills_in_missing_start_from_list_day_events(self, monkeypatch):
         client = make_client(MagicMock())
@@ -766,6 +767,7 @@ class TestCalendarClientUpdateEventAndReallocate:
 
         assert captured["event"].start == start
         client.get_event.assert_not_called()
+        client.list_events.assert_called_once()
 
     def test_falls_back_to_get_event_when_not_found_in_list_day_events(self, monkeypatch):
         # Only `end` is given, so the initial lookup anchors list_day_events
@@ -795,6 +797,7 @@ class TestCalendarClientUpdateEventAndReallocate:
         client.update_event_and_reallocate(updated_event, ReallocationOptions())
 
         client.get_event.assert_called_once_with("abc123")
+        client.list_events.assert_called_once()
         assert captured["event"].start == real_start
 
     def test_excludes_its_own_prior_position_from_day_events(self):
