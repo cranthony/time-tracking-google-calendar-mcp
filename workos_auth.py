@@ -34,7 +34,13 @@ class WorkOSTokenVerifier(TokenVerifier):
     """
 
     def __init__(self, *, authkit_domain: str, resource: str) -> None:
-        self._authkit_domain = authkit_domain
+        # Trailing slashes are easy to pick up when copying a URL out of a
+        # browser or dashboard, and break both the JWKS URL below (a
+        # double slash there gets redirected, which PyJWKClient can't
+        # follow) and the issuer check in _verify (WorkOS's real `iss`
+        # claim never has one, so an exact-string comparison against a
+        # slashed value never matches) -- strip it defensively.
+        self._authkit_domain = authkit_domain.rstrip("/")
         self._resource = resource
         # `{authkit_domain}/oauth2/jwks` is the JWKS endpoint WorkOS's own
         # MCP docs use to verify these tokens (a different endpoint from
@@ -44,7 +50,7 @@ class WorkOSTokenVerifier(TokenVerifier):
         # cache_keys=True: fetch WorkOS's signing keys once and reuse them
         # by `kid` for `lifespan` seconds, rather than hitting the network
         # on every single request.
-        self._jwks_client = jwt.PyJWKClient(f"{authkit_domain}/oauth2/jwks", cache_keys=True)
+        self._jwks_client = jwt.PyJWKClient(f"{self._authkit_domain}/oauth2/jwks", cache_keys=True)
 
     async def verify_token(self, token: str) -> AccessToken | None:
         try:
