@@ -130,7 +130,7 @@ To set that up:
 2. When creating it, you'll be asked whether to require PKCE — enable it. Claude.ai, as a Dynamic-Client-Registration-registered client, performs PKCE regardless (OAuth 2.1, which the MCP authorization spec is built on, mandates it for every authorization-code flow), so requiring it here costs nothing and rules out a real class of attack (authorization-code interception) instead of merely trusting the client to do it.
 3. Under **Connect → Configuration**, turn on **"Allow MCP clients to authenticate using Dynamic Client Registration (DCR) or Client ID Metadata Document (CIMD)"** — this is required: it's off by default, and it's what lets Claude.ai register itself as a client automatically, instead of you pre-registering one by hand.
 4. Add this server's deployed URL plus `/mcp` (e.g. `https://your-service.onrender.com/mcp`) as a **Resource Indicator**, and mark it as the default one.
-5. Set `WORKOS_AUTHKIT_DOMAIN` on Render to your application's AuthKit domain (shown in the WorkOS dashboard, e.g. `https://your-tenant.authkit.app`).
+5. Find your AuthKit domain under the **Domains** section of the WorkOS Dashboard sidebar (not the application settings above — it's per-environment, not per-application). In a Sandbox environment WorkOS auto-assigns one that looks like `https://your-tenant.authkit.app`; in a Production environment you'll instead see a **Configure AuthKit domain** button to set one up. Set `WORKOS_AUTHKIT_DOMAIN` on Render to that value.
 
 With both in place, set `MCP_TRANSPORT=streamable-http` (already in `render.yaml`) and deploy. `MCP_PUBLIC_URL` doesn't need setting explicitly on Render — it's derived from `RENDER_EXTERNAL_URL`, which Render provides automatically.
 
