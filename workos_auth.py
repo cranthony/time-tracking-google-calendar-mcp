@@ -20,9 +20,12 @@ https://workos.com/docs/authkit/mcp
 from __future__ import annotations
 
 import asyncio
+import logging
 
 import jwt
 from mcp.server.auth.provider import AccessToken, TokenVerifier
+
+logger = logging.getLogger(__name__)
 
 
 class WorkOSTokenVerifier(TokenVerifier):
@@ -49,7 +52,17 @@ class WorkOSTokenVerifier(TokenVerifier):
             # least the first time, and whenever the key cache expires) --
             # run them off the event loop rather than stalling it.
             claims = await asyncio.to_thread(self._verify, token)
-        except jwt.PyJWTError:
+        except jwt.PyJWTError as exc:
+            # Never log the token itself -- only why it was rejected, and
+            # what we expected, so a real misconfiguration (wrong issuer,
+            # wrong audience, ...) is diagnosable from the server's logs
+            # instead of every rejection looking identical.
+            logger.warning(
+                "Rejected bearer token: %s (expected issuer=%r, audience=%r)",
+                exc,
+                self._authkit_domain,
+                self._resource,
+            )
             return None
         return AccessToken(
             token=token,
