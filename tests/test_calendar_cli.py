@@ -264,6 +264,99 @@ class TestMainUpdateProperties:
         assert sent_event.location is None
 
 
+class TestMainUpdate:
+    def test_builds_event_and_delegates_to_reallocation(self, capsys, monkeypatch):
+        client = MagicMock()
+        client.update_event_and_reallocate.return_value = [_event(summary="Moved")]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "calendar_cli.py",
+                "update",
+                "abc123",
+                "start=2026-01-01T09:00:00Z",
+                "end=2026-01-01T09:30:00Z",
+                "priority=1",
+            ],
+        )
+
+        calendar_cli.main()
+
+        (sent_event, options), _ = client.update_event_and_reallocate.call_args
+        assert sent_event.id == "abc123"
+        assert sent_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert sent_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert sent_event.priority == 1
+        assert options.split_threshold_minutes is None
+        out = capsys.readouterr().out
+        assert "summary: Moved" in out
+
+    def test_prints_every_affected_event(self, monkeypatch, capsys):
+        client = MagicMock()
+        client.update_event_and_reallocate.return_value = [
+            _event(id="abc123", summary="Moved"),
+            _event(id="def456", summary="Shrunk"),
+        ]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "calendar_cli.py",
+                "update",
+                "abc123",
+                "start=2026-01-01T09:00:00Z",
+                "end=2026-01-01T09:30:00Z",
+            ],
+        )
+
+        calendar_cli.main()
+
+        out = capsys.readouterr().out
+        assert "abc123" in out
+        assert "def456" in out
+
+    def test_allows_start_without_end(self, monkeypatch):
+        client = MagicMock()
+        client.update_event_and_reallocate.return_value = [_event()]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "update", "abc123", "start=2026-01-01T09:00:00Z"]
+        )
+
+        calendar_cli.main()
+
+        sent_event = client.update_event_and_reallocate.call_args[0][0]
+        assert sent_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert sent_event.end is None
+
+    def test_allows_end_without_start(self, monkeypatch):
+        client = MagicMock()
+        client.update_event_and_reallocate.return_value = [_event()]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "update", "abc123", "end=2026-01-01T09:30:00Z"]
+        )
+
+        calendar_cli.main()
+
+        sent_event = client.update_event_and_reallocate.call_args[0][0]
+        assert sent_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert sent_event.start is None
+
+    def test_requires_start_or_end(self, monkeypatch):
+        client = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update", "abc123", "priority=1"])
+
+        with pytest.raises(SystemExit):
+            calendar_cli.main()
+
+        client.update_event_and_reallocate.assert_not_called()
+
+
 class TestMainCreate:
     def test_builds_event_and_delegates_to_reallocation(self, capsys, monkeypatch):
         client = MagicMock()
@@ -336,3 +429,15 @@ class TestMainCreate:
             calendar_cli.main()
 
         client.create_event_with_reallocation.assert_not_called()
+
+
+class TestMainDelete:
+    def test_deletes_event(self, capsys, monkeypatch):
+        client = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "delete", "abc123"])
+
+        calendar_cli.main()
+
+        client.delete_event.assert_called_once_with("abc123")
+        assert "abc123" in capsys.readouterr().out

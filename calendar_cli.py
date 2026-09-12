@@ -6,7 +6,9 @@ Usage:
     python calendar_cli.py list [from] [to]
     python calendar_cli.py get <id>
     python calendar_cli.py update_properties <id> key=value [key=value ...]
+    python calendar_cli.py update <id> key=value [key=value ...]
     python calendar_cli.py create key=value [key=value ...]
+    python calendar_cli.py delete <id>
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -15,12 +17,21 @@ Usage:
 - `update_properties` sets the given attributes on the event and patches
   them in, without fetching it first — any attribute not given is left
   untouched.
+- `update` moves/resizes an existing event (at least one of `start`/`end`
+  is required; whichever is omitted is kept as the event's current
+  value) via CalendarClient.update_event_and_reallocate, reallocating
+  time from the rest of its day as needed to make room for its new
+  position — see utilities/reallocation.py. Prints every event that was
+  created or changed as a result. Use `update_properties` instead for a
+  plain patch that doesn't need to make room for anything (e.g. renaming
+  an event without moving it).
 - `create` builds an Event from the given attributes (`summary`, `start`,
   and `end` are required) and creates it via
   CalendarClient.create_event_with_reallocation, reallocating time from
   the rest of its day as needed to make room — see
   utilities/reallocation.py. Prints every event that was created or
   changed as a result.
+- `delete` deletes a single event by its id.
 """
 
 from __future__ import annotations
@@ -87,6 +98,12 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
 
 _REQUIRED_CREATE_ATTRIBUTES = frozenset({"summary", "start", "end"})
 """Event attributes `create` won't build an event without."""
+
+_UPDATE_POSITION_ATTRIBUTES = frozenset({"start", "end"})
+"""`update` requires at least one of these -- reallocation needs a real
+position to make room for, unlike `update_properties`'s plain patch. Either
+may be omitted: CalendarClient.update_event_and_reallocate fills in
+whichever one is missing from the event's current value."""
 
 
 def _parse_key_value(value: str) -> tuple[str, Any]:
@@ -173,6 +190,24 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    update_reallocate_parser = subparsers.add_parser(
+        "update",
+        help="Move/resize an existing event, reallocating time from its day as needed.",
+    )
+    update_reallocate_parser.add_argument("id", help="The event id.")
+    update_reallocate_parser.add_argument(
+        "properties",
+        metavar="key=value",
+        nargs="+",
+        type=_parse_key_value,
+        help=(
+            "One or more Event attribute=value pairs; at least one of "
+            f"{', '.join(sorted(_UPDATE_POSITION_ATTRIBUTES))} is required (the other is "
+            "kept as-is if omitted). Valid attributes: "
+            f"{', '.join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))}."
+        ),
+    )
+
     create_parser = subparsers.add_parser(
         "create", help="Create a new event, reallocating time from its day as needed."
     )
@@ -187,6 +222,9 @@ def _build_parser() -> argparse.ArgumentParser:
             f"attributes: {', '.join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))}."
         ),
     )
+
+    delete_parser = subparsers.add_parser("delete", help="Delete an event by id.")
+    delete_parser.add_argument("id", help="The event id.")
 
     return parser
 
@@ -212,6 +250,17 @@ def main() -> None:
             setattr(event, key, value)
         updated_event = client.update_event(event)
         print(_format_event_details(updated_event))
+    elif args.command == "update":
+        fields = dict(args.properties)
+        if not _UPDATE_POSITION_ATTRIBUTES & fields.keys():
+            parser.error(
+                f"update requires at least one of: {', '.join(sorted(_UPDATE_POSITION_ATTRIBUTES))}"
+            )
+        updated_event = Event(id=args.id, **fields)
+        applied_events = client.update_event_and_reallocate(updated_event, ReallocationOptions())
+        for event in applied_events:
+            print(_format_event_details(event))
+            print()
     elif args.command == "create":
         fields = dict(args.properties)
         missing = _REQUIRED_CREATE_ATTRIBUTES - fields.keys()
@@ -222,6 +271,9 @@ def main() -> None:
         for event in applied_events:
             print(_format_event_details(event))
             print()
+    elif args.command == "delete":
+        client.delete_event(args.id)
+        print(f"Deleted event {args.id}.")
 
 
 if __name__ == "__main__":

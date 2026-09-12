@@ -167,9 +167,57 @@ class TestGetEvent:
 
 
 class TestUpdateEvent:
-    def test_raises_not_implemented(self):
-        with pytest.raises(NotImplementedError):
-            server.update_event(_public_event())
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        updated = _event(id="abc123", summary="Renamed")
+        client.update_event_and_reallocate.return_value = [updated]
+        public_event = _public_event(id="abc123", summary="Renamed")
+
+        result = server.update_event(public_event)
+
+        assert result == [PublicEvent.from_event(updated)]
+        (call_updated_event, call_options), _ = client.update_event_and_reallocate.call_args
+        assert call_updated_event == public_event.to_event()
+        assert call_options == ReallocationOptions()
+
+    def test_result_includes_every_affected_event(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        updated = _event(id="abc123")
+        shrunk = _event(id="def456", summary="Shrunk")
+        client.update_event_and_reallocate.return_value = [updated, shrunk]
+
+        result = server.update_event(_public_event(id="abc123"))
+
+        assert {e.id for e in result} == {"abc123", "def456"}
+
+    def test_wraps_reallocation_conflict_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        preceding = _event(id="def456")
+        client.update_event_and_reallocate.side_effect = ReallocationConflictError(
+            "no room",
+            preceding_event=preceding,
+            preceding_min_duration=None,
+            new_start_time=preceding.start,
+        )
+
+        with pytest.raises(ToolError):
+            server.update_event(_public_event(id="abc123"))
+
+    def test_wraps_reallocation_shortfall_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.update_event_and_reallocate.side_effect = ReallocationShortfallError("no room")
+
+        with pytest.raises(ToolError):
+            server.update_event(_public_event(id="abc123"))
+
+    def test_wraps_value_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.update_event_and_reallocate.side_effect = ValueError(
+            "updated_event.id is required to update an event with reallocation"
+        )
+
+        with pytest.raises(ToolError):
+            server.update_event(_public_event(id="abc123"))
 
 
 class TestCreateEvent:
@@ -238,9 +286,17 @@ class TestCreateEvent:
 
 
 class TestDeleteEvent:
-    def test_raises_not_implemented(self):
-        with pytest.raises(NotImplementedError):
-            server.delete_event("abc123")
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.get_event.return_value = _event(id="abc123", status="confirmed")
+
+        result = server.delete_event("abc123")
+
+        client.get_event.assert_called_once_with("abc123")
+        client.delete_event.assert_called_once_with("abc123")
+        assert len(result) == 1
+        assert result[0].id == "abc123"
+        assert result[0].is_cancelled is True
 
 
 class TestGetCalendarClient:
