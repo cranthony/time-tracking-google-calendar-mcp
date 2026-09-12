@@ -395,10 +395,41 @@ class CalendarClient:
         if new_event.start is None or new_event.end is None:
             raise ValueError("new_event.start and new_event.end are required to create an event")
         day_events = self.list_day_events(new_event.start)
-        plan = reallocate_for_new_event(day_events, new_event, options)
+        return self._apply_reallocation(day_events, new_event, options)
+
+    def update_event_and_reallocate(
+        self, updated_event: Event, options: ReallocationOptions
+    ) -> list[Event]:
+        """Update `updated_event` (must already have an `id`) at its new
+        `start`/`end`, reallocating time from the rest of its day as
+        needed to make room -- the same as `create_event_with_reallocation`,
+        but for moving/resizing an event that already exists instead of
+        creating a new one. `updated_event`'s own prior position is
+        excluded from `list_day_events(updated_event.start)` first, since
+        `reallocate_for_new_event` requires that a moved event not already
+        appear in `day_events` -- see its docstring.
+        """
+        if updated_event.id is None:
+            raise ValueError("updated_event.id is required to update an event with reallocation")
+        if updated_event.start is None or updated_event.end is None:
+            raise ValueError(
+                "updated_event.start and updated_event.end are required to update an "
+                "event with reallocation"
+            )
+        day_events = [
+            event
+            for event in self.list_day_events(updated_event.start)
+            if event.id != updated_event.id
+        ]
+        return self._apply_reallocation(day_events, updated_event, options)
+
+    def _apply_reallocation(
+        self, day_events: list[Event], event: Event, options: ReallocationOptions
+    ) -> list[Event]:
+        plan = reallocate_for_new_event(day_events, event, options)
         return [
-            self.create_event(event) if event.id is None else self.update_event(event)
-            for event in plan
+            self.create_event(planned) if planned.id is None else self.update_event(planned)
+            for planned in plan
         ]
 
     def get_event(self, event_id: str) -> Event:

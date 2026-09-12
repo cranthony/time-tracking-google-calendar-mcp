@@ -6,6 +6,7 @@ Usage:
     python calendar_cli.py list [from] [to]
     python calendar_cli.py get <id>
     python calendar_cli.py update_properties <id> key=value [key=value ...]
+    python calendar_cli.py update <id> key=value [key=value ...]
     python calendar_cli.py create key=value [key=value ...]
     python calendar_cli.py delete <id>
 
@@ -16,6 +17,13 @@ Usage:
 - `update_properties` sets the given attributes on the event and patches
   them in, without fetching it first — any attribute not given is left
   untouched.
+- `update` moves/resizes an existing event (`start` and `end` are
+  required) via CalendarClient.update_event_and_reallocate, reallocating
+  time from the rest of its day as needed to make room for its new
+  position — see utilities/reallocation.py. Prints every event that was
+  created or changed as a result. Use `update_properties` instead for a
+  plain patch that doesn't need to make room for anything (e.g. renaming
+  an event without moving it).
 - `create` builds an Event from the given attributes (`summary`, `start`,
   and `end` are required) and creates it via
   CalendarClient.create_event_with_reallocation, reallocating time from
@@ -89,6 +97,11 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
 
 _REQUIRED_CREATE_ATTRIBUTES = frozenset({"summary", "start", "end"})
 """Event attributes `create` won't build an event without."""
+
+_REQUIRED_UPDATE_ATTRIBUTES = frozenset({"start", "end"})
+"""Event attributes `update` won't build an event without -- reallocation
+needs a real (start, end) span to make room for, unlike `update_properties`'s
+plain patch."""
 
 
 def _parse_key_value(value: str) -> tuple[str, Any]:
@@ -175,6 +188,23 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    update_reallocate_parser = subparsers.add_parser(
+        "update",
+        help="Move/resize an existing event, reallocating time from its day as needed.",
+    )
+    update_reallocate_parser.add_argument("id", help="The event id.")
+    update_reallocate_parser.add_argument(
+        "properties",
+        metavar="key=value",
+        nargs="+",
+        type=_parse_key_value,
+        help=(
+            "One or more Event attribute=value pairs; "
+            f"{', '.join(sorted(_REQUIRED_UPDATE_ATTRIBUTES))} are required. Valid "
+            f"attributes: {', '.join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))}."
+        ),
+    )
+
     create_parser = subparsers.add_parser(
         "create", help="Create a new event, reallocating time from its day as needed."
     )
@@ -217,6 +247,16 @@ def main() -> None:
             setattr(event, key, value)
         updated_event = client.update_event(event)
         print(_format_event_details(updated_event))
+    elif args.command == "update":
+        fields = dict(args.properties)
+        missing = _REQUIRED_UPDATE_ATTRIBUTES - fields.keys()
+        if missing:
+            parser.error(f"update requires: {', '.join(sorted(missing))}")
+        updated_event = Event(id=args.id, **fields)
+        applied_events = client.update_event_and_reallocate(updated_event, ReallocationOptions())
+        for event in applied_events:
+            print(_format_event_details(event))
+            print()
     elif args.command == "create":
         fields = dict(args.properties)
         missing = _REQUIRED_CREATE_ATTRIBUTES - fields.keys()
