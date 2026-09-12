@@ -90,3 +90,20 @@ class TestWorkOSTokenVerifier:
         result = await verifier.verify_token(token)
 
         assert result.scopes == ["calendar:read", "calendar:write"]
+
+    def test_trailing_slash_on_authkit_domain_is_stripped(self):
+        verifier = WorkOSTokenVerifier(authkit_domain=AUTHKIT_DOMAIN + "/", resource=RESOURCE)
+
+        assert verifier._authkit_domain == AUTHKIT_DOMAIN
+        assert verifier._jwks_client.uri == f"{AUTHKIT_DOMAIN}/oauth2/jwks"
+
+    async def test_token_issued_for_unslashed_domain_verifies_when_configured_with_a_trailing_slash(
+        self, keypair
+    ):
+        private_key, public_key = keypair
+        verifier = WorkOSTokenVerifier(authkit_domain=AUTHKIT_DOMAIN + "/", resource=RESOURCE)
+        verifier._jwks_client.get_signing_key_from_jwt = lambda token: SimpleNamespace(key=public_key)
+
+        result = await verifier.verify_token(_token(private_key))
+
+        assert result is not None
