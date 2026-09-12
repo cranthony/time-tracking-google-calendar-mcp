@@ -140,7 +140,11 @@ def get_event(id: str) -> PublicEvent:
 @mcp.tool()
 def update_event(event: PublicEvent) -> list[PublicEvent]:
     """Update an existing event. Returns the events affected by the update."""
-    raise NotImplementedError
+    try:
+        updated = get_calendar_client().update_event(event.to_event())
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+    return [PublicEvent.from_event(updated)]
 
 
 @mcp.tool()
@@ -159,7 +163,11 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
 @mcp.tool()
 def delete_event(id: str) -> list[PublicEvent]:
     """Delete an event by its ID. Returns the events affected by the deletion."""
-    raise NotImplementedError
+    client = get_calendar_client()
+    event = client.get_event(id)
+    client.delete_event(id)
+    event.status = "cancelled"
+    return [PublicEvent.from_event(event)]
 
 
 if __name__ == "__main__":

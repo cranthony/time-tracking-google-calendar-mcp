@@ -61,17 +61,17 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 | --- | --- | --- |
 | `list_events` | `(min_time, max_time) -> list[PublicEvent]` | Implemented |
 | `get_event` | `(id) -> PublicEvent` | Implemented |
-| `update_event` | `(event: PublicEvent) -> list[PublicEvent]` | Raises `NotImplementedError` |
+| `update_event` | `(event: PublicEvent) -> list[PublicEvent]` | Implemented |
 | `create_event` | `(event: PublicEvent) -> list[PublicEvent]` | Implemented |
-| `delete_event` | `(id) -> list[PublicEvent]` | Raises `NotImplementedError` |
+| `delete_event` | `(id) -> list[PublicEvent]` | Implemented |
 
-`update_event`/`create_event`/`delete_event` return the list of events *affected* by the operation (not necessarily just the one event acted on — e.g. a change that resolves an overlap could affect more than one event), which is why their return type is `list[PublicEvent]` rather than a single `PublicEvent`.
+`update_event`/`create_event`/`delete_event` all return a `list[PublicEvent]` rather than a single `PublicEvent`, since `create_event` can affect more than the one event acted on (see below). `update_event` patches the given event directly (via `CalendarClient.update_event`) and `delete_event` deletes it outright (via `CalendarClient.delete_event`) — neither runs reallocation, so each always returns exactly the one event named, wrapped in a single-element list for a consistent return type across all three.
 
 `create_event` makes room for the new event via `utilities/reallocation.py`: it fetches the roughly 24 hours of events starting at the new event's own `start` (via `CalendarClient.list_day_events`, truncated after the first event marked `is_end_of_day_sleep`, if any — that's "the day" reallocation operates on), then calls `reallocate_for_new_event` and applies whatever it returns (creating the new event, and updating — shrinking, moving, splitting, or cancelling — whatever else needed to make room). A `ReallocationConflictError`/`ReallocationShortfallError`/`ValueError` from reallocation is surfaced as a `ToolError`.
 
 Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `INTERNAL_EVENT_FIELDS`, plus `is_cancelled` (which has no `Event` equivalent — it's derived from the hidden `status` field). Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
 
-`list_events`/`get_event` still don't surface a cancelled event at all: `list_events` omits it, and `get_event` raises a `ToolError`. But when an operation like `create_event` cancels an event as a side effect of making room, that cancellation is a direct result of the agent's own action, so it's worth surfacing rather than hiding — its `PublicEvent` comes back with the rest of its fields intact and `is_cancelled=True`. `is_cancelled` only ever moves from `False` to `True`; setting it `False` has no effect, since there's no way to un-cancel an event through this API.
+`list_events`/`get_event` still don't surface a cancelled event at all: `list_events` omits it, and `get_event` raises a `ToolError`. But when an operation like `create_event` cancels an event as a side effect of making room, or `delete_event` removes the event it was asked to, that cancellation is a direct result of the agent's own action, so it's worth surfacing rather than hiding — its `PublicEvent` comes back with the rest of its fields intact and `is_cancelled=True`. `is_cancelled` only ever moves from `False` to `True`; setting it `False` has no effect, since there's no way to un-cancel an event through this API.
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
@@ -197,6 +197,9 @@ python calendar_cli.py update_properties <event-id> priority=1 location="Room A"
 
 # Create a new event, reallocating time from its day as needed
 python calendar_cli.py create summary="Focus block" start=2026-01-01T09:00:00-05:00 end=2026-01-01T10:00:00-05:00 priority=1
+
+# Delete an event by id
+python calendar_cli.py delete <event-id>
 ```
 
 `from`/`to` are each a duration relative to *now* — parsed with [pytimeparse](https://pypi.org/project/pytimeparse/) (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`) — giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.

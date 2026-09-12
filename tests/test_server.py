@@ -167,8 +167,22 @@ class TestGetEvent:
 
 
 class TestUpdateEvent:
-    def test_raises_not_implemented(self):
-        with pytest.raises(NotImplementedError):
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        updated = _event(id="abc123", summary="Renamed")
+        client.update_event.return_value = updated
+        public_event = _public_event(id="abc123", summary="Renamed")
+
+        result = server.update_event(public_event)
+
+        assert result == [PublicEvent.from_event(updated)]
+        client.update_event.assert_called_once_with(public_event.to_event())
+
+    def test_wraps_value_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.update_event.side_effect = ValueError("event.id is required to update an event")
+
+        with pytest.raises(ToolError):
             server.update_event(_public_event())
 
 
@@ -238,9 +252,17 @@ class TestCreateEvent:
 
 
 class TestDeleteEvent:
-    def test_raises_not_implemented(self):
-        with pytest.raises(NotImplementedError):
-            server.delete_event("abc123")
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.get_event.return_value = _event(id="abc123", status="confirmed")
+
+        result = server.delete_event("abc123")
+
+        client.get_event.assert_called_once_with("abc123")
+        client.delete_event.assert_called_once_with("abc123")
+        assert len(result) == 1
+        assert result[0].id == "abc123"
+        assert result[0].is_cancelled is True
 
 
 class TestGetCalendarClient:

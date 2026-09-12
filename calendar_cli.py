@@ -7,6 +7,7 @@ Usage:
     python calendar_cli.py get <id>
     python calendar_cli.py update_properties <id> key=value [key=value ...]
     python calendar_cli.py create key=value [key=value ...]
+    python calendar_cli.py delete <id>
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -21,6 +22,7 @@ Usage:
   the rest of its day as needed to make room — see
   utilities/reallocation.py. Prints every event that was created or
   changed as a result.
+- `delete` deletes a single event by its id.
 """
 
 from __future__ import annotations
@@ -188,6 +190,9 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    delete_parser = subparsers.add_parser("delete", help="Delete an event by id.")
+    delete_parser.add_argument("id", help="The event id.")
+
     return parser
 
 
@@ -222,6 +227,9 @@ def main() -> None:
         for event in applied_events:
             print(_format_event_details(event))
             print()
+    elif args.command == "delete":
+        client.delete_event(args.id)
+        print(f"Deleted event {args.id}.")
 
 
 if __name__ == "__main__":

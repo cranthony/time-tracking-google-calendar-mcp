@@ -336,3 +336,15 @@ class TestMainCreate:
             calendar_cli.main()
 
         client.create_event_with_reallocation.assert_not_called()
+
+
+class TestMainDelete:
+    def test_deletes_event(self, capsys, monkeypatch):
+        client = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "delete", "abc123"])
+
+        calendar_cli.main()
+
+        client.delete_event.assert_called_once_with("abc123")
+        assert "abc123" in capsys.readouterr().out
