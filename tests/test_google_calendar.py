@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -709,13 +709,93 @@ class TestCalendarClientUpdateEventAndReallocate:
                 ReallocationOptions(),
             )
 
-    def test_requires_start_and_end(self):
+    def test_requires_start_or_end(self):
         client = make_client(MagicMock())
 
         with pytest.raises(ValueError):
             client.update_event_and_reallocate(
                 Event(id="abc123", summary="No times"), ReallocationOptions()
             )
+
+    def test_fills_in_missing_end_from_list_day_events(self, monkeypatch):
+        client = make_client(MagicMock())
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        current_end = start + timedelta(hours=1)
+        current = Event(id="abc123", start=start, end=current_end, priority=1)
+        client.list_events = MagicMock(return_value=[current])
+        client.get_event = MagicMock()
+
+        captured = {}
+
+        def fake_reallocate(day_events, event, options):
+            captured["event"] = event
+            return [event]
+
+        monkeypatch.setattr(google_calendar, "reallocate_for_new_event", fake_reallocate)
+        client.update_event = MagicMock(side_effect=lambda event: event)
+
+        new_start = start + timedelta(minutes=15)
+        updated_event = Event(id="abc123", start=new_start, priority=1)
+
+        client.update_event_and_reallocate(updated_event, ReallocationOptions())
+
+        assert captured["event"].end == current_end
+        client.get_event.assert_not_called()
+
+    def test_fills_in_missing_start_from_list_day_events(self, monkeypatch):
+        client = make_client(MagicMock())
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        end = start + timedelta(hours=1)
+        current = Event(id="abc123", start=start, end=end, priority=1)
+        client.list_events = MagicMock(return_value=[current])
+        client.get_event = MagicMock()
+
+        captured = {}
+
+        def fake_reallocate(day_events, event, options):
+            captured["event"] = event
+            return [event]
+
+        monkeypatch.setattr(google_calendar, "reallocate_for_new_event", fake_reallocate)
+        client.update_event = MagicMock(side_effect=lambda event: event)
+
+        new_end = end + timedelta(minutes=30)
+        updated_event = Event(id="abc123", end=new_end, priority=1)
+
+        client.update_event_and_reallocate(updated_event, ReallocationOptions())
+
+        assert captured["event"].start == start
+        client.get_event.assert_not_called()
+
+    def test_falls_back_to_get_event_when_not_found_in_list_day_events(self, monkeypatch):
+        # Only `end` is given, so the initial lookup anchors list_day_events
+        # on that new end -- if the event's actual current position doesn't
+        # fall within that window (e.g. it's actually much earlier in the
+        # day), it won't be there, and an explicit get_event is required.
+        client = make_client(MagicMock())
+        end = datetime(2026, 1, 1, 17, 0, tzinfo=UTC)
+        real_start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        real_end = real_start + timedelta(hours=1)
+        client.list_events = MagicMock(return_value=[])
+        client.get_event = MagicMock(
+            return_value=Event(id="abc123", start=real_start, end=real_end, priority=1)
+        )
+
+        captured = {}
+
+        def fake_reallocate(day_events, event, options):
+            captured["event"] = event
+            return [event]
+
+        monkeypatch.setattr(google_calendar, "reallocate_for_new_event", fake_reallocate)
+        client.update_event = MagicMock(side_effect=lambda event: event)
+
+        updated_event = Event(id="abc123", end=end, priority=1)
+
+        client.update_event_and_reallocate(updated_event, ReallocationOptions())
+
+        client.get_event.assert_called_once_with("abc123")
+        assert captured["event"].start == real_start
 
     def test_excludes_its_own_prior_position_from_day_events(self):
         client = make_client(MagicMock())
@@ -778,8 +858,7 @@ class TestCalendarClientUpdateEventAndReallocate:
         )
         result = client.update_event_and_reallocate(moved_event, ReallocationOptions())
 
-        client.update_event.assert_any_call(preceding)
-        client.update_event.assert_any_call(moved_event)
+        assert client.update_event.call_args_list == [call(preceding), call(moved_event)]
         client.create_event.assert_not_called()
         # later is never reclaimed from (a gap absorbs it), so it's left
         # out of the plan entirely -- not created, not updated.

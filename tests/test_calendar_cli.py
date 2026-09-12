@@ -318,17 +318,38 @@ class TestMainUpdate:
         assert "abc123" in out
         assert "def456" in out
 
-    @pytest.mark.parametrize(
-        "properties",
-        [
-            ["start=2026-01-01T09:00:00Z"],
-            ["end=2026-01-01T09:30:00Z"],
-        ],
-    )
-    def test_requires_start_and_end(self, monkeypatch, properties):
+    def test_allows_start_without_end(self, monkeypatch):
+        client = MagicMock()
+        client.update_event_and_reallocate.return_value = [_event()]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "update", "abc123", "start=2026-01-01T09:00:00Z"]
+        )
+
+        calendar_cli.main()
+
+        sent_event = client.update_event_and_reallocate.call_args[0][0]
+        assert sent_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert sent_event.end is None
+
+    def test_allows_end_without_start(self, monkeypatch):
+        client = MagicMock()
+        client.update_event_and_reallocate.return_value = [_event()]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "update", "abc123", "end=2026-01-01T09:30:00Z"]
+        )
+
+        calendar_cli.main()
+
+        sent_event = client.update_event_and_reallocate.call_args[0][0]
+        assert sent_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert sent_event.start is None
+
+    def test_requires_start_or_end(self, monkeypatch):
         client = MagicMock()
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update", "abc123", *properties])
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update", "abc123", "priority=1"])
 
         with pytest.raises(SystemExit):
             calendar_cli.main()

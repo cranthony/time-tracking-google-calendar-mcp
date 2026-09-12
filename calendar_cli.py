@@ -17,8 +17,9 @@ Usage:
 - `update_properties` sets the given attributes on the event and patches
   them in, without fetching it first — any attribute not given is left
   untouched.
-- `update` moves/resizes an existing event (`start` and `end` are
-  required) via CalendarClient.update_event_and_reallocate, reallocating
+- `update` moves/resizes an existing event (at least one of `start`/`end`
+  is required; whichever is omitted is kept as the event's current
+  value) via CalendarClient.update_event_and_reallocate, reallocating
   time from the rest of its day as needed to make room for its new
   position — see utilities/reallocation.py. Prints every event that was
   created or changed as a result. Use `update_properties` instead for a
@@ -98,10 +99,11 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
 _REQUIRED_CREATE_ATTRIBUTES = frozenset({"summary", "start", "end"})
 """Event attributes `create` won't build an event without."""
 
-_REQUIRED_UPDATE_ATTRIBUTES = frozenset({"start", "end"})
-"""Event attributes `update` won't build an event without -- reallocation
-needs a real (start, end) span to make room for, unlike `update_properties`'s
-plain patch."""
+_UPDATE_POSITION_ATTRIBUTES = frozenset({"start", "end"})
+"""`update` requires at least one of these -- reallocation needs a real
+position to make room for, unlike `update_properties`'s plain patch. Either
+may be omitted: CalendarClient.update_event_and_reallocate fills in
+whichever one is missing from the event's current value."""
 
 
 def _parse_key_value(value: str) -> tuple[str, Any]:
@@ -199,9 +201,10 @@ def _build_parser() -> argparse.ArgumentParser:
         nargs="+",
         type=_parse_key_value,
         help=(
-            "One or more Event attribute=value pairs; "
-            f"{', '.join(sorted(_REQUIRED_UPDATE_ATTRIBUTES))} are required. Valid "
-            f"attributes: {', '.join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))}."
+            "One or more Event attribute=value pairs; at least one of "
+            f"{', '.join(sorted(_UPDATE_POSITION_ATTRIBUTES))} is required (the other is "
+            "kept as-is if omitted). Valid attributes: "
+            f"{', '.join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))}."
         ),
     )
 
@@ -249,9 +252,10 @@ def main() -> None:
         print(_format_event_details(updated_event))
     elif args.command == "update":
         fields = dict(args.properties)
-        missing = _REQUIRED_UPDATE_ATTRIBUTES - fields.keys()
-        if missing:
-            parser.error(f"update requires: {', '.join(sorted(missing))}")
+        if not _UPDATE_POSITION_ATTRIBUTES & fields.keys():
+            parser.error(
+                f"update requires at least one of: {', '.join(sorted(_UPDATE_POSITION_ATTRIBUTES))}"
+            )
         updated_event = Event(id=args.id, **fields)
         applied_events = client.update_event_and_reallocate(updated_event, ReallocationOptions())
         for event in applied_events:
