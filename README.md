@@ -228,10 +228,10 @@ python calendar_cli.py delete <event-id>
 python calendar_cli.py list_labels
 
 # Create a new event label
-python calendar_cli.py create_label "#8e24aa" --name "Design Work"
+python calendar_cli.py create_label background_color="#8e24aa" name="Design Work"
 
 # Update an existing event label's color and/or name
-python calendar_cli.py update_label <label-id> --background-color "#d50000"
+python calendar_cli.py update_label <label-id> background_color="#d50000"
 
 # Delete an event label by id
 python calendar_cli.py delete_label <label-id>
@@ -247,7 +247,7 @@ python calendar_cli.py delete_label <label-id>
 
 For a recurring event, the id from `list`/`get` names one specific *instance*.  To change a property for the entire series of recurring events, use the `recurring_event_id` that's visible from `get`.  See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for more on how instances and recurring events relate.
 
-`list_labels`/`create_label`/`update_label`/`delete_label` manage this calendar's custom event labels (`CalendarClient.list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label`) — a richer, arbitrary-hex-color alternative to `Event.colorId`'s 11 fixed colors, up to 200 per calendar. `update_label` requires at least one of `--background-color`/`--name`; whichever is omitted keeps its current value (the API requires a `backgroundColor` on every label, so updating only the name still re-sends its existing color). Defining a label doesn't do anything on its own — assigning one to a specific event (the API's `eventLabelId` field) is a separate, not-yet-built feature. See Google's [event labels guide](https://developers.google.com/workspace/calendar/api/guides/labels).
+`create_label`/`update_label` take the same kind of `key=value` pairs as `update_properties` (`background_color`/`name`; `background_color` is required for `create_label`). `list_labels`/`create_label`/`update_label`/`delete_label` manage this calendar's custom event labels (`CalendarClient.list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label`) — a richer, arbitrary-hex-color alternative to `Event.colorId`'s 11 fixed colors, up to 200 per calendar. `update_label` requires at least one of the two; whichever is omitted keeps its current value (the API requires a `backgroundColor` on every label, so updating only the name still re-sends its existing color). Defining a label doesn't do anything on its own — assigning one to a specific event (the API's `eventLabelId` field) is a separate, not-yet-built feature. See Google's [event labels guide](https://developers.google.com/workspace/calendar/api/guides/labels).
 
 ## Running tests
 

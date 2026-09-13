@@ -107,6 +107,28 @@ class TestParseKeyValue:
             calendar_cli._parse_key_value("priority=not-a-number")
 
 
+class TestParseLabelKeyValue:
+    def test_parses_background_color(self):
+        assert calendar_cli._parse_label_key_value("background_color=#8e24aa") == (
+            "background_color",
+            "#8e24aa",
+        )
+
+    def test_parses_name(self):
+        assert calendar_cli._parse_label_key_value("name=Design Work") == (
+            "name",
+            "Design Work",
+        )
+
+    def test_raises_when_missing_equals_sign(self):
+        with pytest.raises(argparse.ArgumentTypeError):
+            calendar_cli._parse_label_key_value("background_color")
+
+    def test_raises_on_unknown_attribute(self):
+        with pytest.raises(argparse.ArgumentTypeError):
+            calendar_cli._parse_label_key_value("id=new-id")
+
+
 class TestUpdatableAttributeParsers:
     def test_covers_every_event_attribute_except_id_and_recurring_event_id(self):
         # id would repoint the patch at a different event; recurring_event_id
@@ -118,6 +140,15 @@ class TestUpdatableAttributeParsers:
         }
 
         assert set(calendar_cli._UPDATABLE_ATTRIBUTE_PARSERS) == event_attributes
+
+
+class TestLabelAttributeParsers:
+    def test_covers_every_label_attribute_except_id(self):
+        # id is assigned by Google when a label is created, and would
+        # repoint update_label at a different label if it could be set.
+        label_attributes = {f.name for f in dataclasses.fields(EventLabel)} - {"id"}
+
+        assert set(calendar_cli._LABEL_ATTRIBUTE_PARSERS) == label_attributes
 
 
 class TestResolveWindow:
@@ -489,7 +520,12 @@ class TestMainCreateLabel:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["calendar_cli.py", "create_label", "#8e24aa", "--name", "Design Work"],
+            [
+                "calendar_cli.py",
+                "create_label",
+                "background_color=#8e24aa",
+                "name=Design Work",
+            ],
         )
 
         calendar_cli.main()
@@ -503,11 +539,25 @@ class TestMainCreateLabel:
         client = MagicMock()
         client.create_event_label.return_value = _event_label(name=None)
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "create_label", "#8e24aa"])
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "create_label", "background_color=#8e24aa"]
+        )
 
         calendar_cli.main()
 
         client.create_event_label.assert_called_once_with("#8e24aa", None)
+
+    def test_requires_background_color(self, monkeypatch):
+        client = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "create_label", "name=Design Work"]
+        )
+
+        with pytest.raises(SystemExit):
+            calendar_cli.main()
+
+        client.create_event_label.assert_not_called()
 
 
 class TestMainUpdateLabel:
@@ -518,7 +568,7 @@ class TestMainUpdateLabel:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["calendar_cli.py", "update_label", "label-1", "--background-color", "#d50000"],
+            ["calendar_cli.py", "update_label", "label-1", "background_color=#d50000"],
         )
 
         calendar_cli.main()
@@ -533,7 +583,7 @@ class TestMainUpdateLabel:
         client.update_event_label.return_value = _event_label(name="New name")
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
         monkeypatch.setattr(
-            sys, "argv", ["calendar_cli.py", "update_label", "label-1", "--name", "New name"]
+            sys, "argv", ["calendar_cli.py", "update_label", "label-1", "name=New name"]
         )
 
         calendar_cli.main()
@@ -542,7 +592,7 @@ class TestMainUpdateLabel:
             "label-1", background_color=None, name="New name"
         )
 
-    def test_requires_background_color_or_name(self, monkeypatch):
+    def test_requires_at_least_one_property(self, monkeypatch):
         client = MagicMock()
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update_label", "label-1"])

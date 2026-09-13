@@ -245,13 +245,8 @@ class Calendar:
 
 @dataclass(kw_only=True)
 class EventLabel:
-    """One of a calendar's custom event labels -- a newer, richer
-    alternative to `Event`'s `colorId` (see `_color_id_for_priority`):
-    an arbitrary hex color rather than one of the API's 11 fixed event
-    colors, up to 200 per calendar. Defining one here doesn't do
-    anything on its own -- assigning it to a specific event (via the
-    API's `eventLabelId` field) is a separate, not-yet-built feature.
-    See https://developers.google.com/workspace/calendar/api/guides/labels
+    """One of a calendar's custom event labels. See
+    https://developers.google.com/workspace/calendar/api/guides/labels
     """
 
     id: str | None = None
