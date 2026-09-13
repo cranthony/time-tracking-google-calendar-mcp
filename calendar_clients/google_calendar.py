@@ -46,17 +46,17 @@ def _color_id_for_priority(priority: int) -> str | None:
 
     Note that event labels unlock the ability to specify our own colors.  The
     priority field doesn't use this feature because we intend to use it for
-    a different categorization feature.  An event label's color supercedes a
+    a different categorization feature.  An event label's color supersedes a
     color ID."""
     _PRIORITY_COLOR_IDS: dict[int, str | None] = {
         0: "8",   # Graphite (gray)
         1: "5",   # Banana (yellow)
-        2: None,  # no colorId of its own -- looks like an ordinary event
+        2: None,  # The default calendar color
         3: "2",   # Sage (soft green)
     }
     def _clamp(value: int, lower: int, upper: int):
         return min(upper, max(lower, value))
-    return _PRIORITY_COLOR_IDS.get(_clamp(priority, 0, 3), _PRIORITY_COLOR_IDS[3])
+    return _PRIORITY_COLOR_IDS.get(_clamp(priority, 0, 3))
 
 
 @dataclass(kw_only=True)
@@ -185,10 +185,9 @@ class Event:
         if self.status is not None:
             body["status"] = self.status
         if self.priority is not None:
-            # Keep the event's color in sync with its priority (see
-            # _color_id_for_priority) -- like every other field here,
-            # priority left None means "don't touch," so an update that
-            # doesn't mention priority can't reset an event's color.
+            # Color each event according to its priority.  Note that this
+            # might be a partial update, in which case a missing priority
+            # should mean "leave the color the same".
             body["colorId"] = _color_id_for_priority(self.priority)
         # recurring_event_id is deliberately never sent: it's assigned by
         # Google, not something a client sets.

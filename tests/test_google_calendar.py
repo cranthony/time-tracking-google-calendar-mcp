@@ -341,7 +341,7 @@ class TestEvent:
 
     @pytest.mark.parametrize(
         "priority,expected_color_id",
-        [(0, "8"), (1, "5"), (2, None), (3, "2"), (4, "2"), (5, "2")],
+        [(-1, "8"), (0, "8"), (1, "5"), (2, None), (3, "2"), (4, "2"), (5, "2")],
     )
     def test_to_api_body_sets_colorId_from_priority(self, priority, expected_color_id):
         event = Event(id="abc123", priority=priority)

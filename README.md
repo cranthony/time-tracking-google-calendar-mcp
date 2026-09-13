@@ -84,19 +84,16 @@ MCP has both **tools** (model-controlled: the model decides when to call one, wi
 
 ## Event colors
 
-`Event.to_api_body()` (used by every path that writes an event — the MCP tools, `calendar_cli.py`, and reallocation, all via `CalendarClient.create_event`/`update_event`) automatically sets `colorId` from the event's `priority`, so priority is visible at a glance in the Google Calendar UI without a separate step:
+[`Event.to_api_body()`](calendar_clients/google_calendar.py) (used by every path that writes an event — the MCP tools, `calendar_cli.py`, and reallocation, all via `CalendarClient.create_event`/`update_event`) automatically sets `colorId` from the event's `priority`, so priority is visible at a glance in the Google Calendar UI without a separate step:
 
 | Priority | Color | `colorId` |
 | --- | --- | --- |
-| 0 (highest) | Graphite (gray) | `"8"` |
+| <=0 | Graphite (gray) | `"8"` |
 | 1 | Banana (yellow) | `"5"` |
-| 2 | this calendar's own default color | unset |
-| 3 | Sage (soft green) | `"2"` |
-| 4 and higher (lower priority) | same as 3 | `"2"` |
+| 2 | the calendar's default color | unset |
+| >=3 | Sage (soft green) | `"2"` |
 
-Priority `2` has no `colorId` of its own — it's meant to look like an ordinary, uncategorized event — but that's just what priority `2` means; `calendar_clients/google_calendar.py` has no notion of a *default* priority for an event that doesn't have one at all. `to_api_body()` only sets `colorId` when `priority` isn't `None`, following the same convention as every other field: `None` means "this payload doesn't mention priority," not "no priority" — so an unrelated patch (reallocation shrinking an event to make room for another, say) can't reset its color just because the `Event` object it was fetched into doesn't happen to carry a priority, and a freshly-constructed `Event` nobody's assigned a priority to yet doesn't get colored either. (`utilities/reallocation.py` does define a default priority of its own, `2`, for reclaim ordering — see its "Priority" section — but that's a separate policy decision by a separate module, not something the color logic relies on.)
-
-This uses only the Calendar API's 11 fixed event colors (`colorId`, one string per event; see `calendar_clients/google_calendar.py`'s `_PRIORITY_COLOR_IDS`). Google Calendar also supports custom per-calendar labels with arbitrary hex colors (`Event.eventLabelId`, superseding `colorId` when set) — this calendar already has some defined — but that's earmarked for a different, later feature and isn't used for priority coloring.
+Note that calendar colors are superseded by the colors corresponding to the event's label.  We do not currently use event labels in this application, but we intend to use them for event categorization, later.
 
 ## Google OAuth credentials
 
