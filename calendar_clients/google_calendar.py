@@ -204,11 +204,6 @@ class Event:
 
         return body
 
-    def overlaps(self, other_start: datetime, other_end: datetime) -> bool:
-        assert self.start < self.end
-        assert other_start < other_end
-        return self.start < other_end and other_start < self.end
-
 
 @dataclass(kw_only=True)
 class Calendar:
@@ -390,9 +385,6 @@ class CalendarClient:
             .execute()
         )
         return [Event.from_api(item) for item in response.get("items", [])]
-
-    def has_overlap(self, start: datetime, end: datetime) -> bool:
-        return any(event.overlaps(start, end) for event in self.list_events(start, end))
 
     def get_event(self, event_id: str) -> Event:
         response = (

@@ -10,9 +10,6 @@ from calendar_clients.google_calendar import Calendar, CalendarClient, Event, lo
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
-CET = timezone(timedelta(hours=1))
-IST = timezone(timedelta(hours=5, minutes=30))
-JST = timezone(timedelta(hours=9))
 TEST_CALENDAR_ID = "my-calendar-id"
 
 
@@ -347,90 +344,6 @@ class TestEvent:
 
         assert event.to_api_body()["colorId"] == expected_color_id
 
-    @pytest.mark.parametrize(
-        ("start", "end", "expected"),
-        [
-            (
-                datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-                datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
-                True,
-            ),
-            (
-                datetime(2026, 1, 1, 8, 0, tzinfo=UTC),
-                datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-                False,
-            ),
-            (
-                datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-                datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
-                False,
-            ),
-            (
-                datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-                datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-                True,
-            ),
-        ],
-    )
-    def test_overlaps(self, start, end, expected):
-        event = Event(
-            summary="Existing",
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-        )
-
-        assert event.overlaps(start, end) is expected
-
-    def test_overlaps_true_across_four_distinct_timezones(self):
-        event = Event(
-            summary="Existing",
-            start=datetime(2026, 1, 1, 4, 0, tzinfo=EST),  # 09:00 UTC
-            end=datetime(2026, 1, 1, 11, 0, tzinfo=CET),  # 10:00 UTC
-        )
-
-        assert event.overlaps(
-            datetime(2026, 1, 1, 15, 0, tzinfo=IST),  # 09:30 UTC
-            datetime(2026, 1, 1, 19, 30, tzinfo=JST),  # 10:30 UTC
-        )
-
-    def test_overlaps_false_across_four_distinct_timezones(self):
-        event = Event(
-            summary="Existing",
-            start=datetime(2026, 1, 1, 4, 0, tzinfo=EST),  # 09:00 UTC
-            end=datetime(2026, 1, 1, 11, 0, tzinfo=CET),  # 10:00 UTC
-        )
-
-        assert not event.overlaps(
-            datetime(2026, 1, 1, 16, 0, tzinfo=IST),  # 10:30 UTC
-            datetime(2026, 1, 1, 20, 30, tzinfo=JST),  # 11:30 UTC
-        )
-
-    def test_overlaps_asserts_self_start_before_self_end(self):
-        event = Event(
-            summary="Backwards",
-            start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-        )
-
-        with pytest.raises(AssertionError):
-            event.overlaps(
-                datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-                datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
-            )
-
-    def test_overlaps_asserts_other_start_before_other_end(self):
-        event = Event(
-            summary="Existing",
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-        )
-
-        with pytest.raises(AssertionError):
-            event.overlaps(
-                datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
-                datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-            )
-
     def test_clone_copies_fields_independently(self):
         event = Event(
             id="abc123",
@@ -534,32 +447,6 @@ class TestCalendarClientGetEvent:
         assert event.id == "abc123"
         service.events.return_value.get.assert_called_once_with(
             calendarId=TEST_CALENDAR_ID, eventId="abc123"
-        )
-
-
-class TestCalendarClientHasOverlap:
-    def test_has_overlap_true_when_existing_event_overlaps(self):
-        service = MagicMock()
-        service.events.return_value.list.return_value.execute.return_value = {
-            "items": [
-                api_event(
-                    "1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
-                )
-            ]
-        }
-        client = make_client(service)
-
-        assert client.has_overlap(
-            datetime(2026, 1, 1, 9, 30, tzinfo=UTC), datetime(2026, 1, 1, 10, 30, tzinfo=UTC)
-        )
-
-    def test_has_overlap_false_when_no_events(self):
-        service = MagicMock()
-        service.events.return_value.list.return_value.execute.return_value = {"items": []}
-        client = make_client(service)
-
-        assert not client.has_overlap(
-            datetime(2026, 1, 1, 9, 30, tzinfo=UTC), datetime(2026, 1, 1, 10, 30, tzinfo=UTC)
         )
 
 
