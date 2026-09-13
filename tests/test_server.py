@@ -6,7 +6,7 @@ import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 
 import server
-from calendar_clients.google_calendar import Event, EventLabel
+from calendar_clients.google_calendar import Event, EventLabel, EventLabelConflictError
 from server import PublicEvent
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import (
@@ -331,6 +331,13 @@ class TestCreateEventLabel:
         assert result == created
         client.create_event_label.assert_called_once_with("#8e24aa", "Design Work")
 
+    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.create_event_label.side_effect = EventLabelConflictError("stale etag")
+
+        with pytest.raises(ToolError):
+            server.create_event_label("#8e24aa")
+
 
 class TestUpdateEventLabel:
     def test_delegates_to_calendar_client(self, monkeypatch):
@@ -352,6 +359,13 @@ class TestUpdateEventLabel:
         with pytest.raises(ToolError):
             server.update_event_label("missing", background_color="#000000")
 
+    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.update_event_label.side_effect = EventLabelConflictError("stale etag")
+
+        with pytest.raises(ToolError):
+            server.update_event_label("l1", background_color="#000000")
+
 
 class TestDeleteEventLabel:
     def test_delegates_to_calendar_client(self, monkeypatch):
@@ -370,6 +384,13 @@ class TestDeleteEventLabel:
 
         with pytest.raises(ToolError):
             server.delete_event_label("missing")
+
+    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.delete_event_label.side_effect = EventLabelConflictError("stale etag")
+
+        with pytest.raises(ToolError):
+            server.delete_event_label("l1")
 
 
 class TestGetCalendarClient:

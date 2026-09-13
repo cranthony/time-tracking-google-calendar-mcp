@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
+from googleapiclient.errors import HttpError
 
 from calendar_clients import google_calendar
 from calendar_clients.google_calendar import (
@@ -11,6 +12,7 @@ from calendar_clients.google_calendar import (
     CalendarClient,
     Event,
     EventLabel,
+    EventLabelConflictError,
     load_credentials,
 )
 
@@ -727,6 +729,67 @@ class TestCalendarClientDeleteEventLabel:
             calendarId=TEST_CALENDAR_ID,
             body={"labelProperties": {"eventLabels": [other]}},
         )
+
+
+class TestCalendarClientEventLabelEtagGuard:
+    def test_patch_sets_if_match_header_from_get_etag(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"abc123"',
+            "labelProperties": {"eventLabels": []},
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": [{"id": "l1", "backgroundColor": "#8e24aa"}]}
+        }
+        client = make_client(service)
+
+        client.create_event_label("#8e24aa")
+
+        request = service.calendars.return_value.patch.return_value
+        request.headers.__setitem__.assert_called_once_with("If-Match", '"abc123"')
+
+    def test_skips_if_match_when_no_etag(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": []}
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": [{"id": "l1", "backgroundColor": "#8e24aa"}]}
+        }
+        client = make_client(service)
+
+        client.create_event_label("#8e24aa")
+
+        request = service.calendars.return_value.patch.return_value
+        request.headers.__setitem__.assert_not_called()
+
+    def test_raises_conflict_error_on_412(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"stale"',
+            "labelProperties": {"eventLabels": []},
+        }
+        service.calendars.return_value.patch.return_value.execute.side_effect = HttpError(
+            MagicMock(status=412), b"Precondition check failed."
+        )
+        client = make_client(service)
+
+        with pytest.raises(EventLabelConflictError):
+            client.create_event_label("#8e24aa")
+
+    def test_other_http_errors_are_not_treated_as_conflicts(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"abc"',
+            "labelProperties": {"eventLabels": []},
+        }
+        service.calendars.return_value.patch.return_value.execute.side_effect = HttpError(
+            MagicMock(status=500), b"Internal error."
+        )
+        client = make_client(service)
+
+        with pytest.raises(HttpError):
+            client.create_event_label("#8e24aa")
 
 
 class TestLoadCredentials:

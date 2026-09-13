@@ -12,6 +12,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.app.created"]
 """This app requests calendar.app.created, not the broader
@@ -243,6 +244,16 @@ class Calendar:
         return body
 
 
+class EventLabelConflictError(Exception):
+    """Raised by CalendarClient.create_event_label/update_event_label/
+    delete_event_label when another writer changed the calendar's event
+    labels in between this call's read and its write. Each of those
+    methods reads the full label list, mutates it in memory, and writes
+    the whole thing back (see _patch_event_labels) -- guarded by the
+    calendar's `etag` (an `If-Match` precondition) so a lost update fails
+    loudly instead of silently overwriting the other writer's change."""
+
+
 @dataclass(kw_only=True)
 class EventLabel:
     """One of a calendar's custom event labels. See
@@ -453,17 +464,18 @@ class CalendarClient:
     def list_event_labels(self) -> list[EventLabel]:
         """Every custom event label currently defined on this calendar --
         see `EventLabel`."""
-        return [EventLabel.from_api(label) for label in self._get_raw_event_labels()]
+        _, labels = self._get_raw_event_labels()
+        return [EventLabel.from_api(label) for label in labels]
 
     def create_event_label(self, background_color: str, name: str | None = None) -> EventLabel:
         """Define a new event label on this calendar. The API has no way
         to add a single label in place -- creating one means replacing
         the whole `labelProperties.eventLabels` list with the existing
         labels plus this new one (see `_patch_event_labels`)."""
-        labels = self._get_raw_event_labels()
+        etag, labels = self._get_raw_event_labels()
         existing_ids = {label["id"] for label in labels}
         new_label = EventLabel(background_color=background_color, name=name)
-        updated = self._patch_event_labels(labels + [new_label.to_api_body()])
+        updated = self._patch_event_labels(etag, labels + [new_label.to_api_body()])
         return next(label for label in updated if label.id not in existing_ids)
 
     def update_event_label(
@@ -472,7 +484,7 @@ class CalendarClient:
         """Update an existing event label's `background_color` and/or
         `name` -- whichever is left `None` keeps its current value.
         Raises `ValueError` if no label with `label_id` exists."""
-        labels = self._get_raw_event_labels()
+        etag, labels = self._get_raw_event_labels()
         for label in labels:
             if label.get("id") == label_id:
                 if background_color is not None:
@@ -482,31 +494,50 @@ class CalendarClient:
                 break
         else:
             raise ValueError(f"event label {label_id!r} not found")
-        updated = self._patch_event_labels(labels)
+        updated = self._patch_event_labels(etag, labels)
         return next(label for label in updated if label.id == label_id)
 
     def delete_event_label(self, label_id: str) -> EventLabel:
         """Remove an event label from this calendar. Returns the label as
         it was just before removal. Raises `ValueError` if no label with
         `label_id` exists."""
-        labels = self._get_raw_event_labels()
+        etag, labels = self._get_raw_event_labels()
         remaining = [label for label in labels if label.get("id") != label_id]
         if len(remaining) == len(labels):
             raise ValueError(f"event label {label_id!r} not found")
         removed = next(EventLabel.from_api(label) for label in labels if label.get("id") == label_id)
-        self._patch_event_labels(remaining)
+        self._patch_event_labels(etag, remaining)
         return removed
 
-    def _get_raw_event_labels(self) -> list[dict]:
+    def _get_raw_event_labels(self) -> tuple[str | None, list[dict]]:
+        """(etag, eventLabels) for this calendar -- the etag lets
+        `_patch_event_labels` guard the matching write against a
+        concurrent change to the same list."""
         calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
-        return calendar.get("labelProperties", {}).get("eventLabels", [])
+        return calendar.get("etag"), calendar.get("labelProperties", {}).get("eventLabels", [])
 
-    def _patch_event_labels(self, labels: list[dict]) -> list[EventLabel]:
-        response = (
-            self._service.calendars()
-            .patch(calendarId=self._calendar_id, body={"labelProperties": {"eventLabels": labels}})
-            .execute()
+    def _patch_event_labels(self, etag: str | None, labels: list[dict]) -> list[EventLabel]:
+        request = self._service.calendars().patch(
+            calendarId=self._calendar_id, body={"labelProperties": {"eventLabels": labels}}
         )
+        if etag is not None:
+            # Precondition: only apply this write if the calendar's
+            # labels haven't changed since _get_raw_event_labels read
+            # them (verified empirically -- the API rejects a stale
+            # etag here with 412 exactly as it does for events, though
+            # only the latter is documented). Without this, two callers
+            # reading-then-writing concurrently could silently clobber
+            # each other's change.
+            request.headers["If-Match"] = etag
+        try:
+            response = request.execute()
+        except HttpError as exc:
+            if exc.resp.status == 412:
+                raise EventLabelConflictError(
+                    "This calendar's event labels changed while this update was being "
+                    "made; fetch the current labels and try again."
+                ) from exc
+            raise
         return [
             EventLabel.from_api(label)
             for label in response.get("labelProperties", {}).get("eventLabels", [])
