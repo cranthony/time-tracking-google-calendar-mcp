@@ -6,8 +6,8 @@ ignore-paths=^\.venv/.*$
 [MESSAGES CONTROL]
 disable=
     # This project deliberately writes no docstrings unless the WHY is
-    # non-obvious (see CLAUDE.md) -- requiring one on every module/class/
-    # function would fight that convention on every single file.
+    # non-obvious -- requiring one on every module/class/function would
+    # fight that convention on every single file.
     missing-module-docstring,
     missing-class-docstring,
     missing-function-docstring,
