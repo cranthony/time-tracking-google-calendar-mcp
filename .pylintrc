@@ -1,0 +1,30 @@
+[MAIN]
+# Safety net for anyone running pylint recursively (e.g. `pylint .`)
+# instead of against the git-tracked file list.
+ignore-paths=^\.venv/.*$
+
+[MESSAGES CONTROL]
+disable=
+    # This project deliberately writes no docstrings unless the WHY is
+    # non-obvious (see CLAUDE.md) -- requiring one on every module/class/
+    # function would fight that convention on every single file.
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    # Tests in this project routinely reach into a module's own private
+    # helpers (calendar_cli._parse_duration, WorkOSTokenVerifier._jwks_client,
+    # etc.) to unit test them directly -- that's whitebox testing working
+    # as intended, not a real access violation.
+    protected-access,
+    # A pytest fixture function and the test parameters that request it
+    # share a name by design (e.g. `def keypair(): ...` and
+    # `def test_x(keypair): ...`) -- pylint doesn't know about fixture
+    # injection and reads this as accidental shadowing.
+    redefined-outer-name,
+    # Small, single-assertion test classes are the norm here, not a design
+    # smell.
+    too-few-public-methods,
+    # Parallel dataclasses (Event/PublicEvent) and per-test-file Event-
+    # builder helpers naturally share similar-looking blocks; there's no
+    # real duplication to extract.
+    duplicate-code,

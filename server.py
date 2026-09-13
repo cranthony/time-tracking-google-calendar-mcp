@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -109,28 +110,20 @@ class PublicEvent:
         )
 
 
-_calendar_client: CalendarClient | None = None
-_reallocating_calendar: ReallocatingCalendar | None = None
-
-
+@functools.cache
 def get_calendar_client() -> CalendarClient:
     """Lazily construct and cache the CalendarClient, so credential loading
     (and the OAuth consent flow, on first run) happens once per process
     rather than on every tool call."""
-    global _calendar_client
-    if _calendar_client is None:
-        _calendar_client = build_calendar_client()
-    return _calendar_client
+    return build_calendar_client()
 
 
+@functools.cache
 def get_reallocating_calendar() -> ReallocatingCalendar:
     """Lazily construct and cache the ReallocatingCalendar wrapping
     `get_calendar_client()`, the same way get_calendar_client itself
     caches its CalendarClient."""
-    global _reallocating_calendar
-    if _reallocating_calendar is None:
-        _reallocating_calendar = ReallocatingCalendar(get_calendar_client())
-    return _reallocating_calendar
+    return ReallocatingCalendar(get_calendar_client())
 
 
 @mcp.tool()
@@ -141,7 +134,7 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
 
 
 @mcp.tool()
-def get_event(id: str) -> PublicEvent:
+def get_event(id: str) -> PublicEvent:  # pylint: disable=redefined-builtin
     """Get a single event by its ID."""
     event = get_calendar_client().get_event(id)
     if event.status == "cancelled":
@@ -174,7 +167,7 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
 
 
 @mcp.tool()
-def delete_event(id: str) -> list[PublicEvent]:
+def delete_event(id: str) -> list[PublicEvent]:  # pylint: disable=redefined-builtin
     """Delete an event by its ID. Returns the events affected by the deletion."""
     cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
     return [PublicEvent.from_event(cancelled)]

@@ -272,7 +272,7 @@ def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
 
 class TestMainUpdate:
     def test_builds_event_and_delegates_to_reallocation(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.return_value = [_event(summary="Moved")]
         monkeypatch.setattr(
@@ -300,7 +300,7 @@ class TestMainUpdate:
         assert "summary: Moved" in out
 
     def test_prints_every_affected_event(self, monkeypatch, capsys):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.return_value = [
             _event(id="abc123", summary="Moved"),
@@ -325,7 +325,7 @@ class TestMainUpdate:
         assert "def456" in out
 
     def test_allows_start_without_end(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.return_value = [_event()]
         monkeypatch.setattr(
@@ -339,7 +339,7 @@ class TestMainUpdate:
         assert sent_event.end is None
 
     def test_allows_end_without_start(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.return_value = [_event()]
         monkeypatch.setattr(
@@ -353,7 +353,7 @@ class TestMainUpdate:
         assert sent_event.start is None
 
     def test_requires_start_or_end(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update", "abc123", "priority=1"])
 
@@ -365,7 +365,7 @@ class TestMainUpdate:
 
 class TestMainCreate:
     def test_builds_event_and_delegates_to_reallocation(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.create_event.return_value = [_event(summary="New")]
         monkeypatch.setattr(
@@ -394,7 +394,7 @@ class TestMainCreate:
         assert "summary: New" in out
 
     def test_prints_every_affected_event(self, monkeypatch, capsys):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.create_event.return_value = [
             _event(id="abc123", summary="New"),
@@ -427,7 +427,7 @@ class TestMainCreate:
         ],
     )
     def test_requires_summary_start_and_end(self, monkeypatch, properties):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "create", *properties])
 

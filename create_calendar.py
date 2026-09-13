@@ -28,7 +28,10 @@ def create_calendar(summary: str, description: str | None = None) -> Calendar:
     creds = load_credentials(get_token_path(), get_credentials_path())
     service = build("calendar", "v3", credentials=creds)
     calendar = Calendar(summary=summary, description=description)
-    response = service.calendars().insert(body=calendar.to_api_body()).execute()
+    # calendars() is added dynamically by googleapiclient's Resource, which
+    # pylint can't see statically.
+    calendars = service.calendars()  # pylint: disable=no-member
+    response = calendars.insert(body=calendar.to_api_body()).execute()
     return Calendar.from_api(response)
 
 

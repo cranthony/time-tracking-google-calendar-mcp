@@ -317,7 +317,7 @@ class TestGetCalendarClient:
             built.append(client)
             return client
 
-        monkeypatch.setattr(server, "_calendar_client", None)
+        server.get_calendar_client.cache_clear()
         monkeypatch.setattr(server, "build_calendar_client", fake_build)
 
         first = server.get_calendar_client()
@@ -330,7 +330,7 @@ class TestGetCalendarClient:
 class TestGetReallocatingCalendar:
     def test_caches_across_calls(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        monkeypatch.setattr(server, "_reallocating_calendar", None)
+        server.get_reallocating_calendar.cache_clear()
 
         first = server.get_reallocating_calendar()
         second = server.get_reallocating_calendar()

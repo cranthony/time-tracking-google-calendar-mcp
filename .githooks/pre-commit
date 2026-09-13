@@ -1,0 +1,48 @@
+#!/bin/sh
+# Blocks a commit made directly on main if pylint reports any error or
+# warning (not convention/refactor -- see .pylintrc for why those are
+# quieter here) on the Python files staged for that commit.
+#
+# This only runs on main -- feature branches are meant to be linted (and
+# reviewed) via their PR instead, not blocked locally on every commit.
+#
+# Not active until you run (once per clone):
+#   git config core.hooksPath .githooks
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" != "main" ]; then
+    exit 0
+fi
+
+staged_py_files="$(git diff --cached --name-only --diff-filter=ACMR -- '*.py')"
+if [ -z "$staged_py_files" ]; then
+    exit 0
+fi
+
+if [ -x ".venv/Scripts/python.exe" ]; then
+    python=".venv/Scripts/python.exe"
+elif [ -x ".venv/bin/python" ]; then
+    python=".venv/bin/python"
+else
+    python="python"
+fi
+
+# shellcheck disable=SC2086
+"$python" -m pylint $staged_py_files
+status=$?
+
+# pylint's exit code is a bitmask: 1=fatal, 2=error, 4=warning,
+# 8=refactor, 16=convention, 32=usage error. Only fail the commit for
+# the error/warning bits (2|4=6) -- convention/refactor notes shouldn't
+# block a commit to main.
+if [ $((status & 6)) -ne 0 ]; then
+    echo "pylint found errors/warnings on main -- commit blocked. See output above." >&2
+    exit 1
+fi
+
+if [ $((status & 33)) -ne 0 ]; then
+    echo "pylint failed to run cleanly (fatal error or usage error). Commit blocked." >&2
+    exit 1
+fi
+
+exit 0

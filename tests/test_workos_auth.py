@@ -102,7 +102,9 @@ class TestWorkOSTokenVerifier:
     ):
         private_key, public_key = keypair
         verifier = WorkOSTokenVerifier(authkit_domain=AUTHKIT_DOMAIN + "/", resource=RESOURCE)
-        verifier._jwks_client.get_signing_key_from_jwt = lambda token: SimpleNamespace(key=public_key)
+        verifier._jwks_client.get_signing_key_from_jwt = (
+            lambda token: SimpleNamespace(key=public_key)
+        )
 
         result = await verifier.verify_token(_token(private_key))
 

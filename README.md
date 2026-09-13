@@ -37,6 +37,7 @@ pip install -r requirements-dev.txt
 - [`config.py`](config.py) — reads configuration from environment variables — see [Configuration](#configuration) below.
 - [`render.yaml`](render.yaml) — a Render Blueprint for hosting this remotely — see [Deploying](#deploying) below.
 - [`tests/`](tests/) — unit tests for the above, mocking the Google API (and WorkOS's JWKS) rather than hitting them.
+- [`.pylintrc`](.pylintrc) / [`.githooks/`](.githooks/) — linting config and the pre-commit hook that enforces it on `main` — see [Linting](#linting) below.
 
 ## Calendar access model
 
@@ -235,4 +236,18 @@ With the dev dependencies installed:
 
 ```bash
 pytest
+```
+
+## Linting
+
+```bash
+pylint $(git ls-files '*.py')
+```
+
+`.pylintrc` disables a handful of checks that fight this project's own conventions rather than catch real bugs — missing docstrings (see [Setup](#setup) and CLAUDE.md: this project deliberately writes none unless the WHY is non-obvious), `protected-access`/`redefined-outer-name` (tests routinely reach into a module's own private helpers, and pytest fixtures are meant to share a name with the test parameter that requests them), `too-few-public-methods`, and `duplicate-code` (parallel dataclasses and per-test-file builder helpers naturally look similar). Pass `git ls-files` explicitly rather than a bare `pylint .` — this also keeps `.venv/` out of the run without relying on pylint's own path-ignoring.
+
+A git hook in [`.githooks/pre-commit`](.githooks/pre-commit) blocks a commit made directly on `main` if pylint reports any error or warning (convention/refactor notes don't block it — see the hook for why). It's not active until you opt in, once per clone:
+
+```bash
+git config core.hooksPath .githooks
 ```

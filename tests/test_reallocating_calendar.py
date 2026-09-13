@@ -145,7 +145,7 @@ class TestReallocatingCalendarUpdateEvent:
 
         captured = {}
 
-        def fake_reallocate(day_events, event, options):
+        def fake_reallocate(_day_events, event, _options):
             captured["event"] = event
             return [event]
 
@@ -171,7 +171,7 @@ class TestReallocatingCalendarUpdateEvent:
 
         captured = {}
 
-        def fake_reallocate(day_events, event, options):
+        def fake_reallocate(_day_events, event, _options):
             captured["event"] = event
             return [event]
 
@@ -203,7 +203,7 @@ class TestReallocatingCalendarUpdateEvent:
 
         captured = {}
 
-        def fake_reallocate(day_events, event, options):
+        def fake_reallocate(_day_events, event, _options):
             captured["event"] = event
             return [event]
 

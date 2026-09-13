@@ -137,7 +137,6 @@ class Schedulable(Protocol):
         """A copy of the underlying object (not just this `Schedulable`
         view), independently mutable -- used to represent a split-off
         continuation event (step 1)."""
-        ...
 
 
 def _duration(event: Schedulable) -> timedelta:
