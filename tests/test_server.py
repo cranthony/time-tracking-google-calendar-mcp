@@ -309,15 +309,16 @@ class TestDeleteEvent:
 
 
 class TestListEventLabels:
-    def test_delegates_to_calendar_client(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        labels = [EventLabel(id="l1", background_color="#8e24aa", name="Design Work")]
-        client.list_event_labels.return_value = labels
+    def test_delegates_to_event_label_sheet(self, monkeypatch):
+        event_label_sheet = MagicMock()
+        monkeypatch.setattr(server, "get_event_label_sheet", lambda: event_label_sheet)
+        labels = [EventLabel(id="l1", background_color="#8e24aa", name="Design Work", priority=1)]
+        event_label_sheet.list_labels_with_priority.return_value = labels
 
         result = server.list_event_labels()
 
         assert result == labels
-        client.list_event_labels.assert_called_once_with()
+        event_label_sheet.list_labels_with_priority.assert_called_once_with()
 
 
 class TestCreateEventLabel:
@@ -424,6 +425,57 @@ class TestDeleteEventLabel:
             server.delete_event_label("l1")
 
 
+def _fake_event_label_sheet(monkeypatch) -> MagicMock:
+    event_label_sheet = MagicMock()
+    monkeypatch.setattr(server, "get_event_label_sheet", lambda: event_label_sheet)
+    return event_label_sheet
+
+
+class TestCreateEventLabelSheet:
+    def test_delegates_to_event_label_sheet_and_returns_url(self, monkeypatch):
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.create_sheet.return_value = "abc123"
+
+        result = server.create_event_label_sheet("My Labels")
+
+        assert result == "https://docs.google.com/spreadsheets/d/abc123/edit"
+        event_label_sheet.create_sheet.assert_called_once_with("My Labels")
+
+    def test_defaults_title(self, monkeypatch):
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.create_sheet.return_value = "abc123"
+
+        server.create_event_label_sheet()
+
+        event_label_sheet.create_sheet.assert_called_once_with("Event Labels")
+
+
+class TestSyncEventLabelsFromSheet:
+    def test_delegates_to_event_label_sheet(self, monkeypatch):
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        labels = [EventLabel(id="l1", background_color="#8e24aa", name="Design Work", priority=1)]
+        event_label_sheet.sync_from_sheet.return_value = labels
+
+        result = server.sync_event_labels_from_sheet("sheet-1")
+
+        assert result == labels
+        event_label_sheet.sync_from_sheet.assert_called_once_with("sheet-1")
+
+    def test_wraps_value_error_as_tool_error(self, monkeypatch):
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.sync_from_sheet.side_effect = ValueError("No event label sheet found")
+
+        with pytest.raises(ToolError):
+            server.sync_event_labels_from_sheet()
+
+    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.sync_from_sheet.side_effect = EventLabelConflictError("stale etag")
+
+        with pytest.raises(ToolError):
+            server.sync_event_labels_from_sheet()
+
+
 class TestGetCalendarClient:
     def test_caches_client_across_calls(self, monkeypatch):
         built = []
@@ -454,3 +506,22 @@ class TestGetReallocatingCalendar:
         assert first is second
         assert isinstance(first, ReallocatingCalendar)
         assert first._client is client
+
+
+class TestGetEventLabelSheet:
+    def test_caches_across_calls(self, monkeypatch):
+        built = []
+
+        def fake_build():
+            event_label_sheet = MagicMock()
+            built.append(event_label_sheet)
+            return event_label_sheet
+
+        monkeypatch.setattr(server, "_event_label_sheet", None)
+        monkeypatch.setattr(server, "build_event_label_sheet", fake_build)
+
+        first = server.get_event_label_sheet()
+        second = server.get_event_label_sheet()
+
+        assert first is second
+        assert len(built) == 1

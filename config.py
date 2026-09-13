@@ -4,8 +4,12 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from googleapiclient.discovery import build
 
+from calendar_clients.google_auth import load_credentials
 from calendar_clients.google_calendar import CalendarClient
+from calendar_clients.google_sheets import SheetsClient
+from utilities.event_label_sheet import EventLabelSheet
 
 load_dotenv()
 
@@ -94,3 +98,20 @@ def build_calendar_client() -> CalendarClient:
         credentials_path=get_credentials_path(),
         calendar_id=get_calendar_id(),
     )
+
+
+def build_event_label_sheet() -> EventLabelSheet:
+    """Construct an EventLabelSheet from environment configuration (and a
+    local .env file, if present), wrapping a CalendarClient and a
+    SheetsClient that share one loaded set of credentials -- rather than
+    each independently calling CalendarClient.from_credentials/
+    SheetsClient.from_credentials (which would load, and potentially
+    refresh and rewrite, token_path twice for what's really one OAuth
+    session -- see calendar_clients/google_auth.py's SCOPES, which covers
+    both clients' needs together)."""
+    creds = load_credentials(get_token_path(), get_credentials_path())
+    calendar_client = CalendarClient(build("calendar", "v3", credentials=creds), get_calendar_id())
+    sheets_client = SheetsClient(
+        build("sheets", "v4", credentials=creds), build("drive", "v3", credentials=creds)
+    )
+    return EventLabelSheet(calendar_client, sheets_client)

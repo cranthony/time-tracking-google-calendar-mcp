@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import logging
-import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
@@ -9,34 +7,15 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.app.created"]
-"""This app requests calendar.app.created, not the broader
-calendar.events/calendar.events.owned scopes. This means that the app can only
-read and write events on calendars that it has created; it has no access to the
-user's existing calendars, including their "primary" calendar.
-
-This is deliberate: a compromised or misbehaving instance of this app cannot
-read or touch anything outside the dedicated calendar(s) it made for itself.
-
-Run create_calendar.py (at the project root) to create that dedicated calendar
-and get the ID for the GOOGLE_CALENDAR_ID environment variable. See the
-README's "Calendar access model" section.
-
-See https://developers.google.com/workspace/calendar/api/auth for the scope
-reference."""
+from calendar_clients.google_auth import load_credentials
 
 _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 """Prefix for the extendedProperties.private keys this app uses to store its
 own per-event fields, distinguishing them from any other private key that
 might exist on an event."""
-
-logger = logging.getLogger(__name__)
 
 
 def _color_for_priority(priority: int | None) -> tuple[str | None, str]:
@@ -225,8 +204,9 @@ class Calendar:
     """A Google Calendar, decoupled from the API's raw resource shape.
 
     Because this app requests the calendar.app.created scope (see SCOPES
-    above), it only ever sees/creates calendars of this kind that it made
-    itself — never the user's existing calendars.
+    in calendar_clients/google_auth.py), it only ever sees/creates
+    calendars of this kind that it made itself — never the user's
+    existing calendars.
     See https://developers.google.com/workspace/calendar/api/v3/reference/calendars
     and https://developers.google.com/workspace/calendar/api/v3/reference/calendarList
     """
@@ -268,16 +248,18 @@ class EventLabelConflictError(Exception):
     loudly instead of silently overwriting the other writer's change."""
 
 
-_PRIORITY_NAME_PREFIX_RE = re.compile(r"^P(-?\d+)(?: (.*))?$")
-"""Matches the f"P{priority} " prefix `EventLabel.to_api_body` adds to a
-label's name when `priority` is set -- group 1 is the priority, group 2
-(absent if the label has no name of its own) is the rest of the name."""
-
-
 @dataclass(kw_only=True)
 class EventLabel:
     """One of a calendar's custom event labels. See
     https://developers.google.com/workspace/calendar/api/guides/labels
+
+    Google Calendar itself has no concept of a label's priority -- there's
+    no such field on the API's label resource. `priority` only exists on
+    this dataclass as a write-time convenience (see `to_api_body`) and as
+    something `utilities/event_label_sheet.py` attaches after
+    cross-referencing a synced Google Sheet (see that module and
+    `CalendarClient.replace_event_labels`). `from_api` never sets it --
+    a label read directly from Calendar always has `priority=None`.
     """
 
     id: str | None = None
@@ -288,42 +270,19 @@ class EventLabel:
     background_color: str | None = None
     """Hex color (e.g. "#8e24aa") events with this label are shown in.
     Required by the API, but may be left `None` here to take the color
-    from the priority, instead. `from_api` also reverses this, so a
-    label whose color already matches what its priority would derive
-    round-trips back to `background_color=None` rather than a value
-    that looks explicitly chosen."""
+    from `priority` instead -- see `to_api_body`."""
 
     name: str | None = None
-    """Optional display name, up to 50 characters -- including the
-    f"P{priority} " prefix `to_api_body` adds when `priority` is set,
-    which `from_api` strips back off."""
+    """Optional display name, up to 50 characters."""
 
     priority: int | None = None
-    """This label's priority, if it has one. Encoded into the API's
-    `name` field (there's no dedicated field for it) as a f"P{priority} "
-    prefix, and used to derive `background_color` when that's left
-    unset -- see `to_api_body`."""
+    """This label's priority, if known -- see the class docstring. Used
+    to derive `background_color` when that's left unset -- see
+    `to_api_body`."""
 
     @classmethod
     def from_api(cls, data: dict) -> "EventLabel":
-        background_color = data["backgroundColor"]
-        name = data.get("name")
-        priority = None
-        if name is not None:
-            match = _PRIORITY_NAME_PREFIX_RE.match(name)
-            if match is not None:
-                priority = int(match.group(1))
-                name = match.group(2)
-        if background_color == _label_color_for_priority(priority):
-            # This color is exactly what to_api_body would derive
-            # from this priority -- treat it as derived, not an
-            # independently chosen color, so a round trip through
-            # this class doesn't "freeze" a color that should
-            # keep following priority if priority changes later.
-            # Note that this means that users should avoid explicitly
-            # choosing a priority color as a background color.
-            background_color = None
-        return cls(id=data.get("id"), background_color=background_color, name=name, priority=priority)
+        return cls(id=data.get("id"), background_color=data["backgroundColor"], name=data.get("name"))
 
     def to_api_body(self) -> dict:
         background_color = self.background_color
@@ -332,11 +291,8 @@ class EventLabel:
         body: dict = {"backgroundColor": background_color}
         if self.id is not None:
             body["id"] = self.id
-        name = self.name
-        if self.priority is not None:
-            name = f"P{self.priority} {name}" if name else f"P{self.priority}"
-        if name is not None:
-            body["name"] = name
+        if self.name is not None:
+            body["name"] = self.name
         return body
 
 
@@ -392,54 +348,6 @@ def _format_properties(
         if value is not None:
             formatted[f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{attr}"] = format_value(value)
     return formatted
-
-
-def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
-    """Load cached OAuth credentials, refreshing or running the consent flow as needed.
-
-    token_path: where the user's OAuth token (access token + refresh token) is
-        cached, conventionally as `token.json`. This file does not need to
-        exist yet: on first run (or once the cached token can no longer be
-        refreshed), this function runs an interactive consent flow that opens
-        a browser for the user to log into Google and grant access, then
-        writes the resulting credentials here. On every later run, the
-        cached token is read back and — if the access token has expired — is
-        refreshed and, on a best-effort basis, rewritten to this same path
-        (see below). This file contains live user credentials and must
-        never be committed.
-    credentials_path: path to the OAuth *client* secret file (conventionally
-        `credentials.json`), downloaded once from the Google Cloud Console
-        for the project this server registers as. It identifies the
-        application, not the end user, but must still never be committed.
-
-    Rewriting token_path after a refresh is best-effort: if the path isn't
-    writable (e.g. a read-only mount, such as a Render Secret File), the
-    write is skipped with a warning rather than raising. This is safe
-    because a refresh doesn't change the refresh token itself, only the
-    short-lived access token — so an unwritable token_path just means the
-    next process start refreshes again from the same cached refresh token,
-    rather than reusing an unexpired access token.
-    """
-    creds = None
-    if token_path.exists():
-        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
-
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(str(credentials_path), SCOPES)
-            creds = flow.run_local_server(port=0)
-        try:
-            token_path.write_text(creds.to_json())
-        except OSError:
-            logger.warning(
-                "Could not write refreshed credentials to %s; continuing "
-                "with in-memory credentials for this run.",
-                token_path,
-            )
-
-    return creds
 
 
 class CalendarClient:
@@ -545,20 +453,25 @@ class CalendarClient:
         name: str | None = None,
         priority: int | None = None,
     ) -> EventLabel:
-        """Update an existing event label's `background_color`, `name`,
-        and/or `priority` -- whichever is left `None` keeps its current
-        value. Raises `ValueError` if no label with `label_id` exists."""
+        """Update an existing event label's `background_color` and/or
+        `name` -- whichever is left `None` keeps its current value.
+        `priority` (if given, and `background_color` is not) recolors the
+        label using the color derived from that priority, the same as a
+        freshly-created label would get -- see `EventLabel`. `priority`
+        isn't itself persisted, since Calendar has no field for it: it
+        only affects the color this specific call resolves to. Raises
+        `ValueError` if no label with `label_id` exists."""
         etag, labels = self._get_raw_event_labels()
         for index, label in enumerate(labels):
             if label.get("id") == label_id:
                 current = EventLabel.from_api(label)
+                if background_color is None and priority is None:
+                    background_color = current.background_color
                 merged = EventLabel(
                     id=label_id,
-                    background_color=(
-                        background_color if background_color is not None else current.background_color
-                    ),
+                    background_color=background_color,
                     name=name if name is not None else current.name,
-                    priority=priority if priority is not None else current.priority,
+                    priority=priority,
                 )
                 labels[index] = merged.to_api_body()
                 break
@@ -578,6 +491,23 @@ class CalendarClient:
         removed = next(EventLabel.from_api(label) for label in labels if label.get("id") == label_id)
         self._patch_event_labels(etag, remaining)
         return removed
+
+    def replace_event_labels(self, labels: list[EventLabel]) -> list[EventLabel]:
+        """Atomically replace this calendar's entire set of custom event
+        labels with `labels`: each given label is created (if `id` is
+        `None`) or fully overwritten (if `id` matches an existing label --
+        unlike `update_event_label`, every field is replaced, not merged
+        with the label's current value), and any existing label whose
+        `id` isn't present in `labels` is deleted. Guarded by the
+        calendar's etag exactly like create/update/delete_event_label, so
+        a concurrent change raises `EventLabelConflictError`.
+
+        Used by `utilities/event_label_sheet.py` to sync labels from a
+        Google Sheet, where the sheet is the source of truth for the
+        whole set."""
+        etag, _ = self._get_raw_event_labels()
+        updated = self._patch_event_labels(etag, [label.to_api_body() for label in labels])
+        return updated
 
     def _get_raw_event_labels(self) -> tuple[str | None, list[dict]]:
         """(etag, eventLabels) for this calendar -- the etag lets

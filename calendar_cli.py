@@ -13,6 +13,8 @@ Usage:
     python calendar_cli.py create_label key=value [key=value ...]
     python calendar_cli.py update_label <label_id> key=value [key=value ...]
     python calendar_cli.py delete_label <label_id>
+    python calendar_cli.py create_label_sheet [title]
+    python calendar_cli.py sync_labels [spreadsheet_id]
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -43,14 +45,26 @@ Usage:
   colors. `create_label`/`update_label` take the same kind of
   `background_color=value`/`name=value`/`priority=value` pairs as
   `update_properties` above; whichever is omitted on `update_label`
-  keeps its current value. A label's `priority` is encoded as a
-  f"P{priority} " prefix on its `name` (see `EventLabel`), and its
-  `background_color` may be left unset if `priority` is given -- it's
-  then derived from `priority` the same way `Event.colorId` is (one of
-  `background_color`/`priority` is required for `create_label`).
-  Defining a label here doesn't do anything on its own; assigning one to
-  a specific event is a separate, not-yet-built feature. See
+  keeps its current value. `background_color` may be left unset if
+  `priority` is given -- it's then derived from `priority` the same way
+  `Event.colorId` is (one of `background_color`/`priority` is required
+  for `create_label`). Google Calendar itself has no field for a
+  label's priority, though -- it's only used here to derive a color for
+  *this* call; `list_labels` shows a label's priority only if it's also
+  tracked in a synced event label sheet (see below). Defining a label
+  here doesn't do anything on its own; assigning one to a specific
+  event is a separate, not-yet-built feature. See
   https://developers.google.com/workspace/calendar/api/guides/labels
+- `create_label_sheet`/`sync_labels` manage a Google Sheet that tracks
+  event labels' priority (which Calendar itself can't store) alongside
+  their name and color, via `EventLabelSheet.create_sheet`/`sync_from_
+  sheet`. `create_label_sheet` makes a new sheet (default title "Event
+  Labels"), pre-populated with the calendar's current labels, and prints
+  its URL. Edit that sheet -- change a row's color/priority, add a row
+  with a blank ID to create a new label, or delete a row to delete its
+  label -- then run `sync_labels` (an optional spreadsheet_id picks a
+  specific sheet; otherwise the most recently created/modified one is
+  used) to apply those changes back to the calendar.
 """
 
 from __future__ import annotations
@@ -64,7 +78,7 @@ from typing import Any
 import pytimeparse
 
 from calendar_clients.google_calendar import Event, EventLabel
-from config import build_calendar_client
+from config import build_calendar_client, build_event_label_sheet
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 
@@ -195,7 +209,8 @@ def _format_event_details(event: Event | EventLabel) -> str:
 
 
 def _format_event_label_line(label: EventLabel) -> str:
-    return f"{label.id}\t{label.background_color}\t{label.name or ''}"
+    priority = label.priority if label.priority is not None else ""
+    return f"{label.id}\t{label.background_color}\t{priority}\t{label.name or ''}"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -312,6 +327,26 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     delete_label_parser.add_argument("label_id", help="The label id.")
 
+    create_label_sheet_parser = subparsers.add_parser(
+        "create_label_sheet", help="Create a new Google Sheet for managing event labels."
+    )
+    create_label_sheet_parser.add_argument(
+        "title",
+        nargs="?",
+        default="Event Labels",
+        help='The new spreadsheet\'s title. Default: "Event Labels".',
+    )
+
+    sync_labels_parser = subparsers.add_parser(
+        "sync_labels", help="Sync event labels from a Google Sheet created by create_label_sheet."
+    )
+    sync_labels_parser.add_argument(
+        "spreadsheet_id",
+        nargs="?",
+        default=None,
+        help="The sheet to sync from. Default: the most recently created/modified one.",
+    )
+
     return parser
 
 
@@ -362,7 +397,7 @@ def main() -> None:
         client.delete_event(args.id)
         print(f"Deleted event {args.id}.")
     elif args.command == "list_labels":
-        labels = client.list_event_labels()
+        labels = build_event_label_sheet().list_labels_with_priority()
         if not labels:
             print("No event labels found.")
         for label in labels:
@@ -385,6 +420,15 @@ def main() -> None:
     elif args.command == "delete_label":
         label = client.delete_event_label(args.label_id)
         print(f"Deleted event label {label.id}.")
+    elif args.command == "create_label_sheet":
+        spreadsheet_id = build_event_label_sheet().create_sheet(args.title)
+        print(f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit")
+    elif args.command == "sync_labels":
+        labels = build_event_label_sheet().sync_from_sheet(args.spreadsheet_id)
+        if not labels:
+            print("No event labels found.")
+        for label in labels:
+            print(_format_event_label_line(label))
 
 
 if __name__ == "__main__":

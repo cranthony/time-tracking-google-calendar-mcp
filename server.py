@@ -14,7 +14,13 @@ from calendar_clients.google_calendar import (
     EventLabel,
     EventLabelConflictError,
 )
-from config import build_calendar_client, get_mcp_resource_url, get_workos_authkit_domain
+from config import (
+    build_calendar_client,
+    build_event_label_sheet,
+    get_mcp_resource_url,
+    get_workos_authkit_domain,
+)
+from utilities.event_label_sheet import EventLabelSheet
 from utilities.reallocation import (
     ReallocationConflictError,
     ReallocationOptions,
@@ -116,6 +122,7 @@ class PublicEvent:
 
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
+_event_label_sheet: EventLabelSheet | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -136,6 +143,15 @@ def get_reallocating_calendar() -> ReallocatingCalendar:
     if _reallocating_calendar is None:
         _reallocating_calendar = ReallocatingCalendar(get_calendar_client())
     return _reallocating_calendar
+
+
+def get_event_label_sheet() -> EventLabelSheet:
+    """Lazily construct and cache the EventLabelSheet, the same way
+    get_calendar_client/get_reallocating_calendar cache theirs."""
+    global _event_label_sheet
+    if _event_label_sheet is None:
+        _event_label_sheet = build_event_label_sheet()
+    return _event_label_sheet
 
 
 @mcp.tool()
@@ -187,8 +203,12 @@ def delete_event(id: str) -> list[PublicEvent]:
 
 @mcp.tool()
 def list_event_labels() -> list[EventLabel]:
-    """List this calendar's custom event labels."""
-    return get_calendar_client().list_event_labels()
+    """List this calendar's custom event labels, with each one's
+    priority filled in from the synced event label sheet (see
+    create_event_label_sheet/sync_event_labels_from_sheet) if one has
+    been created -- priority is None for a label with no matching sheet
+    row, or if no sheet has been created at all."""
+    return get_event_label_sheet().list_labels_with_priority()
 
 
 @mcp.tool()
@@ -228,6 +248,34 @@ def delete_event_label(label_id: str) -> EventLabel:
     before deletion."""
     try:
         return get_calendar_client().delete_event_label(label_id)
+    except (ValueError, EventLabelConflictError) as exc:
+        raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def create_event_label_sheet(title: str = "Event Labels") -> str:
+    """Create a new Google Sheet for managing this calendar's event
+    labels, pre-populated with the current labels (one row each: ID,
+    Name, Background Color, Priority -- ID is only there so
+    sync_event_labels_from_sheet can match rows back to labels; it isn't
+    meant to be edited). Edit the sheet, then call
+    sync_event_labels_from_sheet to apply changes -- including adding a
+    row with a blank ID to create a new label, or deleting a row to
+    delete its label. Returns the new sheet's URL."""
+    spreadsheet_id = get_event_label_sheet().create_sheet(title)
+    return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
+
+
+@mcp.tool()
+def sync_event_labels_from_sheet(spreadsheet_id: str | None = None) -> list[EventLabel]:
+    """Make this calendar's event labels match the given Google Sheet
+    (or the most recently created/modified one from
+    create_event_label_sheet, if `spreadsheet_id` is omitted) exactly:
+    rows with a blank ID become new labels, rows with a matching ID
+    overwrite that label's name/color/priority, and any label with no
+    matching row is deleted. Returns the resulting labels."""
+    try:
+        return get_event_label_sheet().sync_from_sheet(spreadsheet_id)
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 

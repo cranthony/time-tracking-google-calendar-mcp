@@ -486,26 +486,91 @@ class TestMainDelete:
         assert "abc123" in capsys.readouterr().out
 
 
+def _fake_event_label_sheet(monkeypatch) -> MagicMock:
+    event_label_sheet = MagicMock()
+    monkeypatch.setattr(calendar_cli, "build_event_label_sheet", lambda: event_label_sheet)
+    return event_label_sheet
+
+
 class TestMainListLabels:
     def test_lists_labels(self, capsys, monkeypatch):
-        client = MagicMock()
-        client.list_event_labels.return_value = [_event_label()]
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.list_labels_with_priority.return_value = [_event_label()]
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "list_labels"])
 
         calendar_cli.main()
 
-        client.list_event_labels.assert_called_once()
+        event_label_sheet.list_labels_with_priority.assert_called_once()
         out = capsys.readouterr().out
         assert "label-1" in out
         assert "#8e24aa" in out
         assert "Design Work" in out
 
     def test_prints_message_when_no_labels(self, capsys, monkeypatch):
-        client = MagicMock()
-        client.list_event_labels.return_value = []
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.list_labels_with_priority.return_value = []
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "list_labels"])
+
+        calendar_cli.main()
+
+        assert "No event labels found." in capsys.readouterr().out
+
+
+class TestMainCreateLabelSheet:
+    def test_creates_sheet_and_prints_url(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.create_sheet.return_value = "abc123"
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "create_label_sheet"])
+
+        calendar_cli.main()
+
+        event_label_sheet.create_sheet.assert_called_once_with("Event Labels")
+        assert "https://docs.google.com/spreadsheets/d/abc123/edit" in capsys.readouterr().out
+
+    def test_passes_through_explicit_title(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.create_sheet.return_value = "abc123"
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "create_label_sheet", "My Labels"]
+        )
+
+        calendar_cli.main()
+
+        event_label_sheet.create_sheet.assert_called_once_with("My Labels")
+
+
+class TestMainSyncLabels:
+    def test_syncs_from_default_sheet(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.sync_from_sheet.return_value = [_event_label(priority=1)]
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "sync_labels"])
+
+        calendar_cli.main()
+
+        event_label_sheet.sync_from_sheet.assert_called_once_with(None)
+        out = capsys.readouterr().out
+        assert "label-1" in out
+
+    def test_syncs_from_explicit_spreadsheet_id(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.sync_from_sheet.return_value = []
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "sync_labels", "sheet-123"])
+
+        calendar_cli.main()
+
+        event_label_sheet.sync_from_sheet.assert_called_once_with("sheet-123")
+
+    def test_prints_message_when_no_labels(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_label_sheet = _fake_event_label_sheet(monkeypatch)
+        event_label_sheet.sync_from_sheet.return_value = []
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "sync_labels"])
 
         calendar_cli.main()
 

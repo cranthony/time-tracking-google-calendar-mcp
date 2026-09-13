@@ -1,9 +1,10 @@
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import config
+from utilities.event_label_sheet import EventLabelSheet
 
 
 class TestGetCalendarId:
@@ -118,3 +119,37 @@ class TestBuildCalendarClient:
 
         with pytest.raises(config.ConfigError):
             config.build_calendar_client()
+
+
+class TestBuildEventLabelSheet:
+    def test_builds_both_clients_from_one_shared_load_credentials_call(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
+        monkeypatch.setenv("GOOGLE_OAUTH_CREDENTIALS_PATH", "creds.json")
+        monkeypatch.setenv("GOOGLE_OAUTH_TOKEN_PATH", "tok.json")
+        creds = object()
+        load_credentials_mock = MagicMock(return_value=creds)
+        monkeypatch.setattr(config, "load_credentials", load_credentials_mock)
+        services = {"calendar": MagicMock(), "sheets": MagicMock(), "drive": MagicMock()}
+        build_mock = MagicMock(side_effect=lambda name, _version, credentials: services[name])
+        monkeypatch.setattr(config, "build", build_mock)
+
+        result = config.build_event_label_sheet()
+
+        load_credentials_mock.assert_called_once_with(Path("tok.json"), Path("creds.json"))
+        assert isinstance(result, EventLabelSheet)
+        assert build_mock.call_count == 3
+        assert {call.args[0] for call in build_mock.call_args_list} == {
+            "calendar",
+            "sheets",
+            "drive",
+        }
+        for call in build_mock.call_args_list:
+            assert call.kwargs["credentials"] is creds
+
+    def test_raises_when_calendar_id_unset(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
+        monkeypatch.setattr(config, "load_credentials", MagicMock())
+        monkeypatch.setattr(config, "build", MagicMock())
+
+        with pytest.raises(config.ConfigError):
+            config.build_event_label_sheet()

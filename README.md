@@ -27,9 +27,12 @@ pip install -r requirements-dev.txt
 
 ## Project layout
 
+- [`calendar_clients/google_auth.py`](calendar_clients/google_auth.py) — the OAuth plumbing shared by both API clients below: `SCOPES` (every scope either one needs) and `load_credentials` (loads/refreshes/runs the consent flow). Split out on its own so `CalendarClient` and `SheetsClient` can each be built from one shared token rather than each owning (and duplicating) credential loading.
 - [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar`/`EventLabel` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead. `CalendarClient` is a thin, pure API wrapper (list/get/create/update/delete, plus event-label management).
+- [`calendar_clients/google_sheets.py`](calendar_clients/google_sheets.py) — Google Sheets/Drive API access, behind a `SheetsClient` class — the same thin-wrapper role as `CalendarClient`, but for spreadsheets: create one, tag it (and find it again by tag), read/write rows, narrow a column. Knows nothing about event labels.
 - [`utilities/reallocation.py`](utilities/reallocation.py) — the reallocation algorithm: how creating an event makes room for itself by reclaiming time from lower-priority events and free time in its day. Has no Calendar API dependency of its own — see the module docstring.
 - [`utilities/reallocating_calendar.py`](utilities/reallocating_calendar.py) — the glue between the two above: `ReallocatingCalendar` wraps a `CalendarClient` with reallocation-aware `create_event`/`update_event`, the shared entry point both `server.py` and `calendar_cli.py` use.
+- [`utilities/event_label_sheet.py`](utilities/event_label_sheet.py) — `EventLabelSheet`, the application-level policy for keeping a calendar's event labels in sync with a Google Sheet, layered on top of `CalendarClient` + `SheetsClient` the same way `ReallocatingCalendar` is layered on top of `CalendarClient` alone — see [Event label sheets](#event-label-sheets) below.
 - [`server.py`](server.py) — the MCP server; its tools call into `calendar_clients/google_calendar.py` rather than talking to `googleapiclient`/OAuth directly.
 - [`workos_auth.py`](workos_auth.py) — verifies bearer tokens issued by WorkOS AuthKit, for when `server.py` is hosted remotely over `streamable-http` instead of run locally over stdio — see [Deploying](#deploying) below.
 - [`create_calendar.py`](create_calendar.py) — a standalone bootstrap script (not an MCP tool) that creates the dedicated calendar this app needs — see [Calendar access model](#calendar-access-model) below.
@@ -40,11 +43,13 @@ pip install -r requirements-dev.txt
 
 ## Calendar access model
 
-This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py)) — not the broader `calendar.events`/`calendar.events.owned` scopes. That has real consequences:
+This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [`calendar_clients/google_auth.py`](calendar_clients/google_auth.py)) — not the broader `calendar.events`/`calendar.events.owned` scopes. That has real consequences:
 
 - This app can only read and write events on calendars **it has created itself**.
 - It has **no access to the user's existing calendars** — not `"primary"`, not any calendar they made by hand in the Calendar UI. API calls against any calendar this app didn't create itself will fail.
 - This is deliberate: a compromised or misbehaving instance of this app cannot read or touch anything outside the dedicated calendar(s) it made for itself.
+
+`SCOPES` also includes `drive.file`, for [event label sheets](#event-label-sheets) — the same "can't touch anything it didn't make" model as `calendar.app.created`, but for Google Sheets/Drive: this app can only see/create files it made itself (or that were explicitly shared with it via a picker), never the user's other Drive files. If you're upgrading an install whose `token.json` predates this scope, delete it and let the consent flow run again (see [Google OAuth credentials](#google-oauth-credentials) below) — the old token won't carry the new scope.
 
 **Bootstrapping:** there's no calendar to operate on until this app creates one. Run [`create_calendar.py`](create_calendar.py) once — it only needs `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` (see [Configuration](#configuration) below), not `GOOGLE_CALENDAR_ID` — and it prints the new calendar's ID:
 
@@ -69,6 +74,8 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 | `create_event_label` | `(background_color=None, name=None, priority=None) -> EventLabel` |
 | `update_event_label` | `(label_id, background_color=None, name=None, priority=None) -> EventLabel` |
 | `delete_event_label` | `(label_id) -> EventLabel` |
+| `create_event_label_sheet` | `(title="Event Labels") -> str` |
+| `sync_event_labels_from_sheet` | `(spreadsheet_id=None) -> list[EventLabel]` |
 
 `update_event`/`create_event`/`delete_event` all return a `list[PublicEvent]` rather than a single `PublicEvent`, since `update_event`/`create_event` can affect more than the one event acted on (see below). `delete_event` doesn't call the Calendar API's own delete — it patches the event's `status` to `"cancelled"` (via `CalendarClient.update_event`), the same way reallocation cancels an event to make room for another. This matches `Event.status`'s own documented recommendation to cancel rather than delete an instance of a recurring event, and always returns exactly that one event, wrapped in a single-element list for a consistent return type across all three.
 
@@ -82,9 +89,9 @@ Calendar creation is deliberately *not* an MCP tool — see [Calendar access mod
 
 `list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label` manage this calendar's custom event labels via `EventLabel` directly (see `calendar_clients/google_calendar.py`) — no `PublicEvent`-style wrapper, since a label has no internal-only fields to hide from the agent. These manage the labels *defined on the calendar*; assigning one to a specific event (the API's `eventLabelId` field, which supersedes `colorId`) is a separate, not-yet-built feature. `update_event_label` requires at least one of `background_color`/`name`/`priority`; whichever is omitted keeps its current value. `update_event_label`/`delete_event_label` raise a `ToolError` if `label_id` doesn't match an existing label.
 
-`EventLabel.priority` gives a label the same priority-coloring concept `Event.colorId` already has, but expressed as an arbitrary hex color instead of one of the 11 fixed ones: its priority is encoded as a `f"P{priority} "` prefix on the label's `name` (there's no dedicated API field for it), and its `background_color` may be left unset — it's then derived from `priority` the same way `Event.colorId` is (so `background_color` is only truly required when no `priority` is given, or when `priority` is 2, which has no default color of its own — same as `Event.colorId`). Reading a label back recognizes its own prefix and strips it, and — if the stored color exactly matches what that priority would derive — reports `background_color=None` rather than a value that looks like it was independently chosen, so the color keeps following `priority` (e.g. through a later `update_event_label` that changes only `priority`) instead of getting frozen at whatever it happened to be.
+`EventLabel.priority` gives a label the same priority-coloring concept `Event.colorId` already has, but expressed as an arbitrary hex color instead of one of the 11 fixed ones — with one important difference from `Event.priority`: **Google Calendar's label resource has no field for it at all.** Passing `priority` to `create_event_label`/`update_event_label` only derives that call's `background_color` (so `background_color` is only truly required when no `priority` is given, or when `priority` is 2, which has no default color of its own — same as `Event.colorId`); it isn't persisted anywhere Calendar can hand back later. `list_event_labels` (and `EventLabel.from_api` generally) therefore always reports `priority=None` for a label read straight from Calendar. The only place a label's priority is actually remembered is a synced **event label sheet** — see [Event label sheets](#event-label-sheets) below; `list_event_labels` fills `priority` in from that sheet when one exists.
 
-Every label write reads the full label list, changes it in memory, and writes the whole thing back (the API has no way to touch a single label in place), which is a lost-update race if two callers do this concurrently. `create_event_label`/`update_event_label`/`delete_event_label` guard against that with the calendar's own `etag`: each sends it back as an `If-Match` precondition on the write, so a write based on a label list that's since changed fails with `EventLabelConflictError` (surfaced as a `ToolError`) instead of silently overwriting the other change. Confirmed empirically against the real API, since Google's docs only document `If-Match` for Events, not Calendars.
+Every label write reads the full label list, changes it in memory, and writes the whole thing back (the API has no way to touch a single label in place), which is a lost-update race if two callers do this concurrently. `create_event_label`/`update_event_label`/`delete_event_label`/`sync_event_labels_from_sheet` guard against that with the calendar's own `etag`: each sends it back as an `If-Match` precondition on the write, so a write based on a label list that's since changed fails with `EventLabelConflictError` (surfaced as a `ToolError`) instead of silently overwriting the other change. Confirmed empirically against the real API, since Google's docs only document `If-Match` for Events, not Calendars.
 
 ### Why tools, not resources
 
@@ -92,6 +99,16 @@ MCP has both **tools** (model-controlled: the model decides when to call one, wi
 
 - **Portability.** Resources depend on the host having built UI (or another bridging mechanism) for the model to reach them at all; a lot of MCP clients — agentic ones especially — only implement tool-calling and skip resources entirely. Tools work everywhere.
 - **Fit.** The natural workflow here is model-driven, not human-browsing-driven: the model discovers an event's ID via `list_events`, then immediately wants to act on it — fetch details, update, delete. That's a tool-calling pattern (one tool's output, the `id` field, feeds directly into the next tool's input) with no need for a resource-URI layer in between. Nobody is going to browse a picker UI for an event by its opaque Google Calendar ID.
+
+## Event label sheets
+
+Since Google Calendar has no field for an event label's priority (see above), [`utilities/event_label_sheet.py`](utilities/event_label_sheet.py)'s `EventLabelSheet` keeps it in a Google Sheet instead — one row per label, four columns: **ID** (deliberately narrow — nobody's expected to care what it is, just that it's there), **Name**, **Background Color**, **Priority**.
+
+- **`create_event_label_sheet`/`create_label_sheet`** (`EventLabelSheet.create_sheet`) creates a new spreadsheet via `SheetsClient`, tags it with a Drive `appProperties` key/value pair so it can be found again later, narrows the ID column, and pre-populates it with the calendar's *current* labels (Priority left blank — Calendar doesn't know one). Returns the new sheet's URL.
+- **`sync_event_labels_from_sheet`/`sync_labels`** (`EventLabelSheet.sync_from_sheet`) makes the calendar's labels match a sheet exactly: a row with a blank ID becomes a new label (and that row's ID cell is then filled in with the real, Google-assigned ID, so syncing again doesn't create a duplicate); a row whose ID matches an existing label fully overwrites its name/color/priority; **any existing label whose ID isn't present in the sheet at all is deleted.** This makes the sheet fully authoritative once you start syncing from it — delete a row to delete its label. If no `spreadsheet_id` is given, it uses whichever tagged sheet was most recently created or modified (`SheetsClient.find_spreadsheet`, via a Drive `files.list` query on that same `appProperties` tag, `orderBy=modifiedTime desc`).
+- **`list_event_labels`/`list_labels`** also consult a synced sheet (`EventLabelSheet.list_labels_with_priority`), filling in each label's `priority` from a matching row without writing anything back. A label keeps `priority=None` if it has no matching row, or no sheet has been created at all.
+
+Both operations are available as MCP tools (`create_event_label_sheet`/`sync_event_labels_from_sheet`, see [MCP tools](#mcp-tools) above) and as CLI subcommands (`create_label_sheet`/`sync_labels`, see [Command-line utilities](#command-line-utilities) below). No extra configuration is needed — sheet discovery is entirely tag-based (see [Calendar access model](#calendar-access-model) above for the `drive.file` scope this relies on) — though every operation also accepts an explicit `spreadsheet_id` to target a specific sheet instead.
 
 ## Event colors
 
@@ -104,14 +121,14 @@ MCP has both **tools** (model-controlled: the model decides when to call one, wi
 | 2 | the calendar's default color | unset |
 | >=3 | Sage (soft green) | `"2"` |
 
-Note that calendar colors are superseded by the colors corresponding to the event's label.  We do not currently use event labels in this application, but we intend to use them for event categorization, later.
+Note that calendar colors are superseded by the colors corresponding to the event's label. Assigning a label to a specific event (the API's `eventLabelId` field) is still a separate, not-yet-built feature — see [MCP tools](#mcp-tools) and [Event label sheets](#event-label-sheets) above for the event labels support that does exist today (defining labels, and syncing their priority from a Google Sheet).
 
 ## Google OAuth credentials
 
-`CalendarClient.from_credentials`, in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), needs two files, neither of which should ever be committed:
+`calendar_clients/google_auth.py`'s `load_credentials` — used by both `CalendarClient.from_credentials` and `SheetsClient.from_credentials` (and by `config.build_event_label_sheet`, which loads it once and shares it between the two — see [Project layout](#project-layout) above) — needs two files, neither of which should ever be committed:
 
 - **`credentials.json`** — the OAuth *client* secret, downloaded once from the [Google Cloud Console](https://console.cloud.google.com/) for the Google Cloud project you register this server under (APIs & Services → Credentials → create an OAuth client ID of type "Desktop app", then download its JSON). This identifies the application, not you as a user — you obtain it yourself and supply its path.
-- **`token.json`** — the *user's* actual access + refresh token. You don't create this yourself: the first time `load_credentials` runs without a valid cached token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. Every later run reads the cached file back and refreshes it as the access token expires; rewriting it back to `token_path` afterward is best-effort — if the path turns out not to be writable (see [Deploying](#deploying) below), the refresh still succeeds in memory, just without being persisted.
+- **`token.json`** — the *user's* actual access + refresh token, carrying every scope in `SCOPES` (Calendar and Drive/Sheets both). You don't create this yourself: the first time `load_credentials` runs without a valid cached token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. Every later run reads the cached file back and refreshes it as the access token expires; rewriting it back to `token_path` afterward is best-effort — if the path turns out not to be writable (see [Deploying](#deploying) below), the refresh still succeeds in memory, just without being persisted.
 
 Both paths are required arguments (no defaults), so where they live is up to whatever wires up the server. For local development, the filenames `credentials.json` and `token.json` are gitignored, so you can drop both files straight into the project root without risk of committing them.
 
@@ -242,6 +259,13 @@ python calendar_cli.py update_label <label-id> background_color="#d50000"
 
 # Delete an event label by id
 python calendar_cli.py delete_label <label-id>
+
+# Create a Google Sheet for managing event labels (prints its URL)
+python calendar_cli.py create_label_sheet
+
+# Sync event labels from that sheet -- blank-ID rows create labels,
+# matching-ID rows overwrite them, and missing rows delete them
+python calendar_cli.py sync_labels
 ```
 
 `from`/`to` are each a duration relative to *now* — parsed with [pytimeparse](https://pypi.org/project/pytimeparse/) (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`) — giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
@@ -254,7 +278,9 @@ python calendar_cli.py delete_label <label-id>
 
 For a recurring event, the id from `list`/`get` names one specific *instance*.  To change a property for the entire series of recurring events, use the `recurring_event_id` that's visible from `get`.  See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for more on how instances and recurring events relate.
 
-`create_label`/`update_label` take the same kind of `key=value` pairs as `update_properties` (`background_color`/`name`/`priority`). `list_labels`/`create_label`/`update_label`/`delete_label` manage this calendar's custom event labels (`CalendarClient.list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label`) — see [MCP tools](#mcp-tools) above for how `priority` and `background_color` interact (`background_color` is only required when `priority` is omitted, or is `2`). See Google's [event labels guide](https://developers.google.com/workspace/calendar/api/guides/labels).
+`create_label`/`update_label` take the same kind of `key=value` pairs as `update_properties` (`background_color`/`name`/`priority`). `list_labels`/`create_label`/`update_label`/`delete_label` manage this calendar's custom event labels (`CalendarClient.list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label`) — see [MCP tools](#mcp-tools) above for how `priority` and `background_color` interact (`background_color` is only required when `priority` is omitted, or is `2`), and why `priority` doesn't stick around on its own. See Google's [event labels guide](https://developers.google.com/workspace/calendar/api/guides/labels).
+
+`create_label_sheet` takes an optional spreadsheet title (default `"Event Labels"`) and prints the new sheet's URL; `sync_labels` takes an optional spreadsheet ID (default: whichever tagged sheet was most recently created/modified) and prints the resulting labels — see [Event label sheets](#event-label-sheets) above.
 
 ## Running tests
 
