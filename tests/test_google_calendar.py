@@ -330,6 +330,24 @@ class TestEvent:
         with pytest.raises(ValueError):
             event.to_api_body()
 
+    def test_to_api_body_omits_colorId_when_priority_is_unset(self):
+        # priority=None here means "this payload doesn't touch priority"
+        # (a partial-update payload, or a fresh Event nobody's given a
+        # priority yet) -- there's no way to tell those apart, and either
+        # way to_api_body must not guess a color.
+        event = Event(id="abc123")
+
+        assert "colorId" not in event.to_api_body()
+
+    @pytest.mark.parametrize(
+        "priority,expected_color_id",
+        [(0, "8"), (1, "5"), (2, None), (3, "2"), (4, "2"), (5, "2")],
+    )
+    def test_to_api_body_sets_colorId_from_priority(self, priority, expected_color_id):
+        event = Event(id="abc123", priority=priority)
+
+        assert event.to_api_body()["colorId"] == expected_color_id
+
     @pytest.mark.parametrize(
         ("start", "end", "expected"),
         [
@@ -562,35 +580,9 @@ class TestCalendarClientCreateEvent:
         result = client.create_event(event)
 
         assert result.id == "new-id"
-        expected_body = event.to_api_body()
-        # No priority set -- treated as the default priority (2), which
-        # has no colorId of its own (google_calendar._PRIORITY_COLOR_IDS).
-        expected_body["colorId"] = None
         service.events.return_value.insert.assert_called_once_with(
-            calendarId=TEST_CALENDAR_ID, body=expected_body
+            calendarId=TEST_CALENDAR_ID, body=event.to_api_body()
         )
-
-    @pytest.mark.parametrize(
-        "priority,expected_color_id",
-        [(0, "8"), (1, "5"), (2, None), (3, "2"), (4, "2"), (None, None)],
-    )
-    def test_sets_colorId_from_priority(self, priority, expected_color_id):
-        service = MagicMock()
-        service.events.return_value.insert.return_value.execute.return_value = api_event(
-            "new-id", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
-        )
-        client = make_client(service)
-        event = Event(
-            summary="New",
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-            priority=priority,
-        )
-
-        client.create_event(event)
-
-        sent_body = service.events.return_value.insert.call_args.kwargs["body"]
-        assert sent_body["colorId"] == expected_color_id
 
 
 class TestCalendarClientUpdateEvent:
@@ -624,49 +616,6 @@ class TestCalendarClientUpdateEvent:
         service.events.return_value.patch.assert_called_once_with(
             calendarId=TEST_CALENDAR_ID, eventId="abc123", body=event.to_api_body()
         )
-
-    def test_leaves_colorId_untouched_when_priority_not_part_of_the_patch(self):
-        # event.priority is None here -- meaning "this patch doesn't touch
-        # priority" (the same convention as every other Event field) --
-        # so an unrelated patch (e.g. reallocation shrinking this event)
-        # must not reset its color to the "no priority" default.
-        service = MagicMock()
-        service.events.return_value.patch.return_value.execute.return_value = api_event(
-            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T09:30:00+00:00"
-        )
-        client = make_client(service)
-        event = Event(
-            id="abc123",
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-        )
-
-        client.update_event(event)
-
-        sent_body = service.events.return_value.patch.call_args.kwargs["body"]
-        assert "colorId" not in sent_body
-
-    @pytest.mark.parametrize(
-        "priority,expected_color_id",
-        [(0, "8"), (1, "5"), (2, None), (3, "2"), (4, "2")],
-    )
-    def test_sets_colorId_when_priority_is_part_of_the_patch(self, priority, expected_color_id):
-        service = MagicMock()
-        service.events.return_value.patch.return_value.execute.return_value = api_event(
-            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T09:30:00+00:00"
-        )
-        client = make_client(service)
-        event = Event(
-            id="abc123",
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-            priority=priority,
-        )
-
-        client.update_event(event)
-
-        sent_body = service.events.return_value.patch.call_args.kwargs["body"]
-        assert sent_body["colorId"] == expected_color_id
 
 
 class TestCalendarClientListDayEvents:

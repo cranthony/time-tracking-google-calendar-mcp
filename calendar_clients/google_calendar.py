@@ -36,35 +36,33 @@ _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 own per-event fields, distinguishing them from any other private key that
 might exist on an event."""
 
-_DEFAULT_PRIORITY = 2
-"""An event with no `priority` set is treated as this priority throughout
-the app -- both for reallocation's reclaim ordering
-(utilities/reallocation.py's `_effective_priority`) and for the color it's
-given below."""
-
 _PRIORITY_COLOR_IDS: dict[int, str | None] = {
     0: "8",   # Graphite (gray)
     1: "5",   # Banana (yellow)
-    2: None,  # this calendar's own default color -- no colorId set
+    2: None,  # no colorId of its own -- looks like an ordinary event
     3: "2",   # Sage (soft green)
 }
 """`colorId` (one of the Calendar API's 11 fixed event colors -- see
-CalendarClient.create_event/update_event) for each event priority (lower
-number is higher importance -- see Event.priority). Priority 4+ (but not
-a genuinely unset priority -- see `_DEFAULT_PRIORITY`) falls back to
+Event.to_api_body) for each event priority (lower number is higher
+importance -- see Event.priority). Priority 4 and higher falls back to
 priority 3's color, on the theory that anything not explicitly triaged
-into 0-3 is equally "whatever's left"."""
+into 0-3 is equally "whatever's left". This module has no notion of a
+*default* priority for an event that doesn't have one at all (`None`) --
+see `_color_id_for_priority`; that's a separate policy question for
+whoever constructs the `Event` (utilities/reallocation.py's
+`_effective_priority`, for reclaim ordering, does define one)."""
 
 logger = logging.getLogger(__name__)
 
 
-def _color_id_for_priority(priority: int | None) -> str | None:
-    """The `colorId` `CalendarClient.create_event`/`update_event` set to
-    keep an event's color in sync with `priority` (`None` means: clear/
-    don't set `colorId`, so the event shows this calendar's own default
-    color) -- see `_PRIORITY_COLOR_IDS` and `_DEFAULT_PRIORITY`."""
-    effective = priority if priority is not None else _DEFAULT_PRIORITY
-    return _PRIORITY_COLOR_IDS.get(effective, _PRIORITY_COLOR_IDS[3])
+def _color_id_for_priority(priority: int) -> str | None:
+    """The `colorId` `Event.to_api_body` sets to keep an event's color in
+    sync with its `priority` -- see `_PRIORITY_COLOR_IDS`. Only call this
+    when `priority` is known (not `None`): `to_api_body` skips it entirely
+    for a `None` priority, since that could mean either "genuinely no
+    priority" or just "not part of this particular write" (see its
+    docstring), and there's no way to tell those apart here."""
+    return _PRIORITY_COLOR_IDS.get(priority, _PRIORITY_COLOR_IDS[3])
 
 
 @dataclass(kw_only=True)
@@ -133,7 +131,9 @@ class Event:
     """If true, then we shouldn't change the duration of this event."""
 
     priority: int | None = None
-    """This event's priority; lower values are higher priority."""
+    """This event's priority; lower values are higher priority. Also
+    determines the event's `colorId` -- see `to_api_body` and
+    `_PRIORITY_COLOR_IDS`."""
 
     is_end_of_day_sleep: bool | None = None
     """If true, this event is the user's end-of-day sleep block. A marker
@@ -190,6 +190,12 @@ class Event:
             body["location"] = self.location
         if self.status is not None:
             body["status"] = self.status
+        if self.priority is not None:
+            # Keep the event's color in sync with its priority (see
+            # _color_id_for_priority) -- like every other field here,
+            # priority left None means "don't touch," so an update that
+            # doesn't mention priority can't reset an event's color.
+            body["colorId"] = _color_id_for_priority(self.priority)
         # recurring_event_id is deliberately never sent: it's assigned by
         # Google, not something a client sets.
 
@@ -488,31 +494,19 @@ class CalendarClient:
         return Event.from_api(response)
 
     def create_event(self, event: Event) -> Event:
-        body = event.to_api_body()
-        # Unlike every other field here, a brand-new event's priority is
-        # never "don't touch" -- it's always some real value (even if
-        # that's None, meaning no priority at all) -- so always color it.
-        body["colorId"] = _color_id_for_priority(event.priority)
         response = (
-            self._service.events().insert(calendarId=self._calendar_id, body=body).execute()
+            self._service.events()
+            .insert(calendarId=self._calendar_id, body=event.to_api_body())
+            .execute()
         )
         return Event.from_api(response)
 
     def update_event(self, event: Event) -> Event:
         if not event.id:
             raise ValueError("event.id is required to update an event")
-        body = event.to_api_body()
-        # event.priority is None here means "this patch doesn't touch
-        # priority" (the same convention every other field on Event
-        # follows in to_api_body) -- only recolor when priority is
-        # actually part of what's being written, so an unrelated patch
-        # (e.g. reallocation shrinking this event without changing its
-        # priority) can't reset its color to the "no priority" default.
-        if event.priority is not None:
-            body["colorId"] = _color_id_for_priority(event.priority)
         response = (
             self._service.events()
-            .patch(calendarId=self._calendar_id, eventId=event.id, body=body)
+            .patch(calendarId=self._calendar_id, eventId=event.id, body=event.to_api_body())
             .execute()
         )
         return Event.from_api(response)
