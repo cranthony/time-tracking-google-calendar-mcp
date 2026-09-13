@@ -21,7 +21,7 @@ with whatever `day_events` it's handed.
 Every event has a `priority` (lower number = more important); a
 higher-priority event is never shrunk to make room for a lower-priority
 one. Free time is the lowest possible priority (`math.inf`). An event with
-no `priority` set is treated as priority `1`.
+no `priority` set is treated as priority `2`.
 
 ## Minimum duration
 
@@ -153,8 +153,8 @@ def _overlap(event: Schedulable, new_event: Schedulable) -> timedelta:
 
 
 def _effective_priority(event: Schedulable) -> float:
-    """`event.priority`, or `1` if unset (see "Priority" above)."""
-    return event.priority if event.priority is not None else 1
+    """`event.priority`, or `2` if unset (see "Priority" above)."""
+    return event.priority if event.priority is not None else 2
 
 
 def _effective_min_duration(

@@ -39,6 +39,26 @@ might exist on an event."""
 logger = logging.getLogger(__name__)
 
 
+def _color_id_for_priority(priority: int) -> str | None:
+    """Priorities are colored with the colorId field, to make them easily
+    visible on the calendar.  The colorId field is restricted to a fixed set
+    of 11 colors.
+
+    Note that event labels unlock the ability to specify our own colors.  The
+    priority field doesn't use this feature because we intend to use it for
+    a different categorization feature.  An event label's color supersedes a
+    color ID."""
+    _PRIORITY_COLOR_IDS: dict[int, str | None] = {
+        0: "8",   # Graphite (gray)
+        1: "5",   # Banana (yellow)
+        2: None,  # The default calendar color
+        3: "2",   # Sage (soft green)
+    }
+    def _clamp(value: int, lower: int, upper: int):
+        return min(upper, max(lower, value))
+    return _PRIORITY_COLOR_IDS.get(_clamp(priority, 0, 3))
+
+
 @dataclass(kw_only=True)
 class Event:
     """A calendar event, decoupled from the Google API's raw resource shape.
@@ -105,7 +125,9 @@ class Event:
     """If true, then we shouldn't change the duration of this event."""
 
     priority: int | None = None
-    """This event's priority; lower values are higher priority."""
+    """This event's priority; lower values are higher priority. Also
+    determines the event's `colorId` -- see `to_api_body` and
+    `_PRIORITY_COLOR_IDS`."""
 
     is_end_of_day_sleep: bool | None = None
     """If true, this event is the user's end-of-day sleep block. A marker
@@ -162,6 +184,11 @@ class Event:
             body["location"] = self.location
         if self.status is not None:
             body["status"] = self.status
+        if self.priority is not None:
+            # Color each event according to its priority.  Note that this
+            # might be a partial update, in which case a missing priority
+            # should mean "leave the color the same".
+            body["colorId"] = _color_id_for_priority(self.priority)
         # recurring_event_id is deliberately never sent: it's assigned by
         # Google, not something a client sets.
 

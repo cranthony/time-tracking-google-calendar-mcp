@@ -82,6 +82,19 @@ MCP has both **tools** (model-controlled: the model decides when to call one, wi
 - **Portability.** Resources depend on the host having built UI (or another bridging mechanism) for the model to reach them at all; a lot of MCP clients — agentic ones especially — only implement tool-calling and skip resources entirely. Tools work everywhere.
 - **Fit.** The natural workflow here is model-driven, not human-browsing-driven: the model discovers an event's ID via `list_events`, then immediately wants to act on it — fetch details, update, delete. That's a tool-calling pattern (one tool's output, the `id` field, feeds directly into the next tool's input) with no need for a resource-URI layer in between. Nobody is going to browse a picker UI for an event by its opaque Google Calendar ID.
 
+## Event colors
+
+[`Event.to_api_body()`](calendar_clients/google_calendar.py) (used by every path that writes an event — the MCP tools, `calendar_cli.py`, and reallocation, all via `CalendarClient.create_event`/`update_event`) automatically sets `colorId` from the event's `priority`, so priority is visible at a glance in the Google Calendar UI without a separate step:
+
+| Priority | Color | `colorId` |
+| --- | --- | --- |
+| <=0 | Graphite (gray) | `"8"` |
+| 1 | Banana (yellow) | `"5"` |
+| 2 | the calendar's default color | unset |
+| >=3 | Sage (soft green) | `"2"` |
+
+Note that calendar colors are superseded by the colors corresponding to the event's label.  We do not currently use event labels in this application, but we intend to use them for event categorization, later.
+
 ## Google OAuth credentials
 
 `CalendarClient.from_credentials`, in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), needs two files, neither of which should ever be committed:

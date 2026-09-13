@@ -330,6 +330,24 @@ class TestEvent:
         with pytest.raises(ValueError):
             event.to_api_body()
 
+    def test_to_api_body_omits_colorId_when_priority_is_unset(self):
+        # priority=None here means "this payload doesn't touch priority"
+        # (a partial-update payload, or a fresh Event nobody's given a
+        # priority yet) -- there's no way to tell those apart, and either
+        # way to_api_body must not guess a color.
+        event = Event(id="abc123")
+
+        assert "colorId" not in event.to_api_body()
+
+    @pytest.mark.parametrize(
+        "priority,expected_color_id",
+        [(-1, "8"), (0, "8"), (1, "5"), (2, None), (3, "2"), (4, "2"), (5, "2")],
+    )
+    def test_to_api_body_sets_colorId_from_priority(self, priority, expected_color_id):
+        event = Event(id="abc123", priority=priority)
+
+        assert event.to_api_body()["colorId"] == expected_color_id
+
     @pytest.mark.parametrize(
         ("start", "end", "expected"),
         [

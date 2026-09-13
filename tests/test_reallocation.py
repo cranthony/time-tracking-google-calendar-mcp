@@ -91,8 +91,8 @@ class TestEffectivePriority:
     def test_returns_priority_when_set(self):
         assert _effective_priority(_event(priority=3)) == 3
 
-    def test_returns_one_when_unset(self):
-        assert _effective_priority(_event(priority=None)) == 1
+    def test_returns_two_when_unset(self):
+        assert _effective_priority(_event(priority=None)) == 2
 
 
 class TestEffectiveMinDuration:
