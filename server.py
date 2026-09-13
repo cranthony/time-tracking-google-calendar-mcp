@@ -15,6 +15,7 @@ from utilities.reallocation import (
     ReallocationOptions,
     ReallocationShortfallError,
 )
+from utilities.reallocating_calendar import ReallocatingCalendar
 from workos_auth import WorkOSTokenVerifier
 
 # "stdio" (the default) is for local use -- a client spawns this process
@@ -109,6 +110,7 @@ class PublicEvent:
 
 
 _calendar_client: CalendarClient | None = None
+_reallocating_calendar: ReallocatingCalendar | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -119,6 +121,16 @@ def get_calendar_client() -> CalendarClient:
     if _calendar_client is None:
         _calendar_client = build_calendar_client()
     return _calendar_client
+
+
+def get_reallocating_calendar() -> ReallocatingCalendar:
+    """Lazily construct and cache the ReallocatingCalendar wrapping
+    `get_calendar_client()`, the same way get_calendar_client itself
+    caches its CalendarClient."""
+    global _reallocating_calendar
+    if _reallocating_calendar is None:
+        _reallocating_calendar = ReallocatingCalendar(get_calendar_client())
+    return _reallocating_calendar
 
 
 @mcp.tool()
@@ -144,9 +156,7 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
     affected by the update."""
     updated_event = event.to_event()
     try:
-        applied = get_calendar_client().update_event_and_reallocate(
-            updated_event, ReallocationOptions()
-        )
+        applied = get_reallocating_calendar().update_event(updated_event, ReallocationOptions())
     except (ReallocationConflictError, ReallocationShortfallError, ValueError) as exc:
         raise ToolError(str(exc)) from exc
     return [PublicEvent.from_event(e) for e in applied]
@@ -157,9 +167,7 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
     """Create a new event. Returns the events affected by the creation."""
     new_event = event.to_event()
     try:
-        applied = get_calendar_client().create_event_with_reallocation(
-            new_event, ReallocationOptions()
-        )
+        applied = get_reallocating_calendar().create_event(new_event, ReallocationOptions())
     except (ReallocationConflictError, ReallocationShortfallError, ValueError) as exc:
         raise ToolError(str(exc)) from exc
     return [PublicEvent.from_event(e) for e in applied]
