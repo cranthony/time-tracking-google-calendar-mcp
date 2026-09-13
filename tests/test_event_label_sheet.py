@@ -5,7 +5,7 @@ import pytest
 from calendar_clients.google_calendar import EventLabel
 from utilities.event_label_sheet import EventLabelSheet
 
-_TAG = {"cascading-time-tracker-kind": "event-label-sheet"}
+_SHEET_ID_KEY = "event-label-sheet-id"
 
 
 def make_sheet(calendar_client=None, sheets_client=None) -> EventLabelSheet:
@@ -13,7 +13,7 @@ def make_sheet(calendar_client=None, sheets_client=None) -> EventLabelSheet:
 
 
 class TestCreateSheet:
-    def test_creates_tagged_sheet_with_header_and_narrow_id_column(self):
+    def test_creates_sheet_with_header_and_narrow_id_column(self):
         calendar_client = MagicMock()
         calendar_client.list_event_labels.return_value = []
         sheets_client = MagicMock()
@@ -23,13 +23,24 @@ class TestCreateSheet:
         result = event_label_sheet.create_sheet("My Labels")
 
         assert result == "sheet-1"
-        sheets_client.create_spreadsheet.assert_called_once_with("My Labels", _TAG)
+        sheets_client.create_spreadsheet.assert_called_once_with("My Labels")
         sheets_client.set_column_width.assert_called_once_with(
             "sheet-1", sheet_id=0, column_index=0, pixel_width=60
         )
         sheets_client.write_rows.assert_called_once_with(
             "sheet-1", "Sheet1!A1:D1", [["ID", "Name", "Background Color", "Priority"]]
         )
+
+    def test_records_the_new_sheet_id_on_the_calendar(self):
+        calendar_client = MagicMock()
+        calendar_client.list_event_labels.return_value = []
+        sheets_client = MagicMock()
+        sheets_client.create_spreadsheet.return_value = "sheet-1"
+        event_label_sheet = make_sheet(calendar_client, sheets_client)
+
+        event_label_sheet.create_sheet()
+
+        calendar_client.set_calendar_metadata.assert_called_once_with(_SHEET_ID_KEY, "sheet-1")
 
     def test_prepopulates_current_labels(self):
         calendar_client = MagicMock()
@@ -72,27 +83,27 @@ class TestCreateSheet:
 
 
 class TestFindSheet:
-    def test_delegates_to_sheets_client_with_tag(self):
-        sheets_client = MagicMock()
-        sheets_client.find_spreadsheet.return_value = "sheet-1"
-        event_label_sheet = make_sheet(sheets_client=sheets_client)
+    def test_delegates_to_calendar_client_metadata(self):
+        calendar_client = MagicMock()
+        calendar_client.get_calendar_metadata.return_value = "sheet-1"
+        event_label_sheet = make_sheet(calendar_client=calendar_client)
 
         assert event_label_sheet.find_sheet() == "sheet-1"
-        sheets_client.find_spreadsheet.assert_called_once_with(_TAG)
+        calendar_client.get_calendar_metadata.assert_called_once_with(_SHEET_ID_KEY)
 
     def test_returns_none_when_not_found(self):
-        sheets_client = MagicMock()
-        sheets_client.find_spreadsheet.return_value = None
-        event_label_sheet = make_sheet(sheets_client=sheets_client)
+        calendar_client = MagicMock()
+        calendar_client.get_calendar_metadata.return_value = None
+        event_label_sheet = make_sheet(calendar_client=calendar_client)
 
         assert event_label_sheet.find_sheet() is None
 
 
 class TestSyncFromSheet:
     def test_raises_when_no_sheet_found_and_none_given(self):
-        sheets_client = MagicMock()
-        sheets_client.find_spreadsheet.return_value = None
-        event_label_sheet = make_sheet(sheets_client=sheets_client)
+        calendar_client = MagicMock()
+        calendar_client.get_calendar_metadata.return_value = None
+        event_label_sheet = make_sheet(calendar_client=calendar_client)
 
         with pytest.raises(ValueError):
             event_label_sheet.sync_from_sheet()
@@ -106,16 +117,16 @@ class TestSyncFromSheet:
 
         event_label_sheet.sync_from_sheet("explicit-sheet")
 
-        sheets_client.find_spreadsheet.assert_not_called()
+        calendar_client.get_calendar_metadata.assert_not_called()
         sheets_client.read_rows.assert_called_once_with("explicit-sheet", "Sheet1!A2:D")
 
     def test_creates_labels_for_blank_id_rows_and_writes_back_new_ids(self):
         calendar_client = MagicMock()
+        calendar_client.get_calendar_metadata.return_value = "sheet-1"
         calendar_client.replace_event_labels.return_value = [
             EventLabel(id="new-id", background_color="#8e24aa", name="Design Work"),
         ]
         sheets_client = MagicMock()
-        sheets_client.find_spreadsheet.return_value = "sheet-1"
         sheets_client.read_rows.return_value = [["", "Design Work", "#8e24aa", "2"]]
         event_label_sheet = make_sheet(calendar_client, sheets_client)
 
@@ -134,11 +145,11 @@ class TestSyncFromSheet:
 
     def test_overwrites_existing_label_matched_by_id(self):
         calendar_client = MagicMock()
+        calendar_client.get_calendar_metadata.return_value = "sheet-1"
         calendar_client.replace_event_labels.return_value = [
             EventLabel(id="l1", background_color="#000000", name="Renamed"),
         ]
         sheets_client = MagicMock()
-        sheets_client.find_spreadsheet.return_value = "sheet-1"
         sheets_client.read_rows.return_value = [["l1", "Renamed", "#000000", ""]]
         event_label_sheet = make_sheet(calendar_client, sheets_client)
 
@@ -153,9 +164,9 @@ class TestSyncFromSheet:
         # what's sent to replace_event_labels -- CalendarClient.
         # replace_event_labels is what actually removes it.
         calendar_client = MagicMock()
+        calendar_client.get_calendar_metadata.return_value = "sheet-1"
         calendar_client.replace_event_labels.return_value = []
         sheets_client = MagicMock()
-        sheets_client.find_spreadsheet.return_value = "sheet-1"
         sheets_client.read_rows.return_value = []
         event_label_sheet = make_sheet(calendar_client, sheets_client)
 
@@ -171,8 +182,8 @@ class TestListLabelsWithPriority:
         calendar_client.list_event_labels.return_value = [
             EventLabel(id="l1", background_color="#8e24aa", name="Design Work")
         ]
+        calendar_client.get_calendar_metadata.return_value = None
         sheets_client = MagicMock()
-        sheets_client.find_spreadsheet.return_value = None
         event_label_sheet = make_sheet(calendar_client, sheets_client)
 
         result = event_label_sheet.list_labels_with_priority()
@@ -186,8 +197,8 @@ class TestListLabelsWithPriority:
             EventLabel(id="l1", background_color="#8e24aa", name="Design Work"),
             EventLabel(id="l2", background_color="#d50000", name="Untracked"),
         ]
+        calendar_client.get_calendar_metadata.return_value = "sheet-1"
         sheets_client = MagicMock()
-        sheets_client.find_spreadsheet.return_value = "sheet-1"
         sheets_client.read_rows.return_value = [["l1", "Design Work", "#8e24aa", "1"]]
         event_label_sheet = make_sheet(calendar_client, sheets_client)
 
@@ -205,5 +216,5 @@ class TestListLabelsWithPriority:
 
         event_label_sheet.list_labels_with_priority("explicit-sheet")
 
-        sheets_client.find_spreadsheet.assert_not_called()
+        calendar_client.get_calendar_metadata.assert_not_called()
         sheets_client.read_rows.assert_called_once_with("explicit-sheet", "Sheet1!A2:D")

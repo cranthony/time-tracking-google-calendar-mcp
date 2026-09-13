@@ -27,12 +27,17 @@ access model" section, and
 https://developers.google.com/workspace/calendar/api/auth for the scope
 reference.
 
-drive.file: for calendar_clients/google_sheets.py's SheetsClient. Grants
-access only to files this app creates itself (or that are explicitly
-opened with it via a picker) -- the same can't-touch-what-it-didn't-make
-model as calendar.app.created above -- and it's the only Drive/Sheets
-scope needed (confirmed against the Sheets API reference: it's accepted
-by both spreadsheets.values.get and spreadsheets.values.update).
+drive.file: for calendar_clients/google_sheets.py's SheetsClient to
+create and read/write the spreadsheet utilities/event_label_sheet.py
+uses to sync event labels. Grants access only to files this app creates
+itself (or that are explicitly opened with it via a picker) -- the same
+can't-touch-what-it-didn't-make model as calendar.app.created above.
+It's the narrowest scope that still works: confirmed against the Sheets
+API reference that it's accepted by spreadsheets.create,
+spreadsheets.values.get, and spreadsheets.values.update alike, so
+SheetsClient never has to call the Drive API directly -- the sheet's id
+is found via CalendarClient.get_calendar_metadata (see EventLabelSheet.
+find_sheet), not by searching Drive.
 
 This is deliberate, for both scopes: a compromised or misbehaving
 instance of this app cannot read or touch anything outside what it made

@@ -7,25 +7,25 @@ from googleapiclient.discovery import build
 from calendar_clients.google_auth import load_credentials
 
 
-def _escape_query_value(value: str) -> str:
-    """Escape a string for use inside a Drive API `q` search expression's
-    single-quoted literal (backslash, then the quote itself) -- see
-    https://developers.google.com/workspace/drive/api/guides/search-files."""
-    return value.replace("\\", "\\\\").replace("'", "\\'")
-
-
 class SheetsClient:
-    """Wraps the Google Sheets and Drive APIs behind a small, mockable
-    interface -- the thin layer `utilities/event_label_sheet.py` builds its
+    """Wraps the Google Sheets API behind a small, mockable interface --
+    the thin layer `utilities/event_label_sheet.py` builds its
     event-label-sheet logic on top of, the same way `CalendarClient` is a
     thin layer under `utilities/reallocating_calendar.py`. Knows nothing
-    about event labels; just spreadsheets, rows, and Drive's tagging
-    (`appProperties`) mechanism for finding a spreadsheet again later.
+    about event labels; just spreadsheets, rows, and columns.
+
+    This only talks to the Sheets API, never the Drive API directly --
+    there's no need for a spreadsheet's id to be looked up by searching
+    Drive; `utilities/event_label_sheet.py` gets it from
+    `CalendarClient.get_calendar_metadata`/`set_calendar_metadata`
+    instead. `drive.file` is still the OAuth scope this relies on,
+    though (see `calendar_clients/google_auth.py`): the Sheets API's own
+    `spreadsheets.create` requires it (or a broader Drive/Sheets scope)
+    even when the Drive API surface itself is never called.
     """
 
-    def __init__(self, sheets_service, drive_service):
+    def __init__(self, sheets_service):
         self._sheets_service = sheets_service
-        self._drive_service = drive_service
 
     @classmethod
     def from_credentials(cls, token_path: Path, credentials_path: Path) -> "SheetsClient":
@@ -37,53 +37,17 @@ class SheetsClient:
         `config.build_event_label_sheet` over calling this directly when
         both clients are needed together."""
         creds = load_credentials(token_path, credentials_path)
-        return cls(build("sheets", "v4", credentials=creds), build("drive", "v3", credentials=creds))
+        return cls(build("sheets", "v4", credentials=creds))
 
-    def create_spreadsheet(self, title: str, properties: dict[str, str]) -> str:
-        """Create a new, empty spreadsheet titled `title`, tagged with
-        `properties` as Drive `appProperties` (so `find_spreadsheet` can
-        find it again later by those same key/value pairs). Returns the
+    def create_spreadsheet(self, title: str) -> str:
+        """Create a new, empty spreadsheet titled `title`. Returns the
         new spreadsheet's id."""
         spreadsheet = (
             self._sheets_service.spreadsheets()
             .create(body={"properties": {"title": title}}, fields="spreadsheetId")
             .execute()
         )
-        spreadsheet_id = spreadsheet["spreadsheetId"]
-        self._drive_service.files().update(
-            fileId=spreadsheet_id, body={"appProperties": properties}
-        ).execute()
-        return spreadsheet_id
-
-    def find_spreadsheet(self, properties: dict[str, str]) -> str | None:
-        """The id of the most-recently-modified spreadsheet tagged with
-        every key/value pair in `properties` (Drive `appProperties`), or
-        `None` if none match. `appProperties` (as opposed to `properties`)
-        are private to this app -- another app with access to the same
-        file can't see or search them -- matching the same
-        can't-touch-what-it-didn't-tag spirit as the `drive.file` scope
-        itself."""
-        query_parts = [
-            "mimeType='application/vnd.google-apps.spreadsheet'",
-            "trashed=false",
-        ]
-        for key, value in properties.items():
-            query_parts.append(
-                f"appProperties has {{key='{_escape_query_value(key)}' "
-                f"and value='{_escape_query_value(value)}'}}"
-            )
-        response = (
-            self._drive_service.files()
-            .list(
-                q=" and ".join(query_parts),
-                orderBy="modifiedTime desc",
-                pageSize=1,
-                fields="files(id)",
-            )
-            .execute()
-        )
-        files = response.get("files", [])
-        return files[0]["id"] if files else None
+        return spreadsheet["spreadsheetId"]
 
     def set_column_width(
         self, spreadsheet_id: str, *, sheet_id: int, column_index: int, pixel_width: int

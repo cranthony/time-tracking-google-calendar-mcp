@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
@@ -16,6 +17,37 @@ _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 """Prefix for the extendedProperties.private keys this app uses to store its
 own per-event fields, distinguishing them from any other private key that
 might exist on an event."""
+
+_METADATA_MARKER_RE = re.compile(r"^\[cascading-time-tracker:([\w-]+)=([^\]]*)\]$", re.MULTILINE)
+"""Matches one of this app's own key=value markers, each its own line in a
+calendar's description -- see CalendarClient.get_calendar_metadata/
+set_calendar_metadata. The Calendars resource has no extendedProperties
+-style field the way Events does (confirmed against the API reference), so
+this piggybacks small bits of structured data onto the one free-text field
+Calendars do have, kept clearly delimited from -- and never overwriting --
+whatever human-readable description surrounds it."""
+
+
+def _parse_calendar_metadata(description: str | None) -> dict[str, str]:
+    if not description:
+        return {}
+    return dict(_METADATA_MARKER_RE.findall(description))
+
+
+def _with_calendar_metadata(description: str | None, key: str, value: str | None) -> str:
+    """`description` with `key`'s marker line set to `value` (added, or
+    replaced in place if `key` already had one) -- or removed entirely if
+    `value` is None. Every other marker line, and the human-readable text
+    around them, is left exactly as it was."""
+    kept_lines = []
+    for line in (description or "").splitlines():
+        match = _METADATA_MARKER_RE.match(line)
+        if match is not None and match.group(1) == key:
+            continue
+        kept_lines.append(line)
+    if value is not None:
+        kept_lines.append(f"[cascading-time-tracker:{key}={value}]")
+    return "\n".join(kept_lines).strip("\n")
 
 
 def _color_for_priority(priority: int | None) -> tuple[str | None, str]:
@@ -239,13 +271,15 @@ class Calendar:
 
 
 class EventLabelConflictError(Exception):
-    """Raised by CalendarClient.create_event_label/update_event_label/
-    delete_event_label when another writer changed the calendar's event
-    labels in between this call's read and its write. Each of those
-    methods reads the full label list, mutates it in memory, and writes
-    the whole thing back (see _patch_event_labels) -- guarded by the
-    calendar's `etag` (an `If-Match` precondition) so a lost update fails
-    loudly instead of silently overwriting the other writer's change."""
+    """Raised by any CalendarClient method that reads the calendar,
+    mutates something about it in memory, and writes the whole thing
+    back (see _patch_calendar) -- event-label writes (create_event_label/
+    update_event_label/delete_event_label/replace_event_labels) and
+    calendar-metadata writes (set_calendar_metadata) alike -- when
+    another writer changed the calendar in between this call's read and
+    its write. Guarded by the calendar's `etag` (an `If-Match`
+    precondition) so a lost update fails loudly instead of silently
+    overwriting the other writer's change."""
 
 
 @dataclass(kw_only=True)
@@ -509,36 +543,58 @@ class CalendarClient:
         updated = self._patch_event_labels(etag, [label.to_api_body() for label in labels])
         return updated
 
+    def get_calendar_metadata(self, key: str) -> str | None:
+        """This app's own `key`, most recently set via
+        `set_calendar_metadata` -- or `None` if it's never been set. See
+        `_parse_calendar_metadata` for where this actually lives (there's
+        no dedicated field for it on the Calendars resource)."""
+        calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
+        return _parse_calendar_metadata(calendar.get("description")).get(key)
+
+    def set_calendar_metadata(self, key: str, value: str | None) -> None:
+        """Set (or, if `value` is `None`, remove) this app's own `key` on
+        the calendar -- see `get_calendar_metadata`. Guarded by the
+        calendar's etag exactly like the event-label writes above, so a
+        lost update (e.g. someone editing the calendar's description by
+        hand, or another metadata write, at the same time) raises
+        `EventLabelConflictError` instead of silently clobbering it."""
+        calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
+        new_description = _with_calendar_metadata(calendar.get("description"), key, value)
+        self._patch_calendar(calendar.get("etag"), {"description": new_description})
+
     def _get_raw_event_labels(self) -> tuple[str | None, list[dict]]:
         """(etag, eventLabels) for this calendar -- the etag lets
-        `_patch_event_labels` guard the matching write against a
-        concurrent change to the same list."""
+        `_patch_calendar` guard the matching write against a concurrent
+        change to the same list."""
         calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
         return calendar.get("etag"), calendar.get("labelProperties", {}).get("eventLabels", [])
 
     def _patch_event_labels(self, etag: str | None, labels: list[dict]) -> list[EventLabel]:
-        request = self._service.calendars().patch(
-            calendarId=self._calendar_id, body={"labelProperties": {"eventLabels": labels}}
-        )
-        if etag is not None:
-            # Precondition: only apply this write if the calendar's
-            # labels haven't changed since _get_raw_event_labels read
-            # them (verified empirically -- the API rejects a stale
-            # etag here with 412 exactly as it does for events, though
-            # only the latter is documented). Without this, two callers
-            # reading-then-writing concurrently could silently clobber
-            # each other's change.
-            request.headers["If-Match"] = etag
-        try:
-            response = request.execute()
-        except HttpError as exc:
-            if exc.resp.status == 412:
-                raise EventLabelConflictError(
-                    "This calendar's event labels changed while this update was being "
-                    "made; fetch the current labels and try again."
-                ) from exc
-            raise
+        response = self._patch_calendar(etag, {"labelProperties": {"eventLabels": labels}})
         return [
             EventLabel.from_api(label)
             for label in response.get("labelProperties", {}).get("eventLabels", [])
         ]
+
+    def _patch_calendar(self, etag: str | None, body: dict) -> dict:
+        """PATCH this calendar with `body`, guarded by `etag` -- shared by
+        every read-modify-write against the Calendars resource
+        (event-label writes and calendar-metadata writes alike)."""
+        request = self._service.calendars().patch(calendarId=self._calendar_id, body=body)
+        if etag is not None:
+            # Precondition: only apply this write if the calendar hasn't
+            # changed since the matching read (verified empirically --
+            # the API rejects a stale etag here with 412 exactly as it
+            # does for events, though only the latter is documented).
+            # Without this, two callers reading-then-writing concurrently
+            # could silently clobber each other's change.
+            request.headers["If-Match"] = etag
+        try:
+            return request.execute()
+        except HttpError as exc:
+            if exc.resp.status == 412:
+                raise EventLabelConflictError(
+                    "This calendar changed while this update was being made; fetch its "
+                    "current value and try again."
+                ) from exc
+            raise

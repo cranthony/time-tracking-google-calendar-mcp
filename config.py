@@ -111,7 +111,5 @@ def build_event_label_sheet() -> EventLabelSheet:
     both clients' needs together)."""
     creds = load_credentials(get_token_path(), get_credentials_path())
     calendar_client = CalendarClient(build("calendar", "v3", credentials=creds), get_calendar_id())
-    sheets_client = SheetsClient(
-        build("sheets", "v4", credentials=creds), build("drive", "v3", credentials=creds)
-    )
+    sheets_client = SheetsClient(build("sheets", "v4", credentials=creds))
     return EventLabelSheet(calendar_client, sheets_client)

@@ -129,7 +129,7 @@ class TestBuildEventLabelSheet:
         creds = object()
         load_credentials_mock = MagicMock(return_value=creds)
         monkeypatch.setattr(config, "load_credentials", load_credentials_mock)
-        services = {"calendar": MagicMock(), "sheets": MagicMock(), "drive": MagicMock()}
+        services = {"calendar": MagicMock(), "sheets": MagicMock()}
         build_mock = MagicMock(side_effect=lambda name, _version, credentials: services[name])
         monkeypatch.setattr(config, "build", build_mock)
 
@@ -137,12 +137,8 @@ class TestBuildEventLabelSheet:
 
         load_credentials_mock.assert_called_once_with(Path("tok.json"), Path("creds.json"))
         assert isinstance(result, EventLabelSheet)
-        assert build_mock.call_count == 3
-        assert {call.args[0] for call in build_mock.call_args_list} == {
-            "calendar",
-            "sheets",
-            "drive",
-        }
+        assert build_mock.call_count == 2
+        assert {call.args[0] for call in build_mock.call_args_list} == {"calendar", "sheets"}
         for call in build_mock.call_args_list:
             assert call.kwargs["credentials"] is creds
 

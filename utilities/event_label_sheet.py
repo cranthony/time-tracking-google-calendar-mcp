@@ -26,10 +26,12 @@ from calendar_clients.google_sheets import SheetsClient
 
 DEFAULT_SHEET_TITLE = "Event Labels"
 
-_SHEET_TAG_PROPERTIES = {"cascading-time-tracker-kind": "event-label-sheet"}
-"""Drive appProperties this app tags every event label sheet it creates
-with, so find_sheet (SheetsClient.find_spreadsheet) can find one again
-later without the caller needing to remember its spreadsheet id."""
+_SHEET_ID_METADATA_KEY = "event-label-sheet-id"
+"""The CalendarClient.get_calendar_metadata/set_calendar_metadata key this
+app stores the event label sheet's spreadsheet id under -- on the
+calendar itself, rather than something found by searching Drive, so
+find_sheet is a single deterministic lookup instead of a "most recently
+modified" guess among however many sheets this app has created."""
 
 _HEADER_ROW = ["ID", "Name", "Background Color", "Priority"]
 _ID_COLUMN_INDEX = 0
@@ -73,13 +75,15 @@ class EventLabelSheet:
         self._sheets_client = sheets_client
 
     def create_sheet(self, title: str = DEFAULT_SHEET_TITLE) -> str:
-        """Create a new event label sheet, tagged so `find_sheet` can find
-        it again later, pre-populated with this calendar's *current*
-        labels (no Priority column values -- Calendar doesn't know any)
-        so that syncing it back immediately afterward, with no edits, is
-        a no-op rather than deleting every label that already exists (see
-        `sync_from_sheet`). Returns the new spreadsheet's id."""
-        spreadsheet_id = self._sheets_client.create_spreadsheet(title, _SHEET_TAG_PROPERTIES)
+        """Create a new event label sheet, recorded on the calendar
+        itself so `find_sheet` can find it again later, pre-populated
+        with this calendar's *current* labels (no Priority column values
+        -- Calendar doesn't know any) so that syncing it back immediately
+        afterward, with no edits, is a no-op rather than deleting every
+        label that already exists (see `sync_from_sheet`). Returns the
+        new spreadsheet's id."""
+        spreadsheet_id = self._sheets_client.create_spreadsheet(title)
+        self._calendar_client.set_calendar_metadata(_SHEET_ID_METADATA_KEY, spreadsheet_id)
         self._sheets_client.set_column_width(
             spreadsheet_id,
             sheet_id=0,
@@ -95,9 +99,10 @@ class EventLabelSheet:
         return spreadsheet_id
 
     def find_sheet(self) -> str | None:
-        """The id of the most-recently-modified event label sheet this
-        app has created, or `None` if it hasn't created one (yet)."""
-        return self._sheets_client.find_spreadsheet(_SHEET_TAG_PROPERTIES)
+        """The id of the event label sheet this app created for this
+        calendar (recorded on the calendar itself by `create_sheet`), or
+        `None` if it hasn't created one (yet)."""
+        return self._calendar_client.get_calendar_metadata(_SHEET_ID_METADATA_KEY)
 
     def sync_from_sheet(self, spreadsheet_id: str | None = None) -> list[EventLabel]:
         """Make this calendar's event labels match `spreadsheet_id` (or

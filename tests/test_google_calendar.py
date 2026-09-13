@@ -909,6 +909,142 @@ class TestCalendarClientReplaceEventLabels:
             client.replace_event_labels([])
 
 
+class TestCalendarClientGetCalendarMetadata:
+    def test_returns_none_when_description_is_absent(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {}
+        client = make_client(service)
+
+        assert client.get_calendar_metadata("event-label-sheet-id") is None
+
+    def test_returns_none_when_key_has_no_marker(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "description": "A calendar for time tracking."
+        }
+        client = make_client(service)
+
+        assert client.get_calendar_metadata("event-label-sheet-id") is None
+
+    def test_returns_value_from_marker_alongside_human_text(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "description": (
+                "A calendar for time tracking.\n"
+                "[cascading-time-tracker:event-label-sheet-id=sheet-1]"
+            )
+        }
+        client = make_client(service)
+
+        assert client.get_calendar_metadata("event-label-sheet-id") == "sheet-1"
+
+    def test_ignores_markers_for_other_keys(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "description": "[cascading-time-tracker:some-other-key=other-value]"
+        }
+        client = make_client(service)
+
+        assert client.get_calendar_metadata("event-label-sheet-id") is None
+
+
+class TestCalendarClientSetCalendarMetadata:
+    def test_appends_marker_to_existing_human_description(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"abc"',
+            "description": "A calendar for time tracking.",
+        }
+        client = make_client(service)
+
+        client.set_calendar_metadata("event-label-sheet-id", "sheet-1")
+
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={
+                "description": (
+                    "A calendar for time tracking.\n"
+                    "[cascading-time-tracker:event-label-sheet-id=sheet-1]"
+                )
+            },
+        )
+
+    def test_replaces_an_existing_marker_for_the_same_key(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "description": "[cascading-time-tracker:event-label-sheet-id=old-sheet]"
+        }
+        client = make_client(service)
+
+        client.set_calendar_metadata("event-label-sheet-id", "new-sheet")
+
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={"description": "[cascading-time-tracker:event-label-sheet-id=new-sheet]"},
+        )
+
+    def test_leaves_markers_for_other_keys_untouched(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "description": "[cascading-time-tracker:some-other-key=other-value]"
+        }
+        client = make_client(service)
+
+        client.set_calendar_metadata("event-label-sheet-id", "sheet-1")
+
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={
+                "description": (
+                    "[cascading-time-tracker:some-other-key=other-value]\n"
+                    "[cascading-time-tracker:event-label-sheet-id=sheet-1]"
+                )
+            },
+        )
+
+    def test_none_value_removes_the_marker(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "description": "A calendar for time tracking.\n"
+            "[cascading-time-tracker:event-label-sheet-id=sheet-1]"
+        }
+        client = make_client(service)
+
+        client.set_calendar_metadata("event-label-sheet-id", None)
+
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={"description": "A calendar for time tracking."},
+        )
+
+    def test_sets_if_match_header_from_get_etag(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"abc123"',
+            "description": None,
+        }
+        client = make_client(service)
+
+        client.set_calendar_metadata("event-label-sheet-id", "sheet-1")
+
+        request = service.calendars.return_value.patch.return_value
+        request.headers.__setitem__.assert_called_once_with("If-Match", '"abc123"')
+
+    def test_raises_conflict_error_on_412(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"stale"',
+            "description": None,
+        }
+        service.calendars.return_value.patch.return_value.execute.side_effect = HttpError(
+            MagicMock(status=412), b"Precondition check failed."
+        )
+        client = make_client(service)
+
+        with pytest.raises(EventLabelConflictError):
+            client.set_calendar_metadata("event-label-sheet-id", "sheet-1")
+
+
 class TestCalendarClientEventLabelEtagGuard:
     def test_patch_sets_if_match_header_from_get_etag(self):
         service = MagicMock()
