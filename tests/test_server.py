@@ -6,7 +6,7 @@ import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 
 import server
-from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import Event, EventLabel, EventLabelConflictError
 from server import PublicEvent
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import (
@@ -306,6 +306,122 @@ class TestDeleteEvent:
         assert len(result) == 1
         assert result[0].id == "abc123"
         assert result[0].is_cancelled is True
+
+
+class TestListEventLabels:
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        labels = [EventLabel(id="l1", background_color="#8e24aa", name="Design Work")]
+        client.list_event_labels.return_value = labels
+
+        result = server.list_event_labels()
+
+        assert result == labels
+        client.list_event_labels.assert_called_once_with()
+
+
+class TestCreateEventLabel:
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        created = EventLabel(id="l1", background_color="#8e24aa", name="Design Work")
+        client.create_event_label.return_value = created
+
+        result = server.create_event_label("#8e24aa", "Design Work")
+
+        assert result == created
+        client.create_event_label.assert_called_once_with("#8e24aa", "Design Work", None)
+
+    def test_delegates_priority_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        created = EventLabel(id="l1", background_color="#fbd75b", name="Design Work", priority=1)
+        client.create_event_label.return_value = created
+
+        result = server.create_event_label(name="Design Work", priority=1)
+
+        assert result == created
+        client.create_event_label.assert_called_once_with(None, "Design Work", 1)
+
+    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.create_event_label.side_effect = EventLabelConflictError("stale etag")
+
+        with pytest.raises(ToolError):
+            server.create_event_label("#8e24aa")
+
+    def test_wraps_value_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.create_event_label.side_effect = ValueError(
+            "background_color is required when priority is not set"
+        )
+
+        with pytest.raises(ToolError):
+            server.create_event_label()
+
+
+class TestUpdateEventLabel:
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        updated = EventLabel(id="l1", background_color="#000000", name="Design Work")
+        client.update_event_label.return_value = updated
+
+        result = server.update_event_label("l1", background_color="#000000")
+
+        assert result == updated
+        client.update_event_label.assert_called_once_with(
+            "l1", background_color="#000000", name=None, priority=None
+        )
+
+    def test_delegates_priority_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        updated = EventLabel(id="l1", background_color="#7ae7bf", priority=3)
+        client.update_event_label.return_value = updated
+
+        result = server.update_event_label("l1", priority=3)
+
+        assert result == updated
+        client.update_event_label.assert_called_once_with(
+            "l1", background_color=None, name=None, priority=3
+        )
+
+    def test_wraps_value_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.update_event_label.side_effect = ValueError("event label 'missing' not found")
+
+        with pytest.raises(ToolError):
+            server.update_event_label("missing", background_color="#000000")
+
+    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.update_event_label.side_effect = EventLabelConflictError("stale etag")
+
+        with pytest.raises(ToolError):
+            server.update_event_label("l1", background_color="#000000")
+
+
+class TestDeleteEventLabel:
+    def test_delegates_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        removed = EventLabel(id="l1", background_color="#8e24aa", name="Design Work")
+        client.delete_event_label.return_value = removed
+
+        result = server.delete_event_label("l1")
+
+        assert result == removed
+        client.delete_event_label.assert_called_once_with("l1")
+
+    def test_wraps_value_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.delete_event_label.side_effect = ValueError("event label 'missing' not found")
+
+        with pytest.raises(ToolError):
+            server.delete_event_label("missing")
+
+    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.delete_event_label.side_effect = EventLabelConflictError("stale etag")
+
+        with pytest.raises(ToolError):
+            server.delete_event_label("l1")
 
 
 class TestGetCalendarClient:

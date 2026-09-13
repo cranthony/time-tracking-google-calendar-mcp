@@ -4,9 +4,17 @@ from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
+from googleapiclient.errors import HttpError
 
 from calendar_clients import google_calendar
-from calendar_clients.google_calendar import Calendar, CalendarClient, Event, load_credentials
+from calendar_clients.google_calendar import (
+    Calendar,
+    CalendarClient,
+    Event,
+    EventLabel,
+    EventLabelConflictError,
+    load_credentials,
+)
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
@@ -394,6 +402,126 @@ class TestCalendar:
         assert body == {"summary": "Time tracking", "description": "Work blocks"}
 
 
+class TestEventLabel:
+    def test_from_api_parses_fields(self):
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#8e24aa", "name": "Design Work"}
+        )
+
+        assert label.id == "label-1"
+        assert label.background_color == "#8e24aa"
+        assert label.name == "Design Work"
+
+    def test_from_api_defaults_name_to_none(self):
+        label = EventLabel.from_api({"id": "label-1", "backgroundColor": "#8e24aa"})
+
+        assert label.name is None
+
+    def test_to_api_body_omits_id_and_name_when_absent(self):
+        label = EventLabel(background_color="#8e24aa")
+
+        assert label.to_api_body() == {"backgroundColor": "#8e24aa"}
+
+    def test_to_api_body_includes_id_and_name_when_present(self):
+        label = EventLabel(id="label-1", background_color="#8e24aa", name="Design Work")
+
+        assert label.to_api_body() == {
+            "id": "label-1",
+            "backgroundColor": "#8e24aa",
+            "name": "Design Work",
+        }
+
+    def test_from_api_parses_priority_prefix_and_strips_it_from_name(self):
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#123456", "name": "P1 Design Work"}
+        )
+
+        assert label.priority == 1
+        assert label.name == "Design Work"
+
+    def test_from_api_parses_priority_only_prefix_with_no_name(self):
+        label = EventLabel.from_api({"id": "label-1", "backgroundColor": "#123456", "name": "P2"})
+
+        assert label.priority == 2
+        assert label.name is None
+
+    def test_from_api_leaves_priority_none_when_name_has_no_prefix(self):
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#123456", "name": "Design Work"}
+        )
+
+        assert label.priority is None
+        assert label.name == "Design Work"
+        assert label.background_color == "#123456"
+
+    def test_from_api_nulls_background_color_matching_the_default_priority_color(self):
+        # No "P{n} " prefix here, so priority stays None -- but priority
+        # None derives the same color as priority 2 (see _color_for_priority),
+        # so a label that happens to already use that color (Lavender)
+        # round-trips to background_color=None too, same as if it were
+        # explicitly priority 2.
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#a4bdfc", "name": "Design Work"}
+        )
+
+        assert label.priority is None
+        assert label.background_color is None
+
+    def test_from_api_nulls_background_color_when_it_matches_the_priority_color(self):
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#fbd75b", "name": "P1 Design Work"}
+        )
+
+        assert label.priority == 1
+        assert label.background_color is None
+
+    def test_from_api_nulls_background_color_for_explicit_priority_2(self):
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#a4bdfc", "name": "P2 Design Work"}
+        )
+
+        assert label.priority == 2
+        assert label.background_color is None
+
+    def test_from_api_keeps_background_color_when_it_does_not_match_the_priority_color(self):
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#123456", "name": "P1 Design Work"}
+        )
+
+        assert label.priority == 1
+        assert label.background_color == "#123456"
+
+    def test_to_api_body_adds_priority_prefix_to_name(self):
+        label = EventLabel(background_color="#123456", name="Design Work", priority=1)
+
+        assert label.to_api_body()["name"] == "P1 Design Work"
+
+    def test_to_api_body_uses_bare_priority_prefix_when_no_name(self):
+        label = EventLabel(background_color="#123456", priority=1)
+
+        assert label.to_api_body()["name"] == "P1"
+
+    def test_to_api_body_derives_background_color_from_priority(self):
+        assert EventLabel(priority=0).to_api_body()["backgroundColor"] == "#e1e1e1"
+        assert EventLabel(priority=1).to_api_body()["backgroundColor"] == "#fbd75b"
+        assert EventLabel(priority=2).to_api_body()["backgroundColor"] == "#a4bdfc"
+        assert EventLabel(priority=3).to_api_body()["backgroundColor"] == "#7ae7bf"
+
+    def test_to_api_body_prefers_explicit_background_color_over_priority(self):
+        label = EventLabel(background_color="#123456", priority=1)
+
+        assert label.to_api_body()["backgroundColor"] == "#123456"
+
+    def test_to_api_body_defaults_background_color_to_priority_2_when_no_priority_given(self):
+        # priority 2 is the default priority (see _color_for_priority), and
+        # its label color is Lavender -- so with neither background_color
+        # nor priority given, a label still gets a real color rather than
+        # erroring.
+        label = EventLabel(name="No color, no priority")
+
+        assert label.to_api_body()["backgroundColor"] == "#a4bdfc"
+
+
 class TestCalendarClientListEvents:
     def test_list_events_maps_response_items(self):
         service = MagicMock()
@@ -515,6 +643,320 @@ class TestCalendarClientDeleteEvent:
             calendarId=TEST_CALENDAR_ID, eventId="abc123"
         )
         service.events.return_value.delete.return_value.execute.assert_called_once()
+
+
+class TestCalendarClientListEventLabels:
+    def test_returns_parsed_labels(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [
+                    {"id": "l1", "backgroundColor": "#8e24aa", "name": "Design Work"},
+                    {"id": "l2", "backgroundColor": "#d50000"},
+                ]
+            }
+        }
+        client = make_client(service)
+
+        labels = client.list_event_labels()
+
+        assert [label.id for label in labels] == ["l1", "l2"]
+        assert labels[0].name == "Design Work"
+        assert labels[1].name is None
+        service.calendars.return_value.get.assert_called_once_with(calendarId=TEST_CALENDAR_ID)
+
+    def test_returns_empty_list_when_no_labels_defined(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {}
+        client = make_client(service)
+
+        assert client.list_event_labels() == []
+
+
+class TestCalendarClientCreateEventLabel:
+    def test_appends_new_label_and_returns_it(self):
+        service = MagicMock()
+        existing = {"id": "l1", "backgroundColor": "#d50000"}
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": [existing]}
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [
+                    existing,
+                    {"id": "l2", "backgroundColor": "#8e24aa", "name": "Design Work"},
+                ]
+            }
+        }
+        client = make_client(service)
+
+        created = client.create_event_label("#8e24aa", "Design Work")
+
+        assert created.id == "l2"
+        assert created.background_color == "#8e24aa"
+        assert created.name == "Design Work"
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={
+                "labelProperties": {
+                    "eventLabels": [
+                        existing,
+                        {"backgroundColor": "#8e24aa", "name": "Design Work"},
+                    ]
+                }
+            },
+        )
+
+    def test_creates_first_label_when_none_exist(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {}
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": [{"id": "l1", "backgroundColor": "#8e24aa"}]}
+        }
+        client = make_client(service)
+
+        created = client.create_event_label("#8e24aa")
+
+        assert created.id == "l1"
+        assert created.name is None
+
+    def test_creates_label_from_priority_alone(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {}
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#fbd75b", "name": "P1 Design Work"}]
+            }
+        }
+        client = make_client(service)
+
+        client.create_event_label(name="Design Work", priority=1)
+
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={
+                "labelProperties": {
+                    "eventLabels": [{"backgroundColor": "#fbd75b", "name": "P1 Design Work"}]
+                }
+            },
+        )
+
+
+class TestCalendarClientUpdateEventLabel:
+    def test_raises_when_label_not_found(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": []}
+        }
+        client = make_client(service)
+
+        with pytest.raises(ValueError):
+            client.update_event_label("missing", background_color="#000000")
+
+    def test_updates_background_color_only(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#d50000", "name": "Old"}]
+            }
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#8e24aa", "name": "Old"}]
+            }
+        }
+        client = make_client(service)
+
+        updated = client.update_event_label("l1", background_color="#8e24aa")
+
+        assert updated.background_color == "#8e24aa"
+        assert updated.name == "Old"
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={
+                "labelProperties": {
+                    "eventLabels": [{"id": "l1", "backgroundColor": "#8e24aa", "name": "Old"}]
+                }
+            },
+        )
+
+    def test_updates_name_only_keeping_existing_background_color(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#d50000", "name": "Old"}]
+            }
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#d50000", "name": "New"}]
+            }
+        }
+        client = make_client(service)
+
+        updated = client.update_event_label("l1", name="New")
+
+        assert updated.background_color == "#d50000"
+        assert updated.name == "New"
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={
+                "labelProperties": {
+                    "eventLabels": [{"id": "l1", "backgroundColor": "#d50000", "name": "New"}]
+                }
+            },
+        )
+
+    def test_renaming_a_prioritized_label_keeps_its_priority_prefix(self):
+        # The label's stored name already has priority baked into it as a
+        # "P1 " prefix; renaming it must not lose that prefix just
+        # because only `name` was given here.
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#fbd75b", "name": "P1 Old"}]
+            }
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#fbd75b", "name": "P1 New"}]
+            }
+        }
+        client = make_client(service)
+
+        updated = client.update_event_label("l1", name="New")
+
+        assert updated.priority == 1
+        assert updated.name == "New"
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={
+                "labelProperties": {
+                    "eventLabels": [{"id": "l1", "backgroundColor": "#fbd75b", "name": "P1 New"}]
+                }
+            },
+        )
+
+    def test_updating_priority_recolors_a_label_using_the_derived_color(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#fbd75b", "name": "P1 Design Work"}]
+            }
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {
+                "eventLabels": [{"id": "l1", "backgroundColor": "#7ae7bf", "name": "P3 Design Work"}]
+            }
+        }
+        client = make_client(service)
+
+        updated = client.update_event_label("l1", priority=3)
+
+        assert updated.priority == 3
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={
+                "labelProperties": {
+                    "eventLabels": [{"id": "l1", "backgroundColor": "#7ae7bf", "name": "P3 Design Work"}]
+                }
+            },
+        )
+
+
+class TestCalendarClientDeleteEventLabel:
+    def test_raises_when_label_not_found(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": []}
+        }
+        client = make_client(service)
+
+        with pytest.raises(ValueError):
+            client.delete_event_label("missing")
+
+    def test_removes_label_and_returns_it(self):
+        service = MagicMock()
+        target = {"id": "l1", "backgroundColor": "#8e24aa", "name": "Design Work"}
+        other = {"id": "l2", "backgroundColor": "#d50000"}
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": [target, other]}
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": [other]}
+        }
+        client = make_client(service)
+
+        removed = client.delete_event_label("l1")
+
+        assert removed.id == "l1"
+        assert removed.background_color == "#8e24aa"
+        assert removed.name == "Design Work"
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            body={"labelProperties": {"eventLabels": [other]}},
+        )
+
+
+class TestCalendarClientEventLabelEtagGuard:
+    def test_patch_sets_if_match_header_from_get_etag(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"abc123"',
+            "labelProperties": {"eventLabels": []},
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": [{"id": "l1", "backgroundColor": "#8e24aa"}]}
+        }
+        client = make_client(service)
+
+        client.create_event_label("#8e24aa")
+
+        request = service.calendars.return_value.patch.return_value
+        request.headers.__setitem__.assert_called_once_with("If-Match", '"abc123"')
+
+    def test_skips_if_match_when_no_etag(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": []}
+        }
+        service.calendars.return_value.patch.return_value.execute.return_value = {
+            "labelProperties": {"eventLabels": [{"id": "l1", "backgroundColor": "#8e24aa"}]}
+        }
+        client = make_client(service)
+
+        client.create_event_label("#8e24aa")
+
+        request = service.calendars.return_value.patch.return_value
+        request.headers.__setitem__.assert_not_called()
+
+    def test_raises_conflict_error_on_412(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"stale"',
+            "labelProperties": {"eventLabels": []},
+        }
+        service.calendars.return_value.patch.return_value.execute.side_effect = HttpError(
+            MagicMock(status=412), b"Precondition check failed."
+        )
+        client = make_client(service)
+
+        with pytest.raises(EventLabelConflictError):
+            client.create_event_label("#8e24aa")
+
+    def test_other_http_errors_are_not_treated_as_conflicts(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"abc"',
+            "labelProperties": {"eventLabels": []},
+        }
+        service.calendars.return_value.patch.return_value.execute.side_effect = HttpError(
+            MagicMock(status=500), b"Internal error."
+        )
+        client = make_client(service)
+
+        with pytest.raises(HttpError):
+            client.create_event_label("#8e24aa")
 
 
 class TestLoadCredentials:

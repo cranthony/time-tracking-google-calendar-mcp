@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
@@ -12,6 +13,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.app.created"]
 """This app requests calendar.app.created, not the broader
@@ -37,7 +39,24 @@ might exist on an event."""
 logger = logging.getLogger(__name__)
 
 
-def _color_id_for_priority(priority: int) -> str | None:
+def _color_for_priority(priority: int | None) -> tuple[str | None, str]:
+    """Returns both the colorId to be used in the calendar event, and
+    the hex code that can be used when assigning this priority to an
+    event label. The default calendar color isn't queryable by the API,
+    unfortunately, so we hack it and hard-code it here."""
+    if priority is None:
+        priority = 2  # Default priority.
+    _PRIORITY_COLORS: dict[int, tuple[str | None, str]] = {
+        0: ("8", "#e1e1e1"),  # Graphite (gray)
+        1: ("5", "#fbd75b"),  # Banana (yellow)
+        2: (None, "#a4bdfc"), # The default calendar color
+        3: ("2", "#7ae7bf"),   # Sage (soft green)
+    }
+    def _clamp(value: int | None, lower: int, upper: int) -> int | None:
+        return min(upper, max(lower, value))
+    return _PRIORITY_COLORS.get(_clamp(priority, 0, 3))
+
+def _color_id_for_priority(priority: int | None) -> str | None:
     """Priorities are colored with the colorId field, to make them easily
     visible on the calendar.  The colorId field is restricted to a fixed set
     of 11 colors.
@@ -46,15 +65,11 @@ def _color_id_for_priority(priority: int) -> str | None:
     priority field doesn't use this feature because we intend to use it for
     a different categorization feature.  An event label's color supersedes a
     color ID."""
-    _PRIORITY_COLOR_IDS: dict[int, str | None] = {
-        0: "8",   # Graphite (gray)
-        1: "5",   # Banana (yellow)
-        2: None,  # The default calendar color
-        3: "2",   # Sage (soft green)
-    }
-    def _clamp(value: int, lower: int, upper: int):
-        return min(upper, max(lower, value))
-    return _PRIORITY_COLOR_IDS.get(_clamp(priority, 0, 3))
+    return _color_for_priority(priority)[0]
+
+
+def _label_color_for_priority(priority: int | None) -> str:
+    return _color_for_priority(priority)[1]
 
 
 @dataclass(kw_only=True)
@@ -243,6 +258,88 @@ class Calendar:
         return body
 
 
+class EventLabelConflictError(Exception):
+    """Raised by CalendarClient.create_event_label/update_event_label/
+    delete_event_label when another writer changed the calendar's event
+    labels in between this call's read and its write. Each of those
+    methods reads the full label list, mutates it in memory, and writes
+    the whole thing back (see _patch_event_labels) -- guarded by the
+    calendar's `etag` (an `If-Match` precondition) so a lost update fails
+    loudly instead of silently overwriting the other writer's change."""
+
+
+_PRIORITY_NAME_PREFIX_RE = re.compile(r"^P(-?\d+)(?: (.*))?$")
+"""Matches the f"P{priority} " prefix `EventLabel.to_api_body` adds to a
+label's name when `priority` is set -- group 1 is the priority, group 2
+(absent if the label has no name of its own) is the rest of the name."""
+
+
+@dataclass(kw_only=True)
+class EventLabel:
+    """One of a calendar's custom event labels. See
+    https://developers.google.com/workspace/calendar/api/guides/labels
+    """
+
+    id: str | None = None
+    """Uniquely identifies the label within its calendar. `None` until
+    the label has been created; `CalendarClient.create_event_label`
+    assigns this (a UUID Google generates) from the API response."""
+
+    background_color: str | None = None
+    """Hex color (e.g. "#8e24aa") events with this label are shown in.
+    Required by the API, but may be left `None` here to take the color
+    from the priority, instead. `from_api` also reverses this, so a
+    label whose color already matches what its priority would derive
+    round-trips back to `background_color=None` rather than a value
+    that looks explicitly chosen."""
+
+    name: str | None = None
+    """Optional display name, up to 50 characters -- including the
+    f"P{priority} " prefix `to_api_body` adds when `priority` is set,
+    which `from_api` strips back off."""
+
+    priority: int | None = None
+    """This label's priority, if it has one. Encoded into the API's
+    `name` field (there's no dedicated field for it) as a f"P{priority} "
+    prefix, and used to derive `background_color` when that's left
+    unset -- see `to_api_body`."""
+
+    @classmethod
+    def from_api(cls, data: dict) -> "EventLabel":
+        background_color = data["backgroundColor"]
+        name = data.get("name")
+        priority = None
+        if name is not None:
+            match = _PRIORITY_NAME_PREFIX_RE.match(name)
+            if match is not None:
+                priority = int(match.group(1))
+                name = match.group(2)
+        if background_color == _label_color_for_priority(priority):
+            # This color is exactly what to_api_body would derive
+            # from this priority -- treat it as derived, not an
+            # independently chosen color, so a round trip through
+            # this class doesn't "freeze" a color that should
+            # keep following priority if priority changes later.
+            # Note that this means that users should avoid explicitly
+            # choosing a priority color as a background color.
+            background_color = None
+        return cls(id=data.get("id"), background_color=background_color, name=name, priority=priority)
+
+    def to_api_body(self) -> dict:
+        background_color = self.background_color
+        if background_color is None:
+            background_color = _label_color_for_priority(self.priority)
+        body: dict = {"backgroundColor": background_color}
+        if self.id is not None:
+            body["id"] = self.id
+        name = self.name
+        if self.priority is not None:
+            name = f"P{self.priority} {name}" if name else f"P{self.priority}"
+        if name is not None:
+            body["name"] = name
+        return body
+
+
 def _parse_datetime(value: dict) -> datetime:
     raw = value.get("dateTime")
     if raw is None:
@@ -416,3 +513,102 @@ class CalendarClient:
         self._service.events().delete(
             calendarId=self._calendar_id, eventId=event_id
         ).execute()
+
+    def list_event_labels(self) -> list[EventLabel]:
+        """Every custom event label currently defined on this calendar --
+        see `EventLabel`."""
+        _, labels = self._get_raw_event_labels()
+        return [EventLabel.from_api(label) for label in labels]
+
+    def create_event_label(
+        self,
+        background_color: str | None = None,
+        name: str | None = None,
+        priority: int | None = None,
+    ) -> EventLabel:
+        """Define a new event label on this calendar. The API has no way
+        to add a single label in place -- creating one means replacing
+        the whole `labelProperties.eventLabels` list with the existing
+        labels plus this new one (see `_patch_event_labels`). See
+        `EventLabel` for how `background_color`/`priority` interact."""
+        etag, labels = self._get_raw_event_labels()
+        existing_ids = {label["id"] for label in labels}
+        new_label = EventLabel(background_color=background_color, name=name, priority=priority)
+        updated = self._patch_event_labels(etag, labels + [new_label.to_api_body()])
+        return next(label for label in updated if label.id not in existing_ids)
+
+    def update_event_label(
+        self,
+        label_id: str,
+        *,
+        background_color: str | None = None,
+        name: str | None = None,
+        priority: int | None = None,
+    ) -> EventLabel:
+        """Update an existing event label's `background_color`, `name`,
+        and/or `priority` -- whichever is left `None` keeps its current
+        value. Raises `ValueError` if no label with `label_id` exists."""
+        etag, labels = self._get_raw_event_labels()
+        for index, label in enumerate(labels):
+            if label.get("id") == label_id:
+                current = EventLabel.from_api(label)
+                merged = EventLabel(
+                    id=label_id,
+                    background_color=(
+                        background_color if background_color is not None else current.background_color
+                    ),
+                    name=name if name is not None else current.name,
+                    priority=priority if priority is not None else current.priority,
+                )
+                labels[index] = merged.to_api_body()
+                break
+        else:
+            raise ValueError(f"event label {label_id!r} not found")
+        updated = self._patch_event_labels(etag, labels)
+        return next(label for label in updated if label.id == label_id)
+
+    def delete_event_label(self, label_id: str) -> EventLabel:
+        """Remove an event label from this calendar. Returns the label as
+        it was just before removal. Raises `ValueError` if no label with
+        `label_id` exists."""
+        etag, labels = self._get_raw_event_labels()
+        remaining = [label for label in labels if label.get("id") != label_id]
+        if len(remaining) == len(labels):
+            raise ValueError(f"event label {label_id!r} not found")
+        removed = next(EventLabel.from_api(label) for label in labels if label.get("id") == label_id)
+        self._patch_event_labels(etag, remaining)
+        return removed
+
+    def _get_raw_event_labels(self) -> tuple[str | None, list[dict]]:
+        """(etag, eventLabels) for this calendar -- the etag lets
+        `_patch_event_labels` guard the matching write against a
+        concurrent change to the same list."""
+        calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
+        return calendar.get("etag"), calendar.get("labelProperties", {}).get("eventLabels", [])
+
+    def _patch_event_labels(self, etag: str | None, labels: list[dict]) -> list[EventLabel]:
+        request = self._service.calendars().patch(
+            calendarId=self._calendar_id, body={"labelProperties": {"eventLabels": labels}}
+        )
+        if etag is not None:
+            # Precondition: only apply this write if the calendar's
+            # labels haven't changed since _get_raw_event_labels read
+            # them (verified empirically -- the API rejects a stale
+            # etag here with 412 exactly as it does for events, though
+            # only the latter is documented). Without this, two callers
+            # reading-then-writing concurrently could silently clobber
+            # each other's change.
+            request.headers["If-Match"] = etag
+        try:
+            response = request.execute()
+        except HttpError as exc:
+            if exc.resp.status == 412:
+                raise EventLabelConflictError(
+                    "This calendar's event labels changed while this update was being "
+                    "made; fetch the current labels and try again."
+                ) from exc
+            raise
+        return [
+            EventLabel.from_api(label)
+            for label in response.get("labelProperties", {}).get("eventLabels", [])
+        ]
