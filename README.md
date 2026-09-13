@@ -82,6 +82,24 @@ MCP has both **tools** (model-controlled: the model decides when to call one, wi
 - **Portability.** Resources depend on the host having built UI (or another bridging mechanism) for the model to reach them at all; a lot of MCP clients — agentic ones especially — only implement tool-calling and skip resources entirely. Tools work everywhere.
 - **Fit.** The natural workflow here is model-driven, not human-browsing-driven: the model discovers an event's ID via `list_events`, then immediately wants to act on it — fetch details, update, delete. That's a tool-calling pattern (one tool's output, the `id` field, feeds directly into the next tool's input) with no need for a resource-URI layer in between. Nobody is going to browse a picker UI for an event by its opaque Google Calendar ID.
 
+## Event colors
+
+`CalendarClient.create_event`/`update_event` (used by every path that writes an event — the MCP tools, `calendar_cli.py`, and reallocation) automatically set the event's `colorId` from its `priority`, so priority is visible at a glance in the Google Calendar UI without a separate step:
+
+| Priority | Color | `colorId` |
+| --- | --- | --- |
+| 0 (highest) | Graphite (gray) | `"8"` |
+| 1 | Banana (yellow) | `"5"` |
+| 2 (default — see below) | this calendar's own default color | unset |
+| 3 | Sage (soft green) | `"2"` |
+| 4 and higher (lower priority) | same as 3 | `"2"` |
+
+An event with no `priority` set at all is treated as priority `2` — the same default `utilities/reallocation.py` uses for reclaim ordering (see its "Priority" section) — which is why priority `2` has no `colorId` of its own: it's meant to look like an ordinary, uncategorized event.
+
+`create_event` always sets a `colorId` (even `None`, to explicitly clear any previous color), since a new event's priority is never ambiguous — it's either a real value or genuinely unset. `update_event` only touches `colorId` when the given `Event`'s `priority` isn't `None`, following the same convention as every other field in `Event.to_api_body()`: `None` means "this patch doesn't mention priority," not "clear the priority" — so an unrelated patch (reallocation shrinking an event to make room for another, say) can't reset its color to the default just because the `Event` object it was fetched into doesn't happen to carry a priority.
+
+This uses only the Calendar API's 11 fixed event colors (`colorId`, one string per event; see `calendar_clients/google_calendar.py`'s `_PRIORITY_COLOR_IDS`). Google Calendar also supports custom per-calendar labels with arbitrary hex colors (`Event.eventLabelId`, superseding `colorId` when set) — this calendar already has some defined — but that's earmarked for a different, later feature and isn't used for priority coloring.
+
 ## Google OAuth credentials
 
 `CalendarClient.from_credentials`, in [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py), needs two files, neither of which should ever be committed:
