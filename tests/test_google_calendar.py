@@ -454,12 +454,33 @@ class TestEventLabel:
         assert label.name == "Design Work"
         assert label.background_color == "#123456"
 
+    def test_from_api_nulls_background_color_matching_the_default_priority_color(self):
+        # No "P{n} " prefix here, so priority stays None -- but priority
+        # None derives the same color as priority 2 (see _color_for_priority),
+        # so a label that happens to already use that color (Lavender)
+        # round-trips to background_color=None too, same as if it were
+        # explicitly priority 2.
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#a4bdfc", "name": "Design Work"}
+        )
+
+        assert label.priority is None
+        assert label.background_color is None
+
     def test_from_api_nulls_background_color_when_it_matches_the_priority_color(self):
         label = EventLabel.from_api(
             {"id": "label-1", "backgroundColor": "#fbd75b", "name": "P1 Design Work"}
         )
 
         assert label.priority == 1
+        assert label.background_color is None
+
+    def test_from_api_nulls_background_color_for_explicit_priority_2(self):
+        label = EventLabel.from_api(
+            {"id": "label-1", "backgroundColor": "#a4bdfc", "name": "P2 Design Work"}
+        )
+
+        assert label.priority == 2
         assert label.background_color is None
 
     def test_from_api_keeps_background_color_when_it_does_not_match_the_priority_color(self):
@@ -483,6 +504,7 @@ class TestEventLabel:
     def test_to_api_body_derives_background_color_from_priority(self):
         assert EventLabel(priority=0).to_api_body()["backgroundColor"] == "#e1e1e1"
         assert EventLabel(priority=1).to_api_body()["backgroundColor"] == "#fbd75b"
+        assert EventLabel(priority=2).to_api_body()["backgroundColor"] == "#a4bdfc"
         assert EventLabel(priority=3).to_api_body()["backgroundColor"] == "#7ae7bf"
 
     def test_to_api_body_prefers_explicit_background_color_over_priority(self):
@@ -490,13 +512,14 @@ class TestEventLabel:
 
         assert label.to_api_body()["backgroundColor"] == "#123456"
 
-    def test_to_api_body_raises_when_no_background_color_and_no_priority(self):
-        with pytest.raises(ValueError):
-            EventLabel(name="No color, no priority").to_api_body()
+    def test_to_api_body_defaults_background_color_to_priority_2_when_no_priority_given(self):
+        # priority 2 is the default priority (see _color_for_priority), and
+        # its label color is Lavender -- so with neither background_color
+        # nor priority given, a label still gets a real color rather than
+        # erroring.
+        label = EventLabel(name="No color, no priority")
 
-    def test_to_api_body_raises_when_priority_has_no_default_color(self):
-        with pytest.raises(ValueError):
-            EventLabel(priority=2).to_api_body()
+        assert label.to_api_body()["backgroundColor"] == "#a4bdfc"
 
 
 class TestCalendarClientListEvents:
