@@ -428,37 +428,22 @@ class TestEventLabel:
             "name": "Design Work",
         }
 
-    def test_from_api_never_sets_priority(self):
+    def test_has_no_priority_field(self):
         # Google Calendar has no field for a label's priority -- it's
-        # sourced only from a synced event label sheet (see
-        # utilities/event_label_sheet.py), never from the raw API data,
-        # even if the name happens to look like it might encode one.
+        # sourced only from a synced event label sheet, via
+        # utilities/event_labels.py's own (different) EventLabel class,
+        # never this one -- even if the name happens to look like it
+        # might encode one.
         label = EventLabel.from_api(
             {"id": "label-1", "backgroundColor": "#123456", "name": "P1 Design Work"}
         )
 
-        assert label.priority is None
+        assert not hasattr(label, "priority")
         assert label.name == "P1 Design Work"
 
-    def test_to_api_body_derives_background_color_from_priority(self):
-        assert EventLabel(priority=0).to_api_body()["backgroundColor"] == "#e1e1e1"
-        assert EventLabel(priority=1).to_api_body()["backgroundColor"] == "#fbd75b"
-        assert EventLabel(priority=2).to_api_body()["backgroundColor"] == "#a4bdfc"
-        assert EventLabel(priority=3).to_api_body()["backgroundColor"] == "#7ae7bf"
-
-    def test_to_api_body_prefers_explicit_background_color_over_priority(self):
-        label = EventLabel(background_color="#123456", priority=1)
-
-        assert label.to_api_body()["backgroundColor"] == "#123456"
-
-    def test_to_api_body_defaults_background_color_to_priority_2_when_no_priority_given(self):
-        # priority 2 is the default priority (see _color_for_priority), and
-        # its label color is Lavender -- so with neither background_color
-        # nor priority given, a label still gets a real color rather than
-        # erroring.
-        label = EventLabel(name="No color, no priority")
-
-        assert label.to_api_body()["backgroundColor"] == "#a4bdfc"
+    def test_background_color_is_required(self):
+        with pytest.raises(TypeError):
+            EventLabel(name="No color")
 
 
 class TestCalendarClientListEvents:
@@ -659,28 +644,6 @@ class TestCalendarClientCreateEventLabel:
         assert created.id == "l1"
         assert created.name is None
 
-    def test_creates_label_from_priority_alone(self):
-        service = MagicMock()
-        service.calendars.return_value.get.return_value.execute.return_value = {}
-        service.calendars.return_value.patch.return_value.execute.return_value = {
-            "labelProperties": {
-                "eventLabels": [{"id": "l1", "backgroundColor": "#fbd75b", "name": "Design Work"}]
-            }
-        }
-        client = make_client(service)
-
-        client.create_event_label(name="Design Work", priority=1)
-
-        service.calendars.return_value.patch.assert_called_once_with(
-            calendarId=TEST_CALENDAR_ID,
-            body={
-                "labelProperties": {
-                    "eventLabels": [{"backgroundColor": "#fbd75b", "name": "Design Work"}]
-                }
-            },
-        )
-
-
 class TestCalendarClientUpdateEventLabel:
     def test_raises_when_label_not_found(self):
         service = MagicMock()
@@ -772,36 +735,6 @@ class TestCalendarClientUpdateEventLabel:
                 }
             },
         )
-
-    def test_updating_priority_alone_recolors_a_label_using_the_derived_color(self):
-        # priority isn't itself persisted (Calendar has no field for it),
-        # but giving it alone (no background_color) still recolors this
-        # call the same way create_event_label would.
-        service = MagicMock()
-        service.calendars.return_value.get.return_value.execute.return_value = {
-            "labelProperties": {
-                "eventLabels": [{"id": "l1", "backgroundColor": "#123456", "name": "Design Work"}]
-            }
-        }
-        service.calendars.return_value.patch.return_value.execute.return_value = {
-            "labelProperties": {
-                "eventLabels": [{"id": "l1", "backgroundColor": "#7ae7bf", "name": "Design Work"}]
-            }
-        }
-        client = make_client(service)
-
-        updated = client.update_event_label("l1", priority=3)
-
-        assert updated.priority is None  # never round-trips from Calendar
-        service.calendars.return_value.patch.assert_called_once_with(
-            calendarId=TEST_CALENDAR_ID,
-            body={
-                "labelProperties": {
-                    "eventLabels": [{"id": "l1", "backgroundColor": "#7ae7bf", "name": "Design Work"}]
-                }
-            },
-        )
-
 
 class TestCalendarClientDeleteEventLabel:
     def test_raises_when_label_not_found(self):

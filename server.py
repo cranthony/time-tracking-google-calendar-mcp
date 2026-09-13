@@ -8,19 +8,14 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from calendar_clients.google_calendar import (
-    CalendarClient,
-    Event,
-    EventLabel,
-    EventLabelConflictError,
-)
+from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError
 from config import (
     build_calendar_client,
-    build_event_label_sheet,
+    build_event_labels,
     get_mcp_resource_url,
     get_workos_authkit_domain,
 )
-from utilities.event_label_sheet import EventLabelSheet
+from utilities.event_labels import EventLabel, EventLabels
 from utilities.reallocation import (
     ReallocationConflictError,
     ReallocationOptions,
@@ -122,7 +117,7 @@ class PublicEvent:
 
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
-_event_label_sheet: EventLabelSheet | None = None
+_event_labels: EventLabels | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -145,13 +140,13 @@ def get_reallocating_calendar() -> ReallocatingCalendar:
     return _reallocating_calendar
 
 
-def get_event_label_sheet() -> EventLabelSheet:
-    """Lazily construct and cache the EventLabelSheet, the same way
+def get_event_labels() -> EventLabels:
+    """Lazily construct and cache the EventLabels, the same way
     get_calendar_client/get_reallocating_calendar cache theirs."""
-    global _event_label_sheet
-    if _event_label_sheet is None:
-        _event_label_sheet = build_event_label_sheet()
-    return _event_label_sheet
+    global _event_labels
+    if _event_labels is None:
+        _event_labels = build_event_labels()
+    return _event_labels
 
 
 @mcp.tool()
@@ -208,7 +203,7 @@ def list_event_labels() -> list[EventLabel]:
     create_event_label_sheet/sync_event_labels_from_sheet) if one has
     been created -- priority is None for a label with no matching sheet
     row, or if no sheet has been created at all."""
-    return get_event_label_sheet().list_labels_with_priority()
+    return get_event_labels().list_labels()
 
 
 @mcp.tool()
@@ -217,10 +212,12 @@ def create_event_label(
 ) -> EventLabel:
     """Create a new event label with the given optional name and
     priority. `background_color` is a hex string (e.g. "#8e24aa");
-    if omitted, it's derived from `priority` instead (one of `priority`
-    or `background_color` is required)."""
+    if omitted, it's derived from `priority` instead. `priority` isn't
+    itself persisted (Google Calendar has no field for it) -- sync an
+    event label sheet (see create_event_label_sheet/sync_event_labels_
+    from_sheet) if you want it remembered."""
     try:
-        return get_calendar_client().create_event_label(background_color, name, priority)
+        return get_event_labels().create_label(background_color, name, priority)
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 
@@ -233,9 +230,10 @@ def update_event_label(
     priority: int | None = None,
 ) -> EventLabel:
     """Update an existing event label's background color, name, and/or
-    priority. Whichever is omitted keeps its current value."""
+    priority. Whichever is omitted keeps its current value. `priority`
+    isn't itself persisted -- see create_event_label."""
     try:
-        return get_calendar_client().update_event_label(
+        return get_event_labels().update_label(
             label_id, background_color=background_color, name=name, priority=priority
         )
     except (ValueError, EventLabelConflictError) as exc:
@@ -247,35 +245,22 @@ def delete_event_label(label_id: str) -> EventLabel:
     """Delete an event label by its ID. Returns the label as it was just
     before deletion."""
     try:
-        return get_calendar_client().delete_event_label(label_id)
+        return get_event_labels().delete_label(label_id)
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
-def create_event_label_sheet(title: str = "Event Labels") -> str:
-    """Create a new Google Sheet for managing this calendar's event
-    labels, pre-populated with the current labels (one row each: ID,
-    Name, Background Color, Priority -- ID is only there so
-    sync_event_labels_from_sheet can match rows back to labels; it isn't
-    meant to be edited). Edit the sheet, then call
-    sync_event_labels_from_sheet to apply changes -- including adding a
-    row with a blank ID to create a new label, or deleting a row to
-    delete its label. Returns the new sheet's URL."""
-    spreadsheet_id = get_event_label_sheet().create_sheet(title)
-    return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
-
-
-@mcp.tool()
-def sync_event_labels_from_sheet(spreadsheet_id: str | None = None) -> list[EventLabel]:
-    """Make this calendar's event labels match the given Google Sheet
-    (or the most recently created/modified one from
-    create_event_label_sheet, if `spreadsheet_id` is omitted) exactly:
-    rows with a blank ID become new labels, rows with a matching ID
-    overwrite that label's name/color/priority, and any label with no
-    matching row is deleted. Returns the resulting labels."""
+def sync_event_labels_from_sheet() -> list[EventLabel]:
+    """Make this calendar's event labels match its tracked event label
+    sheet exactly: rows with a blank ID become new labels, rows with a
+    matching ID overwrite that label's name/color/priority, and any
+    label with no matching row is deleted. Returns the resulting labels.
+    Fails if no event label sheet is tracked on this calendar -- that's
+    a one-time, human-run bootstrap step (see create_calendar.py), not
+    something this server can do on its own."""
     try:
-        return get_event_label_sheet().sync_from_sheet(spreadsheet_id)
+        return get_event_labels().sync_from_sheet()
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 
