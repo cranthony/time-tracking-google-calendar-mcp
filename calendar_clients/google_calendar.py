@@ -13,8 +13,6 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from utilities.reallocation import ReallocationOptions, reallocate_for_new_event
-
 SCOPES = ["https://www.googleapis.com/auth/calendar.app.created"]
 """This app requests calendar.app.created, not the broader
 calendar.events/calendar.events.owned scopes. This means that the app can only
@@ -206,11 +204,6 @@ class Event:
 
         return body
 
-    def overlaps(self, other_start: datetime, other_end: datetime) -> bool:
-        assert self.start < self.end
-        assert other_start < other_end
-        return self.start < other_end and other_start < self.end
-
 
 @dataclass(kw_only=True)
 class Calendar:
@@ -392,91 +385,6 @@ class CalendarClient:
             .execute()
         )
         return [Event.from_api(item) for item in response.get("items", [])]
-
-    def has_overlap(self, start: datetime, end: datetime) -> bool:
-        return any(event.overlaps(start, end) for event in self.list_events(start, end))
-
-    def list_day_events(self, start: datetime) -> list[Event]:
-        """The events reallocation should treat as `start`'s "day": everything
-        from `start` through roughly 24 hours later, truncated after the
-        first `is_end_of_day_sleep` event found (if any) -- see
-        utilities/reallocation.py's "The day"."""
-        events = self.list_events(start, start + timedelta(hours=24))
-        sleep_index = next(
-            (i for i, event in enumerate(events) if event.is_end_of_day_sleep), None
-        )
-        if sleep_index is not None:
-            events = events[: sleep_index + 1]
-        return events
-
-    def create_event_with_reallocation(
-        self, new_event: Event, options: ReallocationOptions
-    ) -> list[Event]:
-        """Create `new_event`, reallocating time from `list_day_events
-        (new_event.start)` as needed to make room for it (see
-        utilities/reallocation.py). Returns every `Event` created or
-        updated as a result -- `new_event` itself, plus whatever else
-        reallocation touched (shrunk, moved, split, or cancelled) to make
-        room -- each as the API's own response to creating/patching it.
-        """
-        if new_event.start is None or new_event.end is None:
-            raise ValueError("new_event.start and new_event.end are required to create an event")
-        day_events = self.list_day_events(new_event.start)
-        return self._apply_reallocation(day_events, new_event, options)
-
-    def update_event_and_reallocate(
-        self, updated_event: Event, options: ReallocationOptions
-    ) -> list[Event]:
-        """Update `updated_event` (must already have an `id`) at its new
-        `start`/`end`, reallocating time from the rest of its day as
-        needed to make room -- the same as `create_event_with_reallocation`,
-        but for moving/resizing an event that already exists instead of
-        creating a new one. `updated_event`'s own prior position is
-        excluded from `day_events` first, since `reallocate_for_new_event`
-        requires that a moved event not already appear in `day_events` --
-        see its docstring.
-
-        `updated_event.start`/`.end` may be given individually -- either
-        may be left `None` to mean "keep this event's current value". At
-        least one of the two must be given, since reallocation needs a
-        real span to make room for. Whichever is missing is filled in from
-        `list_day_events`'s own result below (the same call already made
-        for reallocation -- no second fetch) if this event is in it,
-        falling back to a direct `get_event` only if it isn't (e.g. the
-        one given value put it on a different day than its prior
-        position).
-        """
-        if updated_event.id is None:
-            raise ValueError("updated_event.id is required to update an event with reallocation")
-        if updated_event.start is None and updated_event.end is None:
-            raise ValueError(
-                "updated_event.start and/or updated_event.end are required to update an "
-                "event with reallocation"
-            )
-
-        day_events = self.list_day_events(updated_event.start or updated_event.end)
-
-        if updated_event.start is None or updated_event.end is None:
-            current = next(
-                (event for event in day_events if event.id == updated_event.id),
-                None,
-            ) or self.get_event(updated_event.id)
-            if updated_event.start is None:
-                updated_event.start = current.start
-            if updated_event.end is None:
-                updated_event.end = current.end
-
-        day_events = [event for event in day_events if event.id != updated_event.id]
-        return self._apply_reallocation(day_events, updated_event, options)
-
-    def _apply_reallocation(
-        self, day_events: list[Event], event: Event, options: ReallocationOptions
-    ) -> list[Event]:
-        plan = reallocate_for_new_event(day_events, event, options)
-        return [
-            self.create_event(planned) if planned.id is None else self.update_event(planned)
-            for planned in plan
-        ]
 
     def get_event(self, event_id: str) -> Event:
         response = (

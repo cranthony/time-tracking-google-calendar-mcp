@@ -8,6 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 import server
 from calendar_clients.google_calendar import Event
 from server import PublicEvent
+from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import (
     ReallocationConflictError,
     ReallocationOptions,
@@ -21,6 +22,12 @@ def _fake_client(monkeypatch) -> MagicMock:
     client = MagicMock()
     monkeypatch.setattr(server, "get_calendar_client", lambda: client)
     return client
+
+
+def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
+    reallocating_calendar = MagicMock()
+    monkeypatch.setattr(server, "get_reallocating_calendar", lambda: reallocating_calendar)
+    return reallocating_calendar
 
 
 def _event(**overrides) -> Event:
@@ -168,32 +175,32 @@ class TestGetEvent:
 
 class TestUpdateEvent:
     def test_delegates_to_calendar_client(self, monkeypatch):
-        client = _fake_client(monkeypatch)
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         updated = _event(id="abc123", summary="Renamed")
-        client.update_event_and_reallocate.return_value = [updated]
+        reallocating_calendar.update_event.return_value = [updated]
         public_event = _public_event(id="abc123", summary="Renamed")
 
         result = server.update_event(public_event)
 
         assert result == [PublicEvent.from_event(updated)]
-        (call_updated_event, call_options), _ = client.update_event_and_reallocate.call_args
+        (call_updated_event, call_options), _ = reallocating_calendar.update_event.call_args
         assert call_updated_event == public_event.to_event()
         assert call_options == ReallocationOptions()
 
     def test_result_includes_every_affected_event(self, monkeypatch):
-        client = _fake_client(monkeypatch)
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         updated = _event(id="abc123")
         shrunk = _event(id="def456", summary="Shrunk")
-        client.update_event_and_reallocate.return_value = [updated, shrunk]
+        reallocating_calendar.update_event.return_value = [updated, shrunk]
 
         result = server.update_event(_public_event(id="abc123"))
 
         assert {e.id for e in result} == {"abc123", "def456"}
 
     def test_wraps_reallocation_conflict_error_as_tool_error(self, monkeypatch):
-        client = _fake_client(monkeypatch)
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         preceding = _event(id="def456")
-        client.update_event_and_reallocate.side_effect = ReallocationConflictError(
+        reallocating_calendar.update_event.side_effect = ReallocationConflictError(
             "no room",
             preceding_event=preceding,
             preceding_min_duration=None,
@@ -204,15 +211,15 @@ class TestUpdateEvent:
             server.update_event(_public_event(id="abc123"))
 
     def test_wraps_reallocation_shortfall_error_as_tool_error(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        client.update_event_and_reallocate.side_effect = ReallocationShortfallError("no room")
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.update_event.side_effect = ReallocationShortfallError("no room")
 
         with pytest.raises(ToolError):
             server.update_event(_public_event(id="abc123"))
 
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        client.update_event_and_reallocate.side_effect = ValueError(
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.update_event.side_effect = ValueError(
             "updated_event.id is required to update an event with reallocation"
         )
 
@@ -222,33 +229,33 @@ class TestUpdateEvent:
 
 class TestCreateEvent:
     def test_delegates_to_calendar_client(self, monkeypatch):
-        client = _fake_client(monkeypatch)
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         created = _event(id="abc123")
-        client.create_event_with_reallocation.return_value = [created]
+        reallocating_calendar.create_event.return_value = [created]
         new_public_event = _public_event()
 
         result = server.create_event(new_public_event)
 
         assert result == [PublicEvent.from_event(created)]
-        (call_new_event, call_options), _ = client.create_event_with_reallocation.call_args
+        (call_new_event, call_options), _ = reallocating_calendar.create_event.call_args
         assert call_new_event == new_public_event.to_event()
         assert call_options == ReallocationOptions()
 
     def test_result_includes_every_affected_event(self, monkeypatch):
-        client = _fake_client(monkeypatch)
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         created = _event(id="abc123")
         shrunk = _event(id="def456", summary="Shrunk")
-        client.create_event_with_reallocation.return_value = [created, shrunk]
+        reallocating_calendar.create_event.return_value = [created, shrunk]
 
         result = server.create_event(_public_event())
 
         assert {e.id for e in result} == {"abc123", "def456"}
 
     def test_includes_cancelled_events_marked_is_cancelled(self, monkeypatch):
-        client = _fake_client(monkeypatch)
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         created = _event(id="abc123")
         cancelled = _event(id="def456", status="cancelled", summary="Old meeting")
-        client.create_event_with_reallocation.return_value = [created, cancelled]
+        reallocating_calendar.create_event.return_value = [created, cancelled]
 
         result = server.create_event(_public_event())
 
@@ -258,9 +265,9 @@ class TestCreateEvent:
         assert cancelled_public_event.summary == "Old meeting"
 
     def test_wraps_reallocation_conflict_error_as_tool_error(self, monkeypatch):
-        client = _fake_client(monkeypatch)
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         preceding = _event(id="abc123")
-        client.create_event_with_reallocation.side_effect = ReallocationConflictError(
+        reallocating_calendar.create_event.side_effect = ReallocationConflictError(
             "no room",
             preceding_event=preceding,
             preceding_min_duration=None,
@@ -271,15 +278,15 @@ class TestCreateEvent:
             server.create_event(_public_event())
 
     def test_wraps_reallocation_shortfall_error_as_tool_error(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        client.create_event_with_reallocation.side_effect = ReallocationShortfallError("no room")
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.create_event.side_effect = ReallocationShortfallError("no room")
 
         with pytest.raises(ToolError):
             server.create_event(_public_event())
 
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        client.create_event_with_reallocation.side_effect = ValueError("bad input")
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.create_event.side_effect = ValueError("bad input")
 
         with pytest.raises(ToolError):
             server.create_event(_public_event())
@@ -318,3 +325,16 @@ class TestGetCalendarClient:
 
         assert first is second
         assert len(built) == 1
+
+
+class TestGetReallocatingCalendar:
+    def test_caches_across_calls(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        monkeypatch.setattr(server, "_reallocating_calendar", None)
+
+        first = server.get_reallocating_calendar()
+        second = server.get_reallocating_calendar()
+
+        assert first is second
+        assert isinstance(first, ReallocatingCalendar)
+        assert first._client is client
