@@ -36,33 +36,27 @@ _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 own per-event fields, distinguishing them from any other private key that
 might exist on an event."""
 
-_PRIORITY_COLOR_IDS: dict[int, str | None] = {
-    0: "8",   # Graphite (gray)
-    1: "5",   # Banana (yellow)
-    2: None,  # no colorId of its own -- looks like an ordinary event
-    3: "2",   # Sage (soft green)
-}
-"""`colorId` (one of the Calendar API's 11 fixed event colors -- see
-Event.to_api_body) for each event priority (lower number is higher
-importance -- see Event.priority). Priority 4 and higher falls back to
-priority 3's color, on the theory that anything not explicitly triaged
-into 0-3 is equally "whatever's left". This module has no notion of a
-*default* priority for an event that doesn't have one at all (`None`) --
-see `_color_id_for_priority`; that's a separate policy question for
-whoever constructs the `Event` (utilities/reallocation.py's
-`_effective_priority`, for reclaim ordering, does define one)."""
-
 logger = logging.getLogger(__name__)
 
 
 def _color_id_for_priority(priority: int) -> str | None:
-    """The `colorId` `Event.to_api_body` sets to keep an event's color in
-    sync with its `priority` -- see `_PRIORITY_COLOR_IDS`. Only call this
-    when `priority` is known (not `None`): `to_api_body` skips it entirely
-    for a `None` priority, since that could mean either "genuinely no
-    priority" or just "not part of this particular write" (see its
-    docstring), and there's no way to tell those apart here."""
-    return _PRIORITY_COLOR_IDS.get(priority, _PRIORITY_COLOR_IDS[3])
+    """Priorities are colored with the colorId field, to make them easily
+    visible on the calendar.  The colorId field is restricted to a fixed set
+    of 11 colors.
+
+    Note that event labels unlock the ability to specify our own colors.  The
+    priority field doesn't use this feature because we intend to use it for
+    a different categorization feature.  An event label's color supercedes a
+    color ID."""
+    _PRIORITY_COLOR_IDS: dict[int, str | None] = {
+        0: "8",   # Graphite (gray)
+        1: "5",   # Banana (yellow)
+        2: None,  # no colorId of its own -- looks like an ordinary event
+        3: "2",   # Sage (soft green)
+    }
+    def _clamp(value: int, lower: int, upper: int):
+        return min(upper, max(lower, value))
+    return _PRIORITY_COLOR_IDS.get(_clamp(priority, 0, 3), _PRIORITY_COLOR_IDS[3])
 
 
 @dataclass(kw_only=True)
