@@ -70,41 +70,41 @@ class TestParseIsoDatetime:
 
 class TestParseKeyValue:
     def test_parses_string_attribute(self):
-        assert calendar_cli._parse_key_value("summary=New title") == (
+        assert calendar_cli._parse_event_key_value("summary=New title") == (
             "summary",
             "New title",
         )
 
     def test_parses_int_attribute(self):
-        assert calendar_cli._parse_key_value("priority=1") == ("priority", 1)
+        assert calendar_cli._parse_event_key_value("priority=1") == ("priority", 1)
 
     def test_parses_bool_attribute(self):
-        assert calendar_cli._parse_key_value("is_fixed_duration=true") == (
+        assert calendar_cli._parse_event_key_value("is_fixed_duration=true") == (
             "is_fixed_duration",
             True,
         )
 
     def test_parses_duration_attribute(self):
-        key, value = calendar_cli._parse_key_value("min_duration=30m")
+        key, value = calendar_cli._parse_event_key_value("min_duration=30m")
         assert key == "min_duration"
         assert value == timedelta(minutes=30)
 
     def test_parses_datetime_attribute(self):
-        key, value = calendar_cli._parse_key_value("start=2026-01-01T09:00:00Z")
+        key, value = calendar_cli._parse_event_key_value("start=2026-01-01T09:00:00Z")
         assert key == "start"
         assert value == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
 
     def test_raises_when_missing_equals_sign(self):
         with pytest.raises(argparse.ArgumentTypeError):
-            calendar_cli._parse_key_value("priority")
+            calendar_cli._parse_event_key_value("priority")
 
     def test_raises_on_unknown_attribute(self):
         with pytest.raises(argparse.ArgumentTypeError):
-            calendar_cli._parse_key_value("id=new-id")
+            calendar_cli._parse_event_key_value("id=new-id")
 
     def test_raises_on_invalid_value_for_known_attribute(self):
         with pytest.raises(argparse.ArgumentTypeError):
-            calendar_cli._parse_key_value("priority=not-a-number")
+            calendar_cli._parse_event_key_value("priority=not-a-number")
 
 
 class TestParseLabelKeyValue:

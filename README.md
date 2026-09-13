@@ -58,17 +58,17 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 
 [`server.py`](server.py) exposes the calendar as MCP tools:
 
-| Tool | Signature | Status |
-| --- | --- | --- |
-| `list_events` | `(min_time, max_time) -> list[PublicEvent]` | Implemented |
-| `get_event` | `(id) -> PublicEvent` | Implemented |
-| `update_event` | `(event: PublicEvent) -> list[PublicEvent]` | Implemented |
-| `create_event` | `(event: PublicEvent) -> list[PublicEvent]` | Implemented |
-| `delete_event` | `(id) -> list[PublicEvent]` | Implemented |
-| `list_event_labels` | `() -> list[EventLabel]` | Implemented |
-| `create_event_label` | `(background_color=None, name=None, priority=None) -> EventLabel` | Implemented |
-| `update_event_label` | `(label_id, background_color=None, name=None, priority=None) -> EventLabel` | Implemented |
-| `delete_event_label` | `(label_id) -> EventLabel` | Implemented |
+| Tool | Signature |
+| --- | --- |
+| `list_events` | `(min_time, max_time) -> list[PublicEvent]` |
+| `get_event` | `(id) -> PublicEvent` |
+| `update_event` | `(event: PublicEvent) -> list[PublicEvent]` |
+| `create_event` | `(event: PublicEvent) -> list[PublicEvent]` |
+| `delete_event` | `(id) -> list[PublicEvent]` |
+| `list_event_labels` | `() -> list[EventLabel]` |
+| `create_event_label` | `(background_color=None, name=None, priority=None) -> EventLabel` |
+| `update_event_label` | `(label_id, background_color=None, name=None, priority=None) -> EventLabel` |
+| `delete_event_label` | `(label_id) -> EventLabel` |
 
 `update_event`/`create_event`/`delete_event` all return a `list[PublicEvent]` rather than a single `PublicEvent`, since `update_event`/`create_event` can affect more than the one event acted on (see below). `delete_event` doesn't call the Calendar API's own delete — it patches the event's `status` to `"cancelled"` (via `CalendarClient.update_event`), the same way reallocation cancels an event to make room for another. This matches `Event.status`'s own documented recommendation to cancel rather than delete an instance of a recurring event, and always returns exactly that one event, wrapped in a single-element list for a consistent return type across all three.
 

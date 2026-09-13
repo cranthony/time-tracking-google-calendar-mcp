@@ -144,7 +144,7 @@ def _parse_key_value_pair(
 ) -> tuple[str, Any]:
     """Parse a "key=value" command-line argument into (attribute name,
     parsed value), looking `key` up in `attribute_parsers` to find how to
-    parse `value` -- the shared logic behind `_parse_key_value` (Event
+    parse `value` -- the shared logic behind `_parse_event_key_value` (Event
     attributes) and `_parse_label_key_value` (EventLabel attributes)."""
     if "=" not in value:
         raise argparse.ArgumentTypeError(f"expected key=value, got {value!r}")
@@ -159,7 +159,7 @@ def _parse_key_value_pair(
         raise argparse.ArgumentTypeError(f"invalid value for {key!r}: {exc}") from exc
 
 
-def _parse_key_value(value: str) -> tuple[str, Any]:
+def _parse_event_key_value(value: str) -> tuple[str, Any]:
     """Parse a "key=value" command-line argument into (Event attribute
     name, parsed value), for use as an argparse `type`."""
     return _parse_key_value_pair(value, _UPDATABLE_ATTRIBUTE_PARSERS)
@@ -234,7 +234,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "properties",
         metavar="key=value",
         nargs="+",
-        type=_parse_key_value,
+        type=_parse_event_key_value,
         help=(
             "One or more Event attribute=value pairs to set. Valid "
             f"attributes: {', '.join(sorted(_UPDATABLE_ATTRIBUTE_PARSERS))}."
@@ -250,7 +250,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "properties",
         metavar="key=value",
         nargs="+",
-        type=_parse_key_value,
+        type=_parse_event_key_value,
         help=(
             "One or more Event attribute=value pairs; at least one of "
             f"{', '.join(sorted(_UPDATE_POSITION_ATTRIBUTES))} is required (the other is "
@@ -266,7 +266,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "properties",
         metavar="key=value",
         nargs="+",
-        type=_parse_key_value,
+        type=_parse_event_key_value,
         help=(
             "One or more Event attribute=value pairs; "
             f"{', '.join(sorted(_REQUIRED_CREATE_ATTRIBUTES))} are required. Valid "
