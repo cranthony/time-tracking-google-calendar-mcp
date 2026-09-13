@@ -329,7 +329,17 @@ class TestCreateEventLabel:
         result = server.create_event_label("#8e24aa", "Design Work")
 
         assert result == created
-        client.create_event_label.assert_called_once_with("#8e24aa", "Design Work")
+        client.create_event_label.assert_called_once_with("#8e24aa", "Design Work", None)
+
+    def test_delegates_priority_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        created = EventLabel(id="l1", background_color="#fbd75b", name="Design Work", priority=1)
+        client.create_event_label.return_value = created
+
+        result = server.create_event_label(name="Design Work", priority=1)
+
+        assert result == created
+        client.create_event_label.assert_called_once_with(None, "Design Work", 1)
 
     def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
         client = _fake_client(monkeypatch)
@@ -337,6 +347,15 @@ class TestCreateEventLabel:
 
         with pytest.raises(ToolError):
             server.create_event_label("#8e24aa")
+
+    def test_wraps_value_error_as_tool_error(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.create_event_label.side_effect = ValueError(
+            "background_color is required when priority is not set"
+        )
+
+        with pytest.raises(ToolError):
+            server.create_event_label()
 
 
 class TestUpdateEventLabel:
@@ -349,7 +368,19 @@ class TestUpdateEventLabel:
 
         assert result == updated
         client.update_event_label.assert_called_once_with(
-            "l1", background_color="#000000", name=None
+            "l1", background_color="#000000", name=None, priority=None
+        )
+
+    def test_delegates_priority_to_calendar_client(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        updated = EventLabel(id="l1", background_color="#7ae7bf", priority=3)
+        client.update_event_label.return_value = updated
+
+        result = server.update_event_label("l1", priority=3)
+
+        assert result == updated
+        client.update_event_label.assert_called_once_with(
+            "l1", background_color=None, name=None, priority=3
         )
 
     def test_wraps_value_error_as_tool_error(self, monkeypatch):

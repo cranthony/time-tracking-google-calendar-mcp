@@ -530,7 +530,7 @@ class TestMainCreateLabel:
 
         calendar_cli.main()
 
-        client.create_event_label.assert_called_once_with("#8e24aa", "Design Work")
+        client.create_event_label.assert_called_once_with("#8e24aa", "Design Work", None)
         out = capsys.readouterr().out
         assert "label-1" in out
         assert "Design Work" in out
@@ -545,19 +545,40 @@ class TestMainCreateLabel:
 
         calendar_cli.main()
 
-        client.create_event_label.assert_called_once_with("#8e24aa", None)
+        client.create_event_label.assert_called_once_with("#8e24aa", None, None)
 
-    def test_requires_background_color(self, monkeypatch):
+    def test_creates_label_from_priority_alone(self, monkeypatch):
         client = MagicMock()
+        client.create_event_label.return_value = _event_label(
+            background_color="#fbd75b", priority=1
+        )
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["calendar_cli.py", "create_label", "name=Design Work", "priority=1"],
+        )
+
+        calendar_cli.main()
+
+        client.create_event_label.assert_called_once_with(None, "Design Work", 1)
+
+    def test_no_properties_required_upfront(self, monkeypatch):
+        # create_label doesn't enforce "background_color or priority" itself
+        # -- EventLabel.to_api_body does, once the call actually reaches it.
+        client = MagicMock()
+        client.create_event_label.side_effect = ValueError(
+            "background_color is required when priority is not set"
+        )
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
         monkeypatch.setattr(
             sys, "argv", ["calendar_cli.py", "create_label", "name=Design Work"]
         )
 
-        with pytest.raises(SystemExit):
+        with pytest.raises(ValueError):
             calendar_cli.main()
 
-        client.create_event_label.assert_not_called()
+        client.create_event_label.assert_called_once_with(None, "Design Work", None)
 
 
 class TestMainUpdateLabel:
@@ -574,7 +595,7 @@ class TestMainUpdateLabel:
         calendar_cli.main()
 
         client.update_event_label.assert_called_once_with(
-            "label-1", background_color="#d50000", name=None
+            "label-1", background_color="#d50000", name=None, priority=None
         )
         assert "#d50000" in capsys.readouterr().out
 
@@ -589,7 +610,23 @@ class TestMainUpdateLabel:
         calendar_cli.main()
 
         client.update_event_label.assert_called_once_with(
-            "label-1", background_color=None, name="New name"
+            "label-1", background_color=None, name="New name", priority=None
+        )
+
+    def test_updates_priority(self, monkeypatch):
+        client = MagicMock()
+        client.update_event_label.return_value = _event_label(
+            background_color="#7ae7bf", priority=3
+        )
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "update_label", "label-1", "priority=3"]
+        )
+
+        calendar_cli.main()
+
+        client.update_event_label.assert_called_once_with(
+            "label-1", background_color=None, name=None, priority=3
         )
 
     def test_requires_at_least_one_property(self, monkeypatch):

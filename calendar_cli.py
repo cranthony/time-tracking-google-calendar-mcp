@@ -41,12 +41,16 @@ Usage:
   `create_event_label`/`update_event_label`/`delete_event_label`) -- a
   richer, arbitrary-hex-color alternative to `Event.colorId`'s 11 fixed
   colors. `create_label`/`update_label` take the same kind of
-  `background_color=value`/`name=value` pairs as `update_properties`
-  above (`background_color` is required for `create_label`; both are
-  optional for `update_label`, and whichever is omitted keeps its
-  current value). Defining a label here doesn't do anything on its own;
-  assigning one to a specific event is a separate, not-yet-built
-  feature. See https://developers.google.com/workspace/calendar/api/guides/labels
+  `background_color=value`/`name=value`/`priority=value` pairs as
+  `update_properties` above; whichever is omitted on `update_label`
+  keeps its current value. A label's `priority` is encoded as a
+  f"P{priority} " prefix on its `name` (see `EventLabel`), and its
+  `background_color` may be left unset if `priority` is given -- it's
+  then derived from `priority` the same way `Event.colorId` is (one of
+  `background_color`/`priority` is required for `create_label`).
+  Defining a label here doesn't do anything on its own; assigning one to
+  a specific event is a separate, not-yet-built feature. See
+  https://developers.google.com/workspace/calendar/api/guides/labels
 """
 
 from __future__ import annotations
@@ -125,12 +129,14 @@ is missing from the event's current value."""
 _LABEL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "background_color": str,
     "name": str,
+    "priority": int,
 }
 """Every EventLabel attribute create_label/update_label may set, mapped to
-a function parsing its command-line string value into the right type."""
-
-_REQUIRED_CREATE_LABEL_ATTRIBUTES = frozenset({"background_color"})
-"""EventLabel attributes `create_label` won't build a label without."""
+a function parsing its command-line string value into the right type.
+create_label needs at least one of background_color/priority (enforced
+by EventLabel.to_api_body itself, not here -- there's no fixed set of
+"required" keys the way _REQUIRED_CREATE_ATTRIBUTES is for Event, since
+either one alone is enough)."""
 
 
 def _parse_key_value_pair(
@@ -280,14 +286,14 @@ def _build_parser() -> argparse.ArgumentParser:
         nargs="+",
         type=_parse_label_key_value,
         help=(
-            "One or more EventLabel attribute=value pairs; "
-            f"{', '.join(sorted(_REQUIRED_CREATE_LABEL_ATTRIBUTES))} are required. Valid "
-            f"attributes: {', '.join(sorted(_LABEL_ATTRIBUTE_PARSERS))}."
+            "One or more EventLabel attribute=value pairs; at least one of "
+            "background_color/priority is required (background_color is derived from "
+            f"priority if omitted). Valid attributes: {', '.join(sorted(_LABEL_ATTRIBUTE_PARSERS))}."
         ),
     )
 
     update_label_parser = subparsers.add_parser(
-        "update_label", help="Update an existing event label's color and/or name."
+        "update_label", help="Update an existing event label's color, name, and/or priority."
     )
     update_label_parser.add_argument("label_id", help="The label id.")
     update_label_parser.add_argument(
@@ -363,10 +369,9 @@ def main() -> None:
             print(_format_event_label_line(label))
     elif args.command == "create_label":
         fields = dict(args.properties)
-        missing = _REQUIRED_CREATE_LABEL_ATTRIBUTES - fields.keys()
-        if missing:
-            parser.error(f"create_label requires: {', '.join(sorted(missing))}")
-        label = client.create_event_label(fields["background_color"], fields.get("name"))
+        label = client.create_event_label(
+            fields.get("background_color"), fields.get("name"), fields.get("priority")
+        )
         print(_format_event_details(label))
     elif args.command == "update_label":
         fields = dict(args.properties)
@@ -374,6 +379,7 @@ def main() -> None:
             args.label_id,
             background_color=fields.get("background_color"),
             name=fields.get("name"),
+            priority=fields.get("priority"),
         )
         print(_format_event_details(label))
     elif args.command == "delete_label":

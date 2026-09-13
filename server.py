@@ -192,24 +192,31 @@ def list_event_labels() -> list[EventLabel]:
 
 
 @mcp.tool()
-def create_event_label(background_color: str, name: str | None = None) -> EventLabel:
-    """Create a new event label with the given background color (a hex
-    string, e.g. "#8e24aa") and optional name."""
+def create_event_label(
+    background_color: str | None = None, name: str | None = None, priority: int | None = None
+) -> EventLabel:
+    """Create a new event label with the given optional name and
+    priority. `background_color` is a hex string (e.g. "#8e24aa");
+    if omitted, it's derived from `priority` instead (one of `priority`
+    or `background_color` is required)."""
     try:
-        return get_calendar_client().create_event_label(background_color, name)
-    except EventLabelConflictError as exc:
+        return get_calendar_client().create_event_label(background_color, name, priority)
+    except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
 def update_event_label(
-    label_id: str, background_color: str | None = None, name: str | None = None
+    label_id: str,
+    background_color: str | None = None,
+    name: str | None = None,
+    priority: int | None = None,
 ) -> EventLabel:
-    """Update an existing event label's background color and/or name.
-    Whichever is omitted keeps its current value."""
+    """Update an existing event label's background color, name, and/or
+    priority. Whichever is omitted keeps its current value."""
     try:
         return get_calendar_client().update_event_label(
-            label_id, background_color=background_color, name=name
+            label_id, background_color=background_color, name=name, priority=priority
         )
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc

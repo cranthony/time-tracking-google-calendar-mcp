@@ -66,8 +66,8 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 | `create_event` | `(event: PublicEvent) -> list[PublicEvent]` | Implemented |
 | `delete_event` | `(id) -> list[PublicEvent]` | Implemented |
 | `list_event_labels` | `() -> list[EventLabel]` | Implemented |
-| `create_event_label` | `(background_color, name=None) -> EventLabel` | Implemented |
-| `update_event_label` | `(label_id, background_color=None, name=None) -> EventLabel` | Implemented |
+| `create_event_label` | `(background_color=None, name=None, priority=None) -> EventLabel` | Implemented |
+| `update_event_label` | `(label_id, background_color=None, name=None, priority=None) -> EventLabel` | Implemented |
 | `delete_event_label` | `(label_id) -> EventLabel` | Implemented |
 
 `update_event`/`create_event`/`delete_event` all return a `list[PublicEvent]` rather than a single `PublicEvent`, since `update_event`/`create_event` can affect more than the one event acted on (see below). `delete_event` doesn't call the Calendar API's own delete — it patches the event's `status` to `"cancelled"` (via `CalendarClient.update_event`), the same way reallocation cancels an event to make room for another. This matches `Event.status`'s own documented recommendation to cancel rather than delete an instance of a recurring event, and always returns exactly that one event, wrapped in a single-element list for a consistent return type across all three.
@@ -80,7 +80,9 @@ Every event tool uses `PublicEvent` (defined in `server.py`), not `Event`, as it
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
-`list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label` manage this calendar's custom event labels via `EventLabel` directly (see `calendar_clients/google_calendar.py`) — no `PublicEvent`-style wrapper, since a label has no internal-only fields to hide from the agent. These manage the labels *defined on the calendar*; assigning one to a specific event (the API's `eventLabelId` field, which supersedes `colorId`) is a separate, not-yet-built feature. `update_event_label` requires at least one of `background_color`/`name`; whichever is omitted keeps its current value — the API requires a `backgroundColor` on every label, so updating only the name still re-sends its existing color. `update_event_label`/`delete_event_label` raise a `ToolError` if `label_id` doesn't match an existing label.
+`list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label` manage this calendar's custom event labels via `EventLabel` directly (see `calendar_clients/google_calendar.py`) — no `PublicEvent`-style wrapper, since a label has no internal-only fields to hide from the agent. These manage the labels *defined on the calendar*; assigning one to a specific event (the API's `eventLabelId` field, which supersedes `colorId`) is a separate, not-yet-built feature. `update_event_label` requires at least one of `background_color`/`name`/`priority`; whichever is omitted keeps its current value. `update_event_label`/`delete_event_label` raise a `ToolError` if `label_id` doesn't match an existing label.
+
+`EventLabel.priority` gives a label the same priority-coloring concept `Event.colorId` already has, but expressed as an arbitrary hex color instead of one of the 11 fixed ones: its priority is encoded as a `f"P{priority} "` prefix on the label's `name` (there's no dedicated API field for it), and its `background_color` may be left unset — it's then derived from `priority` the same way `Event.colorId` is (so `background_color` is only truly required when no `priority` is given, or when `priority` is 2, which has no default color of its own — same as `Event.colorId`). Reading a label back recognizes its own prefix and strips it, and — if the stored color exactly matches what that priority would derive — reports `background_color=None` rather than a value that looks like it was independently chosen, so the color keeps following `priority` (e.g. through a later `update_event_label` that changes only `priority`) instead of getting frozen at whatever it happened to be.
 
 Every label write reads the full label list, changes it in memory, and writes the whole thing back (the API has no way to touch a single label in place), which is a lost-update race if two callers do this concurrently. `create_event_label`/`update_event_label`/`delete_event_label` guard against that with the calendar's own `etag`: each sends it back as an `If-Match` precondition on the write, so a write based on a label list that's since changed fails with `EventLabelConflictError` (surfaced as a `ToolError`) instead of silently overwriting the other change. Confirmed empirically against the real API, since Google's docs only document `If-Match` for Events, not Calendars.
 
@@ -232,7 +234,10 @@ python calendar_cli.py list_labels
 # Create a new event label
 python calendar_cli.py create_label background_color="#8e24aa" name="Design Work"
 
-# Update an existing event label's color and/or name
+# Create a label from a priority alone -- background_color is derived from it
+python calendar_cli.py create_label name="Design Work" priority=1
+
+# Update an existing event label's color, name, and/or priority
 python calendar_cli.py update_label <label-id> background_color="#d50000"
 
 # Delete an event label by id
@@ -249,7 +254,7 @@ python calendar_cli.py delete_label <label-id>
 
 For a recurring event, the id from `list`/`get` names one specific *instance*.  To change a property for the entire series of recurring events, use the `recurring_event_id` that's visible from `get`.  See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for more on how instances and recurring events relate.
 
-`create_label`/`update_label` take the same kind of `key=value` pairs as `update_properties` (`background_color`/`name`; `background_color` is required for `create_label`). `list_labels`/`create_label`/`update_label`/`delete_label` manage this calendar's custom event labels (`CalendarClient.list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label`). See Google's [event labels guide](https://developers.google.com/workspace/calendar/api/guides/labels).
+`create_label`/`update_label` take the same kind of `key=value` pairs as `update_properties` (`background_color`/`name`/`priority`). `list_labels`/`create_label`/`update_label`/`delete_label` manage this calendar's custom event labels (`CalendarClient.list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label`) — see [MCP tools](#mcp-tools) above for how `priority` and `background_color` interact (`background_color` is only required when `priority` is omitted, or is `2`). See Google's [event labels guide](https://developers.google.com/workspace/calendar/api/guides/labels).
 
 ## Running tests
 
