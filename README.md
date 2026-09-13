@@ -27,7 +27,7 @@ pip install -r requirements-dev.txt
 
 ## Project layout
 
-- [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead. `CalendarClient` is a thin, pure API wrapper (list/get/create/update/delete).
+- [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar`/`EventLabel` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead. `CalendarClient` is a thin, pure API wrapper (list/get/create/update/delete, plus event-label management).
 - [`utilities/reallocation.py`](utilities/reallocation.py) — the reallocation algorithm: how creating an event makes room for itself by reclaiming time from lower-priority events and free time in its day. Has no Calendar API dependency of its own — see the module docstring.
 - [`utilities/reallocating_calendar.py`](utilities/reallocating_calendar.py) — the glue between the two above: `ReallocatingCalendar` wraps a `CalendarClient` with reallocation-aware `create_event`/`update_event`, the shared entry point both `server.py` and `calendar_cli.py` use.
 - [`server.py`](server.py) — the MCP server; its tools call into `calendar_clients/google_calendar.py` rather than talking to `googleapiclient`/OAuth directly.
@@ -56,7 +56,7 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 
 ## MCP tools
 
-[`server.py`](server.py) exposes the calendar as five MCP tools:
+[`server.py`](server.py) exposes the calendar as MCP tools:
 
 | Tool | Signature | Status |
 | --- | --- | --- |
@@ -65,16 +65,22 @@ Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used t
 | `update_event` | `(event: PublicEvent) -> list[PublicEvent]` | Implemented |
 | `create_event` | `(event: PublicEvent) -> list[PublicEvent]` | Implemented |
 | `delete_event` | `(id) -> list[PublicEvent]` | Implemented |
+| `list_event_labels` | `() -> list[EventLabel]` | Implemented |
+| `create_event_label` | `(background_color, name=None) -> EventLabel` | Implemented |
+| `update_event_label` | `(label_id, background_color=None, name=None) -> EventLabel` | Implemented |
+| `delete_event_label` | `(label_id) -> EventLabel` | Implemented |
 
 `update_event`/`create_event`/`delete_event` all return a `list[PublicEvent]` rather than a single `PublicEvent`, since `update_event`/`create_event` can affect more than the one event acted on (see below). `delete_event` doesn't call the Calendar API's own delete — it patches the event's `status` to `"cancelled"` (via `CalendarClient.update_event`), the same way reallocation cancels an event to make room for another. This matches `Event.status`'s own documented recommendation to cancel rather than delete an instance of a recurring event, and always returns exactly that one event, wrapped in a single-element list for a consistent return type across all three.
 
 `create_event`/`update_event` both make room for the event via `utilities/reallocating_calendar.py`'s `ReallocatingCalendar` (see [Project layout](#project-layout) above): each fetches the roughly 24 hours of events starting at the event's own `start` (via `ReallocatingCalendar.list_day_events`, truncated after the first event marked `is_end_of_day_sleep`, if any — that's "the day" `utilities/reallocation.py` operates on), then calls `reallocate_for_new_event` and applies whatever it returns (creating or moving the event itself, and updating — shrinking, moving, splitting, or cancelling — whatever else needed to make room, each via the plain `CalendarClient`). `update_event` (`ReallocatingCalendar.update_event`) additionally excludes the event's own prior position from that day's events first, since `reallocate_for_new_event` refuses a day already containing the event being moved. Its `PublicEvent` needs at least one of `start`/`end` set (not necessarily both) — whichever is left `None` is filled in from the event's current value before reallocating, reusing that same `list_day_events` fetch rather than a second one: if the event is already in it, its current value is read from there; if not (e.g. the one value given put it on a different day than its prior position), a direct `get_event` gets it instead. A `ReallocationConflictError`/`ReallocationShortfallError`/`ValueError` from reallocation is surfaced as a `ToolError`.
 
-Every tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `INTERNAL_EVENT_FIELDS`, plus `is_cancelled` (which has no `Event` equivalent — it's derived from the hidden `status` field). Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
+Every event tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `INTERNAL_EVENT_FIELDS`, plus `is_cancelled` (which has no `Event` equivalent — it's derived from the hidden `status` field). Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
 
 `list_events`/`get_event` still don't surface a cancelled event at all: `list_events` omits it, and `get_event` raises a `ToolError`. But when an operation like `create_event` cancels an event as a side effect of making room, or `delete_event` cancels the event it was asked to remove, that cancellation is a direct result of the agent's own action, so it's worth surfacing rather than hiding — its `PublicEvent` comes back with the rest of its fields intact and `is_cancelled=True`. `is_cancelled` only ever moves from `False` to `True`; setting it `False` has no effect, since there's no way to un-cancel an event through this API.
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
+
+`list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label` manage this calendar's custom event labels via `EventLabel` directly (see `calendar_clients/google_calendar.py`) — no `PublicEvent`-style wrapper, since a label has no internal-only fields to hide from the agent. These manage the labels *defined on the calendar*; assigning one to a specific event (the API's `eventLabelId` field, which supersedes `colorId`) is a separate, not-yet-built feature. `update_event_label` requires at least one of `background_color`/`name`; whichever is omitted keeps its current value — the API requires a `backgroundColor` on every label, so updating only the name still re-sends its existing color. `update_event_label`/`delete_event_label` raise a `ToolError` if `label_id` doesn't match an existing label.
 
 ### Why tools, not resources
 
@@ -217,6 +223,18 @@ python calendar_cli.py create summary="Focus block" start=2026-01-01T09:00:00-05
 
 # Delete an event by id
 python calendar_cli.py delete <event-id>
+
+# List this calendar's custom event labels
+python calendar_cli.py list_labels
+
+# Create a new event label
+python calendar_cli.py create_label "#8e24aa" --name "Design Work"
+
+# Update an existing event label's color and/or name
+python calendar_cli.py update_label <label-id> --background-color "#d50000"
+
+# Delete an event label by id
+python calendar_cli.py delete_label <label-id>
 ```
 
 `from`/`to` are each a duration relative to *now* — parsed with [pytimeparse](https://pypi.org/project/pytimeparse/) (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`) — giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
@@ -228,6 +246,8 @@ python calendar_cli.py delete <event-id>
 `create` takes the same `key=value` pairs as `update_properties` (`summary`, `start`, and `end` are required this time) and builds a new `Event` from them, then calls `ReallocatingCalendar.create_event` — the same reallocation-aware creation path `server.py`'s `create_event` MCP tool uses (see [MCP tools](#mcp-tools) above). Prints every event the call created or changed, not just the new one.
 
 For a recurring event, the id from `list`/`get` names one specific *instance*.  To change a property for the entire series of recurring events, use the `recurring_event_id` that's visible from `get`.  See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for more on how instances and recurring events relate.
+
+`list_labels`/`create_label`/`update_label`/`delete_label` manage this calendar's custom event labels (`CalendarClient.list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label`) — a richer, arbitrary-hex-color alternative to `Event.colorId`'s 11 fixed colors, up to 200 per calendar. `update_label` requires at least one of `--background-color`/`--name`; whichever is omitted keeps its current value (the API requires a `backgroundColor` on every label, so updating only the name still re-sends its existing color). Defining a label doesn't do anything on its own — assigning one to a specific event (the API's `eventLabelId` field) is a separate, not-yet-built feature. See Google's [event labels guide](https://developers.google.com/workspace/calendar/api/guides/labels).
 
 ## Running tests
 

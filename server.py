@@ -8,7 +8,7 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from calendar_clients.google_calendar import CalendarClient, Event
+from calendar_clients.google_calendar import CalendarClient, Event, EventLabel
 from config import build_calendar_client, get_mcp_resource_url, get_workos_authkit_domain
 from utilities.reallocation import (
     ReallocationConflictError,
@@ -178,6 +178,43 @@ def delete_event(id: str) -> list[PublicEvent]:
     """Delete an event by its ID. Returns the events affected by the deletion."""
     cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
     return [PublicEvent.from_event(cancelled)]
+
+
+@mcp.tool()
+def list_event_labels() -> list[EventLabel]:
+    """List this calendar's custom event labels."""
+    return get_calendar_client().list_event_labels()
+
+
+@mcp.tool()
+def create_event_label(background_color: str, name: str | None = None) -> EventLabel:
+    """Create a new event label with the given background color (a hex
+    string, e.g. "#8e24aa") and optional name."""
+    return get_calendar_client().create_event_label(background_color, name)
+
+
+@mcp.tool()
+def update_event_label(
+    label_id: str, background_color: str | None = None, name: str | None = None
+) -> EventLabel:
+    """Update an existing event label's background color and/or name.
+    Whichever is omitted keeps its current value."""
+    try:
+        return get_calendar_client().update_event_label(
+            label_id, background_color=background_color, name=name
+        )
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def delete_event_label(label_id: str) -> EventLabel:
+    """Delete an event label by its ID. Returns the label as it was just
+    before deletion."""
+    try:
+        return get_calendar_client().delete_event_label(label_id)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
 
 
 if __name__ == "__main__":

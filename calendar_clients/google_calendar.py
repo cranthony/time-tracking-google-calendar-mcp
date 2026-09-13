@@ -243,6 +243,44 @@ class Calendar:
         return body
 
 
+@dataclass(kw_only=True)
+class EventLabel:
+    """One of a calendar's custom event labels -- a newer, richer
+    alternative to `Event`'s `colorId` (see `_color_id_for_priority`):
+    an arbitrary hex color rather than one of the API's 11 fixed event
+    colors, up to 200 per calendar. Defining one here doesn't do
+    anything on its own -- assigning it to a specific event (via the
+    API's `eventLabelId` field) is a separate, not-yet-built feature.
+    See https://developers.google.com/workspace/calendar/api/guides/labels
+    """
+
+    id: str | None = None
+    """Uniquely identifies the label within its calendar. `None` until
+    the label has been created; `CalendarClient.create_event_label`
+    assigns this (a UUID Google generates) from the API response."""
+
+    background_color: str
+    """Hex color (e.g. "#8e24aa") events with this label are shown in.
+    Required by the API -- unlike `name`, there's no way to omit it, so
+    `CalendarClient.update_event_label` re-sends the label's existing
+    color when only `name` is changing."""
+
+    name: str | None = None
+    """Optional display name, up to 50 characters."""
+
+    @classmethod
+    def from_api(cls, data: dict) -> "EventLabel":
+        return cls(id=data.get("id"), background_color=data["backgroundColor"], name=data.get("name"))
+
+    def to_api_body(self) -> dict:
+        body: dict = {"backgroundColor": self.background_color}
+        if self.id is not None:
+            body["id"] = self.id
+        if self.name is not None:
+            body["name"] = self.name
+        return body
+
+
 def _parse_datetime(value: dict) -> datetime:
     raw = value.get("dateTime")
     if raw is None:
@@ -416,3 +454,65 @@ class CalendarClient:
         self._service.events().delete(
             calendarId=self._calendar_id, eventId=event_id
         ).execute()
+
+    def list_event_labels(self) -> list[EventLabel]:
+        """Every custom event label currently defined on this calendar --
+        see `EventLabel`."""
+        return [EventLabel.from_api(label) for label in self._get_raw_event_labels()]
+
+    def create_event_label(self, background_color: str, name: str | None = None) -> EventLabel:
+        """Define a new event label on this calendar. The API has no way
+        to add a single label in place -- creating one means replacing
+        the whole `labelProperties.eventLabels` list with the existing
+        labels plus this new one (see `_patch_event_labels`)."""
+        labels = self._get_raw_event_labels()
+        existing_ids = {label["id"] for label in labels}
+        new_label = EventLabel(background_color=background_color, name=name)
+        updated = self._patch_event_labels(labels + [new_label.to_api_body()])
+        return next(label for label in updated if label.id not in existing_ids)
+
+    def update_event_label(
+        self, label_id: str, *, background_color: str | None = None, name: str | None = None
+    ) -> EventLabel:
+        """Update an existing event label's `background_color` and/or
+        `name` -- whichever is left `None` keeps its current value.
+        Raises `ValueError` if no label with `label_id` exists."""
+        labels = self._get_raw_event_labels()
+        for label in labels:
+            if label.get("id") == label_id:
+                if background_color is not None:
+                    label["backgroundColor"] = background_color
+                if name is not None:
+                    label["name"] = name
+                break
+        else:
+            raise ValueError(f"event label {label_id!r} not found")
+        updated = self._patch_event_labels(labels)
+        return next(label for label in updated if label.id == label_id)
+
+    def delete_event_label(self, label_id: str) -> EventLabel:
+        """Remove an event label from this calendar. Returns the label as
+        it was just before removal. Raises `ValueError` if no label with
+        `label_id` exists."""
+        labels = self._get_raw_event_labels()
+        remaining = [label for label in labels if label.get("id") != label_id]
+        if len(remaining) == len(labels):
+            raise ValueError(f"event label {label_id!r} not found")
+        removed = next(EventLabel.from_api(label) for label in labels if label.get("id") == label_id)
+        self._patch_event_labels(remaining)
+        return removed
+
+    def _get_raw_event_labels(self) -> list[dict]:
+        calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
+        return calendar.get("labelProperties", {}).get("eventLabels", [])
+
+    def _patch_event_labels(self, labels: list[dict]) -> list[EventLabel]:
+        response = (
+            self._service.calendars()
+            .patch(calendarId=self._calendar_id, body={"labelProperties": {"eventLabels": labels}})
+            .execute()
+        )
+        return [
+            EventLabel.from_api(label)
+            for label in response.get("labelProperties", {}).get("eventLabels", [])
+        ]

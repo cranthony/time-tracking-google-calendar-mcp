@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import calendar_cli
-from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import Event, EventLabel
 
 UTC = timezone.utc
 
@@ -21,6 +21,12 @@ def _event(**overrides) -> Event:
     }
     fields.update(overrides)
     return Event(**fields)
+
+
+def _event_label(**overrides) -> EventLabel:
+    fields = {"id": "label-1", "background_color": "#8e24aa", "name": "Design Work"}
+    fields.update(overrides)
+    return EventLabel(**fields)
 
 
 class TestParseDuration:
@@ -447,3 +453,114 @@ class TestMainDelete:
 
         client.delete_event.assert_called_once_with("abc123")
         assert "abc123" in capsys.readouterr().out
+
+
+class TestMainListLabels:
+    def test_lists_labels(self, capsys, monkeypatch):
+        client = MagicMock()
+        client.list_event_labels.return_value = [_event_label()]
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "list_labels"])
+
+        calendar_cli.main()
+
+        client.list_event_labels.assert_called_once()
+        out = capsys.readouterr().out
+        assert "label-1" in out
+        assert "#8e24aa" in out
+        assert "Design Work" in out
+
+    def test_prints_message_when_no_labels(self, capsys, monkeypatch):
+        client = MagicMock()
+        client.list_event_labels.return_value = []
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "list_labels"])
+
+        calendar_cli.main()
+
+        assert "No event labels found." in capsys.readouterr().out
+
+
+class TestMainCreateLabel:
+    def test_creates_label_with_name(self, capsys, monkeypatch):
+        client = MagicMock()
+        client.create_event_label.return_value = _event_label()
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["calendar_cli.py", "create_label", "#8e24aa", "--name", "Design Work"],
+        )
+
+        calendar_cli.main()
+
+        client.create_event_label.assert_called_once_with("#8e24aa", "Design Work")
+        out = capsys.readouterr().out
+        assert "label-1" in out
+        assert "Design Work" in out
+
+    def test_creates_label_without_name(self, monkeypatch):
+        client = MagicMock()
+        client.create_event_label.return_value = _event_label(name=None)
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "create_label", "#8e24aa"])
+
+        calendar_cli.main()
+
+        client.create_event_label.assert_called_once_with("#8e24aa", None)
+
+
+class TestMainUpdateLabel:
+    def test_updates_background_color(self, capsys, monkeypatch):
+        client = MagicMock()
+        client.update_event_label.return_value = _event_label(background_color="#d50000")
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["calendar_cli.py", "update_label", "label-1", "--background-color", "#d50000"],
+        )
+
+        calendar_cli.main()
+
+        client.update_event_label.assert_called_once_with(
+            "label-1", background_color="#d50000", name=None
+        )
+        assert "#d50000" in capsys.readouterr().out
+
+    def test_updates_name(self, monkeypatch):
+        client = MagicMock()
+        client.update_event_label.return_value = _event_label(name="New name")
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "update_label", "label-1", "--name", "New name"]
+        )
+
+        calendar_cli.main()
+
+        client.update_event_label.assert_called_once_with(
+            "label-1", background_color=None, name="New name"
+        )
+
+    def test_requires_background_color_or_name(self, monkeypatch):
+        client = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update_label", "label-1"])
+
+        with pytest.raises(SystemExit):
+            calendar_cli.main()
+
+        client.update_event_label.assert_not_called()
+
+
+class TestMainDeleteLabel:
+    def test_deletes_label(self, capsys, monkeypatch):
+        client = MagicMock()
+        client.delete_event_label.return_value = _event_label()
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "delete_label", "label-1"])
+
+        calendar_cli.main()
+
+        client.delete_event_label.assert_called_once_with("label-1")
+        assert "label-1" in capsys.readouterr().out

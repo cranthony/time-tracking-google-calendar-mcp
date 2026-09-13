@@ -9,6 +9,10 @@ Usage:
     python calendar_cli.py update <id> key=value [key=value ...]
     python calendar_cli.py create key=value [key=value ...]
     python calendar_cli.py delete <id>
+    python calendar_cli.py list_labels
+    python calendar_cli.py create_label <background_color> [--name NAME]
+    python calendar_cli.py update_label <label_id> [--background-color COLOR] [--name NAME]
+    python calendar_cli.py delete_label <label_id>
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -32,6 +36,13 @@ Usage:
   utilities/reallocating_calendar.py. Prints every event that was
   created or changed as a result.
 - `delete` deletes a single event by its id.
+- `list_labels`/`create_label`/`update_label`/`delete_label` manage this
+  calendar's custom event labels (`CalendarClient.list_event_labels`/
+  `create_event_label`/`update_event_label`/`delete_event_label`) -- a
+  richer, arbitrary-hex-color alternative to `Event.colorId`'s 11 fixed
+  colors. Defining a label here doesn't do anything on its own; assigning
+  one to a specific event is a separate, not-yet-built feature. See
+  https://developers.google.com/workspace/calendar/api/guides/labels
 """
 
 from __future__ import annotations
@@ -44,7 +55,7 @@ from typing import Any
 
 import pytimeparse
 
-from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import Event, EventLabel
 from config import build_calendar_client
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
@@ -139,13 +150,17 @@ def _format_event_line(event: Event) -> str:
     return f"{event.id}\t{event.start.isoformat()} - {event.end.isoformat()}\t{event.summary}"
 
 
-def _format_event_details(event: Event) -> str:
+def _format_event_details(event: Event | EventLabel) -> str:
     lines = []
     for field in dataclasses.fields(event):
         value = getattr(event, field.name)
         if value is not None:
             lines.append(f"{field.name}: {value}")
     return "\n".join(lines)
+
+
+def _format_event_label_line(label: EventLabel) -> str:
+    return f"{label.id}\t{label.background_color}\t{label.name or ''}"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -227,6 +242,24 @@ def _build_parser() -> argparse.ArgumentParser:
     delete_parser = subparsers.add_parser("delete", help="Delete an event by id.")
     delete_parser.add_argument("id", help="The event id.")
 
+    subparsers.add_parser("list_labels", help="List this calendar's custom event labels.")
+
+    create_label_parser = subparsers.add_parser("create_label", help="Create a new event label.")
+    create_label_parser.add_argument("background_color", help='Hex color, e.g. "#8e24aa".')
+    create_label_parser.add_argument("--name", help="Optional display name.")
+
+    update_label_parser = subparsers.add_parser(
+        "update_label", help="Update an existing event label's color and/or name."
+    )
+    update_label_parser.add_argument("label_id", help="The label id.")
+    update_label_parser.add_argument("--background-color", help='New hex color, e.g. "#8e24aa".')
+    update_label_parser.add_argument("--name", help="New display name.")
+
+    delete_label_parser = subparsers.add_parser(
+        "delete_label", help="Delete an event label by id."
+    )
+    delete_label_parser.add_argument("label_id", help="The label id.")
+
     return parser
 
 
@@ -276,6 +309,25 @@ def main() -> None:
     elif args.command == "delete":
         client.delete_event(args.id)
         print(f"Deleted event {args.id}.")
+    elif args.command == "list_labels":
+        labels = client.list_event_labels()
+        if not labels:
+            print("No event labels found.")
+        for label in labels:
+            print(_format_event_label_line(label))
+    elif args.command == "create_label":
+        label = client.create_event_label(args.background_color, args.name)
+        print(_format_event_details(label))
+    elif args.command == "update_label":
+        if args.background_color is None and args.name is None:
+            parser.error("update_label requires --background-color and/or --name")
+        label = client.update_event_label(
+            args.label_id, background_color=args.background_color, name=args.name
+        )
+        print(_format_event_details(label))
+    elif args.command == "delete_label":
+        label = client.delete_event_label(args.label_id)
+        print(f"Deleted event label {label.id}.")
 
 
 if __name__ == "__main__":
