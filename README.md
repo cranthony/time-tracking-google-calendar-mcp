@@ -246,8 +246,12 @@ pylint $(git ls-files '*.py')
 
 `.pylintrc` disables a handful of checks that fight this project's own conventions rather than catch real bugs — missing docstrings (this project deliberately writes none unless the WHY is non-obvious), `protected-access`/`redefined-outer-name` (tests routinely reach into a module's own private helpers, and pytest fixtures are meant to share a name with the test parameter that requests them), `too-few-public-methods`, and `duplicate-code` (parallel dataclasses and per-test-file builder helpers naturally look similar). Pass `git ls-files` explicitly rather than a bare `pylint .` — this also keeps `.venv/` out of the run without relying on pylint's own path-ignoring.
 
-A git hook in [`.githooks/pre-commit`](.githooks/pre-commit) blocks a commit made directly on `main` if pylint reports any error or warning (convention/refactor notes don't block it — see the hook for why). It's not active until you opt in, once per clone:
+Both the actual check and its error/warning-only threshold live in [`.githooks/pylint-check.sh`](.githooks/pylint-check.sh), so the two gates below can't drift out of sync:
 
-```bash
-git config core.hooksPath .githooks
-```
+- **Locally**: [`.githooks/pre-commit`](.githooks/pre-commit) blocks a commit made directly on `main`. This is a client-side git hook, so it only runs on whichever machine has opted in — it does nothing for commits made elsewhere (another clone, the GitHub web UI, `gh pr merge`) and can't be relied on by itself. Opt in once per clone:
+
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+
+- **On GitHub**: [`.github/workflows/lint.yml`](.github/workflows/lint.yml) runs the same check on every pull request into `main` (and on pushes to `main`). This is what actually gates anything on GitHub's side — but only once it's marked as a *required* status check in the repo's branch ruleset, which has to be done from the GitHub UI/API rather than from this repo's own files.
