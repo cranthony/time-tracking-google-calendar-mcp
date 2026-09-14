@@ -329,18 +329,6 @@ class TestDeleteEvent:
         assert result[0].is_cancelled is True
 
 
-class TestListEventLabels:
-    def test_delegates_to_event_labels(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        labels = [EventLabel(id="l1", background_color="#8e24aa", name="Design Work", priority=1)]
-        event_labels.list_labels.return_value = labels
-
-        result = server.list_event_labels()
-
-        assert result == labels
-        event_labels.list_labels.assert_called_once_with()
-
-
 class TestCreateEventLabel:
     def test_delegates_to_event_labels(self, monkeypatch):
         event_labels = _fake_event_labels(monkeypatch)

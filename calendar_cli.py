@@ -13,7 +13,6 @@ Usage:
     python calendar_cli.py create_raw_label key=value [key=value ...]
     python calendar_cli.py update_raw_label <label_id> key=value [key=value ...]
     python calendar_cli.py delete_raw_label <label_id>
-    python calendar_cli.py list_labels
     python calendar_cli.py create_label key=value [key=value ...]
     python calendar_cli.py update_label <label_id> key=value [key=value ...]
     python calendar_cli.py sync_labels
@@ -52,28 +51,31 @@ Usage:
   required for `create_raw_label`. Prefer `create_label`/`update_label`
   below unless you specifically want to bypass priority-derived colors
   and the event label sheet.
-- `list_labels`/`create_label`/`update_label` manage the same labels, but
-  as `utilities/event_labels.py`'s richer `EventLabel` (via `EventLabels`),
+- `create_label`/`update_label` manage the same labels, but as
+  `utilities/event_labels.py`'s richer `EventLabel` (via `EventLabels`),
   which also has a `priority` (`background_color=value`/`name=value`/
   `priority=value` pairs; `background_color` may be left unset if
   `priority` is given, deriving it the same way `Event.colorId` does;
-  whichever is omitted on `update_label` keeps its current value). Every
-  one of these -- including `list_labels` -- reads and writes through this
-  calendar's event label sheet (creating one, pre-populated with the
-  calendar's current labels, the first time any of them runs if it
-  doesn't exist yet), which is the only place `priority` is remembered;
-  `create_label`/`update_label`/`list_labels` all print the *entire*
-  resulting label list, not just the one label touched. There's no
-  `delete_label` -- delete a row from the sheet directly (e.g. by opening
-  it in Google Sheets) and run `sync_labels` to apply that. Defining a
-  label here doesn't do anything on its own; assigning one to a specific
-  event is a separate, not-yet-built feature. See
+  whichever is omitted on `update_label` keeps its current value). Both
+  read and write through this calendar's event label sheet (creating
+  one, pre-populated with the calendar's current labels, the first time
+  either of them runs if it doesn't exist yet), which is the only place
+  `priority` is remembered, and both print the *entire* resulting label
+  list, not just the one label touched -- along with `sync_labels`
+  below, that's also how you list the current labels; there's no
+  separate `list_labels` command, since it would just be `sync_labels`
+  under a misleading name. There's no `delete_label` either -- delete a
+  row from the sheet directly (e.g. by opening it in Google Sheets) and
+  run `sync_labels` to apply that. Defining a label here doesn't do
+  anything to any event on its own -- set an event's `event_label_id`
+  (via `create`/`update`/`update_properties` above) to assign one. See
   https://developers.google.com/workspace/calendar/api/guides/labels
 - `sync_labels` makes this calendar's event labels match its event label
   sheet exactly (via `EventLabels.sync_labels`) -- change a row's
   color/priority, add a row with a blank ID to create a new label, or
   delete a row to delete its label, then run this to apply those changes
-  back to the calendar.
+  back to the calendar (and to see the resulting labels, even with no
+  sheet changes pending).
 """
 
 from __future__ import annotations
@@ -367,10 +369,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     delete_raw_label_parser.add_argument("label_id", help="The label id.")
 
-    subparsers.add_parser(
-        "list_labels", help="List this calendar's custom event labels, with priority."
-    )
-
     create_label_parser = subparsers.add_parser("create_label", help="Create a new event label.")
     create_label_parser.add_argument(
         "properties",
@@ -475,12 +473,6 @@ def main() -> None:
     elif args.command == "delete_raw_label":
         label = client.delete_event_label(args.label_id)
         print(f"Deleted event label {label.id}.")
-    elif args.command == "list_labels":
-        labels = build_event_labels().list_labels()
-        if not labels:
-            print("No event labels found.")
-        for label in labels:
-            print(_format_event_label_line(label))
     elif args.command == "create_label":
         fields = dict(args.properties)
         new_label = EventLabel(

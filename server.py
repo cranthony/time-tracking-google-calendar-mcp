@@ -200,21 +200,13 @@ def delete_event(id: str) -> list[PublicEvent]:
 
 
 @mcp.tool()
-def list_event_labels() -> list[EventLabel]:
-    """List this calendar's custom event labels, with each one's
-    priority filled in from the synced event label sheet (see
-    create_event_label_sheet/sync_event_labels_from_sheet) if one has
-    been created -- priority is None for a label with no matching sheet
-    row, or if no sheet has been created at all."""
-    return get_calendar_with_event_labels().list_labels()
-
-
-@mcp.tool()
 def create_event_label(
     label: EventLabel
 ) -> list[EventLabel]:
     """Create a new event label with the given optional name and
-    priority. Returns the new list of event labels."""
+    priority. Returns the resulting list of every event label -- there's
+    no separate way to list labels; use this, update_event_label, or
+    sync_event_labels_from_sheet to see the current ones."""
     try:
         return get_calendar_with_event_labels().create_label(label)
     except (ValueError, EventLabelConflictError) as exc:
@@ -224,7 +216,8 @@ def create_event_label(
 @mcp.tool()
 def update_event_label(label: EventLabel) -> list[EventLabel]:
     """Update an existing event label's background color, name, and/or
-    priority. Any omitted properties keep their current value."""
+    priority. Any omitted properties keep their current value. Returns
+    the resulting list of every event label -- see create_event_label."""
     try:
         return get_calendar_with_event_labels().update_label(label)
     except (ValueError, EventLabelConflictError) as exc:
@@ -236,8 +229,10 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
     """Make this calendar's event labels match its tracked event label
     sheet exactly: rows with a blank ID become new labels, rows with a
     matching ID overwrite that label's name/color/priority, and any
-    label with no matching row is deleted. Returns the resulting labels.
-    Fails if no event label sheet is tracked on this calendar -- that's
+    label with no matching row is deleted. Returns the resulting labels
+    -- call this with no sheet changes pending to just see the current
+    ones; there's no separate list tool. Fails if no event label sheet
+    is tracked on this calendar -- that's
     a one-time, human-run bootstrap step (see create_calendar.py), not
     something this server can do on its own."""
     try:

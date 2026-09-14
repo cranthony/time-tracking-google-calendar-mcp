@@ -63,7 +63,7 @@ class TestInit:
         )
 
 
-class TestListLabels:
+class TestSyncLabels:
     def test_returns_calendar_labels_with_priority_from_the_sheet(self):
         calendar_client = _tracked_calendar_client(
             raw_labels=[RawEventLabel(id="l1", background_color="#8e24aa", name="Design Work")],
@@ -71,7 +71,7 @@ class TestListLabels:
         sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1"]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
-        result = event_labels.list_labels()
+        result = event_labels.sync_labels()
 
         assert result == [
             EventLabel(id="l1", name="Design Work", background_color="#8e24aa", priority=1)
@@ -84,12 +84,10 @@ class TestListLabels:
         sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1"]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
-        event_labels.list_labels()
+        event_labels.sync_labels()
 
         calendar_client.replace_event_labels.assert_not_called()
 
-
-class TestSyncLabels:
     def test_creates_labels_for_blank_id_rows_and_writes_back_new_ids(self):
         calendar_client = _tracked_calendar_client(raw_labels=[])
         calendar_client.replace_event_labels.return_value = [

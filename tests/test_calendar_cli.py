@@ -666,32 +666,6 @@ class TestMainDeleteRawLabel:
         assert "label-1" in capsys.readouterr().out
 
 
-class TestMainListLabels:
-    def test_lists_labels(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.list_labels.return_value = [_event_label()]
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "list_labels"])
-
-        calendar_cli.main()
-
-        event_labels.list_labels.assert_called_once()
-        out = capsys.readouterr().out
-        assert "label-1" in out
-        assert "#8e24aa" in out
-        assert "Design Work" in out
-
-    def test_prints_message_when_no_labels(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.list_labels.return_value = []
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "list_labels"])
-
-        calendar_cli.main()
-
-        assert "No event labels found." in capsys.readouterr().out
-
-
 class TestMainSyncLabels:
     def test_syncs_from_tracked_sheet(self, capsys, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())

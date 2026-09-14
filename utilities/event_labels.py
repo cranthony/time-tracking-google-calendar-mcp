@@ -99,11 +99,6 @@ class EventLabels:
         assert all(label.id is not None for label in sheet_labels)
         return sheet_labels
 
-    def list_labels(self) -> list[EventLabel]:
-        """Because of the way this class works, it somewhat counterintuitively updates the
-        labels when you list them."""
-        return self.sync_labels()
-
     def create_label(self, label: EventLabel) -> list[EventLabel]:
         self._event_label_sheet.append(label)
         return self.sync_labels()
