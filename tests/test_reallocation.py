@@ -377,11 +377,14 @@ class TestReallocateForNewEvent:
         assert continuation.start == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
         assert continuation.end == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
 
-    def test_shrinks_preceding_event_past_its_own_min_duration(self):
+    def test_moves_preceding_event_whole_when_it_cannot_retain_its_min_duration(self):
         # preceding can only give 10 of its 15-minute floor before
-        # new_event's start -- rather than fail, it's shrunk past that
-        # floor anyway (down to 10 minutes), the same as any other event's
-        # min_duration is now just a soft preference, not a hard limit.
+        # new_event's start -- rather than truncate it to that
+        # uncomfortable 10-minute sliver, it moves whole (still its
+        # original 20 minutes) to right after new_event, ahead of anchor,
+        # where it's just an ordinary span like any other: reclaimed from
+        # down to its own floor (5 of its 20 minutes) since anchor alone
+        # doesn't cover the rest of what's needed.
         preceding = _event(
             id="p1",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
@@ -403,11 +406,80 @@ class TestReallocateForNewEvent:
 
         result = reallocate_for_new_event([preceding, anchor], new_event, ReallocationOptions())
 
-        assert preceding.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
-        assert preceding.end == datetime(2026, 1, 1, 9, 10, tzinfo=UTC)
-        assert preceding in result
         assert new_event.start == datetime(2026, 1, 1, 9, 10, tzinfo=UTC)
         assert new_event.end == datetime(2026, 1, 1, 9, 40, tzinfo=UTC)
+        # preceding lands immediately after new_event -- ahead of anchor,
+        # which was already in day_events -- shrunk to its own 15-minute
+        # floor (not below, since it's just an ordinary span here).
+        assert preceding.start == datetime(2026, 1, 1, 9, 40, tzinfo=UTC)
+        assert preceding.end == datetime(2026, 1, 1, 9, 55, tzinfo=UTC)
+        assert preceding in result
+        assert anchor.start == datetime(2026, 1, 1, 9, 55, tzinfo=UTC)
+        assert anchor.end == datetime(2026, 1, 1, 10, 10, tzinfo=UTC)
+        assert anchor in result
+
+    def test_moves_preceding_event_whole_with_no_other_day_events(self):
+        # Same as above, but preceding is the only event in day_events --
+        # regression guard for the case where there's nothing after it to
+        # reinsert relative to.
+        preceding = _event(
+            id="p1",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=1,
+            min_duration=timedelta(minutes=50),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 40, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 55, tzinfo=UTC),
+            priority=1,
+        )
+
+        result = reallocate_for_new_event([preceding], new_event, ReallocationOptions())
+
+        assert new_event.start == datetime(2026, 1, 1, 9, 40, tzinfo=UTC)
+        assert new_event.end == datetime(2026, 1, 1, 9, 55, tzinfo=UTC)
+        assert preceding.start == datetime(2026, 1, 1, 9, 55, tzinfo=UTC)
+        assert preceding in result
+
+    def test_shrinks_preceding_event_in_place_at_exactly_its_min_duration(self):
+        # new_preceding_duration (15 min) exactly equals preceding's own
+        # min_duration -- right at the boundary, so it still shrinks in
+        # place rather than moving whole. leftover (13 min) is below the
+        # default split threshold, so no continuation either. anchor sits
+        # far enough out that the gap before it absorbs new_event's own
+        # 10 minutes on its own, leaving preceding untouched beyond its
+        # in-place shrink to floor -- isolating the boundary check from
+        # the ordinary reclaim pass.
+        preceding = _event(
+            id="p1",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 28, tzinfo=UTC),
+            priority=1,
+            min_duration=timedelta(minutes=15),
+        )
+        anchor = _event(
+            id="a1",
+            start=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+            priority=1,
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 15, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 25, tzinfo=UTC),
+            priority=1,
+        )
+
+        result = reallocate_for_new_event([preceding, anchor], new_event, ReallocationOptions())
+
+        assert preceding.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert preceding.end == datetime(2026, 1, 1, 9, 15, tzinfo=UTC)
+        assert preceding in result
+        assert new_event.start == datetime(2026, 1, 1, 9, 15, tzinfo=UTC)
+        assert new_event.end == datetime(2026, 1, 1, 9, 25, tzinfo=UTC)
+        assert anchor.start == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
+        assert anchor.end == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+        assert anchor not in result
 
     def test_cancels_min_duration_protected_events_instead_of_shortfalling(self):
         # existing/anchor are both already at their min_duration floor, so
