@@ -323,6 +323,13 @@ class _Reallocation:
         preceding = self.day_events[preceding_index]
         preceding_min = _effective_min_duration(preceding, self.options.min_duration_overrides)
         new_preceding_duration = new_event.start - preceding.start
+        if new_preceding_duration < preceding_min:
+            # Move the entire event after this current event.
+            self.day_events.pop(preceding_index)
+            assert preceding_index == 0  # We validated this above.
+            self.day_events.insert(1, preceding)
+            return
+
         leftover_preceding_duration = _duration(preceding) - new_preceding_duration
         split_threshold = timedelta(minutes=self.options.split_threshold_minutes)
         if leftover_preceding_duration >= split_threshold:
