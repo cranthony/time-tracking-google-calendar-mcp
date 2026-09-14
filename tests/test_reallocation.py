@@ -421,7 +421,11 @@ class TestReallocateForNewEvent:
         assert preceding.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert preceding.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
 
-    def test_raises_on_shortfall_when_nothing_is_reclaimable(self):
+    def test_cancels_min_duration_protected_events_instead_of_shortfalling(self):
+        # existing/anchor are both already at their min_duration floor, so
+        # shrinking alone can't provide the 30 minutes needed -- but since
+        # neither is more important than new_event, they're cancelled
+        # outright (past their floor) rather than raising a shortfall.
         existing = _event(
             id="e1",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
@@ -442,36 +446,43 @@ class TestReallocateForNewEvent:
             priority=1,
         )
 
-        with pytest.raises(ReallocationShortfallError) as exc_info:
-            reallocate_for_new_event([existing, anchor], new_event, ReallocationOptions())
+        result = reallocate_for_new_event([existing, anchor], new_event, ReallocationOptions())
 
-        assert exc_info.value.remaining == timedelta(minutes=30)
-        assert exc_info.value.events_at_floor == [existing, anchor]
+        assert existing.status == "cancelled"
+        assert existing in result
+        # existing alone covers the 30 minutes needed, so anchor -- next
+        # in line -- is never even reached.
+        assert anchor.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert anchor.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+        assert anchor not in result
 
-    def test_raises_on_shortfall_with_structured_details(self):
-        # higher has no min_duration of its own, so even though it's
-        # protected by priority, it still gets drained down to 0 as a last
-        # resort once protected/anchor (both already at their own floor)
-        # aren't enough on their own -- 30 of the 60 minutes needed.
-        higher = _event(
-            id="h1",
-            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-            priority=1,
-        )
+    def test_cancels_same_priority_events_before_ever_touching_higher_priority(self):
+        # protected/anchor are new_event's own priority, each with a
+        # min_duration; higher is a strictly more important priority,
+        # positioned right after them so it isn't disturbed by mere
+        # compaction. protected/anchor are cancelled outright to cover the
+        # 60 minutes needed -- higher is never touched, since cancelling a
+        # same-priority event always comes before shrinking a
+        # higher-priority one, however cheaply.
         protected = _event(
             id="p1",
-            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
             priority=2,
             min_duration=timedelta(minutes=30),
         )
         anchor = _event(
             id="a1",
-            start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
+            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
             priority=2,
             min_duration=timedelta(minutes=30),
+        )
+        higher = _event(
+            id="h1",
+            start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 30, tzinfo=UTC),
+            priority=1,
         )
         new_event = _event(
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
@@ -479,14 +490,46 @@ class TestReallocateForNewEvent:
             priority=2,
         )
 
-        with pytest.raises(ReallocationShortfallError) as exc_info:
-            reallocate_for_new_event([higher, protected, anchor], new_event, ReallocationOptions())
+        result = reallocate_for_new_event([protected, anchor, higher], new_event, ReallocationOptions())
 
-        assert exc_info.value.remaining == timedelta(minutes=30)
-        assert exc_info.value.events_at_floor == [protected, anchor, higher]
+        assert protected.status == "cancelled"
+        assert anchor.status == "cancelled"
+        assert protected in result
+        assert anchor in result
+        # higher is never touched at all -- not shrunk, not moved: the 60
+        # minutes new_event now occupies exactly match what protected/
+        # anchor together used to, so higher's position doesn't shift.
+        assert higher.start == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+        assert higher.end == datetime(2026, 1, 1, 10, 30, tzinfo=UTC)
+        assert higher not in result
+
+    def test_raises_on_shortfall_once_everything_is_exhausted(self):
+        # guard is a strictly more important priority than new_event, with
+        # only 10 of its 60 minutes above its own min_duration floor --
+        # and since it's more important, it's shrunk to that floor but
+        # never cancelled outright, so the other 10 of the 20 minutes
+        # needed can't be found anywhere.
+        guard = _event(
+            id="g1",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=1,
+            min_duration=timedelta(minutes=50),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 20, tzinfo=UTC),
+            priority=2,
+        )
+
+        with pytest.raises(ReallocationShortfallError) as exc_info:
+            reallocate_for_new_event([guard], new_event, ReallocationOptions())
+
+        assert exc_info.value.remaining == timedelta(minutes=10)
+        assert exc_info.value.events_at_floor == [guard]
         # Nothing should have been mutated.
-        assert higher.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
-        assert protected.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert guard.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert guard.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
 
     def test_marks_fully_reclaimed_event_as_cancelled(self):
         # A strictly lower priority (higher number) than new_event's, so
@@ -524,7 +567,11 @@ class TestReallocateForNewEvent:
         assert anchor.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
         assert anchor not in result
 
-    def test_shortfall_without_min_duration_override(self):
+    def test_cancels_below_min_duration_when_shrinking_alone_falls_short(self):
+        # Shrinking later down to its 45-minute floor only recovers 15 of
+        # the 30 minutes needed -- but since later isn't a higher priority
+        # than new_event, the remaining 15 is cancelled outright below
+        # that floor (down to 30 minutes total) rather than failing.
         later = _event(
             id="e1",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
@@ -538,12 +585,18 @@ class TestReallocateForNewEvent:
             priority=1,
         )
 
-        with pytest.raises(ReallocationShortfallError) as exc_info:
-            reallocate_for_new_event([later], new_event, ReallocationOptions())
+        result = reallocate_for_new_event([later], new_event, ReallocationOptions())
 
-        assert exc_info.value.remaining == timedelta(minutes=15)
+        assert later.status != "cancelled"
+        assert later.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        assert later.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+        assert later in result
 
-    def test_min_duration_override_enables_reclaim_that_would_otherwise_shortfall(self):
+    def test_min_duration_override_lets_shrinking_alone_cover_the_reclaim(self):
+        # With the override, shrinking later down to its (overridden) 15-
+        # minute floor covers the full 30 minutes needed on its own --
+        # reaching the exact same final position as the unoverridden case
+        # above, but without ever cancelling past a min_duration floor.
         later = _event(
             id="e1",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
