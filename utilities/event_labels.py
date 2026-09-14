@@ -21,9 +21,9 @@ the raw one has.
 
 from __future__ import annotations
 
-from dataclasses import asdict, astuple
+from dataclasses import asdict, astuple, replace
 
-from calendar_clients.google_calendar import CalendarClient
+from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel
 from calendar_clients.google_sheets import SheetsClient
 from utilities.event_label_sheet import EventLabelSheet, EventLabel
 
@@ -86,13 +86,23 @@ class EventLabels:
             new_raw_calendar_labels = self._calendar_client.replace_event_labels(raw_sheet_labels, etag)
 
             # Inserting into the calendar may have generated IDs that we'll
-            # want to sync back to the Sheet.
+            # want to sync back to the Sheet.  The new list of IDs may not be
+            # sorted the same way as the original, so do a search for event
+            # labels by the other fields.
             assert len(new_raw_calendar_labels) == len(sheet_labels)
             update_sheet = False
-            for i, raw_calendar_label in enumerate(new_raw_calendar_labels):
-                if sheet_labels[i].id is None:
-                    sheet_labels[i].id = raw_calendar_label.id
-                    update_sheet = True
+            for sheet_label in [l for l in sheet_labels if l.id is None]:
+                raw_label = sheet_label.to_raw()
+                def _remove_id(l: RawEventLabel) -> RawEventLabel:
+                    return replace(l, id=None)
+                matching_raw_calendar_label = next(
+                    (l for l in new_raw_calendar_labels if _remove_id(l) == raw_label),
+                    None
+                )
+                if matching_raw_calendar_label is None:
+                    raise ValueError(f"Couldn't find matching event label for {sheet_label}")
+                sheet_label.id = matching_raw_calendar_label.id
+                update_sheet = True
             if update_sheet:
                 self._event_label_sheet.write(sheet_labels)
 
