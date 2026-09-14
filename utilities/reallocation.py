@@ -53,17 +53,20 @@ see `ReallocationOptions.resolved()`):
 1. **Resolve the immediately preceding overlap.** At most one event in
    `day_events` can start before `new_event.start` and end after it (since
    `day_events` is otherwise non-overlapping); if `day_events` has one, it
-   must be `day_events[0]`. That event shrinks first so its `end` becomes
-   `new_event.start` -- past its own `min_duration` if need be, the same
-   as step 5's cancellation; it can never be shrunk to `0` this way, since
-   by definition it starts before `new_event.start`. If what's left of its
-   original span after `new_event.end` is at least
-   `options.resolved().split_threshold_minutes`, a clone of it is also
-   inserted into `day_events` right after `new_event`, representing that
-   portion: `start` set to `new_event.end`, summary suffixed
-   `" (continued)"` (unless already present), `min_duration` reduced by
-   however much of the original event now precedes it, and no `id` (so
-   callers can tell it's new).
+   must be `day_events[0]`. If it can retain its own `min_duration` before
+   `new_event.start`, it shrinks in place so its `end` becomes
+   `new_event.start`, and, if what's left of its original span after
+   `new_event.end` is at least `options.resolved().split_threshold_minutes`,
+   a clone of it is also inserted into `day_events` right after
+   `new_event`, representing that portion: `start` set to `new_event.end`,
+   summary suffixed `" (continued)"` (unless already present),
+   `min_duration` reduced by however much of the original event now
+   precedes it, and no `id` (so callers can tell it's new). Otherwise --
+   shrinking down to its own `min_duration` still wouldn't clear
+   `new_event.start` -- it isn't truncated at all: it moves whole,
+   untouched, to right after `new_event` instead (ahead of whatever else
+   was in `day_events`), where it's just an ordinary span for step 5 to
+   reclaim from (or not) like any other.
 
 2. **Insert `new_event` into the list.** After any event with a smaller
    `start`, and before any event (e.g. a continuation from step 1) with
@@ -251,6 +254,13 @@ class _Reallocation:
         self.head: Span | None = None
         self.tail: Span | None = None
 
+        # Set by _resolve_preceding_overlap when the preceding event can't
+        # retain its own min_duration before new_event.start even by
+        # shrinking down to it -- popped out of day_events there, and
+        # reinserted by _insert_new_event once new_event's own position
+        # (and so "right after new_event") is known.
+        self._displaced_preceding: Schedulable | None = None
+
     def run(self) -> list[Schedulable]:
         self._validate()
 
@@ -323,6 +333,16 @@ class _Reallocation:
         preceding = self.day_events[preceding_index]
         preceding_min = _effective_min_duration(preceding, self.options.min_duration_overrides)
         new_preceding_duration = new_event.start - preceding.start
+        if new_preceding_duration < preceding_min:
+            # preceding can't retain its own min_duration before
+            # new_event.start even by shrinking down to it -- rather than
+            # truncate it to an uncomfortably small sliver, move it whole
+            # to right after new_event instead. Pop it out here (its
+            # start/end untouched); _insert_new_event reinserts it once
+            # new_event's own position is known.
+            self._displaced_preceding = self.day_events.pop(preceding_index)
+            return
+
         leftover_preceding_duration = _duration(preceding) - new_preceding_duration
         split_threshold = timedelta(minutes=self.options.split_threshold_minutes)
         if leftover_preceding_duration >= split_threshold:
@@ -349,6 +369,8 @@ class _Reallocation:
             len(self.day_events),
         )
         self.day_events.insert(insert_at, new_event)
+        if self._displaced_preceding is not None:
+            self.day_events.insert(insert_at + 1, self._displaced_preceding)
 
     def _build_reclaim_pool(self) -> None:
         overrides = self.options.min_duration_overrides
