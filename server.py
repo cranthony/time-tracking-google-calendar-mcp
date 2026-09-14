@@ -83,6 +83,7 @@ class PublicEvent:
     min_duration: timedelta | None = None
     is_fixed_duration: bool | None = None
     priority: int | None = None
+    event_label_id: str | None = None
     is_cancelled: bool = False
 
     @classmethod
@@ -97,6 +98,7 @@ class PublicEvent:
             min_duration=event.min_duration,
             is_fixed_duration=event.is_fixed_duration,
             priority=event.priority,
+            event_label_id=event.event_label_id,
             is_cancelled=event.status == "cancelled",
         )
 
@@ -110,6 +112,7 @@ class PublicEvent:
             location=self.location,
             min_duration=self.min_duration,
             is_fixed_duration=self.is_fixed_duration,
+            event_label_id=self.event_label_id,
             priority=self.priority,
             status="cancelled" if self.is_cancelled else None,
         )

@@ -8,14 +8,18 @@ to create that dedicated calendar, then set GOOGLE_CALENDAR_ID to the ID it
 prints.
 
 This also creates that calendar's event label sheet (see utilities/
-event_labels.py's EventLabels.create_sheet) in the same step, since there's
-no MCP tool or CLI command for that either -- same one-time, human-run
-bootstrap reasoning as the calendar itself.
+event_labels.py's EventLabels) in the same step, since there's no MCP tool
+or CLI command for that either -- same one-time, human-run bootstrap
+reasoning as the calendar itself. (Constructing an EventLabels for a
+calendar that doesn't have one yet creates it automatically -- see
+EventLabels.__init__ -- so this is really just that constructor call, not
+a separate step; it's also safe to run again later, since it reuses
+whatever sheet is already tracked instead of creating another one.)
 
 If GOOGLE_CALENDAR_ID is already set when this runs, no new calendar is
-created at all: this just adds an event label sheet to that
-already-configured calendar instead (useful if you set this app up before
-event label sheets existed, and are adding one to your existing calendar).
+created at all: this just ensures that already-configured calendar has an
+event label sheet (useful if you set this app up before event label
+sheets existed).
 
 Usage:
     python create_calendar.py ["Calendar name"] [--description "..."]
@@ -30,7 +34,7 @@ import sys
 from googleapiclient.discovery import build
 
 from calendar_clients.google_auth import load_credentials
-from calendar_clients.google_calendar import Calendar
+from calendar_clients.google_calendar import Calendar, EventLabelConflictError
 from config import build_event_labels, get_credentials_path, get_token_path
 
 DEFAULT_SUMMARY = "Time Tracking"
@@ -46,10 +50,10 @@ def create_calendar(summary: str, description: str | None = None) -> Calendar:
 
 
 def create_event_label_sheet_for_calendar(calendar_id: str) -> str:
-    """Create `calendar_id`'s event label sheet (see EventLabels.
-    create_sheet), returning its spreadsheet id. Raises `ValueError` if
-    that calendar already has one tracked."""
-    return build_event_labels(calendar_id).create_sheet()
+    """Ensure `calendar_id` has an event label sheet (creating one,
+    pre-populated with its current labels, if it doesn't already -- see
+    `EventLabels.__init__`), returning its spreadsheet id."""
+    return build_event_labels(calendar_id).sheet_id
 
 
 def main() -> None:
@@ -63,10 +67,7 @@ def main() -> None:
     existing_calendar_id = os.environ.get("GOOGLE_CALENDAR_ID")
     if existing_calendar_id:
         calendar_id = existing_calendar_id
-        print(
-            f"GOOGLE_CALENDAR_ID is already set to {calendar_id!r} -- adding an event label "
-            "sheet to it instead of creating a new calendar."
-        )
+        print(f"GOOGLE_CALENDAR_ID is already set to {calendar_id!r} -- not creating a new calendar.")
     else:
         calendar = create_calendar(args.summary, args.description)
         calendar_id = calendar.id
@@ -75,9 +76,12 @@ def main() -> None:
 
     try:
         spreadsheet_id = create_event_label_sheet_for_calendar(calendar_id)
-    except ValueError as exc:
+    except EventLabelConflictError as exc:
+        # Another writer changed the calendar (e.g. a concurrent run of
+        # this same script) between checking for a tracked sheet and
+        # recording a new one -- rerunning will just find that one.
         sys.exit(str(exc))
-    print(f"Created event label sheet: https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit")
+    print(f"Event label sheet: https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit")
 
 
 if __name__ == "__main__":

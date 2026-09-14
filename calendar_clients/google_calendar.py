@@ -160,6 +160,15 @@ class Event:
     for identifying that event specifically (e.g. among reallocation
     candidates), independent of whatever `priority` it's also given."""
 
+    event_label_id: str | None = None
+    """The id of one of this calendar's custom event labels (see
+    `EventLabel`/`CalendarClient.list_event_labels`) assigned to this
+    event, if any -- a real top-level API field (`eventLabelId`), not an
+    `extendedProperties.private` one like `priority`/`min_duration`/etc
+    above. Its color supersedes `colorId` on the calendar.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#eventLabelId
+    for more information."""
+
     @classmethod
     def from_api(cls, data: dict) -> "Event":
         private_properties = data.get("extendedProperties", {}).get("private", {})
@@ -188,6 +197,7 @@ class Event:
             location=data.get("location"),
             status=data.get("status"),
             recurring_event_id=data.get("recurringEventId"),
+            event_label_id=data.get("eventLabelId"),
             **app_properties,
         )
 
@@ -210,6 +220,8 @@ class Event:
             body["location"] = self.location
         if self.status is not None:
             body["status"] = self.status
+        if self.event_label_id is not None:
+            body["eventLabelId"] = self.event_label_id
         if self.priority is not None:
             # Color each event according to its priority.  Note that this
             # might be a partial update, in which case a missing priority

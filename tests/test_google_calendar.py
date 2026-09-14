@@ -51,6 +51,7 @@ class TestEvent:
         assert event.is_fixed_duration is None
         assert event.priority is None
         assert event.is_end_of_day_sleep is None
+        assert event.event_label_id is None
 
     def test_from_api_parses_non_utc_offset(self):
         event = Event.from_api(
@@ -101,6 +102,16 @@ class TestEvent:
         event = Event.from_api(data)
 
         assert event.recurring_event_id == "abc123"
+
+    def test_from_api_extracts_event_label_id(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["eventLabelId"] = "label-1"
+
+        event = Event.from_api(data)
+
+        assert event.event_label_id == "label-1"
 
     def test_from_api_uses_timeZone_when_dateTime_is_naive(self):
         data = {
@@ -276,6 +287,25 @@ class TestEvent:
         )
 
         assert "recurringEventId" not in event.to_api_body()
+
+    def test_to_api_body_includes_event_label_id_when_present(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            event_label_id="label-1",
+        )
+
+        assert event.to_api_body()["eventLabelId"] == "label-1"
+
+    def test_to_api_body_omits_event_label_id_when_absent(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+        )
+
+        assert "eventLabelId" not in event.to_api_body()
 
     def test_to_api_body_includes_app_properties_when_present(self):
         event = Event(
@@ -570,9 +600,10 @@ class TestCalendarClientDeleteEvent:
 
 
 class TestCalendarClientListEventLabels:
-    def test_returns_parsed_labels(self):
+    def test_returns_parsed_labels_and_etag(self):
         service = MagicMock()
         service.calendars.return_value.get.return_value.execute.return_value = {
+            "etag": '"abc123"',
             "labelProperties": {
                 "eventLabels": [
                     {"id": "l1", "backgroundColor": "#8e24aa", "name": "Design Work"},
@@ -582,11 +613,12 @@ class TestCalendarClientListEventLabels:
         }
         client = make_client(service)
 
-        labels = client.list_event_labels()
+        labels, etag = client.list_event_labels()
 
         assert [label.id for label in labels] == ["l1", "l2"]
         assert labels[0].name == "Design Work"
         assert labels[1].name is None
+        assert etag == '"abc123"'
         service.calendars.return_value.get.assert_called_once_with(calendarId=TEST_CALENDAR_ID)
 
     def test_returns_empty_list_when_no_labels_defined(self):
@@ -594,7 +626,10 @@ class TestCalendarClientListEventLabels:
         service.calendars.return_value.get.return_value.execute.return_value = {}
         client = make_client(service)
 
-        assert client.list_event_labels() == []
+        labels, etag = client.list_event_labels()
+
+        assert labels == []
+        assert etag is None
 
 
 class TestCalendarClientCreateEventLabel:
@@ -772,15 +807,12 @@ class TestCalendarClientDeleteEventLabel:
 
 class TestCalendarClientReplaceEventLabels:
     def test_creates_updates_and_deletes_in_one_call(self):
+        # replace_event_labels no longer fetches its own etag (unlike
+        # create/update/delete_event_label) -- it's the caller's job to
+        # supply one (e.g. from a prior list_event_labels() call), since
+        # utilities/event_labels.py's EventLabels.sync_labels does other
+        # work (reading the sheet) between reading the etag and writing.
         service = MagicMock()
-        service.calendars.return_value.get.return_value.execute.return_value = {
-            "labelProperties": {
-                "eventLabels": [
-                    {"id": "l1", "backgroundColor": "#d50000", "name": "Keep me, renamed"},
-                    {"id": "l2", "backgroundColor": "#123456", "name": "Delete me"},
-                ]
-            }
-        }
         service.calendars.return_value.patch.return_value.execute.return_value = {
             "labelProperties": {
                 "eventLabels": [
@@ -795,7 +827,8 @@ class TestCalendarClientReplaceEventLabels:
             [
                 EventLabel(id="l1", background_color="#d50000", name="Renamed"),
                 EventLabel(background_color="#8e24aa", name="New"),
-            ]
+            ],
+            '"etag-1"',
         )
 
         assert [label.id for label in updated] == ["l1", "l3"]
@@ -810,12 +843,11 @@ class TestCalendarClientReplaceEventLabels:
                 }
             },
         )
+        request = service.calendars.return_value.patch.return_value
+        request.headers.__setitem__.assert_called_once_with("If-Match", '"etag-1"')
 
     def test_replacing_with_an_empty_list_deletes_every_label(self):
         service = MagicMock()
-        service.calendars.return_value.get.return_value.execute.return_value = {
-            "labelProperties": {"eventLabels": [{"id": "l1", "backgroundColor": "#d50000"}]}
-        }
         service.calendars.return_value.patch.return_value.execute.return_value = {}
         client = make_client(service)
 
@@ -827,19 +859,25 @@ class TestCalendarClientReplaceEventLabels:
             body={"labelProperties": {"eventLabels": []}},
         )
 
+    def test_skips_if_match_when_no_etag_given(self):
+        service = MagicMock()
+        service.calendars.return_value.patch.return_value.execute.return_value = {}
+        client = make_client(service)
+
+        client.replace_event_labels([])
+
+        request = service.calendars.return_value.patch.return_value
+        request.headers.__setitem__.assert_not_called()
+
     def test_raises_conflict_error_on_412(self):
         service = MagicMock()
-        service.calendars.return_value.get.return_value.execute.return_value = {
-            "etag": '"stale"',
-            "labelProperties": {"eventLabels": []},
-        }
         service.calendars.return_value.patch.return_value.execute.side_effect = HttpError(
             MagicMock(status=412), b"Precondition check failed."
         )
         client = make_client(service)
 
         with pytest.raises(EventLabelConflictError):
-            client.replace_event_labels([])
+            client.replace_event_labels([], etag='"stale"')
 
 
 class TestCalendarClientGetCalendarMetadata:

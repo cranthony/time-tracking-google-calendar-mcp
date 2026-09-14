@@ -21,11 +21,11 @@ the raw one has.
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, astuple
 
 from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
-from utilities.event_label_sheet import DEFAULT_SHEET_TITLE, EventLabelSheet, EventLabel
+from utilities.event_label_sheet import EventLabelSheet, EventLabel
 
 _SHEET_ID_METADATA_KEY = "event-label-sheet-id"
 """The CalendarClient.get_calendar_metadata/set_calendar_metadata key this
@@ -57,13 +57,19 @@ class EventLabels:
             # current set of event labels.
             event_label_sheet_id = EventLabelSheet.create(
                 sheets_client,
-                self._get_calendar_labels())
+                initial_labels=self._get_calendar_labels(),
+            )
             self._calendar_client.set_calendar_metadata(_SHEET_ID_METADATA_KEY, event_label_sheet_id)
 
         self._event_label_sheet = EventLabelSheet(sheets_client, event_label_sheet_id)
 
+    @property
+    def sheet_id(self) -> str:
+        return self._event_label_sheet.spreadsheet_id
+
     def _get_calendar_labels(self) -> list[EventLabel]:
-        return [EventLabel.from_raw(label) for label in self._calendar_client.list_event_labels]
+        raw_labels, _etag = self._calendar_client.list_event_labels()
+        return [EventLabel.from_raw(label) for label in raw_labels]
 
     def _get_sheet_labels(self) -> list[EventLabel]:
         return self._event_label_sheet.read()
@@ -74,7 +80,9 @@ class EventLabels:
         sheet_labels = self._get_sheet_labels()
         raw_sheet_labels = [label.to_raw() for label in sheet_labels]
 
-        if set(raw_calendar_labels) != set(raw_sheet_labels):
+        # EventLabel (raw) isn't hashable (a plain, non-frozen dataclass),
+        # so compare via astuple's plain tuples instead of set(EventLabel...).
+        if {astuple(l) for l in raw_calendar_labels} != {astuple(l) for l in raw_sheet_labels}:
             new_raw_calendar_labels = self._calendar_client.replace_event_labels(raw_sheet_labels, etag)
 
             # Inserting into the calendar may have generated IDs that we'll
@@ -110,8 +118,8 @@ class EventLabels:
             raise ValueError(f"Update requires valid label ID, but {label.id} is unknown")
         label_to_edit_index = next((i for i, l in enumerate(sheet_labels) if l.id == label.id), None)
         assert label_to_edit_index is not None
-        for field, value in asdict(label):
-            if value is not None:
+        for field, value in asdict(label).items():
+            if field != "id" and value is not None:
                 setattr(sheet_labels[label_to_edit_index], field, value)
         self._event_label_sheet.write(sheet_labels)
         return self.sync_labels()

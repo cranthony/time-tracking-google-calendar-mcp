@@ -9,7 +9,6 @@ from googleapiclient.discovery import build
 from calendar_clients.google_auth import load_credentials
 from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
-from utilities.event_label_sheet import EventLabelSheet
 from utilities.event_labels import EventLabels
 
 load_dotenv()
@@ -125,17 +124,11 @@ def _build_calendar_and_sheets_clients(
     return calendar_client, sheets_client
 
 
-def build_event_label_sheet(calendar_id: str | None = None) -> EventLabelSheet:
-    """Construct an EventLabelSheet from environment configuration (and a
-    local .env file, if present). See `_build_calendar_and_sheets_clients`
-    for `calendar_id`."""
-    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
-    return EventLabelSheet(calendar_client, sheets_client)
-
-
 def build_event_labels(calendar_id: str | None = None) -> EventLabels:
     """Construct an EventLabels from environment configuration (and a
     local .env file, if present). See `_build_calendar_and_sheets_clients`
-    for `calendar_id`."""
+    for `calendar_id`. Constructing this ensures the calendar has an event
+    label sheet, creating one (pre-populated with its current labels) if
+    it didn't already -- see `EventLabels.__init__`."""
     calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
-    return EventLabels(calendar_client, EventLabelSheet(calendar_client, sheets_client))
+    return EventLabels(calendar_client, sheets_client)

@@ -16,7 +16,6 @@ Usage:
     python calendar_cli.py list_labels
     python calendar_cli.py create_label key=value [key=value ...]
     python calendar_cli.py update_label <label_id> key=value [key=value ...]
-    python calendar_cli.py delete_label <label_id>
     python calendar_cli.py sync_labels
 
 - `list` shows events between `from` before now and `to` after now, each a
@@ -53,28 +52,28 @@ Usage:
   required for `create_raw_label`. Prefer `create_label`/`update_label`
   below unless you specifically want to bypass priority-derived colors
   and the event label sheet.
-- `list_labels`/`create_label`/`update_label`/`delete_label` manage the
-  same labels, but as `utilities/event_labels.py`'s richer `EventLabel`
-  (via `EventLabels`), which also has a `priority` -- sourced from a
-  synced event label sheet (see `sync_labels` below) on read, and usable
-  as a `background_color=value` shorthand on write (`create_label`/
-  `update_label` take `background_color=value`/`name=value`/
+- `list_labels`/`create_label`/`update_label` manage the same labels, but
+  as `utilities/event_labels.py`'s richer `EventLabel` (via `EventLabels`),
+  which also has a `priority` (`background_color=value`/`name=value`/
   `priority=value` pairs; `background_color` may be left unset if
   `priority` is given, deriving it the same way `Event.colorId` does;
-  whichever is omitted on `update_label` keeps its current value).
-  `priority` isn't itself persisted by these two -- only `sync_labels`
-  (via a sheet) remembers it. Defining a label here doesn't do anything
-  on its own; assigning one to a specific event is a separate,
-  not-yet-built feature. See
+  whichever is omitted on `update_label` keeps its current value). Every
+  one of these -- including `list_labels` -- reads and writes through this
+  calendar's event label sheet (creating one, pre-populated with the
+  calendar's current labels, the first time any of them runs if it
+  doesn't exist yet), which is the only place `priority` is remembered;
+  `create_label`/`update_label`/`list_labels` all print the *entire*
+  resulting label list, not just the one label touched. There's no
+  `delete_label` -- delete a row from the sheet directly (e.g. by opening
+  it in Google Sheets) and run `sync_labels` to apply that. Defining a
+  label here doesn't do anything on its own; assigning one to a specific
+  event is a separate, not-yet-built feature. See
   https://developers.google.com/workspace/calendar/api/guides/labels
 - `sync_labels` makes this calendar's event labels match its event label
-  sheet exactly (via `EventLabels.sync_from_sheet`) -- change a row's
+  sheet exactly (via `EventLabels.sync_labels`) -- change a row's
   color/priority, add a row with a blank ID to create a new label, or
   delete a row to delete its label, then run this to apply those changes
-  back to the calendar. Fails if this calendar has no event label sheet
-  tracked -- creating one is a one-time, human-run bootstrap step done
-  by `create_calendar.py`, the same as the calendar itself, not
-  something this CLI (or the MCP server) can do on its own.
+  back to the calendar.
 """
 
 from __future__ import annotations
@@ -139,6 +138,7 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "is_fixed_duration": _parse_bool,
     "priority": int,
     "is_end_of_day_sleep": _parse_bool,
+    "event_label_id": str,
 }
 
 
@@ -399,11 +399,6 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    delete_label_parser = subparsers.add_parser(
-        "delete_label", help="Delete an event label by id."
-    )
-    delete_label_parser.add_argument("label_id", help="The label id.")
-
     subparsers.add_parser(
         "sync_labels", help="Sync event labels from this calendar's tracked event label sheet."
     )
@@ -458,7 +453,7 @@ def main() -> None:
         client.delete_event(args.id)
         print(f"Deleted event {args.id}.")
     elif args.command == "list_raw_labels":
-        labels = client.list_event_labels()
+        labels, _etag = client.list_event_labels()
         if not labels:
             print("No event labels found.")
         for label in labels:
@@ -488,24 +483,29 @@ def main() -> None:
             print(_format_event_label_line(label))
     elif args.command == "create_label":
         fields = dict(args.properties)
-        label = build_event_labels().create_label(
-            fields.get("background_color"), fields.get("name"), fields.get("priority")
-        )
-        print(_format_event_details(label))
-    elif args.command == "update_label":
-        fields = dict(args.properties)
-        label = build_event_labels().update_label(
-            args.label_id,
+        new_label = EventLabel(
             background_color=fields.get("background_color"),
             name=fields.get("name"),
             priority=fields.get("priority"),
         )
-        print(_format_event_details(label))
-    elif args.command == "delete_label":
-        label = build_event_labels().delete_label(args.label_id)
-        print(f"Deleted event label {label.id}.")
+        labels = build_event_labels().create_label(new_label)
+        for label in labels:
+            print(_format_event_details(label))
+            print()
+    elif args.command == "update_label":
+        fields = dict(args.properties)
+        updated_label = EventLabel(
+            id=args.label_id,
+            background_color=fields.get("background_color"),
+            name=fields.get("name"),
+            priority=fields.get("priority"),
+        )
+        labels = build_event_labels().update_label(updated_label)
+        for label in labels:
+            print(_format_event_details(label))
+            print()
     elif args.command == "sync_labels":
-        labels = build_event_labels().sync_from_sheet()
+        labels = build_event_labels().sync_labels()
         if not labels:
             print("No event labels found.")
         for label in labels:

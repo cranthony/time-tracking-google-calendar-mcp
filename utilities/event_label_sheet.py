@@ -66,25 +66,30 @@ class EventLabel:
 
     @classmethod
     def from_row(cls, header_row: list[str], data: list[str]) -> "EventLabel":
-        field_set = set(fields(cls))
-        decoded = {}
+        field_names = {f.name for f in fields(cls)}
+        decoded: dict[str, str] = {}
         for i, header in enumerate(header_row):
-            if header in field_set:
+            if header in field_names:
                 assert header not in decoded, f"{header} specified multiple times"
-                decoded[header] = data[i]
-        return cls(**decoded)
+                decoded[header] = data[i] if i < len(data) else ""
+        return cls(
+            id=decoded.get("id") or None,
+            name=decoded.get("name") or None,
+            background_color=decoded.get("background_color") or None,
+            priority=int(decoded["priority"]) if decoded.get("priority") else None,
+        )
 
     def to_row(self, header_row: list[str], original_row: list[str] | None = None) -> list[str]:
+        field_names = {f.name for f in fields(self)}
         result = []
         for i, header in enumerate(header_row):
-            if header in fields(self):
-                result.append(getattr(self, header))
-            elif original_row is not None:
-                result.append(original_row[i] if i < len(original_row) else None)
+            if header in field_names:
+                value = getattr(self, header)
+                result.append("" if value is None else str(value))
+            elif original_row is not None and i < len(original_row):
+                result.append(original_row[i])
             else:
-                result.append(None)
-        if len(result) < len(original_row):
-            result += original_row[len(result):]
+                result.append("")
         return result
 
 
@@ -99,6 +104,10 @@ class EventLabelSheet:
         self._sheets_client = sheets_client
         self._spreadsheet_id = spreadsheet_id
 
+    @property
+    def spreadsheet_id(self) -> str:
+        return self._spreadsheet_id
+
     @staticmethod
     def create(sheets_client: SheetsClient,
                title: str = DEFAULT_SHEET_TITLE,
@@ -111,9 +120,9 @@ class EventLabelSheet:
             column_index=_ID_COLUMN_INDEX,
             pixel_width=_ID_COLUMN_PIXEL_WIDTH,
         )
-        header_row = list(fields(EventLabel))
-        sheets_client.write_rows(spreadsheet_id, _HEADER_RANGE, header_row)
-        if initial_rows:
+        header_row = [f.name for f in fields(EventLabel)]
+        sheets_client.write_rows(spreadsheet_id, _HEADER_RANGE, [header_row])
+        if initial_labels:
             sheets_client.write_rows(spreadsheet_id, _DATA_RANGE, [
                 label.to_row(header_row, None)
                 for label in initial_labels
@@ -131,21 +140,23 @@ class EventLabelSheet:
         header_row = self._read_header()
         previous_rows = self._sheets_client.read_rows(self._spreadsheet_id, _DATA_RANGE)
         self._sheets_client.write_rows(self._spreadsheet_id, _DATA_RANGE, [
-            event_label.to_row(header_row, previous_rows[i])
+            event_label.to_row(header_row, previous_rows[i] if i < len(previous_rows) else None)
             for i, event_label in enumerate(event_labels)
         ])
 
-    def append(self, label: EventLabel) -> list[EventLabel]:
-        """Helper function to add a label to the end of the sheet"""
+    def append(self, label: EventLabel) -> None:
+        """Add `label` as a new row at the end of the sheet."""
         header_row = self._read_header()
         previous_rows = self._sheets_client.read_rows(self._spreadsheet_id, _DATA_RANGE)
-        self._sheets_client.write_rows(self._spreadsheet_id, _DATA_RANGE, [
-            event_label.to_row(header_row, previous_rows[i])
-            for i, event_label in enumerate(event_labels)
-        ])
+        new_row = label.to_row(header_row, None)
+        self._sheets_client.write_rows(self._spreadsheet_id, _DATA_RANGE, previous_rows + [new_row])
 
     def _read_header(self) -> list[str]:
-        header_row = self._sheets_client.read_rows(self._spreadsheet_id, _HEADER_RANGE)
-        if set(HEADER_ROW) not in set(header_row):
-            raise ValueError(f"Missing expected header rows at {_HEADER_RANGE}: {set(HEADER_ROW) - set(header_row)}")
+        rows = self._sheets_client.read_rows(self._spreadsheet_id, _HEADER_RANGE)
+        header_row = rows[0] if rows else []
+        expected = {f.name for f in fields(EventLabel)}
+        if not expected <= set(header_row):
+            raise ValueError(
+                f"Missing expected header columns at {_HEADER_RANGE}: {expected - set(header_row)}"
+            )
         return header_row

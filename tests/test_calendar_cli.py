@@ -539,7 +539,7 @@ def _fake_event_labels(monkeypatch) -> MagicMock:
 class TestMainListRawLabels:
     def test_lists_labels(self, capsys, monkeypatch):
         client = MagicMock()
-        client.list_event_labels.return_value = [_raw_event_label()]
+        client.list_event_labels.return_value = ([_raw_event_label()], '"etag-1"')
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "list_raw_labels"])
 
@@ -553,7 +553,7 @@ class TestMainListRawLabels:
 
     def test_prints_message_when_no_labels(self, capsys, monkeypatch):
         client = MagicMock()
-        client.list_event_labels.return_value = []
+        client.list_event_labels.return_value = ([], None)
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "list_raw_labels"])
 
@@ -696,19 +696,19 @@ class TestMainSyncLabels:
     def test_syncs_from_tracked_sheet(self, capsys, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.sync_from_sheet.return_value = [_event_label(priority=1)]
+        event_labels.sync_labels.return_value = [_event_label(priority=1)]
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "sync_labels"])
 
         calendar_cli.main()
 
-        event_labels.sync_from_sheet.assert_called_once_with()
+        event_labels.sync_labels.assert_called_once_with()
         out = capsys.readouterr().out
         assert "label-1" in out
 
     def test_prints_message_when_no_labels(self, capsys, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.sync_from_sheet.return_value = []
+        event_labels.sync_labels.return_value = []
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "sync_labels"])
 
         calendar_cli.main()
@@ -720,7 +720,7 @@ class TestMainCreateLabel:
     def test_creates_label_with_name(self, capsys, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = _event_label()
+        event_labels.create_label.return_value = [_event_label()]
         monkeypatch.setattr(
             sys,
             "argv",
@@ -734,7 +734,9 @@ class TestMainCreateLabel:
 
         calendar_cli.main()
 
-        event_labels.create_label.assert_called_once_with("#8e24aa", "Design Work", None)
+        event_labels.create_label.assert_called_once_with(
+            EventLabel(background_color="#8e24aa", name="Design Work", priority=None)
+        )
         out = capsys.readouterr().out
         assert "label-1" in out
         assert "Design Work" in out
@@ -742,21 +744,23 @@ class TestMainCreateLabel:
     def test_creates_label_without_name(self, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = _event_label(name=None)
+        event_labels.create_label.return_value = [_event_label(name=None)]
         monkeypatch.setattr(
             sys, "argv", ["calendar_cli.py", "create_label", "background_color=#8e24aa"]
         )
 
         calendar_cli.main()
 
-        event_labels.create_label.assert_called_once_with("#8e24aa", None, None)
+        event_labels.create_label.assert_called_once_with(
+            EventLabel(background_color="#8e24aa", name=None, priority=None)
+        )
 
     def test_creates_label_from_priority_alone(self, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = _event_label(
-            background_color="#fbd75b", priority=1
-        )
+        event_labels.create_label.return_value = [
+            _event_label(background_color="#fbd75b", priority=1)
+        ]
         monkeypatch.setattr(
             sys,
             "argv",
@@ -765,7 +769,9 @@ class TestMainCreateLabel:
 
         calendar_cli.main()
 
-        event_labels.create_label.assert_called_once_with(None, "Design Work", 1)
+        event_labels.create_label.assert_called_once_with(
+            EventLabel(background_color=None, name="Design Work", priority=1)
+        )
 
     def test_no_properties_required_upfront(self, monkeypatch):
         # create_label doesn't enforce "background_color or priority" itself
@@ -773,21 +779,23 @@ class TestMainCreateLabel:
         # if neither is given.
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = _event_label(background_color="#a4bdfc")
+        event_labels.create_label.return_value = [_event_label(background_color="#a4bdfc")]
         monkeypatch.setattr(
             sys, "argv", ["calendar_cli.py", "create_label", "name=Design Work"]
         )
 
         calendar_cli.main()
 
-        event_labels.create_label.assert_called_once_with(None, "Design Work", None)
+        event_labels.create_label.assert_called_once_with(
+            EventLabel(background_color=None, name="Design Work", priority=None)
+        )
 
 
 class TestMainUpdateLabel:
     def test_updates_background_color(self, capsys, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = _event_label(background_color="#d50000")
+        event_labels.update_label.return_value = [_event_label(background_color="#d50000")]
         monkeypatch.setattr(
             sys,
             "argv",
@@ -797,14 +805,14 @@ class TestMainUpdateLabel:
         calendar_cli.main()
 
         event_labels.update_label.assert_called_once_with(
-            "label-1", background_color="#d50000", name=None, priority=None
+            EventLabel(id="label-1", background_color="#d50000", name=None, priority=None)
         )
         assert "#d50000" in capsys.readouterr().out
 
     def test_updates_name(self, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = _event_label(name="New name")
+        event_labels.update_label.return_value = [_event_label(name="New name")]
         monkeypatch.setattr(
             sys, "argv", ["calendar_cli.py", "update_label", "label-1", "name=New name"]
         )
@@ -812,15 +820,15 @@ class TestMainUpdateLabel:
         calendar_cli.main()
 
         event_labels.update_label.assert_called_once_with(
-            "label-1", background_color=None, name="New name", priority=None
+            EventLabel(id="label-1", background_color=None, name="New name", priority=None)
         )
 
     def test_updates_priority(self, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = _event_label(
-            background_color="#7ae7bf", priority=3
-        )
+        event_labels.update_label.return_value = [
+            _event_label(background_color="#7ae7bf", priority=3)
+        ]
         monkeypatch.setattr(
             sys, "argv", ["calendar_cli.py", "update_label", "label-1", "priority=3"]
         )
@@ -828,7 +836,7 @@ class TestMainUpdateLabel:
         calendar_cli.main()
 
         event_labels.update_label.assert_called_once_with(
-            "label-1", background_color=None, name=None, priority=3
+            EventLabel(id="label-1", background_color=None, name=None, priority=3)
         )
 
     def test_requires_at_least_one_property(self, monkeypatch):
@@ -840,16 +848,3 @@ class TestMainUpdateLabel:
             calendar_cli.main()
 
         event_labels.update_label.assert_not_called()
-
-
-class TestMainDeleteLabel:
-    def test_deletes_label(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.delete_label.return_value = _event_label()
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "delete_label", "label-1"])
-
-        calendar_cli.main()
-
-        event_labels.delete_label.assert_called_once_with("label-1")
-        assert "label-1" in capsys.readouterr().out
