@@ -16,11 +16,7 @@ from config import (
     get_workos_authkit_domain,
 )
 from utilities.event_labels import EventLabels, EventLabel
-from utilities.reallocation import (
-    ReallocationConflictError,
-    ReallocationOptions,
-    ReallocationShortfallError,
-)
+from utilities.reallocation import ReallocationConflictError, ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 from workos_auth import WorkOSTokenVerifier
 
@@ -176,7 +172,7 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
     updated_event = event.to_event()
     try:
         applied = get_reallocating_calendar().update_event(updated_event, ReallocationOptions())
-    except (ReallocationConflictError, ReallocationShortfallError, ValueError) as exc:
+    except (ReallocationConflictError, ValueError) as exc:
         raise ToolError(str(exc)) from exc
     return [PublicEvent.from_event(e) for e in applied]
 
@@ -187,7 +183,7 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
     new_event = event.to_event()
     try:
         applied = get_reallocating_calendar().create_event(new_event, ReallocationOptions())
-    except (ReallocationConflictError, ReallocationShortfallError, ValueError) as exc:
+    except (ReallocationConflictError, ValueError) as exc:
         raise ToolError(str(exc)) from exc
     return [PublicEvent.from_event(e) for e in applied]
 

@@ -19,9 +19,11 @@ with whatever `day_events` it's handed.
 ## Priority
 
 Every event has a `priority` (lower number = more important); lower priority
-events shrink to make time before higher priority events. Free time is the
-lowest possible priority (`math.inf`). An event with no `priority` set is
-treated as priority `2`.
+events (and free time) shrink, and are cancelled outright if shrinking isn't
+enough, before higher priority ones are (step 5) -- priority only decides
+the order events are drawn from, not whether an event is eligible at all.
+Free time is the lowest possible priority (`math.inf`). An event with no
+`priority` set is treated as priority `2`.
 
 ## Minimum duration
 
@@ -78,24 +80,24 @@ see `ReallocationOptions.resolved()`):
 4. **Build the reclaim pool.** Walk `day_events` (as of step 2) in order,
    building a singly linked list of `Span`s -- one per event, plus one
    per non-zero gap between them (`event=None`, `min_duration=0`) -- so
-   step 7 can walk them in order. Group them by priority as they're built
+   step 6 can walk them in order. Group them by priority as they're built
    (a gap's is `math.inf`).
 
-5. **Reclaim greedily.** Process spans at `new_event`'s own priority or
-   worse (highest number, `math.inf` first, down to best of that range),
-   in the order they were built within a priority, shrinking each down to
-   its `min_duration` and subtracting from `duration_to_reclaim` until it
-   reaches `0`. If that's not enough, keep going into higher-priority
-   spans too, in the same earliest-first order -- this is the only point at
-   which a higher-priority event may be shrunk, and only as far as its own
-   `min_duration`. Never reclaims from `new_event`'s own span.
+5. **Reclaim greedily.** Process every span, worst priority to best
+   (highest number, `math.inf` first), in the order they were built
+   within a priority, shrinking each down to its `min_duration` and
+   subtracting from `duration_to_reclaim` until it reaches `0`. If that's
+   still not enough, make a second pass in the same order and cancel
+   outright -- ignoring `min_duration` entirely -- whatever still has
+   one. No span is exempt from either pass on account of its priority:
+   priority only decides the order spans are drawn from. Never reclaims
+   from `new_event`'s own span. Since `new_event`'s own span is always
+   temporarily collapsed to zero width first (see `run`), whatever it
+   vacates is always enough for the rest of the pool, fully cancelled if
+   need be, to cover -- step 0's validation is what guarantees this can't
+   fall short.
 
-6. **Check for a shortfall.** If the pool, fully reclaimed still falls
-   short, raise a well-structured exception with the remaining duration
-   still needed and every event (any priority) already at its
-   `min_duration` floor (by descending `min_duration`).
-
-7. **Compact into a layout.** Walk the `Span` list from its head,
+6. **Compact into a layout.** Walk the `Span` list from its head,
    tracking the current end time (starting at the earliest event's
    original `start`). A span with an event reduced to `0` duration is
    marked `status = "cancelled"` (if not already) instead of moved;
@@ -107,7 +109,7 @@ see `ReallocationOptions.resolved()`):
    duration survives untouched, the running position it produces already
    matches that span's own original start, so nothing after it moves.
 
-8. **Report the plan.** Return every changed or newly-created event,
+7. **Report the plan.** Return every changed or newly-created event,
    sorted by `start`.
 """
 
@@ -189,7 +191,7 @@ def _validate_sorted_and_nonoverlapping(
 class Span:
     """One event or gap on `day_events`' timeline, in chronological order
     (step 4). `event` is `None` for a gap. `next` links to the following
-    `Span`, forming a singly linked list for step 7's walk."""
+    `Span`, forming a singly linked list for step 6's walk."""
 
     event: Schedulable | None
     duration: timedelta
@@ -236,24 +238,6 @@ class ReallocationConflictError(Exception):
         self.new_start_time = new_start_time
 
 
-class ReallocationShortfallError(Exception):
-    """Raised by `reallocate_for_new_event` when `day_events` doesn't have
-    enough reclaimable time to fit `new_event` at all, even after reclaiming
-    down to every event's own `min_duration` -- including higher-priority
-    events, reclaimed from only as this last resort (step 6)."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        remaining: timedelta | None = None,
-        events_at_floor: list[Schedulable] = (),
-    ) -> None:
-        super().__init__(message)
-        self.remaining = remaining
-        self.events_at_floor = list(events_at_floor)
-
-
 class _Reallocation:
     """One `reallocate_for_new_event` call's state, so the steps below can
     read/write it as attributes instead of threading everything (`options`
@@ -269,7 +253,6 @@ class _Reallocation:
         self.day_events = list(day_events)
         self.new_event = new_event
         self.options = options.resolved()
-        self.new_event_priority = _effective_priority(new_event)
 
         # Snapshot each event's original (start, end, status) before step 1
         # can mutate any of them in place -- step 7 needs these to tell
@@ -306,10 +289,12 @@ class _Reallocation:
             self.new_event.end = self.new_event.start
             self._insert_new_event()
             self._build_reclaim_pool()
-            remaining = self._reclaim(duration_to_reclaim,
-                                      self._sorted_priorities())
-            if remaining > timedelta(0):
-                self._raise_shortfall(remaining)
+            remaining = self._reclaim(duration_to_reclaim, self._sorted_priorities())
+            assert remaining <= timedelta(0), (
+                f"{remaining} left unreclaimed after cancelling everything outright -- "
+                "day_events must not have had enough total capacity to fit new_event "
+                "at all, which step 0's validation should already guarantee"
+            )
         finally:
             # Restore its original size before we compact the calendar;
             # we should have reclaimed enough time by now (or we're
@@ -421,45 +406,54 @@ class _Reallocation:
         return sorted(self.spans_by_priority.keys(), reverse=True)
 
     def _reclaim(self, duration_to_reclaim: timedelta, priorities: list[float]) -> timedelta:
-        """Mark the spans that will be reduced to claim space for the new event."""
-        remaining = duration_to_reclaim
-        for priority in priorities:
-            for span in self.spans_by_priority[priority]:
-                if remaining <= timedelta(0):
-                    break
-                reclaimable = span.duration - span.min_duration
-                if reclaimable <= timedelta(0):
-                    continue
-                taken = min(reclaimable, remaining)
-                span.duration -= taken
-                remaining -= taken
-                logger.debug("Taking %s from %s", taken, span.event)
-            if remaining <= timedelta(0):
-                break
+        """Mark the spans that will be reduced to claim space for the new
+        event: shrink every span down to its own min_duration first,
+        worst priority to best. If that's not enough, cancel outright --
+        ignoring min_duration entirely -- whatever still has one, in the
+        same order. No priority is special-cased here: a higher-priority
+        event is already no more protected than any other during the
+        shrink pass (plenty have a min_duration of `0`), so it isn't
+        during cancellation either -- priority only decides the order
+        spans are drawn from, worst first, not whether they're eligible."""
+        spans = [span for priority in priorities for span in self.spans_by_priority[priority]]
+        remaining = self._shrink_to_floor(spans, duration_to_reclaim)
+        if remaining > timedelta(0):
+            remaining = self._cancel_outright(spans, remaining)
         return remaining
 
-    def _raise_shortfall(self, remaining: timedelta) -> None:
-        overrides = self.options.min_duration_overrides
-        events_at_floor = sorted(
-            (
-                span.event
-                for spans in self.spans_by_priority.values()
-                for span in spans
-                # span.min_duration is already the effective min duration.
-                if span.event is not None
-                and span.duration <= span.min_duration
-                and span.event is not self.new_event
-            ),
-            key=lambda event: _effective_min_duration(event, overrides),
-            reverse=True,
-        )
-        raise ReallocationShortfallError(
-            f"Not enough reclaimable time for the new event: still short by "
-            f"{remaining} after reclaiming everything down to its min_duration, "
-            "including higher-priority events as a last resort.",
-            remaining=remaining,
-            events_at_floor=events_at_floor,
-        )
+    def _shrink_to_floor(self, spans: list[Span], remaining: timedelta) -> timedelta:
+        """Reduce each of `spans` down to its own `min_duration`, in order,
+        until `remaining` is claimed."""
+        for span in spans:
+            if remaining <= timedelta(0):
+                break
+            reclaimable = span.duration - span.min_duration
+            if reclaimable <= timedelta(0):
+                continue
+            taken = min(reclaimable, remaining)
+            span.duration -= taken
+            remaining -= taken
+            logger.debug("Taking %s from %s", taken, span.event)
+        return remaining
+
+    def _cancel_outright(self, spans: list[Span], remaining: timedelta) -> timedelta:
+        """Reduce each of `spans` that still has a `min_duration` all the
+        way to `0` -- ignoring that floor entirely -- in order, until
+        `remaining` is claimed. Never touches `new_event`'s own span, or a
+        span with no `min_duration` to begin with (already fully drained
+        by `_shrink_to_floor`, nothing further to cancel)."""
+        for span in spans:
+            if remaining <= timedelta(0):
+                break
+            if span.event is None or span.event is self.new_event:
+                continue
+            if span.min_duration <= timedelta(0) or span.duration <= timedelta(0):
+                continue
+            taken = min(span.duration, remaining)
+            span.duration -= taken
+            remaining -= taken
+            logger.debug("Cancelling %s from %s, below its min_duration", taken, span.event)
+        return remaining
 
     def _apply_plan(self) -> list[Schedulable]:
         changed: list[Schedulable] = []
@@ -506,17 +500,17 @@ def reallocate_for_new_event(
     lowest-priority events (and free time) in `day_events` — the complete
     list of events for `new_event`'s day, gathered by the caller. Returns
     every event that needs to be created or updated to realize the
-    result, sorted by `start` (step 8). Doesn't apply the plan itself (no
+    result, sorted by `start` (step 7). Doesn't apply the plan itself (no
     `create_event`/`update_event` calls) — that's the caller's job.
 
     Raises `ValueError` if `day_events` fails step 0's validation (not
     sorted, overlapping, already contains `new_event`'s `id`, or has
     nothing ending after `new_event.end`). Raises `ReallocationConflictError`
     if the immediately preceding event can't shrink enough to clear
-    `new_event.start` (step 1). Raises `ReallocationShortfallError` if
-    `day_events` still doesn't have enough reclaimable time to fit it even
-    after falling back to shrinking higher-priority events too, as a last
-    resort (step 6).
+    `new_event.start` (step 1). Given valid `day_events`, reclaiming itself
+    can't otherwise fail: every event can be shrunk and then cancelled
+    outright regardless of priority, and step 0 already guarantees
+    something extends past `new_event.end` (step 5).
 
     See the module docstring for the full algorithm.
     """
