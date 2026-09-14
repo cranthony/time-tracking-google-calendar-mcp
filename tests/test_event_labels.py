@@ -105,6 +105,38 @@ class TestSyncLabels:
         ]
         assert sheets_client.read_rows(None, "A2:D") == [["new-id", "Design Work", "#8e24aa", "2"]]
 
+    def test_matches_new_ids_back_to_rows_by_content_not_position(self):
+        # replace_event_labels' response isn't guaranteed to preserve the
+        # order labels were sent in, so matching purely by index would
+        # risk assigning a new id to the wrong row.
+        calendar_client = _tracked_calendar_client(raw_labels=[])
+        calendar_client.replace_event_labels.return_value = [
+            RawEventLabel(id="id-b", background_color="#222222", name="Label B"),
+            RawEventLabel(id="id-a", background_color="#111111", name="Label A"),
+        ]
+        sheets_client = _sheets_client(
+            [["", "Label A", "#111111", ""], ["", "Label B", "#222222", ""]]
+        )
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        result = event_labels.sync_labels()
+
+        assert result == [
+            EventLabel(id="id-a", name="Label A", background_color="#111111", priority=None),
+            EventLabel(id="id-b", name="Label B", background_color="#222222", priority=None),
+        ]
+
+    def test_raises_when_no_matching_label_is_returned_for_a_blank_id_row(self):
+        calendar_client = _tracked_calendar_client(raw_labels=[])
+        calendar_client.replace_event_labels.return_value = [
+            RawEventLabel(id="id-x", background_color="#999999", name="Something Else"),
+        ]
+        sheets_client = _sheets_client([["", "Design Work", "#8e24aa", ""]])
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        with pytest.raises(ValueError):
+            event_labels.sync_labels()
+
     def test_passes_the_etag_from_list_event_labels_through(self):
         calendar_client = _tracked_calendar_client(raw_labels=[], etag='"etag-xyz"')
         calendar_client.replace_event_labels.return_value = [
