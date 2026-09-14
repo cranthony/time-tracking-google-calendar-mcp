@@ -10,11 +10,7 @@ from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.event_labels import EventLabel
 from utilities.reallocating_calendar import ReallocatingCalendar
-from utilities.reallocation import (
-    ReallocationConflictError,
-    ReallocationOptions,
-    ReallocationShortfallError,
-)
+from utilities.reallocation import ReallocationConflictError, ReallocationOptions
 
 UTC = timezone.utc
 
@@ -231,13 +227,6 @@ class TestUpdateEvent:
         with pytest.raises(ToolError):
             server.update_event(_public_event(id="abc123"))
 
-    def test_wraps_reallocation_shortfall_error_as_tool_error(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.side_effect = ReallocationShortfallError("no room")
-
-        with pytest.raises(ToolError):
-            server.update_event(_public_event(id="abc123"))
-
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.side_effect = ValueError(
@@ -294,13 +283,6 @@ class TestCreateEvent:
             preceding_min_duration=None,
             new_start_time=preceding.start,
         )
-
-        with pytest.raises(ToolError):
-            server.create_event(_public_event())
-
-    def test_wraps_reallocation_shortfall_error_as_tool_error(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.create_event.side_effect = ReallocationShortfallError("no room")
 
         with pytest.raises(ToolError):
             server.create_event(_public_event())
