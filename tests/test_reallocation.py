@@ -477,3 +477,70 @@ class TestReallocateForNewEvent:
         assert higher.end == time_at("10:15")
         assert normal.status == "cancelled"
         assert {e.id for e in result} == {None, "h1", "n1"}
+
+    def test_extending_the_first_sleep_event_shifts_the_rest_of_a_full_day(self):
+        # A full, realistic day, all default priority/min_duration.
+        # Extending the morning Sleep block from 01:00-07:00 to
+        # 01:00-10:00 (its own prior position already excluded from
+        # day_events, the same as ReallocatingCalendar.update_event does)
+        # should push every event after it later by exactly the 3 hours
+        # Sleep grew by, each keeping its own duration -- converging back
+        # onto the evening Sleep block's original 20:00 start (the gap
+        # before it more than covers the 3-hour ripple), which is why it
+        # isn't touched at all.
+        get_ready = event_at("07:00-07:30", id="get_ready", summary="Get ready")
+        journal = event_at("07:30-07:45", id="journal", summary="Journal")
+        breakfast = event_at("07:45-08:15", id="breakfast", summary="Cook and eat breakfast")
+        walk_to_gym = event_at("08:15-08:35", id="walk", summary="Walk to gym")
+        work_out = event_at("08:35-09:35", id="workout", summary="Work out")
+        commute = event_at("09:35-09:55", id="commute", summary="Commute to work")
+        work = event_at("09:55-12:55", id="work", summary="Work")
+        evening_sleep = event_at("20:00-07:00+1", id="sleep2", summary="Sleep")
+        day_events = [
+            get_ready,
+            journal,
+            breakfast,
+            walk_to_gym,
+            work_out,
+            commute,
+            work,
+            evening_sleep,
+        ]
+        extended_sleep = event_at("01:00-10:00", id="sleep1", summary="Sleep")
+
+        result = reallocate_for_new_event(day_events, extended_sleep, ReallocationOptions())
+
+        assert extended_sleep.start == time_at("01:00")
+        assert extended_sleep.end == time_at("10:00")
+        assert get_ready.start == time_at("10:00")
+        assert get_ready.end == time_at("10:30")
+        assert journal.start == time_at("10:30")
+        assert journal.end == time_at("10:45")
+        assert breakfast.start == time_at("10:45")
+        assert breakfast.end == time_at("11:15")
+        assert walk_to_gym.start == time_at("11:15")
+        assert walk_to_gym.end == time_at("11:35")
+        assert work_out.start == time_at("11:35")
+        assert work_out.end == time_at("12:35")
+        assert commute.start == time_at("12:35")
+        assert commute.end == time_at("12:55")
+        assert work.start == time_at("12:55")
+        assert work.end == time_at("15:55")
+        # Every event kept its own original duration -- nothing shrunk or
+        # cancelled.
+        for event, original_minutes in [
+            (get_ready, 30),
+            (journal, 15),
+            (breakfast, 30),
+            (walk_to_gym, 20),
+            (work_out, 60),
+            (commute, 20),
+            (work, 180),
+        ]:
+            assert event.end - event.start == timedelta(minutes=original_minutes)
+            assert event.status != "cancelled"
+            assert event in result
+        # evening_sleep is untouched -- not repositioned, not in result.
+        assert evening_sleep.start == time_at("20:00")
+        assert evening_sleep.end == time_at("07:00+1")
+        assert evening_sleep not in result

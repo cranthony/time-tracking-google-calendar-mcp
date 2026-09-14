@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, call
 import pytest
 
 from calendar_clients.google_calendar import CalendarClient, Event
+from tests.event_time_helpers import event_at, time_at
 from utilities import reallocating_calendar
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
@@ -284,3 +285,49 @@ class TestReallocatingCalendarUpdateEvent:
         # later is never reclaimed from (a gap absorbs it), so it's left
         # out of the plan entirely -- not created, not updated.
         assert result == [preceding, moved_event]
+
+    def test_updating_the_days_own_sleep_event_currently_crashes(self):
+        # KNOWN BUG, to be fixed in a follow-up: when the event being
+        # updated is itself the day's first is_end_of_day_sleep event
+        # (here, the morning Sleep block), list_day_events truncates
+        # everything after it away based on its own soon-to-be-replaced
+        # position before update_event ever gets to exclude it by id --
+        # leaving day_events empty and reallocate_for_new_event raising
+        # ValueError, instead of reallocating the rest of the day around
+        # the extended sleep block (see
+        # test_reallocation.py's test_extending_the_first_sleep_event_
+        # shifts_the_rest_of_a_full_day, which shows reallocate_for_new_
+        # event itself already handles this correctly once day_events is
+        # right).
+        get_ready = event_at("07:00-07:30", id="get_ready", summary="Get ready")
+        journal = event_at("07:30-07:45", id="journal", summary="Journal")
+        breakfast = event_at("07:45-08:15", id="breakfast", summary="Cook and eat breakfast")
+        walk_to_gym = event_at("08:15-08:35", id="walk", summary="Walk to gym")
+        work_out = event_at("08:35-09:35", id="workout", summary="Work out")
+        commute = event_at("09:35-09:55", id="commute", summary="Commute to work")
+        work = event_at("09:55-12:55", id="work", summary="Work")
+        morning_sleep = event_at(
+            "01:00-07:00", id="sleep1", summary="Sleep", is_end_of_day_sleep=True
+        )
+        evening_sleep = event_at(
+            "20:00-07:00+1", id="sleep2", summary="Sleep", is_end_of_day_sleep=True
+        )
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(
+            return_value=[
+                morning_sleep,
+                get_ready,
+                journal,
+                breakfast,
+                walk_to_gym,
+                work_out,
+                commute,
+                work,
+                evening_sleep,
+            ]
+        )
+
+        extended_sleep = event_at("01:00-10:00", id="sleep1", summary="Sleep")
+
+        with pytest.raises(ValueError):
+            ReallocatingCalendar(client).update_event(extended_sleep, ReallocationOptions())
