@@ -19,9 +19,11 @@ with whatever `day_events` it's handed.
 ## Priority
 
 Every event has a `priority` (lower number = more important); a
-higher-priority event is never shrunk to make room for a lower-priority
-one. Free time is the lowest possible priority (`math.inf`). An event with
-no `priority` set is treated as priority `2`.
+higher-priority event is never shrunk to make room for a lower-priority one
+*unless* nothing at new_event's own priority or lower is enough to fit it,
+in which case step 5 falls back to shrinking higher-priority events too, as
+a last resort, rather than fail. Free time is the lowest possible priority
+(`math.inf`). An event with no `priority` set is treated as priority `2`.
 
 ## Minimum duration
 
@@ -81,17 +83,20 @@ see `ReallocationOptions.resolved()`):
    step 7 can walk them in order. Group them by priority as they're built
    (a gap's is `math.inf`).
 
-5. **Reclaim greedily.** Process spans by priority, worst (highest
-   number, `math.inf` first) to best, in the order they were built within
-   a priority, shrinking each down to its `min_duration` and subtracting
-   from `duration_to_reclaim` until it reaches `0`. Never reclaims from
-   `new_event`'s own span.
+5. **Reclaim greedily.** Process spans at `new_event`'s own priority or
+   worse (highest number, `math.inf` first, down to best of that range),
+   in the order they were built within a priority, shrinking each down to
+   its `min_duration` and subtracting from `duration_to_reclaim` until it
+   reaches `0`. If that's not enough, keep going into higher-priority
+   spans too, in the same worst-first order -- this is the only point at
+   which a higher-priority event may be shrunk, and only as far as its own
+   `min_duration`. Never reclaims from `new_event`'s own span.
 
-6. **Check for a shortfall.** If the pool, fully reclaimed, still falls
-   short, raise a well-structured exception with the remaining duration
-   still needed, the higher-priority events (by descending duration), and
-   the same-or-lower-priority events already at their `min_duration`
-   floor (by descending `min_duration`).
+6. **Check for a shortfall.** If the pool, fully reclaimed (including the
+   higher-priority last resort above), still falls short, raise a
+   well-structured exception with the remaining duration still needed and
+   every event (any priority) already at its `min_duration` floor (by
+   descending `min_duration`).
 
 7. **Compact into a layout.** Walk the `Span` list from its head,
    tracking the current end time (starting at the earliest event's
@@ -235,20 +240,20 @@ class ReallocationConflictError(Exception):
 
 
 class ReallocationShortfallError(Exception):
-    """Raised by `reallocate_for_new_event` when `day_events` doesn't have enough reclaimable time to fit
-    `new_event` at all (step 6)."""
+    """Raised by `reallocate_for_new_event` when `day_events` doesn't have
+    enough reclaimable time to fit `new_event` at all, even after reclaiming
+    down to every event's own `min_duration` -- including higher-priority
+    events, reclaimed from only as this last resort (step 6)."""
 
     def __init__(
         self,
         message: str,
         *,
         remaining: timedelta | None = None,
-        higher_priority_events: list[Schedulable] = (),
         events_at_floor: list[Schedulable] = (),
     ) -> None:
         super().__init__(message)
         self.remaining = remaining
-        self.higher_priority_events = list(higher_priority_events)
         self.events_at_floor = list(events_at_floor)
 
 
@@ -304,7 +309,14 @@ class _Reallocation:
             self.new_event.end = self.new_event.start
             self._insert_new_event()
             self._build_reclaim_pool()
-            remaining = self._reclaim(duration_to_reclaim)
+            remaining = self._reclaim(duration_to_reclaim, self._eligible_priorities())
+            if remaining > timedelta(0):
+                # Last resort: nothing at new_event's own priority or below
+                # was enough. Rather than fail outright, keep reclaiming
+                # into higher-priority events too -- worst (closest to
+                # new_event's own priority) first -- down to their own
+                # min_duration, same as any other event.
+                remaining = self._reclaim(remaining, self._protected_priorities())
             if remaining > timedelta(0):
                 self._raise_shortfall(remaining)
         finally:
@@ -414,15 +426,27 @@ class _Reallocation:
         logger.debug("Added %s of duration %s at priority %f", span.event, span.duration, priority)
 
     def _eligible_priorities(self) -> list[float]:
-        """Returns priorities that are eligible to reclaim, in order of lowest priority to highest."""
+        """Priorities no more important than new_event's own -- reclaimed
+        from first, before ever touching a higher-priority event -- in
+        order of least important (`math.inf`, free time) to most."""
         threshold = self.new_event_priority
         eligible = (priority for priority in self.spans_by_priority if priority >= threshold)
         return sorted(eligible, reverse=True)
 
-    def _reclaim(self, duration_to_reclaim: timedelta) -> timedelta:
+    def _protected_priorities(self) -> list[float]:
+        """Priorities higher than new_event's own -- only reclaimed from as
+        a last resort, if `_eligible_priorities` alone wasn't enough -- in
+        the same worst-first order, so the most important events are only
+        touched once everything less important has already been drained to
+        its own min_duration."""
+        threshold = self.new_event_priority
+        protected = (priority for priority in self.spans_by_priority if priority < threshold)
+        return sorted(protected, reverse=True)
+
+    def _reclaim(self, duration_to_reclaim: timedelta, priorities: list[float]) -> timedelta:
         """Mark the spans that will be reduced to claim space for the new event."""
         remaining = duration_to_reclaim
-        for priority in self._eligible_priorities():
+        for priority in priorities:
             for span in self.spans_by_priority[priority]:
                 if remaining <= timedelta(0):
                     break
@@ -438,18 +462,12 @@ class _Reallocation:
         return remaining
 
     def _raise_shortfall(self, remaining: timedelta) -> None:
-        threshold = self.new_event_priority
-        higher_priority_events = sorted(
-            (event for event in self.day_events if _effective_priority(event) < threshold),
-            key=_duration,
-            reverse=True,
-        )
         overrides = self.options.min_duration_overrides
         events_at_floor = sorted(
             (
                 span.event
-                for priority in self._eligible_priorities()
-                for span in self.spans_by_priority[priority]
+                for spans in self.spans_by_priority.values()
+                for span in spans
                 # span.min_duration is already the effective min duration.
                 if span.event is not None
                 and span.duration <= span.min_duration
@@ -460,9 +478,9 @@ class _Reallocation:
         )
         raise ReallocationShortfallError(
             f"Not enough reclaimable time for the new event: still short by "
-            f"{remaining} after reclaiming everything eligible.",
+            f"{remaining} after reclaiming everything down to its min_duration, "
+            "including higher-priority events as a last resort.",
             remaining=remaining,
-            higher_priority_events=higher_priority_events,
             events_at_floor=events_at_floor,
         )
 
@@ -516,11 +534,12 @@ def reallocate_for_new_event(
 
     Raises `ValueError` if `day_events` fails step 0's validation (not
     sorted, overlapping, already contains `new_event`'s `id`, or has
-    nothing ending after `new_event.end`). Raises `ReallocationError` if
-    the immediately preceding event can't shrink enough to clear
-    `new_event.start` (step 1), or if `day_events` doesn't have enough
-    reclaimable time at or below `new_event`'s own priority to fit it
-    (step 6).
+    nothing ending after `new_event.end`). Raises `ReallocationConflictError`
+    if the immediately preceding event can't shrink enough to clear
+    `new_event.start` (step 1). Raises `ReallocationShortfallError` if
+    `day_events` still doesn't have enough reclaimable time to fit it even
+    after falling back to shrinking higher-priority events too, as a last
+    resort (step 6).
 
     See the module docstring for the full algorithm.
     """
