@@ -552,6 +552,25 @@ class TestCalendarClientCreateEvent:
             calendarId=TEST_CALENDAR_ID, body=event.to_api_body()
         )
 
+    def test_create_event_passes_event_label_version_when_setting_event_label_id(self):
+        service = MagicMock()
+        service.events.return_value.insert.return_value.execute.return_value = api_event(
+            "new-id", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00", summary="New"
+        )
+        client = make_client(service)
+        event = Event(
+            summary="New",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            event_label_id="label-1",
+        )
+
+        client.create_event(event)
+
+        service.events.return_value.insert.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID, body=event.to_api_body(), eventLabelVersion=1
+        )
+
 
 class TestCalendarClientUpdateEvent:
     def test_update_event_requires_id(self):
@@ -581,6 +600,37 @@ class TestCalendarClientUpdateEvent:
         result = client.update_event(event)
 
         assert result.end == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
+        service.events.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID, eventId="abc123", body=event.to_api_body()
+        )
+
+    def test_update_event_passes_event_label_version_when_setting_event_label_id(self):
+        service = MagicMock()
+        service.events.return_value.patch.return_value.execute.return_value = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T11:00:00+00:00"
+        )
+        client = make_client(service)
+        event = Event(id="abc123", event_label_id="label-1")
+
+        client.update_event(event)
+
+        service.events.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID,
+            eventId="abc123",
+            body=event.to_api_body(),
+            eventLabelVersion=1,
+        )
+
+    def test_update_event_omits_event_label_version_when_not_touching_event_label_id(self):
+        service = MagicMock()
+        service.events.return_value.patch.return_value.execute.return_value = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T11:00:00+00:00"
+        )
+        client = make_client(service)
+        event = Event(id="abc123", summary="Busy")
+
+        client.update_event(event)
+
         service.events.return_value.patch.assert_called_once_with(
             calendarId=TEST_CALENDAR_ID, eventId="abc123", body=event.to_api_body()
         )
