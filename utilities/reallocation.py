@@ -54,12 +54,13 @@ see `ReallocationOptions.resolved()`):
    `day_events` can start before `new_event.start` and end after it (since
    `day_events` is otherwise non-overlapping); if `day_events` has one, it
    must be `day_events[0]`. That event shrinks first so its `end` becomes
-   `new_event.start`, respecting its effective `min_duration` — raising a
-   well-structured exception, naming the event, if it can't shrink that
-   far. If what's left of its original span after `new_event.end` is at
-   least `options.resolved().split_threshold_minutes`, a clone of it is
-   also inserted into `day_events` right after `new_event`, representing
-   that portion: `start` set to `new_event.end`, summary suffixed
+   `new_event.start` -- past its own `min_duration` if need be, the same
+   as step 5's cancellation; it can never be shrunk to `0` this way, since
+   by definition it starts before `new_event.start`. If what's left of its
+   original span after `new_event.end` is at least
+   `options.resolved().split_threshold_minutes`, a clone of it is also
+   inserted into `day_events` right after `new_event`, representing that
+   portion: `start` set to `new_event.end`, summary suffixed
    `" (continued)"` (unless already present), `min_duration` reduced by
    however much of the original event now precedes it, and no `id` (so
    callers can tell it's new).
@@ -220,24 +221,6 @@ class ReallocationOptions:
         )
 
 
-class ReallocationConflictError(Exception):
-    """Raised by `reallocate_for_new_event` when the event immediately
-    preceding `new_event` can't shrink enough to clear its start."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        preceding_event: Schedulable,
-        preceding_min_duration: timedelta,
-        new_start_time: datetime,
-    ) -> None:
-        super().__init__(message)
-        self.preceding_event = preceding_event
-        self.preceding_min_duration = preceding_min_duration
-        self.new_start_time = new_start_time
-
-
 class _Reallocation:
     """One `reallocate_for_new_event` call's state, so the steps below can
     read/write it as attributes instead of threading everything (`options`
@@ -322,8 +305,7 @@ class _Reallocation:
             )
 
     def _resolve_preceding_overlap(self) -> None:
-        """Step 1. Returns how much of the total overlap (step 3) this
-        resolves, so `run` doesn't reclaim it a second time."""
+        """Step 1."""
         new_event = self.new_event
         preceding_index = next(
             (
@@ -334,23 +316,12 @@ class _Reallocation:
             None,
         )
         if preceding_index is None:
-            return timedelta(0)
+            return
         if preceding_index > 0:
             raise ValueError("day_events must start at the new event's start time")
 
         preceding = self.day_events[preceding_index]
         preceding_min = _effective_min_duration(preceding, self.options.min_duration_overrides)
-        time_before_new_event = new_event.start - preceding.start
-        if time_before_new_event < preceding_min:
-            raise ReallocationConflictError(
-                f"Can't make room for the new event starting at {new_event.start}: the "
-                f"preceding event ({preceding.id!r}, {preceding.summary!r}) can't shrink "
-                f"below its min_duration of {preceding_min}.",
-                preceding_event=preceding,
-                preceding_min_duration=preceding_min,
-                new_start_time=new_event.start,
-            )
-
         new_preceding_duration = new_event.start - preceding.start
         leftover_preceding_duration = _duration(preceding) - new_preceding_duration
         split_threshold = timedelta(minutes=self.options.split_threshold_minutes)
@@ -505,12 +476,12 @@ def reallocate_for_new_event(
 
     Raises `ValueError` if `day_events` fails step 0's validation (not
     sorted, overlapping, already contains `new_event`'s `id`, or has
-    nothing ending after `new_event.end`). Raises `ReallocationConflictError`
-    if the immediately preceding event can't shrink enough to clear
-    `new_event.start` (step 1). Given valid `day_events`, reclaiming itself
-    can't otherwise fail: every event can be shrunk and then cancelled
-    outright regardless of priority, and step 0 already guarantees
-    something extends past `new_event.end` (step 5).
+    nothing ending after `new_event.end`). Given valid `day_events`,
+    reallocating itself can't otherwise fail: the immediately preceding
+    event, if any, always shrinks enough to clear `new_event.start`
+    (step 1), and every other event can be shrunk and then cancelled
+    outright regardless of priority (step 5), with step 0 already
+    guaranteeing something extends past `new_event.end`.
 
     See the module docstring for the full algorithm.
     """

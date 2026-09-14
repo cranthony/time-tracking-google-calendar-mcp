@@ -10,7 +10,7 @@ from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.event_labels import EventLabel
 from utilities.reallocating_calendar import ReallocatingCalendar
-from utilities.reallocation import ReallocationConflictError, ReallocationOptions
+from utilities.reallocation import ReallocationOptions
 
 UTC = timezone.utc
 
@@ -214,19 +214,6 @@ class TestUpdateEvent:
 
         assert {e.id for e in result} == {"abc123", "def456"}
 
-    def test_wraps_reallocation_conflict_error_as_tool_error(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        preceding = _event(id="def456")
-        reallocating_calendar.update_event.side_effect = ReallocationConflictError(
-            "no room",
-            preceding_event=preceding,
-            preceding_min_duration=None,
-            new_start_time=preceding.start,
-        )
-
-        with pytest.raises(ToolError):
-            server.update_event(_public_event(id="abc123"))
-
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.side_effect = ValueError(
@@ -273,19 +260,6 @@ class TestCreateEvent:
         cancelled_public_event = result[1]
         assert cancelled_public_event.is_cancelled is True
         assert cancelled_public_event.summary == "Old meeting"
-
-    def test_wraps_reallocation_conflict_error_as_tool_error(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        preceding = _event(id="abc123")
-        reallocating_calendar.create_event.side_effect = ReallocationConflictError(
-            "no room",
-            preceding_event=preceding,
-            preceding_min_duration=None,
-            new_start_time=preceding.start,
-        )
-
-        with pytest.raises(ToolError):
-            server.create_event(_public_event())
 
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)

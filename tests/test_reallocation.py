@@ -4,7 +4,6 @@ import pytest
 
 from calendar_clients.google_calendar import Event
 from utilities.reallocation import (
-    ReallocationConflictError,
     ReallocationOptions,
     _duration,
     _effective_min_duration,
@@ -378,26 +377,37 @@ class TestReallocateForNewEvent:
         assert continuation.start == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
         assert continuation.end == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
 
-    def test_raises_when_preceding_event_cannot_shrink_enough(self):
+    def test_shrinks_preceding_event_past_its_own_min_duration(self):
+        # preceding can only give 10 of its 15-minute floor before
+        # new_event's start -- rather than fail, it's shrunk past that
+        # floor anyway (down to 10 minutes), the same as any other event's
+        # min_duration is now just a soft preference, not a hard limit.
         preceding = _event(
             id="p1",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 20, tzinfo=UTC),
+            priority=1,
+            min_duration=timedelta(minutes=15),
+        )
+        anchor = _event(
+            id="a1",
+            start=datetime(2026, 1, 1, 9, 20, tzinfo=UTC),
             end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
             priority=1,
-            min_duration=timedelta(minutes=45),
         )
         new_event = _event(
-            start=datetime(2026, 1, 1, 9, 20, tzinfo=UTC),
-            end=datetime(2026, 1, 1, 9, 50, tzinfo=UTC),
+            start=datetime(2026, 1, 1, 9, 10, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 40, tzinfo=UTC),
             priority=1,
         )
 
-        with pytest.raises(ReallocationConflictError):
-            reallocate_for_new_event([preceding], new_event, ReallocationOptions())
+        result = reallocate_for_new_event([preceding, anchor], new_event, ReallocationOptions())
 
-        # Nothing should have been mutated before the exception.
         assert preceding.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
-        assert preceding.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
+        assert preceding.end == datetime(2026, 1, 1, 9, 10, tzinfo=UTC)
+        assert preceding in result
+        assert new_event.start == datetime(2026, 1, 1, 9, 10, tzinfo=UTC)
+        assert new_event.end == datetime(2026, 1, 1, 9, 40, tzinfo=UTC)
 
     def test_cancels_min_duration_protected_events_instead_of_shortfalling(self):
         # existing/anchor are both already at their min_duration floor, so
