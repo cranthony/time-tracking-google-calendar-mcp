@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, call
 import pytest
 
 from calendar_clients.google_calendar import CalendarClient, Event
+from tests.event_time_helpers import event_at, time_at
 from utilities import reallocating_calendar
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
@@ -52,6 +53,51 @@ class TestReallocatingCalendarListDayEvents:
         events = ReallocatingCalendar(client).list_day_events(start)
 
         assert events == events_in
+
+    def test_ignore_id_skips_that_event_when_finding_where_the_day_ends(self):
+        # The event matching ignore_id is itself marked
+        # is_end_of_day_sleep, at the very front (e.g. update_event
+        # extending a morning sleep block later) -- it must not be the
+        # one truncation keys off of, but it's still returned like any
+        # other event, since it's still part of the day as it stands now.
+        start = datetime(2026, 1, 1, 1, 0, tzinfo=UTC)
+        ignored_sleep = Event(
+            id="s1",
+            start=start,
+            end=start + timedelta(hours=6),
+            is_end_of_day_sleep=True,
+        )
+        kept = Event(
+            id="k", start=start + timedelta(hours=6), end=start + timedelta(hours=7)
+        )
+        real_sleep = Event(
+            id="s2",
+            start=start + timedelta(hours=19),
+            end=start + timedelta(hours=25),
+            is_end_of_day_sleep=True,
+        )
+        discarded = Event(
+            id="d", start=start + timedelta(hours=26), end=start + timedelta(hours=27)
+        )
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(
+            return_value=[ignored_sleep, kept, real_sleep, discarded]
+        )
+
+        events = ReallocatingCalendar(client).list_day_events(start, ignore_id="s1")
+
+        assert [e.id for e in events] == ["s1", "k", "s2"]
+
+    def test_ignore_id_none_still_truncates_at_the_first_sleep_event(self):
+        client = make_client(MagicMock())
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        sleep = Event(id="s", start=start, end=start + timedelta(hours=1), is_end_of_day_sleep=True)
+        discarded = Event(id="d", start=start + timedelta(hours=2), end=start + timedelta(hours=3))
+        client.list_events = MagicMock(return_value=[sleep, discarded])
+
+        events = ReallocatingCalendar(client).list_day_events(start, ignore_id="some-other-id")
+
+        assert [e.id for e in events] == ["s"]
 
 
 class TestReallocatingCalendarCreateEvent:
@@ -284,3 +330,61 @@ class TestReallocatingCalendarUpdateEvent:
         # later is never reclaimed from (a gap absorbs it), so it's left
         # out of the plan entirely -- not created, not updated.
         assert result == [preceding, moved_event]
+
+    def test_updating_the_days_own_sleep_event_reallocates_the_rest_of_the_day(self):
+        # Regression test for a real bug: the event being updated here is
+        # itself the day's first is_end_of_day_sleep event (the morning
+        # Sleep block). list_day_events must not truncate everything after
+        # it away based on its own soon-to-be-replaced prior position --
+        # see list_day_events's ignore_id. Once day_events is right,
+        # reallocate_for_new_event already shifts the rest of the day
+        # correctly (see test_reallocation.py's
+        # test_extending_the_first_sleep_event_shifts_the_rest_of_a_full_day
+        # for the same scenario exercised directly against it).
+        get_ready = event_at("07:00-07:30", id="get_ready", summary="Get ready")
+        journal = event_at("07:30-07:45", id="journal", summary="Journal")
+        breakfast = event_at("07:45-08:15", id="breakfast", summary="Cook and eat breakfast")
+        walk_to_gym = event_at("08:15-08:35", id="walk", summary="Walk to gym")
+        work_out = event_at("08:35-09:35", id="workout", summary="Work out")
+        commute = event_at("09:35-09:55", id="commute", summary="Commute to work")
+        work = event_at("09:55-12:55", id="work", summary="Work")
+        morning_sleep = event_at(
+            "01:00-07:00", id="sleep1", summary="Sleep", is_end_of_day_sleep=True
+        )
+        evening_sleep = event_at(
+            "20:00-07:00+1", id="sleep2", summary="Sleep", is_end_of_day_sleep=True
+        )
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(
+            return_value=[
+                morning_sleep,
+                get_ready,
+                journal,
+                breakfast,
+                walk_to_gym,
+                work_out,
+                commute,
+                work,
+                evening_sleep,
+            ]
+        )
+        client.update_event = MagicMock(side_effect=lambda event: event)
+        client.create_event = MagicMock(side_effect=lambda event: event)
+
+        extended_sleep = event_at("01:00-10:00", id="sleep1", summary="Sleep")
+
+        result = ReallocatingCalendar(client).update_event(extended_sleep, ReallocationOptions())
+
+        assert extended_sleep.start == time_at("01:00")
+        assert extended_sleep.end == time_at("10:00")
+        assert get_ready.start == time_at("10:00")
+        assert get_ready.end == time_at("10:30")
+        assert work.start == time_at("12:55")
+        assert work.end == time_at("15:55")
+        # evening_sleep is untouched -- the ripple converges back onto its
+        # original start before reaching it, and it's never even fetched
+        # a second time.
+        assert evening_sleep.start == time_at("20:00")
+        assert evening_sleep.end == time_at("07:00+1")
+        assert evening_sleep not in result
+        client.list_events.assert_called_once()

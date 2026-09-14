@@ -40,14 +40,28 @@ class ReallocatingCalendar:
     def __init__(self, client: _EventCalendar) -> None:
         self._client = client
 
-    def list_day_events(self, start: datetime) -> list[Event]:
+    def list_day_events(self, start: datetime, ignore_id: str | None = None) -> list[Event]:
         """The events reallocation should treat as `start`'s "day": everything
         from `start` through roughly 24 hours later, truncated after the
         first `is_end_of_day_sleep` event found (if any) -- see
-        utilities/reallocation.py's "The day"."""
+        utilities/reallocation.py's "The day".
+
+        `ignore_id`: an event id to skip when deciding where the day ends
+        -- but still included in the returned list otherwise. For
+        `update_event` below, updating an event that's itself the day's
+        own `is_end_of_day_sleep` marker (e.g. stretching a morning sleep
+        block later): truncating against its own not-yet-applied prior
+        position would cut off the rest of the day before `update_event`
+        gets a chance to exclude it itself.
+        """
         events = self._client.list_events(start, start + timedelta(hours=24))
         sleep_index = next(
-            (i for i, event in enumerate(events) if event.is_end_of_day_sleep), None
+            (
+                i
+                for i, event in enumerate(events)
+                if event.is_end_of_day_sleep and event.id != ignore_id
+            ),
+            None,
         )
         if sleep_index is not None:
             events = events[: sleep_index + 1]
@@ -94,7 +108,9 @@ class ReallocatingCalendar:
                 "event with reallocation"
             )
 
-        day_events = self.list_day_events(updated_event.start or updated_event.end)
+        day_events = self.list_day_events(
+            updated_event.start or updated_event.end, ignore_id=updated_event.id
+        )
 
         if updated_event.start is None or updated_event.end is None:
             current = next(
