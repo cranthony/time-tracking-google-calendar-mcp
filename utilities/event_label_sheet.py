@@ -12,94 +12,140 @@ an EventLabel object.
 """
 
 from __future__ import annotations
+from dataclasses import asdict, dataclass, fields
 
-from calendar_clients.google_calendar import CalendarClient
+from calendar_clients.google_calendar import EventLabel as RawEventLabel, color_for_priority
 from calendar_clients.google_sheets import SheetsClient
 
 DEFAULT_SHEET_TITLE = "Event Labels"
-
-HEADER_ROW = ["ID", "Name", "Background Color", "Priority"]
-"""Every row after this one is one event label: ID (see _ID_COLUMN_INDEX),
-Name, Background Color, Priority."""
-
-_SHEET_ID_METADATA_KEY = "event-label-sheet-id"
-"""The CalendarClient.get_calendar_metadata/set_calendar_metadata key this
-app stores the event label sheet's spreadsheet id under -- on the
-calendar itself, rather than something found by searching Drive, so
-find_sheet is a single deterministic lookup instead of a "most recently
-modified" guess among however many sheets this app has created."""
 
 _ID_COLUMN_INDEX = 0
 _ID_COLUMN_PIXEL_WIDTH = 60
 """Narrow -- users aren't expected to care about the ID column's
 contents, just that it's there and round-trips."""
 
-_HEADER_RANGE = "Sheet1!A1:D1"
-_DATA_RANGE = "Sheet1!A2:D"
+# Since these are missing the sheet name, they fetch from the first visible
+# sheet.
+_HEADER_RANGE = "A1:D1"
+_DATA_RANGE = "A2:D"
+
+
+@dataclass(kw_only=True)
+class EventLabel:
+    """One of a calendar's custom event labels, plus its priority (see
+    the module docstring). `id`/`name`/`background_color` mirror
+    `calendar_clients.google_calendar.EventLabel`; `priority` is sourced
+    from -- and, via `EventLabels.sync_from_sheet`, written back to -- a
+    synced event label sheet, and is `None` if no sheet tracks this
+    label (or no sheet has been created at all)."""
+
+    id: str | None = None
+    """Uniquely identifies the label within its calendar. `None` until
+    the label has been created."""
+
+    name: str | None = None
+    """Optional display name, up to 50 characters."""
+
+    background_color: str | None = None
+    """Hex color (e.g. "#8e24aa") events with this label are shown in.
+    May be left `None` to derive one from `priority` instead -- see
+    `EventLabels.create_label`/`update_label`."""
+
+    priority: int | None = None
+    """This label's priority, if known -- see the module docstring."""
+
+    @classmethod
+    def from_raw(cls, raw: RawEventLabel) -> "EventLabel":
+        return cls(**asdict(raw))
+
+    def to_raw(self) -> RawEventLabel:
+        background_color = self.background_color
+        if background_color is None:
+            background_color = color_for_priority(self.priority)[1]
+        return RawEventLabel(id=self.id, name=self.name, background_color=background_color)
+
+    @classmethod
+    def from_row(cls, header_row: list[str], data: list[str]) -> "EventLabel":
+        field_set = set(fields(cls))
+        decoded = {}
+        for i, header in enumerate(header_row):
+            if header in field_set:
+                assert header not in decoded, f"{header} specified multiple times"
+                decoded[header] = data[i]
+        return cls(**decoded)
+
+    def to_row(self, header_row: list[str], original_row: list[str] | None = None) -> list[str]:
+        result = []
+        for i, header in enumerate(header_row):
+            if header in fields(self):
+                result.append(getattr(self, header))
+            elif original_row is not None:
+                result.append(original_row[i] if i < len(original_row) else None)
+            else:
+                result.append(None)
+        if len(result) < len(original_row):
+            result += original_row[len(result):]
+        return result
 
 
 class EventLabelSheet:
-    """Creates, locates, and reads/writes the rows of a calendar's event
-    label sheet -- a spreadsheet with one row per label (see HEADER_ROW),
-    whose id is tracked on the calendar itself (see `find_sheet`), not by
-    searching Drive.
+    """Reads and writes to the event label Sheet that represents the
+    event label metadata for a calendar.
     """
 
-    def __init__(self, calendar_client: CalendarClient, sheets_client: SheetsClient) -> None:
-        self._calendar_client = calendar_client
+    def __init__(self,
+                 sheets_client: SheetsClient,
+                 spreadsheet_id: str) -> None:
         self._sheets_client = sheets_client
+        self._spreadsheet_id = spreadsheet_id
 
-    def create_sheet(self, title: str = DEFAULT_SHEET_TITLE, initial_rows: list[list[str]] | None = None) -> str:
-        """Create a new event label sheet, recorded on the calendar
-        itself so `find_sheet` can find it again later, with the header
-        row and (if given) `initial_rows` already written. Returns the
-        new spreadsheet's id.
-
-        Raises `ValueError` if this calendar already has an event label
-        sheet tracked (see `find_sheet`) -- there's no `delete_sheet`, so
-        untracking one first (`CalendarClient.set_calendar_metadata`
-        with `value=None`) or using the existing sheet is the caller's
-        job; this just refuses to silently orphan the previous one by
-        overwriting what's tracked."""
-        existing = self.find_sheet()
-        if existing is not None:
-            raise ValueError(
-                f"This calendar already has an event label sheet tracked (spreadsheet id "
-                f"{existing!r}) -- sync from it instead of creating a new one."
-            )
-        spreadsheet_id = self._sheets_client.create_spreadsheet(title)
-        self._calendar_client.set_calendar_metadata(_SHEET_ID_METADATA_KEY, spreadsheet_id)
-        self._sheets_client.set_column_width(
+    @staticmethod
+    def create(sheets_client: SheetsClient,
+               title: str = DEFAULT_SHEET_TITLE,
+               initial_labels: list[EventLabel] | None = None) -> str:
+        """Create a new event label sheet and returns its ID."""
+        spreadsheet_id = sheets_client.create_spreadsheet(title)
+        sheets_client.set_column_width(
             spreadsheet_id,
             sheet_id=0,
             column_index=_ID_COLUMN_INDEX,
             pixel_width=_ID_COLUMN_PIXEL_WIDTH,
         )
-        self._sheets_client.write_rows(spreadsheet_id, _HEADER_RANGE, [HEADER_ROW])
+        header_row = list(fields(EventLabel))
+        sheets_client.write_rows(spreadsheet_id, _HEADER_RANGE, header_row)
         if initial_rows:
-            self._sheets_client.write_rows(spreadsheet_id, _DATA_RANGE, initial_rows)
+            sheets_client.write_rows(spreadsheet_id, _DATA_RANGE, [
+                label.to_row(header_row, None)
+                for label in initial_labels
+            ])
         return spreadsheet_id
 
-    def find_sheet(self) -> str | None:
-        """The id of the event label sheet this app created for this
-        calendar (recorded on the calendar itself by `create_sheet`), or
-        `None` if it hasn't created one (yet)."""
-        return self._calendar_client.get_calendar_metadata(_SHEET_ID_METADATA_KEY)
-
-    def resolve_sheet_id(self) -> str:
-        """The event label sheet tracked on this calendar (see
-        `find_sheet`). Raises `ValueError` if none is tracked."""
-        spreadsheet_id = self.find_sheet()
-        if spreadsheet_id is None:
-            raise ValueError(
-                "No event label sheet is tracked on this calendar -- call create_sheet() first."
-            )
-        return spreadsheet_id
-
-    def read_rows(self, spreadsheet_id: str) -> list[list[str]]:
+    def read(self) -> list[EventLabel]:
         """The data rows (everything after HEADER_ROW) of `spreadsheet_id`."""
-        return self._sheets_client.read_rows(spreadsheet_id, _DATA_RANGE)
+        header_row = self._read_header()
+        rows = self._sheets_client.read_rows(self._spreadsheet_id, _DATA_RANGE)
+        return [EventLabel.from_row(header_row, row) for row in rows]
 
-    def write_rows(self, spreadsheet_id: str, rows: list[list[str]]) -> None:
+    def write(self, event_labels: list[EventLabel]) -> None:
         """Overwrite `spreadsheet_id`'s data rows with `rows`."""
-        self._sheets_client.write_rows(spreadsheet_id, _DATA_RANGE, rows)
+        header_row = self._read_header()
+        previous_rows = self._sheets_client.read_rows(self._spreadsheet_id, _DATA_RANGE)
+        self._sheets_client.write_rows(self._spreadsheet_id, _DATA_RANGE, [
+            event_label.to_row(header_row, previous_rows[i])
+            for i, event_label in enumerate(event_labels)
+        ])
+
+    def append(self, label: EventLabel) -> list[EventLabel]:
+        """Helper function to add a label to the end of the sheet"""
+        header_row = self._read_header()
+        previous_rows = self._sheets_client.read_rows(self._spreadsheet_id, _DATA_RANGE)
+        self._sheets_client.write_rows(self._spreadsheet_id, _DATA_RANGE, [
+            event_label.to_row(header_row, previous_rows[i])
+            for i, event_label in enumerate(event_labels)
+        ])
+
+    def _read_header(self) -> list[str]:
+        header_row = self._sheets_client.read_rows(self._spreadsheet_id, _HEADER_RANGE)
+        if set(HEADER_ROW) not in set(header_row):
+            raise ValueError(f"Missing expected header rows at {_HEADER_RANGE}: {set(HEADER_ROW) - set(header_row)}")
+        return header_row

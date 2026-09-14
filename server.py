@@ -15,7 +15,7 @@ from config import (
     get_mcp_resource_url,
     get_workos_authkit_domain,
 )
-from utilities.event_labels import EventLabel, EventLabels
+from utilities.event_labels import EventLabels, EventLabel
 from utilities.reallocation import (
     ReallocationConflictError,
     ReallocationOptions,
@@ -140,7 +140,7 @@ def get_reallocating_calendar() -> ReallocatingCalendar:
     return _reallocating_calendar
 
 
-def get_event_labels() -> EventLabels:
+def get_calendar_with_event_labels() -> EventLabels:
     """Lazily construct and cache the EventLabels, the same way
     get_calendar_client/get_reallocating_calendar cache theirs."""
     global _event_labels
@@ -203,49 +203,27 @@ def list_event_labels() -> list[EventLabel]:
     create_event_label_sheet/sync_event_labels_from_sheet) if one has
     been created -- priority is None for a label with no matching sheet
     row, or if no sheet has been created at all."""
-    return get_event_labels().list_labels()
+    return get_calendar_with_event_labels().list_labels()
 
 
 @mcp.tool()
 def create_event_label(
-    background_color: str | None = None, name: str | None = None, priority: int | None = None
-) -> EventLabel:
+    label: EventLabel
+) -> list[EventLabel]:
     """Create a new event label with the given optional name and
-    priority. `background_color` is a hex string (e.g. "#8e24aa");
-    if omitted, it's derived from `priority` instead. `priority` isn't
-    itself persisted (Google Calendar has no field for it) -- sync an
-    event label sheet (see create_event_label_sheet/sync_event_labels_
-    from_sheet) if you want it remembered."""
+    priority. Returns the new list of event labels."""
     try:
-        return get_event_labels().create_label(background_color, name, priority)
+        return get_calendar_with_event_labels().create_label(label)
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
-def update_event_label(
-    label_id: str,
-    background_color: str | None = None,
-    name: str | None = None,
-    priority: int | None = None,
-) -> EventLabel:
+def update_event_label(label: EventLabel) -> list[EventLabel]:
     """Update an existing event label's background color, name, and/or
-    priority. Whichever is omitted keeps its current value. `priority`
-    isn't itself persisted -- see create_event_label."""
+    priority. Any omitted properties keep their current value."""
     try:
-        return get_event_labels().update_label(
-            label_id, background_color=background_color, name=name, priority=priority
-        )
-    except (ValueError, EventLabelConflictError) as exc:
-        raise ToolError(str(exc)) from exc
-
-
-@mcp.tool()
-def delete_event_label(label_id: str) -> EventLabel:
-    """Delete an event label by its ID. Returns the label as it was just
-    before deletion."""
-    try:
-        return get_event_labels().delete_label(label_id)
+        return get_calendar_with_event_labels().update_label(label)
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 
@@ -260,7 +238,7 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
     a one-time, human-run bootstrap step (see create_calendar.py), not
     something this server can do on its own."""
     try:
-        return get_event_labels().sync_from_sheet()
+        return get_calendar_with_event_labels().sync_labels()
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 

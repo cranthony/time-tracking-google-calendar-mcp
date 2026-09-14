@@ -8,7 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 import server
 from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
-from utilities.event_labels import EventLabel
+from utilities.calendar_with_event_labels import EventLabel
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import (
     ReallocationConflictError,
@@ -501,8 +501,8 @@ class TestGetEventLabels:
         monkeypatch.setattr(server, "_event_labels", None)
         monkeypatch.setattr(server, "build_event_labels", fake_build)
 
-        first = server.get_event_labels()
-        second = server.get_event_labels()
+        first = server.get_calendar_with_event_labels()
+        second = server.get_calendar_with_event_labels()
 
         assert first is second
         assert len(built) == 1

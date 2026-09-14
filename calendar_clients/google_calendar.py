@@ -454,11 +454,12 @@ class CalendarClient:
             calendarId=self._calendar_id, eventId=event_id
         ).execute()
 
-    def list_event_labels(self) -> list[EventLabel]:
+    def list_event_labels(self) -> tuple[list[EventLabel], str]:
         """Every custom event label currently defined on this calendar --
-        see `EventLabel`."""
-        _, labels = self._get_raw_event_labels()
-        return [EventLabel.from_api(label) for label in labels]
+        see `EventLabel`.  Also returns the etag, in case this list is used
+        to write the labels later."""
+        etag, labels = self._get_raw_event_labels()
+        return [EventLabel.from_api(label) for label in labels], etag
 
     def create_event_label(self, background_color: str, name: str | None = None) -> EventLabel:
         """Define a new event label on this calendar. The API has no way
@@ -507,7 +508,7 @@ class CalendarClient:
         self._patch_event_labels(etag, remaining)
         return removed
 
-    def replace_event_labels(self, labels: list[EventLabel]) -> list[EventLabel]:
+    def replace_event_labels(self, labels: list[EventLabel], etag: str | None = None) -> list[EventLabel]:
         """Atomically replace this calendar's entire set of custom event
         labels with `labels`: each given label is created (if `id` is
         `None`) or fully overwritten (if `id` matches an existing label --
@@ -520,7 +521,6 @@ class CalendarClient:
         Used by `utilities/event_label_sheet.py` to sync labels from a
         Google Sheet, where the sheet is the source of truth for the
         whole set."""
-        etag, _ = self._get_raw_event_labels()
         updated = self._patch_event_labels(etag, [label.to_api_body() for label in labels])
         return updated
 
