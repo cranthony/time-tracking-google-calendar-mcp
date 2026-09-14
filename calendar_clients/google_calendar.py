@@ -85,6 +85,15 @@ def _color_id_for_priority(priority: int | None) -> str | None:
     return color_for_priority(priority)[0]
 
 
+def _event_label_version_kwargs(body: dict) -> dict:
+    """The `eventLabelVersion=1` query parameter insert/patch must be
+    called with whenever `body` sets `eventLabelId` -- confirmed against
+    https://developers.google.com/workspace/calendar/api/v3/reference/events:
+    without it, the API silently ignores that field instead of applying
+    it. Omitted otherwise, since it's specific to writing this one field."""
+    return {"eventLabelVersion": 1} if "eventLabelId" in body else {}
+
+
 @dataclass(kw_only=True)
 class Event:
     """A calendar event, decoupled from the Google API's raw resource shape.
@@ -444,9 +453,10 @@ class CalendarClient:
         return Event.from_api(response)
 
     def create_event(self, event: Event) -> Event:
+        body = event.to_api_body()
         response = (
             self._service.events()
-            .insert(calendarId=self._calendar_id, body=event.to_api_body())
+            .insert(calendarId=self._calendar_id, body=body, **_event_label_version_kwargs(body))
             .execute()
         )
         return Event.from_api(response)
@@ -454,9 +464,15 @@ class CalendarClient:
     def update_event(self, event: Event) -> Event:
         if not event.id:
             raise ValueError("event.id is required to update an event")
+        body = event.to_api_body()
         response = (
             self._service.events()
-            .patch(calendarId=self._calendar_id, eventId=event.id, body=event.to_api_body())
+            .patch(
+                calendarId=self._calendar_id,
+                eventId=event.id,
+                body=body,
+                **_event_label_version_kwargs(body),
+            )
             .execute()
         )
         return Event.from_api(response)
