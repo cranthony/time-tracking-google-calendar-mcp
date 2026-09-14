@@ -1,9 +1,11 @@
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import config
+from calendar_clients.google_calendar import CalendarClient
+from calendar_clients.google_sheets import SheetsClient
 
 
 class TestGetCalendarId:
@@ -118,3 +120,59 @@ class TestBuildCalendarClient:
 
         with pytest.raises(config.ConfigError):
             config.build_calendar_client()
+
+
+class TestBuildEventLabels:
+    # build_event_labels' own job is just wiring CalendarClient/SheetsClient
+    # together and handing them to EventLabels -- EventLabels itself is
+    # mocked out here (its constructor has real side effects, like
+    # creating a sheet -- see tests/test_event_labels.py for that).
+    def test_builds_both_clients_from_one_shared_load_credentials_call(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
+        monkeypatch.setenv("GOOGLE_OAUTH_CREDENTIALS_PATH", "creds.json")
+        monkeypatch.setenv("GOOGLE_OAUTH_TOKEN_PATH", "tok.json")
+        creds = object()
+        load_credentials_mock = MagicMock(return_value=creds)
+        monkeypatch.setattr(config, "load_credentials", load_credentials_mock)
+        services = {"calendar": MagicMock(), "sheets": MagicMock()}
+        build_mock = MagicMock(side_effect=lambda name, _version, credentials: services[name])
+        monkeypatch.setattr(config, "build", build_mock)
+
+        with patch.object(config, "EventLabels") as event_labels_cls:
+            result = config.build_event_labels()
+
+        load_credentials_mock.assert_called_once_with(Path("tok.json"), Path("creds.json"))
+        assert result is event_labels_cls.return_value
+        assert build_mock.call_count == 2
+        assert {call.args[0] for call in build_mock.call_args_list} == {"calendar", "sheets"}
+        for call in build_mock.call_args_list:
+            assert call.kwargs["credentials"] is creds
+        event_labels_cls.assert_called_once()
+        called_calendar_client, called_sheets_client = event_labels_cls.call_args.args
+        assert isinstance(called_calendar_client, CalendarClient)
+        assert isinstance(called_sheets_client, SheetsClient)
+
+    def test_raises_when_calendar_id_unset(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
+        monkeypatch.setattr(config, "load_credentials", MagicMock())
+        monkeypatch.setattr(config, "build", MagicMock())
+
+        with pytest.raises(config.ConfigError):
+            config.build_event_labels()
+
+    def test_accepts_an_explicit_calendar_id_without_requiring_the_env_var(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
+        monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
+        monkeypatch.setattr(
+            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+        )
+
+        with (
+            patch.object(config, "CalendarClient") as calendar_client_cls,
+            patch.object(config, "EventLabels"),
+        ):
+            config.build_event_labels(calendar_id="explicit-cal-id")
+
+        # Constructed with the explicit id, not one from GOOGLE_CALENDAR_ID
+        # (which isn't even set here, and would otherwise raise).
+        assert calendar_client_cls.call_args.args[1] == "explicit-cal-id"

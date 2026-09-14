@@ -8,13 +8,14 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from calendar_clients.google_calendar import (
-    CalendarClient,
-    Event,
-    EventLabel,
-    EventLabelConflictError,
+from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError
+from config import (
+    build_calendar_client,
+    build_event_labels,
+    get_mcp_resource_url,
+    get_workos_authkit_domain,
 )
-from config import build_calendar_client, get_mcp_resource_url, get_workos_authkit_domain
+from utilities.event_labels import EventLabels, EventLabel
 from utilities.reallocation import (
     ReallocationConflictError,
     ReallocationOptions,
@@ -82,6 +83,7 @@ class PublicEvent:
     min_duration: timedelta | None = None
     is_fixed_duration: bool | None = None
     priority: int | None = None
+    event_label_id: str | None = None
     is_cancelled: bool = False
 
     @classmethod
@@ -96,6 +98,7 @@ class PublicEvent:
             min_duration=event.min_duration,
             is_fixed_duration=event.is_fixed_duration,
             priority=event.priority,
+            event_label_id=event.event_label_id,
             is_cancelled=event.status == "cancelled",
         )
 
@@ -109,6 +112,7 @@ class PublicEvent:
             location=self.location,
             min_duration=self.min_duration,
             is_fixed_duration=self.is_fixed_duration,
+            event_label_id=self.event_label_id,
             priority=self.priority,
             status="cancelled" if self.is_cancelled else None,
         )
@@ -116,6 +120,7 @@ class PublicEvent:
 
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
+_event_labels: EventLabels | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -136,6 +141,15 @@ def get_reallocating_calendar() -> ReallocatingCalendar:
     if _reallocating_calendar is None:
         _reallocating_calendar = ReallocatingCalendar(get_calendar_client())
     return _reallocating_calendar
+
+
+def get_calendar_with_event_labels() -> EventLabels:
+    """Lazily construct and cache the EventLabels, the same way
+    get_calendar_client/get_reallocating_calendar cache theirs."""
+    global _event_labels
+    if _event_labels is None:
+        _event_labels = build_event_labels()
+    return _event_labels
 
 
 @mcp.tool()
@@ -186,48 +200,43 @@ def delete_event(id: str) -> list[PublicEvent]:
 
 
 @mcp.tool()
-def list_event_labels() -> list[EventLabel]:
-    """List this calendar's custom event labels."""
-    return get_calendar_client().list_event_labels()
-
-
-@mcp.tool()
 def create_event_label(
-    background_color: str | None = None, name: str | None = None, priority: int | None = None
-) -> EventLabel:
+    label: EventLabel
+) -> list[EventLabel]:
     """Create a new event label with the given optional name and
-    priority. `background_color` is a hex string (e.g. "#8e24aa");
-    if omitted, it's derived from `priority` instead (one of `priority`
-    or `background_color` is required)."""
+    priority. Returns the resulting list of every event label -- there's
+    no separate way to list labels; use this, update_event_label, or
+    sync_event_labels_from_sheet to see the current ones."""
     try:
-        return get_calendar_client().create_event_label(background_color, name, priority)
+        return get_calendar_with_event_labels().create_label(label)
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
-def update_event_label(
-    label_id: str,
-    background_color: str | None = None,
-    name: str | None = None,
-    priority: int | None = None,
-) -> EventLabel:
+def update_event_label(label: EventLabel) -> list[EventLabel]:
     """Update an existing event label's background color, name, and/or
-    priority. Whichever is omitted keeps its current value."""
+    priority. Any omitted properties keep their current value. Returns
+    the resulting list of every event label -- see create_event_label."""
     try:
-        return get_calendar_client().update_event_label(
-            label_id, background_color=background_color, name=name, priority=priority
-        )
+        return get_calendar_with_event_labels().update_label(label)
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
-def delete_event_label(label_id: str) -> EventLabel:
-    """Delete an event label by its ID. Returns the label as it was just
-    before deletion."""
+def sync_event_labels_from_sheet() -> list[EventLabel]:
+    """Make this calendar's event labels match its tracked event label
+    sheet exactly: rows with a blank ID become new labels, rows with a
+    matching ID overwrite that label's name/color/priority, and any
+    label with no matching row is deleted. Returns the resulting labels
+    -- call this with no sheet changes pending to just see the current
+    ones; there's no separate list tool. Fails if no event label sheet
+    is tracked on this calendar -- that's
+    a one-time, human-run bootstrap step (see create_calendar.py), not
+    something this server can do on its own."""
     try:
-        return get_calendar_client().delete_event_label(label_id)
+        return get_calendar_with_event_labels().sync_labels()
     except (ValueError, EventLabelConflictError) as exc:
         raise ToolError(str(exc)) from exc
 

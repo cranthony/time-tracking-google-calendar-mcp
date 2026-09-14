@@ -9,10 +9,13 @@ Usage:
     python calendar_cli.py update <id> key=value [key=value ...]
     python calendar_cli.py create key=value [key=value ...]
     python calendar_cli.py delete <id>
-    python calendar_cli.py list_labels
+    python calendar_cli.py list_raw_labels
+    python calendar_cli.py create_raw_label key=value [key=value ...]
+    python calendar_cli.py update_raw_label <label_id> key=value [key=value ...]
+    python calendar_cli.py delete_raw_label <label_id>
     python calendar_cli.py create_label key=value [key=value ...]
     python calendar_cli.py update_label <label_id> key=value [key=value ...]
-    python calendar_cli.py delete_label <label_id>
+    python calendar_cli.py sync_labels
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -36,21 +39,43 @@ Usage:
   utilities/reallocating_calendar.py. Prints every event that was
   created or changed as a result.
 - `delete` deletes a single event by its id.
-- `list_labels`/`create_label`/`update_label`/`delete_label` manage this
-  calendar's custom event labels (`CalendarClient.list_event_labels`/
-  `create_event_label`/`update_event_label`/`delete_event_label`) -- a
-  richer, arbitrary-hex-color alternative to `Event.colorId`'s 11 fixed
-  colors. `create_label`/`update_label` take the same kind of
-  `background_color=value`/`name=value`/`priority=value` pairs as
-  `update_properties` above; whichever is omitted on `update_label`
-  keeps its current value. A label's `priority` is encoded as a
-  f"P{priority} " prefix on its `name` (see `EventLabel`), and its
-  `background_color` may be left unset if `priority` is given -- it's
-  then derived from `priority` the same way `Event.colorId` is (one of
-  `background_color`/`priority` is required for `create_label`).
-  Defining a label here doesn't do anything on its own; assigning one to
-  a specific event is a separate, not-yet-built feature. See
+- `list_raw_labels`/`create_raw_label`/`update_raw_label`/`delete_raw_label`
+  manage this calendar's custom event labels exactly as Google Calendar's
+  API represents them (`CalendarClient.list_event_labels`/
+  `create_event_label`/`update_event_label`/`delete_event_label`,
+  `calendar_clients/google_calendar.py`'s `EventLabel`) -- a richer,
+  arbitrary-hex-color alternative to `Event.colorId`'s 11 fixed colors,
+  but with no concept of priority: Calendar itself has no field for one,
+  so `create_raw_label`/`update_raw_label` take only
+  `background_color=value`/`name=value` pairs, and `background_color` is
+  required for `create_raw_label`. Prefer `create_label`/`update_label`
+  below unless you specifically want to bypass priority-derived colors
+  and the event label sheet.
+- `create_label`/`update_label` manage the same labels, but as
+  `utilities/event_labels.py`'s richer `EventLabel` (via `EventLabels`),
+  which also has a `priority` (`background_color=value`/`name=value`/
+  `priority=value` pairs; `background_color` may be left unset if
+  `priority` is given, deriving it the same way `Event.colorId` does;
+  whichever is omitted on `update_label` keeps its current value). Both
+  read and write through this calendar's event label sheet (creating
+  one, pre-populated with the calendar's current labels, the first time
+  either of them runs if it doesn't exist yet), which is the only place
+  `priority` is remembered, and both print the *entire* resulting label
+  list, not just the one label touched -- along with `sync_labels`
+  below, that's also how you list the current labels; there's no
+  separate `list_labels` command, since it would just be `sync_labels`
+  under a misleading name. There's no `delete_label` either -- delete a
+  row from the sheet directly (e.g. by opening it in Google Sheets) and
+  run `sync_labels` to apply that. Defining a label here doesn't do
+  anything to any event on its own -- set an event's `event_label_id`
+  (via `create`/`update`/`update_properties` above) to assign one. See
   https://developers.google.com/workspace/calendar/api/guides/labels
+- `sync_labels` makes this calendar's event labels match its event label
+  sheet exactly (via `EventLabels.sync_labels`) -- change a row's
+  color/priority, add a row with a blank ID to create a new label, or
+  delete a row to delete its label, then run this to apply those changes
+  back to the calendar (and to see the resulting labels, even with no
+  sheet changes pending).
 """
 
 from __future__ import annotations
@@ -63,8 +88,10 @@ from typing import Any
 
 import pytimeparse
 
-from calendar_clients.google_calendar import Event, EventLabel
-from config import build_calendar_client
+from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import EventLabel as RawEventLabel
+from config import build_calendar_client, build_event_labels
+from utilities.event_labels import EventLabel
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 
@@ -113,6 +140,7 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "is_fixed_duration": _parse_bool,
     "priority": int,
     "is_end_of_day_sleep": _parse_bool,
+    "event_label_id": str,
 }
 
 
@@ -126,17 +154,30 @@ may be omitted: ReallocatingCalendar.update_event fills in whichever one
 is missing from the event's current value."""
 
 
+_RAW_LABEL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
+    "background_color": str,
+    "name": str,
+}
+"""Every calendar_clients.google_calendar.EventLabel attribute
+create_raw_label/update_raw_label may set, mapped to a function parsing
+its command-line string value into the right type. create_raw_label
+requires background_color (enforced by CalendarClient.create_event_label
+itself, not here)."""
+
+
 _LABEL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "background_color": str,
     "name": str,
     "priority": int,
 }
-"""Every EventLabel attribute create_label/update_label may set, mapped to
-a function parsing its command-line string value into the right type.
-create_label needs at least one of background_color/priority (enforced
-by EventLabel.to_api_body itself, not here -- there's no fixed set of
-"required" keys the way _REQUIRED_CREATE_ATTRIBUTES is for Event, since
-either one alone is enough)."""
+"""Every utilities.event_labels.EventLabel attribute create_label/
+update_label may set, mapped to a function parsing its command-line
+string value into the right type. create_label needs at least one of
+background_color/priority (background_color is derived from priority if
+omitted, defaulting even further if neither is given -- see
+EventLabels.create_label) -- there's no fixed set of "required" keys the
+way _REQUIRED_CREATE_ATTRIBUTES is for Event, since either one alone is
+enough."""
 
 
 def _parse_key_value_pair(
@@ -144,8 +185,10 @@ def _parse_key_value_pair(
 ) -> tuple[str, Any]:
     """Parse a "key=value" command-line argument into (attribute name,
     parsed value), looking `key` up in `attribute_parsers` to find how to
-    parse `value` -- the shared logic behind `_parse_event_key_value` (Event
-    attributes) and `_parse_label_key_value` (EventLabel attributes)."""
+    parse `value` -- the shared logic behind `_parse_event_key_value`
+    (Event attributes), `_parse_raw_label_key_value` (raw EventLabel
+    attributes), and `_parse_label_key_value` (utilities.event_labels.
+    EventLabel attributes)."""
     if "=" not in value:
         raise argparse.ArgumentTypeError(f"expected key=value, got {value!r}")
     key, raw_value = value.split("=", 1)
@@ -163,6 +206,12 @@ def _parse_event_key_value(value: str) -> tuple[str, Any]:
     """Parse a "key=value" command-line argument into (Event attribute
     name, parsed value), for use as an argparse `type`."""
     return _parse_key_value_pair(value, _UPDATABLE_ATTRIBUTE_PARSERS)
+
+
+def _parse_raw_label_key_value(value: str) -> tuple[str, Any]:
+    """Parse a "key=value" command-line argument into (raw EventLabel
+    attribute name, parsed value), for use as an argparse `type`."""
+    return _parse_key_value_pair(value, _RAW_LABEL_ATTRIBUTE_PARSERS)
 
 
 def _parse_label_key_value(value: str) -> tuple[str, Any]:
@@ -185,7 +234,7 @@ def _format_event_line(event: Event) -> str:
     return f"{event.id}\t{event.start.isoformat()} - {event.end.isoformat()}\t{event.summary}"
 
 
-def _format_event_details(event: Event | EventLabel) -> str:
+def _format_event_details(event: Event | RawEventLabel | EventLabel) -> str:
     lines = []
     for field in dataclasses.fields(event):
         value = getattr(event, field.name)
@@ -194,8 +243,13 @@ def _format_event_details(event: Event | EventLabel) -> str:
     return "\n".join(lines)
 
 
-def _format_event_label_line(label: EventLabel) -> str:
+def _format_raw_event_label_line(label: RawEventLabel) -> str:
     return f"{label.id}\t{label.background_color}\t{label.name or ''}"
+
+
+def _format_event_label_line(label: EventLabel) -> str:
+    priority = label.priority if label.priority is not None else ""
+    return f"{label.id}\t{label.background_color}\t{priority}\t{label.name or ''}"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -277,7 +331,43 @@ def _build_parser() -> argparse.ArgumentParser:
     delete_parser = subparsers.add_parser("delete", help="Delete an event by id.")
     delete_parser.add_argument("id", help="The event id.")
 
-    subparsers.add_parser("list_labels", help="List this calendar's custom event labels.")
+    subparsers.add_parser(
+        "list_raw_labels", help="List this calendar's custom event labels, as Calendar stores them."
+    )
+
+    create_raw_label_parser = subparsers.add_parser(
+        "create_raw_label", help="Create a new event label, exactly as Calendar stores it."
+    )
+    create_raw_label_parser.add_argument(
+        "properties",
+        metavar="key=value",
+        nargs="+",
+        type=_parse_raw_label_key_value,
+        help=(
+            "One or more raw EventLabel attribute=value pairs; background_color is "
+            f"required. Valid attributes: {', '.join(sorted(_RAW_LABEL_ATTRIBUTE_PARSERS))}."
+        ),
+    )
+
+    update_raw_label_parser = subparsers.add_parser(
+        "update_raw_label", help="Update an existing event label's color and/or name."
+    )
+    update_raw_label_parser.add_argument("label_id", help="The label id.")
+    update_raw_label_parser.add_argument(
+        "properties",
+        metavar="key=value",
+        nargs="+",
+        type=_parse_raw_label_key_value,
+        help=(
+            "One or more raw EventLabel attribute=value pairs to set. Valid "
+            f"attributes: {', '.join(sorted(_RAW_LABEL_ATTRIBUTE_PARSERS))}."
+        ),
+    )
+
+    delete_raw_label_parser = subparsers.add_parser(
+        "delete_raw_label", help="Delete an event label by id."
+    )
+    delete_raw_label_parser.add_argument("label_id", help="The label id.")
 
     create_label_parser = subparsers.add_parser("create_label", help="Create a new event label.")
     create_label_parser.add_argument(
@@ -307,10 +397,9 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    delete_label_parser = subparsers.add_parser(
-        "delete_label", help="Delete an event label by id."
+    subparsers.add_parser(
+        "sync_labels", help="Sync event labels from this calendar's tracked event label sheet."
     )
-    delete_label_parser.add_argument("label_id", help="The label id.")
 
     return parser
 
@@ -361,30 +450,58 @@ def main() -> None:
     elif args.command == "delete":
         client.delete_event(args.id)
         print(f"Deleted event {args.id}.")
-    elif args.command == "list_labels":
-        labels = client.list_event_labels()
+    elif args.command == "list_raw_labels":
+        labels, _etag = client.list_event_labels()
         if not labels:
             print("No event labels found.")
         for label in labels:
-            print(_format_event_label_line(label))
-    elif args.command == "create_label":
+            print(_format_raw_event_label_line(label))
+    elif args.command == "create_raw_label":
         fields = dict(args.properties)
-        label = client.create_event_label(
-            fields.get("background_color"), fields.get("name"), fields.get("priority")
-        )
+        if "background_color" not in fields:
+            parser.error("create_raw_label requires: background_color")
+        label = client.create_event_label(fields["background_color"], fields.get("name"))
         print(_format_event_details(label))
-    elif args.command == "update_label":
+    elif args.command == "update_raw_label":
         fields = dict(args.properties)
         label = client.update_event_label(
             args.label_id,
             background_color=fields.get("background_color"),
             name=fields.get("name"),
-            priority=fields.get("priority"),
         )
         print(_format_event_details(label))
-    elif args.command == "delete_label":
+    elif args.command == "delete_raw_label":
         label = client.delete_event_label(args.label_id)
         print(f"Deleted event label {label.id}.")
+    elif args.command == "create_label":
+        fields = dict(args.properties)
+        new_label = EventLabel(
+            background_color=fields.get("background_color"),
+            name=fields.get("name"),
+            priority=fields.get("priority"),
+        )
+        labels = build_event_labels().create_label(new_label)
+        for label in labels:
+            print(_format_event_details(label))
+            print()
+    elif args.command == "update_label":
+        fields = dict(args.properties)
+        updated_label = EventLabel(
+            id=args.label_id,
+            background_color=fields.get("background_color"),
+            name=fields.get("name"),
+            priority=fields.get("priority"),
+        )
+        labels = build_event_labels().update_label(updated_label)
+        for label in labels:
+            print(_format_event_details(label))
+            print()
+    elif args.command == "sync_labels":
+        labels = build_event_labels().sync_labels()
+        if not labels:
+            print("No event labels found.")
+        for label in labels:
+            print(_format_event_label_line(label))
 
 
 if __name__ == "__main__":

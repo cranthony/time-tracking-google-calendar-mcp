@@ -4,8 +4,12 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from googleapiclient.discovery import build
 
+from calendar_clients.google_auth import load_credentials
 from calendar_clients.google_calendar import CalendarClient
+from calendar_clients.google_sheets import SheetsClient
+from utilities.event_labels import EventLabels
 
 load_dotenv()
 
@@ -94,3 +98,37 @@ def build_calendar_client() -> CalendarClient:
         credentials_path=get_credentials_path(),
         calendar_id=get_calendar_id(),
     )
+
+
+def _build_calendar_and_sheets_clients(
+    calendar_id: str | None = None,
+) -> tuple[CalendarClient, SheetsClient]:
+    """A CalendarClient and a SheetsClient sharing one loaded set of
+    credentials -- rather than each independently calling
+    CalendarClient.from_credentials/SheetsClient.from_credentials (which
+    would load, and potentially refresh and rewrite, token_path twice
+    for what's really one OAuth session -- see calendar_clients/
+    google_auth.py's SCOPES, which covers both clients' needs
+    together).
+
+    calendar_id: defaults to get_calendar_id() (the calendar configured
+    via GOOGLE_CALENDAR_ID). Pass one explicitly for a calendar that
+    isn't configured (yet) -- e.g. create_calendar.py building this
+    calendar's event label sheet right after creating it, before
+    GOOGLE_CALENDAR_ID has been set to its id."""
+    creds = load_credentials(get_token_path(), get_credentials_path())
+    calendar_client = CalendarClient(
+        build("calendar", "v3", credentials=creds), calendar_id or get_calendar_id()
+    )
+    sheets_client = SheetsClient(build("sheets", "v4", credentials=creds))
+    return calendar_client, sheets_client
+
+
+def build_event_labels(calendar_id: str | None = None) -> EventLabels:
+    """Construct an EventLabels from environment configuration (and a
+    local .env file, if present). See `_build_calendar_and_sheets_clients`
+    for `calendar_id`. Constructing this ensures the calendar has an event
+    label sheet, creating one (pre-populated with its current labels) if
+    it didn't already -- see `EventLabels.__init__`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    return EventLabels(calendar_client, sheets_client)
