@@ -16,6 +16,7 @@ from config import (
     get_workos_authkit_domain,
 )
 from utilities.event_labels import EventLabels, EventLabel
+from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 from workos_auth import WorkOSTokenVerifier
@@ -130,12 +131,17 @@ def get_calendar_client() -> CalendarClient:
 
 
 def get_reallocating_calendar() -> ReallocatingCalendar:
-    """Lazily construct and cache the ReallocatingCalendar wrapping
-    `get_calendar_client()`, the same way get_calendar_client itself
-    caches its CalendarClient."""
+    """Lazily construct and cache the ReallocatingCalendar, the same way
+    get_calendar_client caches its CalendarClient. Wraps a
+    LabelPriorityCalendar (get_calendar_client() plus
+    get_calendar_with_event_labels()) rather than get_calendar_client()
+    directly, so reallocation sees an event's label-derived priority as
+    the fallback whenever the event itself doesn't set one."""
     global _reallocating_calendar
     if _reallocating_calendar is None:
-        _reallocating_calendar = ReallocatingCalendar(get_calendar_client())
+        _reallocating_calendar = ReallocatingCalendar(
+            LabelPriorityCalendar(get_calendar_client(), get_calendar_with_event_labels())
+        )
     return _reallocating_calendar
 
 

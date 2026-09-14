@@ -13,16 +13,31 @@ itself.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import Protocol
 
-from calendar_clients.google_calendar import CalendarClient, Event
+from calendar_clients.google_calendar import Event
 from utilities.reallocation import ReallocationOptions, reallocate_for_new_event
 
 
-class ReallocatingCalendar:
-    """Wraps a `CalendarClient` with reallocation-aware `create_event`/
-    `update_event` -- see the module docstring."""
+class _EventCalendar(Protocol):
+    """The subset of `CalendarClient`'s interface `ReallocatingCalendar`
+    actually needs -- so `utilities/label_priority_calendar.py`'s
+    `LabelPriorityCalendar` (or any other `CalendarClient`-shaped wrapper)
+    can stand in for a plain `CalendarClient` without `ReallocatingCalendar`
+    needing to know the difference."""
 
-    def __init__(self, client: CalendarClient) -> None:
+    def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]: ...
+    def get_event(self, event_id: str) -> Event: ...
+    def create_event(self, event: Event) -> Event: ...
+    def update_event(self, event: Event) -> Event: ...
+
+
+class ReallocatingCalendar:
+    """Wraps a `CalendarClient` (or `LabelPriorityCalendar`) with
+    reallocation-aware `create_event`/`update_event` -- see the module
+    docstring."""
+
+    def __init__(self, client: _EventCalendar) -> None:
         self._client = client
 
     def list_day_events(self, start: datetime) -> list[Event]:

@@ -9,6 +9,7 @@ import server
 from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.event_labels import EventLabel
+from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
 
@@ -389,6 +390,8 @@ class TestGetCalendarClient:
 class TestGetReallocatingCalendar:
     def test_caches_across_calls(self, monkeypatch):
         client = _fake_client(monkeypatch)
+        event_labels = MagicMock()
+        monkeypatch.setattr(server, "get_calendar_with_event_labels", lambda: event_labels)
         monkeypatch.setattr(server, "_reallocating_calendar", None)
 
         first = server.get_reallocating_calendar()
@@ -396,7 +399,9 @@ class TestGetReallocatingCalendar:
 
         assert first is second
         assert isinstance(first, ReallocatingCalendar)
-        assert first._client is client
+        assert isinstance(first._client, LabelPriorityCalendar)
+        assert first._client._client is client
+        assert first._client._event_labels is event_labels
 
 
 class TestGetEventLabels:
