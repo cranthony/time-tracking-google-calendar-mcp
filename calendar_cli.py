@@ -88,10 +88,11 @@ from typing import Any
 
 import pytimeparse
 
-from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import CalendarClient, Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from config import build_calendar_client, build_event_labels
 from utilities.event_labels import EventLabel
+from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 
@@ -404,11 +405,20 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _build_reallocating_calendar(client: CalendarClient) -> ReallocatingCalendar:
+    """A ReallocatingCalendar wrapping client plus a LabelPriorityCalendar,
+    so reallocation sees an event's label-derived priority as the fallback
+    whenever the event itself doesn't set one. Built lazily -- only
+    `update`/`create` below need it -- since constructing an EventLabels
+    may create this calendar's event label sheet on first use (see
+    utilities/event_labels.py)."""
+    return ReallocatingCalendar(LabelPriorityCalendar(client, build_event_labels()))
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
     client = build_calendar_client()
-    reallocating_calendar = ReallocatingCalendar(client)
 
     if args.command == "list":
         time_min, time_max = resolve_window(args.from_seconds, args.to_seconds)
@@ -433,7 +443,9 @@ def main() -> None:
                 f"update requires at least one of: {', '.join(sorted(_UPDATE_POSITION_ATTRIBUTES))}"
             )
         updated_event = Event(id=args.id, **fields)
-        applied_events = reallocating_calendar.update_event(updated_event, ReallocationOptions())
+        applied_events = _build_reallocating_calendar(client).update_event(
+            updated_event, ReallocationOptions()
+        )
         for event in applied_events:
             print(_format_event_details(event))
             print()
@@ -443,7 +455,9 @@ def main() -> None:
         if missing:
             parser.error(f"create requires: {', '.join(sorted(missing))}")
         new_event = Event(**fields)
-        applied_events = reallocating_calendar.create_event(new_event, ReallocationOptions())
+        applied_events = _build_reallocating_calendar(client).create_event(
+            new_event, ReallocationOptions()
+        )
         for event in applied_events:
             print(_format_event_details(event))
             print()

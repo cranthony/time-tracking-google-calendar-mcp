@@ -74,6 +74,14 @@ class EventLabels:
     def _get_sheet_labels(self) -> list[EventLabel]:
         return self._event_label_sheet.read()
 
+    def label_priorities(self) -> dict[str, int | None]:
+        """label id -> priority, straight from the tracked sheet -- a
+        read-only lookup (unlike `sync_labels`, never writes to the sheet
+        or the calendar) for callers that just need to look a label's
+        priority up, e.g. to fill it in on an event that doesn't have one
+        of its own (see `utilities/label_priority_calendar.py`)."""
+        return {label.id: label.priority for label in self._get_sheet_labels() if label.id is not None}
+
     def sync_labels(self) -> list[EventLabel]:
         """Assume that the Sheet is the authority and sync its labels with the calendar."""
         raw_calendar_labels, etag = self._calendar_client.list_event_labels()

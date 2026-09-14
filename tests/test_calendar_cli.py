@@ -10,6 +10,7 @@ import calendar_cli
 from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.event_labels import EventLabel
+from utilities.label_priority_calendar import LabelPriorityCalendar
 
 UTC = timezone.utc
 
@@ -347,8 +348,23 @@ class TestMainUpdateProperties:
 
 def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
     reallocating_calendar = MagicMock()
-    monkeypatch.setattr(calendar_cli, "ReallocatingCalendar", lambda client: reallocating_calendar)
+    monkeypatch.setattr(
+        calendar_cli, "_build_reallocating_calendar", lambda client: reallocating_calendar
+    )
     return reallocating_calendar
+
+
+class TestBuildReallocatingCalendar:
+    def test_wraps_client_in_a_label_priority_calendar(self, monkeypatch):
+        client = MagicMock()
+        event_labels = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_event_labels", lambda: event_labels)
+
+        reallocating_calendar = calendar_cli._build_reallocating_calendar(client)
+
+        assert isinstance(reallocating_calendar._client, LabelPriorityCalendar)
+        assert reallocating_calendar._client._client is client
+        assert reallocating_calendar._client._event_labels is event_labels
 
 
 class TestMainUpdate:

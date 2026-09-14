@@ -63,6 +63,37 @@ class TestInit:
         )
 
 
+class TestLabelPriorities:
+    def test_returns_priority_by_label_id_from_the_sheet(self):
+        calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
+        sheets_client = _sheets_client(
+            [
+                ["l1", "Design Work", "#8e24aa", "1"],
+                ["l2", "Admin", "#7ae7bf", "3"],
+            ]
+        )
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        assert event_labels.label_priorities() == {"l1": 1, "l2": 3}
+
+    def test_omits_a_label_with_no_priority_set(self):
+        calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", ""]])
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        assert event_labels.label_priorities() == {"l1": None}
+
+    def test_does_not_write_to_the_sheet_or_calendar(self):
+        calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1"]])
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        event_labels.label_priorities()
+
+        sheets_client.write_rows.assert_not_called()
+        calendar_client.replace_event_labels.assert_not_called()
+
+
 class TestSyncLabels:
     def test_returns_calendar_labels_with_priority_from_the_sheet(self):
         calendar_client = _tracked_calendar_client(
