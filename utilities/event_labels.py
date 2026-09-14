@@ -91,17 +91,31 @@ class EventLabels:
             # labels by the other fields.
             assert len(new_raw_calendar_labels) == len(sheet_labels)
             update_sheet = False
+            # Ids already claimed by one of this sheet's other rows can't
+            # also be the match for a blank-id row, even if their
+            # name/background_color happen to coincide -- excluding them
+            # avoids treating that coincidence as ambiguity.
+            known_ids = {l.id for l in sheet_labels if l.id is not None}
             for sheet_label in [l for l in sheet_labels if l.id is None]:
                 raw_label = sheet_label.to_raw()
                 def _remove_id(l: RawEventLabel) -> RawEventLabel:
                     return replace(l, id=None)
-                matching_raw_calendar_label = next(
-                    (l for l in new_raw_calendar_labels if _remove_id(l) == raw_label),
-                    None
-                )
-                if matching_raw_calendar_label is None:
+                matching_raw_calendar_labels = [
+                    l
+                    for l in new_raw_calendar_labels
+                    if l.id not in known_ids and _remove_id(l) == raw_label
+                ]
+                if len(matching_raw_calendar_labels) == 0:
                     raise ValueError(f"Couldn't find matching event label for {sheet_label}")
-                sheet_label.id = matching_raw_calendar_label.id
+                if len(matching_raw_calendar_labels) > 1:
+                    # Can't tell which is which -- assigning either id
+                    # could silently attach the wrong priority (or any
+                    # other sheet-only field) to the wrong label.
+                    raise ValueError(
+                        f"Found multiple matching event labels for {sheet_label}; can't tell "
+                        "which is which -- give each a unique name/background_color combination"
+                    )
+                sheet_label.id = matching_raw_calendar_labels[0].id
                 update_sheet = True
             if update_sheet:
                 self._event_label_sheet.write(sheet_labels)

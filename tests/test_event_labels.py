@@ -126,6 +126,46 @@ class TestSyncLabels:
             EventLabel(id="id-b", name="Label B", background_color="#222222", priority=None),
         ]
 
+    def test_raises_when_two_blank_id_rows_have_identical_content(self):
+        # Both rows have the same name/background_color, so there's no
+        # way to tell which returned id belongs to which row -- silently
+        # picking one risks attaching the wrong priority to the wrong id.
+        calendar_client = _tracked_calendar_client(raw_labels=[])
+        calendar_client.replace_event_labels.return_value = [
+            RawEventLabel(id="id-1", background_color="#8e24aa", name="Design Work"),
+            RawEventLabel(id="id-2", background_color="#8e24aa", name="Design Work"),
+        ]
+        sheets_client = _sheets_client(
+            [["", "Design Work", "#8e24aa", "1"], ["", "Design Work", "#8e24aa", "2"]]
+        )
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        with pytest.raises(ValueError):
+            event_labels.sync_labels()
+
+    def test_does_not_confuse_a_new_row_with_an_existing_label_of_identical_content(self):
+        # An existing (already-id'd) label happens to share content with
+        # a brand new row -- since we already know the existing label's
+        # id belongs to the other row, this isn't actually ambiguous.
+        calendar_client = _tracked_calendar_client(
+            raw_labels=[RawEventLabel(id="l1", background_color="#8e24aa", name="Design Work")],
+        )
+        calendar_client.replace_event_labels.return_value = [
+            RawEventLabel(id="l1", background_color="#8e24aa", name="Design Work"),
+            RawEventLabel(id="new-id", background_color="#8e24aa", name="Design Work"),
+        ]
+        sheets_client = _sheets_client(
+            [["l1", "Design Work", "#8e24aa", "1"], ["", "Design Work", "#8e24aa", "2"]]
+        )
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        result = event_labels.sync_labels()
+
+        assert result == [
+            EventLabel(id="l1", name="Design Work", background_color="#8e24aa", priority=1),
+            EventLabel(id="new-id", name="Design Work", background_color="#8e24aa", priority=2),
+        ]
+
     def test_raises_when_no_matching_label_is_returned_for_a_blank_id_row(self):
         calendar_client = _tracked_calendar_client(raw_labels=[])
         calendar_client.replace_event_labels.return_value = [
