@@ -18,12 +18,10 @@ with whatever `day_events` it's handed.
 
 ## Priority
 
-Every event has a `priority` (lower number = more important); a
-higher-priority event is never shrunk to make room for a lower-priority one
-*unless* nothing at new_event's own priority or lower is enough to fit it,
-in which case step 5 falls back to shrinking higher-priority events too, as
-a last resort, rather than fail. Free time is the lowest possible priority
-(`math.inf`). An event with no `priority` set is treated as priority `2`.
+Every event has a `priority` (lower number = more important); lower priority
+events shrink to make time before higher priority events. Free time is the
+lowest possible priority (`math.inf`). An event with no `priority` set is
+treated as priority `2`.
 
 ## Minimum duration
 
@@ -88,15 +86,14 @@ see `ReallocationOptions.resolved()`):
    in the order they were built within a priority, shrinking each down to
    its `min_duration` and subtracting from `duration_to_reclaim` until it
    reaches `0`. If that's not enough, keep going into higher-priority
-   spans too, in the same worst-first order -- this is the only point at
+   spans too, in the same earliest-first order -- this is the only point at
    which a higher-priority event may be shrunk, and only as far as its own
    `min_duration`. Never reclaims from `new_event`'s own span.
 
-6. **Check for a shortfall.** If the pool, fully reclaimed (including the
-   higher-priority last resort above), still falls short, raise a
-   well-structured exception with the remaining duration still needed and
-   every event (any priority) already at its `min_duration` floor (by
-   descending `min_duration`).
+6. **Check for a shortfall.** If the pool, fully reclaimed still falls
+   short, raise a well-structured exception with the remaining duration
+   still needed and every event (any priority) already at its
+   `min_duration` floor (by descending `min_duration`).
 
 7. **Compact into a layout.** Walk the `Span` list from its head,
    tracking the current end time (starting at the earliest event's
@@ -309,14 +306,8 @@ class _Reallocation:
             self.new_event.end = self.new_event.start
             self._insert_new_event()
             self._build_reclaim_pool()
-            remaining = self._reclaim(duration_to_reclaim, self._eligible_priorities())
-            if remaining > timedelta(0):
-                # Last resort: nothing at new_event's own priority or below
-                # was enough. Rather than fail outright, keep reclaiming
-                # into higher-priority events too -- worst (closest to
-                # new_event's own priority) first -- down to their own
-                # min_duration, same as any other event.
-                remaining = self._reclaim(remaining, self._protected_priorities())
+            remaining = self._reclaim(duration_to_reclaim,
+                                      self._sorted_priorities())
             if remaining > timedelta(0):
                 self._raise_shortfall(remaining)
         finally:
@@ -425,23 +416,9 @@ class _Reallocation:
         self.spans_by_priority[priority].append(span)
         logger.debug("Added %s of duration %s at priority %f", span.event, span.duration, priority)
 
-    def _eligible_priorities(self) -> list[float]:
-        """Priorities no more important than new_event's own -- reclaimed
-        from first, before ever touching a higher-priority event -- in
-        order of least important (`math.inf`, free time) to most."""
-        threshold = self.new_event_priority
-        eligible = (priority for priority in self.spans_by_priority if priority >= threshold)
-        return sorted(eligible, reverse=True)
-
-    def _protected_priorities(self) -> list[float]:
-        """Priorities higher than new_event's own -- only reclaimed from as
-        a last resort, if `_eligible_priorities` alone wasn't enough -- in
-        the same worst-first order, so the most important events are only
-        touched once everything less important has already been drained to
-        its own min_duration."""
-        threshold = self.new_event_priority
-        protected = (priority for priority in self.spans_by_priority if priority < threshold)
-        return sorted(protected, reverse=True)
+    def _sorted_priorities(self) -> list[float]:
+        """Priorities in order of least important to most important."""
+        return sorted(self.spans_by_priority.keys(), reverse=True)
 
     def _reclaim(self, duration_to_reclaim: timedelta, priorities: list[float]) -> timedelta:
         """Mark the spans that will be reduced to claim space for the new event."""
