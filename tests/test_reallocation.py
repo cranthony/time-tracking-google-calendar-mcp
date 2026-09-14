@@ -147,7 +147,6 @@ class TestReallocationError:
 
         assert str(error) == "no room"
         assert error.remaining is None
-        assert error.higher_priority_events == []
         assert error.events_at_floor == []
 
     def test_carries_structured_fields(self):
@@ -156,12 +155,11 @@ class TestReallocationError:
         error = ReallocationShortfallError(
             "no room",
             remaining=timedelta(minutes=5),
-            higher_priority_events=[event],
-            events_at_floor=[],
+            events_at_floor=[event],
         )
 
         assert error.remaining == timedelta(minutes=5)
-        assert error.higher_priority_events == [event]
+        assert error.events_at_floor == [event]
 
 
 class TestReallocateForNewEvent:
@@ -448,10 +446,13 @@ class TestReallocateForNewEvent:
             reallocate_for_new_event([existing, anchor], new_event, ReallocationOptions())
 
         assert exc_info.value.remaining == timedelta(minutes=30)
-        assert exc_info.value.higher_priority_events == []
         assert exc_info.value.events_at_floor == [existing, anchor]
 
     def test_raises_on_shortfall_with_structured_details(self):
+        # higher has no min_duration of its own, so even though it's
+        # protected by priority, it still gets drained down to 0 as a last
+        # resort once protected/anchor (both already at their own floor)
+        # aren't enough on their own -- 30 of the 60 minutes needed.
         higher = _event(
             id="h1",
             start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
@@ -481,9 +482,8 @@ class TestReallocateForNewEvent:
         with pytest.raises(ReallocationShortfallError) as exc_info:
             reallocate_for_new_event([higher, protected, anchor], new_event, ReallocationOptions())
 
-        assert exc_info.value.remaining == timedelta(hours=1)
-        assert exc_info.value.higher_priority_events == [higher]
-        assert exc_info.value.events_at_floor == [protected, anchor]
+        assert exc_info.value.remaining == timedelta(minutes=30)
+        assert exc_info.value.events_at_floor == [protected, anchor, higher]
         # Nothing should have been mutated.
         assert higher.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert protected.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
@@ -570,3 +570,75 @@ class TestReallocateForNewEvent:
         assert later.start == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
         assert later.end == datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
         assert later in result
+
+    def test_does_not_touch_higher_priority_event_when_eligible_tier_is_enough(self):
+        # Same shape as test_cascades_through_untouched_events_until_a_gap_
+        # absorbs_it, except protected is a strictly more important priority
+        # than new_event/first/second -- it must stay completely untouched,
+        # since the eligible tier (first, second, and the natural gap
+        # before protected) already covers the full reclaim on its own.
+        first = _event(
+            id="f1",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            priority=2,
+        )
+        second = _event(
+            id="s1",
+            start=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=2,
+        )
+        protected = _event(
+            id="t1",
+            start=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 11, 30, tzinfo=UTC),
+            priority=1,
+            min_duration=timedelta(minutes=15),
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 30, tzinfo=UTC),
+            priority=2,
+        )
+
+        result = reallocate_for_new_event(
+            [first, second, protected], new_event, ReallocationOptions()
+        )
+
+        assert protected.start == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
+        assert protected.end == datetime(2026, 1, 1, 11, 30, tzinfo=UTC)
+        assert protected not in result
+
+    def test_last_resort_reclaims_from_higher_priority_event_when_eligible_tier_falls_short(self):
+        higher = _event(
+            id="h1",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            priority=1,
+            min_duration=timedelta(minutes=30),
+        )
+        normal = _event(
+            id="n1",
+            start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 15, tzinfo=UTC),
+            priority=2,
+        )
+        new_event = _event(
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 9, 45, tzinfo=UTC),
+            priority=2,
+        )
+
+        result = reallocate_for_new_event([higher, normal], new_event, ReallocationOptions())
+
+        # normal (same priority as new_event) only has 15 of the 45 minutes
+        # needed -- rather than fail, the remaining 30 minutes are reclaimed
+        # from higher (a strictly more important priority), down to its own
+        # min_duration, as a last resort.
+        assert new_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        assert new_event.end == datetime(2026, 1, 1, 9, 45, tzinfo=UTC)
+        assert higher.start == datetime(2026, 1, 1, 9, 45, tzinfo=UTC)
+        assert higher.end == datetime(2026, 1, 1, 10, 15, tzinfo=UTC)
+        assert normal.status == "cancelled"
+        assert {e.id for e in result} == {None, "h1", "n1"}
