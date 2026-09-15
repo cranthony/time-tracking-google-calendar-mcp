@@ -115,8 +115,10 @@ class ReallocatingCalendar:
                 "event with reallocation"
             )
 
+        current = None
         if updated_event.start is None:
-            updated_event.start = self._client.get_event(updated_event.id).start
+            current = self._client.get_event(updated_event.id)
+            updated_event.start = current.start
 
         day_events = self.list_day_events(updated_event.start, ignore_id=updated_event.id)
 
@@ -124,7 +126,10 @@ class ReallocatingCalendar:
             current = next(
                 (event for event in day_events if event.id == updated_event.id),
                 None,
-            ) or self._client.get_event(updated_event.id)
+            )
+            # We expect the current event to be in the result since we queried at its
+            # start time.
+            assert current is not None
             updated_event.end = current.end
 
         day_events = [event for event in day_events if event.id != updated_event.id]
