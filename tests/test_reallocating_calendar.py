@@ -208,13 +208,17 @@ class TestReallocatingCalendarUpdateEvent:
         client.get_event.assert_not_called()
         client.list_events.assert_called_once()
 
-    def test_fills_in_missing_start_from_list_day_events(self, monkeypatch):
+    def test_fills_in_missing_start_via_get_event_before_fetching_the_day(self, monkeypatch):
+        # Unlike a missing end (above), a missing start can't be filled in
+        # from list_day_events's own result -- list_day_events needs a
+        # real start to know what window to fetch in the first place, so
+        # this one direct get_event call has to come first.
         client = make_client(MagicMock())
         start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         end = start + timedelta(hours=1)
         current = Event(id="abc123", start=start, end=end, priority=1)
         client.list_events = MagicMock(return_value=[current])
-        client.get_event = MagicMock()
+        client.get_event = MagicMock(return_value=current)
 
         captured = {}
 
@@ -231,8 +235,8 @@ class TestReallocatingCalendarUpdateEvent:
         ReallocatingCalendar(client).update_event(updated_event, ReallocationOptions())
 
         assert captured["event"].start == start
-        client.get_event.assert_not_called()
-        client.list_events.assert_called_once()
+        client.get_event.assert_called_once_with("abc123")
+        client.list_events.assert_called_once_with(start, start + timedelta(hours=24))
 
     def test_falls_back_to_get_event_when_not_found_in_list_day_events(self, monkeypatch):
         # Only `end` is given, so the initial lookup anchors list_day_events
