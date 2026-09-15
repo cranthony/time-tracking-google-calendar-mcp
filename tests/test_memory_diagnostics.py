@@ -42,6 +42,7 @@ class TestCurrentRssBytes:
 class TestLogRss:
     def test_logs_when_available(self, monkeypatch, caplog):
         monkeypatch.setattr(memory_diagnostics, "_current_rss_bytes", lambda: 100 * 1024 * 1024)
+        monkeypatch.setattr(memory_diagnostics, "_maybe_start_tracemalloc", lambda rss: None)
 
         with caplog.at_level("INFO", logger=_LOGGER_NAME):
             memory_diagnostics._log_rss("my-op")
@@ -57,6 +58,138 @@ class TestLogRss:
             memory_diagnostics._log_rss("my-op")
 
         assert caplog.records == []
+
+    def test_checks_whether_to_start_tracemalloc_when_rss_is_available(self, monkeypatch):
+        monkeypatch.setattr(memory_diagnostics, "_current_rss_bytes", lambda: 100 * 1024 * 1024)
+        checked = []
+        monkeypatch.setattr(memory_diagnostics, "_maybe_start_tracemalloc", checked.append)
+
+        memory_diagnostics._log_rss("my-op")
+
+        assert checked == [100 * 1024 * 1024]
+
+
+def _fake_open(responses: dict[str, str]):
+    """A fake `open` returning `io.StringIO(responses[path])` for a
+    request matching a key in `responses`, raising `FileNotFoundError`
+    (like the real thing) for anything else."""
+
+    def _open(path, *args, **kwargs):
+        if path in responses:
+            return io.StringIO(responses[path])
+        raise FileNotFoundError(path)
+
+    return _open
+
+
+_CGROUP_V2_PATH = "/sys/fs/cgroup/memory.max"
+_CGROUP_V1_PATH = "/sys/fs/cgroup/memory/memory.limit_in_bytes"
+
+
+class TestMemoryLimitBytes:
+    def test_prefers_the_environment_override(self, monkeypatch):
+        monkeypatch.setenv("MEMORY_LIMIT_BYTES", "123456")
+        monkeypatch.setattr("builtins.open", _fake_open({_CGROUP_V2_PATH: "999\n"}))
+
+        assert memory_diagnostics._memory_limit_bytes() == 123456
+
+    def test_falls_back_to_cgroup_when_override_is_not_a_valid_integer(self, monkeypatch, caplog):
+        monkeypatch.setenv("MEMORY_LIMIT_BYTES", "not-a-number")
+        monkeypatch.setattr("builtins.open", _fake_open({_CGROUP_V2_PATH: "536870912\n"}))
+
+        with caplog.at_level("WARNING", logger=_LOGGER_NAME):
+            result = memory_diagnostics._memory_limit_bytes()
+
+        assert result == 536870912
+        assert any("MEMORY_LIMIT_BYTES" in r.message for r in caplog.records)
+
+    def test_reads_cgroup_v2_memory_max(self, monkeypatch):
+        monkeypatch.delenv("MEMORY_LIMIT_BYTES", raising=False)
+        monkeypatch.setattr("builtins.open", _fake_open({_CGROUP_V2_PATH: "536870912\n"}))
+
+        assert memory_diagnostics._memory_limit_bytes() == 536870912
+
+    def test_falls_back_to_cgroup_v1_when_v2_says_max(self, monkeypatch):
+        monkeypatch.delenv("MEMORY_LIMIT_BYTES", raising=False)
+        monkeypatch.setattr(
+            "builtins.open",
+            _fake_open({_CGROUP_V2_PATH: "max\n", _CGROUP_V1_PATH: "536870912\n"}),
+        )
+
+        assert memory_diagnostics._memory_limit_bytes() == 536870912
+
+    def test_falls_back_to_cgroup_v1_when_v2_is_unavailable(self, monkeypatch):
+        monkeypatch.delenv("MEMORY_LIMIT_BYTES", raising=False)
+        monkeypatch.setattr("builtins.open", _fake_open({_CGROUP_V1_PATH: "536870912\n"}))
+
+        assert memory_diagnostics._memory_limit_bytes() == 536870912
+
+    def test_treats_cgroup_v1_sentinel_as_no_limit(self, monkeypatch):
+        monkeypatch.delenv("MEMORY_LIMIT_BYTES", raising=False)
+        monkeypatch.setattr(
+            "builtins.open", _fake_open({_CGROUP_V1_PATH: "9223372036854771712\n"})
+        )
+
+        assert memory_diagnostics._memory_limit_bytes() is None
+
+    def test_returns_none_when_nothing_is_available(self, monkeypatch):
+        monkeypatch.delenv("MEMORY_LIMIT_BYTES", raising=False)
+        monkeypatch.setattr("builtins.open", _fake_open({}))
+
+        assert memory_diagnostics._memory_limit_bytes() is None
+
+
+class TestMaybeStartTracemalloc:
+    def test_does_nothing_if_already_tracing(self, monkeypatch):
+        tracemalloc.start()
+        try:
+            monkeypatch.setattr(
+                memory_diagnostics,
+                "_memory_limit_bytes",
+                lambda: (_ for _ in ()).throw(AssertionError("should not be called")),
+            )
+
+            memory_diagnostics._maybe_start_tracemalloc(10**12)  # would be way past any limit
+        finally:
+            tracemalloc.stop()
+
+    def test_does_nothing_when_the_limit_is_unknown(self, monkeypatch):
+        assert not tracemalloc.is_tracing()
+        monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: None)
+
+        memory_diagnostics._maybe_start_tracemalloc(10**12)
+
+        assert not tracemalloc.is_tracing()
+
+    def test_does_nothing_below_the_threshold(self, monkeypatch):
+        assert not tracemalloc.is_tracing()
+        monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+
+        memory_diagnostics._maybe_start_tracemalloc(49)  # 49% of the limit
+
+        assert not tracemalloc.is_tracing()
+
+    def test_starts_tracemalloc_at_the_threshold(self, monkeypatch):
+        assert not tracemalloc.is_tracing()
+        monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+
+        try:
+            memory_diagnostics._maybe_start_tracemalloc(50)  # exactly 50% of the limit
+
+            assert tracemalloc.is_tracing()
+        finally:
+            tracemalloc.stop()
+
+    def test_logs_a_warning_when_it_starts_tracing(self, monkeypatch, caplog):
+        monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+
+        try:
+            with caplog.at_level("WARNING", logger=_LOGGER_NAME):
+                memory_diagnostics._maybe_start_tracemalloc(50)
+
+            assert any("tracemalloc" in r.message for r in caplog.records)
+        finally:
+            tracemalloc.stop()
 
 
 class TestLogTracemallocGrowth:
