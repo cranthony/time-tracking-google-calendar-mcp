@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, call
 
@@ -207,13 +208,17 @@ class TestReallocatingCalendarUpdateEvent:
         client.get_event.assert_not_called()
         client.list_events.assert_called_once()
 
-    def test_fills_in_missing_start_from_list_day_events(self, monkeypatch):
+    def test_fills_in_missing_start_via_get_event_before_fetching_the_day(self, monkeypatch):
+        # Unlike a missing end (above), a missing start can't be filled in
+        # from list_day_events's own result -- list_day_events needs a
+        # real start to know what window to fetch in the first place, so
+        # this one direct get_event call has to come first.
         client = make_client(MagicMock())
         start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         end = start + timedelta(hours=1)
         current = Event(id="abc123", start=start, end=end, priority=1)
         client.list_events = MagicMock(return_value=[current])
-        client.get_event = MagicMock()
+        client.get_event = MagicMock(return_value=current)
 
         captured = {}
 
@@ -230,8 +235,8 @@ class TestReallocatingCalendarUpdateEvent:
         ReallocatingCalendar(client).update_event(updated_event, ReallocationOptions())
 
         assert captured["event"].start == start
-        client.get_event.assert_not_called()
-        client.list_events.assert_called_once()
+        client.get_event.assert_called_once_with("abc123")
+        client.list_events.assert_called_once_with(start, start + timedelta(hours=24))
 
     def test_falls_back_to_get_event_when_not_found_in_list_day_events(self, monkeypatch):
         # Only `end` is given, so the initial lookup anchors list_day_events
@@ -387,4 +392,35 @@ class TestReallocatingCalendarUpdateEvent:
         assert evening_sleep.start == time_at("20:00")
         assert evening_sleep.end == time_at("07:00+1")
         assert evening_sleep not in result
+        client.list_events.assert_called_once()
+
+    def test_handles_extension_with_missing_start_and_overlaps(self):
+        events = [
+            event_at("20:00-20:30", id="1"),
+            event_at("20:30-20:45", id="2"),
+            event_at("20:45-21:15", id="3", priority=0, min_duration=timedelta(minutes=30)),
+            event_at("21:15-07:00+1", id="sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+        def _list_events(start: datetime, end: datetime) -> list[Event]:
+            return [
+                event for event in events
+                if start <= event.end <= end or start <= event.start <= end or event.start <= start <= event.end
+            ]
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(side_effect=_list_events)
+        client.update_event = MagicMock(side_effect=lambda event: event)
+        client.create_event = MagicMock(side_effect=lambda event: event)
+        client.get_event = MagicMock(
+            side_effect=lambda id: replace(next((e for e in events if e.id == id)))
+        )
+
+        extended_first = Event(id="1", summary=events[0].summary, end=time_at("21:00"))
+        result = ReallocatingCalendar(client).update_event(extended_first, ReallocationOptions())
+
+        assert result == [
+            event_at("20:00-21:00", id="1"),
+            event_at("20:30-20:45", id="2", status="cancelled"),
+            event_at("21:00-21:30", id="3", priority=0, min_duration=timedelta(minutes=30)),
+            event_at("21:30-07:00+1", id="sleep", priority=0, is_end_of_day_sleep=True),
+        ]
         client.list_events.assert_called_once()

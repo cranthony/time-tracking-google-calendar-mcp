@@ -93,12 +93,19 @@ class ReallocatingCalendar:
         `updated_event.start`/`.end` may be given individually -- either
         may be left `None` to mean "keep this event's current value". At
         least one of the two must be given, since reallocation needs a
-        real span to make room for. Whichever is missing is filled in from
+        real span to make room for. A missing `start` is filled in with a
+        direct `get_event` first, before `list_day_events` -- the fetch
+        window has to start no later than the event's own current
+        position, or events between its old start and its new end (e.g.
+        one immediately after it) would be missed entirely; anchoring on
+        `end` instead whenever `start` was missing (the old behavior)
+        anchored the fetch too late. A missing `end` is filled in from
         `list_day_events`'s own result below (the same call already made
         for reallocation -- no second fetch) if this event is in it,
         falling back to a direct `get_event` only if it isn't (e.g. the
         one given value put it on a different day than its prior
-        position).
+        position). At most one of the two ever needs its own `get_event`
+        call, since both being missing is rejected above.
         """
         if updated_event.id is None:
             raise ValueError("updated_event.id is required to update an event with reallocation")
@@ -108,19 +115,22 @@ class ReallocatingCalendar:
                 "event with reallocation"
             )
 
-        day_events = self.list_day_events(
-            updated_event.start or updated_event.end, ignore_id=updated_event.id
-        )
+        current = None
+        if updated_event.start is None:
+            current = self._client.get_event(updated_event.id)
+            updated_event.start = current.start
 
-        if updated_event.start is None or updated_event.end is None:
+        day_events = self.list_day_events(updated_event.start, ignore_id=updated_event.id)
+
+        if updated_event.end is None:
             current = next(
                 (event for event in day_events if event.id == updated_event.id),
                 None,
-            ) or self._client.get_event(updated_event.id)
-            if updated_event.start is None:
-                updated_event.start = current.start
-            if updated_event.end is None:
-                updated_event.end = current.end
+            )
+            # We expect the current event to be in the result since we queried at its
+            # start time.
+            assert current is not None
+            updated_event.end = current.end
 
         day_events = [event for event in day_events if event.id != updated_event.id]
         return self._apply_reallocation(day_events, updated_event, options)
