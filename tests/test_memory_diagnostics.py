@@ -144,16 +144,16 @@ class TestLogMemory:
 
 
 class TestTrack:
-    def test_logs_on_normal_exit(self, monkeypatch):
+    def test_logs_at_start_and_end(self, monkeypatch):
         logged = []
         monkeypatch.setattr(memory_diagnostics, "log_memory", logged.append)
 
         with track("my-op"):
-            pass
+            assert logged == ["my-op start"]
 
-        assert logged == ["my-op"]
+        assert logged == ["my-op start", "my-op end"]
 
-    def test_logs_even_when_the_block_raises(self, monkeypatch):
+    def test_logs_the_end_even_when_the_block_raises(self, monkeypatch):
         logged = []
         monkeypatch.setattr(memory_diagnostics, "log_memory", logged.append)
 
@@ -161,4 +161,4 @@ class TestTrack:
             with track("my-op"):
                 raise ValueError("boom")
 
-        assert logged == ["my-op"]
+        assert logged == ["my-op start", "my-op end"]

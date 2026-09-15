@@ -1,7 +1,7 @@
 """Point-in-time memory diagnostics for narrowing down what's driving this
-process's memory usage, logged around a named operation (an MCP tool call,
-`load_credentials`, ...) so a spike can be attributed to whichever
-operation was running when it happened.
+process's memory usage, logged at the start and end of a named operation
+(an MCP tool call, `load_credentials`, ...) so a spike can be attributed
+to whichever operation was running when it happened.
 
 Three signals, each logged if available:
 - RSS (this process's actual resident memory, from `/proc/self/status` --
@@ -93,9 +93,10 @@ def _log_objgraph_growth(label: str) -> None:
 
 
 def log_memory(label: str) -> None:
-    """Log RSS, `tracemalloc` growth (if tracing), and `objgraph` growth
-    for `label` -- an operation that just finished. Prefer `track` below
-    to cover an operation that might raise."""
+    """Log RSS, `tracemalloc` growth (if tracing), and `objgraph` growth,
+    each line tagged with `label`. Prefer `track` below, which calls this
+    at both the start and end of an operation -- including when it
+    raises."""
     _log_rss(label)
     _log_tracemalloc_growth(label)
     _log_objgraph_growth(label)
@@ -104,10 +105,19 @@ def log_memory(label: str) -> None:
 @contextlib.contextmanager
 def track(label: str) -> Iterator[None]:
     """Wrap an operation (an MCP tool call, `load_credentials`, ...) to
-    `log_memory(label)` when it finishes -- including when it raises, so a
-    call that fails partway through (e.g. mid-OAuth-flow) is still
-    attributed instead of silently skipped."""
+    `log_memory` both when it starts and when it finishes -- the latter
+    including when it raises, so a call that fails partway through (e.g.
+    mid-OAuth-flow) is still attributed instead of silently skipped.
+
+    The "start" log is a sanity check as much as anything: since growth is
+    reported since the *previous* tracked operation, the diff it shows
+    should, in theory, be near zero -- nothing tracked should have run in
+    between. If it isn't, something is allocating outside of any tracked
+    operation (a background task, GC timing, ...), which is itself worth
+    knowing.
+    """
+    log_memory(f"{label} start")
     try:
         yield
     finally:
-        log_memory(label)
+        log_memory(f"{label} end")
