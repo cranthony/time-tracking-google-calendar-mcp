@@ -1,3 +1,4 @@
+import contextlib
 import dataclasses
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
@@ -16,6 +17,16 @@ from utilities.reallocation import ReallocationOptions
 UTC = timezone.utc
 
 
+@pytest.fixture(autouse=True)
+def _no_op_memory_tracking(monkeypatch):
+    """Every tool body is wrapped in `track(...)` (see
+    utilities/memory_diagnostics.py, which has its own dedicated tests) --
+    replaced here with a no-op so these tests exercise each tool's own
+    logic without the overhead of real RSS/tracemalloc/objgraph work on
+    every call."""
+    monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
+
+
 def _fake_client(monkeypatch) -> MagicMock:
     client = MagicMock()
     monkeypatch.setattr(server, "get_calendar_client", lambda: client)
@@ -32,6 +43,17 @@ def _fake_event_labels(monkeypatch) -> MagicMock:
     event_labels = MagicMock()
     monkeypatch.setattr(server, "get_calendar_with_event_labels", lambda: event_labels)
     return event_labels
+
+
+def _tracked_labels(monkeypatch) -> list[str]:
+    """Replaces the `_no_op_memory_tracking` fixture's no-op with one that
+    also records each label `track` was called with, for tests that need
+    to assert which one a tool used."""
+    labels: list[str] = []
+    monkeypatch.setattr(
+        server, "track", lambda label: labels.append(label) or contextlib.nullcontext()
+    )
+    return labels
 
 
 def _event(**overrides) -> Event:
@@ -421,3 +443,83 @@ class TestGetEventLabels:
 
         assert first is second
         assert len(built) == 1
+
+
+class TestMemoryTracking:
+    """Each tool wraps its body in `track(...)` -- see
+    utilities/memory_diagnostics.py, tested on its own merits in
+    tests/test_memory_diagnostics.py. These just confirm the wiring: the
+    right label, actually wrapping the call."""
+
+    def test_list_events(self, monkeypatch):
+        _fake_client(monkeypatch)
+        labels = _tracked_labels(monkeypatch)
+
+        server.list_events(
+            datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+        )
+
+        assert labels == ["list_events"]
+
+    def test_get_event(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.get_event.return_value = _event(id="abc123")
+        labels = _tracked_labels(monkeypatch)
+
+        server.get_event("abc123")
+
+        assert labels == ["get_event"]
+
+    def test_update_event(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
+        labels = _tracked_labels(monkeypatch)
+
+        server.update_event(_public_event(id="abc123"))
+
+        assert labels == ["update_event"]
+
+    def test_create_event(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.create_event.return_value = [_event(id="abc123")]
+        labels = _tracked_labels(monkeypatch)
+
+        server.create_event(_public_event())
+
+        assert labels == ["create_event"]
+
+    def test_delete_event(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.update_event.return_value = _event(id="abc123", status="cancelled")
+        labels = _tracked_labels(monkeypatch)
+
+        server.delete_event("abc123")
+
+        assert labels == ["delete_event"]
+
+    def test_create_event_label(self, monkeypatch):
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.create_label.return_value = []
+        labels = _tracked_labels(monkeypatch)
+
+        server.create_event_label(EventLabel(background_color="#8e24aa"))
+
+        assert labels == ["create_event_label"]
+
+    def test_update_event_label(self, monkeypatch):
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.update_label.return_value = []
+        labels = _tracked_labels(monkeypatch)
+
+        server.update_event_label(EventLabel(id="l1", background_color="#8e24aa"))
+
+        assert labels == ["update_event_label"]
+
+    def test_sync_event_labels_from_sheet(self, monkeypatch):
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.sync_labels.return_value = []
+        labels = _tracked_labels(monkeypatch)
+
+        server.sync_event_labels_from_sheet()
+
+        assert labels == ["sync_event_labels_from_sheet"]
