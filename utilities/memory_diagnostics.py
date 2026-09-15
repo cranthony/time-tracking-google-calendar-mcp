@@ -8,11 +8,13 @@ Three signals, each logged if available:
   Linux only, e.g. the Render container this app is deployed to; silently
   omitted elsewhere, such as local Windows dev).
 - `tracemalloc` growth since the end of the previously tracked operation
-  -- only if `tracemalloc` is tracing. Nothing here ever stops it once
-  started, and it's never started at all until RSS is first seen past
-  `_TRACING_THRESHOLD` of this process's own memory limit (see
-  `_memory_limit_bytes`) -- so its overhead (continuous, non-trivial) is
-  only paid once things are actually heading toward an OOM kill.
+  -- only if `tracemalloc` is tracing, which it is exactly when RSS is at
+  or above `_TRACING_THRESHOLD` of this process's own memory limit (see
+  `_memory_limit_bytes`): started the operation RSS first crosses it,
+  stopped the operation it first drops back below -- no hysteresis, and
+  always logged one last time first, right before stopping -- so its
+  overhead (continuous, non-trivial) is only paid while things are
+  actually near an OOM kill.
 - `objgraph` object-count growth since the previously tracked operation --
   cheap (a `gc.collect()` plus a count-by-type pass), so always run.
 
@@ -41,8 +43,9 @@ _TOP_N = 5
 """How many tracemalloc/objgraph entries to log per tracked operation."""
 
 _TRACING_THRESHOLD = 0.5
-"""Fraction of this process's own memory limit RSS has to cross before
-`tracemalloc` gets started (see `_maybe_start_tracemalloc`)."""
+"""Fraction of this process's own memory limit that decides whether
+`tracemalloc` should be tracing right now -- see
+`_sync_tracemalloc_tracing`."""
 
 _previous_tracemalloc_snapshot: tracemalloc.Snapshot | None = None
 """Set the first time `tracemalloc` is seen tracing; compared against on
@@ -114,29 +117,8 @@ def _memory_limit_bytes() -> int | None:
     return None
 
 
-def _maybe_start_tracemalloc(rss_bytes: int) -> None:
-    """Start `tracemalloc` if it isn't already, once `rss_bytes` crosses
-    `_TRACING_THRESHOLD` of this process's own memory limit -- see the
-    module docstring."""
-    if tracemalloc.is_tracing():
-        return
-    limit = _memory_limit_bytes()
-    if limit is None or rss_bytes < limit * _TRACING_THRESHOLD:
-        return
-    logger.warning(
-        "RSS %.1f MB crossed %.0f%% of the %.1f MB memory limit -- starting tracemalloc",
-        rss_bytes / (1024 * 1024),
-        _TRACING_THRESHOLD * 100,
-        limit / (1024 * 1024),
-    )
-    tracemalloc.start()
-
-
-def _log_rss(label: str) -> None:
-    rss = _current_rss_bytes()
-    if rss is not None:
-        logger.info("[%s] RSS: %.1f MB", label, rss / (1024 * 1024))
-        _maybe_start_tracemalloc(rss)
+def _log_rss(label: str, rss_bytes: int) -> None:
+    logger.info("[%s] RSS: %.1f MB", label, rss_bytes / (1024 * 1024))
 
 
 def _log_tracemalloc_growth(label: str) -> None:
@@ -161,14 +143,51 @@ def _log_objgraph_growth(label: str) -> None:
         logger.info("[%s] objgraph growth: %s: %d (+%d)", label, type_name, count, delta)
 
 
+def _sync_tracemalloc_tracing(rss_bytes: int) -> None:
+    """Start `tracemalloc` if `rss_bytes` is at or above `_TRACING_
+    THRESHOLD` of this process's own memory limit and it isn't tracing
+    yet, or stop it if it's below that same threshold and still is -- no
+    hysteresis. Must run after `_log_tracemalloc_growth` has already
+    logged this operation's growth: stopping here discards `tracemalloc`'s
+    state, so anything not already logged is lost."""
+    limit = _memory_limit_bytes()
+    if limit is None:
+        return
+    threshold_bytes = limit * _TRACING_THRESHOLD
+    tracing = tracemalloc.is_tracing()
+    if rss_bytes >= threshold_bytes and not tracing:
+        logger.warning(
+            "RSS %.1f MB crossed %.0f%% of the %.1f MB memory limit -- starting tracemalloc",
+            rss_bytes / (1024 * 1024),
+            _TRACING_THRESHOLD * 100,
+            limit / (1024 * 1024),
+        )
+        tracemalloc.start()
+    elif rss_bytes < threshold_bytes and tracing:
+        logger.warning(
+            "RSS %.1f MB dropped back below %.0f%% of the %.1f MB memory limit -- "
+            "stopping tracemalloc",
+            rss_bytes / (1024 * 1024),
+            _TRACING_THRESHOLD * 100,
+            limit / (1024 * 1024),
+        )
+        tracemalloc.stop()
+
+
 def log_memory(label: str) -> None:
     """Log RSS, `tracemalloc` growth (if tracing), and `objgraph` growth,
-    each line tagged with `label`. Prefer `track` below, which calls this
-    at both the start and end of an operation -- including when it
-    raises."""
-    _log_rss(label)
+    each line tagged with `label`, then start or stop `tracemalloc` to
+    match the current RSS (see `_sync_tracemalloc_tracing`) -- always
+    last, so a stop takes effect only after this operation's own growth
+    has already been logged. Prefer `track` below, which calls this at
+    both the start and end of an operation -- including when it raises."""
+    rss = _current_rss_bytes()
+    if rss is not None:
+        _log_rss(label, rss)
     _log_tracemalloc_growth(label)
     _log_objgraph_growth(label)
+    if rss is not None:
+        _sync_tracemalloc_tracing(rss)
 
 
 @contextlib.contextmanager

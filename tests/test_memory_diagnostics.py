@@ -40,33 +40,13 @@ class TestCurrentRssBytes:
 
 
 class TestLogRss:
-    def test_logs_when_available(self, monkeypatch, caplog):
-        monkeypatch.setattr(memory_diagnostics, "_current_rss_bytes", lambda: 100 * 1024 * 1024)
-        monkeypatch.setattr(memory_diagnostics, "_maybe_start_tracemalloc", lambda rss: None)
-
+    def test_logs_the_given_value(self, caplog):
         with caplog.at_level("INFO", logger=_LOGGER_NAME):
-            memory_diagnostics._log_rss("my-op")
+            memory_diagnostics._log_rss("my-op", 100 * 1024 * 1024)
 
         assert any(
             "my-op" in r.message and "100.0 MB" in r.message for r in caplog.records
         )
-
-    def test_logs_nothing_when_unavailable(self, monkeypatch, caplog):
-        monkeypatch.setattr(memory_diagnostics, "_current_rss_bytes", lambda: None)
-
-        with caplog.at_level("INFO", logger=_LOGGER_NAME):
-            memory_diagnostics._log_rss("my-op")
-
-        assert caplog.records == []
-
-    def test_checks_whether_to_start_tracemalloc_when_rss_is_available(self, monkeypatch):
-        monkeypatch.setattr(memory_diagnostics, "_current_rss_bytes", lambda: 100 * 1024 * 1024)
-        checked = []
-        monkeypatch.setattr(memory_diagnostics, "_maybe_start_tracemalloc", checked.append)
-
-        memory_diagnostics._log_rss("my-op")
-
-        assert checked == [100 * 1024 * 1024]
 
 
 def _fake_open(responses: dict[str, str]):
@@ -139,33 +119,20 @@ class TestMemoryLimitBytes:
         assert memory_diagnostics._memory_limit_bytes() is None
 
 
-class TestMaybeStartTracemalloc:
-    def test_does_nothing_if_already_tracing(self, monkeypatch):
-        tracemalloc.start()
-        try:
-            monkeypatch.setattr(
-                memory_diagnostics,
-                "_memory_limit_bytes",
-                lambda: (_ for _ in ()).throw(AssertionError("should not be called")),
-            )
-
-            memory_diagnostics._maybe_start_tracemalloc(10**12)  # would be way past any limit
-        finally:
-            tracemalloc.stop()
-
+class TestSyncTracemallocTracing:
     def test_does_nothing_when_the_limit_is_unknown(self, monkeypatch):
         assert not tracemalloc.is_tracing()
         monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: None)
 
-        memory_diagnostics._maybe_start_tracemalloc(10**12)
+        memory_diagnostics._sync_tracemalloc_tracing(10**12)
 
         assert not tracemalloc.is_tracing()
 
-    def test_does_nothing_below_the_threshold(self, monkeypatch):
+    def test_does_nothing_below_the_threshold_while_not_tracing(self, monkeypatch):
         assert not tracemalloc.is_tracing()
         monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
 
-        memory_diagnostics._maybe_start_tracemalloc(49)  # 49% of the limit
+        memory_diagnostics._sync_tracemalloc_tracing(49)  # 49% of the limit
 
         assert not tracemalloc.is_tracing()
 
@@ -174,9 +141,22 @@ class TestMaybeStartTracemalloc:
         monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
 
         try:
-            memory_diagnostics._maybe_start_tracemalloc(50)  # exactly 50% of the limit
+            memory_diagnostics._sync_tracemalloc_tracing(50)  # exactly 50% of the limit
 
             assert tracemalloc.is_tracing()
+        finally:
+            tracemalloc.stop()
+
+    def test_does_not_restart_if_already_tracing_above_the_threshold(self, monkeypatch, caplog):
+        tracemalloc.start()
+        try:
+            monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+
+            with caplog.at_level("WARNING", logger=_LOGGER_NAME):
+                memory_diagnostics._sync_tracemalloc_tracing(90)  # 90% of the limit
+
+            assert tracemalloc.is_tracing()
+            assert caplog.records == []
         finally:
             tracemalloc.stop()
 
@@ -185,11 +165,49 @@ class TestMaybeStartTracemalloc:
 
         try:
             with caplog.at_level("WARNING", logger=_LOGGER_NAME):
-                memory_diagnostics._maybe_start_tracemalloc(50)
+                memory_diagnostics._sync_tracemalloc_tracing(50)
 
-            assert any("tracemalloc" in r.message for r in caplog.records)
+            assert any("starting tracemalloc" in r.message for r in caplog.records)
         finally:
             tracemalloc.stop()
+
+    def test_stops_tracemalloc_once_back_below_the_threshold(self, monkeypatch):
+        tracemalloc.start()
+        monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+
+        memory_diagnostics._sync_tracemalloc_tracing(49)  # 49% of the limit -- no hysteresis
+
+        assert not tracemalloc.is_tracing()
+
+    def test_does_not_stop_while_still_tracing_at_the_threshold(self, monkeypatch):
+        tracemalloc.start()
+        try:
+            monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+
+            memory_diagnostics._sync_tracemalloc_tracing(50)  # exactly 50% of the limit
+
+            assert tracemalloc.is_tracing()
+        finally:
+            tracemalloc.stop()
+
+    def test_does_nothing_below_the_threshold_while_not_tracing_again(self, monkeypatch):
+        # Not tracing and below the threshold: nothing to start, nothing
+        # to stop.
+        assert not tracemalloc.is_tracing()
+        monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+
+        memory_diagnostics._sync_tracemalloc_tracing(10)
+
+        assert not tracemalloc.is_tracing()
+
+    def test_logs_a_warning_when_it_stops_tracing(self, monkeypatch, caplog):
+        tracemalloc.start()
+        monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+
+        with caplog.at_level("WARNING", logger=_LOGGER_NAME):
+            memory_diagnostics._sync_tracemalloc_tracing(49)
+
+        assert any("stopping tracemalloc" in r.message for r in caplog.records)
 
 
 class TestLogTracemallocGrowth:
@@ -255,10 +273,13 @@ class TestLogObjgraphGrowth:
 
 
 class TestLogMemory:
-    def test_calls_all_three_helpers_in_order(self, monkeypatch):
+    def test_calls_the_helpers_in_order_when_rss_is_available(self, monkeypatch):
         calls = []
+        monkeypatch.setattr(memory_diagnostics, "_current_rss_bytes", lambda: 100)
         monkeypatch.setattr(
-            memory_diagnostics, "_log_rss", lambda label: calls.append(("rss", label))
+            memory_diagnostics,
+            "_log_rss",
+            lambda label, rss: calls.append(("rss", label, rss)),
         )
         monkeypatch.setattr(
             memory_diagnostics,
@@ -270,10 +291,72 @@ class TestLogMemory:
             "_log_objgraph_growth",
             lambda label: calls.append(("objgraph", label)),
         )
+        monkeypatch.setattr(
+            memory_diagnostics,
+            "_sync_tracemalloc_tracing",
+            lambda rss: calls.append(("sync", rss)),
+        )
 
         log_memory("my-op")
 
-        assert calls == [("rss", "my-op"), ("tracemalloc", "my-op"), ("objgraph", "my-op")]
+        # tracemalloc growth (and objgraph growth) are logged before the
+        # sync that might stop tracemalloc, so a stop never discards
+        # growth this operation hasn't had a chance to log yet.
+        assert calls == [
+            ("rss", "my-op", 100),
+            ("tracemalloc", "my-op"),
+            ("objgraph", "my-op"),
+            ("sync", 100),
+        ]
+
+    def test_skips_rss_and_sync_when_rss_is_unavailable(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr(memory_diagnostics, "_current_rss_bytes", lambda: None)
+        monkeypatch.setattr(memory_diagnostics, "_log_rss", lambda label, rss: calls.append("rss"))
+        monkeypatch.setattr(
+            memory_diagnostics,
+            "_log_tracemalloc_growth",
+            lambda label: calls.append("tracemalloc"),
+        )
+        monkeypatch.setattr(
+            memory_diagnostics, "_log_objgraph_growth", lambda label: calls.append("objgraph")
+        )
+        monkeypatch.setattr(
+            memory_diagnostics, "_sync_tracemalloc_tracing", lambda rss: calls.append("sync")
+        )
+
+        log_memory("my-op")
+
+        assert calls == ["tracemalloc", "objgraph"]
+
+    def test_logs_final_tracemalloc_growth_before_stopping(self, monkeypatch, caplog):
+        # End-to-end: crossing the threshold starts tracemalloc; dropping
+        # back below it stops tracemalloc -- but not before this same
+        # call has already logged whatever grew up to that point.
+        monkeypatch.setattr(memory_diagnostics, "_memory_limit_bytes", lambda: 100)
+        rss_values = iter([60, 60, 10])  # start, establish baseline, drop back below
+        monkeypatch.setattr(memory_diagnostics, "_current_rss_bytes", lambda: next(rss_values))
+        leak = None
+        try:
+            log_memory("op1")  # 60% -- starts tracemalloc (nothing to diff against yet)
+            assert tracemalloc.is_tracing()
+
+            log_memory("op2")  # still 60% -- takes tracemalloc's first real snapshot
+
+            leak = ["x" * 1000 for _ in range(20000)]  # something for op3 to see as growth
+
+            with caplog.at_level("INFO", logger=_LOGGER_NAME):
+                log_memory("op3")  # 10% -- logs growth from `leak`, then stops
+
+            assert not tracemalloc.is_tracing()
+            assert any(
+                "op3" in r.message and "tracemalloc growth" in r.message
+                for r in caplog.records
+            )
+        finally:
+            del leak
+            if tracemalloc.is_tracing():
+                tracemalloc.stop()
 
 
 class TestTrack:
