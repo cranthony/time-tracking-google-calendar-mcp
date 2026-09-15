@@ -394,9 +394,8 @@ class TestReallocatingCalendarUpdateEvent:
         events = [
             event_at("20:00-20:30", id="1"),
             event_at("20:30-20:45", id="2"),
-            event_at("20:45-21:00", id="3"),
-            event_at("21:00-21:15", id="4", min_duration=timedelta(minutes=15)),
-            event_at("21:15-07:00+1", id="sleep", is_end_of_day_sleep=True),
+            event_at("20:45-21:15", id="3", priority=0, min_duration=timedelta(minutes=30)),
+            event_at("21:15-07:00+1", id="sleep", priority=0, is_end_of_day_sleep=True),
         ]
         def _list_events(start: datetime, end: datetime) -> list[Event]:
             return [
@@ -416,9 +415,8 @@ class TestReallocatingCalendarUpdateEvent:
 
         assert result == [
             event_at("20:00-21:00", id="1"),
-            event_at("21:00-21:15", id="2"),
-            event_at("21:15-21:30", id="3"),
-            event_at("21:30-21:45", id="4", min_duration=timedelta(minutes=15)),
-            event_at("21:45-07:00+1", id="sleep", is_end_of_day_sleep=True),
+            event_at("20:30-20:45", id="2", status="cancelled"),
+            event_at("21:00-21:30", id="3", priority=0, min_duration=timedelta(minutes=30)),
+            event_at("21:30-07:00+1", id="sleep", priority=0, is_end_of_day_sleep=True),
         ]
         client.list_events.assert_called_once()
