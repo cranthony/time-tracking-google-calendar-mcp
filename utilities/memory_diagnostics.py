@@ -8,11 +8,13 @@ Three signals, each logged if available:
   Linux only, e.g. the Render container this app is deployed to; silently
   omitted elsewhere, such as local Windows dev).
 - `tracemalloc` growth since the end of the previously tracked operation
-  -- only if `tracemalloc` is already tracing. Starting/stopping it is
-  someone else's job (e.g. a background sampler that turns it on once
-  memory crosses some threshold); this module only reports on it if it's
-  already running, so using `track` costs nothing extra until that
-  happens.
+  -- only if `tracemalloc` is tracing, which it is exactly when RSS is at
+  or above `_TRACING_THRESHOLD` of this process's own memory limit (see
+  `_memory_limit_bytes`): started the operation RSS first crosses it,
+  stopped the operation it first drops back below -- no hysteresis, and
+  always logged one last time first, right before stopping -- so its
+  overhead (continuous, non-trivial) is only paid while things are
+  actually near an OOM kill.
 - `objgraph` object-count growth since the previously tracked operation --
   cheap (a `gc.collect()` plus a count-by-type pass), so always run.
 
@@ -26,6 +28,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
 import tracemalloc
 from collections.abc import Iterator
 
@@ -38,6 +41,11 @@ logger = logging.getLogger(__name__)
 
 _TOP_N = 5
 """How many tracemalloc/objgraph entries to log per tracked operation."""
+
+_TRACING_THRESHOLD = 0.5
+"""Fraction of this process's own memory limit that decides whether
+`tracemalloc` should be tracing right now -- see
+`_sync_tracemalloc_tracing`."""
 
 _previous_tracemalloc_snapshot: tracemalloc.Snapshot | None = None
 """Set the first time `tracemalloc` is seen tracing; compared against on
@@ -64,10 +72,53 @@ def _current_rss_bytes() -> int | None:
     return None
 
 
-def _log_rss(label: str) -> None:
-    rss = _current_rss_bytes()
-    if rss is not None:
-        logger.info("[%s] RSS: %.1f MB", label, rss / (1024 * 1024))
+def _memory_limit_bytes() -> int | None:
+    """This process's own memory limit, in bytes, or `None` if it can't be
+    determined. Tried in order:
+
+    - `MEMORY_LIMIT_BYTES`, an explicit override -- for a host that
+      doesn't expose one of the below (or to test this against a smaller
+      limit than the real one).
+    - cgroup v2's `memory.max` (the modern default on most container
+      platforms, Render included, as best as can be confirmed -- Render
+      doesn't document a dedicated memory-limit environment variable, but
+      the limit it enforces has to live in the cgroup doing the
+      enforcing, regardless of platform specifics). Its content is the
+      literal string "max" if there's no limit.
+    - cgroup v1's `memory.limit_in_bytes`, for hosts still on the legacy
+      hierarchy. "No limit" here isn't a sentinel string but an
+      absurdly large number (best practice: reject anything at or above
+      2**62, far beyond any real container's limit) -- `LLONG_MAX` rounded
+      down to the page size, specifically.
+    """
+    env_override = os.environ.get("MEMORY_LIMIT_BYTES")
+    if env_override:
+        try:
+            return int(env_override)
+        except ValueError:
+            logger.warning("MEMORY_LIMIT_BYTES=%r is not a valid integer; ignoring", env_override)
+
+    try:
+        with open("/sys/fs/cgroup/memory.max", encoding="ascii") as limit_file:
+            value = limit_file.read().strip()
+        if value != "max":
+            return int(value)
+    except (OSError, ValueError):
+        pass
+
+    try:
+        with open("/sys/fs/cgroup/memory/memory.limit_in_bytes", encoding="ascii") as limit_file:
+            value = int(limit_file.read().strip())
+        if value < 2**62:
+            return value
+    except (OSError, ValueError):
+        pass
+
+    return None
+
+
+def _log_rss(label: str, rss_bytes: int) -> None:
+    logger.info("[%s] RSS: %.1f MB", label, rss_bytes / (1024 * 1024))
 
 
 def _log_tracemalloc_growth(label: str) -> None:
@@ -92,14 +143,51 @@ def _log_objgraph_growth(label: str) -> None:
         logger.info("[%s] objgraph growth: %s: %d (+%d)", label, type_name, count, delta)
 
 
+def _sync_tracemalloc_tracing(rss_bytes: int) -> None:
+    """Start `tracemalloc` if `rss_bytes` is at or above `_TRACING_
+    THRESHOLD` of this process's own memory limit and it isn't tracing
+    yet, or stop it if it's below that same threshold and still is -- no
+    hysteresis. Must run after `_log_tracemalloc_growth` has already
+    logged this operation's growth: stopping here discards `tracemalloc`'s
+    state, so anything not already logged is lost."""
+    limit = _memory_limit_bytes()
+    if limit is None:
+        return
+    threshold_bytes = limit * _TRACING_THRESHOLD
+    tracing = tracemalloc.is_tracing()
+    if rss_bytes >= threshold_bytes and not tracing:
+        logger.warning(
+            "RSS %.1f MB crossed %.0f%% of the %.1f MB memory limit -- starting tracemalloc",
+            rss_bytes / (1024 * 1024),
+            _TRACING_THRESHOLD * 100,
+            limit / (1024 * 1024),
+        )
+        tracemalloc.start()
+    elif rss_bytes < threshold_bytes and tracing:
+        logger.warning(
+            "RSS %.1f MB dropped back below %.0f%% of the %.1f MB memory limit -- "
+            "stopping tracemalloc",
+            rss_bytes / (1024 * 1024),
+            _TRACING_THRESHOLD * 100,
+            limit / (1024 * 1024),
+        )
+        tracemalloc.stop()
+
+
 def log_memory(label: str) -> None:
     """Log RSS, `tracemalloc` growth (if tracing), and `objgraph` growth,
-    each line tagged with `label`. Prefer `track` below, which calls this
-    at both the start and end of an operation -- including when it
-    raises."""
-    _log_rss(label)
+    each line tagged with `label`, then start or stop `tracemalloc` to
+    match the current RSS (see `_sync_tracemalloc_tracing`) -- always
+    last, so a stop takes effect only after this operation's own growth
+    has already been logged. Prefer `track` below, which calls this at
+    both the start and end of an operation -- including when it raises."""
+    rss = _current_rss_bytes()
+    if rss is not None:
+        _log_rss(label, rss)
     _log_tracemalloc_growth(label)
     _log_objgraph_growth(label)
+    if rss is not None:
+        _sync_tracemalloc_tracing(rss)
 
 
 @contextlib.contextmanager
