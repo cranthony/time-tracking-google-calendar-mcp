@@ -5,3 +5,4 @@ google-auth-oauthlib==1.4.1
 tzdata==2026.3
 python-dotenv==1.2.3
 PyJWT[crypto]==2.14.0
+objgraph==3.6.2

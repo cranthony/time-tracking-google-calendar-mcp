@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -17,9 +18,17 @@ from config import (
 )
 from utilities.event_labels import EventLabels, EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.memory_diagnostics import track
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 from workos_auth import WorkOSTokenVerifier
+
+# Without this, INFO-level logs (utilities/memory_diagnostics.py's, e.g.)
+# are silently dropped -- the root logger defaults to WARNING with no
+# handler. Its default StreamHandler writes to stderr, never stdout, so
+# this is safe under the stdio transport too, whose protocol messages
+# themselves go over stdout.
+logging.basicConfig(level=logging.INFO)
 
 # "stdio" (the default) is for local use -- a client spawns this process
 # directly (Claude Desktop's local config, `mcp dev`). "streamable-http" is
@@ -157,17 +166,19 @@ def get_calendar_with_event_labels() -> EventLabels:
 @mcp.tool()
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     """List events between min_time and max_time."""
-    events = get_calendar_client().list_events(min_time, max_time)
-    return [PublicEvent.from_event(event) for event in events if event.status != "cancelled"]
+    with track("list_events"):
+        events = get_calendar_client().list_events(min_time, max_time)
+        return [PublicEvent.from_event(event) for event in events if event.status != "cancelled"]
 
 
 @mcp.tool()
 def get_event(id: str) -> PublicEvent:
     """Get a single event by its ID."""
-    event = get_calendar_client().get_event(id)
-    if event.status == "cancelled":
-        raise ToolError(f"Event {id} has been cancelled.")
-    return PublicEvent.from_event(event)
+    with track("get_event"):
+        event = get_calendar_client().get_event(id)
+        if event.status == "cancelled":
+            raise ToolError(f"Event {id} has been cancelled.")
+        return PublicEvent.from_event(event)
 
 
 @mcp.tool()
@@ -175,30 +186,35 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
     """Update an existing event, reallocating time from the rest of its
     day as needed to make room for its new position. Returns the events
     affected by the update."""
-    updated_event = event.to_event()
-    try:
-        applied = get_reallocating_calendar().update_event(updated_event, ReallocationOptions())
-    except ValueError as exc:
-        raise ToolError(str(exc)) from exc
-    return [PublicEvent.from_event(e) for e in applied]
+    with track("update_event"):
+        updated_event = event.to_event()
+        try:
+            applied = get_reallocating_calendar().update_event(
+                updated_event, ReallocationOptions()
+            )
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return [PublicEvent.from_event(e) for e in applied]
 
 
 @mcp.tool()
 def create_event(event: PublicEvent) -> list[PublicEvent]:
     """Create a new event. Returns the events affected by the creation."""
-    new_event = event.to_event()
-    try:
-        applied = get_reallocating_calendar().create_event(new_event, ReallocationOptions())
-    except ValueError as exc:
-        raise ToolError(str(exc)) from exc
-    return [PublicEvent.from_event(e) for e in applied]
+    with track("create_event"):
+        new_event = event.to_event()
+        try:
+            applied = get_reallocating_calendar().create_event(new_event, ReallocationOptions())
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return [PublicEvent.from_event(e) for e in applied]
 
 
 @mcp.tool()
 def delete_event(id: str) -> list[PublicEvent]:
     """Delete an event by its ID. Returns the events affected by the deletion."""
-    cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
-    return [PublicEvent.from_event(cancelled)]
+    with track("delete_event"):
+        cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
+        return [PublicEvent.from_event(cancelled)]
 
 
 @mcp.tool()
@@ -209,10 +225,11 @@ def create_event_label(
     priority. Returns the resulting list of every event label -- there's
     no separate way to list labels; use this, update_event_label, or
     sync_event_labels_from_sheet to see the current ones."""
-    try:
-        return get_calendar_with_event_labels().create_label(label)
-    except (ValueError, EventLabelConflictError) as exc:
-        raise ToolError(str(exc)) from exc
+    with track("create_event_label"):
+        try:
+            return get_calendar_with_event_labels().create_label(label)
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
@@ -220,10 +237,11 @@ def update_event_label(label: EventLabel) -> list[EventLabel]:
     """Update an existing event label's background color, name, and/or
     priority. Any omitted properties keep their current value. Returns
     the resulting list of every event label -- see create_event_label."""
-    try:
-        return get_calendar_with_event_labels().update_label(label)
-    except (ValueError, EventLabelConflictError) as exc:
-        raise ToolError(str(exc)) from exc
+    with track("update_event_label"):
+        try:
+            return get_calendar_with_event_labels().update_label(label)
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
@@ -237,10 +255,11 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
     is tracked on this calendar -- that's
     a one-time, human-run bootstrap step (see create_calendar.py), not
     something this server can do on its own."""
-    try:
-        return get_calendar_with_event_labels().sync_labels()
-    except (ValueError, EventLabelConflictError) as exc:
-        raise ToolError(str(exc)) from exc
+    with track("sync_event_labels_from_sheet"):
+        try:
+            return get_calendar_with_event_labels().sync_labels()
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
 
 
 if __name__ == "__main__":
