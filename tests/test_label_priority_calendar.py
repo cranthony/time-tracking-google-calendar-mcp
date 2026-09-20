@@ -18,10 +18,13 @@ def _event(**overrides) -> Event:
     return Event(**fields)
 
 
-def _calendar(event_labels_priorities: dict) -> tuple[LabelPriorityCalendar, MagicMock, MagicMock]:
+def _calendar(
+    event_labels_priorities: dict, event_labels_fixed_times: dict | None = None
+) -> tuple[LabelPriorityCalendar, MagicMock, MagicMock]:
     client = MagicMock()
     event_labels = MagicMock()
     event_labels.label_priorities.return_value = event_labels_priorities
+    event_labels.label_fixed_times.return_value = event_labels_fixed_times or {}
     return LabelPriorityCalendar(client, event_labels), client, event_labels
 
 
@@ -98,6 +101,80 @@ class TestListEvents:
 
         client.list_events.assert_called_once_with(time_min, time_max)
 
+    def test_fills_in_fixed_time_from_the_event_label_when_unset(self):
+        calendar, client, _ = _calendar({}, {"label-1": True})
+        client.list_events.return_value = [
+            _event(event_label_id="label-1", is_fixed_time=None)
+        ]
+
+        events = calendar.list_events(
+            datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)
+        )
+
+        assert events[0].is_fixed_time is True
+
+    def test_forces_min_duration_to_full_duration_when_fixed_time_filled_in(self):
+        calendar, client, _ = _calendar({}, {"label-1": True})
+        client.list_events.return_value = [
+            _event(event_label_id="label-1", is_fixed_time=None, min_duration=timedelta(minutes=5))
+        ]
+
+        events = calendar.list_events(
+            datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)
+        )
+
+        assert events[0].min_duration == timedelta(hours=1)
+
+    def test_leaves_an_explicit_fixed_time_alone(self):
+        calendar, client, _ = _calendar({}, {"label-1": True})
+        client.list_events.return_value = [
+            _event(event_label_id="label-1", is_fixed_time=False, min_duration=timedelta(minutes=5))
+        ]
+
+        events = calendar.list_events(
+            datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)
+        )
+
+        assert events[0].is_fixed_time is False
+        assert events[0].min_duration == timedelta(minutes=5)
+
+    def test_leaves_fixed_time_unset_when_the_label_says_false(self):
+        calendar, client, _ = _calendar({}, {"label-1": False})
+        client.list_events.return_value = [
+            _event(event_label_id="label-1", is_fixed_time=None)
+        ]
+
+        events = calendar.list_events(
+            datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)
+        )
+
+        assert events[0].is_fixed_time is None
+
+    def test_leaves_fixed_time_unset_when_the_label_has_none_of_its_own(self):
+        calendar, client, _ = _calendar({}, {"label-1": None})
+        client.list_events.return_value = [
+            _event(event_label_id="label-1", is_fixed_time=None)
+        ]
+
+        events = calendar.list_events(
+            datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)
+        )
+
+        assert events[0].is_fixed_time is None
+
+    def test_fills_in_both_priority_and_fixed_time_together(self):
+        calendar, client, _ = _calendar({"label-1": 3}, {"label-1": True})
+        client.list_events.return_value = [
+            _event(event_label_id="label-1", priority=None, is_fixed_time=None)
+        ]
+
+        events = calendar.list_events(
+            datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)
+        )
+
+        assert events[0].priority == 3
+        assert events[0].is_fixed_time is True
+
 
 class TestGetEvent:
     def test_fills_in_priority_from_the_event_label_when_unset(self):
@@ -117,6 +194,14 @@ class TestGetEvent:
 
         assert event.priority == 1
 
+    def test_fills_in_fixed_time_from_the_event_label_when_unset(self):
+        calendar, client, _ = _calendar({}, {"label-1": True})
+        client.get_event.return_value = _event(event_label_id="label-1", is_fixed_time=None)
+
+        event = calendar.get_event("abc123")
+
+        assert event.is_fixed_time is True
+
 
 class TestCreateAndUpdateEvent:
     def test_create_event_passes_straight_through(self):
@@ -129,6 +214,7 @@ class TestCreateAndUpdateEvent:
         assert result is new_event
         client.create_event.assert_called_once_with(new_event)
         event_labels.label_priorities.assert_not_called()
+        event_labels.label_fixed_times.assert_not_called()
 
     def test_update_event_passes_straight_through(self):
         calendar, client, event_labels = _calendar({})
@@ -140,3 +226,4 @@ class TestCreateAndUpdateEvent:
         assert result is updated_event
         client.update_event.assert_called_once_with(updated_event)
         event_labels.label_priorities.assert_not_called()
+        event_labels.label_fixed_times.assert_not_called()

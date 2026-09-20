@@ -1,22 +1,24 @@
 """The logical event label: a calendar's raw label (calendar_clients/
-google_calendar.py's CalendarClient/EventLabel) plus a priority sourced from
-a synced Google Sheet (utilities/event_label_sheet.py's EventLabelSheet).
+google_calendar.py's CalendarClient/EventLabel) plus a priority and a
+fixed_time flag, both sourced from a synced Google Sheet (utilities/
+event_label_sheet.py's EventLabelSheet).
 
-Google Calendar's own label resource has no field for priority at all (see
-that module's EventLabel), so it lives only in the sheet. EventLabels here is
-the glue between the two: it's application-level policy (how a raw label and
-a sheet row combine into one EventLabel, and how creating/updating/syncing
-should resolve a color from a priority), not API integration, which is why it
-doesn't live on either CalendarClient or EventLabelSheet -- the same
-relationship utilities/reallocating_calendar.py's ReallocatingCalendar has
-with CalendarClient.
+Google Calendar's own label resource has no field for priority (or
+fixed_time) at all (see that module's EventLabel), so both live only in
+the sheet. EventLabels here is the glue between the two: it's
+application-level policy (how a raw label and a sheet row combine into
+one EventLabel, and how creating/updating/syncing should resolve a color
+from a priority), not API integration, which is why it doesn't live on
+either CalendarClient or EventLabelSheet -- the same relationship
+utilities/reallocating_calendar.py's ReallocatingCalendar has with
+CalendarClient.
 
 This module's EventLabel is a different class from calendar_clients/
 google_calendar.py's EventLabel (same name, deliberately -- one is the "raw"
 label, this is the richer one everything except raw_label CLI commands
 should use), with `background_color` optional (derived from `priority` via
-`color_for_priority` when left unset) and `priority` itself, neither of which
-the raw one has.
+`color_for_priority` when left unset), `priority`, and `fixed_time`, none of
+which the raw one has.
 """
 
 from __future__ import annotations
@@ -74,6 +76,14 @@ class EventLabels:
         priority up, e.g. to fill it in on an event that doesn't have one
         of its own (see `utilities/label_priority_calendar.py`)."""
         return {label.id: label.priority for label in self._get_sheet_labels() if label.id is not None}
+
+    def label_fixed_times(self) -> dict[str, bool | None]:
+        """label id -> fixed_time, straight from the tracked sheet -- the
+        `fixed_time` counterpart to `label_priorities`, read the same way
+        and used the same way (see `utilities/label_priority_calendar.py`)."""
+        return {
+            label.id: label.fixed_time for label in self._get_sheet_labels() if label.id is not None
+        }
 
     def sync_labels(self) -> list[EventLabel]:
         """Assume that the Sheet is the authority and sync its labels with the calendar."""

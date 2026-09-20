@@ -239,6 +239,7 @@ class TestFormatEventDetails:
         assert "location" not in details
         assert "min_duration" not in details
         assert "is_fixed_duration" not in details
+        assert "is_fixed_time" not in details
         assert "priority" not in details
 
     def test_includes_optional_fields_when_set(self):
@@ -247,6 +248,7 @@ class TestFormatEventDetails:
             location="Room",
             min_duration=timedelta(minutes=30),
             is_fixed_duration=True,
+            is_fixed_time=True,
             priority=1,
         )
 
@@ -256,6 +258,7 @@ class TestFormatEventDetails:
         assert "location: Room" in details
         assert "min_duration: 0:30:00" in details
         assert "is_fixed_duration: True" in details
+        assert "is_fixed_time: True" in details
         assert "priority: 1" in details
 
 

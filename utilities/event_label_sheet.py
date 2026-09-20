@@ -29,8 +29,8 @@ _ID_COLUMN_PIXEL_WIDTH = 60
 """Narrow -- users aren't expected to care about the ID column's
 contents, just that it's there and round-trips."""
 
-_HEADER_RANGE = "A1:D1"
-_DATA_RANGE = "A2:D"
+_HEADER_RANGE = "A1:E1"
+_DATA_RANGE = "A2:E"
 
 
 @dataclass(kw_only=True)
@@ -57,6 +57,13 @@ class EventLabel:
     priority: int | None = None
     """This label's priority, if known -- see the module docstring."""
 
+    fixed_time: bool | None = None
+    """Whether events with this label should keep their start/end time
+    fixed -- see `calendar_clients.google_calendar.Event.is_fixed_time`
+    and `utilities/reallocation.py`'s "Fixed time" section. Sourced
+    purely from the sheet, the same way `priority` is -- Google
+    Calendar's raw label resource has no room for it either."""
+
     @classmethod
     def from_raw(cls, raw: RawEventLabel) -> "EventLabel":
         return cls(**asdict(raw))
@@ -80,19 +87,25 @@ class EventLabel:
             name=decoded.get("name") or None,
             background_color=decoded.get("background_color") or None,
             priority=int(decoded["priority"]) if decoded.get("priority") else None,
+            fixed_time=(
+                decoded["fixed_time"].strip().lower() == "true" if decoded.get("fixed_time") else None
+            ),
         )
 
     def to_row(self, header_row: list[str], original_row: list[str] | None = None) -> list[str]:
         field_names = {f.name for f in fields(self)}
         result = []
         for i, header in enumerate(header_row):
-            if header in field_names:
-                value = getattr(self, header)
-                result.append("" if value is None else str(value))
-            elif original_row is not None and i < len(original_row):
-                result.append(original_row[i])
+            if header not in field_names:
+                result.append(
+                    original_row[i] if original_row is not None and i < len(original_row) else ""
+                )
+                continue
+            value = getattr(self, header)
+            if header == "fixed_time" and value is not None:
+                result.append("TRUE" if value else "FALSE")
             else:
-                result.append("")
+                result.append("" if value is None else str(value))
         return result
 
 

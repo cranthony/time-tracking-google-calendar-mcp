@@ -35,6 +35,38 @@ simply have its `min_duration` already equal to its own duration (e.g.
 min_duration_overrides` (event id → minutes) overrides an event's effective
 `min_duration` for this call only.
 
+## Fixed time
+
+An event with `is_fixed_time` true must end up at exactly the `start`/`end`
+it already has when `day_events` is handed in — not just its own duration
+protected (the same convention as "Minimum duration" above applies here
+too: a `Schedulable` whose `is_fixed_time` is true should already have its
+`min_duration` set to its own full duration, since its duration can't
+shrink either — `Event.from_api` does this at load time for an explicit
+`is_fixed_time`, and `utilities/label_priority_calendar.py` does it when
+one is inherited from the event's label).
+
+Nothing in steps 1-6 treats a fixed-time event specially: it can still be
+displaced during a single pass, exactly like any other event of the same
+priority -- moved whole to make room for a preceding overlap (step 1,
+since its `min_duration` always equals its own duration, it's never the
+one split into a continuation -- see step 1's "otherwise" branch), or
+cancelled outright if the day doesn't have enough other capacity (step
+5's second pass, which ignores `min_duration` -- and therefore
+`is_fixed_time` -- entirely). What's special is what happens *after*:
+`reallocate_for_new_event` inspects the result for any `is_fixed_time`
+event that moved away from its original position without being
+cancelled, and re-runs the whole algorithm once more per such event,
+treating it as a new arrival being reinserted at that exact original
+position -- reclaiming whatever's now occupying it, which may in turn
+displace another `is_fixed_time` event, triggering a further repair
+pass. This repeats until nothing needs repairing, or raises `ValueError`
+if two or more `is_fixed_time` events can't simultaneously hold their
+original positions (their combined repairs would cycle forever
+otherwise). A fixed-time event that's successfully repaired back to
+exactly where it started isn't reported as changed -- nothing about it
+actually needs to be written back.
+
 ## The algorithm
 
 Given `day_events`, a candidate `new_event` with a real `start` and `end`
@@ -59,9 +91,9 @@ see `ReallocationOptions.resolved()`):
    `new_event.end` is at least `options.resolved().split_threshold_minutes`,
    a clone of it is also inserted into `day_events` right after
    `new_event`, representing that portion: `start` set to `new_event.end`,
-   summary suffixed `" (continued)"` (unless already present),
    `min_duration` reduced by however much of the original event now
-   precedes it, and no `id` (so callers can tell it's new). Otherwise --
+   precedes it, and no `id` (so callers can tell it's new) -- same
+   `summary` as the original, unchanged. Otherwise --
    shrinking down to its own `min_duration` still wouldn't clear
    `new_event.start` -- it isn't truncated at all: it moves whole,
    untouched, to right after `new_event` instead (ahead of whatever else
@@ -140,6 +172,7 @@ class Schedulable(Protocol):
     status: str | None
     priority: int | None
     min_duration: timedelta | None
+    is_fixed_time: bool | None
 
     def clone(self) -> "Schedulable":
         """A copy of the underlying object (not just this `Schedulable`
@@ -349,9 +382,6 @@ class _Reallocation:
             # The leftover is big enough that we want to split it into a new event.
             continuation = preceding.clone()
             continuation.id = None
-            suffix = " (continued)"
-            if not (continuation.summary or "").endswith(suffix):
-                continuation.summary = f"{continuation.summary or ''}{suffix}"
             continuation.min_duration = max(timedelta(0), preceding_min - new_preceding_duration)
             continuation.start = new_event.end
             continuation.end = preceding.end
@@ -493,18 +523,74 @@ def reallocate_for_new_event(
     lowest-priority events (and free time) in `day_events` — the complete
     list of events for `new_event`'s day, gathered by the caller. Returns
     every event that needs to be created or updated to realize the
-    result, sorted by `start` (step 7). Doesn't apply the plan itself (no
+    result, sorted by `start`. Doesn't apply the plan itself (no
     `create_event`/`update_event` calls) — that's the caller's job.
 
     Raises `ValueError` if `day_events` fails step 0's validation (not
     sorted, overlapping, already contains `new_event`'s `id`, or has
-    nothing ending after `new_event.end`). Given valid `day_events`,
+    nothing ending after `new_event.end`), or if a fixed-time repair pass
+    (see "Fixed time" above) can't converge because two or more
+    fixed-time events conflict. Given valid, non-conflicting `day_events`,
     reallocating itself can't otherwise fail: the immediately preceding
     event, if any, always shrinks enough to clear `new_event.start`
     (step 1), and every other event can be shrunk and then cancelled
     outright regardless of priority (step 5), with step 0 already
     guaranteeing something extends past `new_event.end`.
 
-    See the module docstring for the full algorithm.
+    See the module docstring for the full algorithm, including how a
+    fixed-time event that gets displaced during a pass is repaired
+    afterward.
     """
-    return _Reallocation(day_events, new_event, options).run()
+    # Every fixed-time event's true original position, snapshotted once
+    # up front -- a repair pass always restores THIS, not wherever an
+    # earlier repair pass happened to leave it. new_event itself is never
+    # tracked here: it's always placed exactly where the caller asked, so
+    # it can never "shift" relative to itself.
+    fixed_time_originals: dict[int, tuple[Schedulable, datetime, datetime]] = {
+        id(event): (event, event.start, event.end) for event in day_events if event.is_fixed_time
+    }
+
+    changed: dict[int, Schedulable] = {}
+    current_day_events = day_events
+    current_new_event = new_event
+
+    # Each fixed-time event can plausibly need repairing once per
+    # cascade; one more pass than that without converging means two or
+    # more of them are fighting over the same time and would otherwise
+    # loop forever repairing each other in turn.
+    for _ in range(len(fixed_time_originals) + 1):
+        pass_result = _Reallocation(current_day_events, current_new_event, options)
+        for event in pass_result.run():
+            changed[id(event)] = event
+
+        shifted = next(
+            (
+                (event, original_start, original_end)
+                for event, original_start, original_end in fixed_time_originals.values()
+                if event.status != "cancelled" and (event.start, event.end) != (original_start, original_end)
+            ),
+            None,
+        )
+        if shifted is None:
+            break
+
+        event, original_start, original_end = shifted
+        current_day_events = [
+            e for e in pass_result.day_events if e is not event and e.status != "cancelled"
+        ]
+        event.start = original_start
+        event.end = original_end
+        current_new_event = event
+    else:
+        raise ValueError(
+            "Two or more fixed-time events conflict -- they can't all keep their "
+            "original start/end times."
+        )
+
+    # A fixed-time event repaired back to exactly where it started hasn't
+    # really changed -- don't report it (and so don't write it back).
+    for event, original_start, original_end in fixed_time_originals.values():
+        if event.status != "cancelled" and (event.start, event.end) == (original_start, original_end):
+            changed.pop(id(event), None)
+
+    return sorted(changed.values(), key=lambda event: event.start)

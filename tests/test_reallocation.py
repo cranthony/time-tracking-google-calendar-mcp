@@ -232,7 +232,7 @@ class TestReallocateForNewEvent:
         continuation = by_start[2]
         assert continuation is not preceding
         assert continuation.id is None
-        assert continuation.summary == "Long meeting (continued)"
+        assert continuation.summary == "Long meeting"
         # new_event landed entirely inside preceding's own original span,
         # with room on both sides -- preceding's split already accounts
         # for new_event's whole duration, so nothing extra is reclaimed
@@ -544,3 +544,107 @@ class TestReallocateForNewEvent:
         assert evening_sleep.start == time_at("20:00")
         assert evening_sleep.end == time_at("07:00+1")
         assert evening_sleep not in result
+
+
+class TestFixedTimeRepair:
+    def test_displaced_fixed_time_event_is_repaired_and_the_new_event_gives_way_instead(self):
+        # preceding can't retain its own min_duration before new_event's
+        # start (10 of its 30 minutes), so step 1 moves it whole -- but
+        # since it's fixed_time, that displacement gets repaired: it ends
+        # up back at its exact original position, and new_event (the
+        # thing that would have displaced it) gets pushed later instead.
+        preceding = event_at(
+            "09:00-09:30",
+            id="p1",
+            priority=1,
+            is_fixed_time=True,
+            min_duration=timedelta(minutes=30),
+        )
+        anchor = event_at("09:30-10:30", id="a1", priority=1)
+        new_event = event_at("09:10-09:40", priority=1)
+
+        result = reallocate_for_new_event([preceding, anchor], new_event, ReallocationOptions())
+
+        # preceding is back exactly where it started -- nothing to write,
+        # not reported.
+        assert preceding.start == time_at("09:00")
+        assert preceding.end == time_at("09:30")
+        assert preceding not in result
+
+        assert new_event in result
+        assert new_event.end - new_event.start == timedelta(minutes=30)
+        assert new_event.start >= preceding.end
+
+    def test_fixed_time_event_that_gets_cancelled_is_not_repaired(self):
+        # Nothing else in the day can cover new_event's full span, so
+        # fixed (despite is_fixed_time) is cancelled outright in step 5's
+        # second pass -- the one outcome a fixed-time event doesn't get
+        # undone for.
+        fixed = event_at(
+            "09:00-10:00", id="f1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
+        )
+        anchor = event_at("10:00-10:05", id="a1", priority=1, min_duration=timedelta(minutes=5))
+        new_event = event_at("09:00-10:00", priority=1)
+
+        result = reallocate_for_new_event([fixed, anchor], new_event, ReallocationOptions())
+
+        assert fixed.status == "cancelled"
+        assert fixed in result
+
+    def test_cascading_fixed_time_displacement_converges_by_drawing_from_lower_priority(self):
+        # Both a and b are fixed_time and directly adjacent; new_event
+        # falls inside a, displacing it (step 1). Repairing a back to its
+        # original position would, in turn, need to displace b -- but
+        # repairing draws from whatever's cheapest across the whole day
+        # (anchor, the lowest-priority/most reclaimable event), not from
+        # b, so both fixed-time events converge back to their exact
+        # original positions without ever conflicting with each other.
+        a = event_at(
+            "09:00-10:00", id="a1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
+        )
+        b = event_at(
+            "10:00-11:00", id="b1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
+        )
+        anchor = event_at("11:00-12:00", id="anchor1", priority=3)
+        new_event = event_at("09:30-09:45", priority=1)
+
+        result = reallocate_for_new_event([a, b, anchor], new_event, ReallocationOptions())
+
+        assert a.start == time_at("09:00")
+        assert a.end == time_at("10:00")
+        assert a not in result
+        assert b.start == time_at("10:00")
+        assert b.end == time_at("11:00")
+        assert b not in result
+        # anchor absorbed the cost instead -- shrunk and pushed later.
+        assert anchor in result
+        assert anchor.end - anchor.start < timedelta(hours=1)
+
+    def test_raises_when_fixed_time_events_cannot_all_keep_their_positions(self):
+        # Two fixed-time events, back to back, with nothing else in the
+        # day to draw from -- new_event's own displacement of one has
+        # nowhere to go but the other, which can't be resolved without
+        # violating one or the other's fixed position.
+        a = event_at(
+            "09:00-10:00", id="a1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
+        )
+        b = event_at(
+            "10:00-11:00", id="b1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
+        )
+        new_event = event_at("09:30-09:45", priority=1)
+
+        with pytest.raises(ValueError):
+            reallocate_for_new_event([a, b], new_event, ReallocationOptions())
+
+    def test_unrelated_fixed_time_event_is_left_alone(self):
+        leading = event_at("08:30-10:00", id="lead1", priority=3)
+        fixed = event_at(
+            "20:00-21:00", id="f1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
+        )
+        new_event = event_at("09:00-09:30", priority=1)
+
+        result = reallocate_for_new_event([leading, fixed], new_event, ReallocationOptions())
+
+        assert fixed.start == time_at("20:00")
+        assert fixed.end == time_at("21:00")
+        assert fixed not in result
