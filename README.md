@@ -110,7 +110,7 @@ MCP has both **tools** (model-controlled: the model decides when to call one, wi
 Each calendar this app manages has one shared **calendar metadata spreadsheet** ([`utilities/calendar_metadata_sheet.py`](utilities/calendar_metadata_sheet.py)), titled "Calendar Metadata" — one tab per kind of Sheet-backed data this app keeps for that calendar. Today that's:
 
 - **Event Labels** — since Google Calendar has no field for an event label's priority, this app keeps it here instead: one row per label, four columns: **ID** (deliberately narrow — nobody's expected to care what it is, just that it's there), **Name**, **Background Color**, **Priority**.
-- **Uncompacted Time Notes** — provisioned (empty) by [`create_calendar.py`](create_calendar.py); no MCP tool or CLI command reads/writes it yet.
+- **Noted Times** (uncompacted time notes) — provisioned (empty) by [`create_calendar.py`](create_calendar.py); no MCP tool or CLI command reads/writes it yet.
 
 **Finding a tab doesn't rely on its title or position.** Both the spreadsheet and each tab within it are located by a stable tag instead, so renaming a tab (or the spreadsheet itself), or reordering tabs, never breaks the app's ability to find the right one again:
 

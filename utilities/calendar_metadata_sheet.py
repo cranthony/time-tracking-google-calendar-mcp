@@ -106,7 +106,7 @@ def ensure_tab(
 
 
 TIME_NOTES_SHEET_ROLE = "uncompacted-time-notes"
-TIME_NOTES_SHEET_TITLE = "Uncompacted Time Notes"
+TIME_NOTES_SHEET_TITLE = "Noted Times"
 """No MCP tool or CLI command reads/writes this tab yet -- schema is a
 separate, future step (see `config.ensure_time_notes_sheet`). This just
 provisions its container, the same one-time bootstrap reasoning as
