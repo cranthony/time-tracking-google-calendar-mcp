@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 from calendar_clients.google_auth import load_credentials
 from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
+from utilities import calendar_metadata_sheet
 from utilities.event_labels import EventLabels
 
 load_dotenv()
@@ -132,3 +133,24 @@ def build_event_labels(calendar_id: str | None = None) -> EventLabels:
     it didn't already -- see `EventLabels.__init__`."""
     calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
     return EventLabels(calendar_client, sheets_client)
+
+
+def ensure_time_notes_sheet(calendar_id: str | None = None) -> str:
+    """Ensure `calendar_id`'s calendar metadata spreadsheet has a tab for
+    tracking uncompacted time notes, creating an empty one (tagged and
+    colored, see `utilities/calendar_metadata_sheet.py`) if it doesn't
+    exist yet. No MCP tool or CLI command reads/writes this tab yet --
+    like `build_event_labels`, this only provisions its container, a
+    one-time bootstrap step -- see `create_calendar.py`. Returns the
+    calendar metadata spreadsheet's id."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    calendar_metadata_sheet.ensure_tab(
+        sheets_client,
+        spreadsheet_id,
+        role=calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE,
+        title=calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE,
+    )
+    return spreadsheet_id

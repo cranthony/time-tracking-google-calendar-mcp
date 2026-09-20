@@ -3,13 +3,15 @@ from unittest.mock import MagicMock
 import pytest
 
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
+from utilities import calendar_metadata_sheet
 from utilities.event_label_sheet import DEFAULT_SHEET_TITLE, EventLabel, EventLabelSheet
 
 _HEADER_ROW = ["id", "name", "background_color", "priority"]
+_SHEET_ID = 42
 
 
-def make_sheet(sheets_client=None, spreadsheet_id: str = "sheet-1") -> EventLabelSheet:
-    return EventLabelSheet(sheets_client or MagicMock(), spreadsheet_id)
+def make_sheet(sheets_client=None, spreadsheet_id: str = "sheet-1", sheet_id: int = _SHEET_ID) -> EventLabelSheet:
+    return EventLabelSheet(sheets_client or MagicMock(), spreadsheet_id, sheet_id)
 
 
 class TestEventLabelFromRaw:
@@ -115,52 +117,87 @@ class TestEventLabelToRow:
         assert row == ["l1", ""]
 
 
-class TestEventLabelSheetCreate:
-    def test_creates_spreadsheet_narrows_id_column_and_writes_header(self):
+class TestEventLabelSheetEnsure:
+    def test_reuses_an_already_tagged_tab_without_writing_anything(self):
         sheets_client = MagicMock()
-        sheets_client.create_spreadsheet.return_value = "sheet-1"
+        sheets_client.find_sheet_id.return_value = _SHEET_ID
 
-        spreadsheet_id = EventLabelSheet.create(sheets_client, "My Labels")
+        sheet = EventLabelSheet.ensure(sheets_client, "sheet-1", is_new_spreadsheet=False)
 
-        assert spreadsheet_id == "sheet-1"
-        sheets_client.create_spreadsheet.assert_called_once_with("My Labels")
+        assert sheet.spreadsheet_id == "sheet-1"
+        sheets_client.add_sheet.assert_not_called()
+        sheets_client.update_sheet_properties.assert_not_called()
+        sheets_client.set_column_width.assert_not_called()
+        sheets_client.write_rows_in_sheet.assert_not_called()
+
+    def test_adopts_sheet_zero_narrows_column_and_writes_header_for_a_new_spreadsheet(self):
+        sheets_client = MagicMock()
+        sheets_client.find_sheet_id.return_value = None
+
+        EventLabelSheet.ensure(sheets_client, "sheet-1", is_new_spreadsheet=True)
+
+        sheets_client.update_sheet_properties.assert_called_once_with(
+            "sheet-1", 0, title=DEFAULT_SHEET_TITLE, tab_color=calendar_metadata_sheet._TAB_COLOR
+        )
+        sheets_client.create_sheet_metadata.assert_called_once_with(
+            "sheet-1", 0, "sheet-role", "event-labels"
+        )
         sheets_client.set_column_width.assert_called_once_with(
             "sheet-1", sheet_id=0, column_index=0, pixel_width=60
         )
-        sheets_client.write_rows.assert_called_once_with("sheet-1", "A1:D1", [_HEADER_ROW])
+        sheets_client.write_rows_in_sheet.assert_called_once_with("sheet-1", 0, "A1:D1", [_HEADER_ROW])
 
-    def test_defaults_title(self):
+    def test_writes_initial_labels_as_data_rows_for_a_new_spreadsheet(self):
         sheets_client = MagicMock()
-        sheets_client.create_spreadsheet.return_value = "sheet-1"
-
-        EventLabelSheet.create(sheets_client)
-
-        sheets_client.create_spreadsheet.assert_called_once_with(DEFAULT_SHEET_TITLE)
-
-    def test_writes_initial_labels_as_data_rows(self):
-        sheets_client = MagicMock()
-        sheets_client.create_spreadsheet.return_value = "sheet-1"
+        sheets_client.find_sheet_id.return_value = None
         initial_labels = [
             EventLabel(id="l1", name="Design Work", background_color="#8e24aa"),
             EventLabel(id="l2", background_color="#d50000"),
         ]
 
-        EventLabelSheet.create(sheets_client, initial_labels=initial_labels)
+        EventLabelSheet.ensure(sheets_client, "sheet-1", is_new_spreadsheet=True, initial_labels=initial_labels)
 
-        assert sheets_client.write_rows.call_args_list[-1].args == (
+        assert sheets_client.write_rows_in_sheet.call_args_list[-1].args == (
             "sheet-1",
+            0,
             "A2:D",
             [["l1", "Design Work", "#8e24aa", ""], ["l2", "", "#d50000", ""]],
         )
 
     def test_skips_data_write_when_no_initial_labels_given(self):
         sheets_client = MagicMock()
-        sheets_client.create_spreadsheet.return_value = "sheet-1"
+        sheets_client.find_sheet_id.return_value = None
 
-        EventLabelSheet.create(sheets_client)
+        EventLabelSheet.ensure(sheets_client, "sheet-1", is_new_spreadsheet=True)
 
-        # Only the header row write -- no second write_rows call for data.
-        assert sheets_client.write_rows.call_count == 1
+        # Only the header row write -- no second write for data.
+        assert sheets_client.write_rows_in_sheet.call_count == 1
+
+    def test_does_not_repopulate_an_adopted_legacy_spreadsheet(self):
+        # Not yet tagged (this is the first time this spreadsheet's tab
+        # gets tagged), but it's an *adopted* pre-existing spreadsheet
+        # (is_new_spreadsheet=False) -- its sheetId 0 already has real
+        # header/data rows from before per-tab tagging existed, so they
+        # must not be overwritten, even though the tab itself still gets
+        # renamed/colored/tagged.
+        sheets_client = MagicMock()
+        sheets_client.find_sheet_id.return_value = None
+
+        EventLabelSheet.ensure(
+            sheets_client,
+            "sheet-1",
+            is_new_spreadsheet=False,
+            initial_labels=[EventLabel(id="l1", background_color="#8e24aa")],
+        )
+
+        sheets_client.update_sheet_properties.assert_called_once_with(
+            "sheet-1", 0, title=DEFAULT_SHEET_TITLE, tab_color=calendar_metadata_sheet._TAB_COLOR
+        )
+        sheets_client.create_sheet_metadata.assert_called_once_with(
+            "sheet-1", 0, "sheet-role", "event-labels"
+        )
+        sheets_client.set_column_width.assert_not_called()
+        sheets_client.write_rows_in_sheet.assert_not_called()
 
 
 class TestEventLabelSheetSpreadsheetId:
@@ -173,7 +210,7 @@ class TestEventLabelSheetSpreadsheetId:
 class TestEventLabelSheetRead:
     def test_reads_and_parses_data_rows(self):
         sheets_client = MagicMock()
-        sheets_client.read_rows.side_effect = lambda spreadsheet_id, rng: {
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
             "A1:D1": [_HEADER_ROW],
             "A2:D": [["l1", "Design Work", "#8e24aa", "1"]],
         }[rng]
@@ -187,7 +224,7 @@ class TestEventLabelSheetRead:
 
     def test_returns_empty_list_when_no_data_rows(self):
         sheets_client = MagicMock()
-        sheets_client.read_rows.side_effect = lambda spreadsheet_id, rng: {
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
             "A1:D1": [_HEADER_ROW],
             "A2:D": [],
         }[rng]
@@ -197,7 +234,7 @@ class TestEventLabelSheetRead:
 
     def test_raises_when_header_is_missing_expected_columns(self):
         sheets_client = MagicMock()
-        sheets_client.read_rows.return_value = [["id", "name"]]
+        sheets_client.read_rows_in_sheet.return_value = [["id", "name"]]
         event_label_sheet = make_sheet(sheets_client)
 
         with pytest.raises(ValueError):
@@ -207,7 +244,7 @@ class TestEventLabelSheetRead:
 class TestEventLabelSheetWrite:
     def test_overwrites_data_rows_preserving_unknown_columns(self):
         sheets_client = MagicMock()
-        sheets_client.read_rows.side_effect = lambda spreadsheet_id, rng: {
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
             "A1:D1": [_HEADER_ROW],
             "A2:D": [["l1", "Old Name", "#000000", ""]],
         }[rng]
@@ -217,13 +254,13 @@ class TestEventLabelSheetWrite:
             [EventLabel(id="l1", name="New Name", background_color="#8e24aa", priority=2)]
         )
 
-        sheets_client.write_rows.assert_called_once_with(
-            "sheet-1", "A2:D", [["l1", "New Name", "#8e24aa", "2"]]
+        sheets_client.write_rows_in_sheet.assert_called_once_with(
+            "sheet-1", _SHEET_ID, "A2:D", [["l1", "New Name", "#8e24aa", "2"]]
         )
 
     def test_handles_more_labels_than_previous_rows(self):
         sheets_client = MagicMock()
-        sheets_client.read_rows.side_effect = lambda spreadsheet_id, rng: {
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
             "A1:D1": [_HEADER_ROW],
             "A2:D": [],
         }[rng]
@@ -231,15 +268,15 @@ class TestEventLabelSheetWrite:
 
         event_label_sheet.write([EventLabel(id="l1", background_color="#8e24aa")])
 
-        sheets_client.write_rows.assert_called_once_with(
-            "sheet-1", "A2:D", [["l1", "", "#8e24aa", ""]]
+        sheets_client.write_rows_in_sheet.assert_called_once_with(
+            "sheet-1", _SHEET_ID, "A2:D", [["l1", "", "#8e24aa", ""]]
         )
 
 
 class TestEventLabelSheetAppend:
     def test_adds_a_new_row_after_existing_rows(self):
         sheets_client = MagicMock()
-        sheets_client.read_rows.side_effect = lambda spreadsheet_id, rng: {
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
             "A1:D1": [_HEADER_ROW],
             "A2:D": [["l1", "Design Work", "#8e24aa", ""]],
         }[rng]
@@ -247,15 +284,16 @@ class TestEventLabelSheetAppend:
 
         event_label_sheet.append(EventLabel(name="New One", priority=2))
 
-        sheets_client.write_rows.assert_called_once_with(
+        sheets_client.write_rows_in_sheet.assert_called_once_with(
             "sheet-1",
+            _SHEET_ID,
             "A2:D",
             [["l1", "Design Work", "#8e24aa", ""], ["", "New One", "", "2"]],
         )
 
     def test_appends_to_an_empty_sheet(self):
         sheets_client = MagicMock()
-        sheets_client.read_rows.side_effect = lambda spreadsheet_id, rng: {
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
             "A1:D1": [_HEADER_ROW],
             "A2:D": [],
         }[rng]
@@ -263,6 +301,6 @@ class TestEventLabelSheetAppend:
 
         event_label_sheet.append(EventLabel(name="New One"))
 
-        sheets_client.write_rows.assert_called_once_with(
-            "sheet-1", "A2:D", [["", "New One", "", ""]]
+        sheets_client.write_rows_in_sheet.assert_called_once_with(
+            "sheet-1", _SHEET_ID, "A2:D", [["", "New One", "", ""]]
         )

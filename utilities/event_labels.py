@@ -25,15 +25,8 @@ from dataclasses import asdict, astuple, replace
 
 from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel
 from calendar_clients.google_sheets import SheetsClient
+from utilities import calendar_metadata_sheet
 from utilities.event_label_sheet import EventLabelSheet, EventLabel
-
-_SHEET_ID_METADATA_KEY = "event-label-sheet-id"
-"""The CalendarClient.get_calendar_metadata/set_calendar_metadata key this
-app stores the event label sheet's spreadsheet id under -- on the
-calendar itself, rather than something found by searching Drive, so
-find_sheet is a single deterministic lookup instead of a "most recently
-modified" guess among however many sheets this app has created."""
-
 
 
 class EventLabels:
@@ -51,17 +44,17 @@ class EventLabels:
     def __init__(self, calendar_client: CalendarClient, sheets_client: SheetsClient) -> None:
         self._calendar_client = calendar_client
 
-        event_label_sheet_id = self._calendar_client.get_calendar_metadata(_SHEET_ID_METADATA_KEY)
-        if event_label_sheet_id is None:
-            # Create the initial event label sheet, and prepopulate it with the
-            # current set of event labels.
-            event_label_sheet_id = EventLabelSheet.create(
-                sheets_client,
-                initial_labels=self._get_calendar_labels(),
-            )
-            self._calendar_client.set_calendar_metadata(_SHEET_ID_METADATA_KEY, event_label_sheet_id)
-
-        self._event_label_sheet = EventLabelSheet(sheets_client, event_label_sheet_id)
+        spreadsheet_id, is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+            calendar_client, sheets_client
+        )
+        self._event_label_sheet = EventLabelSheet.ensure(
+            sheets_client,
+            spreadsheet_id,
+            is_new_spreadsheet=is_new_spreadsheet,
+            # Prepopulate a brand-new sheet with the calendar's current
+            # labels; an adopted pre-existing one already has its own.
+            initial_labels=self._get_calendar_labels() if is_new_spreadsheet else None,
+        )
 
     @property
     def sheet_id(self) -> str:
