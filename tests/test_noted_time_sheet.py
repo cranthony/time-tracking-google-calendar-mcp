@@ -272,7 +272,32 @@ class TestNotedTimeSheetClear:
                 timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc), description="Started work"
             ),
         ]
-        sheets_client.clear_rows_in_sheet.assert_called_once_with("sheet-1", _SHEET_ID, "A2:B")
+        # Bounded to exactly the two rows just read (rows 2-3), not the
+        # open-ended "A2:B" -- see NotedTimeSheet.clear.
+        sheets_client.clear_rows_in_sheet.assert_called_once_with("sheet-1", _SHEET_ID, "A2:B3")
+
+    def test_does_not_clear_rows_appended_after_the_read(self):
+        # Simulates a note appended concurrently, between clear()'s read
+        # and its clear: the bounded range (A2:B3, from the two rows read)
+        # doesn't reach the newly appended row 4.
+        sheets_client = MagicMock()
+        reads = iter(
+            [
+                [_HEADER_ROW],
+                [
+                    ["2026-01-01T09:00:00+00:00", "First"],
+                    ["2026-01-01T10:00:00+00:00", "Second"],
+                ],
+            ]
+        )
+        sheets_client.read_rows_in_sheet.side_effect = lambda *_args: next(reads)
+        noted_time_sheet = make_sheet(sheets_client)
+
+        cleared = noted_time_sheet.clear()
+
+        assert [n.description for n in cleared] == ["First", "Second"]
+        (_, _, cleared_range), _ = sheets_client.clear_rows_in_sheet.call_args
+        assert cleared_range == "A2:B3"
 
     def test_returns_empty_list_when_nothing_to_clear(self):
         sheets_client = MagicMock()
@@ -285,4 +310,6 @@ class TestNotedTimeSheetClear:
         cleared = noted_time_sheet.clear()
 
         assert cleared == []
-        sheets_client.clear_rows_in_sheet.assert_called_once_with("sheet-1", _SHEET_ID, "A2:B")
+        # Nothing was read, so there's nothing to clear -- and no valid
+        # bounded range to build.
+        sheets_client.clear_rows_in_sheet.assert_not_called()

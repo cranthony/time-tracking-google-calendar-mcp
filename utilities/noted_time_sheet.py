@@ -150,9 +150,25 @@ class NotedTimeSheet:
         timestamp, same as `read`. Uses `SheetsClient.clear_rows_in_sheet`
         rather than `write_rows_in_sheet([])`, since the latter only
         overwrites however many rows it's given and would leave every
-        existing row untouched instead of actually removing them."""
+        existing row untouched instead of actually removing them.
+
+        The Sheets API has no ETag/If-Match-style precondition for
+        values writes to guard this against a note appended concurrently,
+        in between the read above and the clear below (confirmed: even
+        `spreadsheets.batchUpdate`'s `requiredRevisionId` field is
+        silently ignored by the server, unlike the Calendar API's
+        `etag`/`If-Match`, which `CalendarClient` relies on elsewhere).
+        Instead, the clear is bounded to exactly the rows just read
+        (`A2:B{last row}`, not the open-ended `_DATA_RANGE`) -- since
+        `append` always adds to the end, a note appended in that window
+        lands in a row past this bound and survives, rather than being
+        silently swept up and left unreported."""
         noted_times = self.read()
-        self._sheets_client.clear_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
+        if noted_times:
+            last_row = 1 + len(noted_times)  # row 1 is the header; data starts at row 2
+            self._sheets_client.clear_rows_in_sheet(
+                self._spreadsheet_id, self._sheet_id, f"{_DATA_RANGE}{last_row}"
+            )
         return noted_times
 
     def _read_header(self) -> list[str]:
