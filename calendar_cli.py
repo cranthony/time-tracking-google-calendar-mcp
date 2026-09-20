@@ -16,7 +16,7 @@ Usage:
     python calendar_cli.py create_label key=value [key=value ...]
     python calendar_cli.py update_label <label_id> key=value [key=value ...]
     python calendar_cli.py sync_labels
-    python calendar_cli.py note <timestamp> [description]
+    python calendar_cli.py note <ago> [description]
     python calendar_cli.py get_notes
 
 - `list` shows events between `from` before now and `to` after now, each a
@@ -78,10 +78,12 @@ Usage:
   delete a row to delete its label, then run this to apply those changes
   back to the calendar (and to see the resulting labels, even with no
   sheet changes pending).
-- `note` records a new uncompacted time note -- `timestamp` (an ISO 8601
-  datetime with a UTC offset, e.g. "2026-01-01T09:00:00+00:00") is
-  required, `description` is an optional free-text note about what that
-  timestamp marks (quote it if it contains spaces). Appended to this
+- `note` records a new uncompacted time note -- `ago` is required, and
+  (like `list`'s `from`/`to` above) a pytimeparse duration (e.g. "1h",
+  "90m", "0s" for right now) giving how long before *now* this note is
+  for, resolved the same way `list`'s window is (see `resolve_note_
+  timestamp`). `description` is an optional free-text note about what
+  that moment marks (quote it if it contains spaces). Appended to this
   calendar's tracked noted-times tab (`utilities/noted_time_sheet.py`'s
   `NotedTimeSheet`, creating that tab, pre-populated with just its
   header row, the first time this runs if it doesn't exist yet).
@@ -242,6 +244,16 @@ def resolve_window(
     if now is None:
         now = datetime.now(timezone.utc)
     return now - timedelta(seconds=from_seconds), now + timedelta(seconds=to_seconds)
+
+
+def resolve_note_timestamp(seconds_ago: float, now: datetime | None = None) -> datetime:
+    """Resolve `seconds_ago` (how long before `now` -- default: the
+    current time -- a note is for) into an absolute datetime, the same
+    "duration relative to now" convention `resolve_window` uses for
+    `list`'s `from`/`to`."""
+    if now is None:
+        now = datetime.now(timezone.utc)
+    return now - timedelta(seconds=seconds_ago)
 
 
 def _format_event_line(event: Event) -> str:
@@ -421,7 +433,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     note_parser = subparsers.add_parser("note", help="Record a new uncompacted time note.")
     note_parser.add_argument(
-        "timestamp", type=_parse_iso_datetime, help="ISO 8601 datetime, with a UTC offset."
+        "ago",
+        type=_parse_duration,
+        help=(
+            "How long before now this note is for, as a pytimeparse duration "
+            '(e.g. "1h", "90m", "0s" for right now).'
+        ),
     )
     note_parser.add_argument(
         "description", nargs="?", help="Optional free-text description of what this marks."
@@ -546,7 +563,9 @@ def main() -> None:
         for label in labels:
             print(_format_event_label_line(label))
     elif args.command == "note":
-        noted_time = NotedTime(timestamp=args.timestamp, description=args.description)
+        noted_time = NotedTime(
+            timestamp=resolve_note_timestamp(args.ago), description=args.description
+        )
         build_noted_time_sheet().append(noted_time)
         print(_format_event_details(noted_time))
     elif args.command == "get_notes":
