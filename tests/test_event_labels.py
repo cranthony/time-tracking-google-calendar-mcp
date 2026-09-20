@@ -5,7 +5,7 @@ import pytest
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.event_labels import EventLabel, EventLabels
 
-_HEADER_ROW = ["id", "name", "background_color", "priority"]
+_HEADER_ROW = ["id", "name", "background_color", "priority", "fixed_time"]
 _SPREADSHEET_ID_KEY = "calendar-metadata-spreadsheet-id"
 _EVENT_LABELS_SHEET_ID = 42
 """Arbitrary, non-None -- returned by find_sheet_id below to simulate an
@@ -24,7 +24,7 @@ def _sheets_client(rows: list[list[str]]) -> MagicMock:
     tests/test_calendar_metadata_sheet.py and
     tests/test_event_label_sheet.py's TestEventLabelSheetEnsure for
     that."""
-    state = {"A1:D1": [_HEADER_ROW], "A2:D": rows}
+    state = {"A1:E1": [_HEADER_ROW], "A2:E": rows}
     sheets_client = MagicMock()
     sheets_client.find_sheet_id.return_value = _EVENT_LABELS_SHEET_ID
     sheets_client.read_rows_in_sheet.side_effect = lambda _spreadsheet_id, _sheet_id, rng: state[rng]
@@ -74,8 +74,8 @@ class TestInit:
         assert sheets_client.write_rows_in_sheet.call_args_list[-1].args == (
             "new-sheet",
             0,
-            "A2:D",
-            [["l1", "Design Work", "#8e24aa", ""]],
+            "A2:E",
+            [["l1", "Design Work", "#8e24aa", "", ""]],
         )
 
 
@@ -84,8 +84,8 @@ class TestLabelPriorities:
         calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
         sheets_client = _sheets_client(
             [
-                ["l1", "Design Work", "#8e24aa", "1"],
-                ["l2", "Admin", "#7ae7bf", "3"],
+                ["l1", "Design Work", "#8e24aa", "1", ""],
+                ["l2", "Admin", "#7ae7bf", "3", ""],
             ]
         )
         event_labels = EventLabels(calendar_client, sheets_client)
@@ -94,17 +94,48 @@ class TestLabelPriorities:
 
     def test_omits_a_label_with_no_priority_set(self):
         calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
-        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", ""]])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         assert event_labels.label_priorities() == {"l1": None}
 
     def test_does_not_write_to_the_sheet_or_calendar(self):
         calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
-        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1"]])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         event_labels.label_priorities()
+
+        sheets_client.write_rows_in_sheet.assert_not_called()
+        calendar_client.replace_event_labels.assert_not_called()
+
+
+class TestLabelFixedTimes:
+    def test_returns_fixed_time_by_label_id_from_the_sheet(self):
+        calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
+        sheets_client = _sheets_client(
+            [
+                ["l1", "Design Work", "#8e24aa", "", "TRUE"],
+                ["l2", "Admin", "#7ae7bf", "", "FALSE"],
+            ]
+        )
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        assert event_labels.label_fixed_times() == {"l1": True, "l2": False}
+
+    def test_omits_a_label_with_no_fixed_time_set(self):
+        calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "", ""]])
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        assert event_labels.label_fixed_times() == {"l1": None}
+
+    def test_does_not_write_to_the_sheet_or_calendar(self):
+        calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "", "TRUE"]])
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        event_labels.label_fixed_times()
 
         sheets_client.write_rows_in_sheet.assert_not_called()
         calendar_client.replace_event_labels.assert_not_called()
@@ -115,7 +146,7 @@ class TestSyncLabels:
         calendar_client = _tracked_calendar_client(
             raw_labels=[RawEventLabel(id="l1", background_color="#8e24aa", name="Design Work")],
         )
-        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1"]])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         result = event_labels.sync_labels()
@@ -128,7 +159,7 @@ class TestSyncLabels:
         calendar_client = _tracked_calendar_client(
             raw_labels=[RawEventLabel(id="l1", background_color="#8e24aa", name="Design Work")],
         )
-        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1"]])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         event_labels.sync_labels()
@@ -140,7 +171,7 @@ class TestSyncLabels:
         calendar_client.replace_event_labels.return_value = [
             RawEventLabel(id="new-id", background_color="#8e24aa", name="Design Work"),
         ]
-        sheets_client = _sheets_client([["", "Design Work", "#8e24aa", "2"]])
+        sheets_client = _sheets_client([["", "Design Work", "#8e24aa", "2", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         result = event_labels.sync_labels()
@@ -150,8 +181,8 @@ class TestSyncLabels:
         assert result == [
             EventLabel(id="new-id", name="Design Work", background_color="#8e24aa", priority=2)
         ]
-        assert sheets_client.read_rows_in_sheet(None, _EVENT_LABELS_SHEET_ID, "A2:D") == [
-            ["new-id", "Design Work", "#8e24aa", "2"]
+        assert sheets_client.read_rows_in_sheet(None, _EVENT_LABELS_SHEET_ID, "A2:E") == [
+            ["new-id", "Design Work", "#8e24aa", "2", ""]
         ]
 
     def test_matches_new_ids_back_to_rows_by_content_not_position(self):
@@ -164,7 +195,7 @@ class TestSyncLabels:
             RawEventLabel(id="id-a", background_color="#111111", name="Label A"),
         ]
         sheets_client = _sheets_client(
-            [["", "Label A", "#111111", ""], ["", "Label B", "#222222", ""]]
+            [["", "Label A", "#111111", "", ""], ["", "Label B", "#222222", "", ""]]
         )
         event_labels = EventLabels(calendar_client, sheets_client)
 
@@ -185,7 +216,7 @@ class TestSyncLabels:
             RawEventLabel(id="id-2", background_color="#8e24aa", name="Design Work"),
         ]
         sheets_client = _sheets_client(
-            [["", "Design Work", "#8e24aa", "1"], ["", "Design Work", "#8e24aa", "2"]]
+            [["", "Design Work", "#8e24aa", "1", ""], ["", "Design Work", "#8e24aa", "2", ""]]
         )
         event_labels = EventLabels(calendar_client, sheets_client)
 
@@ -204,7 +235,7 @@ class TestSyncLabels:
             RawEventLabel(id="new-id", background_color="#8e24aa", name="Design Work"),
         ]
         sheets_client = _sheets_client(
-            [["l1", "Design Work", "#8e24aa", "1"], ["", "Design Work", "#8e24aa", "2"]]
+            [["l1", "Design Work", "#8e24aa", "1", ""], ["", "Design Work", "#8e24aa", "2", ""]]
         )
         event_labels = EventLabels(calendar_client, sheets_client)
 
@@ -220,7 +251,7 @@ class TestSyncLabels:
         calendar_client.replace_event_labels.return_value = [
             RawEventLabel(id="id-x", background_color="#999999", name="Something Else"),
         ]
-        sheets_client = _sheets_client([["", "Design Work", "#8e24aa", ""]])
+        sheets_client = _sheets_client([["", "Design Work", "#8e24aa", "", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         with pytest.raises(ValueError):
@@ -231,7 +262,7 @@ class TestSyncLabels:
         calendar_client.replace_event_labels.return_value = [
             RawEventLabel(id="new-id", background_color="#8e24aa", name="Design Work"),
         ]
-        sheets_client = _sheets_client([["", "Design Work", "#8e24aa", ""]])
+        sheets_client = _sheets_client([["", "Design Work", "#8e24aa", "", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         event_labels.sync_labels()
@@ -264,7 +295,7 @@ class TestSyncLabels:
         calendar_client.replace_event_labels.return_value = [
             RawEventLabel(id="l1", background_color="#8e24aa", name="Design Work"),
         ]
-        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", ""]])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         event_labels.sync_labels()
@@ -304,7 +335,7 @@ class TestUpdateLabel:
 
     def test_raises_when_id_is_unknown(self):
         calendar_client = _tracked_calendar_client(raw_labels=[])
-        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", ""]])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         with pytest.raises(ValueError):
@@ -317,7 +348,7 @@ class TestUpdateLabel:
         calendar_client.replace_event_labels.return_value = [
             RawEventLabel(id="l1", background_color="#8e24aa", name="New Name"),
         ]
-        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", ""]])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "", ""]])
         event_labels = EventLabels(calendar_client, sheets_client)
 
         event_labels.update_label(EventLabel(id="l1", name="New Name"))

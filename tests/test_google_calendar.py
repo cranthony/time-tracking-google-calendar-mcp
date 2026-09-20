@@ -49,6 +49,7 @@ class TestEvent:
         assert event.recurring_event_id is None
         assert event.min_duration is None
         assert event.is_fixed_duration is None
+        assert event.is_fixed_time is None
         assert event.priority is None
         assert event.is_end_of_day_sleep is None
         assert event.event_label_id is None
@@ -165,6 +166,22 @@ class TestEvent:
 
         assert event.min_duration == timedelta(hours=1)
 
+    def test_from_api_forces_min_duration_to_full_duration_when_fixed_time(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["extendedProperties"] = {
+            "private": {
+                "cascading-time-tracker-min_duration": "30",
+                "cascading-time-tracker-is_fixed_time": "true",
+            }
+        }
+
+        event = Event.from_api(data)
+
+        assert event.min_duration == timedelta(hours=1)
+        assert event.is_fixed_time is True
+
     def test_from_api_parses_is_fixed_duration_false(self):
         data = api_event(
             "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
@@ -177,6 +194,18 @@ class TestEvent:
 
         assert event.is_fixed_duration is False
 
+    def test_from_api_parses_is_fixed_time_false(self):
+        data = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        data["extendedProperties"] = {
+            "private": {"cascading-time-tracker-is_fixed_time": "false"}
+        }
+
+        event = Event.from_api(data)
+
+        assert event.is_fixed_time is False
+
     def test_from_api_ignores_other_private_keys(self):
         data = api_event(
             "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
@@ -187,6 +216,7 @@ class TestEvent:
 
         assert event.min_duration is None
         assert event.is_fixed_duration is None
+        assert event.is_fixed_time is None
         assert event.priority is None
         assert event.is_end_of_day_sleep is None
 
@@ -337,6 +367,18 @@ class TestEvent:
 
         assert event.to_api_body()["extendedProperties"] == {
             "private": {"cascading-time-tracker-is_fixed_duration": "false"}
+        }
+
+    def test_to_api_body_includes_is_fixed_time_true(self):
+        event = Event(
+            summary="Focus block",
+            start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+            end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            is_fixed_time=True,
+        )
+
+        assert event.to_api_body()["extendedProperties"] == {
+            "private": {"cascading-time-tracker-is_fixed_time": "true"}
         }
 
     def test_to_api_body_includes_only_the_app_properties_that_are_set(self):

@@ -55,20 +55,21 @@ Usage:
   and the event label sheet.
 - `create_label`/`update_label` manage the same labels, but as
   `utilities/event_labels.py`'s richer `EventLabel` (via `EventLabels`),
-  which also has a `priority` (`background_color=value`/`name=value`/
-  `priority=value` pairs; `background_color` may be left unset if
+  which also has a `priority` and a `fixed_time` flag
+  (`background_color=value`/`name=value`/`priority=value`/
+  `fixed_time=value` pairs; `background_color` may be left unset if
   `priority` is given, deriving it the same way `Event.colorId` does;
   whichever is omitted on `update_label` keeps its current value). Both
   read and write through this calendar's event label sheet (creating
   one, pre-populated with the calendar's current labels, the first time
   either of them runs if it doesn't exist yet), which is the only place
-  `priority` is remembered, and both print the *entire* resulting label
-  list, not just the one label touched -- along with `sync_labels`
-  below, that's also how you list the current labels; there's no
-  separate `list_labels` command, since it would just be `sync_labels`
-  under a misleading name. There's no `delete_label` either -- delete a
-  row from the sheet directly (e.g. by opening it in Google Sheets) and
-  run `sync_labels` to apply that. Defining a label here doesn't do
+  `priority`/`fixed_time` are remembered, and both print the *entire*
+  resulting label list, not just the one label touched -- along with
+  `sync_labels` below, that's also how you list the current labels;
+  there's no separate `list_labels` command, since it would just be
+  `sync_labels` under a misleading name. There's no `delete_label`
+  either -- delete a row from the sheet directly (e.g. by opening it in
+  Google Sheets) and run `sync_labels` to apply that. Defining a label here doesn't do
   anything to any event on its own -- set an event's `event_label_id`
   (via `create`/`update`/`update_properties` above) to assign one. See
   https://developers.google.com/workspace/calendar/api/guides/labels
@@ -154,6 +155,7 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "status": str,
     "min_duration": lambda s: timedelta(seconds=_parse_duration(s)),
     "is_fixed_duration": _parse_bool,
+    "is_fixed_time": _parse_bool,
     "priority": int,
     "is_end_of_day_sleep": _parse_bool,
     "event_label_id": str,
@@ -185,6 +187,7 @@ _LABEL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "background_color": str,
     "name": str,
     "priority": int,
+    "fixed_time": _parse_bool,
 }
 """Every utilities.event_labels.EventLabel attribute create_label/
 update_label may set, mapped to a function parsing its command-line

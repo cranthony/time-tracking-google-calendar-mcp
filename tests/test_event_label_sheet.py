@@ -7,6 +7,7 @@ from utilities import calendar_metadata_sheet
 from utilities.event_label_sheet import DEFAULT_SHEET_TITLE, EventLabel, EventLabelSheet
 
 _HEADER_ROW = ["id", "name", "background_color", "priority"]
+_HEADER_ROW_WITH_FIXED_TIME = ["id", "name", "background_color", "priority", "fixed_time"]
 _SHEET_ID = 42
 
 
@@ -87,6 +88,39 @@ class TestEventLabelFromRow:
             id="l1", name="Design Work", background_color="#8e24aa", priority=1
         )
 
+    def test_parses_fixed_time_true(self):
+        label = EventLabel.from_row(
+            _HEADER_ROW_WITH_FIXED_TIME, ["l1", "Design Work", "#8e24aa", "1", "TRUE"]
+        )
+
+        assert label.fixed_time is True
+
+    def test_parses_fixed_time_false(self):
+        label = EventLabel.from_row(
+            _HEADER_ROW_WITH_FIXED_TIME, ["l1", "Design Work", "#8e24aa", "1", "FALSE"]
+        )
+
+        assert label.fixed_time is False
+
+    def test_parses_fixed_time_case_insensitively(self):
+        label = EventLabel.from_row(
+            _HEADER_ROW_WITH_FIXED_TIME, ["l1", "Design Work", "#8e24aa", "1", "true"]
+        )
+
+        assert label.fixed_time is True
+
+    def test_blank_fixed_time_becomes_none(self):
+        label = EventLabel.from_row(
+            _HEADER_ROW_WITH_FIXED_TIME, ["l1", "Design Work", "#8e24aa", "1", ""]
+        )
+
+        assert label.fixed_time is None
+
+    def test_missing_fixed_time_column_becomes_none(self):
+        label = EventLabel.from_row(_HEADER_ROW, ["l1", "Design Work", "#8e24aa", "1"])
+
+        assert label.fixed_time is None
+
 
 class TestEventLabelToRow:
     def test_writes_every_field_as_a_string(self):
@@ -115,6 +149,27 @@ class TestEventLabelToRow:
         row = label.to_row(["id", "notes"], None)
 
         assert row == ["l1", ""]
+
+    def test_writes_fixed_time_true_as_upper_case_true(self):
+        label = EventLabel(id="l1", fixed_time=True)
+
+        row = label.to_row(_HEADER_ROW_WITH_FIXED_TIME)
+
+        assert row[-1] == "TRUE"
+
+    def test_writes_fixed_time_false_as_upper_case_false(self):
+        label = EventLabel(id="l1", fixed_time=False)
+
+        row = label.to_row(_HEADER_ROW_WITH_FIXED_TIME)
+
+        assert row[-1] == "FALSE"
+
+    def test_writes_unset_fixed_time_as_empty_string(self):
+        label = EventLabel(id="l1")
+
+        row = label.to_row(_HEADER_ROW_WITH_FIXED_TIME)
+
+        assert row[-1] == ""
 
 
 class TestEventLabelSheetEnsure:
@@ -145,7 +200,9 @@ class TestEventLabelSheetEnsure:
         sheets_client.set_column_width.assert_called_once_with(
             "sheet-1", sheet_id=0, column_index=0, pixel_width=60
         )
-        sheets_client.write_rows_in_sheet.assert_called_once_with("sheet-1", 0, "A1:D1", [_HEADER_ROW])
+        sheets_client.write_rows_in_sheet.assert_called_once_with(
+            "sheet-1", 0, "A1:E1", [_HEADER_ROW_WITH_FIXED_TIME]
+        )
 
     def test_writes_initial_labels_as_data_rows_for_a_new_spreadsheet(self):
         sheets_client = MagicMock()
@@ -160,8 +217,8 @@ class TestEventLabelSheetEnsure:
         assert sheets_client.write_rows_in_sheet.call_args_list[-1].args == (
             "sheet-1",
             0,
-            "A2:D",
-            [["l1", "Design Work", "#8e24aa", ""], ["l2", "", "#d50000", ""]],
+            "A2:E",
+            [["l1", "Design Work", "#8e24aa", "", ""], ["l2", "", "#d50000", "", ""]],
         )
 
     def test_skips_data_write_when_no_initial_labels_given(self):
@@ -211,22 +268,24 @@ class TestEventLabelSheetRead:
     def test_reads_and_parses_data_rows(self):
         sheets_client = MagicMock()
         sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
-            "A1:D1": [_HEADER_ROW],
-            "A2:D": [["l1", "Design Work", "#8e24aa", "1"]],
+            "A1:E1": [_HEADER_ROW_WITH_FIXED_TIME],
+            "A2:E": [["l1", "Design Work", "#8e24aa", "1", "TRUE"]],
         }[rng]
         event_label_sheet = make_sheet(sheets_client)
 
         labels = event_label_sheet.read()
 
         assert labels == [
-            EventLabel(id="l1", name="Design Work", background_color="#8e24aa", priority=1)
+            EventLabel(
+                id="l1", name="Design Work", background_color="#8e24aa", priority=1, fixed_time=True
+            )
         ]
 
     def test_returns_empty_list_when_no_data_rows(self):
         sheets_client = MagicMock()
         sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
-            "A1:D1": [_HEADER_ROW],
-            "A2:D": [],
+            "A1:E1": [_HEADER_ROW_WITH_FIXED_TIME],
+            "A2:E": [],
         }[rng]
         event_label_sheet = make_sheet(sheets_client)
 
@@ -245,8 +304,8 @@ class TestEventLabelSheetWrite:
     def test_overwrites_data_rows_preserving_unknown_columns(self):
         sheets_client = MagicMock()
         sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
-            "A1:D1": [_HEADER_ROW],
-            "A2:D": [["l1", "Old Name", "#000000", ""]],
+            "A1:E1": [_HEADER_ROW_WITH_FIXED_TIME],
+            "A2:E": [["l1", "Old Name", "#000000", "", "TRUE"]],
         }[rng]
         event_label_sheet = make_sheet(sheets_client)
 
@@ -255,21 +314,21 @@ class TestEventLabelSheetWrite:
         )
 
         sheets_client.write_rows_in_sheet.assert_called_once_with(
-            "sheet-1", _SHEET_ID, "A2:D", [["l1", "New Name", "#8e24aa", "2"]]
+            "sheet-1", _SHEET_ID, "A2:E", [["l1", "New Name", "#8e24aa", "2", ""]]
         )
 
     def test_handles_more_labels_than_previous_rows(self):
         sheets_client = MagicMock()
         sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
-            "A1:D1": [_HEADER_ROW],
-            "A2:D": [],
+            "A1:E1": [_HEADER_ROW_WITH_FIXED_TIME],
+            "A2:E": [],
         }[rng]
         event_label_sheet = make_sheet(sheets_client)
 
         event_label_sheet.write([EventLabel(id="l1", background_color="#8e24aa")])
 
         sheets_client.write_rows_in_sheet.assert_called_once_with(
-            "sheet-1", _SHEET_ID, "A2:D", [["l1", "", "#8e24aa", ""]]
+            "sheet-1", _SHEET_ID, "A2:E", [["l1", "", "#8e24aa", "", ""]]
         )
 
 
@@ -277,8 +336,8 @@ class TestEventLabelSheetAppend:
     def test_adds_a_new_row_after_existing_rows(self):
         sheets_client = MagicMock()
         sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
-            "A1:D1": [_HEADER_ROW],
-            "A2:D": [["l1", "Design Work", "#8e24aa", ""]],
+            "A1:E1": [_HEADER_ROW_WITH_FIXED_TIME],
+            "A2:E": [["l1", "Design Work", "#8e24aa", "", ""]],
         }[rng]
         event_label_sheet = make_sheet(sheets_client)
 
@@ -287,20 +346,20 @@ class TestEventLabelSheetAppend:
         sheets_client.write_rows_in_sheet.assert_called_once_with(
             "sheet-1",
             _SHEET_ID,
-            "A2:D",
-            [["l1", "Design Work", "#8e24aa", ""], ["", "New One", "", "2"]],
+            "A2:E",
+            [["l1", "Design Work", "#8e24aa", "", ""], ["", "New One", "", "2", ""]],
         )
 
     def test_appends_to_an_empty_sheet(self):
         sheets_client = MagicMock()
         sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
-            "A1:D1": [_HEADER_ROW],
-            "A2:D": [],
+            "A1:E1": [_HEADER_ROW_WITH_FIXED_TIME],
+            "A2:E": [],
         }[rng]
         event_label_sheet = make_sheet(sheets_client)
 
         event_label_sheet.append(EventLabel(name="New One"))
 
         sheets_client.write_rows_in_sheet.assert_called_once_with(
-            "sheet-1", _SHEET_ID, "A2:D", [["", "New One", "", ""]]
+            "sheet-1", _SHEET_ID, "A2:E", [["", "New One", "", "", ""]]
         )
