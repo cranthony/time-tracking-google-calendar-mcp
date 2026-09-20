@@ -11,6 +11,7 @@ from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.noted_time_sheet import NotedTime
 
 UTC = timezone.utc
 
@@ -552,6 +553,12 @@ def _fake_event_labels(monkeypatch) -> MagicMock:
     return event_labels
 
 
+def _fake_noted_time_sheet(monkeypatch) -> MagicMock:
+    noted_time_sheet = MagicMock()
+    monkeypatch.setattr(calendar_cli, "build_noted_time_sheet", lambda: noted_time_sheet)
+    return noted_time_sheet
+
+
 class TestMainListRawLabels:
     def test_lists_labels(self, capsys, monkeypatch):
         client = MagicMock()
@@ -838,3 +845,46 @@ class TestMainUpdateLabel:
             calendar_cli.main()
 
         event_labels.update_label.assert_not_called()
+
+
+class TestMainNote:
+    def test_records_a_note_with_description(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["calendar_cli.py", "note", "2026-01-01T09:00:00+00:00", "Started work"],
+        )
+
+        calendar_cli.main()
+
+        noted_time_sheet.append.assert_called_once_with(
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+        )
+        out = capsys.readouterr().out
+        assert "2026-01-01 09:00:00+00:00" in out
+        assert "Started work" in out
+
+    def test_records_a_note_without_description(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "note", "2026-01-01T09:00:00+00:00"]
+        )
+
+        calendar_cli.main()
+
+        noted_time_sheet.append.assert_called_once_with(
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description=None)
+        )
+
+    def test_requires_a_timezone_on_the_timestamp(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "note", "2026-01-01T09:00:00"])
+
+        with pytest.raises(SystemExit):
+            calendar_cli.main()
+
+        noted_time_sheet.append.assert_not_called()

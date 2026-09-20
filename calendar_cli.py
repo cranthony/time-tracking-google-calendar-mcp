@@ -16,6 +16,7 @@ Usage:
     python calendar_cli.py create_label key=value [key=value ...]
     python calendar_cli.py update_label <label_id> key=value [key=value ...]
     python calendar_cli.py sync_labels
+    python calendar_cli.py note <timestamp> [description]
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -76,6 +77,15 @@ Usage:
   delete a row to delete its label, then run this to apply those changes
   back to the calendar (and to see the resulting labels, even with no
   sheet changes pending).
+- `note` records a new uncompacted time note -- `timestamp` (an ISO 8601
+  datetime with a UTC offset, e.g. "2026-01-01T09:00:00+00:00") is
+  required, `description` is an optional free-text note about what that
+  timestamp marks (quote it if it contains spaces). Appended to this
+  calendar's tracked noted-times tab (`utilities/noted_time_sheet.py`'s
+  `NotedTimeSheet`, creating that tab, pre-populated with just its
+  header row, the first time this runs if it doesn't exist yet) --
+  there's no command to list or delete notes yet; open the sheet
+  directly for that.
 """
 
 from __future__ import annotations
@@ -90,9 +100,10 @@ import pytimeparse
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
-from config import build_calendar_client, build_event_labels
+from config import build_calendar_client, build_event_labels, build_noted_time_sheet
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.noted_time_sheet import NotedTime
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 
@@ -235,7 +246,7 @@ def _format_event_line(event: Event) -> str:
     return f"{event.id}\t{event.start.isoformat()} - {event.end.isoformat()}\t{event.summary}"
 
 
-def _format_event_details(event: Event | RawEventLabel | EventLabel) -> str:
+def _format_event_details(event: Event | RawEventLabel | EventLabel | NotedTime) -> str:
     lines = []
     for field in dataclasses.fields(event):
         value = getattr(event, field.name)
@@ -402,6 +413,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "sync_labels", help="Sync event labels from this calendar's tracked event label sheet."
     )
 
+    note_parser = subparsers.add_parser("note", help="Record a new uncompacted time note.")
+    note_parser.add_argument(
+        "timestamp", type=_parse_iso_datetime, help="ISO 8601 datetime, with a UTC offset."
+    )
+    note_parser.add_argument(
+        "description", nargs="?", help="Optional free-text description of what this marks."
+    )
+
     return parser
 
 
@@ -516,6 +535,10 @@ def main() -> None:
             print("No event labels found.")
         for label in labels:
             print(_format_event_label_line(label))
+    elif args.command == "note":
+        noted_time = NotedTime(timestamp=args.timestamp, description=args.description)
+        build_noted_time_sheet().append(noted_time)
+        print(_format_event_details(noted_time))
 
 
 if __name__ == "__main__":

@@ -9,15 +9,18 @@ prints.
 
 This also ensures that calendar's metadata spreadsheet (see utilities/
 calendar_metadata_sheet.py) exists, with its event labels tab (see
-utilities/event_labels.py's EventLabels) and uncompacted time notes tab
-both provisioned, in the same step, since there's no MCP tool or CLI
-command for that either -- same one-time, human-run bootstrap reasoning
-as the calendar itself. (Constructing an EventLabels for a calendar that
-doesn't have one yet creates its spreadsheet/tab automatically -- see
-EventLabels.__init__ -- so this is really just that constructor call plus
-config.ensure_time_notes_sheet, not a separate step; it's also safe to
-run again later, since each reuses whatever's already tracked/tagged
-instead of creating something new.)
+utilities/event_labels.py's EventLabels) and noted-times tab (see
+utilities/noted_time_sheet.py's NotedTimeSheet) both provisioned, in the
+same step, since there's no MCP tool or CLI command that provisions the
+spreadsheet itself -- same one-time, human-run bootstrap reasoning as
+the calendar itself, even though both tabs' *data* does have tools
+(create_event_label/etc., create_noted_time/note) once this has run.
+(Constructing an EventLabels/NotedTimeSheet for a calendar that doesn't
+have one yet creates its spreadsheet/tab automatically -- see
+EventLabels.__init__/NotedTimeSheet.ensure -- so this is really just
+those two constructor calls, not a separate step; it's also safe to run
+again later, since each reuses whatever's already tracked/tagged instead
+of creating something new.)
 
 If GOOGLE_CALENDAR_ID is already set when this runs, no new calendar is
 created at all: this just ensures that already-configured calendar has a
@@ -38,7 +41,7 @@ from googleapiclient.discovery import build
 
 from calendar_clients.google_auth import load_credentials
 from calendar_clients.google_calendar import Calendar, EventLabelConflictError
-from config import build_event_labels, ensure_time_notes_sheet, get_credentials_path, get_token_path
+from config import build_event_labels, build_noted_time_sheet, get_credentials_path, get_token_path
 
 DEFAULT_SUMMARY = "Time Tracking"
 DEFAULT_DESCRIPTION = "Calendar managed by Cascading Time Tracker"
@@ -61,11 +64,11 @@ def create_event_label_sheet_for_calendar(calendar_id: str) -> str:
 
 
 def create_time_notes_sheet_for_calendar(calendar_id: str) -> str:
-    """Ensure `calendar_id`'s metadata spreadsheet has an uncompacted
-    time notes tab (creating one if it doesn't already -- see
-    `config.ensure_time_notes_sheet`), returning the shared metadata
+    """Ensure `calendar_id`'s metadata spreadsheet has a noted-times tab
+    (creating one if it doesn't already -- see
+    `config.build_noted_time_sheet`), returning the shared metadata
     spreadsheet's id."""
-    return ensure_time_notes_sheet(calendar_id)
+    return build_noted_time_sheet(calendar_id).spreadsheet_id
 
 
 def main() -> None:

@@ -178,11 +178,12 @@ class TestBuildEventLabels:
         assert calendar_client_cls.call_args.args[1] == "explicit-cal-id"
 
 
-class TestEnsureTimeNotesSheet:
+class TestBuildNotedTimeSheet:
     # Like build_event_labels, this just wires CalendarClient/SheetsClient
-    # together and hands them to calendar_metadata_sheet's own functions --
-    # see tests/test_calendar_metadata_sheet.py for their behavior.
-    def test_ensures_the_spreadsheet_and_time_notes_tab(self, monkeypatch):
+    # together and hands them to calendar_metadata_sheet.ensure_spreadsheet
+    # and NotedTimeSheet.ensure -- see tests/test_calendar_metadata_sheet.py
+    # and tests/test_noted_time_sheet.py for their behavior.
+    def test_ensures_the_spreadsheet_and_returns_a_noted_time_sheet(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
         monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
         monkeypatch.setattr(
@@ -191,20 +192,16 @@ class TestEnsureTimeNotesSheet:
 
         with (
             patch.object(config.calendar_metadata_sheet, "ensure_spreadsheet") as ensure_spreadsheet,
-            patch.object(config.calendar_metadata_sheet, "ensure_tab") as ensure_tab,
+            patch.object(config, "NotedTimeSheet") as noted_time_sheet_cls,
         ):
             ensure_spreadsheet.return_value = ("sheet-1", False)
-            ensure_tab.return_value = (99, True)
 
-            result = config.ensure_time_notes_sheet()
+            result = config.build_noted_time_sheet()
 
-        assert result == "sheet-1"
+        assert result is noted_time_sheet_cls.ensure.return_value
         ensure_spreadsheet.assert_called_once()
-        ensure_tab.assert_called_once_with(
-            ensure_spreadsheet.call_args.args[1],
-            "sheet-1",
-            role=config.calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE,
-            title=config.calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE,
+        noted_time_sheet_cls.ensure.assert_called_once_with(
+            ensure_spreadsheet.call_args.args[1], "sheet-1"
         )
 
     def test_accepts_an_explicit_calendar_id_without_requiring_the_env_var(self, monkeypatch):
@@ -217,8 +214,8 @@ class TestEnsureTimeNotesSheet:
         with (
             patch.object(config, "CalendarClient") as calendar_client_cls,
             patch.object(config.calendar_metadata_sheet, "ensure_spreadsheet", return_value=("sheet-1", False)),
-            patch.object(config.calendar_metadata_sheet, "ensure_tab", return_value=(99, True)),
+            patch.object(config, "NotedTimeSheet"),
         ):
-            config.ensure_time_notes_sheet(calendar_id="explicit-cal-id")
+            config.build_noted_time_sheet(calendar_id="explicit-cal-id")
 
         assert calendar_client_cls.call_args.args[1] == "explicit-cal-id"

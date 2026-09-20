@@ -13,12 +13,14 @@ from calendar_clients.google_calendar import CalendarClient, Event, EventLabelCo
 from config import (
     build_calendar_client,
     build_event_labels,
+    build_noted_time_sheet,
     get_mcp_resource_url,
     get_workos_authkit_domain,
 )
 from utilities.event_labels import EventLabels, EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.memory_diagnostics import track
+from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 from workos_auth import WorkOSTokenVerifier
@@ -127,6 +129,7 @@ class PublicEvent:
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
 _event_labels: EventLabels | None = None
+_noted_time_sheet: NotedTimeSheet | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -161,6 +164,15 @@ def get_calendar_with_event_labels() -> EventLabels:
     if _event_labels is None:
         _event_labels = build_event_labels()
     return _event_labels
+
+
+def get_noted_time_sheet() -> NotedTimeSheet:
+    """Lazily construct and cache the NotedTimeSheet, the same way
+    get_calendar_with_event_labels caches its EventLabels."""
+    global _noted_time_sheet
+    if _noted_time_sheet is None:
+        _noted_time_sheet = build_noted_time_sheet()
+    return _noted_time_sheet
 
 
 @mcp.tool()
@@ -260,6 +272,16 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
             return get_calendar_with_event_labels().sync_labels()
         except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def create_noted_time(noted_time: NotedTime) -> NotedTime:
+    """Record a new uncompacted time note -- a timestamp, with an
+    optional description of what it marks. Returns the note as
+    recorded."""
+    with track("create_noted_time"):
+        get_noted_time_sheet().append(noted_time)
+        return noted_time
 
 
 if __name__ == "__main__":
