@@ -888,3 +888,30 @@ class TestMainNote:
             calendar_cli.main()
 
         noted_time_sheet.append.assert_not_called()
+
+
+class TestMainGetNotes:
+    def test_lists_notes(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.read.return_value = [
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+        ]
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "get_notes"])
+
+        calendar_cli.main()
+
+        noted_time_sheet.read.assert_called_once_with()
+        out = capsys.readouterr().out
+        assert "2026-01-01T09:00:00+00:00" in out
+        assert "Started work" in out
+
+    def test_prints_message_when_no_notes(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.read.return_value = []
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "get_notes"])
+
+        calendar_cli.main()
+
+        assert "No notes found." in capsys.readouterr().out

@@ -17,6 +17,7 @@ Usage:
     python calendar_cli.py update_label <label_id> key=value [key=value ...]
     python calendar_cli.py sync_labels
     python calendar_cli.py note <timestamp> [description]
+    python calendar_cli.py get_notes
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -83,9 +84,10 @@ Usage:
   timestamp marks (quote it if it contains spaces). Appended to this
   calendar's tracked noted-times tab (`utilities/noted_time_sheet.py`'s
   `NotedTimeSheet`, creating that tab, pre-populated with just its
-  header row, the first time this runs if it doesn't exist yet) --
-  there's no command to list or delete notes yet; open the sheet
-  directly for that.
+  header row, the first time this runs if it doesn't exist yet).
+- `get_notes` lists every recorded note, in tab order (via
+  `NotedTimeSheet.read`) -- there's still no command to delete a note;
+  open the sheet directly for that.
 """
 
 from __future__ import annotations
@@ -264,6 +266,10 @@ def _format_event_label_line(label: EventLabel) -> str:
     return f"{label.id}\t{label.background_color}\t{priority}\t{label.name or ''}"
 
 
+def _format_noted_time_line(noted_time: NotedTime) -> str:
+    return f"{noted_time.timestamp.isoformat()}\t{noted_time.description or ''}"
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Google Calendar API command-line utilities.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -421,6 +427,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "description", nargs="?", help="Optional free-text description of what this marks."
     )
 
+    subparsers.add_parser("get_notes", help="List every recorded uncompacted time note.")
+
     return parser
 
 
@@ -539,6 +547,12 @@ def main() -> None:
         noted_time = NotedTime(timestamp=args.timestamp, description=args.description)
         build_noted_time_sheet().append(noted_time)
         print(_format_event_details(noted_time))
+    elif args.command == "get_notes":
+        noted_times = build_noted_time_sheet().read()
+        if not noted_times:
+            print("No notes found.")
+        for noted_time in noted_times:
+            print(_format_noted_time_line(noted_time))
 
 
 if __name__ == "__main__":

@@ -284,6 +284,14 @@ def note(noted_time: NotedTime) -> NotedTime:
         return noted_time
 
 
+@mcp.tool()
+def get_notes() -> list[NotedTime]:
+    """List every recorded uncompacted time note, in this calendar's
+    tracked noted-times tab order."""
+    with track("get_notes"):
+        return get_noted_time_sheet().read()
+
+
 if __name__ == "__main__":
     if _TRANSPORT == "streamable-http":
         # Every Render web service must bind 0.0.0.0 and the $PORT it
