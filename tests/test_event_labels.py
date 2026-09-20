@@ -6,20 +6,33 @@ from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.event_labels import EventLabel, EventLabels
 
 _HEADER_ROW = ["id", "name", "background_color", "priority"]
-_SHEET_ID_KEY = "event-label-sheet-id"
+_SPREADSHEET_ID_KEY = "calendar-metadata-spreadsheet-id"
+_EVENT_LABELS_SHEET_ID = 42
+"""Arbitrary, non-None -- returned by find_sheet_id below to simulate an
+already-tagged event-labels tab, so EventLabelSheet.ensure treats it as
+already existing (no header/initial-label writes) exactly like the
+pre-refactor EventLabelSheet(sheets_client, event_label_sheet_id) it
+replaces."""
 
 
 def _sheets_client(rows: list[list[str]]) -> MagicMock:
     """A SheetsClient mock backed by an in-memory header/data range, so
-    reads reflect whatever the code under test last wrote."""
+    reads reflect whatever the code under test last wrote. Simulates an
+    event-labels tab that's already tagged (see _EVENT_LABELS_SHEET_ID),
+    since these tests are about EventLabels' own reconciliation logic,
+    not first-time sheet/tab provisioning -- see
+    tests/test_calendar_metadata_sheet.py and
+    tests/test_event_label_sheet.py's TestEventLabelSheetEnsure for
+    that."""
     state = {"A1:D1": [_HEADER_ROW], "A2:D": rows}
     sheets_client = MagicMock()
-    sheets_client.read_rows.side_effect = lambda _spreadsheet_id, rng: state[rng]
+    sheets_client.find_sheet_id.return_value = _EVENT_LABELS_SHEET_ID
+    sheets_client.read_rows_in_sheet.side_effect = lambda _spreadsheet_id, _sheet_id, rng: state[rng]
 
-    def write_rows(_spreadsheet_id, rng, new_rows):
+    def write_rows_in_sheet(_spreadsheet_id, _sheet_id, rng, new_rows):
         state[rng] = new_rows
 
-    sheets_client.write_rows.side_effect = write_rows
+    sheets_client.write_rows_in_sheet.side_effect = write_rows_in_sheet
     return sheets_client
 
 
@@ -34,6 +47,7 @@ class TestInit:
     def test_reuses_an_already_tracked_sheet(self):
         calendar_client = _tracked_calendar_client(sheet_id="sheet-1")
         sheets_client = MagicMock()
+        sheets_client.find_sheet_id.return_value = _EVENT_LABELS_SHEET_ID
 
         event_labels = EventLabels(calendar_client, sheets_client)
 
@@ -50,14 +64,16 @@ class TestInit:
         )
         sheets_client = MagicMock()
         sheets_client.create_spreadsheet.return_value = "new-sheet"
+        sheets_client.find_sheet_id.return_value = None
 
         event_labels = EventLabels(calendar_client, sheets_client)
 
         assert event_labels.sheet_id == "new-sheet"
-        calendar_client.set_calendar_metadata.assert_called_once_with(_SHEET_ID_KEY, "new-sheet")
+        calendar_client.set_calendar_metadata.assert_called_once_with(_SPREADSHEET_ID_KEY, "new-sheet")
         # Pre-populated with the calendar's current labels.
-        assert sheets_client.write_rows.call_args_list[-1].args == (
+        assert sheets_client.write_rows_in_sheet.call_args_list[-1].args == (
             "new-sheet",
+            0,
             "A2:D",
             [["l1", "Design Work", "#8e24aa", ""]],
         )
@@ -90,7 +106,7 @@ class TestLabelPriorities:
 
         event_labels.label_priorities()
 
-        sheets_client.write_rows.assert_not_called()
+        sheets_client.write_rows_in_sheet.assert_not_called()
         calendar_client.replace_event_labels.assert_not_called()
 
 
@@ -134,7 +150,9 @@ class TestSyncLabels:
         assert result == [
             EventLabel(id="new-id", name="Design Work", background_color="#8e24aa", priority=2)
         ]
-        assert sheets_client.read_rows(None, "A2:D") == [["new-id", "Design Work", "#8e24aa", "2"]]
+        assert sheets_client.read_rows_in_sheet(None, _EVENT_LABELS_SHEET_ID, "A2:D") == [
+            ["new-id", "Design Work", "#8e24aa", "2"]
+        ]
 
     def test_matches_new_ids_back_to_rows_by_content_not_position(self):
         # replace_event_labels' response isn't guaranteed to preserve the
@@ -254,7 +272,7 @@ class TestSyncLabels:
         # Only the constructor's own read/writes happened -- sync_labels
         # itself didn't need to write back, since every row already had
         # an id.
-        sheets_client.write_rows.assert_not_called()
+        sheets_client.write_rows_in_sheet.assert_not_called()
 
 
 class TestCreateLabel:

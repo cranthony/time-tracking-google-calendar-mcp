@@ -1,14 +1,16 @@
-"""Manages the Google Sheet a calendar's event labels can be synced with.
+"""Manages the tab a calendar's event labels are synced with, within its
+shared calendar metadata spreadsheet (see
+utilities/calendar_metadata_sheet.py).
 
 calendar_clients/google_calendar.py's CalendarClient and calendar_clients/
 google_sheets.py's SheetsClient are thin, pure API wrappers -- neither has any
 idea what an "event label sheet" is. EventLabelSheet here is the glue between
-them: it knows the sheet's shape (header row, ID column narrowed, which range
-holds data) and how to find/record *the* sheet for a calendar, but nothing
-about what a row means as an event label, or how syncing it should reconcile
-with the calendar's actual labels -- that's utilities/event_labels.py's job,
-one layer up, which is why this module works in plain rows (list[str]), not
-an EventLabel object.
+them: it knows the tab's shape (header row, ID column narrowed, which range
+holds data) and, via calendar_metadata_sheet.ensure_tab, how to find/create
+*the* tab for a calendar, but nothing about what a row means as an event
+label, or how syncing it should reconcile with the calendar's actual labels
+-- that's utilities/event_labels.py's job, one layer up, which is why this
+module works in plain rows (list[str]), not an EventLabel object.
 """
 
 from __future__ import annotations
@@ -16,16 +18,17 @@ from dataclasses import asdict, dataclass, fields
 
 from calendar_clients.google_calendar import EventLabel as RawEventLabel, color_for_priority
 from calendar_clients.google_sheets import SheetsClient
+from utilities import calendar_metadata_sheet
 
 DEFAULT_SHEET_TITLE = "Event Labels"
+
+_SHEET_ROLE = "event-labels"
 
 _ID_COLUMN_INDEX = 0
 _ID_COLUMN_PIXEL_WIDTH = 60
 """Narrow -- users aren't expected to care about the ID column's
 contents, just that it's there and round-trips."""
 
-# Since these are missing the sheet name, they fetch from the first visible
-# sheet.
 _HEADER_RANGE = "A1:D1"
 _DATA_RANGE = "A2:D"
 
@@ -94,65 +97,97 @@ class EventLabel:
 
 
 class EventLabelSheet:
-    """Reads and writes to the event label Sheet that represents the
-    event label metadata for a calendar.
+    """Reads and writes to the tab that represents the event label
+    metadata for a calendar, within its shared calendar metadata
+    spreadsheet.
     """
 
     def __init__(self,
                  sheets_client: SheetsClient,
-                 spreadsheet_id: str) -> None:
+                 spreadsheet_id: str,
+                 sheet_id: int) -> None:
         self._sheets_client = sheets_client
         self._spreadsheet_id = spreadsheet_id
+        self._sheet_id = sheet_id
 
     @property
     def spreadsheet_id(self) -> str:
         return self._spreadsheet_id
 
     @staticmethod
-    def create(sheets_client: SheetsClient,
-               title: str = DEFAULT_SHEET_TITLE,
-               initial_labels: list[EventLabel] | None = None) -> str:
-        """Create a new event label sheet and returns its ID."""
-        spreadsheet_id = sheets_client.create_spreadsheet(title)
-        sheets_client.set_column_width(
+    def ensure(
+        sheets_client: SheetsClient,
+        spreadsheet_id: str,
+        *,
+        is_new_spreadsheet: bool,
+        initial_labels: list[EventLabel] | None = None,
+    ) -> "EventLabelSheet":
+        """The calendar's event-labels tab within `spreadsheet_id`,
+        creating (or adopting, per calendar_metadata_sheet.ensure_tab's
+        `reuse_sheet_id`) and populating it -- narrowed ID column,
+        header row, `initial_labels` -- the first time only.
+
+        `is_new_spreadsheet` (see calendar_metadata_sheet.
+        ensure_spreadsheet) must be `False` when adopting a spreadsheet
+        that already existed before per-tab tagging did: its sheetId 0
+        already holds real, previously-written event label data (header
+        row included) that must not be overwritten, even though this is
+        still the first time its tab gets tagged.
+        """
+        sheet_id, tab_created = calendar_metadata_sheet.ensure_tab(
+            sheets_client,
             spreadsheet_id,
-            sheet_id=0,
-            column_index=_ID_COLUMN_INDEX,
-            pixel_width=_ID_COLUMN_PIXEL_WIDTH,
+            role=_SHEET_ROLE,
+            title=DEFAULT_SHEET_TITLE,
+            reuse_sheet_id=0,
         )
-        header_row = [f.name for f in fields(EventLabel)]
-        sheets_client.write_rows(spreadsheet_id, _HEADER_RANGE, [header_row])
-        if initial_labels:
-            sheets_client.write_rows(spreadsheet_id, _DATA_RANGE, [
-                label.to_row(header_row, None)
-                for label in initial_labels
-            ])
-        return spreadsheet_id
+        sheet = EventLabelSheet(sheets_client, spreadsheet_id, sheet_id)
+        if tab_created and is_new_spreadsheet:
+            sheets_client.set_column_width(
+                spreadsheet_id,
+                sheet_id=sheet_id,
+                column_index=_ID_COLUMN_INDEX,
+                pixel_width=_ID_COLUMN_PIXEL_WIDTH,
+            )
+            header_row = [f.name for f in fields(EventLabel)]
+            sheets_client.write_rows_in_sheet(spreadsheet_id, sheet_id, _HEADER_RANGE, [header_row])
+            if initial_labels:
+                sheets_client.write_rows_in_sheet(spreadsheet_id, sheet_id, _DATA_RANGE, [
+                    label.to_row(header_row, None)
+                    for label in initial_labels
+                ])
+        return sheet
 
     def read(self) -> list[EventLabel]:
-        """The data rows (everything after HEADER_ROW) of `spreadsheet_id`."""
+        """The data rows (everything after HEADER_ROW) of this tab."""
         header_row = self._read_header()
-        rows = self._sheets_client.read_rows(self._spreadsheet_id, _DATA_RANGE)
+        rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
         return [EventLabel.from_row(header_row, row) for row in rows]
 
     def write(self, event_labels: list[EventLabel]) -> None:
-        """Overwrite `spreadsheet_id`'s data rows with `rows`."""
+        """Overwrite this tab's data rows with `event_labels`."""
         header_row = self._read_header()
-        previous_rows = self._sheets_client.read_rows(self._spreadsheet_id, _DATA_RANGE)
-        self._sheets_client.write_rows(self._spreadsheet_id, _DATA_RANGE, [
+        previous_rows = self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, _DATA_RANGE
+        )
+        self._sheets_client.write_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE, [
             event_label.to_row(header_row, previous_rows[i] if i < len(previous_rows) else None)
             for i, event_label in enumerate(event_labels)
         ])
 
     def append(self, label: EventLabel) -> None:
-        """Add `label` as a new row at the end of the sheet."""
+        """Add `label` as a new row at the end of this tab."""
         header_row = self._read_header()
-        previous_rows = self._sheets_client.read_rows(self._spreadsheet_id, _DATA_RANGE)
+        previous_rows = self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, _DATA_RANGE
+        )
         new_row = label.to_row(header_row, None)
-        self._sheets_client.write_rows(self._spreadsheet_id, _DATA_RANGE, previous_rows + [new_row])
+        self._sheets_client.write_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, _DATA_RANGE, previous_rows + [new_row]
+        )
 
     def _read_header(self) -> list[str]:
-        rows = self._sheets_client.read_rows(self._spreadsheet_id, _HEADER_RANGE)
+        rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)
         header_row = rows[0] if rows else []
         expected = {f.name for f in fields(EventLabel)}
         if not expected <= set(header_row):

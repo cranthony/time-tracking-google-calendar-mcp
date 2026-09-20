@@ -176,3 +176,49 @@ class TestBuildEventLabels:
         # Constructed with the explicit id, not one from GOOGLE_CALENDAR_ID
         # (which isn't even set here, and would otherwise raise).
         assert calendar_client_cls.call_args.args[1] == "explicit-cal-id"
+
+
+class TestEnsureTimeNotesSheet:
+    # Like build_event_labels, this just wires CalendarClient/SheetsClient
+    # together and hands them to calendar_metadata_sheet's own functions --
+    # see tests/test_calendar_metadata_sheet.py for their behavior.
+    def test_ensures_the_spreadsheet_and_time_notes_tab(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
+        monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
+        monkeypatch.setattr(
+            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+        )
+
+        with (
+            patch.object(config.calendar_metadata_sheet, "ensure_spreadsheet") as ensure_spreadsheet,
+            patch.object(config.calendar_metadata_sheet, "ensure_tab") as ensure_tab,
+        ):
+            ensure_spreadsheet.return_value = ("sheet-1", False)
+            ensure_tab.return_value = (99, True)
+
+            result = config.ensure_time_notes_sheet()
+
+        assert result == "sheet-1"
+        ensure_spreadsheet.assert_called_once()
+        ensure_tab.assert_called_once_with(
+            ensure_spreadsheet.call_args.args[1],
+            "sheet-1",
+            role=config.calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE,
+            title=config.calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE,
+        )
+
+    def test_accepts_an_explicit_calendar_id_without_requiring_the_env_var(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
+        monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
+        monkeypatch.setattr(
+            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+        )
+
+        with (
+            patch.object(config, "CalendarClient") as calendar_client_cls,
+            patch.object(config.calendar_metadata_sheet, "ensure_spreadsheet", return_value=("sheet-1", False)),
+            patch.object(config.calendar_metadata_sheet, "ensure_tab", return_value=(99, True)),
+        ):
+            config.ensure_time_notes_sheet(calendar_id="explicit-cal-id")
+
+        assert calendar_client_cls.call_args.args[1] == "explicit-cal-id"

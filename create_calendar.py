@@ -7,19 +7,22 @@ it has created itself — never a user's existing calendars, including
 to create that dedicated calendar, then set GOOGLE_CALENDAR_ID to the ID it
 prints.
 
-This also creates that calendar's event label sheet (see utilities/
-event_labels.py's EventLabels) in the same step, since there's no MCP tool
-or CLI command for that either -- same one-time, human-run bootstrap
-reasoning as the calendar itself. (Constructing an EventLabels for a
-calendar that doesn't have one yet creates it automatically -- see
-EventLabels.__init__ -- so this is really just that constructor call, not
-a separate step; it's also safe to run again later, since it reuses
-whatever sheet is already tracked instead of creating another one.)
+This also ensures that calendar's metadata spreadsheet (see utilities/
+calendar_metadata_sheet.py) exists, with its event labels tab (see
+utilities/event_labels.py's EventLabels) and uncompacted time notes tab
+both provisioned, in the same step, since there's no MCP tool or CLI
+command for that either -- same one-time, human-run bootstrap reasoning
+as the calendar itself. (Constructing an EventLabels for a calendar that
+doesn't have one yet creates its spreadsheet/tab automatically -- see
+EventLabels.__init__ -- so this is really just that constructor call plus
+config.ensure_time_notes_sheet, not a separate step; it's also safe to
+run again later, since each reuses whatever's already tracked/tagged
+instead of creating something new.)
 
 If GOOGLE_CALENDAR_ID is already set when this runs, no new calendar is
-created at all: this just ensures that already-configured calendar has an
-event label sheet (useful if you set this app up before event label
-sheets existed).
+created at all: this just ensures that already-configured calendar has a
+metadata spreadsheet (useful if you set this app up before one, or one of
+its tabs, existed).
 
 Usage:
     python create_calendar.py ["Calendar name"] [--description "..."]
@@ -35,7 +38,7 @@ from googleapiclient.discovery import build
 
 from calendar_clients.google_auth import load_credentials
 from calendar_clients.google_calendar import Calendar, EventLabelConflictError
-from config import build_event_labels, get_credentials_path, get_token_path
+from config import build_event_labels, ensure_time_notes_sheet, get_credentials_path, get_token_path
 
 DEFAULT_SUMMARY = "Time Tracking"
 DEFAULT_DESCRIPTION = "Calendar managed by Cascading Time Tracker"
@@ -52,8 +55,17 @@ def create_calendar(summary: str, description: str | None = None) -> Calendar:
 def create_event_label_sheet_for_calendar(calendar_id: str) -> str:
     """Ensure `calendar_id` has an event label sheet (creating one,
     pre-populated with its current labels, if it doesn't already -- see
-    `EventLabels.__init__`), returning its spreadsheet id."""
+    `EventLabels.__init__`), returning the shared metadata spreadsheet's
+    id."""
     return build_event_labels(calendar_id).sheet_id
+
+
+def create_time_notes_sheet_for_calendar(calendar_id: str) -> str:
+    """Ensure `calendar_id`'s metadata spreadsheet has an uncompacted
+    time notes tab (creating one if it doesn't already -- see
+    `config.ensure_time_notes_sheet`), returning the shared metadata
+    spreadsheet's id."""
+    return ensure_time_notes_sheet(calendar_id)
 
 
 def main() -> None:
@@ -76,12 +88,13 @@ def main() -> None:
 
     try:
         spreadsheet_id = create_event_label_sheet_for_calendar(calendar_id)
+        create_time_notes_sheet_for_calendar(calendar_id)
     except EventLabelConflictError as exc:
         # Another writer changed the calendar (e.g. a concurrent run of
-        # this same script) between checking for a tracked sheet and
-        # recording a new one -- rerunning will just find that one.
+        # this same script) between checking for tracked metadata and
+        # recording new metadata -- rerunning will just find that.
         sys.exit(str(exc))
-    print(f"Event label sheet: https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit")
+    print(f"Calendar metadata sheet: https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit")
 
 
 if __name__ == "__main__":
