@@ -79,14 +79,17 @@ class TestCreateEventLabelSheetForCalendar:
 
 
 class TestCreateTimeNotesSheetForCalendar:
-    def test_delegates_to_ensure_time_notes_sheet(self):
+    def test_delegates_to_build_noted_time_sheet(self):
+        noted_time_sheet = MagicMock()
+        noted_time_sheet.spreadsheet_id = "sheet-1"
+
         with patch.object(
-            create_calendar, "ensure_time_notes_sheet", return_value="sheet-1"
-        ) as ensure:
+            create_calendar, "build_noted_time_sheet", return_value=noted_time_sheet
+        ) as build:
             result = create_calendar.create_time_notes_sheet_for_calendar("cal-1")
 
         assert result == "sheet-1"
-        ensure.assert_called_once_with("cal-1")
+        build.assert_called_once_with("cal-1")
 
 
 class TestMain:

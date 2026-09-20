@@ -16,6 +16,8 @@ Usage:
     python calendar_cli.py create_label key=value [key=value ...]
     python calendar_cli.py update_label <label_id> key=value [key=value ...]
     python calendar_cli.py sync_labels
+    python calendar_cli.py note <ago> [description]
+    python calendar_cli.py get_notes
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -76,6 +78,18 @@ Usage:
   delete a row to delete its label, then run this to apply those changes
   back to the calendar (and to see the resulting labels, even with no
   sheet changes pending).
+- `note` records a new uncompacted time note -- `ago` is required, and
+  (like `list`'s `from`/`to` above) a pytimeparse duration (e.g. "1h",
+  "90m", "0s" for right now) giving how long before *now* this note is
+  for, resolved the same way `list`'s window is (see `resolve_note_
+  timestamp`). `description` is an optional free-text note about what
+  that moment marks (quote it if it contains spaces). Appended to this
+  calendar's tracked noted-times tab (`utilities/noted_time_sheet.py`'s
+  `NotedTimeSheet`, creating that tab, pre-populated with just its
+  header row, the first time this runs if it doesn't exist yet).
+- `get_notes` lists every recorded note, sorted by timestamp (via
+  `NotedTimeSheet.read`) -- there's still no command to delete a note;
+  open the sheet directly for that.
 """
 
 from __future__ import annotations
@@ -90,9 +104,10 @@ import pytimeparse
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
-from config import build_calendar_client, build_event_labels
+from config import build_calendar_client, build_event_labels, build_noted_time_sheet
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.noted_time_sheet import NotedTime
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 
@@ -231,11 +246,21 @@ def resolve_window(
     return now - timedelta(seconds=from_seconds), now + timedelta(seconds=to_seconds)
 
 
+def resolve_note_timestamp(seconds_ago: float, now: datetime | None = None) -> datetime:
+    """Resolve `seconds_ago` (how long before `now` -- default: the
+    current time -- a note is for) into an absolute datetime, the same
+    "duration relative to now" convention `resolve_window` uses for
+    `list`'s `from`/`to`."""
+    if now is None:
+        now = datetime.now(timezone.utc)
+    return now - timedelta(seconds=seconds_ago)
+
+
 def _format_event_line(event: Event) -> str:
     return f"{event.id}\t{event.start.isoformat()} - {event.end.isoformat()}\t{event.summary}"
 
 
-def _format_event_details(event: Event | RawEventLabel | EventLabel) -> str:
+def _format_event_details(event: Event | RawEventLabel | EventLabel | NotedTime) -> str:
     lines = []
     for field in dataclasses.fields(event):
         value = getattr(event, field.name)
@@ -251,6 +276,10 @@ def _format_raw_event_label_line(label: RawEventLabel) -> str:
 def _format_event_label_line(label: EventLabel) -> str:
     priority = label.priority if label.priority is not None else ""
     return f"{label.id}\t{label.background_color}\t{priority}\t{label.name or ''}"
+
+
+def _format_noted_time_line(noted_time: NotedTime) -> str:
+    return f"{noted_time.timestamp.isoformat()}\t{noted_time.description or ''}"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -402,6 +431,23 @@ def _build_parser() -> argparse.ArgumentParser:
         "sync_labels", help="Sync event labels from this calendar's tracked event label sheet."
     )
 
+    note_parser = subparsers.add_parser("note", help="Record a new uncompacted time note.")
+    note_parser.add_argument(
+        "ago",
+        type=_parse_duration,
+        help=(
+            "How long before now this note is for, as a pytimeparse duration "
+            '(e.g. "1h", "90m", "0s" for right now).'
+        ),
+    )
+    note_parser.add_argument(
+        "description", nargs="?", help="Optional free-text description of what this marks."
+    )
+
+    subparsers.add_parser(
+        "get_notes", help="List every recorded uncompacted time note, sorted by timestamp."
+    )
+
     return parser
 
 
@@ -516,6 +562,18 @@ def main() -> None:
             print("No event labels found.")
         for label in labels:
             print(_format_event_label_line(label))
+    elif args.command == "note":
+        noted_time = NotedTime(
+            timestamp=resolve_note_timestamp(args.ago), description=args.description
+        )
+        build_noted_time_sheet().append(noted_time)
+        print(_format_event_details(noted_time))
+    elif args.command == "get_notes":
+        noted_times = build_noted_time_sheet().read()
+        if not noted_times:
+            print("No notes found.")
+        for noted_time in noted_times:
+            print(_format_noted_time_line(noted_time))
 
 
 if __name__ == "__main__":

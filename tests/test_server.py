@@ -11,6 +11,7 @@ from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.noted_time_sheet import NotedTime
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
 
@@ -43,6 +44,12 @@ def _fake_event_labels(monkeypatch) -> MagicMock:
     event_labels = MagicMock()
     monkeypatch.setattr(server, "get_calendar_with_event_labels", lambda: event_labels)
     return event_labels
+
+
+def _fake_noted_time_sheet(monkeypatch) -> MagicMock:
+    noted_time_sheet = MagicMock()
+    monkeypatch.setattr(server, "get_noted_time_sheet", lambda: noted_time_sheet)
+    return noted_time_sheet
 
 
 def _tracked_labels(monkeypatch) -> list[str]:
@@ -390,6 +397,31 @@ class TestSyncEventLabelsFromSheet:
             server.sync_event_labels_from_sheet()
 
 
+class TestNote:
+    def test_appends_to_the_noted_time_sheet_and_returns_it(self, monkeypatch):
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time = NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+
+        result = server.note(noted_time)
+
+        assert result is noted_time
+        noted_time_sheet.append.assert_called_once_with(noted_time)
+
+
+class TestGetNotes:
+    def test_returns_the_noted_time_sheets_notes(self, monkeypatch):
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_times = [
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+        ]
+        noted_time_sheet.read.return_value = noted_times
+
+        result = server.get_notes()
+
+        assert result == noted_times
+        noted_time_sheet.read.assert_called_once_with()
+
+
 class TestGetCalendarClient:
     def test_caches_client_across_calls(self, monkeypatch):
         built = []
@@ -440,6 +472,25 @@ class TestGetEventLabels:
 
         first = server.get_calendar_with_event_labels()
         second = server.get_calendar_with_event_labels()
+
+        assert first is second
+        assert len(built) == 1
+
+
+class TestGetNotedTimeSheet:
+    def test_caches_across_calls(self, monkeypatch):
+        built = []
+
+        def fake_build():
+            noted_time_sheet = MagicMock()
+            built.append(noted_time_sheet)
+            return noted_time_sheet
+
+        monkeypatch.setattr(server, "_noted_time_sheet", None)
+        monkeypatch.setattr(server, "build_noted_time_sheet", fake_build)
+
+        first = server.get_noted_time_sheet()
+        second = server.get_noted_time_sheet()
 
         assert first is second
         assert len(built) == 1
@@ -523,3 +574,20 @@ class TestMemoryTracking:
         server.sync_event_labels_from_sheet()
 
         assert labels == ["sync_event_labels_from_sheet"]
+
+    def test_note(self, monkeypatch):
+        _fake_noted_time_sheet(monkeypatch)
+        labels = _tracked_labels(monkeypatch)
+
+        server.note(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC)))
+
+        assert labels == ["note"]
+
+    def test_get_notes(self, monkeypatch):
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.read.return_value = []
+        labels = _tracked_labels(monkeypatch)
+
+        server.get_notes()
+
+        assert labels == ["get_notes"]

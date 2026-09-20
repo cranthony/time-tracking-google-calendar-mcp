@@ -107,7 +107,5 @@ def ensure_tab(
 
 TIME_NOTES_SHEET_ROLE = "uncompacted-time-notes"
 TIME_NOTES_SHEET_TITLE = "Noted Times"
-"""No MCP tool or CLI command reads/writes this tab yet -- schema is a
-separate, future step (see `config.ensure_time_notes_sheet`). This just
-provisions its container, the same one-time bootstrap reasoning as
-`EventLabelSheet.ensure` -- see `create_calendar.py`."""
+"""See `utilities/noted_time_sheet.py`'s `NotedTimeSheet` for the tab
+this identifies -- a calendar's uncompacted time notes."""

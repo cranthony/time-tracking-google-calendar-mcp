@@ -11,6 +11,7 @@ from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.noted_time_sheet import NotedTime
 
 UTC = timezone.utc
 
@@ -552,6 +553,12 @@ def _fake_event_labels(monkeypatch) -> MagicMock:
     return event_labels
 
 
+def _fake_noted_time_sheet(monkeypatch) -> MagicMock:
+    noted_time_sheet = MagicMock()
+    monkeypatch.setattr(calendar_cli, "build_noted_time_sheet", lambda: noted_time_sheet)
+    return noted_time_sheet
+
+
 class TestMainListRawLabels:
     def test_lists_labels(self, capsys, monkeypatch):
         client = MagicMock()
@@ -838,3 +845,115 @@ class TestMainUpdateLabel:
             calendar_cli.main()
 
         event_labels.update_label.assert_not_called()
+
+
+class TestResolveNoteTimestamp:
+    def test_resolves_around_given_now(self):
+        now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+
+        timestamp = calendar_cli.resolve_note_timestamp(1800, now=now)
+
+        assert timestamp == datetime(2026, 1, 1, 11, 30, tzinfo=UTC)
+
+    def test_zero_seconds_ago_is_now(self):
+        now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+
+        assert calendar_cli.resolve_note_timestamp(0, now=now) == now
+
+    def test_defaults_to_current_time_when_now_not_given(self):
+        before = datetime.now(UTC)
+
+        timestamp = calendar_cli.resolve_note_timestamp(0)
+
+        after = datetime.now(UTC)
+        assert before <= timestamp <= after
+
+
+class TestMainNote:
+    def test_records_a_note_with_description(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        fixed_timestamp = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        resolve = MagicMock(return_value=fixed_timestamp)
+        monkeypatch.setattr(calendar_cli, "resolve_note_timestamp", resolve)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "note", "30m", "Started work"]
+        )
+
+        calendar_cli.main()
+
+        resolve.assert_called_once_with(1800.0)
+        noted_time_sheet.append.assert_called_once_with(
+            NotedTime(timestamp=fixed_timestamp, description="Started work")
+        )
+        out = capsys.readouterr().out
+        assert "2026-01-01 09:00:00+00:00" in out
+        assert "Started work" in out
+
+    def test_records_a_note_without_description(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        fixed_timestamp = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        monkeypatch.setattr(
+            calendar_cli, "resolve_note_timestamp", lambda seconds_ago: fixed_timestamp
+        )
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "note", "0s"])
+
+        calendar_cli.main()
+
+        noted_time_sheet.append.assert_called_once_with(
+            NotedTime(timestamp=fixed_timestamp, description=None)
+        )
+
+    def test_resolves_ago_relative_to_now_end_to_end(self, monkeypatch):
+        # No mocking of resolve_note_timestamp here -- confirms the real
+        # duration arithmetic, the same way TestMainList.
+        # test_uses_default_window_when_omitted checks list's window
+        # without pinning "now".
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "note", "30m"])
+
+        before = datetime.now(UTC)
+        calendar_cli.main()
+        after = datetime.now(UTC)
+
+        noted_time = noted_time_sheet.append.call_args.args[0]
+        assert before - timedelta(minutes=30) <= noted_time.timestamp <= after - timedelta(minutes=30)
+
+    def test_raises_on_an_unparseable_duration(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "note", "not-a-duration"])
+
+        with pytest.raises(SystemExit):
+            calendar_cli.main()
+
+        noted_time_sheet.append.assert_not_called()
+
+
+class TestMainGetNotes:
+    def test_lists_notes(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.read.return_value = [
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+        ]
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "get_notes"])
+
+        calendar_cli.main()
+
+        noted_time_sheet.read.assert_called_once_with()
+        out = capsys.readouterr().out
+        assert "2026-01-01T09:00:00+00:00" in out
+        assert "Started work" in out
+
+    def test_prints_message_when_no_notes(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.read.return_value = []
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "get_notes"])
+
+        calendar_cli.main()
+
+        assert "No notes found." in capsys.readouterr().out
