@@ -960,3 +960,30 @@ class TestMainGetNotes:
         calendar_cli.main()
 
         assert "No notes found." in capsys.readouterr().out
+
+
+class TestMainClearNotes:
+    def test_clears_notes_and_prints_the_cleared_ones(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.clear.return_value = [
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+        ]
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "clear_notes"])
+
+        calendar_cli.main()
+
+        noted_time_sheet.clear.assert_called_once_with()
+        out = capsys.readouterr().out
+        assert "2026-01-01T09:00:00+00:00" in out
+        assert "Started work" in out
+
+    def test_prints_message_when_nothing_to_clear(self, capsys, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.clear.return_value = []
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "clear_notes"])
+
+        calendar_cli.main()
+
+        assert "No notes to clear." in capsys.readouterr().out

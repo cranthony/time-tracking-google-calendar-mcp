@@ -144,6 +144,17 @@ class NotedTimeSheet:
             self._spreadsheet_id, self._sheet_id, _DATA_RANGE, previous_rows + [new_row]
         )
 
+    def clear(self) -> list[NotedTime]:
+        """Remove every recorded note from this tab (the header row is
+        left alone), returning the notes that were cleared -- sorted by
+        timestamp, same as `read`. Uses `SheetsClient.clear_rows_in_sheet`
+        rather than `write_rows_in_sheet([])`, since the latter only
+        overwrites however many rows it's given and would leave every
+        existing row untouched instead of actually removing them."""
+        noted_times = self.read()
+        self._sheets_client.clear_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
+        return noted_times
+
     def _read_header(self) -> list[str]:
         rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)
         header_row = rows[0] if rows else []

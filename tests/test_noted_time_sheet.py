@@ -246,3 +246,43 @@ class TestNotedTimeSheetAppend:
         sheets_client.write_rows_in_sheet.assert_called_once_with(
             "sheet-1", _SHEET_ID, "A2:B", [["2026-01-01T09:00:00+00:00", ""]]
         )
+
+
+class TestNotedTimeSheetClear:
+    def test_clears_the_data_range_and_returns_the_cleared_notes(self):
+        sheets_client = MagicMock()
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
+            "A1:B1": [_HEADER_ROW],
+            "A2:B": [
+                ["2026-01-01T09:00:00+00:00", "Started work"],
+                ["2025-12-31T08:00:00+00:00", "Earlier note"],
+            ],
+        }[rng]
+        noted_time_sheet = make_sheet(sheets_client)
+
+        cleared = noted_time_sheet.clear()
+
+        # Sorted by timestamp, same as read().
+        assert cleared == [
+            NotedTime(
+                timestamp=datetime(2025, 12, 31, 8, 0, 0, tzinfo=timezone.utc),
+                description="Earlier note",
+            ),
+            NotedTime(
+                timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc), description="Started work"
+            ),
+        ]
+        sheets_client.clear_rows_in_sheet.assert_called_once_with("sheet-1", _SHEET_ID, "A2:B")
+
+    def test_returns_empty_list_when_nothing_to_clear(self):
+        sheets_client = MagicMock()
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
+            "A1:B1": [_HEADER_ROW],
+            "A2:B": [],
+        }[rng]
+        noted_time_sheet = make_sheet(sheets_client)
+
+        cleared = noted_time_sheet.clear()
+
+        assert cleared == []
+        sheets_client.clear_rows_in_sheet.assert_called_once_with("sheet-1", _SHEET_ID, "A2:B")

@@ -245,6 +245,23 @@ class SheetsClient:
             body={"values": rows},
         ).execute()
 
+    def clear_rows(self, spreadsheet_id: str, sheet_range: str) -> None:
+        """Clear every cell in `sheet_range`, regardless of how many rows
+        it previously held -- unlike `write_rows`, which only overwrites
+        however many rows it's given and leaves any leftover rows beyond
+        that untouched, so it can't shrink a previously-longer range on
+        its own."""
+        self._sheets_service.spreadsheets().values().clear(
+            spreadsheetId=spreadsheet_id, range=sheet_range, body={}
+        ).execute()
+
+    def clear_rows_in_sheet(self, spreadsheet_id: str, sheet_id: int, range_within_sheet: str) -> None:
+        """`clear_rows`'s counterpart to `read_rows_in_sheet`/
+        `write_rows_in_sheet` -- see `read_rows_in_sheet` for why
+        `range_within_sheet` is qualified by `sheet_id`'s current title
+        instead of being sent as-is."""
+        self.clear_rows(spreadsheet_id, self._qualify(spreadsheet_id, sheet_id, range_within_sheet))
+
     def read_rows_in_sheet(
         self, spreadsheet_id: str, sheet_id: int, range_within_sheet: str
     ) -> list[list[str]]:

@@ -277,6 +277,33 @@ class TestWriteRowsInSheet:
         )
 
 
+class TestClearRows:
+    def test_sends_values_clear_request(self):
+        sheets_service = MagicMock()
+        client = make_client(sheets_service)
+
+        client.clear_rows("sheet-1", "Sheet1!A2:D")
+
+        sheets_service.spreadsheets.return_value.values.return_value.clear.assert_called_once_with(
+            spreadsheetId="sheet-1", range="Sheet1!A2:D", body={}
+        )
+
+
+class TestClearRowsInSheet:
+    def test_qualifies_range_with_current_sheet_title(self):
+        sheets_service = MagicMock()
+        sheets_service.spreadsheets.return_value.get.return_value.execute.return_value = {
+            "sheets": [{"properties": {"sheetId": 42, "title": "Event Labels"}}]
+        }
+        client = make_client(sheets_service)
+
+        client.clear_rows_in_sheet("sheet-1", 42, "A2:D")
+
+        sheets_service.spreadsheets.return_value.values.return_value.clear.assert_called_once_with(
+            spreadsheetId="sheet-1", range="'Event Labels'!A2:D", body={}
+        )
+
+
 class TestSetColumnWidth:
     def test_sends_update_dimension_properties_request(self):
         sheets_service = MagicMock()

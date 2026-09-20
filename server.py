@@ -295,6 +295,15 @@ def get_notes() -> list[NotedTime]:
         return get_noted_time_sheet().read()
 
 
+@mcp.tool()
+def clear_notes() -> list[NotedTime]:
+    """Clear every recorded uncompacted time note. Returns the notes
+    that were cleared, sorted by timestamp -- call get_notes first if
+    you need to see them before clearing."""
+    with track("clear_notes"):
+        return get_noted_time_sheet().clear()
+
+
 if __name__ == "__main__":
     if _TRANSPORT == "streamable-http":
         # Every Render web service must bind 0.0.0.0 and the $PORT it

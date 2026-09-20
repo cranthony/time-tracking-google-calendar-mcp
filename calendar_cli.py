@@ -18,6 +18,7 @@ Usage:
     python calendar_cli.py sync_labels
     python calendar_cli.py note <ago> [description]
     python calendar_cli.py get_notes
+    python calendar_cli.py clear_notes
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -89,8 +90,12 @@ Usage:
   `NotedTimeSheet`, creating that tab, pre-populated with just its
   header row, the first time this runs if it doesn't exist yet).
 - `get_notes` lists every recorded note, sorted by timestamp (via
-  `NotedTimeSheet.read`) -- there's still no command to delete a note;
-  open the sheet directly for that.
+  `NotedTimeSheet.read`).
+- `clear_notes` removes every recorded note (via `NotedTimeSheet.clear`)
+  and prints the ones that were cleared, sorted by timestamp -- run
+  `get_notes` first if you want to see them before clearing. There's
+  still no command to delete a single note; open the sheet directly for
+  that.
 """
 
 from __future__ import annotations
@@ -451,6 +456,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "get_notes", help="List every recorded uncompacted time note, sorted by timestamp."
     )
 
+    subparsers.add_parser(
+        "clear_notes", help="Clear every recorded uncompacted time note."
+    )
+
     return parser
 
 
@@ -576,6 +585,12 @@ def main() -> None:
         if not noted_times:
             print("No notes found.")
         for noted_time in noted_times:
+            print(_format_noted_time_line(noted_time))
+    elif args.command == "clear_notes":
+        cleared = build_noted_time_sheet().clear()
+        if not cleared:
+            print("No notes to clear.")
+        for noted_time in cleared:
             print(_format_noted_time_line(noted_time))
 
 

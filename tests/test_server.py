@@ -422,6 +422,20 @@ class TestGetNotes:
         noted_time_sheet.read.assert_called_once_with()
 
 
+class TestClearNotes:
+    def test_returns_the_cleared_notes(self, monkeypatch):
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_times = [
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+        ]
+        noted_time_sheet.clear.return_value = noted_times
+
+        result = server.clear_notes()
+
+        assert result == noted_times
+        noted_time_sheet.clear.assert_called_once_with()
+
+
 class TestGetCalendarClient:
     def test_caches_client_across_calls(self, monkeypatch):
         built = []
@@ -591,3 +605,12 @@ class TestMemoryTracking:
         server.get_notes()
 
         assert labels == ["get_notes"]
+
+    def test_clear_notes(self, monkeypatch):
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.clear.return_value = []
+        labels = _tracked_labels(monkeypatch)
+
+        server.clear_notes()
+
+        assert labels == ["clear_notes"]
