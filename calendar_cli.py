@@ -85,7 +85,7 @@ Usage:
   calendar's tracked noted-times tab (`utilities/noted_time_sheet.py`'s
   `NotedTimeSheet`, creating that tab, pre-populated with just its
   header row, the first time this runs if it doesn't exist yet).
-- `get_notes` lists every recorded note, in tab order (via
+- `get_notes` lists every recorded note, sorted by timestamp (via
   `NotedTimeSheet.read`) -- there's still no command to delete a note;
   open the sheet directly for that.
 """
@@ -427,7 +427,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "description", nargs="?", help="Optional free-text description of what this marks."
     )
 
-    subparsers.add_parser("get_notes", help="List every recorded uncompacted time note.")
+    subparsers.add_parser(
+        "get_notes", help="List every recorded uncompacted time note, sorted by timestamp."
+    )
 
     return parser
 

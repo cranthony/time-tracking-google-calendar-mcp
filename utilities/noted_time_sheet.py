@@ -112,10 +112,15 @@ class NotedTimeSheet:
         return sheet
 
     def read(self) -> list[NotedTime]:
-        """The data rows (everything after the header row) of this tab."""
+        """The data rows (everything after the header row) of this tab,
+        sorted by timestamp -- notes are appended in whatever order
+        they're recorded in, not necessarily chronological (e.g.
+        backfilling an earlier note after a later one)."""
         header_row = self._read_header()
         rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
-        return [NotedTime.from_row(header_row, row) for row in rows]
+        noted_times = [NotedTime.from_row(header_row, row) for row in rows]
+        noted_times.sort(key=lambda noted_time: noted_time.timestamp)
+        return noted_times
 
     def write(self, noted_times: list[NotedTime]) -> None:
         """Overwrite this tab's data rows with `noted_times`."""

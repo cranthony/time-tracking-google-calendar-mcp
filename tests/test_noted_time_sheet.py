@@ -147,6 +147,21 @@ class TestNotedTimeSheetRead:
             )
         ]
 
+    def test_sorts_by_timestamp_regardless_of_row_order(self):
+        sheets_client = MagicMock()
+        sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {
+            "A1:B1": [_HEADER_ROW],
+            "A2:B": [
+                ["2026-01-02T09:00:00+00:00", "Second"],
+                ["2026-01-01T09:00:00+00:00", "First"],
+            ],
+        }[rng]
+        noted_time_sheet = make_sheet(sheets_client)
+
+        noted_times = noted_time_sheet.read()
+
+        assert [n.description for n in noted_times] == ["First", "Second"]
+
     def test_returns_empty_list_when_no_data_rows(self):
         sheets_client = MagicMock()
         sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: {

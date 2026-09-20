@@ -286,8 +286,8 @@ def note(noted_time: NotedTime) -> NotedTime:
 
 @mcp.tool()
 def get_notes() -> list[NotedTime]:
-    """List every recorded uncompacted time note, in this calendar's
-    tracked noted-times tab order."""
+    """List every recorded uncompacted time note, sorted by
+    timestamp."""
     with track("get_notes"):
         return get_noted_time_sheet().read()
 
