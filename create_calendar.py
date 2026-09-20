@@ -14,7 +14,7 @@ utilities/noted_time_sheet.py's NotedTimeSheet) both provisioned, in the
 same step, since there's no MCP tool or CLI command that provisions the
 spreadsheet itself -- same one-time, human-run bootstrap reasoning as
 the calendar itself, even though both tabs' *data* does have tools
-(create_event_label/etc., create_noted_time/note) once this has run.
+(create_event_label/etc., note) once this has run.
 (Constructing an EventLabels/NotedTimeSheet for a calendar that doesn't
 have one yet creates its spreadsheet/tab automatically -- see
 EventLabels.__init__/NotedTimeSheet.ensure -- so this is really just

@@ -275,11 +275,11 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
 
 
 @mcp.tool()
-def create_noted_time(noted_time: NotedTime) -> NotedTime:
+def note(noted_time: NotedTime) -> NotedTime:
     """Record a new uncompacted time note -- a timestamp, with an
     optional description of what it marks. Returns the note as
     recorded."""
-    with track("create_noted_time"):
+    with track("note"):
         get_noted_time_sheet().append(noted_time)
         return noted_time
 

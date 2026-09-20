@@ -397,12 +397,12 @@ class TestSyncEventLabelsFromSheet:
             server.sync_event_labels_from_sheet()
 
 
-class TestCreateNotedTime:
+class TestNote:
     def test_appends_to_the_noted_time_sheet_and_returns_it(self, monkeypatch):
         noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
         noted_time = NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
 
-        result = server.create_noted_time(noted_time)
+        result = server.note(noted_time)
 
         assert result is noted_time
         noted_time_sheet.append.assert_called_once_with(noted_time)
@@ -561,10 +561,10 @@ class TestMemoryTracking:
 
         assert labels == ["sync_event_labels_from_sheet"]
 
-    def test_create_noted_time(self, monkeypatch):
+    def test_note(self, monkeypatch):
         _fake_noted_time_sheet(monkeypatch)
         labels = _tracked_labels(monkeypatch)
 
-        server.create_noted_time(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC)))
+        server.note(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC)))
 
-        assert labels == ["create_noted_time"]
+        assert labels == ["note"]
