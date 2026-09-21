@@ -75,16 +75,34 @@ class TestBasicPlanning:
 
         assert _span(_by_event(plan)["e1"].after) == (time_at("09:05"), time_at("10:00"))
 
-    def test_an_in_progress_activity_is_capped_at_bedtime_with_a_warning(self):
+    def test_an_in_progress_activity_on_a_finished_day_asks_when_it_ended(self):
+        # A past day being compacted the next afternoon: `now` is clamped to
+        # the end of that day, so there's no real "now" to run it to.
+        with pytest.raises(NeedsClarification) as excinfo:
+            plan_compaction(
+                [_note(2, "10:20")],
+                [_disposition(2, _effect("starts", event_id="e2"))],
+                _day(),
+                time_at("07:00+1"),
+            )
+
+        assert "When did 'Report' end?" in excinfo.value.questions[0]
+        assert "n2" in excinfo.value.questions[0]
+
+    def test_an_in_progress_activity_runs_to_now_even_after_the_sleep_block_starts(self):
+        # 21:00 is after the 20:00 start of the sleep block but well before it
+        # ends: the user is still up, so it runs to now, not to bedtime.
         plan = plan_compaction(
             [_note(2, "10:20")],
             [_disposition(2, _effect("starts", event_id="e2"))],
             _day(),
-            time_at("12:00+1"),  # a past day being compacted the next afternoon
+            time_at("21:00"),
         )
 
-        assert _span(_by_event(plan)["e2"].after) == (time_at("10:20"), time_at("20:00"))
-        assert any("runs until bedtime" in w for w in plan.warnings)
+        assert _span(_by_event(plan)["e2"].after) == (time_at("10:20"), time_at("21:00"))
+        assert not any("bedtime" in w for w in plan.warnings)
+        # The sleep block gives way instead.
+        assert _by_event(plan)["s1"].after.start == time_at("21:00")
 
     def test_an_in_progress_activity_earlier_than_bedtime_has_no_warning(self):
         plan = plan_compaction(
@@ -299,13 +317,14 @@ class TestUnmappedEvents:
         day[-1].end = time_at("11:45")
 
         plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "12:00")],
+            [_note(2, "09:00"), _note(3, "12:00"), _note(4, "12:30")],
             [
                 _disposition(2, _effect("starts", event_id="e1")),
                 _disposition(3, _effect("ends", event_id="e1"), _effect("starts", event_id="e3")),
+                _disposition(4, _effect("ends", event_id="e3")),
             ],
             day,
-            time_at("12:30"),
+            time_at("12:45"),
         )
 
         sleep = _by_event(plan).get("s1")

@@ -226,14 +226,18 @@ class CompactionJournal:
         compaction.steps = sorted(steps, key=lambda s: s.step)
         return compaction
 
-    def open_compactions(self) -> list[tuple[str, str]]:
-        """(id, status) of every compaction that's `applying` or `applied`
-        -- begun but not finished."""
+    def compactions_with_status(self, *statuses: str) -> list[tuple[str, str]]:
+        """(id, status) of every compaction currently in one of `statuses`."""
         return [
             (row[0], row[6])
             for row in self._read_rows()
-            if row[2] == "compaction" and row[6] in OPEN_STATUSES
+            if row[2] == "compaction" and row[6] in statuses
         ]
+
+    def open_compactions(self) -> list[tuple[str, str]]:
+        """(id, status) of every compaction that's `applying` or `applied`
+        -- begun but not finished."""
+        return self.compactions_with_status(*OPEN_STATUSES)
 
     def set_status(self, compaction: JournalCompaction, status: str) -> None:
         self._write_status(compaction.row, status)

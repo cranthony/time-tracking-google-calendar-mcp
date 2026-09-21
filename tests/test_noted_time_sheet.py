@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from utilities import calendar_metadata_sheet
-from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote, row_from_note_id
+from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote, parse_note_id
 
 _HEADER_ROW = ["timestamp", "description", "compaction_id"]
 _SHEET_ID = 42
@@ -176,32 +176,48 @@ class TestNotedTimeSheetReadWithRows:
         notes = noted_time_sheet.read_with_rows()
 
         assert [(n.row, n.id, n.note.description) for n in notes] == [
-            (2, "n2", "Second"),
-            (3, "n3", "First"),
+            (2, f"{_T2}#2", "Second"),
+            (3, f"{_T1}#3", "First"),
         ]
 
     def test_skips_blank_rows_but_their_row_numbers_still_count(self):
         noted_time_sheet = make_sheet(_sheets([[_T1, "A"], [], [_T2, "B"]]))
 
-        assert [n.id for n in noted_time_sheet.read_with_rows()] == ["n2", "n4"]
+        assert [n.id for n in noted_time_sheet.read_with_rows()] == [f"{_T1}#2", f"{_T2}#4"]
 
     def test_leaves_out_compacted_notes_without_renumbering_the_rest(self):
         noted_time_sheet = make_sheet(_sheets([[_T1, "Old", "cmp1"], [_T2, "New"]]))
 
-        assert [n.id for n in noted_time_sheet.read_with_rows()] == ["n3"]
-        assert [n.id for n in noted_time_sheet.read_with_rows(include_compacted=True)] == ["n2", "n3"]
+        assert [n.id for n in noted_time_sheet.read_with_rows()] == [f"{_T2}#3"]
+        assert [n.id for n in noted_time_sheet.read_with_rows(include_compacted=True)] == [
+            f"{_T1}#2",
+            f"{_T2}#3",
+        ]
 
 
 class TestNoteIds:
+    def test_an_id_is_the_timestamp_and_the_row_together(self):
+        note = SheetNote(row=7, note=NotedTime(timestamp=datetime(2026, 1, 1, 9, 5, tzinfo=timezone.utc)))
+
+        assert note.id == "2026-01-01T09:05:00+00:00#7"
+
     def test_round_trips(self):
-        note = SheetNote(row=7, note=NotedTime(timestamp=datetime(2026, 1, 1, tzinfo=timezone.utc)))
+        note = SheetNote(row=7, note=NotedTime(timestamp=datetime(2026, 1, 1, 9, 5, tzinfo=timezone.utc)))
 
-        assert row_from_note_id(note.id) == 7
+        assert parse_note_id(note.id) == (datetime(2026, 1, 1, 9, 5, tzinfo=timezone.utc), 7)
 
-    @pytest.mark.parametrize("bad", ["7", "n", "nx", "e5", ""])
+    def test_notes_with_the_same_timestamp_still_have_distinct_ids(self):
+        first = SheetNote(row=2, note=NotedTime(timestamp=datetime(2026, 1, 1, tzinfo=timezone.utc)))
+        second = SheetNote(row=3, note=NotedTime(timestamp=datetime(2026, 1, 1, tzinfo=timezone.utc)))
+
+        assert first.id != second.id
+
+    @pytest.mark.parametrize(
+        "bad", ["7", "n7", "#7", "2026-01-01T09:00:00+00:00", "2026-01-01T09:00:00+00:00#x", "nope#7", ""]
+    )
     def test_rejects_things_that_are_not_note_ids(self, bad):
         with pytest.raises(ValueError):
-            row_from_note_id(bad)
+            parse_note_id(bad)
 
 
 class TestNotedTimeSheetWrite:
@@ -244,20 +260,27 @@ class TestNotedTimeSheetAppend:
         )
 
 
+def _id(timestamp: str, row: int) -> str:
+    return f"{timestamp}#{row}"
+
+
 class TestNotedTimeSheetMarkCompacted:
     def test_stamps_only_the_compaction_id_column_of_the_given_rows(self):
-        sheets_client = _sheets([])
+        sheets_client = _sheets([[_T1, "A"], [_T2, "B"]])
 
-        make_sheet(sheets_client).mark_compacted([3], "cmp1")
+        make_sheet(sheets_client).mark_compacted([_id(_T2, 3)], "cmp1")
 
         sheets_client.write_rows_in_sheet.assert_called_once_with(
             "sheet-1", _SHEET_ID, "C3:C3", [["cmp1"]]
         )
 
     def test_writes_one_range_per_contiguous_run_of_rows(self):
-        sheets_client = _sheets([])
+        rows = [[_T1, "a"], [_T1, "b"], [_T1, "c"], [_T1, "d"], [_T1, "e"], [_T1, "f"]]
+        sheets_client = _sheets(rows)
 
-        make_sheet(sheets_client).mark_compacted([7, 2, 3, 4, 3], "cmp1")
+        make_sheet(sheets_client).mark_compacted(
+            [_id(_T1, 7), _id(_T1, 2), _id(_T1, 3), _id(_T1, 4), _id(_T1, 3)], "cmp1"
+        )
 
         assert [c.args[2:] for c in sheets_client.write_rows_in_sheet.call_args_list] == [
             ("C2:C4", [["cmp1"], ["cmp1"], ["cmp1"]]),
@@ -265,13 +288,52 @@ class TestNotedTimeSheetMarkCompacted:
         ]
 
     def test_finds_the_column_from_the_header_not_a_fixed_position(self):
-        sheets_client = _sheets([], header=["compaction_id", "timestamp", "description"])
+        sheets_client = _sheets([["cmp?", _T1, "A"]], header=["compaction_id", "timestamp", "description"])
+        sheets_client.read_rows_in_sheet.side_effect = lambda s, i, rng: {
+            "A1:C1": [["compaction_id", "timestamp", "description"]],
+            "A2:C": [["", _T1, "A"]],
+        }[rng]
 
-        make_sheet(sheets_client).mark_compacted([2], "cmp1")
+        make_sheet(sheets_client).mark_compacted([_id(_T1, 2)], "cmp1")
 
         assert sheets_client.write_rows_in_sheet.call_args.args[2] == "A2:A2"
 
-    def test_does_nothing_for_no_rows(self):
+    def test_refuses_when_the_row_now_holds_a_different_note(self):
+        sheets_client = _sheets([[_T2, "edited since it was read"]])
+
+        with pytest.raises(ValueError, match="no longer holds the note"):
+            make_sheet(sheets_client).mark_compacted([_id(_T1, 2)], "cmp1")
+
+        sheets_client.write_rows_in_sheet.assert_not_called()
+
+    def test_refuses_when_the_row_is_gone(self):
+        sheets_client = _sheets([])
+
+        with pytest.raises(ValueError, match="no longer holds the note"):
+            make_sheet(sheets_client).mark_compacted([_id(_T1, 5)], "cmp1")
+
+    def test_writes_nothing_if_any_one_note_is_stale(self):
+        sheets_client = _sheets([[_T1, "A"], [_T2, "B"]])
+
+        with pytest.raises(ValueError):
+            make_sheet(sheets_client).mark_compacted([_id(_T1, 2), _id(_T1, 3)], "cmp1")
+
+        sheets_client.write_rows_in_sheet.assert_not_called()
+
+    def test_refuses_a_note_already_compacted_by_a_different_compaction(self):
+        sheets_client = _sheets([[_T1, "A", "other"]])
+
+        with pytest.raises(ValueError, match="already compacted by 'other'"):
+            make_sheet(sheets_client).mark_compacted([_id(_T1, 2)], "cmp1")
+
+    def test_stamping_again_with_the_same_compaction_is_harmless(self):
+        sheets_client = _sheets([[_T1, "A", "cmp1"]])
+
+        make_sheet(sheets_client).mark_compacted([_id(_T1, 2)], "cmp1")
+
+        sheets_client.write_rows_in_sheet.assert_called_once()
+
+    def test_does_nothing_for_no_notes(self):
         sheets_client = _sheets([])
 
         make_sheet(sheets_client).mark_compacted([], "cmp1")

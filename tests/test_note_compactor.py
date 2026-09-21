@@ -7,7 +7,7 @@ from googleapiclient.errors import HttpError
 
 from tests.event_time_helpers import event_at, time_at
 from tests.fake_sheets import FakeSheets
-from utilities.compaction_journal import APPLYING, PLANNED, STAMPED, CompactionJournal
+from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
 from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect
 from utilities.note_compactor import NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
@@ -70,20 +70,22 @@ class Setup:
     def append_note(self, at, description=None):
         self.notes.append(NotedTime(timestamp=time_at(at), description=description))
 
+    def note_id(self, row):
+        """The id of the note in sheet row `row` (see SheetNote.id)."""
+        return next(n.id for n in self.notes.read_with_rows(include_compacted=True) if n.row == row)
+
+    def d(self, row, *effects):
+        return NoteDisposition(note_id=self.note_id(row), effects=list(effects))
+
+    def email_then_report(self):
+        return [
+            self.d(2, _e("starts", event_id="e1")),
+            self.d(3, _e("ends", event_id="e1"), _e("starts", event_id="e2")),
+        ]
+
 
 def _e(kind, **fields):
     return NoteEffect(kind=kind, **fields)
-
-
-def _d(number, *effects):
-    return NoteDisposition(note_id=f"n{number}", effects=list(effects))
-
-
-def _email_then_report():
-    return [
-        _d(2, _e("starts", event_id="e1")),
-        _d(3, _e("ends", event_id="e1"), _e("starts", event_id="e2")),
-    ]
 
 
 def _standard():
@@ -96,7 +98,7 @@ class TestPrepare:
 
         context = setup.compactor.prepare()
 
-        assert [n.id for n in context.notes] == ["n2", "n3"]
+        assert [n.id for n in context.notes] == [setup.note_id(2), setup.note_id(3)]
         assert context.notes[0].description == "email"
         # 09:05 is inside Email, adjacent to Report (starts 10:00, within
         # the hour window) -- nearest first.
@@ -122,7 +124,7 @@ class TestPrepare:
 
         context = setup.compactor.prepare()
 
-        assert [n.id for n in context.notes] == ["n2", "n3"]
+        assert [n.id for n in context.notes] == [setup.note_id(2), setup.note_id(3)]
         assert context.remaining_note_count == 1
 
     def test_the_effective_now_never_passes_the_end_of_the_day(self):
@@ -133,13 +135,13 @@ class TestPrepare:
 
     def test_skips_compacted_notes(self):
         setup = _standard()
-        setup.notes.mark_compacted([2], "old")
+        setup.notes.mark_compacted([setup.note_id(2)], "old")
 
-        assert [n.id for n in setup.compactor.prepare().notes] == ["n3"]
+        assert [n.id for n in setup.compactor.prepare().notes] == [setup.note_id(3)]
 
     def test_reports_an_open_compaction(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         setup.journal.set_status(setup.journal.load(planned.compaction_id), APPLYING)
 
         assert setup.compactor.prepare().open_compaction == planned.compaction_id
@@ -149,7 +151,7 @@ class TestDryRun:
     def test_plans_and_journals_without_touching_the_calendar_or_the_notes(self):
         setup = _standard()
 
-        result = setup.compactor.dry_run(_email_then_report())
+        result = setup.compactor.dry_run(setup.email_then_report())
 
         assert result.status == "planned"
         assert result.compaction_id
@@ -157,13 +159,13 @@ class TestDryRun:
         assert setup.journal.load(result.compaction_id).status == PLANNED
         setup.client.update_event.assert_not_called()
         setup.client.create_event.assert_not_called()
-        assert [n.id for n in setup.notes.read_with_rows()] == ["n2", "n3"]
+        assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
 
     def test_ambiguous_notes_come_back_as_questions_and_nothing_is_journaled(self):
         setup = _standard()
 
         result = setup.compactor.dry_run(
-            [_d(2, _e("ambiguous", question="Was that the email?")), _d(3, _e("ignore"))]
+            [setup.d(2, _e("ambiguous", question="Was that the email?")), setup.d(3, _e("ignore"))]
         )
 
         assert result.status == "needs_clarification"
@@ -176,30 +178,99 @@ class TestDryRun:
         setup = _standard()
 
         with pytest.raises(CompactionError, match="no disposition for note"):
-            setup.compactor.dry_run([_d(2, _e("starts", event_id="e1"))])
+            setup.compactor.dry_run([setup.d(2, _e("starts", event_id="e1"))])
 
     def test_nothing_to_compact_when_there_are_no_notes(self):
         assert Setup([]).compactor.dry_run([]).status == "nothing_to_compact"
 
     def test_refuses_to_start_while_another_compaction_is_open(self):
         setup = _standard()
-        first = setup.compactor.dry_run(_email_then_report())
+        first = setup.compactor.dry_run(setup.email_then_report())
         setup.journal.set_status(setup.journal.load(first.compaction_id), APPLYING)
 
         with pytest.raises(CompactionError, match=f"compaction {first.compaction_id} is applying"):
-            setup.compactor.dry_run(_email_then_report())
+            setup.compactor.dry_run(setup.email_then_report())
 
-    def test_a_merely_planned_compaction_does_not_block_a_new_one(self):
+    def test_a_planned_compaction_does_not_block_a_new_one_but_is_replaced_by_it(self):
         setup = _standard()
-        setup.compactor.dry_run(_email_then_report())
+        first = setup.compactor.dry_run(setup.email_then_report())
 
-        assert setup.compactor.dry_run(_email_then_report()).status == "planned"
+        second = setup.compactor.dry_run(setup.email_then_report())
+
+        assert second.status == "planned"
+        assert second.compaction_id != first.compaction_id
+        assert setup.journal.load(first.compaction_id).status == ABANDONED
+        assert setup.journal.load(second.compaction_id).status == PLANNED
+        assert "Replaced 1 earlier unapplied plan" in second.message
+
+    def test_a_replaced_plan_can_no_longer_be_committed(self):
+        setup = _standard()
+        first = setup.compactor.dry_run(setup.email_then_report())
+        setup.compactor.dry_run(setup.email_then_report())
+
+        with pytest.raises(CompactionError, match="abandoned"):
+            setup.compactor.commit(first.compaction_id)
+
+        setup.client.update_event.assert_not_called()
+
+    def test_a_rejected_plan_can_be_redone_with_corrected_dispositions(self):
+        setup = _standard()
+        setup.compactor.dry_run(setup.email_then_report())
+
+        # The user says the 10:20 note actually *ended* the email, and the
+        # report didn't start until later -- so redo it without touching
+        # the calendar or calling prepare again.
+        revised = setup.compactor.dry_run(
+            [setup.d(2, _e("starts", event_id="e1")), setup.d(3, _e("ends", event_id="e1"))]
+        )
+
+        by_event = {c.event_id: c for c in revised.changes}
+        assert by_event["e1"].reason.startswith("recorded as what actually happened")
+        assert by_event["e1"].after.end == time_at("10:20")
+        # The report isn't recorded as started any more -- it's only nudged
+        # aside to clear the email.
+        assert not by_event["e2"].reason.startswith("recorded as what actually happened")
+        setup.client.update_event.assert_not_called()
+
+    def test_a_plan_that_fails_validation_leaves_the_earlier_plan_alone(self):
+        setup = _standard()
+        first = setup.compactor.dry_run(setup.email_then_report())
+
+        with pytest.raises(CompactionError):
+            setup.compactor.dry_run([setup.d(2, _e("starts", event_id="nope"))])
+
+        assert setup.journal.load(first.compaction_id).status == PLANNED
+
+    def test_an_activity_with_no_end_on_a_finished_day_asks_when_it_ended(self):
+        # Compacting yesterday: nothing says when the report ended, and
+        # there's no "now" to run it to, so it isn't guessed.
+        setup = _standard()
+        setup.now = "12:00+1"
+
+        result = setup.compactor.dry_run(setup.email_then_report())
+
+        assert result.status == "needs_clarification"
+        assert "When did 'Report' end?" in result.questions[0]
+        assert setup.journal.compactions_with_status(PLANNED) == []
+
+    def test_running_late_on_the_current_day_runs_the_activity_to_now_not_to_bedtime(self):
+        # 21:00 is past the 20:00 start of the sleep block but the day isn't
+        # over: the report ran until now, and the sleep block gives way.
+        setup = _standard()
+        setup.now = "21:00"
+
+        result = setup.compactor.dry_run(setup.email_then_report())
+
+        assert result.status == "planned"
+        report = next(c for c in result.changes if c.event_id == "e2")
+        assert report.after.end == time_at("21:00")
+        assert not any("bedtime" in w for w in result.warnings)
 
 
 class TestCommit:
     def test_applies_the_plan_journals_each_step_and_stamps_the_notes(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
 
         result = setup.compactor.commit(planned.compaction_id)
 
@@ -218,7 +289,7 @@ class TestCommit:
 
     def test_the_patch_carries_only_what_changed_plus_the_pin(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
 
         setup.compactor.commit(planned.compaction_id)
 
@@ -231,7 +302,7 @@ class TestCommit:
     def test_cancelled_events_are_patched_to_cancelled(self):
         setup = Setup([("09:00", None), ("09:30", None)])
         planned = setup.compactor.dry_run(
-            [_d(2, _e("starts", event_id="e1")), _d(3, _e("ends", event_id="e2"))]
+            [setup.d(2, _e("starts", event_id="e1")), setup.d(3, _e("ends", event_id="e2"))]
         )
 
         setup.compactor.commit(planned.compaction_id)
@@ -245,8 +316,8 @@ class TestCommit:
         setup = Setup([("09:00", None), ("09:30", None)])
         planned = setup.compactor.dry_run(
             [
-                _d(2, _e("starts_unplanned", summary="Coffee")),
-                _d(3, _e("ends", started_by_note="n2")),
+                setup.d(2, _e("starts_unplanned", summary="Coffee")),
+                setup.d(3, _e("ends", started_by_note=setup.note_id(2))),
             ]
         )
 
@@ -262,8 +333,8 @@ class TestCommit:
         setup = Setup([("09:00", None), ("09:30", None)])
         planned = setup.compactor.dry_run(
             [
-                _d(2, _e("starts_unplanned", summary="Coffee")),
-                _d(3, _e("ends", started_by_note="n2")),
+                setup.d(2, _e("starts_unplanned", summary="Coffee")),
+                setup.d(3, _e("ends", started_by_note=setup.note_id(2))),
             ]
         )
         setup.client.create_event.side_effect = HttpError(MagicMock(status=409), b"exists")
@@ -277,8 +348,8 @@ class TestCommit:
         setup = Setup([("09:00", None), ("09:30", None)])
         planned = setup.compactor.dry_run(
             [
-                _d(2, _e("starts_unplanned", summary="Coffee")),
-                _d(3, _e("ends", started_by_note="n2")),
+                setup.d(2, _e("starts_unplanned", summary="Coffee")),
+                setup.d(3, _e("ends", started_by_note=setup.note_id(2))),
             ]
         )
         setup.client.create_event.side_effect = HttpError(MagicMock(status=500), b"boom")
@@ -288,7 +359,7 @@ class TestCommit:
 
     def test_committing_twice_is_harmless(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         setup.compactor.commit(planned.compaction_id)
         calls = setup.client.update_event.call_count
 
@@ -299,7 +370,7 @@ class TestCommit:
 
     def test_refuses_when_a_note_was_added_after_the_preview(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         setup.append_note("11:00", "one more")
 
         with pytest.raises(CompactionError, match="changed since.*run a new dry run"):
@@ -309,7 +380,7 @@ class TestCommit:
 
     def test_refuses_when_the_calendar_changed_after_the_preview(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         setup.calendar.events[0].summary = "Someone renamed this"
 
         with pytest.raises(CompactionError, match="changed since"):
@@ -319,7 +390,7 @@ class TestCommit:
 
     def test_refuses_an_abandoned_compaction(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         setup.compactor.abandon(planned.compaction_id)
 
         with pytest.raises(CompactionError, match="abandoned"):
@@ -343,7 +414,7 @@ class TestResume:
 
     def test_a_failure_partway_leaves_the_journal_at_exactly_that_point(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         self._fail_on_second_write(setup)
 
         with pytest.raises(RuntimeError):
@@ -353,11 +424,11 @@ class TestResume:
         assert journal.status == APPLYING
         assert [s.status for s in journal.steps] == ["done", "pending"]
         # Its notes are still uncompacted, so nothing is lost.
-        assert [n.id for n in setup.notes.read_with_rows()] == ["n2", "n3"]
+        assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
 
     def test_committing_again_finishes_only_what_was_left(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         self._fail_on_second_write(setup)
         with pytest.raises(RuntimeError):
             setup.compactor.commit(planned.compaction_id)
@@ -372,7 +443,7 @@ class TestResume:
 
     def test_resuming_does_not_recheck_the_calendar_it_is_already_changing(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         self._fail_on_second_write(setup)
         with pytest.raises(RuntimeError):
             setup.compactor.commit(planned.compaction_id)
@@ -387,7 +458,7 @@ class TestResume:
 class TestDescribeAndAbandon:
     def test_describing_returns_the_stored_plan_without_applying_it(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
 
         described = setup.compactor.describe(planned.compaction_id)
 
@@ -397,18 +468,18 @@ class TestDescribeAndAbandon:
 
     def test_abandoning_leaves_the_notes_uncompacted_and_unblocks_a_new_compaction(self):
         setup = _standard()
-        first = setup.compactor.dry_run(_email_then_report())
+        first = setup.compactor.dry_run(setup.email_then_report())
         setup.journal.set_status(setup.journal.load(first.compaction_id), APPLYING)
 
         result = setup.compactor.abandon(first.compaction_id)
 
         assert result.status == "abandoned"
-        assert [n.id for n in setup.notes.read_with_rows()] == ["n2", "n3"]
-        assert setup.compactor.dry_run(_email_then_report()).status == "planned"
+        assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
+        assert setup.compactor.dry_run(setup.email_then_report()).status == "planned"
 
     def test_a_finished_compaction_cannot_be_abandoned(self):
         setup = _standard()
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(setup.email_then_report())
         setup.compactor.commit(planned.compaction_id)
 
         with pytest.raises(CompactionError, match="already complete"):
@@ -417,13 +488,19 @@ class TestDescribeAndAbandon:
 
 class TestDayByDay:
     def test_the_next_days_notes_become_available_once_the_first_is_compacted(self):
-        setup = _standard()
+        setup = Setup([("09:05", "email"), ("10:20", "report"), ("11:00", "done")])
         setup.append_note("08:00+1", "next day")
         setup.now = "09:00+1"
-        planned = setup.compactor.dry_run(_email_then_report())
+        planned = setup.compactor.dry_run(
+            [
+                setup.d(2, _e("starts", event_id="e1")),
+                setup.d(3, _e("ends", event_id="e1"), _e("starts", event_id="e2")),
+                setup.d(4, _e("ends", event_id="e2")),
+            ]
+        )
         setup.compactor.commit(planned.compaction_id)
 
         context = setup.compactor.prepare()
 
-        assert [n.id for n in context.notes] == ["n4"]
+        assert [n.id for n in context.notes] == [setup.note_id(5)]
         assert context.remaining_note_count == 0

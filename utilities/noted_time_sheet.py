@@ -20,8 +20,8 @@ directly.
 Notes are never deleted. Compacting them (utilities/note_compactor.py)
 stamps each consumed row's `compaction_id` instead, and `read`/
 `read_with_rows` return only unstamped ("uncompacted") notes unless asked
-otherwise. Since rows are never removed, a note's row number is a
-permanent id (see `SheetNote`).
+otherwise. Since rows are never removed, a note's row number is
+permanent, and with its timestamp forms its id (see `SheetNote`).
 """
 
 from __future__ import annotations
@@ -99,22 +99,30 @@ _DATA_RANGE = f"A{_FIRST_DATA_ROW}:{_LAST_COLUMN}"
 @dataclass(kw_only=True)
 class SheetNote:
     """A `NotedTime` plus the sheet row it lives in. Rows are never
-    removed, so `row` (and `id`) is permanent -- what a compaction refers
-    to a note by."""
+    removed, so `row` is permanent. `id` combines that row with the
+    note's timestamp -- e.g. `2026-01-01T09:05:00+00:00#5` -- so a note
+    can be told apart by *when* it was, and so a stale id (the row was
+    edited, or moved) is caught instead of silently pointing at the
+    wrong note: see `NotedTimeSheet.mark_compacted`."""
 
     row: int
     note: NotedTime
 
     @property
     def id(self) -> str:
-        return f"n{self.row}"
+        return f"{self.note.timestamp.isoformat()}#{self.row}"
 
 
-def row_from_note_id(note_id: str) -> int:
-    """The inverse of `SheetNote.id`."""
-    if not note_id.startswith("n") or not note_id[1:].isdigit():
-        raise ValueError(f"{note_id!r} isn't a note id (expected e.g. 'n5')")
-    return int(note_id[1:])
+def parse_note_id(note_id: str) -> tuple[datetime, int]:
+    """The (timestamp, row) a `SheetNote.id` encodes. Raises `ValueError`
+    for anything that isn't one."""
+    timestamp, separator, row = note_id.rpartition("#")
+    if separator and row.isdigit():
+        try:
+            return datetime.fromisoformat(timestamp), int(row)
+        except ValueError:
+            pass
+    raise ValueError(f"{note_id!r} isn't a note id (expected e.g. '2026-01-01T09:05:00+00:00#5')")
 
 
 class NotedTimeSheet:
@@ -205,14 +213,31 @@ class NotedTimeSheet:
             [noted_time.to_row(header_row, None)],
         )
 
-    def mark_compacted(self, rows: list[int], compaction_id: str) -> None:
-        """Stamp `compaction_id` onto the given sheet rows, marking them
-        compacted. Touches only that one column of those rows."""
-        if not rows:
+    def mark_compacted(self, note_ids: list[str], compaction_id: str) -> None:
+        """Stamp `compaction_id` onto the notes `note_ids` (see
+        `SheetNote.id`), marking them compacted. Touches only that one
+        column of those rows -- and refuses, writing nothing, if any
+        row no longer holds the note its id names (its timestamp changed,
+        or it's gone), or was already compacted by a *different*
+        compaction."""
+        if not note_ids:
             return
+        wanted = [parse_note_id(note_id) for note_id in note_ids]
+        current = {n.row: n.note for n in self.read_with_rows(include_compacted=True)}
+        for (timestamp, row), note_id in zip(wanted, note_ids):
+            note = current.get(row)
+            if note is None or note.timestamp != timestamp:
+                raise ValueError(
+                    f"row {row} no longer holds the note {note_id!r} -- it was edited or "
+                    "removed since it was read"
+                )
+            if note.compaction_id not in (None, compaction_id):
+                raise ValueError(
+                    f"note {note_id!r} was already compacted by {note.compaction_id!r}"
+                )
         header_row = self._read_header()
         column = chr(ord("A") + header_row.index("compaction_id"))
-        for first, last in _contiguous_runs(sorted(set(rows))):
+        for first, last in _contiguous_runs(sorted({row for _, row in wanted})):
             self._sheets_client.write_rows_in_sheet(
                 self._spreadsheet_id,
                 self._sheet_id,

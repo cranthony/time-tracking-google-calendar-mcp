@@ -53,7 +53,7 @@ from utilities.note_compaction import (
     PlanNote,
     plan_compaction,
 )
-from utilities.noted_time_sheet import NotedTimeSheet, SheetNote, row_from_note_id
+from utilities.noted_time_sheet import NotedTimeSheet, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
 
 _CANDIDATE_WINDOW = timedelta(hours=1)
@@ -218,6 +218,7 @@ class NoteCompactor:
                 message="ask the user these, then call again with the corrected dispositions",
                 questions=exc.questions,
             )
+        superseded = self._supersede_planned()
         compaction_id = uuid.uuid4().hex[:12]
         self._journal.start(
             compaction_id,
@@ -234,7 +235,10 @@ class NoteCompactor:
             message=(
                 f"{len(plan.changes)} calendar change(s) planned for {len(day.notes)} note(s); "
                 "nothing has been changed yet. Show this to the user, then call compact_notes "
-                f"with compaction_id={compaction_id!r} and dry_run=False to apply it."
+                f"with compaction_id={compaction_id!r} and dry_run=False to apply it. If they want "
+                "something different, correct the dispositions and call compact_notes again "
+                "(this plan is then replaced)."
+                + (f" (Replaced {superseded} earlier unapplied plan(s).)" if superseded else "")
             ),
         )
 
@@ -269,7 +273,7 @@ class NoteCompactor:
                 self._apply_step(journal, step)
                 self._journal.mark_step_done(step)
         self._journal.set_status(journal, APPLIED)
-        self._notes.mark_compacted([row_from_note_id(n) for n in journal.note_ids], journal.id)
+        self._notes.mark_compacted(journal.note_ids, journal.id)
         self._journal.set_status(journal, STAMPED)
         return CompactionResult(
             status="applied",
@@ -309,6 +313,16 @@ class NoteCompactor:
             now=min(now, day_end),
             remaining=len(sheet_notes) - len(in_day),
         )
+
+    def _supersede_planned(self) -> int:
+        """Abandon every earlier plan that was never applied. A new dry run
+        replaces them -- it's how a rejected or corrected plan is redone --
+        and leaving them `planned` would let a stale one be committed by
+        mistake. Returns how many were replaced."""
+        replaced = self._journal.compactions_with_status(PLANNED)
+        for compaction_id, _status in replaced:
+            self._journal.set_status(self._journal.load(compaction_id), ABANDONED)
+        return len(replaced)
 
     def _require_no_open_compaction(self) -> None:
         open_compactions = self._journal.open_compactions()

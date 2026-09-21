@@ -37,8 +37,8 @@ Only notes with a `starts`/`ends` effect are *boundaries*.
 - An activity with only a start note runs until the next boundary -- the
   gap is filled by extending it, not left empty. The last such activity
   is still in progress: it runs to `now`, or to its planned end if that's
-  later, but never into the end-of-day sleep block (with a warning if
-  that cap applies).
+  later. If the day is already over there is no "now" to run to, so
+  nothing is guessed: the planner asks when it ended.
 - An activity with only an end note honors that end, and its start is
   pulled back to the *previous* boundary's time, again so nothing is left
   empty. (With no previous boundary it keeps its planned start.)
@@ -280,10 +280,12 @@ def plan_compaction(
 
     sleep = next((e for e in day_events if e.is_end_of_day_sleep and e.status != "cancelled"), None)
     _compute_intervals(
-        ordered, by_note, activities, now, sleep.start if sleep else None, problems, warnings
+        ordered, by_note, activities, now, sleep.end if sleep else None, problems, questions, warnings
     )
     if problems:
         raise CompactionError("\n".join(problems))
+    if questions:
+        raise NeedsClarification(questions)
 
     facts = _merge_into_facts(activities, warnings)
     _build_fact_events(facts, ordered, by_note, warnings)
@@ -413,8 +415,9 @@ def _compute_intervals(
     by_note: dict[str, NoteDisposition],
     activities: dict[str, _Activity],
     now: datetime,
-    bedtime: datetime | None,
+    day_over_at: datetime | None,
     problems: list[str],
+    questions: list[str],
     warnings: list[str],
 ) -> None:
     boundary = [
@@ -433,14 +436,16 @@ def _compute_intervals(
                     end = boundary[i + 1].timestamp
                 else:
                     # Still in progress: to now, or its planned end if that's
-                    # later -- but never into the end-of-day sleep block.
+                    # later. (On a day that's already over, `now` is the end
+                    # of that day, so there's no real "now" to run to.)
                     end = max(now, activity.event.end) if activity.event else now
-                    if bedtime is not None and start < bedtime < end:
-                        end = bedtime
-                        warnings.append(
-                            f"{activity.summary!r} has no end note, so it runs until bedtime "
-                            f"({bedtime.isoformat()})"
+                    if day_over_at is not None and end >= day_over_at:
+                        questions.append(
+                            f"When did {activity.summary!r} end? Note "
+                            f"{activity.start_note.id} started it, nothing says it ended, and "
+                            "that day is over."
                         )
+                        continue
         else:
             end = activity.end_note.timestamp
             i = position[activity.end_note.id]
