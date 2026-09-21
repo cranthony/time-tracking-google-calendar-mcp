@@ -466,7 +466,14 @@ class CalendarClient:
         return Event.from_api(response)
 
     def create_event(self, event: Event) -> Event:
+        """Create `event`. If `event.id` is set it's sent as the new
+        event's id (Calendar accepts a caller-chosen one: 5-1024 characters
+        of a-v and 0-9), which makes a retried create idempotent -- the
+        second attempt fails with a 409 instead of creating a duplicate.
+        See `utilities/note_compactor.py`."""
         body = event.to_api_body()
+        if event.id:
+            body["id"] = event.id
         response = (
             self._service.events()
             .insert(calendarId=self._calendar_id, body=body, **_event_label_version_kwargs(body))

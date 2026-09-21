@@ -594,6 +594,43 @@ class TestCalendarClientCreateEvent:
             calendarId=TEST_CALENDAR_ID, body=event.to_api_body()
         )
 
+    def test_create_event_sends_a_caller_chosen_id_so_a_retry_cannot_duplicate(self):
+        service = MagicMock()
+        insert = service.events.return_value.insert
+        insert.return_value.execute.return_value = api_event(
+            "cmpabc123s001", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        client = make_client(service)
+
+        client.create_event(
+            Event(
+                id="cmpabc123s001",
+                summary="Busy",
+                start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+                end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            )
+        )
+
+        assert insert.call_args.kwargs["body"]["id"] == "cmpabc123s001"
+
+    def test_create_event_without_an_id_lets_calendar_assign_one(self):
+        service = MagicMock()
+        insert = service.events.return_value.insert
+        insert.return_value.execute.return_value = api_event(
+            "assigned", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+        client = make_client(service)
+
+        client.create_event(
+            Event(
+                summary="Busy",
+                start=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
+                end=datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+            )
+        )
+
+        assert "id" not in insert.call_args.kwargs["body"]
+
     def test_create_event_passes_event_label_version_when_setting_event_label_id(self):
         service = MagicMock()
         service.events.return_value.insert.return_value.execute.return_value = api_event(

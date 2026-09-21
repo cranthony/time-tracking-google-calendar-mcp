@@ -11,6 +11,7 @@ from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect
 from utilities.noted_time_sheet import NotedTime
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
@@ -404,12 +405,23 @@ class TestNote:
 
         result = server.note(noted_time)
 
-        assert result is noted_time
+        assert result == noted_time
         noted_time_sheet.append.assert_called_once_with(noted_time)
+
+    def test_never_lets_a_caller_set_the_compaction_id(self, monkeypatch):
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time = NotedTime(
+            timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), compaction_id="sneaky"
+        )
+
+        result = server.note(noted_time)
+
+        assert result.compaction_id is None
+        assert noted_time_sheet.append.call_args.args[0].compaction_id is None
 
 
 class TestGetNotes:
-    def test_returns_the_noted_time_sheets_notes(self, monkeypatch):
+    def test_returns_the_noted_time_sheets_uncompacted_notes(self, monkeypatch):
         noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
         noted_times = [
             NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
@@ -419,7 +431,111 @@ class TestGetNotes:
         result = server.get_notes()
 
         assert result == noted_times
-        noted_time_sheet.read.assert_called_once_with()
+        noted_time_sheet.read.assert_called_once_with(include_compacted=False)
+
+    def test_can_include_compacted_notes(self, monkeypatch):
+        noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.read.return_value = []
+
+        server.get_notes(include_compacted=True)
+
+        noted_time_sheet.read.assert_called_once_with(include_compacted=True)
+
+
+def _fake_compactor(monkeypatch) -> MagicMock:
+    compactor = MagicMock()
+    monkeypatch.setattr(server, "get_note_compactor", lambda: compactor)
+    return compactor
+
+
+class TestPrepareCompaction:
+    def test_delegates_to_the_compactor(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        result = server.prepare_compaction()
+
+        assert result is compactor.prepare.return_value
+
+
+class TestCompactNotes:
+    def test_a_dry_run_with_dispositions_plans(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        dispositions = [NoteDisposition(note_id="n2", effects=[NoteEffect(kind="ignore")])]
+
+        result = server.compact_notes(dispositions=dispositions)
+
+        assert result is compactor.dry_run.return_value
+        compactor.dry_run.assert_called_once_with(dispositions)
+
+    def test_a_dry_run_with_a_compaction_id_describes_the_stored_plan(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        result = server.compact_notes(compaction_id="abc")
+
+        assert result is compactor.describe.return_value
+        compactor.describe.assert_called_once_with("abc")
+
+    def test_committing_applies_the_stored_plan(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        result = server.compact_notes(compaction_id="abc", dry_run=False)
+
+        assert result is compactor.commit.return_value
+        compactor.commit.assert_called_once_with("abc")
+
+    def test_committing_without_a_dry_run_first_is_refused(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        with pytest.raises(ToolError, match="dry run first"):
+            server.compact_notes(dispositions=[], dry_run=False)
+
+        compactor.commit.assert_not_called()
+
+    def test_a_dry_run_needs_dispositions(self, monkeypatch):
+        _fake_compactor(monkeypatch)
+
+        with pytest.raises(ToolError, match="dispositions are required"):
+            server.compact_notes()
+
+    def test_compaction_errors_become_tool_errors(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        compactor.commit.side_effect = CompactionError("the notes changed")
+
+        with pytest.raises(ToolError, match="the notes changed"):
+            server.compact_notes(compaction_id="abc", dry_run=False)
+
+
+class TestAbandonCompaction:
+    def test_delegates_to_the_compactor(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        result = server.abandon_compaction("abc")
+
+        assert result is compactor.abandon.return_value
+        compactor.abandon.assert_called_once_with("abc")
+
+    def test_compaction_errors_become_tool_errors(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        compactor.abandon.side_effect = CompactionError("already complete")
+
+        with pytest.raises(ToolError, match="already complete"):
+            server.abandon_compaction("abc")
+
+
+class TestGetNoteCompactor:
+    def test_caches_across_calls(self, monkeypatch):
+        monkeypatch.setattr(server, "_note_compactor", None)
+        monkeypatch.setattr(server, "get_reallocating_calendar", lambda: MagicMock())
+        monkeypatch.setattr(server, "get_calendar_client", lambda: MagicMock())
+        monkeypatch.setattr(server, "get_noted_time_sheet", lambda: MagicMock())
+        built = []
+        monkeypatch.setattr(server, "build_compaction_journal", lambda: built.append(1) or MagicMock())
+
+        first = server.get_note_compactor()
+        second = server.get_note_compactor()
+
+        assert first is second
+        assert len(built) == 1
 
 
 class TestGetCalendarClient:

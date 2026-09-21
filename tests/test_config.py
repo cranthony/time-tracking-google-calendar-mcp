@@ -219,3 +219,39 @@ class TestBuildNotedTimeSheet:
             config.build_noted_time_sheet(calendar_id="explicit-cal-id")
 
         assert calendar_client_cls.call_args.args[1] == "explicit-cal-id"
+
+
+class TestBuildCompactionJournal:
+    def test_ensures_the_spreadsheet_and_returns_a_journal(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
+        monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
+        monkeypatch.setattr(
+            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+        )
+
+        with (
+            patch.object(config.calendar_metadata_sheet, "ensure_spreadsheet") as ensure_spreadsheet,
+            patch.object(config, "CompactionJournal") as journal_cls,
+        ):
+            ensure_spreadsheet.return_value = ("sheet-1", False)
+
+            result = config.build_compaction_journal()
+
+        assert result is journal_cls.ensure.return_value
+        journal_cls.ensure.assert_called_once_with(ensure_spreadsheet.call_args.args[1], "sheet-1")
+
+    def test_accepts_an_explicit_calendar_id_without_requiring_the_env_var(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
+        monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
+        monkeypatch.setattr(
+            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+        )
+
+        with (
+            patch.object(config, "CalendarClient") as calendar_client_cls,
+            patch.object(config.calendar_metadata_sheet, "ensure_spreadsheet", return_value=("s", False)),
+            patch.object(config, "CompactionJournal"),
+        ):
+            config.build_compaction_journal(calendar_id="explicit-cal-id")
+
+        assert calendar_client_cls.call_args.args[1] == "explicit-cal-id"

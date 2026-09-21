@@ -16,6 +16,12 @@ API to reconcile with -- it's purely a Sheet-native record -- so there's
 no id column here, and no EventLabels-equivalent reconciliation layer
 above this one: server.py/calendar_cli.py talk to NotedTimeSheet
 directly.
+
+Notes are never deleted. Compacting them (utilities/note_compactor.py)
+stamps each consumed row's `compaction_id` instead, and `read`/
+`read_with_rows` return only unstamped ("uncompacted") notes unless asked
+otherwise. Since rows are never removed, a note's row number is a
+permanent id (see `SheetNote`).
 """
 
 from __future__ import annotations
@@ -29,14 +35,14 @@ DEFAULT_SHEET_TITLE = calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE
 
 _SHEET_ROLE = calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE
 
-_HEADER_RANGE = "A1:B1"
-_DATA_RANGE = "A2:B"
+_FIRST_DATA_ROW = 2
+"""Row 1 is the header."""
 
 
 @dataclass(kw_only=True)
 class NotedTime:
-    """A single uncompacted time note: some moment worth recording, with
-    an optional free-text description of what it marks."""
+    """A single time note: some moment worth recording, with an optional
+    free-text description of what it marks."""
 
     timestamp: datetime
     """When this note refers to. Required -- a note with no timestamp
@@ -44,6 +50,12 @@ class NotedTime:
 
     description: str | None = None
     """Optional free-text description of what this timestamp marks."""
+
+    compaction_id: str | None = None
+    """The id of the compaction (see utilities/note_compactor.py) that
+    consumed this note, or `None` while it's still uncompacted. Set only
+    by `NotedTimeSheet.mark_compacted`, never by a caller recording a
+    note."""
 
     @classmethod
     def from_row(cls, header_row: list[str], data: list[str]) -> "NotedTime":
@@ -59,6 +71,7 @@ class NotedTime:
         return cls(
             timestamp=datetime.fromisoformat(timestamp_value),
             description=decoded.get("description") or None,
+            compaction_id=decoded.get("compaction_id") or None,
         )
 
     def to_row(self, header_row: list[str], original_row: list[str] | None = None) -> list[str]:
@@ -76,6 +89,32 @@ class NotedTime:
             else:
                 result.append("" if value is None else str(value))
         return result
+
+
+_LAST_COLUMN = chr(ord("A") + len(fields(NotedTime)) - 1)
+_HEADER_RANGE = f"A1:{_LAST_COLUMN}1"
+_DATA_RANGE = f"A{_FIRST_DATA_ROW}:{_LAST_COLUMN}"
+
+
+@dataclass(kw_only=True)
+class SheetNote:
+    """A `NotedTime` plus the sheet row it lives in. Rows are never
+    removed, so `row` (and `id`) is permanent -- what a compaction refers
+    to a note by."""
+
+    row: int
+    note: NotedTime
+
+    @property
+    def id(self) -> str:
+        return f"n{self.row}"
+
+
+def row_from_note_id(note_id: str) -> int:
+    """The inverse of `SheetNote.id`."""
+    if not note_id.startswith("n") or not note_id[1:].isdigit():
+        raise ValueError(f"{note_id!r} isn't a note id (expected e.g. 'n5')")
+    return int(note_id[1:])
 
 
 class NotedTimeSheet:
@@ -111,14 +150,30 @@ class NotedTimeSheet:
             sheets_client.write_rows_in_sheet(spreadsheet_id, sheet_id, _HEADER_RANGE, [header_row])
         return sheet
 
-    def read(self) -> list[NotedTime]:
+    def read_with_rows(self, *, include_compacted: bool = False) -> list[SheetNote]:
         """The data rows (everything after the header row) of this tab,
-        sorted by timestamp -- notes are appended in whatever order
-        they're recorded in, not necessarily chronological (e.g.
-        backfilling an earlier note after a later one)."""
+        in sheet order, each with its row number. Only uncompacted notes
+        unless `include_compacted`. Rows with nothing in them are
+        skipped (their row numbers still count)."""
         header_row = self._read_header()
         rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
-        noted_times = [NotedTime.from_row(header_row, row) for row in rows]
+        result = []
+        for offset, row in enumerate(rows):
+            if not any(cell.strip() for cell in row):
+                continue
+            note = NotedTime.from_row(header_row, row)
+            if include_compacted or note.compaction_id is None:
+                result.append(SheetNote(row=_FIRST_DATA_ROW + offset, note=note))
+        return result
+
+    def read(self, *, include_compacted: bool = False) -> list[NotedTime]:
+        """Every note, sorted by timestamp -- notes are appended in
+        whatever order they're recorded in, not necessarily chronological
+        (e.g. backfilling an earlier note after a later one). Only
+        uncompacted notes unless `include_compacted`."""
+        noted_times = [
+            sheet_note.note for sheet_note in self.read_with_rows(include_compacted=include_compacted)
+        ]
         noted_times.sort(key=lambda noted_time: noted_time.timestamp)
         return noted_times
 
@@ -134,15 +189,36 @@ class NotedTimeSheet:
         ])
 
     def append(self, noted_time: NotedTime) -> None:
-        """Add `noted_time` as a new row at the end of this tab."""
+        """Add `noted_time` as a new row at the end of this tab. Writes
+        only that new row -- never rewriting the existing ones -- so it
+        can't clobber a concurrent `mark_compacted` stamp on one of
+        them."""
         header_row = self._read_header()
         previous_rows = self._sheets_client.read_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, _DATA_RANGE
         )
-        new_row = noted_time.to_row(header_row, None)
+        next_row = _FIRST_DATA_ROW + len(previous_rows)
         self._sheets_client.write_rows_in_sheet(
-            self._spreadsheet_id, self._sheet_id, _DATA_RANGE, previous_rows + [new_row]
+            self._spreadsheet_id,
+            self._sheet_id,
+            f"A{next_row}:{_LAST_COLUMN}",
+            [noted_time.to_row(header_row, None)],
         )
+
+    def mark_compacted(self, rows: list[int], compaction_id: str) -> None:
+        """Stamp `compaction_id` onto the given sheet rows, marking them
+        compacted. Touches only that one column of those rows."""
+        if not rows:
+            return
+        header_row = self._read_header()
+        column = chr(ord("A") + header_row.index("compaction_id"))
+        for first, last in _contiguous_runs(sorted(set(rows))):
+            self._sheets_client.write_rows_in_sheet(
+                self._spreadsheet_id,
+                self._sheet_id,
+                f"{column}{first}:{column}{last}",
+                [[compaction_id]] * (last - first + 1),
+            )
 
     def _read_header(self) -> list[str]:
         rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)
@@ -153,3 +229,14 @@ class NotedTimeSheet:
                 f"Missing expected header columns at {_HEADER_RANGE}: {expected - set(header_row)}"
             )
         return header_row
+
+
+def _contiguous_runs(sorted_rows: list[int]) -> list[tuple[int, int]]:
+    """[(first, last), ...] for each run of consecutive numbers."""
+    runs: list[tuple[int, int]] = []
+    for row in sorted_rows:
+        if runs and row == runs[-1][1] + 1:
+            runs[-1] = (runs[-1][0], row)
+        else:
+            runs.append((row, row))
+    return runs
