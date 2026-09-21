@@ -109,3 +109,8 @@ TIME_NOTES_SHEET_ROLE = "uncompacted-time-notes"
 TIME_NOTES_SHEET_TITLE = "Noted Times"
 """See `utilities/noted_time_sheet.py`'s `NotedTimeSheet` for the tab
 this identifies -- a calendar's uncompacted time notes."""
+
+COMPACTIONS_SHEET_ROLE = "compactions"
+COMPACTIONS_SHEET_TITLE = "Compactions"
+"""See `utilities/compaction_journal.py`'s `CompactionJournal` for the tab
+this identifies -- the write-ahead journal of note compactions."""

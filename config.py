@@ -10,6 +10,7 @@ from calendar_clients.google_auth import load_credentials
 from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
+from utilities.compaction_journal import CompactionJournal
 from utilities.event_labels import EventLabels
 from utilities.noted_time_sheet import NotedTimeSheet
 
@@ -148,3 +149,17 @@ def build_noted_time_sheet(calendar_id: str | None = None) -> NotedTimeSheet:
         calendar_client, sheets_client
     )
     return NotedTimeSheet.ensure(sheets_client, spreadsheet_id)
+
+
+def build_compaction_journal(calendar_id: str | None = None) -> CompactionJournal:
+    """Construct a CompactionJournal from environment configuration (and a
+    local .env file, if present). See `_build_calendar_and_sheets_clients`
+    for `calendar_id`. Constructing this ensures the calendar has a
+    metadata spreadsheet and a compactions tab (with its header row),
+    creating whichever doesn't already exist -- see
+    `CompactionJournal.ensure`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return CompactionJournal.ensure(sheets_client, spreadsheet_id)

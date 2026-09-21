@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from mcp.server.auth.settings import AuthSettings
@@ -12,6 +12,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError
 from config import (
     build_calendar_client,
+    build_compaction_journal,
     build_event_labels,
     build_noted_time_sheet,
     get_mcp_resource_url,
@@ -20,6 +21,8 @@ from config import (
 from utilities.event_labels import EventLabels, EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.memory_diagnostics import track
+from utilities.note_compaction import CompactionError, NoteDisposition
+from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
@@ -133,6 +136,7 @@ _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
 _event_labels: EventLabels | None = None
 _noted_time_sheet: NotedTimeSheet | None = None
+_note_compactor: NoteCompactor | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -176,6 +180,20 @@ def get_noted_time_sheet() -> NotedTimeSheet:
     if _noted_time_sheet is None:
         _noted_time_sheet = build_noted_time_sheet()
     return _noted_time_sheet
+
+
+def get_note_compactor() -> NoteCompactor:
+    """Lazily construct and cache the NoteCompactor, the same way the
+    other get_* helpers cache theirs."""
+    global _note_compactor
+    if _note_compactor is None:
+        _note_compactor = NoteCompactor(
+            calendar=get_reallocating_calendar(),
+            client=get_calendar_client(),
+            notes=get_noted_time_sheet(),
+            journal=build_compaction_journal(),
+        )
+    return _note_compactor
 
 
 @mcp.tool()
@@ -279,20 +297,83 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
 
 @mcp.tool()
 def note(noted_time: NotedTime) -> NotedTime:
-    """Record a new uncompacted time note -- a timestamp, with an
-    optional description of what it marks. Returns the note as
-    recorded."""
+    """Record a new time note -- a timestamp, with an optional
+    description of what it marks. Returns the note as recorded."""
     with track("note"):
-        get_noted_time_sheet().append(noted_time)
-        return noted_time
+        # compaction_id is set only by compaction, never by a caller.
+        recorded = replace(noted_time, compaction_id=None)
+        get_noted_time_sheet().append(recorded)
+        return recorded
 
 
 @mcp.tool()
-def get_notes() -> list[NotedTime]:
-    """List every recorded uncompacted time note, sorted by
-    timestamp."""
+def get_notes(include_compacted: bool = False) -> list[NotedTime]:
+    """List the recorded time notes, sorted by timestamp. Only notes that
+    haven't been compacted yet, unless include_compacted is true."""
     with track("get_notes"):
-        return get_noted_time_sheet().read()
+        return get_noted_time_sheet().read(include_compacted=include_compacted)
+
+
+@mcp.tool()
+def prepare_compaction() -> CompactionContext:
+    """Step 1 of compacting notes into the calendar. Returns one day's
+    worth of uncompacted notes (each with an id and the planned events
+    likeliest to be what it refers to) and that day's planned events, plus
+    instructions for interpreting them. Read the free-form notes, decide
+    what each means, then call compact_notes with one disposition per
+    note. Read-only."""
+    with track("prepare_compaction"):
+        return get_note_compactor().prepare()
+
+
+@mcp.tool()
+def compact_notes(
+    dispositions: list[NoteDisposition] | None = None,
+    compaction_id: str | None = None,
+    dry_run: bool = True,
+) -> CompactionResult:
+    """Steps 2 and 3 of compacting notes: turn the notes -- treated as the
+    authority on what actually happened -- into calendar changes. The past
+    becomes fact and the future reflows around it.
+
+    Step 2: call with `dispositions` (one per note from prepare_compaction)
+    and dry_run=True (the default). Nothing is changed; you get the
+    proposed changes and a compaction_id. If a note was marked 'ambiguous'
+    you get the questions to ask the user instead. Show the user the
+    changes.
+
+    Step 3: after the user agrees, call with that compaction_id and
+    dry_run=False to apply it. It's safe to call again if it fails partway
+    -- it resumes exactly where it stopped. With a compaction_id and
+    dry_run=True you just get that compaction's stored plan back."""
+    with track("compact_notes"):
+        compactor = get_note_compactor()
+        try:
+            if compaction_id is None:
+                if not dry_run:
+                    raise CompactionError(
+                        "run a dry run first (dispositions, dry_run=True) and pass its compaction_id"
+                    )
+                if dispositions is None:
+                    raise CompactionError("dispositions are required for a dry run")
+                return compactor.dry_run(dispositions)
+            if dry_run:
+                return compactor.describe(compaction_id)
+            return compactor.commit(compaction_id)
+        except CompactionError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def abandon_compaction(compaction_id: str) -> CompactionResult:
+    """Give up on a compaction that can't be finished (or that you no
+    longer want). Steps it already applied stay applied; its notes stay
+    uncompacted, so a new compaction can be planned."""
+    with track("abandon_compaction"):
+        try:
+            return get_note_compactor().abandon(compaction_id)
+        except CompactionError as exc:
+            raise ToolError(str(exc)) from exc
 
 
 if __name__ == "__main__":
