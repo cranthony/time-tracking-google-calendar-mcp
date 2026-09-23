@@ -69,7 +69,10 @@ DISPOSITION_GUIDE = (
     "'ambiguous' {question}: you can't tell -- ask the user. "
     "A note often ends one activity and starts the next: give it both effects. "
     "Only use event ids from `events`; each note's `candidates` are the likeliest. "
-    "'marker', 'ignore' and 'ambiguous' can't be combined with other effects."
+    "'marker', 'ignore' and 'ambiguous' can't be combined with other effects. "
+    "'starts'/'starts_unplanned'/'ends' may also carry {rename} (override the resulting event's "
+    "title) and/or {annotate} (extra text for its description) -- typically set these after showing "
+    "the user a dry run and hearing what they want changed, then call compact_notes again."
 )
 
 

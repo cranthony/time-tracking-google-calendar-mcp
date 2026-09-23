@@ -279,6 +279,165 @@ class TestMarkers:
         assert any("woke up" in w for w in plan.warnings)
 
 
+class TestRenameAndAnnotate:
+    def test_rename_on_starts_overrides_the_events_own_summary(self):
+        plan = plan_compaction(
+            [_note(2, "09:05"), _note(3, "10:20")],
+            [
+                _disposition(2, _effect("starts", event_id="e1", rename="Deep work")),
+                _disposition(3, _effect("ends", event_id="e1")),
+            ],
+            _day(),
+            time_at("10:30"),
+        )
+
+        assert _by_event(plan)["e1"].after.summary == "Deep work"
+
+    def test_rename_on_ends_also_overrides_the_summary(self):
+        plan = plan_compaction(
+            [_note(2, "09:05"), _note(3, "10:20")],
+            [
+                _disposition(2, _effect("starts", event_id="e1")),
+                _disposition(3, _effect("ends", event_id="e1", rename="Deep work")),
+            ],
+            _day(),
+            time_at("10:30"),
+        )
+
+        assert _by_event(plan)["e1"].after.summary == "Deep work"
+
+    def test_the_same_rename_from_both_the_start_and_end_note_is_not_a_conflict(self):
+        plan = plan_compaction(
+            [_note(2, "09:05"), _note(3, "10:20")],
+            [
+                _disposition(2, _effect("starts", event_id="e1", rename="Deep work")),
+                _disposition(3, _effect("ends", event_id="e1", rename="Deep work")),
+            ],
+            _day(),
+            time_at("10:30"),
+        )
+
+        assert _by_event(plan)["e1"].after.summary == "Deep work"
+
+    def test_rename_on_starts_unplanned_overrides_its_own_summary(self):
+        plan = plan_compaction(
+            [_note(2, "09:00"), _note(3, "09:30")],
+            [
+                _disposition(
+                    2, _effect("starts_unplanned", summary="Coffee", rename="Actual coffee break")
+                ),
+                _disposition(3, _effect("ends", started_by_note="n2")),
+            ],
+            _day(),
+            time_at("09:45"),
+        )
+
+        created = next(c for c in plan.changes if c.action == "create")
+        assert created.after.summary == "Actual coffee break"
+
+    def test_rename_overrides_the_auto_joined_summary_of_a_merge(self):
+        plan = plan_compaction(
+            [_note(2, "09:00"), _note(3, "09:30")],
+            [
+                _disposition(2, _effect("starts", event_id="e1", rename="Morning block")),
+                _disposition(3, _effect("ends", event_id="e2")),
+            ],
+            _day(),
+            time_at("09:45"),
+        )
+
+        assert _by_event(plan)["e1"].after.summary == "Morning block"
+
+    def test_two_different_renames_for_the_same_event_conflict(self):
+        with pytest.raises(CompactionError, match="already renamed it to 'Focus'"):
+            plan_compaction(
+                [_note(2, "09:05"), _note(3, "10:20")],
+                [
+                    _disposition(2, _effect("starts", event_id="e1", rename="Focus")),
+                    _disposition(3, _effect("ends", event_id="e1", rename="Emails")),
+                ],
+                _day(),
+                time_at("10:30"),
+            )
+
+    def test_two_different_renames_merged_by_overlap_conflict(self):
+        with pytest.raises(CompactionError, match="conflicting names.*Morning stuff.*Combined work"):
+            plan_compaction(
+                [_note(2, "09:00"), _note(3, "09:30")],
+                [
+                    _disposition(2, _effect("starts", event_id="e1", rename="Morning stuff")),
+                    _disposition(3, _effect("ends", event_id="e2", rename="Combined work")),
+                ],
+                _day(),
+                time_at("09:45"),
+            )
+
+    def test_annotate_on_starts_adds_to_the_description(self):
+        plan = plan_compaction(
+            [_note(2, "09:05"), _note(3, "10:20")],
+            [
+                _disposition(2, _effect("starts", event_id="e1", annotate="phone rang once")),
+                _disposition(3, _effect("ends", event_id="e1")),
+            ],
+            _day(),
+            time_at("10:30"),
+        )
+
+        assert _by_event(plan)["e1"].after.description == "Notes:\n- 09:05 phone rang once"
+
+    def test_annotate_and_marker_text_are_merged_in_chronological_order(self):
+        plan = plan_compaction(
+            [_note(2, "09:05"), _note(3, "09:20", "got a coffee"), _note(4, "10:20")],
+            [
+                _disposition(2, _effect("starts", event_id="e1")),
+                _disposition(3, _effect("marker")),
+                _disposition(4, _effect("ends", event_id="e1", annotate="wrapped up early")),
+            ],
+            _day(),
+            time_at("10:30"),
+        )
+
+        assert _by_event(plan)["e1"].after.description == (
+            "Notes:\n- 09:20 got a coffee\n- 10:20 wrapped up early"
+        )
+
+    def test_annotate_is_added_below_an_existing_description(self):
+        day = _day()
+        day[0].description = "Weekly inbox zero"
+
+        plan = plan_compaction(
+            [_note(2, "09:05"), _note(3, "10:20")],
+            [
+                _disposition(2, _effect("starts", event_id="e1", annotate="interrupted once")),
+                _disposition(3, _effect("ends", event_id="e1")),
+            ],
+            day,
+            time_at("10:30"),
+        )
+
+        assert _by_event(plan)["e1"].after.description == (
+            "Weekly inbox zero\n\nNotes:\n- 09:05 interrupted once"
+        )
+
+    def test_rename_and_annotate_are_rejected_on_marker(self):
+        with pytest.raises(CompactionError, match="only make sense on starts/starts_unplanned/ends"):
+            plan_compaction(
+                [_note(2, "09:00")],
+                [_disposition(2, _effect("marker", annotate="oops"))],
+                _day(),
+                time_at("09:30"),
+            )
+
+    def test_rename_is_rejected_on_ignore(self):
+        with pytest.raises(CompactionError, match="only make sense on starts/starts_unplanned/ends"):
+            plan_compaction(
+                [_note(2, "09:00")],
+                [_disposition(2, _effect("ignore", rename="whatever"))],
+                _day(),
+                time_at("09:30"),
+            )
+
+
 class TestUnmappedEvents:
     def test_a_planned_event_inside_the_noted_span_that_no_note_accounts_for_is_cancelled(self):
         day = _day() + [event_at("10:30-11:00", id="e5", summary="Standup", priority=2)]
