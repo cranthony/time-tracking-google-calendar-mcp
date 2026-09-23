@@ -29,6 +29,15 @@ Notes commonly do two things at once (ending one activity while starting
 the next), so a note may combine `starts`/`starts_unplanned`/`ends`
 effects. `marker`, `ignore` and `ambiguous` must stand alone.
 
+Any `starts`/`starts_unplanned`/`ends` effect may also carry `rename`
+(override the resulting event's title -- the merge below would otherwise
+pick it automatically) and/or `annotate` (extra text for the resulting
+event's description, alongside any `marker` text that lands in the same
+span). These exist for the user to redirect after seeing a preview --
+"call this X instead", "note that Y happened" -- without needing a new
+tool: correct the relevant effect and call `compact_notes` again, the
+same as correcting any other disposition.
+
 ## Turning effects into time
 
 Only notes with a `starts`/`ends` effect are *boundaries*.
@@ -49,7 +58,9 @@ Two activities that come out overlapping -- e.g. "9:00 started email",
 "9:30 done with report" gives the email [9:00, 9:30] and the report
 [9:00, 9:30] -- are **merged into one event** ("email and report") rather
 than guessing which one it was. The first planned one keeps its id; any
-other planned one is cancelled.
+other planned one is cancelled. An explicit `rename` on either overrides
+that auto-generated title; two different `rename`s for the same merged
+event is a conflict, reported like any other invalid disposition.
 
 ## What happens to the rest of the calendar
 
@@ -102,6 +113,20 @@ class NoteEffect:
 
     question: str | None = None
     """`ambiguous`: what to ask the user."""
+
+    rename: str | None = None
+    """`starts`/`starts_unplanned`/`ends` only: override the resulting
+    event's title instead of the one it would otherwise get (the planned
+    event's own summary, `starts_unplanned`'s `summary`, or -- if two
+    activities merge -- their titles joined together). Typically used
+    after a preview, when the user wants something called differently
+    than the notes alone would produce."""
+
+    annotate: str | None = None
+    """`starts`/`starts_unplanned`/`ends` only: extra text to add to the
+    resulting event's description, alongside any `marker` text that lands
+    in the same span. Unlike `marker`, this can accompany an effect that
+    also starts or ends the activity."""
 
 
 @dataclass(kw_only=True)
@@ -234,6 +259,11 @@ class _Activity:
     end_note: PlanNote | None = None
     start: datetime | None = None
     end: datetime | None = None
+    rename: str | None = None
+    rename_note: PlanNote | None = None
+    """Which note set `rename` -- for the conflict message if another
+    note tries to set it to something different."""
+    annotations: list[tuple[PlanNote, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -288,7 +318,9 @@ def plan_compaction(
         raise NeedsClarification(questions)
 
     facts = _merge_into_facts(activities, warnings)
-    _build_fact_events(facts, ordered, by_note, warnings)
+    _build_fact_events(facts, ordered, by_note, problems, warnings)
+    if problems:
+        raise CompactionError("\n".join(problems))
     return _simulate(facts, day_events, events_by_id, now, options, warnings)
 
 
@@ -356,9 +388,15 @@ def _build_activities(
                     f"note {note.id} ({note.timestamp.isoformat()}, {note.description!r}): "
                     f"{effect.question or 'what does this note mean?'}"
                 )
-            elif effect.kind in ("marker", "ignore"):
                 continue
-            elif effect.kind == "starts":
+            if effect.kind in ("marker", "ignore"):
+                if effect.rename is not None or effect.annotate is not None:
+                    problems.append(
+                        f"note {note.id}: 'rename'/'annotate' only make sense on "
+                        "starts/starts_unplanned/ends effects"
+                    )
+                continue
+            if effect.kind == "starts":
                 activity = planned(effect.event_id, note)
                 if activity is None:
                     continue
@@ -373,16 +411,19 @@ def _build_activities(
                 key = f"new:{note.id}"
                 if not (effect.summary or "").strip():
                     problems.append(f"note {note.id}: 'starts_unplanned' needs a summary")
+                    continue
                 elif key in activities:
                     problems.append(f"note {note.id} starts more than one unplanned activity")
+                    continue
                 else:
-                    activities[key] = _Activity(
+                    activity = _Activity(
                         key=key,
                         event=None,
                         summary=effect.summary.strip(),
                         label_id=effect.event_label_id,
                         start_note=note,
                     )
+                    activities[key] = activity
             elif effect.kind == "ends":
                 if bool(effect.event_id) == bool(effect.started_by_note):
                     problems.append(
@@ -407,7 +448,25 @@ def _build_activities(
                     activity.end_note = note
             else:
                 problems.append(f"note {note.id}: unknown effect kind {effect.kind!r}")
+                continue
+            _apply_overrides(activity, effect, note, problems)
     return activities
+
+
+def _apply_overrides(
+    activity: _Activity, effect: NoteEffect, note: PlanNote, problems: list[str]
+) -> None:
+    if effect.rename is not None:
+        if activity.rename is not None and activity.rename != effect.rename:
+            problems.append(
+                f"note {note.id}: renames {activity.summary!r} to {effect.rename!r}, but note "
+                f"{activity.rename_note.id} already renamed it to {activity.rename!r}"
+            )
+        else:
+            activity.rename = effect.rename
+            activity.rename_note = note
+    if effect.annotate is not None:
+        activity.annotations.append((note, effect.annotate))
 
 
 def _compute_intervals(
@@ -506,11 +565,26 @@ def _build_fact_events(
     facts: list[_Fact],
     ordered: list[PlanNote],
     by_note: dict[str, NoteDisposition],
+    problems: list[str],
     warnings: list[str],
 ) -> None:
+    # A fact's title: an explicit rename if every member that gave one
+    # agrees, the auto-joined summary otherwise. Two different renames for
+    # the same merged event is a real conflict -- reported like any other
+    # invalid disposition, not silently resolved by picking one.
     for fact in facts:
+        renames = {m.rename for m in fact.members if m.rename is not None}
+        if len(renames) > 1:
+            by = ", ".join(
+                f"{m.rename!r} (note {m.rename_note.id})" for m in fact.members if m.rename is not None
+            )
+            problems.append(
+                f"conflicting names for the events merged into one activity "
+                f"({fact.start.isoformat()} to {fact.end.isoformat()}): {by}"
+            )
+            continue
+        summary = next(iter(renames), None) or _joined_summary(fact.members)
         planned = [m for m in fact.members if m.event is not None]
-        summary = _joined_summary(fact.members)
         if planned:
             fact.base = planned[0].event
             event = replace(fact.base)
@@ -522,6 +596,18 @@ def _build_fact_events(
         event.is_fixed_time = True
         event.min_duration = fact.end - fact.start
         fact.event = event
+    if problems:
+        return
+
+    # Every annotation for a fact -- both explicit `annotate` effects and
+    # `marker` notes landing in its span -- collected and merged into one
+    # "Notes:" section, in chronological order.
+    annotations: dict[int, list[tuple[datetime, str]]] = {}
+    for fact in facts:
+        for member in fact.members:
+            for note, text in member.annotations:
+                if text.strip():
+                    annotations.setdefault(id(fact), []).append((note.timestamp, text.strip()))
 
     for note in ordered:
         effects = by_note[note.id].effects
@@ -536,15 +622,19 @@ def _build_fact_events(
                 "text wasn't attached to any event"
             )
             continue
-        local = note.timestamp.astimezone(target.start.tzinfo)
-        line = f"- {local.strftime('%H:%M')} {note.description.strip()}"
-        current = target.event.description
-        if current and "\nNotes:\n" in current:
-            target.event.description = f"{current}\n{line}"
-        elif current:
-            target.event.description = f"{current}\n\nNotes:\n{line}"
-        else:
-            target.event.description = f"Notes:\n{line}"
+        annotations.setdefault(id(target), []).append((note.timestamp, note.description.strip()))
+
+    for fact in facts:
+        lines = sorted(annotations.get(id(fact), []), key=lambda pair: pair[0])
+        if not lines:
+            continue
+        formatted = [
+            f"- {timestamp.astimezone(fact.start.tzinfo).strftime('%H:%M')} {text}"
+            for timestamp, text in lines
+        ]
+        current = fact.event.description
+        prefix = f"{current}\n\nNotes:\n" if current else "Notes:\n"
+        fact.event.description = prefix + "\n".join(formatted)
 
 
 def _simulate(

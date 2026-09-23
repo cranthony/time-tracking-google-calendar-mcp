@@ -266,6 +266,25 @@ class TestDryRun:
         assert report.after.end == time_at("21:00")
         assert not any("bedtime" in w for w in result.warnings)
 
+    def test_a_rejected_plan_can_be_redone_with_a_rename_and_a_note(self):
+        # The user reviews the first dry run and asks for a different
+        # title and a note -- redone the same way any other correction is,
+        # with no new tool and without touching the calendar.
+        setup = _standard()
+        setup.compactor.dry_run(setup.email_then_report())
+
+        revised = setup.compactor.dry_run(
+            [
+                setup.d(2, _e("starts", event_id="e1", rename="Deep work", annotate="phone rang")),
+                setup.d(3, _e("ends", event_id="e1"), _e("starts", event_id="e2")),
+            ]
+        )
+
+        email = next(c for c in revised.changes if c.event_id == "e1")
+        assert email.after.summary == "Deep work"
+        assert email.after.description == "Notes:\n- 09:05 phone rang"
+        setup.client.update_event.assert_not_called()
+
 
 class TestCommit:
     def test_applies_the_plan_journals_each_step_and_stamps_the_notes(self):
