@@ -21,7 +21,12 @@ The flow, as the MCP tools expose it:
 
 A day at a time: notes are processed one reallocation day (see
 `ReallocatingCalendar.list_day_events`) per compaction, oldest first, so a
-backlog spanning several days takes one compaction per day.
+backlog spanning several days takes one compaction per day. Each day's
+window starts where the last *stamped* compaction's `now` left off (the
+first note's timestamp, only if nothing has ever been stamped), so a
+calendar event that already ended before the next note is written --
+this morning's getting-ready block, an earlier work block -- is still in
+range instead of silently falling outside the fetch window.
 """
 
 from __future__ import annotations
@@ -304,10 +309,10 @@ class NoteCompactor:
         sheet_notes = self._notes.read_with_rows()
         if not sheet_notes:
             return None
-        first = min(n.note.timestamp for n in sheet_notes)
-        events = [e for e in self._calendar.list_day_events(first) if e.status != "cancelled"]
+        anchor = self._journal.last_stamped_now() or min(n.note.timestamp for n in sheet_notes)
+        events = [e for e in self._calendar.list_day_events(anchor) if e.status != "cancelled"]
         sleep = next((e for e in events if e.is_end_of_day_sleep), None)
-        day_end = sleep.end if sleep is not None else first + timedelta(hours=24)
+        day_end = sleep.end if sleep is not None else anchor + timedelta(hours=24)
         in_day = [n for n in sheet_notes if n.note.timestamp <= day_end]
         return _Day(
             notes=in_day,

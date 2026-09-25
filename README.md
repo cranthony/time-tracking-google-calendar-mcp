@@ -126,7 +126,7 @@ Reading free-form text is a job for a model, and the MCP client already is one �
 
 **The flow** (three tools):
 
-1. **`prepare_compaction`** (read-only) returns one *reallocation day* of uncompacted notes — each with an id that is its timestamp and sheet row together (`2026-01-01T09:05:00+00:00#5`) and a shortlist of nearby planned events as `candidates` — plus that day's planned events and instructions for the next step. A backlog spanning several days takes one round per day, oldest first.
+1. **`prepare_compaction`** (read-only) returns one *reallocation day* of uncompacted notes — each with an id that is its timestamp and sheet row together (`2026-01-01T09:05:00+00:00#5`) and a shortlist of nearby planned events as `candidates` — plus that day's planned events and instructions for the next step. A backlog spanning several days takes one round per day, oldest first. Each day's window starts where the last *stamped* compaction's `now` left off (the first uncompacted note's timestamp, only if nothing has ever been stamped), so an event that already ended before the next note is written — this morning's getting-ready block, an earlier work block — is still in range instead of falling outside the fetch window.
 2. **`compact_notes(dispositions)`** takes the model's interpretation: one `NoteDisposition` per note, made of *effects*. It validates them, plans the changes, writes the plan to the journal, and returns it with a `compaction_id` — **without touching the calendar**. The model shows you the plan.
 3. **`compact_notes(compaction_id=..., dry_run=False)`** applies it, once you've agreed.
 
