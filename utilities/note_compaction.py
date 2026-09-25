@@ -78,15 +78,17 @@ event is a conflict, reported like any other invalid disposition.
 ## Rescheduling (`Reschedule`)
 
 A `Reschedule` is a direct instruction, not derived from any note: move
-planned event `event_id` to a new `start`/`end`. It becomes a fact the
-same way a note-derived activity does -- pinned in place, with the rest
-of the day reflowing around it -- so "move lunch later and adjust the
-work blocks accordingly" is just another fact in the same plan, previewed
-and applied alongside whatever the notes account for. Unlike a note's
-activity, a reschedule isn't bounded by `now`: it's normally about the
-future. An event already accounted for by a note can't also be
-rescheduled directly, and two facts (of either kind) can't overlap in
-time -- both are reported like any other invalid input.
+planned event `event_id` to a new `start`/`end` -- either may be left out
+(not both), filled in from the other plus the event's current duration,
+so giving just a new `start` moves it there without changing how long it
+runs. It becomes a fact the same way a note-derived activity does --
+pinned in place, with the rest of the day reflowing around it -- so "move
+lunch later and adjust the work blocks accordingly" is just another fact
+in the same plan, previewed and applied alongside whatever the notes
+account for. Unlike a note's activity, a reschedule isn't bounded by
+`now`: it's normally about the future. An event already accounted for by
+a note can't also be rescheduled directly, and two facts (of either kind)
+can't overlap in time -- both are reported like any other invalid input.
 """
 
 from __future__ import annotations
@@ -154,21 +156,30 @@ class NoteDisposition:
 class Reschedule:
     """A direct instruction to move planned event `event_id` to a new
     `start`/`end` -- not derived from any note. See the module docstring's
-    "Rescheduling" section."""
+    "Rescheduling" section. `start` or `end` (or both) must be given;
+    whichever is left out is filled in from the other plus the event's
+    current duration, so giving just a new `start` keeps its length and
+    moves it, rather than risking a negative-length event by holding its
+    old clock-time end fixed."""
 
     event_id: str
-    start: datetime
-    end: datetime
+    start: datetime | None = None
+    end: datetime | None = None
 
     def to_json_dict(self) -> dict:
-        return {"event_id": self.event_id, "start": self.start.isoformat(), "end": self.end.isoformat()}
+        data: dict = {"event_id": self.event_id}
+        if self.start is not None:
+            data["start"] = self.start.isoformat()
+        if self.end is not None:
+            data["end"] = self.end.isoformat()
+        return data
 
     @classmethod
     def from_json_dict(cls, data: dict) -> "Reschedule":
         return cls(
             event_id=data["event_id"],
-            start=datetime.fromisoformat(data["start"]),
-            end=datetime.fromisoformat(data["end"]),
+            start=datetime.fromisoformat(data["start"]) if "start" in data else None,
+            end=datetime.fromisoformat(data["end"]) if "end" in data else None,
         )
 
 
@@ -718,22 +729,28 @@ def _build_reschedule_facts(
                 "also be rescheduled directly"
             )
             continue
-        if reschedule.end <= reschedule.start:
-            problems.append(
-                f"rescheduling {reschedule.event_id} to run from {reschedule.start.isoformat()} "
-                f"to {reschedule.end.isoformat()} isn't a positive length"
-            )
+        if reschedule.start is None and reschedule.end is None:
+            problems.append(f"rescheduling {reschedule.event_id} needs a start, an end, or both")
             continue
         base = events_by_id[reschedule.event_id]
+        duration = base.end - base.start
+        start = reschedule.start if reschedule.start is not None else reschedule.end - duration
+        end = reschedule.end if reschedule.end is not None else reschedule.start + duration
+        if end <= start:
+            problems.append(
+                f"rescheduling {reschedule.event_id} to run from {start.isoformat()} to "
+                f"{end.isoformat()} isn't a positive length"
+            )
+            continue
         event = replace(base)
-        event.start = reschedule.start
-        event.end = reschedule.end
+        event.start = start
+        event.end = end
         event.is_fixed_time = True
-        event.min_duration = reschedule.end - reschedule.start
+        event.min_duration = end - start
         facts.append(
             _Fact(
-                start=reschedule.start,
-                end=reschedule.end,
+                start=start,
+                end=end,
                 members=[],
                 event=event,
                 base=base,

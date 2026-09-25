@@ -618,6 +618,39 @@ class TestReschedule:
         # Nothing else needed to move: the gap after e3's new slot absorbed it.
         assert set(changes) == {"e3"}
 
+    def test_a_start_only_keeps_the_events_current_duration(self):
+        # e3 (Lunch) is normally 12:00-13:00, an hour long.
+        plan = plan_compaction(
+            [],
+            [],
+            _day(),
+            time_at("11:30"),
+            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"))],
+        )
+
+        assert _span(_by_event(plan)["e3"].after) == (time_at("12:15"), time_at("13:15"))
+
+    def test_an_end_only_keeps_the_events_current_duration(self):
+        plan = plan_compaction(
+            [],
+            [],
+            _day(),
+            time_at("11:30"),
+            reschedules=[Reschedule(event_id="e3", end=time_at("12:30"))],
+        )
+
+        assert _span(_by_event(plan)["e3"].after) == (time_at("11:30"), time_at("12:30"))
+
+    def test_rejects_a_reschedule_with_neither_start_nor_end(self):
+        with pytest.raises(CompactionError, match="needs a start, an end, or both"):
+            plan_compaction(
+                [],
+                [],
+                _day(),
+                time_at("11:30"),
+                reschedules=[Reschedule(event_id="e3")],
+            )
+
     def test_reflows_a_contiguous_block_and_keeps_a_later_fixed_time_event_pinned(self):
         day = [
             event_at("11:30-12:00", id="lunch", summary="Lunch", priority=2),

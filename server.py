@@ -348,11 +348,13 @@ def compact_notes(
     user the changes.
 
     `reschedules` is optional and separate from the notes: a direct "move
-    this planned event to a new start/end" instruction (e.g. the user asks
-    to move lunch later and have the afternoon adjust around it), applied
-    in the same plan and reflowing the day the same way a note-derived
-    activity does. An event a note already accounts for can't also be
-    rescheduled.
+    this planned event to a new start and/or end" instruction (e.g. the
+    user asks to move lunch later and have the afternoon adjust around
+    it), applied in the same plan and reflowing the day the same way a
+    note-derived activity does. start/end may be given individually --
+    the other is filled in from the event's current duration, so giving
+    just a new start moves it without changing how long it runs. An event
+    a note already accounts for can't also be rescheduled.
 
     Step 3: after the user agrees, call with that compaction_id and
     dry_run=False to apply it. It's safe to call again if it fails partway

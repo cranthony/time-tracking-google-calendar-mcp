@@ -101,6 +101,14 @@ class TestStartAndLoad:
 
         assert journal.load("abc123").reschedules == reschedules
 
+    def test_round_trips_a_reschedule_with_only_a_start(self):
+        journal, _ = _journal()
+        reschedules = [Reschedule(event_id="e3", start=time_at("12:15"))]
+
+        _start(journal, reschedules=reschedules)
+
+        assert journal.load("abc123").reschedules == reschedules
+
     def test_writes_everything_in_one_write_so_a_crash_cannot_leave_half_a_plan(self):
         journal, sheets = _journal()
 

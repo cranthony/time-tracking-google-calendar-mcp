@@ -90,10 +90,12 @@ DISPOSITION_GUIDE = (
     "title) and/or {annotate} (extra text for its description) -- typically set these after showing "
     "the user a dry run and hearing what they want changed, then call compact_notes again. "
     "Separately, `reschedules` (a compact_notes argument, not a disposition) directly moves a "
-    "planned event to a new {start}/{end} -- for 'move lunch later and adjust the afternoon "
-    "accordingly' style requests that aren't about what a note means. It reflows the rest of the "
-    "day around it exactly like a note-derived activity, in the same plan; an event already "
-    "accounted for by a note can't also be rescheduled."
+    "planned event to a new {start} and/or {end} (either may be left out -- not both -- and is "
+    "filled in from the other plus the event's current duration, so giving just {start} moves it "
+    "without changing its length) -- for 'move lunch later and adjust the afternoon accordingly' "
+    "style requests that aren't about what a note means. It reflows the rest of the day around it "
+    "exactly like a note-derived activity, in the same plan; an event already accounted for by a "
+    "note can't also be rescheduled."
 )
 
 
