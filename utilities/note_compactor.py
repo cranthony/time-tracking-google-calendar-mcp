@@ -27,6 +27,12 @@ first note's timestamp, only if nothing has ever been stamped), so a
 calendar event that already ended before the next note is written --
 this morning's getting-ready block, an earlier work block -- is still in
 range instead of silently falling outside the fetch window.
+
+`dry_run` also takes `reschedules` -- direct "move this planned event"
+instructions alongside the note dispositions, for redirecting the plan
+itself ("move lunch later and adjust the afternoon accordingly") rather
+than interpreting what happened. See `utilities/note_compaction.py`'s
+`Reschedule`; it's journaled and applied in the same plan as the notes.
 """
 
 from __future__ import annotations
@@ -56,6 +62,7 @@ from utilities.note_compaction import (
     NeedsClarification,
     NoteDisposition,
     PlanNote,
+    Reschedule,
     plan_compaction,
 )
 from utilities.noted_time_sheet import NotedTimeSheet, SheetNote
@@ -81,7 +88,14 @@ DISPOSITION_GUIDE = (
     "'marker', 'ignore' and 'ambiguous' can't be combined with other effects. "
     "'starts'/'starts_unplanned'/'ends' may also carry {rename} (override the resulting event's "
     "title) and/or {annotate} (extra text for its description) -- typically set these after showing "
-    "the user a dry run and hearing what they want changed, then call compact_notes again."
+    "the user a dry run and hearing what they want changed, then call compact_notes again. "
+    "Separately, `reschedules` (a compact_notes argument, not a disposition) directly moves a "
+    "planned event to a new {start} and/or {end} (either may be left out -- not both -- and is "
+    "filled in from the other plus the event's current duration, so giving just {start} moves it "
+    "without changing its length) -- for 'move lunch later and adjust the afternoon accordingly' "
+    "style requests that aren't about what a note means. It reflows the rest of the day around it "
+    "exactly like a note-derived activity, in the same plan; an event already accounted for by a "
+    "note can't also be rescheduled."
 )
 
 
@@ -217,13 +231,17 @@ class NoteCompactor:
             open_compaction=open_id,
         )
 
-    def dry_run(self, dispositions: list[NoteDisposition]) -> CompactionResult:
+    def dry_run(
+        self, dispositions: list[NoteDisposition], reschedules: list[Reschedule] | None = None
+    ) -> CompactionResult:
         self._require_no_open_compaction()
         day = self._day(self._clock())
         if day is None:
             return CompactionResult(status="nothing_to_compact", message="there are no uncompacted notes")
         try:
-            plan = plan_compaction(_plan_notes(day), dispositions, day.events, day.now)
+            plan = plan_compaction(
+                _plan_notes(day), dispositions, day.events, day.now, reschedules=reschedules
+            )
         except NeedsClarification as exc:
             return CompactionResult(
                 status="needs_clarification",
@@ -238,6 +256,7 @@ class NoteCompactor:
             note_ids=[n.id for n in day.notes],
             dispositions=dispositions,
             plan=plan,
+            reschedules=reschedules,
         )
         return CompactionResult(
             status="planned",
@@ -354,7 +373,9 @@ class NoteCompactor:
         )
         if day is None or {n.id for n in day.notes} != set(journal.note_ids):
             raise stale
-        plan = plan_compaction(_plan_notes(day), journal.dispositions, day.events, day.now)
+        plan = plan_compaction(
+            _plan_notes(day), journal.dispositions, day.events, day.now, reschedules=journal.reschedules
+        )
 
         def comparable(changes: list[CompactionChange]) -> list[tuple]:
             return [(c.action, c.event_id, c.before, c.after) for c in changes]

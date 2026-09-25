@@ -74,6 +74,21 @@ event is a conflict, reported like any other invalid disposition.
 - Everything else -- the future -- reflows around the facts using
   `utilities/reallocation.py`, simulated in memory here, so a plan can be
   previewed without touching the calendar.
+
+## Rescheduling (`Reschedule`)
+
+A `Reschedule` is a direct instruction, not derived from any note: move
+planned event `event_id` to a new `start`/`end` -- either may be left out
+(not both), filled in from the other plus the event's current duration,
+so giving just a new `start` moves it there without changing how long it
+runs. It becomes a fact the same way a note-derived activity does --
+pinned in place, with the rest of the day reflowing around it -- so "move
+lunch later and adjust the work blocks accordingly" is just another fact
+in the same plan, previewed and applied alongside whatever the notes
+account for. Unlike a note's activity, a reschedule isn't bounded by
+`now`: it's normally about the future. An event already accounted for by
+a note can't also be rescheduled directly, and two facts (of either kind)
+can't overlap in time -- both are reported like any other invalid input.
 """
 
 from __future__ import annotations
@@ -135,6 +150,37 @@ class NoteDisposition:
 
     note_id: str
     effects: list[NoteEffect]
+
+
+@dataclass(kw_only=True)
+class Reschedule:
+    """A direct instruction to move planned event `event_id` to a new
+    `start`/`end` -- not derived from any note. See the module docstring's
+    "Rescheduling" section. `start` or `end` (or both) must be given;
+    whichever is left out is filled in from the other plus the event's
+    current duration, so giving just a new `start` keeps its length and
+    moves it, rather than risking a negative-length event by holding its
+    old clock-time end fixed."""
+
+    event_id: str
+    start: datetime | None = None
+    end: datetime | None = None
+
+    def to_json_dict(self) -> dict:
+        data: dict = {"event_id": self.event_id}
+        if self.start is not None:
+            data["start"] = self.start.isoformat()
+        if self.end is not None:
+            data["end"] = self.end.isoformat()
+        return data
+
+    @classmethod
+    def from_json_dict(cls, data: dict) -> "Reschedule":
+        return cls(
+            event_id=data["event_id"],
+            start=datetime.fromisoformat(data["start"]) if "start" in data else None,
+            end=datetime.fromisoformat(data["end"]) if "end" in data else None,
+        )
 
 
 @dataclass(kw_only=True)
@@ -273,6 +319,7 @@ class _Fact:
     members: list[_Activity]
     event: Event = None  # type: ignore[assignment]
     base: Event | None = None
+    reason: str = "recorded as what actually happened, and pinned in place"
 
 
 def plan_compaction(
@@ -281,13 +328,17 @@ def plan_compaction(
     day_events: list[Event],
     now: datetime,
     options: ReallocationOptions | None = None,
+    reschedules: list[Reschedule] | None = None,
 ) -> CompactionPlan:
     """Plan the calendar changes that `dispositions` (the interpretation
-    of `notes`) imply for `day_events`, as of `now`. See the module
-    docstring. Raises `CompactionError` (listing everything wrong at once)
-    if the dispositions are invalid, or `NeedsClarification` if any are
-    `ambiguous`. Never mutates its arguments."""
+    of `notes`) and `reschedules` (direct "move this event" instructions,
+    see the module docstring's "Rescheduling" section) imply for
+    `day_events`, as of `now`. Raises `CompactionError` (listing
+    everything wrong at once) if the dispositions or reschedules are
+    invalid, or `NeedsClarification` if any note is `ambiguous`. Never
+    mutates its arguments."""
     options = options or ReallocationOptions()
+    reschedules = reschedules or []
     warnings: list[str] = []
     problems: list[str] = []
     questions: list[str] = []
@@ -305,23 +356,38 @@ def plan_compaction(
         raise CompactionError("\n".join(problems))
     if questions:
         raise NeedsClarification(questions)
-    if not activities:
-        return CompactionPlan(changes=[], warnings=["no note starts or ends anything; nothing to do"])
 
-    sleep = next((e for e in day_events if e.is_end_of_day_sleep and e.status != "cancelled"), None)
-    _compute_intervals(
-        ordered, by_note, activities, now, sleep.end if sleep else None, problems, questions, warnings
-    )
+    facts: list[_Fact] = []
+    if activities:
+        sleep = next((e for e in day_events if e.is_end_of_day_sleep and e.status != "cancelled"), None)
+        _compute_intervals(
+            ordered, by_note, activities, now, sleep.end if sleep else None, problems, questions, warnings
+        )
+        if problems:
+            raise CompactionError("\n".join(problems))
+        if questions:
+            raise NeedsClarification(questions)
+        facts = _merge_into_facts(activities, warnings)
+        _build_fact_events(facts, ordered, by_note, problems, warnings)
+        if problems:
+            raise CompactionError("\n".join(problems))
+
+    noted_ids = {f.base.id for f in facts if f.base}
+    reschedule_facts = _build_reschedule_facts(reschedules, events_by_id, noted_ids, problems)
     if problems:
         raise CompactionError("\n".join(problems))
-    if questions:
-        raise NeedsClarification(questions)
 
-    facts = _merge_into_facts(activities, warnings)
-    _build_fact_events(facts, ordered, by_note, problems, warnings)
+    all_facts = sorted(facts + reschedule_facts, key=lambda f: f.start)
+    _check_fact_overlaps(all_facts, problems)
     if problems:
         raise CompactionError("\n".join(problems))
-    return _simulate(facts, day_events, events_by_id, now, options, warnings)
+
+    if not all_facts:
+        return CompactionPlan(
+            changes=[],
+            warnings=["no note starts or ends anything, and nothing was rescheduled; nothing to do"],
+        )
+    return _simulate(all_facts, day_events, events_by_id, now, options, warnings)
 
 
 def _index_dispositions(
@@ -637,6 +703,76 @@ def _build_fact_events(
         fact.event.description = prefix + "\n".join(formatted)
 
 
+def _build_reschedule_facts(
+    reschedules: list[Reschedule],
+    events_by_id: dict[str, Event],
+    noted_ids: set[str],
+    problems: list[str],
+) -> list[_Fact]:
+    valid_ids = ", ".join(sorted(events_by_id)) or "(none)"
+    seen: set[str] = set()
+    facts: list[_Fact] = []
+    for reschedule in reschedules:
+        if reschedule.event_id in seen:
+            problems.append(f"event {reschedule.event_id} is rescheduled more than once")
+            continue
+        seen.add(reschedule.event_id)
+        if reschedule.event_id not in events_by_id:
+            problems.append(
+                f"can't reschedule {reschedule.event_id!r}: not one of this day's planned "
+                f"events; valid event ids: {valid_ids}"
+            )
+            continue
+        if reschedule.event_id in noted_ids:
+            problems.append(
+                f"event {reschedule.event_id} is already accounted for by a note; it can't "
+                "also be rescheduled directly"
+            )
+            continue
+        if reschedule.start is None and reschedule.end is None:
+            problems.append(f"rescheduling {reschedule.event_id} needs a start, an end, or both")
+            continue
+        base = events_by_id[reschedule.event_id]
+        duration = base.end - base.start
+        start = reschedule.start if reschedule.start is not None else reschedule.end - duration
+        end = reschedule.end if reschedule.end is not None else reschedule.start + duration
+        if end <= start:
+            problems.append(
+                f"rescheduling {reschedule.event_id} to run from {start.isoformat()} to "
+                f"{end.isoformat()} isn't a positive length"
+            )
+            continue
+        event = replace(base)
+        event.start = start
+        event.end = end
+        event.is_fixed_time = True
+        event.min_duration = end - start
+        facts.append(
+            _Fact(
+                start=start,
+                end=end,
+                members=[],
+                event=event,
+                base=base,
+                reason="moved as requested, and pinned in place",
+            )
+        )
+    return facts
+
+
+def _check_fact_overlaps(facts: list[_Fact], problems: list[str]) -> None:
+    """Facts come from two independent sources (notes and reschedules), so
+    nothing upstream already guarantees they don't collide in time."""
+    for i, earlier in enumerate(facts):
+        for later in facts[i + 1 :]:
+            if earlier.start < later.end and later.start < earlier.end:
+                problems.append(
+                    f"{earlier.event.summary!r} ({earlier.start.isoformat()} to "
+                    f"{earlier.end.isoformat()}) overlaps {later.event.summary!r} "
+                    f"({later.start.isoformat()} to {later.end.isoformat()})"
+                )
+
+
 def _simulate(
     facts: list[_Fact],
     day_events: list[Event],
@@ -648,8 +784,8 @@ def _simulate(
     originals = {e.id: replace(e) for e in day_events if e.id}
     copies = {e.id: replace(e) for e in day_events if e.id and e.status != "cancelled"}
 
-    mapped_ids = {m.event.id for f in facts for m in f.members if m.event}
     base_ids = {f.base.id for f in facts if f.base}
+    mapped_ids = {m.event.id for f in facts for m in f.members if m.event} | base_ids
     span_start = facts[0].start
     span_end = facts[-1].end
 
@@ -722,7 +858,7 @@ def _simulate(
                 CompactionChange(
                     action="update",
                     event_id=event_id,
-                    reason="recorded as what actually happened, and pinned in place",
+                    reason=fact.reason,
                     before=EventState.from_event(before),
                     after=EventState.from_event(fact.event),
                 )
