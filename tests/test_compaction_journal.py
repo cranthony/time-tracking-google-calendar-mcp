@@ -19,6 +19,7 @@ from utilities.note_compaction import (
     EventState,
     NoteDisposition,
     NoteEffect,
+    Reschedule,
 )
 
 _SHEET_ID = 7
@@ -59,13 +60,14 @@ def _dispositions():
     ]
 
 
-def _start(journal, compaction_id="abc123"):
+def _start(journal, compaction_id="abc123", reschedules=None):
     journal.start(
         compaction_id,
         now=time_at("11:00"),
         note_ids=["n2", "n3"],
         dispositions=_dispositions(),
         plan=_plan(),
+        reschedules=reschedules,
     )
 
 
@@ -82,6 +84,7 @@ class TestStartAndLoad:
         assert loaded.note_ids == ["n2", "n3"]
         assert loaded.warnings == ["a warning"]
         assert loaded.dispositions == _dispositions()
+        assert loaded.reschedules == []
         assert [(s.step, s.action, s.event_id, s.status) for s in loaded.steps] == [
             (1, "cancel", "e9", "pending"),
             (2, "update", "e1", "pending"),
@@ -89,6 +92,14 @@ class TestStartAndLoad:
         ]
         plan = _plan()
         assert loaded.changes() == plan.changes
+
+    def test_round_trips_reschedules(self):
+        journal, _ = _journal()
+        reschedules = [Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))]
+
+        _start(journal, reschedules=reschedules)
+
+        assert journal.load("abc123").reschedules == reschedules
 
     def test_writes_everything_in_one_write_so_a_crash_cannot_leave_half_a_plan(self):
         journal, sheets = _journal()

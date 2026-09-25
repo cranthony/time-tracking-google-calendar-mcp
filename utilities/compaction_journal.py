@@ -47,6 +47,7 @@ from utilities.note_compaction import (
     EventState,
     NoteDisposition,
     NoteEffect,
+    Reschedule,
 )
 
 PLANNED = "planned"
@@ -83,6 +84,7 @@ class JournalCompaction:
     note_ids: list[str]
     warnings: list[str]
     dispositions: list[NoteDisposition]
+    reschedules: list[Reschedule] = field(default_factory=list)
     steps: list[JournalStep] = field(default_factory=list)
     row: int = 0
 
@@ -124,6 +126,7 @@ class CompactionJournal:
         note_ids: list[str],
         dispositions: list[NoteDisposition],
         plan: CompactionPlan,
+        reschedules: list[Reschedule] | None = None,
     ) -> None:
         """Record a new `planned` compaction: the compaction row, one row
         per disposition, and one `pending` row per step -- all in one
@@ -138,7 +141,12 @@ class CompactionJournal:
                 "",
                 PLANNED,
                 json.dumps(
-                    {"now": now.isoformat(), "note_ids": note_ids, "warnings": plan.warnings}
+                    {
+                        "now": now.isoformat(),
+                        "note_ids": note_ids,
+                        "warnings": plan.warnings,
+                        "reschedules": [r.to_json_dict() for r in reschedules or []],
+                    }
                 ),
             ]
         ]
@@ -199,6 +207,7 @@ class CompactionJournal:
                     note_ids=detail["note_ids"],
                     warnings=detail.get("warnings", []),
                     dispositions=[],
+                    reschedules=[Reschedule.from_json_dict(r) for r in detail.get("reschedules", [])],
                     row=sheet_row,
                 )
             elif kind == "disposition":

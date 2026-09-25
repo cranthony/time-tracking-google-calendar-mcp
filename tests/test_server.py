@@ -11,7 +11,7 @@ from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
-from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect
+from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect, Reschedule
 from utilities.noted_time_sheet import NotedTime
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
@@ -465,7 +465,23 @@ class TestCompactNotes:
         result = server.compact_notes(dispositions=dispositions)
 
         assert result is compactor.dry_run.return_value
-        compactor.dry_run.assert_called_once_with(dispositions)
+        compactor.dry_run.assert_called_once_with(dispositions, None)
+
+    def test_a_dry_run_with_reschedules_passes_them_through(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        dispositions = [NoteDisposition(note_id="n2", effects=[NoteEffect(kind="ignore")])]
+        reschedules = [
+            Reschedule(
+                event_id="e1",
+                start=datetime(2026, 1, 1, 12, 15, tzinfo=UTC),
+                end=datetime(2026, 1, 1, 12, 45, tzinfo=UTC),
+            )
+        ]
+
+        result = server.compact_notes(dispositions=dispositions, reschedules=reschedules)
+
+        assert result is compactor.dry_run.return_value
+        compactor.dry_run.assert_called_once_with(dispositions, reschedules)
 
     def test_a_dry_run_with_a_compaction_id_describes_the_stored_plan(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)

@@ -21,7 +21,7 @@ from config import (
 from utilities.event_labels import EventLabels, EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.memory_diagnostics import track
-from utilities.note_compaction import CompactionError, NoteDisposition
+from utilities.note_compaction import CompactionError, NoteDisposition, Reschedule
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
 from utilities.reallocation import ReallocationOptions
@@ -332,6 +332,7 @@ def prepare_compaction() -> CompactionContext:
 @mcp.tool()
 def compact_notes(
     dispositions: list[NoteDisposition] | None = None,
+    reschedules: list[Reschedule] | None = None,
     compaction_id: str | None = None,
     dry_run: bool = True,
 ) -> CompactionResult:
@@ -345,6 +346,13 @@ def compact_notes(
     get the proposed changes and a compaction_id. If a note was marked
     'ambiguous' you get the questions to ask the user instead. Show the
     user the changes.
+
+    `reschedules` is optional and separate from the notes: a direct "move
+    this planned event to a new start/end" instruction (e.g. the user asks
+    to move lunch later and have the afternoon adjust around it), applied
+    in the same plan and reflowing the day the same way a note-derived
+    activity does. An event a note already accounts for can't also be
+    rescheduled.
 
     Step 3: after the user agrees, call with that compaction_id and
     dry_run=False to apply it. It's safe to call again if it fails partway
@@ -360,7 +368,7 @@ def compact_notes(
                     )
                 if dispositions is None:
                     raise CompactionError("dispositions are required for a dry run")
-                return compactor.dry_run(dispositions)
+                return compactor.dry_run(dispositions, reschedules)
             if dry_run:
                 return compactor.describe(compaction_id)
             return compactor.commit(compaction_id)

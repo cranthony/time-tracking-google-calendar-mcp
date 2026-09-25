@@ -8,7 +8,7 @@ from googleapiclient.errors import HttpError
 from tests.event_time_helpers import event_at, time_at
 from tests.fake_sheets import FakeSheets
 from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
-from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect
+from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect, Reschedule
 from utilities.note_compactor import NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
 
@@ -542,3 +542,54 @@ class TestDayByDay:
         context = setup.compactor.prepare()
 
         assert "gr1" in [e.id for e in context.events]
+
+
+class TestReschedule:
+    def test_dry_run_plans_and_journals_a_reschedule_alongside_dispositions(self):
+        setup = _standard()
+
+        result = setup.compactor.dry_run(
+            setup.email_then_report(),
+            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))],
+        )
+
+        assert result.status == "planned"
+        assert {c.event_id for c in result.changes} == {"e1", "e2", "e3"}
+        assert setup.journal.load(result.compaction_id).reschedules == [
+            Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))
+        ]
+
+    def test_commit_applies_the_reschedule(self):
+        setup = _standard()
+        planned = setup.compactor.dry_run(
+            setup.email_then_report(),
+            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))],
+        )
+
+        setup.compactor.commit(planned.compaction_id)
+
+        patch = next(
+            c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e3"
+        )
+        assert (patch.start, patch.end) == (time_at("12:15"), time_at("12:45"))
+        assert patch.is_fixed_time is True
+
+    def test_a_reschedule_with_no_notes_at_all_is_rejected_as_nothing_to_compact(self):
+        # Reschedules only ever ride along with a compaction round today --
+        # there's no way to trigger one with zero uncompacted notes.
+        setup = Setup([])
+
+        result = setup.compactor.dry_run(
+            [], reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))]
+        )
+
+        assert result.status == "nothing_to_compact"
+
+    def test_rejects_a_reschedule_of_an_event_a_note_already_accounts_for(self):
+        setup = _standard()
+
+        with pytest.raises(CompactionError, match="already accounted for by a note"):
+            setup.compactor.dry_run(
+                setup.email_then_report(),
+                reschedules=[Reschedule(event_id="e1", start=time_at("12:15"), end=time_at("12:45"))],
+            )

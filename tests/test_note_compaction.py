@@ -10,6 +10,7 @@ from utilities.note_compaction import (
     NoteDisposition,
     NoteEffect,
     PlanNote,
+    Reschedule,
     plan_compaction,
 )
 
@@ -598,6 +599,125 @@ class TestValidation:
         plan = self._plan([_note(2, "09:00", "hmm")], [_disposition(2, _effect("marker"))])
 
         assert plan.changes == []
+
+
+class TestReschedule:
+    def test_moves_the_event_and_reflows_around_it_with_no_notes_involved(self):
+        plan = plan_compaction(
+            [],
+            [],
+            _day(),
+            time_at("11:30"),
+            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))],
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["e3"].after) == (time_at("12:15"), time_at("12:45"))
+        assert changes["e3"].after.is_fixed_time is True
+        assert changes["e3"].reason == "moved as requested, and pinned in place"
+        # Nothing else needed to move: the gap after e3's new slot absorbed it.
+        assert set(changes) == {"e3"}
+
+    def test_reflows_a_contiguous_block_and_keeps_a_later_fixed_time_event_pinned(self):
+        day = [
+            event_at("11:30-12:00", id="lunch", summary="Lunch", priority=2),
+            event_at("12:00-14:00", id="work", summary="Work", priority=2),
+            event_at(
+                "14:00-15:00",
+                id="commute",
+                summary="Commute",
+                priority=2,
+                is_fixed_time=True,
+                min_duration=timedelta(hours=1),
+            ),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+
+        plan = plan_compaction(
+            [],
+            [],
+            day,
+            time_at("10:00"),
+            reschedules=[Reschedule(event_id="lunch", start=time_at("12:15"), end=time_at("12:45"))],
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["lunch"].after) == (time_at("12:15"), time_at("12:45"))
+        assert _span(changes["work"].after) == (time_at("12:00"), time_at("12:15"))
+        assert "commute" not in changes
+        created = [c for c in plan.changes if c.action == "create"]
+        assert len(created) == 1
+        assert created[0].after.summary == "Work"
+        assert _span(created[0].after) == (time_at("12:45"), time_at("14:00"))
+
+    def test_a_note_and_a_reschedule_can_apply_together(self):
+        plan = plan_compaction(
+            [_note(2, "09:05")],
+            [_disposition(2, _effect("starts", event_id="e1"))],
+            _day(),
+            time_at("09:30"),
+            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))],
+        )
+
+        changes = _by_event(plan)
+        assert changes["e1"].reason == "recorded as what actually happened, and pinned in place"
+        assert changes["e3"].reason == "moved as requested, and pinned in place"
+
+    def test_rejects_an_unknown_event_id(self):
+        with pytest.raises(CompactionError, match="not one of this day's planned events"):
+            plan_compaction(
+                [],
+                [],
+                _day(),
+                time_at("11:30"),
+                reschedules=[Reschedule(event_id="nope", start=time_at("12:15"), end=time_at("12:45"))],
+            )
+
+    def test_rejects_a_non_positive_length(self):
+        with pytest.raises(CompactionError, match="isn't a positive length"):
+            plan_compaction(
+                [],
+                [],
+                _day(),
+                time_at("11:30"),
+                reschedules=[Reschedule(event_id="e3", start=time_at("12:45"), end=time_at("12:15"))],
+            )
+
+    def test_rejects_the_same_event_rescheduled_twice(self):
+        with pytest.raises(CompactionError, match="rescheduled more than once"):
+            plan_compaction(
+                [],
+                [],
+                _day(),
+                time_at("11:30"),
+                reschedules=[
+                    Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45")),
+                    Reschedule(event_id="e3", start=time_at("12:30"), end=time_at("13:00")),
+                ],
+            )
+
+    def test_rejects_overlapping_reschedules(self):
+        with pytest.raises(CompactionError, match="overlaps"):
+            plan_compaction(
+                [],
+                [],
+                _day(),
+                time_at("11:30"),
+                reschedules=[
+                    Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45")),
+                    Reschedule(event_id="e4", start=time_at("12:30"), end=time_at("13:00")),
+                ],
+            )
+
+    def test_rejects_a_reschedule_of_an_event_a_note_already_accounts_for(self):
+        with pytest.raises(CompactionError, match="already accounted for by a note"):
+            plan_compaction(
+                [_note(2, "09:05")],
+                [_disposition(2, _effect("starts", event_id="e1"))],
+                _day(),
+                time_at("09:30"),
+                reschedules=[Reschedule(event_id="e1", start=time_at("12:15"), end=time_at("12:45"))],
+            )
 
 
 class TestEventState:
