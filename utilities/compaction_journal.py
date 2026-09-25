@@ -239,6 +239,20 @@ class CompactionJournal:
         -- begun but not finished."""
         return self.compactions_with_status(*OPEN_STATUSES)
 
+    def last_stamped_now(self) -> datetime | None:
+        """The `now` of the most recently stamped compaction, or `None` if
+        none has ever been stamped. The next day's window starts here, so
+        it never re-fetches a calendar range that's already been finalized
+        or misses one that ends right at the boundary."""
+        latest: datetime | None = None
+        for row in self._read_rows():
+            if row[2] != "compaction" or row[6] != STAMPED:
+                continue
+            now = datetime.fromisoformat(json.loads(row[7])["now"])
+            if latest is None or now > latest:
+                latest = now
+        return latest
+
     def set_status(self, compaction: JournalCompaction, status: str) -> None:
         self._write_status(compaction.row, status)
         compaction.status = status

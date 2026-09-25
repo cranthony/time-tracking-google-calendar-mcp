@@ -523,3 +523,22 @@ class TestDayByDay:
 
         assert [n.id for n in context.notes] == [setup.note_id(5)]
         assert context.remaining_note_count == 0
+
+    def test_the_next_days_window_starts_where_the_stamped_compaction_left_off(self):
+        # A "Getting Ready" block ends before the next day's first note --
+        # if the window started at that note's own timestamp, this event
+        # would already have ended and never be fetched at all.
+        events = [
+            event_at("09:00-10:00", id="e1", summary="Email", priority=2),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+            event_at("07:00+1-07:30+1", id="gr1", summary="Getting Ready", priority=2),
+        ]
+        setup = Setup([("09:05", "email")], events=events, now="08:00+1")
+        planned = setup.compactor.dry_run([setup.d(2, _e("marker"))])
+        setup.compactor.commit(planned.compaction_id)
+        assert setup.journal.last_stamped_now() == time_at("07:00+1")
+        setup.append_note("08:15+1", "left for work")
+
+        context = setup.compactor.prepare()
+
+        assert "gr1" in [e.id for e in context.events]
