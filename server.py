@@ -309,7 +309,10 @@ def note(noted_time: NotedTime) -> NotedTime:
 @mcp.tool()
 def get_notes(include_compacted: bool = False) -> list[NotedTime]:
     """List the recorded time notes, sorted by timestamp. Only notes that
-    haven't been compacted yet, unless include_compacted is true."""
+    haven't been compacted yet, unless include_compacted is true. For
+    browsing/review only -- may span many days. To compact notes, use
+    prepare_compaction instead; it returns just the notes for the current
+    round, which is what compact_notes expects."""
     with track("get_notes"):
         return get_noted_time_sheet().read(include_compacted=include_compacted)
 
@@ -336,11 +339,12 @@ def compact_notes(
     authority on what actually happened -- into calendar changes. The past
     becomes fact and the future reflows around it.
 
-    Step 2: call with `dispositions` (one per note from prepare_compaction)
-    and dry_run=True (the default). Nothing is changed; you get the
-    proposed changes and a compaction_id. If a note was marked 'ambiguous'
-    you get the questions to ask the user instead. Show the user the
-    changes.
+    Step 2: call with `dispositions` (exactly one per note in
+    prepare_compaction's last `notes` -- not notes from get_notes or an
+    earlier round) and dry_run=True (the default). Nothing is changed; you
+    get the proposed changes and a compaction_id. If a note was marked
+    'ambiguous' you get the questions to ask the user instead. Show the
+    user the changes.
 
     Step 3: after the user agrees, call with that compaction_id and
     dry_run=False to apply it. It's safe to call again if it fails partway

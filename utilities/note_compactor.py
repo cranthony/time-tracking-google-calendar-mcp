@@ -66,7 +66,11 @@ _CANDIDATE_WINDOW = timedelta(hours=1)
 and still be offered to it as a candidate."""
 
 DISPOSITION_GUIDE = (
-    "Give every note (by its id) one disposition made of effects. "
+    "Give every note in `notes` above (by its id) one disposition, and only those notes -- "
+    "not ones from get_notes or an earlier prepare_compaction call, even if they're still "
+    "uncompacted. Notes past this round belong to a later day and aren't offered yet (see "
+    "`remaining_note_count`); compact_notes rejects a disposition for any other note id. "
+    "Each disposition is made of effects. "
     "'starts' {event_id}: a planned event began at that time. "
     "'starts_unplanned' {summary}: something that wasn't planned began. "
     "'ends' {event_id} (or {started_by_note} for an unplanned activity): it ended at that time. "
