@@ -47,6 +47,43 @@ class TestRenameSpreadsheet:
         )
 
 
+class TestDeleteRows:
+    def test_sends_delete_dimension_request_with_zero_based_half_open_range(self):
+        sheets_service = MagicMock()
+        client = make_client(sheets_service)
+
+        client.delete_rows("sheet-1", 42, start_row=2, end_row=5)
+
+        sheets_service.spreadsheets.return_value.batchUpdate.assert_called_once_with(
+            spreadsheetId="sheet-1",
+            body={
+                "requests": [
+                    {
+                        "deleteDimension": {
+                            "range": {
+                                "sheetId": 42,
+                                "dimension": "ROWS",
+                                "startIndex": 1,
+                                "endIndex": 5,
+                            }
+                        }
+                    }
+                ]
+            },
+        )
+
+    def test_a_single_row_range_deletes_just_that_row(self):
+        sheets_service = MagicMock()
+        client = make_client(sheets_service)
+
+        client.delete_rows("sheet-1", 42, start_row=7, end_row=7)
+
+        range_ = sheets_service.spreadsheets.return_value.batchUpdate.call_args.kwargs["body"][
+            "requests"
+        ][0]["deleteDimension"]["range"]
+        assert (range_["startIndex"], range_["endIndex"]) == (6, 7)
+
+
 class TestAddSheet:
     def test_sends_add_sheet_request_and_returns_new_sheet_id(self):
         sheets_service = MagicMock()

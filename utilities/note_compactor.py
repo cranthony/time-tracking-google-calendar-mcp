@@ -33,6 +33,12 @@ instructions alongside the note dispositions, for redirecting the plan
 itself ("move lunch later and adjust the afternoon accordingly") rather
 than interpreting what happened. See `utilities/note_compaction.py`'s
 `Reschedule`; it's journaled and applied in the same plan as the notes.
+
+`prepare` also garbage-collects the journal (`CompactionJournal.
+garbage_collect`) before doing anything else -- see there, and
+`NotedTimeSheet.garbage_collect` (called from `note`/`append` instead,
+since that's where the notes tab grows), for what that means for row
+numbers and ids.
 """
 
 from __future__ import annotations
@@ -195,6 +201,7 @@ class NoteCompactor:
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     def prepare(self) -> CompactionContext:
+        self._journal.garbage_collect()
         now = self._clock()
         open_ids = self._journal.open_compactions()
         open_id = open_ids[0][0] if open_ids else None

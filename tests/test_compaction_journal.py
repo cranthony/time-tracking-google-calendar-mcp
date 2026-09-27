@@ -7,6 +7,7 @@ from tests.fake_row_hints import FakeRowHints
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet
 from utilities.compaction_journal import (
+    ABANDONED,
     APPLIED,
     APPLYING,
     PLANNED,
@@ -342,6 +343,99 @@ class TestStatus:
         journal, _ = _journal()
 
         assert journal.open_compactions() == []
+
+
+class TestGarbageCollect:
+    _BLOCK_ROWS = 6  # 1 compaction row + 2 dispositions + 3 changes, per _start()
+
+    def test_does_nothing_under_the_row_budget(self):
+        journal, _ = _journal()
+        _start(journal, "only")
+
+        journal.garbage_collect()
+
+        assert journal.load("only").id == "only"
+
+    def test_deletes_old_terminal_blocks_but_preserves_the_last_stamped_and_open_ones(self):
+        hints = FakeRowHints()
+        journal, _ = _journal(hints=hints)
+        ids = [f"c{i}" for i in range(85)]
+        for compaction_id in ids:
+            _start(journal, compaction_id)
+            journal.set_status(journal.load(compaction_id), STAMPED)
+        # The last one is actually still open, not stamped.
+        journal.set_status(journal.load(ids[-1]), PLANNED)
+        total_rows = 85 * self._BLOCK_ROWS
+        assert hints.get("journal_next_row") == 2 + total_rows
+
+        journal.garbage_collect()
+
+        # 10 rows over budget (510 - 500); each block is 6 rows, so the
+        # oldest 2 blocks (12 rows) are deleted -- enough to clear it.
+        with pytest.raises(CompactionError, match="no compaction with id 'c0'"):
+            journal.load(ids[0])
+        with pytest.raises(CompactionError, match="no compaction with id 'c1'"):
+            journal.load(ids[1])
+        assert journal.load(ids[2]).id == ids[2]  # stamped, but not needed to delete
+        assert journal.load(ids[-2]).id == ids[-2]  # the last *stamped* one -- preserved
+        assert journal.load(ids[-1]).status == PLANNED  # still open -- preserved
+        assert hints.get("journal_next_row") == 2 + total_rows - 2 * self._BLOCK_ROWS
+        assert hints.get("journal_latest_compaction_row") == 2 + 84 * self._BLOCK_ROWS - 2 * self._BLOCK_ROWS
+
+    def test_deletes_old_abandoned_blocks_too(self):
+        journal, _ = _journal()
+        for i in range(85):
+            _start(journal, f"c{i}")
+            journal.set_status(journal.load(f"c{i}"), ABANDONED if i < 84 else STAMPED)
+
+        journal.garbage_collect()
+
+        with pytest.raises(CompactionError):
+            journal.load("c0")
+        assert journal.load("c84").status == STAMPED
+
+    def test_does_nothing_if_the_oldest_block_is_not_safely_deletable(self):
+        # None of these are stamped or abandoned (start() leaves them
+        # planned), so nothing at the top is safe to delete.
+        journal, _ = _journal()
+        for i in range(85):
+            _start(journal, f"c{i}")
+
+        journal.garbage_collect()
+
+        assert journal.load("c0").id == "c0"
+
+    def test_deletes_what_it_safely_can_even_when_that_cant_clear_the_whole_excess(self):
+        journal, _ = _journal()
+        _start(journal, "old1")
+        journal.set_status(journal.load("old1"), STAMPED)
+        _start(journal, "old2")
+        journal.set_status(journal.load("old2"), STAMPED)  # the last *stamped* one
+        big_plan = CompactionPlan(
+            changes=[
+                CompactionChange(
+                    action="update",
+                    event_id=f"e{i}",
+                    reason="r",
+                    before=EventState.from_event(event_at("09:00-10:00")),
+                    after=EventState.from_event(event_at("09:00-10:00")),
+                )
+                for i in range(500)
+            ]
+        )
+        journal.start("current", now=time_at("11:00"), note_ids=[], dispositions=[], plan=big_plan)
+        # "current" is left planned (open) -- can't be deleted, and its
+        # size alone already exceeds the budget. "old2" is the last
+        # *stamped* compaction, so it's preserved too -- only "old1" is
+        # both deletable and not needed, even though that alone can't
+        # clear the whole excess.
+
+        journal.garbage_collect()
+
+        with pytest.raises(CompactionError):
+            journal.load("old1")
+        assert journal.load("old2").id == "old2"
+        assert journal.load("current").id == "current"
 
 
 class TestEnsure:

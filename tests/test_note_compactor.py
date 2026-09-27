@@ -595,3 +595,20 @@ class TestReschedule:
                 setup.email_then_report(),
                 reschedules=[Reschedule(event_id="e1", start=time_at("12:15"), end=time_at("12:45"))],
             )
+
+
+class TestGarbageCollection:
+    def test_prepare_garbage_collects_the_journal_first(self):
+        setup = _standard()
+        spy_journal = MagicMock(wraps=setup.journal)
+        compactor = NoteCompactor(
+            calendar=setup.calendar,
+            client=setup.client,
+            notes=setup.notes,
+            journal=spy_journal,
+            clock=lambda: time_at(setup.now),
+        )
+
+        compactor.prepare()
+
+        spy_journal.garbage_collect.assert_called_once()
