@@ -228,6 +228,81 @@ class TestStartHints:
 
         assert hints.get("journal_next_row") == 8  # 1 compaction + 2 dispositions + 3 changes
 
+    def test_sets_the_latest_compaction_row_hint(self):
+        hints = FakeRowHints()
+        journal, _ = _journal(hints=hints)
+
+        _start(journal, "first")
+        assert hints.get("journal_latest_compaction_row") == 2
+
+        _start(journal, "second")
+        assert hints.get("journal_latest_compaction_row") == 8  # after "first"'s 6 rows
+
+
+class TestLoadHints:
+    def test_uses_a_confirmed_hint_instead_of_a_full_scan(self):
+        sheets = FakeSheets()
+        client = MagicMock(wraps=sheets)
+        hints = FakeRowHints()
+        journal = CompactionJournal(client, "spreadsheet-1", _SHEET_ID, hints)
+        _start(journal, "first")
+        _start(journal, "second")
+        client.read_rows_in_sheet.reset_mock()
+
+        loaded = journal.load("second")
+
+        assert loaded.id == "second"
+        assert not any(c.args[2] == "A2:H" for c in client.read_rows_in_sheet.call_args_list)
+
+    def test_the_first_ever_compaction_skips_the_before_check(self):
+        sheets = FakeSheets()
+        client = MagicMock(wraps=sheets)
+        hints = FakeRowHints()
+        journal = CompactionJournal(client, "spreadsheet-1", _SHEET_ID, hints)
+        _start(journal)
+        client.read_rows_in_sheet.reset_mock()
+
+        loaded = journal.load("abc123")
+
+        assert loaded.id == "abc123"
+        assert not any(c.args[2] == "A1:A1" for c in client.read_rows_in_sheet.call_args_list)
+
+    def test_falls_back_to_a_full_scan_for_an_older_compaction(self):
+        # The hint points at "second" (the latest), but "first" was asked
+        # for -- the mismatch is exactly what the hint check exists to
+        # catch, so this recounts from the top.
+        journal, _ = _journal()
+        _start(journal, "first")
+        _start(journal, "second")
+
+        assert journal.load("first").id == "first"
+
+    def test_falls_back_when_the_hint_points_partway_through_the_same_compaction(self):
+        # The hint is nudged one row past "second"'s own first row (into
+        # its first disposition) -- row[0] there is still "second", so
+        # checking only the hinted row would wrongly confirm it and skip
+        # "second"'s own compaction row and first disposition. The row
+        # before the hint belongs to "second" too, which is what catches
+        # it: a genuine boundary always has a *different* (or no)
+        # compaction immediately before it.
+        hints = FakeRowHints()
+        journal, _ = _journal(hints=hints)
+        _start(journal, "first")
+        _start(journal, "second")
+        hints.set("journal_latest_compaction_row", hints.get("journal_latest_compaction_row") + 1)
+
+        loaded = journal.load("second")
+
+        assert loaded.dispositions == _dispositions()
+
+    def test_falls_back_when_the_hint_points_somewhere_else_entirely(self):
+        hints = FakeRowHints()
+        journal, _ = _journal(hints=hints)
+        _start(journal, "first")
+        hints.set("journal_latest_compaction_row", 999)
+
+        assert journal.load("first").id == "first"
+
 
 class TestStatus:
     def test_set_status_updates_the_compaction_row_only(self):

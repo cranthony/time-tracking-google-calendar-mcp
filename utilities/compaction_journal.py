@@ -34,7 +34,13 @@ abandoned first.
 This tab only ever grows, so `start` -- appending a new compaction's rows
 -- uses `utilities/row_hints.py`'s `RowHints` to seek straight to the
 next free row instead of reading the whole tab just to count it, falling
-back to that full read if the hint doesn't check out.
+back to that full read if the hint doesn't check out. `load` (so
+`commit`/`describe`/`abandon` too) does the same for the opposite
+direction: it seeks to where the most recently started compaction's own
+rows begin instead of scanning from the top, since that's virtually
+always the one being asked for -- at most one compaction is ever
+non-terminal at a time (a new one is refused while another is open, and
+an unapplied one is abandoned before a new dry run replaces it).
 """
 
 from __future__ import annotations
@@ -70,6 +76,7 @@ _FIRST_DATA_ROW = 2
 _STATUS_COLUMN = "G"
 
 _NEXT_ROW_HINT = "journal_next_row"
+_LATEST_COMPACTION_ROW_HINT = "journal_latest_compaction_row"
 _CONFIRM_ROWS = 5
 """See utilities/row_hints.py -- how many rows a hint's confirmation
 check reads before trusting it."""
@@ -201,6 +208,7 @@ class CompactionJournal:
             self._spreadsheet_id, self._sheet_id, f"A{first_row}:H", rows
         )
         self._hints.set(_NEXT_ROW_HINT, first_row + len(rows))
+        self._hints.set(_LATEST_COMPACTION_ROW_HINT, first_row)
 
     def _next_row(self) -> int:
         """The row this journal's next compaction should start at: a
@@ -234,16 +242,54 @@ class CompactionJournal:
                 return hinted
         return _FIRST_DATA_ROW + len(self._read_rows())
 
+    def _latest_compaction_start_row(self, compaction_id: str) -> int:
+        """Where `load` can start reading for `compaction_id`: the hinted
+        start of the most recently started compaction, if confirmed to
+        genuinely be its own first row, or the top of the tab otherwise.
+        Confirming it checks two things: the hinted row itself belongs to
+        `compaction_id` (not some other, older one -- e.g. `compaction_id`
+        wasn't the last one started), and -- unless it's the first data
+        row, which by definition has nothing before it -- the row right
+        before it belongs to a *different* compaction (or none), so the
+        hint is genuinely sitting at a compaction boundary and not
+        partway through `compaction_id`'s own earlier rows (which would
+        silently miss its `compaction`-kind row and any dispositions
+        before the hint)."""
+        hinted = self._hints.get(_LATEST_COMPACTION_ROW_HINT)
+        if hinted is None or hinted < _FIRST_DATA_ROW:
+            return _FIRST_DATA_ROW
+        if self._compaction_id_at(hinted) != compaction_id:
+            return _FIRST_DATA_ROW
+        if hinted > _FIRST_DATA_ROW and self._compaction_id_at(hinted - 1) == compaction_id:
+            return _FIRST_DATA_ROW
+        return hinted
+
+    def _compaction_id_at(self, row: int) -> str | None:
+        check = self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, f"A{row}:A{row}"
+        )
+        return check[0][0] if check and check[0] else None
+
     def load(self, compaction_id: str) -> JournalCompaction:
         """The compaction `compaction_id`, with everything needed to
-        resume it. Raises `CompactionError` if there isn't one."""
+        resume it. Raises `CompactionError` if there isn't one.
+
+        Starts from `_latest_compaction_start_row` instead of the top of
+        the tab when that hint is confirmed to actually be
+        `compaction_id`'s own first row -- true for virtually every real
+        call (see the module docstring) -- so this reads only that one
+        compaction's rows instead of the journal's entire history."""
+        start_row = self._latest_compaction_start_row(compaction_id)
         compaction: JournalCompaction | None = None
         dispositions: list[NoteDisposition] = []
         steps: list[JournalStep] = []
-        for offset, row in enumerate(self._read_rows()):
+        rows = self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, f"A{start_row}:H"
+        )
+        for offset, row in enumerate(rows):
             if row[0] != compaction_id:
                 continue
-            sheet_row = _FIRST_DATA_ROW + offset
+            sheet_row = start_row + offset
             kind = row[2]
             if kind == "compaction":
                 detail = json.loads(row[7])
