@@ -353,6 +353,23 @@ class TestNotedTimeSheetAppend:
 
 
 class TestNotedTimeSheetAppendHints:
+    def test_confirming_the_first_data_row_does_not_read_the_header_row(self):
+        # Nothing's been appended yet, so there's no row before the hint
+        # to confirm -- reading row 1 would just be the header, not data,
+        # and shouldn't be mistaken for it.
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        hints = FakeRowHints()
+        hints.set("notes_next_row", 2)
+        client = MagicMock(wraps=fake)
+        sheet = NotedTimeSheet(client, "sheet-1", _SHEET_ID, hints)
+
+        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
+
+        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C") == [[_T1]]
+        assert call("sheet-1", _SHEET_ID, "A2:C6") in client.read_rows_in_sheet.call_args_list
+        assert call("sheet-1", _SHEET_ID, "A1:C6") not in client.read_rows_in_sheet.call_args_list
+
     def test_uses_a_confirmed_hint_instead_of_a_full_read(self):
         fake = FakeSheets()
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])

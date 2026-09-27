@@ -270,24 +270,34 @@ class NotedTimeSheet:
     def _next_row(self) -> int:
         """The row this tab's next new note should go in: a hinted row,
         if confirmed still correct, or a full count of the existing rows
-        otherwise. Confirming it checks two things: the row right before
-        it is non-blank (real data -- or the header row, when nothing's
-        been written yet -- genuinely ends there, so the hint isn't
-        floating somewhere past a gap a stale hint would otherwise hide)
-        and a few rows at and after it are blank (a crash between a
-        previous append's write and its hint update would otherwise leave
-        the hint one short)."""
+        otherwise. Confirming it checks two things: a few rows at and
+        after it are blank (a crash between a previous append's write and
+        its hint update would otherwise leave the hint one short), and --
+        unless it's the very first data row, which by definition has
+        nothing before it to check -- the row right before it is
+        non-blank, so real data genuinely ends there instead of the hint
+        floating somewhere past a gap a stale hint would otherwise hide.
+        (Reading row 1 for that check would hit the header row, not data,
+        for any tab whose first data row is 2 -- true today, but this
+        avoids depending on that.)"""
         hinted = self._hints.get(_NEXT_ROW_HINT)
         if hinted is not None and hinted >= _FIRST_DATA_ROW:
-            check = self._sheets_client.read_rows_in_sheet(
-                self._spreadsheet_id,
-                self._sheet_id,
-                f"A{hinted - 1}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}",
-            )
-            before, after = (check[0], check[1:]) if check else ([], [])
-            if any(cell.strip() for cell in before) and not any(
-                any(cell.strip() for cell in row) for row in after
-            ):
+            if hinted == _FIRST_DATA_ROW:
+                before_confirmed = True
+                after = self._sheets_client.read_rows_in_sheet(
+                    self._spreadsheet_id,
+                    self._sheet_id,
+                    f"A{hinted}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}",
+                )
+            else:
+                check = self._sheets_client.read_rows_in_sheet(
+                    self._spreadsheet_id,
+                    self._sheet_id,
+                    f"A{hinted - 1}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}",
+                )
+                before, after = (check[0], check[1:]) if check else ([], [])
+                before_confirmed = any(cell.strip() for cell in before)
+            if before_confirmed and not any(any(cell.strip() for cell in row) for row in after):
                 return hinted
         existing = self._sheets_client.read_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, _DATA_RANGE

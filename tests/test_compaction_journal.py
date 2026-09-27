@@ -154,6 +154,25 @@ class TestStartAndLoad:
 
 
 class TestStartHints:
+    def test_confirming_the_first_data_row_does_not_read_the_header_row(self):
+        # Nothing's been written yet, so there's no row before the hint
+        # to confirm -- reading row 1 would just be the header, not data,
+        # and shouldn't be mistaken for it.
+        sheets = FakeSheets()
+        sheets.write_rows_in_sheet(
+            "spreadsheet-1", _SHEET_ID, "A1:H1", [["compaction_id"] + ["x"] * 7]
+        )
+        hints = FakeRowHints()
+        hints.set("journal_next_row", 2)
+        client = MagicMock(wraps=sheets)
+        journal = CompactionJournal(client, "spreadsheet-1", _SHEET_ID, hints)
+
+        _start(journal)
+
+        assert journal.load("abc123").row == 2
+        assert call("spreadsheet-1", _SHEET_ID, "A2:H6") in client.read_rows_in_sheet.call_args_list
+        assert call("spreadsheet-1", _SHEET_ID, "A1:H6") not in client.read_rows_in_sheet.call_args_list
+
     def test_uses_a_confirmed_hint_instead_of_a_full_read(self):
         sheets = FakeSheets()
         # Real data ending exactly where the hint says -- row 4 is the
