@@ -218,6 +218,33 @@ class SheetsClient:
             },
         ).execute()
 
+    def delete_rows(
+        self, spreadsheet_id: str, sheet_id: int, *, start_row: int, end_row: int
+    ) -> None:
+        """Permanently delete rows `start_row` through `end_row` (both
+        1-based, inclusive) from the tab identified by `sheet_id`,
+        shifting every row below up to fill the gap. There's no matching
+        "insert" -- nothing in this app needs one. Used to garbage-collect
+        old rows from an only-ever-growing, append-only tab (see
+        utilities/row_hints.py and each such tab's own `garbage_collect`)."""
+        self._sheets_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={
+                "requests": [
+                    {
+                        "deleteDimension": {
+                            "range": {
+                                "sheetId": sheet_id,
+                                "dimension": "ROWS",
+                                "startIndex": start_row - 1,
+                                "endIndex": end_row,
+                            }
+                        }
+                    }
+                ]
+            },
+        ).execute()
+
     def read_rows(self, spreadsheet_id: str, sheet_range: str) -> list[list[str]]:
         """The cell values in `sheet_range` (e.g. "Sheet1!A2:D"), one list
         per row -- a row with trailing blank cells may come back shorter

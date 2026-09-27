@@ -427,6 +427,87 @@ class TestNotedTimeSheetAppendHints:
         assert hints.get("notes_next_row") == 6
 
 
+class TestNotedTimeSheetGarbageCollect:
+    def test_does_nothing_under_the_row_budget(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        rows = [[_T1, "a", "cmp1"] for _ in range(10)]
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
+        hints = FakeRowHints()
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.garbage_collect()
+
+        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C") == rows
+        assert hints.get("notes_next_row") is None
+
+    def test_deletes_the_oldest_compacted_rows_once_over_budget(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        # 255 compacted, then one uncompacted -- 256 total, 6 over budget.
+        rows = [[_T1, "a", "cmp1"] for _ in range(255)] + [[_T2, "recent"]]
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
+        hints = FakeRowHints()
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.garbage_collect()
+
+        remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
+        assert len(remaining) == 250
+        assert remaining[-1] == [_T2, "recent"]
+        assert hints.get("notes_next_row") == 252  # 2 + 250
+        assert hints.get("notes_compacted_through_row") == 1  # reset, not recomputed
+
+    def test_does_nothing_if_the_oldest_row_is_already_uncompacted(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        rows = [[_T1, "a"]] + [[_T1, "b", "cmp1"] for _ in range(255)]
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
+        hints = FakeRowHints()
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.garbage_collect()
+
+        assert len(fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")) == 256
+        assert hints.get("notes_next_row") is None
+
+    def test_deletes_only_the_confirmed_prefix_when_it_falls_short_of_the_excess(self):
+        # An uncompacted note (index 3) sits inside the confirmation
+        # window -- only the 3 compacted rows before it are safe to
+        # delete, even though the tab is 6 rows over budget.
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        rows = (
+            [[_T1, "a", "cmp1"] for _ in range(3)]
+            + [[_T1, "b"]]
+            + [[_T1, "c", "cmp1"] for _ in range(252)]
+        )
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
+        hints = FakeRowHints()
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.garbage_collect()
+
+        remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
+        assert len(remaining) == 253
+        assert hints.get("notes_next_row") == 255  # 2 + 253
+
+    def test_append_garbage_collects_first(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet(
+            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a", "cmp1"] for _ in range(255)]
+        )
+        hints = FakeRowHints()
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
+
+        remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
+        assert len(remaining) == 251  # 255 - 5 deleted (over budget) + 1 appended
+        assert remaining[-1] == [_T1]
+
+
 def _id(timestamp: str, row: int) -> str:
     return f"{timestamp}#{row}"
 

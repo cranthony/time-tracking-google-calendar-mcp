@@ -41,6 +41,17 @@ rows begin instead of scanning from the top, since that's virtually
 always the one being asked for -- at most one compaction is ever
 non-terminal at a time (a new one is refused while another is open, and
 an unapplied one is abandoned before a new dry run replaces it).
+
+`garbage_collect` keeps this from growing forever by physically deleting
+old, fully-finished compaction blocks from the top once the tab passes
+`_MAX_ROWS`. It never deletes a compaction that's still open or merely
+planned, and never deletes the most recently *stamped* one, since
+`last_stamped_now` depends on it. Deleting shifts every row below up, so
+row numbers -- including a compaction's own, and every note id it
+recorded -- stop being permanent once this runs; anything holding an
+older row number finds out the same way it already would if the sheet
+had simply changed underneath it (`load`'s hint check, or
+`NoteCompactor`'s "changed since preview" check), never silently.
 """
 
 from __future__ import annotations
@@ -80,6 +91,9 @@ _LATEST_COMPACTION_ROW_HINT = "journal_latest_compaction_row"
 _CONFIRM_ROWS = 5
 """See utilities/row_hints.py -- how many rows a hint's confirmation
 check reads before trusting it."""
+
+_MAX_ROWS = 500
+"""garbage_collect keeps this tab's data rows at or under this count."""
 
 
 @dataclass
@@ -241,6 +255,60 @@ class CompactionJournal:
             if before_confirmed and not any(any(cell.strip() for cell in row) for row in after):
                 return hinted
         return _FIRST_DATA_ROW + len(self._read_rows())
+
+    def garbage_collect(self) -> None:
+        """Delete old, fully-finished compaction blocks from the top of
+        this tab once it's grown past `_MAX_ROWS` data rows -- see the
+        module docstring. Groups rows into blocks by their
+        `compaction_id` column (each `start` always writes one
+        contiguous block, and blocks are never reordered afterward), then
+        deletes a prefix of them: every block up to, but never including,
+        the most recently *stamped* one or the first block that isn't
+        `stamped`/`abandoned`, whichever comes first, stopping as soon as
+        enough rows are gone (or there's nothing left it can safely
+        delete)."""
+        next_row = self._next_row()
+        excess = (next_row - _FIRST_DATA_ROW) - _MAX_ROWS
+        if excess <= 0:
+            return
+        blocks: list[list] = []  # [compaction_id, status_of_its_compaction_row, row_count]
+        for row in self._read_rows():
+            compaction_id = row[0]
+            if not compaction_id:
+                continue
+            if not blocks or blocks[-1][0] != compaction_id:
+                blocks.append([compaction_id, None, 0])
+            if row[2] == "compaction":
+                blocks[-1][1] = row[6]
+            blocks[-1][2] += 1
+
+        last_stamped_index = None
+        for i, (_, status, _) in enumerate(blocks):
+            if status == STAMPED:
+                last_stamped_index = i
+
+        deletable_rows = 0
+        deletable_blocks = 0
+        for i, (_, status, count) in enumerate(blocks):
+            if i == last_stamped_index or status not in (STAMPED, ABANDONED):
+                break
+            deletable_rows += count
+            deletable_blocks += 1
+            if deletable_rows >= excess:
+                break
+
+        if deletable_blocks == 0:
+            return
+        self._sheets_client.delete_rows(
+            self._spreadsheet_id,
+            self._sheet_id,
+            start_row=_FIRST_DATA_ROW,
+            end_row=_FIRST_DATA_ROW + deletable_rows - 1,
+        )
+        self._hints.set(_NEXT_ROW_HINT, next_row - deletable_rows)
+        latest = self._hints.get(_LATEST_COMPACTION_ROW_HINT)
+        if latest is not None:
+            self._hints.set(_LATEST_COMPACTION_ROW_HINT, max(_FIRST_DATA_ROW, latest - deletable_rows))
 
     def _latest_compaction_start_row(self, compaction_id: str) -> int:
         """Where `load` can start reading for `compaction_id`: the hinted

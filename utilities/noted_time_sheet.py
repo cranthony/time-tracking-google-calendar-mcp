@@ -17,11 +17,13 @@ no id column here, and no EventLabels-equivalent reconciliation layer
 above this one: server.py/calendar_cli.py talk to NotedTimeSheet
 directly.
 
-Notes are never deleted. Compacting them (utilities/note_compactor.py)
-stamps each consumed row's `compaction_id` instead, and `read`/
-`read_with_rows` return only unstamped ("uncompacted") notes unless asked
-otherwise. Since rows are never removed, a note's row number is
-permanent, and with its timestamp forms its id (see `SheetNote`).
+A note itself is never deleted directly. Compacting it
+(utilities/note_compactor.py) stamps its row's `compaction_id` instead,
+and `read`/`read_with_rows` return only unstamped ("uncompacted") notes
+unless asked otherwise. A note's row, together with its timestamp, forms
+its id (see `SheetNote`) -- stable as long as nothing shifts rows out
+from under it, which normal operation never does; see `garbage_collect`
+below for the one thing that does.
 
 This tab only ever grows, so `append` and the default (uncompacted-only)
 `read_with_rows` use `utilities/row_hints.py`'s `RowHints` to seek
@@ -29,6 +31,18 @@ straight to roughly the right row -- where to write the next note, and
 where the already-compacted prefix ends -- instead of reading the whole
 tab every time, falling back to a full read whenever a hint doesn't
 check out.
+
+`append` also calls `garbage_collect`, which physically deletes the
+oldest *compacted* rows once this tab has grown past `_MAX_ROWS`, to keep
+it (and so how much of it ever needs reading) from growing forever. This
+is the one place row numbers stop being permanent: deleting rows shifts
+every row below up, so a `SheetNote.id` handed out before a
+garbage-collection can point at the wrong row afterward -- exactly what
+`mark_compacted`'s own staleness check (and, one layer up,
+`NoteCompactor`'s "notes changed since preview" check) already exists to
+catch, so this never silently mismatches a note. It only ever deletes
+*compacted* rows, whose compaction has therefore already reached its
+terminal, stamped state and never needs those rows read again.
 """
 
 from __future__ import annotations
@@ -52,6 +66,9 @@ hint costs little before falling back to a full read."""
 
 _FIRST_DATA_ROW = 2
 """Row 1 is the header."""
+
+_MAX_ROWS = 250
+"""garbage_collect keeps this tab's data rows at or under this count."""
 
 
 @dataclass(kw_only=True)
@@ -113,12 +130,12 @@ _DATA_RANGE = f"A{_FIRST_DATA_ROW}:{_LAST_COLUMN}"
 
 @dataclass(kw_only=True)
 class SheetNote:
-    """A `NotedTime` plus the sheet row it lives in. Rows are never
-    removed, so `row` is permanent. `id` combines that row with the
-    note's timestamp -- e.g. `2026-01-01T09:05:00+00:00#5` -- so a note
-    can be told apart by *when* it was, and so a stale id (the row was
-    edited, or moved) is caught instead of silently pointing at the
-    wrong note: see `NotedTimeSheet.mark_compacted`."""
+    """A `NotedTime` plus the sheet row it lives in. `id` combines that
+    row with the note's timestamp -- e.g.
+    `2026-01-01T09:05:00+00:00#5` -- so a note can be told apart by
+    *when* it was, and so a stale id (the row was edited, or shifted by
+    `NotedTimeSheet.garbage_collect`) is caught instead of silently
+    pointing at the wrong note: see `NotedTimeSheet.mark_compacted`."""
 
     row: int
     note: NotedTime
@@ -256,7 +273,8 @@ class NotedTimeSheet:
         """Add `noted_time` as a new row at the end of this tab. Writes
         only that new row -- never rewriting the existing ones -- so it
         can't clobber a concurrent `mark_compacted` stamp on one of
-        them."""
+        them. Garbage-collects first (see `garbage_collect`)."""
+        self.garbage_collect()
         header_row = self._read_header()
         next_row = self._next_row()
         self._sheets_client.write_rows_in_sheet(
@@ -266,6 +284,44 @@ class NotedTimeSheet:
             [noted_time.to_row(header_row, None)],
         )
         self._hints.set(_NEXT_ROW_HINT, next_row + 1)
+
+    def garbage_collect(self) -> None:
+        """Delete the oldest already-compacted rows from the top of this
+        tab once it's grown past `_MAX_ROWS` data rows, so it (and every
+        read of it) doesn't keep growing forever. Only ever trims a
+        contiguous prefix, stopping at the first uncompacted note --
+        an uncompacted backlog alone can leave this over budget, since
+        there's nothing safe to delete for it. See the module docstring
+        for what this means for a note's row number and id."""
+        header_row = self._read_header()
+        next_row = self._next_row()
+        excess = (next_row - _FIRST_DATA_ROW) - _MAX_ROWS
+        if excess <= 0:
+            return
+        check = self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id,
+            self._sheet_id,
+            f"A{_FIRST_DATA_ROW}:{_LAST_COLUMN}{_FIRST_DATA_ROW + excess - 1}",
+        )
+        deletable = 0
+        for row in check:
+            blank = not any(cell.strip() for cell in row)
+            if not blank and NotedTime.from_row(header_row, row).compaction_id is None:
+                break
+            deletable += 1
+        if deletable == 0:
+            return
+        self._sheets_client.delete_rows(
+            self._spreadsheet_id,
+            self._sheet_id,
+            start_row=_FIRST_DATA_ROW,
+            end_row=_FIRST_DATA_ROW + deletable - 1,
+        )
+        self._hints.set(_NEXT_ROW_HINT, next_row - deletable)
+        # Deleting only ever confirmed compacted-or-blank rows, so a full
+        # reset is always safe -- just possibly conservative if the
+        # compacted prefix actually ran longer than `excess`.
+        self._hints.set(_COMPACTED_THROUGH_HINT, _FIRST_DATA_ROW - 1)
 
     def _next_row(self) -> int:
         """The row this tab's next new note should go in: a hinted row,

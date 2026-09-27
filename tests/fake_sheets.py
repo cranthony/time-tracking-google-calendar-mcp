@@ -68,6 +68,18 @@ class FakeSheets:
             for j, value in enumerate(row):
                 tab[(first_row + i, first_col + j)] = value
 
+    def delete_rows(self, spreadsheet_id: str, sheet_id: int, *, start_row: int, end_row: int) -> None:
+        count = end_row - start_row + 1
+        tab = self._tab(sheet_id)
+        shifted = {}
+        for (r, c), v in tab.items():
+            if r < start_row:
+                shifted[(r, c)] = v
+            elif r > end_row:
+                shifted[(r - count, c)] = v
+            # rows within [start_row, end_row] are dropped
+        self.cells[sheet_id] = shifted
+
     def cell(self, sheet_id: int, address: str) -> str:
         match = re.match(r"^([A-Z]+)(\d+)$", address)
         return self._tab(sheet_id).get((int(match.group(2)), _column_number(match.group(1))), "")
