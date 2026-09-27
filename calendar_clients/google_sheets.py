@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import random
+import re
+import time
 from pathlib import Path
 
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from calendar_clients.google_auth import load_credentials
 
@@ -47,10 +51,9 @@ class SheetsClient:
         the API creates it (sheetId 0, titled "Sheet1") -- callers that
         want it renamed/tagged do so afterwards, e.g. via
         `update_sheet_properties`/`create_sheet_metadata`."""
-        spreadsheet = (
+        spreadsheet = _execute(
             self._sheets_service.spreadsheets()
             .create(body={"properties": {"title": title}}, fields="spreadsheetId")
-            .execute()
         )
         return spreadsheet["spreadsheetId"]
 
@@ -58,19 +61,21 @@ class SheetsClient:
         """Rename `spreadsheet_id` itself (its document title, e.g. what
         shows up in Drive and the browser tab) -- not any one tab within
         it; see `update_sheet_properties` for that."""
-        self._sheets_service.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id,
-            body={
-                "requests": [
-                    {
-                        "updateSpreadsheetProperties": {
-                            "properties": {"title": title},
-                            "fields": "title",
+        _execute(
+            self._sheets_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body={
+                    "requests": [
+                        {
+                            "updateSpreadsheetProperties": {
+                                "properties": {"title": title},
+                                "fields": "title",
+                            }
                         }
-                    }
-                ]
-            },
-        ).execute()
+                    ]
+                },
+            )
+        )
 
     def add_sheet(
         self, spreadsheet_id: str, title: str, *, tab_color: dict[str, float] | None = None
@@ -83,13 +88,12 @@ class SheetsClient:
         properties: dict = {"title": title}
         if tab_color is not None:
             properties["tabColor"] = tab_color
-        response = (
+        response = _execute(
             self._sheets_service.spreadsheets()
             .batchUpdate(
                 spreadsheetId=spreadsheet_id,
                 body={"requests": [{"addSheet": {"properties": properties}}]},
             )
-            .execute()
         )
         return response["replies"][0]["addSheet"]["properties"]["sheetId"]
 
@@ -115,19 +119,21 @@ class SheetsClient:
             fields.append("tabColor")
         if not fields:
             return
-        self._sheets_service.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id,
-            body={
-                "requests": [
-                    {
-                        "updateSheetProperties": {
-                            "properties": properties,
-                            "fields": ",".join(fields),
+        _execute(
+            self._sheets_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body={
+                    "requests": [
+                        {
+                            "updateSheetProperties": {
+                                "properties": properties,
+                                "fields": ",".join(fields),
+                            }
                         }
-                    }
-                ]
-            },
-        ).execute()
+                    ]
+                },
+            )
+        )
 
     def get_sheet_title(self, spreadsheet_id: str, sheet_id: int) -> str:
         """The current display title of the tab identified by `sheet_id`
@@ -135,10 +141,9 @@ class SheetsClient:
         cached) so a rename since the tab was created/tagged is picked
         up immediately. Raises `ValueError` if no tab with that id
         exists (e.g. it was deleted from under this app)."""
-        response = (
+        response = _execute(
             self._sheets_service.spreadsheets()
             .get(spreadsheetId=spreadsheet_id, fields="sheets.properties")
-            .execute()
         )
         for sheet in response.get("sheets", []):
             properties = sheet["properties"]
@@ -153,28 +158,30 @@ class SheetsClient:
         any other app). See `find_sheet_id` for the matching lookup, and
         `utilities/calendar_metadata_sheet.py` for why tabs are located
         this way instead of by title or position."""
-        self._sheets_service.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id,
-            body={
-                "requests": [
-                    {
-                        "createDeveloperMetadata": {
-                            "developerMetadata": {
-                                "metadataKey": key,
-                                "metadataValue": value,
-                                "location": {"sheetId": sheet_id},
-                                "visibility": "PROJECT",
+        _execute(
+            self._sheets_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body={
+                    "requests": [
+                        {
+                            "createDeveloperMetadata": {
+                                "developerMetadata": {
+                                    "metadataKey": key,
+                                    "metadataValue": value,
+                                    "location": {"sheetId": sheet_id},
+                                    "visibility": "PROJECT",
+                                }
                             }
                         }
-                    }
-                ]
-            },
-        ).execute()
+                    ]
+                },
+            )
+        )
 
     def find_sheet_id(self, spreadsheet_id: str, key: str, value: str) -> int | None:
         """The sheetId of `spreadsheet_id`'s tab tagged `key`/`value` via
         `create_sheet_metadata`, or `None` if no tab carries that tag."""
-        response = (
+        response = _execute(
             self._sheets_service.spreadsheets()
             .developerMetadata()
             .search(
@@ -185,7 +192,6 @@ class SheetsClient:
                     ]
                 },
             )
-            .execute()
         )
         matches = response.get("matchedDeveloperMetadata", [])
         if not matches:
@@ -198,25 +204,27 @@ class SheetsClient:
         """Narrow (or widen) a single column, by its 0-based index, on the
         sheet identified by `sheet_id` (0 for the first/default sheet of a
         newly-created spreadsheet)."""
-        self._sheets_service.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id,
-            body={
-                "requests": [
-                    {
-                        "updateDimensionProperties": {
-                            "range": {
-                                "sheetId": sheet_id,
-                                "dimension": "COLUMNS",
-                                "startIndex": column_index,
-                                "endIndex": column_index + 1,
-                            },
-                            "properties": {"pixelSize": pixel_width},
-                            "fields": "pixelSize",
+        _execute(
+            self._sheets_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body={
+                    "requests": [
+                        {
+                            "updateDimensionProperties": {
+                                "range": {
+                                    "sheetId": sheet_id,
+                                    "dimension": "COLUMNS",
+                                    "startIndex": column_index,
+                                    "endIndex": column_index + 1,
+                                },
+                                "properties": {"pixelSize": pixel_width},
+                                "fields": "pixelSize",
+                            }
                         }
-                    }
-                ]
-            },
-        ).execute()
+                    ]
+                },
+            )
+        )
 
     def delete_rows(
         self, spreadsheet_id: str, sheet_id: int, *, start_row: int, end_row: int
@@ -227,34 +235,35 @@ class SheetsClient:
         "insert" -- nothing in this app needs one. Used to garbage-collect
         old rows from an only-ever-growing, append-only tab (see
         utilities/row_hints.py and each such tab's own `garbage_collect`)."""
-        self._sheets_service.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id,
-            body={
-                "requests": [
-                    {
-                        "deleteDimension": {
-                            "range": {
-                                "sheetId": sheet_id,
-                                "dimension": "ROWS",
-                                "startIndex": start_row - 1,
-                                "endIndex": end_row,
+        _execute(
+            self._sheets_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body={
+                    "requests": [
+                        {
+                            "deleteDimension": {
+                                "range": {
+                                    "sheetId": sheet_id,
+                                    "dimension": "ROWS",
+                                    "startIndex": start_row - 1,
+                                    "endIndex": end_row,
+                                }
                             }
                         }
-                    }
-                ]
-            },
-        ).execute()
+                    ]
+                },
+            )
+        )
 
     def read_rows(self, spreadsheet_id: str, sheet_range: str) -> list[list[str]]:
         """The cell values in `sheet_range` (e.g. "Sheet1!A2:D"), one list
         per row -- a row with trailing blank cells may come back shorter
         than the range's column count (the API omits them), and there are
         no rows at all (`[]`) if the range is entirely empty."""
-        response = (
+        response = _execute(
             self._sheets_service.spreadsheets()
             .values()
             .get(spreadsheetId=spreadsheet_id, range=sheet_range)
-            .execute()
         )
         return response.get("values", [])
 
@@ -265,34 +274,147 @@ class SheetsClient:
         caller replacing a previously-longer set of rows must clear the
         old range first (not needed by `utilities/event_label_sheet.py`,
         which always writes back exactly as many rows as it read)."""
-        self._sheets_service.spreadsheets().values().update(
-            spreadsheetId=spreadsheet_id,
-            range=sheet_range,
-            valueInputOption="RAW",
-            body={"values": rows},
-        ).execute()
+        _execute(
+            self._sheets_service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id,
+                range=sheet_range,
+                valueInputOption="RAW",
+                body={"values": rows},
+            )
+        )
 
     def read_rows_in_sheet(
         self, spreadsheet_id: str, sheet_id: int, range_within_sheet: str
     ) -> list[list[str]]:
-        """Like `read_rows`, but `range_within_sheet` (e.g. "A2:D",
-        without a sheet name) is qualified with `sheet_id`'s *current*
-        title -- looked up fresh via `get_sheet_title` -- instead of a
-        caller assuming an unqualified range means "the first tab"
-        (true, but only as long as a spreadsheet has exactly one tab,
-        and fragile against reordering once it has more) or remembering
-        a title that may since have been renamed."""
-        return self.read_rows(spreadsheet_id, self._qualify(spreadsheet_id, sheet_id, range_within_sheet))
+        """Like `read_rows`, but for `range_within_sheet` (e.g. "A2:D",
+        without a sheet name) within the tab identified by `sheet_id` --
+        instead of a caller assuming an unqualified range means "the
+        first tab" (true, but only as long as a spreadsheet has exactly
+        one tab, and fragile against reordering once it has more) or
+        remembering a title that may since have been renamed.
+
+        The range is sent as a sheetId-based GridRange data filter
+        (`values.batchGetByDataFilter`), so there's no need to look up
+        the tab's current title first: one read request, not two. Google
+        Sheets caps read requests per minute per user (60 by default),
+        and a compaction reads its tabs dozens of times, so that second
+        request is what used to push it over."""
+        response = _execute(
+            self._sheets_service.spreadsheets()
+            .values()
+            .batchGetByDataFilter(
+                spreadsheetId=spreadsheet_id,
+                body={
+                    "dataFilters": [{"gridRange": _grid_range(sheet_id, range_within_sheet)}],
+                    "majorDimension": "ROWS",
+                },
+            )
+        )
+        value_ranges = response.get("valueRanges", [])
+        if not value_ranges:
+            return []
+        return value_ranges[0].get("valueRange", {}).get("values", [])
 
     def write_rows_in_sheet(
         self, spreadsheet_id: str, sheet_id: int, range_within_sheet: str, rows: list[list[str]]
     ) -> None:
         """`write_rows`'s counterpart to `read_rows_in_sheet` -- see
-        there for why `range_within_sheet` is qualified by `sheet_id`'s
-        current title instead of being sent as-is."""
+        there for why the tab is addressed by `sheet_id` instead of by
+        title.
+
+        Written through `values.batchUpdateByDataFilter` with a GridRange
+        bounded to exactly `rows` (a write request, no read at all). That
+        endpoint refuses values that don't fit in the range it matched --
+        which is what happens when `rows` would land past the tab's
+        current last row, since unlike `values.update` it doesn't grow the
+        grid to fit. In that one case (whether it's refused outright or
+        comes back having written fewer cells than asked), this falls back to an A1 range
+        qualified with the tab's current title (`values.update` does grow
+        the grid), paying for the title lookup only then."""
+        if not rows:
+            return
+        grid_range = _grid_range(sheet_id, range_within_sheet)
+        grid_range["endRowIndex"] = grid_range["startRowIndex"] + len(rows)
+        try:
+            response = _execute(
+                self._sheets_service.spreadsheets()
+                .values()
+                .batchUpdateByDataFilter(
+                    spreadsheetId=spreadsheet_id,
+                    body={
+                        "valueInputOption": "RAW",
+                        "data": [
+                            {
+                                "dataFilter": {"gridRange": grid_range},
+                                "majorDimension": "ROWS",
+                                "values": rows,
+                            }
+                        ],
+                    },
+                )
+            )
+        except HttpError as error:
+            if error.resp.status != 400:
+                raise
+        else:
+            if response.get("totalUpdatedCells", 0) >= sum(len(row) for row in rows):
+                return
         self.write_rows(spreadsheet_id, self._qualify(spreadsheet_id, sheet_id, range_within_sheet), rows)
 
     def _qualify(self, spreadsheet_id: str, sheet_id: int, range_within_sheet: str) -> str:
         title = self.get_sheet_title(spreadsheet_id, sheet_id)
         escaped_title = title.replace("'", "''")
         return f"'{escaped_title}'!{range_within_sheet}"
+
+
+_A1_RANGE = re.compile(r"^([A-Z]+)(\d+):([A-Z]+)(\d*)$")
+
+
+def _grid_range(sheet_id: int, range_within_sheet: str) -> dict:
+    """`range_within_sheet` -- the only A1 shapes this app uses: "A2:D"
+    (open-ended, from a row down) or "B5:C7" (a bounded block) -- as a
+    GridRange on `sheet_id`: 0-based, end-exclusive, with no
+    `endRowIndex` for an open-ended range (the API reads a missing index
+    as unbounded on that side)."""
+    match = _A1_RANGE.match(range_within_sheet)
+    if match is None:
+        raise ValueError(f"Unsupported range {range_within_sheet!r}")
+    first_col, first_row, last_col, last_row = match.groups()
+    grid_range = {
+        "sheetId": sheet_id,
+        "startRowIndex": int(first_row) - 1,
+        "startColumnIndex": _column_number(first_col) - 1,
+        "endColumnIndex": _column_number(last_col),
+    }
+    if last_row:
+        grid_range["endRowIndex"] = int(last_row)
+    return grid_range
+
+
+def _column_number(letters: str) -> int:
+    number = 0
+    for letter in letters:
+        number = number * 26 + (ord(letter) - ord("A") + 1)
+    return number
+
+
+_MAX_RATE_LIMIT_RETRIES = 6
+
+
+def _execute(request, *, sleep=time.sleep, rand=random.random):
+    """`request.execute()`, retrying with randomized exponential backoff
+    (up to ~1 minute in all, long enough for a per-minute quota to roll
+    over) when the API says it's rate-limited (HTTP 429) -- and only then.
+
+    Not `execute(num_retries=...)`: that also retries 5xx responses,
+    which can mean "failed after being applied", and some of this
+    client's requests aren't safe to repeat (`delete_rows` would delete
+    a second, different set of rows). A 429 is always refused up front,
+    so retrying it is always safe."""
+    for attempt in range(_MAX_RATE_LIMIT_RETRIES + 1):
+        try:
+            return request.execute()
+        except HttpError as error:
+            if error.resp.status != 429 or attempt == _MAX_RATE_LIMIT_RETRIES:
+                raise
+            sleep(rand() * 2**attempt)

@@ -76,3 +76,58 @@ class TestGetAndSet:
         assert sheets.read_rows_in_sheet("spreadsheet-1", _SHEET_ID, "A2:B") == [
             ["notes_next_row", "43"]
         ]
+
+
+class _CountingSheets(FakeSheets):
+    def __init__(self) -> None:
+        super().__init__()
+        self.reads = 0
+
+    def read_rows_in_sheet(self, spreadsheet_id, sheet_id, rng):
+        self.reads += 1
+        return super().read_rows_in_sheet(spreadsheet_id, sheet_id, rng)
+
+
+class TestCaching:
+    def test_reads_the_tab_once_however_many_hints_are_consulted(self):
+        sheets = _CountingSheets()
+        hints, _ = _hints(sheets)
+        hints.set("notes_next_row", 42)
+        reads_to_create = sheets.reads
+
+        hints.set("notes_next_row", 43)
+        hints.get("notes_next_row")
+        hints.get("journal_next_row")
+
+        assert reads_to_create == 1
+        assert sheets.reads == 1
+        assert hints.get("notes_next_row") == 43
+
+    def test_a_new_name_does_not_overwrite_one_another_instance_just_added(self):
+        sheets = FakeSheets()
+        notes_hints, _ = _hints(sheets)
+        journal_hints, _ = _hints(sheets)
+        notes_hints.get("notes_next_row")
+        journal_hints.get("journal_next_row")
+
+        notes_hints.set("notes_next_row", 42)
+        journal_hints.set("journal_next_row", 7)
+
+        assert sheets.read_rows_in_sheet("spreadsheet-1", _SHEET_ID, "A2:B") == [
+            ["notes_next_row", "42"],
+            ["journal_next_row", "7"],
+        ]
+
+    def test_setting_a_name_another_instance_added_updates_it_in_place(self):
+        sheets = FakeSheets()
+        first, _ = _hints(sheets)
+        second, _ = _hints(sheets)
+        second.get("notes_next_row")
+        first.set("notes_next_row", 42)
+
+        second.set("notes_next_row", 50)
+
+        assert sheets.read_rows_in_sheet("spreadsheet-1", _SHEET_ID, "A2:B") == [
+            ["notes_next_row", "50"]
+        ]
+        assert second.get("notes_next_row") == 50

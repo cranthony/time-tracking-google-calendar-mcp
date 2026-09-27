@@ -41,14 +41,28 @@ class RowHints:
     """Reads and writes named row-number hints, one per row, in their own
     tab of a calendar's metadata spreadsheet (see
     utilities/calendar_metadata_sheet.py). This tab never grows past one
-    row per distinct hint name ever used, so it's read in full every
-    time -- it's the much larger tabs elsewhere that this exists to spare
-    from that."""
+    row per distinct hint name ever used, so it's read in full -- it's
+    the much larger tabs elsewhere that this exists to spare from that.
+
+    It's read once, though, not on every `get`/`set`: the rows are kept
+    in memory for this object's lifetime and written through on `set`. A
+    compaction consults hints a dozen times or more, and every one was a
+    Sheets read request against a per-minute quota. A stale cached hint
+    (the user edited this tab by hand) is no worse than a stale hint in
+    the sheet itself -- callers re-confirm every hint before relying on
+    it either way (see the module docstring).
+
+    The one thing that is re-read is where a *new* hint name goes: more
+    than one `RowHints` can be open on the same tab (the notes tab and
+    the journal each `ensure` their own), so this object's rows may be
+    missing a name the other just appended -- appending after them
+    blindly would overwrite it."""
 
     def __init__(self, sheets_client: SheetsClient, spreadsheet_id: str, sheet_id: int) -> None:
         self._sheets_client = sheets_client
         self._spreadsheet_id = spreadsheet_id
         self._sheet_id = sheet_id
+        self._cached_rows: list[list[str]] | None = None
 
     @staticmethod
     def ensure(sheets_client: SheetsClient, spreadsheet_id: str) -> "RowHints":
@@ -65,24 +79,31 @@ class RowHints:
     def get(self, name: str) -> int | None:
         """The row last stored under `name`, or `None` if it's never been
         set. Never trust this alone -- see the module docstring."""
-        for row in self._rows():
-            if row and row[0] == name:
-                return int(row[1]) if len(row) > 1 and row[1].strip() else None
-        return None
+        rows = self._rows()
+        offset = _offset_of(name, rows)
+        if offset is None:
+            return None
+        row = rows[offset]
+        return int(row[1]) if len(row) > 1 and row[1].strip() else None
 
     def set(self, name: str, row_number: int) -> None:
         """Store `row_number` under `name`, overwriting whatever was
         there -- adding a new row for `name` the first time it's used."""
+        already_cached = self._cached_rows is not None
         rows = self._rows()
-        for offset, row in enumerate(rows):
-            if row and row[0] == name:
-                self._sheets_client.write_rows_in_sheet(
-                    self._spreadsheet_id,
-                    self._sheet_id,
-                    f"B{_FIRST_DATA_ROW + offset}:B{_FIRST_DATA_ROW + offset}",
-                    [[str(row_number)]],
-                )
-                return
+        offset = _offset_of(name, rows)
+        if offset is None and already_cached:
+            rows = self._rows(refresh=True)
+            offset = _offset_of(name, rows)
+        if offset is not None:
+            self._sheets_client.write_rows_in_sheet(
+                self._spreadsheet_id,
+                self._sheet_id,
+                f"B{_FIRST_DATA_ROW + offset}:B{_FIRST_DATA_ROW + offset}",
+                [[str(row_number)]],
+            )
+            rows[offset] = [name, str(row_number)]
+            return
         next_row = _FIRST_DATA_ROW + len(rows)
         self._sheets_client.write_rows_in_sheet(
             self._spreadsheet_id,
@@ -90,6 +111,18 @@ class RowHints:
             f"A{next_row}:B{next_row}",
             [[name, str(row_number)]],
         )
+        rows.append([name, str(row_number)])
 
-    def _rows(self) -> list[list[str]]:
-        return self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
+    def _rows(self, *, refresh: bool = False) -> list[list[str]]:
+        if self._cached_rows is None or refresh:
+            self._cached_rows = self._sheets_client.read_rows_in_sheet(
+                self._spreadsheet_id, self._sheet_id, _DATA_RANGE
+            )
+        return self._cached_rows
+
+
+def _offset_of(name: str, rows: list[list[str]]) -> int | None:
+    for offset, row in enumerate(rows):
+        if row and row[0] == name:
+            return offset
+    return None
