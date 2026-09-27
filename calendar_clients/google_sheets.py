@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import random
 import re
 import time
+from collections.abc import Iterator
+from contextvars import ContextVar
 from pathlib import Path
 
 from googleapiclient.discovery import build
@@ -235,6 +238,7 @@ class SheetsClient:
         "insert" -- nothing in this app needs one. Used to garbage-collect
         old rows from an only-ever-growing, append-only tab (see
         utilities/row_hints.py and each such tab's own `garbage_collect`)."""
+        _forget_cached_reads(spreadsheet_id, sheet_id)
         _execute(
             self._sheets_service.spreadsheets().batchUpdate(
                 spreadsheetId=spreadsheet_id,
@@ -274,6 +278,7 @@ class SheetsClient:
         caller replacing a previously-longer set of rows must clear the
         old range first (not needed by `utilities/event_label_sheet.py`,
         which always writes back exactly as many rows as it read)."""
+        _forget_cached_reads(spreadsheet_id)
         _execute(
             self._sheets_service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id,
@@ -298,7 +303,14 @@ class SheetsClient:
         the tab's current title first: one read request, not two. Google
         Sheets caps read requests per minute per user (60 by default),
         and a compaction reads its tabs dozens of times, so that second
-        request is what used to push it over."""
+        request is what used to push it over.
+
+        Inside `cached_sheet_reads`, a repeat of the same read is served
+        from memory instead -- see there."""
+        cache = _read_cache.get()
+        key = (spreadsheet_id, sheet_id, range_within_sheet)
+        if cache is not None and key in cache:
+            return [list(row) for row in cache[key]]
         response = _execute(
             self._sheets_service.spreadsheets()
             .values()
@@ -311,9 +323,10 @@ class SheetsClient:
             )
         )
         value_ranges = response.get("valueRanges", [])
-        if not value_ranges:
-            return []
-        return value_ranges[0].get("valueRange", {}).get("values", [])
+        rows = value_ranges[0].get("valueRange", {}).get("values", []) if value_ranges else []
+        if cache is not None:
+            cache[key] = [list(row) for row in rows]
+        return rows
 
     def write_rows_in_sheet(
         self, spreadsheet_id: str, sheet_id: int, range_within_sheet: str, rows: list[list[str]]
@@ -333,6 +346,7 @@ class SheetsClient:
         the grid), paying for the title lookup only then."""
         if not rows:
             return
+        _forget_cached_reads(spreadsheet_id, sheet_id)
         grid_range = _grid_range(sheet_id, range_within_sheet)
         grid_range["endRowIndex"] = grid_range["startRowIndex"] + len(rows)
         try:
@@ -365,6 +379,46 @@ class SheetsClient:
         title = self.get_sheet_title(spreadsheet_id, sheet_id)
         escaped_title = title.replace("'", "''")
         return f"'{escaped_title}'!{range_within_sheet}"
+
+
+_read_cache: ContextVar[dict[tuple[str, int, str], list[list[str]]] | None] = ContextVar(
+    "_read_cache", default=None
+)
+
+
+@contextlib.contextmanager
+def cached_sheet_reads() -> Iterator[None]:
+    """Within this block, a `read_rows_in_sheet` repeating an earlier one
+    (same spreadsheet, tab, and range) is answered from memory instead of
+    spending another read request -- on any `SheetsClient`, since several
+    can be open on the same spreadsheet (see `config.py`) and share tabs.
+    Any write or row deletion through any of them forgets what was cached
+    for that tab first, so a read always sees this process's own writes.
+
+    Meant to wrap one MCP tool call (see `server.py`): the notes tab and
+    the compaction journal are read many times over in one compaction
+    step, but the only thing that can change them between those reads,
+    short of the user hand-editing the spreadsheet mid-call, is this
+    process. Never kept across calls, so a hand edit between calls is
+    always seen. Nested blocks share the outer one's cache."""
+    if _read_cache.get() is not None:
+        yield
+        return
+    token = _read_cache.set({})
+    try:
+        yield
+    finally:
+        _read_cache.reset(token)
+
+
+def _forget_cached_reads(spreadsheet_id: str, sheet_id: int | None = None) -> None:
+    """Drop cached reads of `sheet_id` in `spreadsheet_id` -- or of every
+    tab in it, when a write's tab isn't known by id (`write_rows`)."""
+    cache = _read_cache.get()
+    if cache is None:
+        return
+    for key in [k for k in cache if k[0] == spreadsheet_id and sheet_id in (None, k[1])]:
+        del cache[key]
 
 
 _A1_RANGE = re.compile(r"^([A-Z]+)(\d+):([A-Z]+)(\d*)$")

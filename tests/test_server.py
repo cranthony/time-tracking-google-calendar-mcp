@@ -7,6 +7,7 @@ import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 
 import server
+from calendar_clients import google_sheets
 from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.event_labels import EventLabel
@@ -455,6 +456,16 @@ class TestPrepareCompaction:
         result = server.prepare_compaction()
 
         assert result is compactor.prepare.return_value
+
+    def test_runs_with_sheet_reads_cached_for_the_call_only(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        caches = []
+        compactor.prepare.side_effect = lambda: caches.append(google_sheets._read_cache.get())
+
+        server.prepare_compaction()
+
+        assert caches == [{}]
+        assert google_sheets._read_cache.get() is None
 
 
 class TestCompactNotes:

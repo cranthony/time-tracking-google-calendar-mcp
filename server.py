@@ -10,6 +10,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError
+from calendar_clients.google_sheets import cached_sheet_reads
 from config import (
     build_calendar_client,
     build_compaction_journal,
@@ -199,7 +200,7 @@ def get_note_compactor() -> NoteCompactor:
 @mcp.tool()
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     """List events between min_time and max_time."""
-    with track("list_events"):
+    with track("list_events"), cached_sheet_reads():
         events = get_calendar_client().list_events(min_time, max_time)
         return [PublicEvent.from_event(event) for event in events if event.status != "cancelled"]
 
@@ -207,7 +208,7 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
 @mcp.tool()
 def get_event(id: str) -> PublicEvent:
     """Get a single event by its ID."""
-    with track("get_event"):
+    with track("get_event"), cached_sheet_reads():
         event = get_calendar_client().get_event(id)
         if event.status == "cancelled":
             raise ToolError(f"Event {id} has been cancelled.")
@@ -219,7 +220,7 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
     """Update an existing event, reallocating time from the rest of its
     day as needed to make room for its new position. Returns the events
     affected by the update."""
-    with track("update_event"):
+    with track("update_event"), cached_sheet_reads():
         updated_event = event.to_event()
         try:
             applied = get_reallocating_calendar().update_event(
@@ -233,7 +234,7 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
 @mcp.tool()
 def create_event(event: PublicEvent) -> list[PublicEvent]:
     """Create a new event. Returns the events affected by the creation."""
-    with track("create_event"):
+    with track("create_event"), cached_sheet_reads():
         new_event = event.to_event()
         try:
             applied = get_reallocating_calendar().create_event(new_event, ReallocationOptions())
@@ -245,7 +246,7 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
 @mcp.tool()
 def delete_event(id: str) -> list[PublicEvent]:
     """Delete an event by its ID. Returns the events affected by the deletion."""
-    with track("delete_event"):
+    with track("delete_event"), cached_sheet_reads():
         cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
         return [PublicEvent.from_event(cancelled)]
 
@@ -258,7 +259,7 @@ def create_event_label(
     priority. Returns the resulting list of every event label -- there's
     no separate way to list labels; use this, update_event_label, or
     sync_event_labels_from_sheet to see the current ones."""
-    with track("create_event_label"):
+    with track("create_event_label"), cached_sheet_reads():
         try:
             return get_calendar_with_event_labels().create_label(label)
         except (ValueError, EventLabelConflictError) as exc:
@@ -270,7 +271,7 @@ def update_event_label(label: EventLabel) -> list[EventLabel]:
     """Update an existing event label's background color, name, and/or
     priority. Any omitted properties keep their current value. Returns
     the resulting list of every event label -- see create_event_label."""
-    with track("update_event_label"):
+    with track("update_event_label"), cached_sheet_reads():
         try:
             return get_calendar_with_event_labels().update_label(label)
         except (ValueError, EventLabelConflictError) as exc:
@@ -288,7 +289,7 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
     is tracked on this calendar -- that's
     a one-time, human-run bootstrap step (see create_calendar.py), not
     something this server can do on its own."""
-    with track("sync_event_labels_from_sheet"):
+    with track("sync_event_labels_from_sheet"), cached_sheet_reads():
         try:
             return get_calendar_with_event_labels().sync_labels()
         except (ValueError, EventLabelConflictError) as exc:
@@ -299,7 +300,7 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
 def note(noted_time: NotedTime) -> NotedTime:
     """Record a new time note -- a timestamp, with an optional
     description of what it marks. Returns the note as recorded."""
-    with track("note"):
+    with track("note"), cached_sheet_reads():
         # compaction_id is set only by compaction, never by a caller.
         recorded = replace(noted_time, compaction_id=None)
         get_noted_time_sheet().append(recorded)
@@ -313,7 +314,7 @@ def get_notes(include_compacted: bool = False) -> list[NotedTime]:
     browsing/review only -- may span many days. To compact notes, use
     prepare_compaction instead; it returns just the notes for the current
     round, which is what compact_notes expects."""
-    with track("get_notes"):
+    with track("get_notes"), cached_sheet_reads():
         return get_noted_time_sheet().read(include_compacted=include_compacted)
 
 
@@ -325,7 +326,7 @@ def prepare_compaction() -> CompactionContext:
     instructions for interpreting them. Read the free-form notes, decide
     what each means, then call compact_notes with one disposition per
     note. Read-only."""
-    with track("prepare_compaction"):
+    with track("prepare_compaction"), cached_sheet_reads():
         return get_note_compactor().prepare()
 
 
@@ -360,7 +361,7 @@ def compact_notes(
     dry_run=False to apply it. It's safe to call again if it fails partway
     -- it resumes exactly where it stopped. With a compaction_id and
     dry_run=True you just get that compaction's stored plan back."""
-    with track("compact_notes"):
+    with track("compact_notes"), cached_sheet_reads():
         compactor = get_note_compactor()
         try:
             if compaction_id is None:
@@ -383,7 +384,7 @@ def abandon_compaction(compaction_id: str) -> CompactionResult:
     """Give up on a compaction that can't be finished (or that you no
     longer want). Steps it already applied stay applied; its notes stay
     uncompacted, so a new compaction can be planned."""
-    with track("abandon_compaction"):
+    with track("abandon_compaction"), cached_sheet_reads():
         try:
             return get_note_compactor().abandon(compaction_id)
         except CompactionError as exc:

@@ -4,7 +4,7 @@ import httplib2
 import pytest
 from googleapiclient.errors import HttpError
 
-from calendar_clients.google_sheets import SheetsClient, _execute
+from calendar_clients.google_sheets import SheetsClient, _execute, cached_sheet_reads
 
 
 def make_client(sheets_service: MagicMock) -> SheetsClient:
@@ -408,6 +408,116 @@ class TestWriteRowsInSheet:
         client.write_rows_in_sheet("sheet-1", 42, "A2:D", [])
 
         assert sheets_service.mock_calls == []
+
+
+def _read_counting_service(values_by_call):
+    """A MagicMock Sheets service whose batchGetByDataFilter answers
+    successive reads with successive entries of `values_by_call`."""
+    sheets_service = MagicMock()
+    values = sheets_service.spreadsheets.return_value.values.return_value
+    values.batchGetByDataFilter.return_value.execute.side_effect = [
+        {"valueRanges": [{"valueRange": {"values": v}}]} for v in values_by_call
+    ]
+    values.batchUpdateByDataFilter.return_value.execute.return_value = {"totalUpdatedCells": 1}
+    return sheets_service, values.batchGetByDataFilter
+
+
+class TestCachedSheetReads:
+    def test_repeated_reads_in_a_scope_are_served_from_memory(self):
+        sheets_service, read = _read_counting_service([[["a"]]])
+        client = make_client(sheets_service)
+
+        with cached_sheet_reads():
+            first = client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+            second = client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+
+        assert first == second == [["a"]]
+        assert read.call_count == 1
+
+    def test_the_cache_is_shared_across_clients(self):
+        sheets_service, read = _read_counting_service([[["a"]]])
+
+        with cached_sheet_reads():
+            make_client(sheets_service).read_rows_in_sheet("sheet-1", 42, "A2:D")
+            make_client(sheets_service).read_rows_in_sheet("sheet-1", 42, "A2:D")
+
+        assert read.call_count == 1
+
+    def test_different_ranges_and_tabs_are_read_separately(self):
+        sheets_service, read = _read_counting_service([[["a"]], [["b"]], [["c"]]])
+        client = make_client(sheets_service)
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+            client.read_rows_in_sheet("sheet-1", 42, "A1:D1")
+            client.read_rows_in_sheet("sheet-1", 43, "A2:D")
+
+        assert read.call_count == 3
+
+    def test_a_caller_mutating_what_it_read_does_not_change_the_cache(self):
+        sheets_service, _ = _read_counting_service([[["a"]]])
+        client = make_client(sheets_service)
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D")[0].append("mutated")
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D").append(["mutated"])
+
+            assert client.read_rows_in_sheet("sheet-1", 42, "A2:D") == [["a"]]
+
+    @pytest.mark.parametrize(
+        "mutate",
+        [
+            lambda c: c.write_rows_in_sheet("sheet-1", 42, "A5:A5", [["x"]]),
+            lambda c: c.delete_rows("sheet-1", 42, start_row=2, end_row=2),
+            lambda c: c.write_rows("sheet-1", "'Tab'!A5", [["x"]]),
+        ],
+        ids=["write_rows_in_sheet", "delete_rows", "write_rows"],
+    )
+    def test_a_write_to_the_tab_through_any_client_forgets_its_cached_reads(self, mutate):
+        sheets_service, read = _read_counting_service([[["a"]], [["b"]]])
+
+        with cached_sheet_reads():
+            make_client(sheets_service).read_rows_in_sheet("sheet-1", 42, "A2:D")
+            mutate(make_client(sheets_service))
+            rows = make_client(sheets_service).read_rows_in_sheet("sheet-1", 42, "A2:D")
+
+        assert rows == [["b"]]
+        assert read.call_count == 2
+
+    def test_a_write_to_another_tab_keeps_this_tabs_cached_reads(self):
+        sheets_service, read = _read_counting_service([[["a"]]])
+        client = make_client(sheets_service)
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+            client.write_rows_in_sheet("sheet-1", 43, "A2:D", [["x"]])
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+
+        assert read.call_count == 1
+
+    def test_nothing_is_cached_outside_a_scope_or_across_scopes(self):
+        sheets_service, read = _read_counting_service([[["a"]], [["b"]], [["c"]]])
+        client = make_client(sheets_service)
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+        client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+
+        assert read.call_count == 3
+
+    def test_a_nested_scope_shares_the_outer_ones_cache(self):
+        sheets_service, read = _read_counting_service([[["a"]]])
+        client = make_client(sheets_service)
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+            with cached_sheet_reads():
+                client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+            client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+
+        assert read.call_count == 1
 
 
 class TestExecute:
