@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock
 
+import httplib2
 import pytest
+from googleapiclient.errors import HttpError
 
-from calendar_clients.google_sheets import SheetsClient
+from calendar_clients.google_sheets import SheetsClient, _execute
 
 
 def make_client(sheets_service: MagicMock) -> SheetsClient:
@@ -264,54 +266,182 @@ class TestFindSheetId:
 
 
 class TestReadRowsInSheet:
-    def test_qualifies_range_with_current_sheet_title(self):
+    def test_reads_by_sheet_id_without_looking_up_the_title(self):
         sheets_service = MagicMock()
-        sheets_service.spreadsheets.return_value.get.return_value.execute.return_value = {
-            "sheets": [{"properties": {"sheetId": 42, "title": "Event Labels"}}]
-        }
-        sheets_service.spreadsheets.return_value.values.return_value.get.return_value.execute.return_value = {
-            "values": [["l1", "Design Work", "#8e24aa", "1"]]
+        values = sheets_service.spreadsheets.return_value.values.return_value
+        values.batchGetByDataFilter.return_value.execute.return_value = {
+            "valueRanges": [{"valueRange": {"values": [["l1", "Design Work", "#8e24aa", "1"]]}}]
         }
         client = make_client(sheets_service)
 
         rows = client.read_rows_in_sheet("sheet-1", 42, "A2:D")
 
         assert rows == [["l1", "Design Work", "#8e24aa", "1"]]
-        sheets_service.spreadsheets.return_value.values.return_value.get.assert_called_once_with(
-            spreadsheetId="sheet-1", range="'Event Labels'!A2:D"
+        values.batchGetByDataFilter.assert_called_once_with(
+            spreadsheetId="sheet-1",
+            body={
+                "dataFilters": [
+                    {
+                        "gridRange": {
+                            "sheetId": 42,
+                            "startRowIndex": 1,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 4,
+                        }
+                    }
+                ],
+                "majorDimension": "ROWS",
+            },
         )
+        sheets_service.spreadsheets.return_value.get.assert_not_called()
 
-    def test_escapes_single_quotes_in_the_sheet_title(self):
+    def test_a_bounded_range_gets_an_end_row(self):
+        sheets_service = MagicMock()
+        values = sheets_service.spreadsheets.return_value.values.return_value
+        values.batchGetByDataFilter.return_value.execute.return_value = {}
+        client = make_client(sheets_service)
+
+        client.read_rows_in_sheet("sheet-1", 42, "B5:AA7")
+
+        grid_range = values.batchGetByDataFilter.call_args.kwargs["body"]["dataFilters"][0]["gridRange"]
+        assert grid_range == {
+            "sheetId": 42,
+            "startRowIndex": 4,
+            "endRowIndex": 7,
+            "startColumnIndex": 1,
+            "endColumnIndex": 27,
+        }
+
+    @pytest.mark.parametrize(
+        "response", [{}, {"valueRanges": [{"valueRange": {}}]}], ids=["no match", "empty range"]
+    )
+    def test_returns_no_rows_when_the_range_is_empty(self, response):
+        sheets_service = MagicMock()
+        values = sheets_service.spreadsheets.return_value.values.return_value
+        values.batchGetByDataFilter.return_value.execute.return_value = response
+        client = make_client(sheets_service)
+
+        assert client.read_rows_in_sheet("sheet-1", 42, "A2:D") == []
+
+
+def _http_error(status: int) -> HttpError:
+    return HttpError(httplib2.Response({"status": status}), b"{}")
+
+
+class TestWriteRowsInSheet:
+    ROWS = [["l1", "Design Work", "#8e24aa", "1"], ["l2", "Email", "", "2"]]
+
+    def _service(self, *, updated_cells=None, error=None):
         sheets_service = MagicMock()
         sheets_service.spreadsheets.return_value.get.return_value.execute.return_value = {
             "sheets": [{"properties": {"sheetId": 42, "title": "Chris's Labels"}}]
         }
-        sheets_service.spreadsheets.return_value.values.return_value.get.return_value.execute.return_value = {}
+        by_filter = sheets_service.spreadsheets.return_value.values.return_value.batchUpdateByDataFilter
+        if error is not None:
+            by_filter.return_value.execute.side_effect = error
+        else:
+            by_filter.return_value.execute.return_value = {"totalUpdatedCells": updated_cells}
+        return sheets_service
+
+    def test_writes_by_sheet_id_bounded_to_the_rows_given(self):
+        sheets_service = self._service(updated_cells=8)
         client = make_client(sheets_service)
 
-        client.read_rows_in_sheet("sheet-1", 42, "A2:D")
+        client.write_rows_in_sheet("sheet-1", 42, "A2:D", self.ROWS)
 
-        sheets_service.spreadsheets.return_value.values.return_value.get.assert_called_once_with(
-            spreadsheetId="sheet-1", range="'Chris''s Labels'!A2:D"
+        values = sheets_service.spreadsheets.return_value.values.return_value
+        values.batchUpdateByDataFilter.assert_called_once_with(
+            spreadsheetId="sheet-1",
+            body={
+                "valueInputOption": "RAW",
+                "data": [
+                    {
+                        "dataFilter": {
+                            "gridRange": {
+                                "sheetId": 42,
+                                "startRowIndex": 1,
+                                "endRowIndex": 3,
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 4,
+                            }
+                        },
+                        "majorDimension": "ROWS",
+                        "values": self.ROWS,
+                    }
+                ],
+            },
         )
+        sheets_service.spreadsheets.return_value.get.assert_not_called()
+        values.update.assert_not_called()
 
-
-class TestWriteRowsInSheet:
-    def test_qualifies_range_with_current_sheet_title(self):
-        sheets_service = MagicMock()
-        sheets_service.spreadsheets.return_value.get.return_value.execute.return_value = {
-            "sheets": [{"properties": {"sheetId": 42, "title": "Event Labels"}}]
-        }
+    @pytest.mark.parametrize(
+        "outcome",
+        [{"error": _http_error(400)}, {"updated_cells": 0}],
+        ids=["refused", "wrote nothing"],
+    )
+    def test_falls_back_to_the_title_qualified_range_past_the_end_of_the_grid(self, outcome):
+        sheets_service = self._service(**outcome)
         client = make_client(sheets_service)
 
-        client.write_rows_in_sheet("sheet-1", 42, "A2:D", [["l1", "Design Work", "#8e24aa", "1"]])
+        client.write_rows_in_sheet("sheet-1", 42, "A2:D", self.ROWS)
 
         sheets_service.spreadsheets.return_value.values.return_value.update.assert_called_once_with(
             spreadsheetId="sheet-1",
-            range="'Event Labels'!A2:D",
+            range="'Chris''s Labels'!A2:D",
             valueInputOption="RAW",
-            body={"values": [["l1", "Design Work", "#8e24aa", "1"]]},
+            body={"values": self.ROWS},
         )
+
+    def test_other_errors_are_not_swallowed(self):
+        sheets_service = self._service(error=_http_error(403))
+        client = make_client(sheets_service)
+
+        with pytest.raises(HttpError):
+            client.write_rows_in_sheet("sheet-1", 42, "A2:D", self.ROWS)
+
+        sheets_service.spreadsheets.return_value.values.return_value.update.assert_not_called()
+
+    def test_writing_no_rows_sends_nothing(self):
+        sheets_service = MagicMock()
+        client = make_client(sheets_service)
+
+        client.write_rows_in_sheet("sheet-1", 42, "A2:D", [])
+
+        assert sheets_service.mock_calls == []
+
+
+class TestExecute:
+    def test_retries_a_rate_limited_request_with_growing_backoff(self):
+        request = MagicMock()
+        request.execute.side_effect = [_http_error(429), _http_error(429), {"ok": True}]
+        sleeps = []
+
+        result = _execute(request, sleep=sleeps.append, rand=lambda: 1.0)
+
+        assert result == {"ok": True}
+        assert sleeps == [1, 2]
+
+    def test_gives_up_after_about_a_minute_of_retries(self):
+        request = MagicMock()
+        request.execute.side_effect = _http_error(429)
+        sleeps = []
+
+        with pytest.raises(HttpError):
+            _execute(request, sleep=sleeps.append, rand=lambda: 1.0)
+
+        assert sum(sleeps) == 63
+
+    @pytest.mark.parametrize("status", [400, 403, 500, 503])
+    def test_never_retries_anything_but_a_rate_limit(self, status):
+        request = MagicMock()
+        request.execute.side_effect = _http_error(status)
+        sleeps = []
+
+        with pytest.raises(HttpError):
+            _execute(request, sleep=sleeps.append)
+
+        assert request.execute.call_count == 1
+        assert sleeps == []
 
 
 class TestSetColumnWidth:
