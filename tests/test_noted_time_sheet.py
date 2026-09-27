@@ -390,6 +390,25 @@ class TestNotedTimeSheetAppendHints:
         assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A8:C") == [[_T1]]
         assert hints.get("notes_next_row") == 9
 
+    def test_falls_back_when_the_hinted_row_overshoots_past_a_gap(self):
+        # Real data ends at row 4, but the hint points at row 15, with
+        # nothing in between -- checking only the rows at and after the
+        # hint would see that as "blank enough" and trust it, silently
+        # wasting rows 5-14 forever instead of catching the drift.
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet(
+            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a"], [_T1, "b"], [_T1, "c"]]
+        )
+        hints = FakeRowHints()
+        hints.set("notes_next_row", 15)
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
+
+        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A5:C") == [[_T1]]
+        assert hints.get("notes_next_row") == 6
+
 
 def _id(timestamp: str, row: int) -> str:
     return f"{timestamp}#{row}"

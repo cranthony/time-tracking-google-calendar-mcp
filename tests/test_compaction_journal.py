@@ -156,6 +156,9 @@ class TestStartAndLoad:
 class TestStartHints:
     def test_uses_a_confirmed_hint_instead_of_a_full_read(self):
         sheets = FakeSheets()
+        # Real data ending exactly where the hint says -- row 4 is the
+        # last row of an earlier compaction, so the hint (5) is genuine.
+        sheets.write_rows_in_sheet("spreadsheet-1", _SHEET_ID, "A2:H", [["x"] * 8 for _ in range(3)])
         hints = FakeRowHints()
         hints.set("journal_next_row", 5)
         client = MagicMock(wraps=sheets)
@@ -182,6 +185,21 @@ class TestStartHints:
 
         assert journal.load("abc123").row == 22
         assert hints.get("journal_next_row") == 28  # 22 + 1 compaction + 2 dispositions + 3 changes
+
+    def test_falls_back_when_the_hinted_row_overshoots_past_a_gap(self):
+        # Real data ends at row 6, but the hint points at row 20, with
+        # nothing in between -- checking only the rows at and after the
+        # hint would see that as "blank enough" and trust it, silently
+        # wasting rows 7-19 forever instead of catching the drift.
+        sheets = FakeSheets()
+        sheets.write_rows_in_sheet("spreadsheet-1", _SHEET_ID, "A2:H", [["x"] * 8 for _ in range(5)])
+        hints = FakeRowHints()
+        hints.set("journal_next_row", 20)
+        journal = CompactionJournal(sheets, "spreadsheet-1", _SHEET_ID, hints)
+
+        _start(journal)
+
+        assert journal.load("abc123").row == 7
 
     def test_updates_the_hint_after_a_full_read(self):
         hints = FakeRowHints()

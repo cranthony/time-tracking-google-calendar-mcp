@@ -204,16 +204,25 @@ class CompactionJournal:
 
     def _next_row(self) -> int:
         """The row this journal's next compaction should start at: a
-        hinted row, if confirmed still blank (along with a few rows
-        after it -- a crash between a previous `start`'s write and its
-        hint update would otherwise leave the hint one short), or a full
-        count of the existing rows otherwise."""
+        hinted row, if confirmed still correct, or a full count of the
+        existing rows otherwise. Confirming it checks two things: the row
+        right before it is non-blank (real data -- or the header row,
+        when nothing's been written yet -- genuinely ends there, so the
+        hint isn't floating somewhere past a gap a stale hint would
+        otherwise hide) and a few rows at and after it are blank (a crash
+        between a previous `start`'s write and its hint update would
+        otherwise leave the hint one short)."""
         hinted = self._hints.get(_NEXT_ROW_HINT)
         if hinted is not None and hinted >= _FIRST_DATA_ROW:
             check = self._sheets_client.read_rows_in_sheet(
-                self._spreadsheet_id, self._sheet_id, f"A{hinted}:H{hinted + _CONFIRM_ROWS - 1}"
+                self._spreadsheet_id,
+                self._sheet_id,
+                f"A{hinted - 1}:H{hinted + _CONFIRM_ROWS - 1}",
             )
-            if not any(any(cell.strip() for cell in row) for row in check):
+            before, after = (check[0], check[1:]) if check else ([], [])
+            if any(cell.strip() for cell in before) and not any(
+                any(cell.strip() for cell in row) for row in after
+            ):
                 return hinted
         return _FIRST_DATA_ROW + len(self._read_rows())
 

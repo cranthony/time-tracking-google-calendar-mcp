@@ -269,18 +269,25 @@ class NotedTimeSheet:
 
     def _next_row(self) -> int:
         """The row this tab's next new note should go in: a hinted row,
-        if confirmed still blank (along with a few rows after it -- a
-        crash between a previous append writing its row and updating the
-        hint would otherwise leave the hint one short), or a full count
-        of the existing rows otherwise."""
+        if confirmed still correct, or a full count of the existing rows
+        otherwise. Confirming it checks two things: the row right before
+        it is non-blank (real data -- or the header row, when nothing's
+        been written yet -- genuinely ends there, so the hint isn't
+        floating somewhere past a gap a stale hint would otherwise hide)
+        and a few rows at and after it are blank (a crash between a
+        previous append's write and its hint update would otherwise leave
+        the hint one short)."""
         hinted = self._hints.get(_NEXT_ROW_HINT)
         if hinted is not None and hinted >= _FIRST_DATA_ROW:
             check = self._sheets_client.read_rows_in_sheet(
                 self._spreadsheet_id,
                 self._sheet_id,
-                f"A{hinted}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}",
+                f"A{hinted - 1}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}",
             )
-            if not any(any(cell.strip() for cell in row) for row in check):
+            before, after = (check[0], check[1:]) if check else ([], [])
+            if any(cell.strip() for cell in before) and not any(
+                any(cell.strip() for cell in row) for row in after
+            ):
                 return hinted
         existing = self._sheets_client.read_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, _DATA_RANGE
