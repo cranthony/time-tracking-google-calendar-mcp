@@ -1,10 +1,13 @@
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 
+from tests.fake_row_hints import FakeRowHints
+from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote, parse_note_id
+from utilities.row_hints import RowHints
 
 _HEADER_ROW = ["timestamp", "description", "compaction_id"]
 _SHEET_ID = 42
@@ -12,8 +15,13 @@ _T1 = "2026-01-01T09:00:00+00:00"
 _T2 = "2026-01-01T10:00:00+00:00"
 
 
-def make_sheet(sheets_client=None, spreadsheet_id: str = "sheet-1", sheet_id: int = _SHEET_ID) -> NotedTimeSheet:
-    return NotedTimeSheet(sheets_client or MagicMock(), spreadsheet_id, sheet_id)
+def make_sheet(
+    sheets_client=None,
+    spreadsheet_id: str = "sheet-1",
+    sheet_id: int = _SHEET_ID,
+    hints: RowHints | None = None,
+) -> NotedTimeSheet:
+    return NotedTimeSheet(sheets_client or MagicMock(), spreadsheet_id, sheet_id, hints or FakeRowHints())
 
 
 def _sheets(rows, header=None):
@@ -113,23 +121,31 @@ class TestNotedTimeSheetEnsure:
         sheets_client.write_rows_in_sheet.assert_not_called()
 
     def test_creates_and_tags_a_new_tab_with_a_header_row_including_compaction_id(self):
+        # Also ensures the shared row-hints tab (utilities/row_hints.py) --
+        # its own tagged tab, created/tagged first, its header written
+        # before the notes tab's own.
         sheets_client = MagicMock()
         sheets_client.find_sheet_id.return_value = None
-        sheets_client.add_sheet.return_value = 99
+        sheets_client.add_sheet.side_effect = [99, 100]
 
         NotedTimeSheet.ensure(sheets_client, "sheet-1")
 
-        sheets_client.add_sheet.assert_called_once_with(
-            "sheet-1",
-            calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE,
-            tab_color=calendar_metadata_sheet._TAB_COLOR,
-        )
-        sheets_client.create_sheet_metadata.assert_called_once_with(
-            "sheet-1", 99, "sheet-role", calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE
-        )
-        sheets_client.write_rows_in_sheet.assert_called_once_with(
-            "sheet-1", 99, "A1:C1", [_HEADER_ROW]
-        )
+        assert sheets_client.add_sheet.call_args_list == [
+            call(
+                "sheet-1",
+                calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE,
+                tab_color=calendar_metadata_sheet._TAB_COLOR,
+            ),
+            call("sheet-1", "Row Hints", tab_color=calendar_metadata_sheet._TAB_COLOR),
+        ]
+        assert sheets_client.create_sheet_metadata.call_args_list == [
+            call("sheet-1", 99, "sheet-role", calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE),
+            call("sheet-1", 100, "sheet-role", "row-hints"),
+        ]
+        assert sheets_client.write_rows_in_sheet.call_args_list == [
+            call("sheet-1", 100, "A1:B1", [["hint", "row"]]),
+            call("sheet-1", 99, "A1:C1", [_HEADER_ROW]),
+        ]
 
 
 class TestNotedTimeSheetSpreadsheetId:
@@ -195,6 +211,72 @@ class TestNotedTimeSheetReadWithRows:
         ]
 
 
+class TestNotedTimeSheetReadWithRowsHints:
+    def test_starts_from_a_confirmed_compacted_through_hint_instead_of_a_full_read(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet(
+            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a", "cmp1"], [_T1, "b", "cmp1"], [_T2, "c"]]
+        )
+        hints = FakeRowHints()
+        hints.set("notes_compacted_through_row", 3)
+        client = MagicMock(wraps=fake)
+        sheet = NotedTimeSheet(client, "sheet-1", _SHEET_ID, hints)
+
+        notes = sheet.read_with_rows()
+
+        assert [n.row for n in notes] == [4]
+        assert not any(c.args[2] == "A2:C" for c in client.read_rows_in_sheet.call_args_list)
+
+    def test_falls_back_when_the_hinted_row_is_no_longer_compacted(self):
+        # The hint claims rows 2-3 are both compacted, but row 3's stamp
+        # was edited away since -- can't be trusted, so this re-reads
+        # from the top.
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet(
+            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a", "cmp1"], [_T1, "b"], [_T2, "c"]]
+        )
+        hints = FakeRowHints()
+        hints.set("notes_compacted_through_row", 3)
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        notes = sheet.read_with_rows()
+
+        assert [n.row for n in notes] == [3, 4]
+
+    def test_advances_the_hint_only_through_the_longest_compacted_prefix(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet(
+            "sheet-1",
+            _SHEET_ID,
+            "A2:C",
+            [[_T1, "a", "cmp1"], [_T1, "b", "cmp1"], [_T2, "c"], [_T2, "d", "cmp1"]],
+        )
+        hints = FakeRowHints()
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.read_with_rows()
+
+        # Row 4 is uncompacted, so the prefix stops there even though row
+        # 5 (past it) happens to be compacted too.
+        assert hints.get("notes_compacted_through_row") == 3
+
+    def test_a_blank_row_counts_towards_the_compacted_prefix(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet(
+            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a", "cmp1"], [], [_T2, "c"]]
+        )
+        hints = FakeRowHints()
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.read_with_rows()
+
+        assert hints.get("notes_compacted_through_row") == 3
+
+
 class TestNoteIds:
     def test_an_id_is_the_timestamp_and_the_row_together(self):
         note = SheetNote(row=7, note=NotedTime(timestamp=datetime(2026, 1, 1, 9, 5, tzinfo=timezone.utc)))
@@ -258,6 +340,55 @@ class TestNotedTimeSheetAppend:
         sheets_client.write_rows_in_sheet.assert_called_once_with(
             "sheet-1", _SHEET_ID, "A2:C", [[_T1, "", ""]]
         )
+
+    def test_updates_the_next_row_hint_after_appending(self):
+        sheets_client = _sheets([[_T1, "a"], [_T1, "b"]])
+        hints = FakeRowHints()
+
+        make_sheet(sheets_client, hints=hints).append(
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc))
+        )
+
+        assert hints.get("notes_next_row") == 5
+
+
+class TestNotedTimeSheetAppendHints:
+    def test_uses_a_confirmed_hint_instead_of_a_full_read(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet(
+            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a"], [_T1, "b"], [_T1, "c"]]
+        )
+        hints = FakeRowHints()
+        hints.set("notes_next_row", 5)
+        client = MagicMock(wraps=fake)
+        sheet = NotedTimeSheet(client, "sheet-1", _SHEET_ID, hints)
+
+        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
+
+        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A5:C") == [[_T1]]
+        assert not any(c.args[2] == "A2:C" for c in client.read_rows_in_sheet.call_args_list)
+        assert hints.get("notes_next_row") == 6
+
+    def test_falls_back_when_the_hinted_row_is_not_actually_blank(self):
+        # The hint says row 3 is next, but rows exist all the way through
+        # row 7 -- can't be trusted, so this recounts from the top.
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet(
+            "sheet-1",
+            _SHEET_ID,
+            "A2:C",
+            [[_T1, "a"], [_T1, "b"], [_T1, "c"], [_T1, "d"], [_T1, "e"], [_T1, "f"]],
+        )
+        hints = FakeRowHints()
+        hints.set("notes_next_row", 3)
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
+
+        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A8:C") == [[_T1]]
+        assert hints.get("notes_next_row") == 9
 
 
 def _id(timestamp: str, row: int) -> str:

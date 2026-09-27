@@ -22,6 +22,13 @@ stamps each consumed row's `compaction_id` instead, and `read`/
 `read_with_rows` return only unstamped ("uncompacted") notes unless asked
 otherwise. Since rows are never removed, a note's row number is
 permanent, and with its timestamp forms its id (see `SheetNote`).
+
+This tab only ever grows, so `append` and the default (uncompacted-only)
+`read_with_rows` use `utilities/row_hints.py`'s `RowHints` to seek
+straight to roughly the right row -- where to write the next note, and
+where the already-compacted prefix ends -- instead of reading the whole
+tab every time, falling back to a full read whenever a hint doesn't
+check out.
 """
 
 from __future__ import annotations
@@ -30,10 +37,18 @@ from datetime import datetime
 
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
+from utilities.row_hints import RowHints
 
 DEFAULT_SHEET_TITLE = calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE
 
 _SHEET_ROLE = calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE
+
+_NEXT_ROW_HINT = "notes_next_row"
+_COMPACTED_THROUGH_HINT = "notes_compacted_through_row"
+_CONFIRM_ROWS = 5
+"""How many rows a hint's confirmation check reads -- enough to notice a
+handful of rows added or edited without it, cheap enough that a stale
+hint costs little before falling back to a full read."""
 
 _FIRST_DATA_ROW = 2
 """Row 1 is the header."""
@@ -129,10 +144,13 @@ class NotedTimeSheet:
     """Reads and writes to the tab that records a calendar's noted
     times, within its shared calendar metadata spreadsheet."""
 
-    def __init__(self, sheets_client: SheetsClient, spreadsheet_id: str, sheet_id: int) -> None:
+    def __init__(
+        self, sheets_client: SheetsClient, spreadsheet_id: str, sheet_id: int, hints: RowHints
+    ) -> None:
         self._sheets_client = sheets_client
         self._spreadsheet_id = spreadsheet_id
         self._sheet_id = sheet_id
+        self._hints = hints
 
     @property
     def spreadsheet_id(self) -> str:
@@ -152,7 +170,8 @@ class NotedTimeSheet:
             role=_SHEET_ROLE,
             title=DEFAULT_SHEET_TITLE,
         )
-        sheet = NotedTimeSheet(sheets_client, spreadsheet_id, sheet_id)
+        hints = RowHints.ensure(sheets_client, spreadsheet_id)
+        sheet = NotedTimeSheet(sheets_client, spreadsheet_id, sheet_id, hints)
         if tab_created:
             header_row = [f.name for f in fields(NotedTime)]
             sheets_client.write_rows_in_sheet(spreadsheet_id, sheet_id, _HEADER_RANGE, [header_row])
@@ -162,17 +181,54 @@ class NotedTimeSheet:
         """The data rows (everything after the header row) of this tab,
         in sheet order, each with its row number. Only uncompacted notes
         unless `include_compacted`. Rows with nothing in them are
-        skipped (their row numbers still count)."""
+        skipped (their row numbers still count).
+
+        Unless `include_compacted`, starts from a hinted row instead of
+        the top of the tab when one is confirmed still good (see
+        `_uncompacted_start_row`) -- everything before it is known
+        already compacted, so skipping it can't hide an uncompacted note.
+        Either way, refreshes the hint from what this call reads: rows
+        confirmed blank or compacted extend it forward for next time."""
         header_row = self._read_header()
-        rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
+        start_row = _FIRST_DATA_ROW if include_compacted else self._uncompacted_start_row(header_row)
+        rows = self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, f"A{start_row}:{_LAST_COLUMN}"
+        )
         result = []
+        compacted_through = start_row - 1
+        still_confirming = True
         for offset, row in enumerate(rows):
-            if not any(cell.strip() for cell in row):
-                continue
-            note = NotedTime.from_row(header_row, row)
-            if include_compacted or note.compaction_id is None:
-                result.append(SheetNote(row=_FIRST_DATA_ROW + offset, note=note))
+            row_number = start_row + offset
+            blank = not any(cell.strip() for cell in row)
+            note = None if blank else NotedTime.from_row(header_row, row)
+            if not blank and (include_compacted or note.compaction_id is None):
+                result.append(SheetNote(row=row_number, note=note))
+            if still_confirming and (blank or (note is not None and note.compaction_id is not None)):
+                compacted_through = row_number
+            else:
+                still_confirming = False
+        if compacted_through >= start_row:
+            self._hints.set(_COMPACTED_THROUGH_HINT, compacted_through)
         return result
+
+    def _uncompacted_start_row(self, header_row: list[str]) -> int:
+        """Where `read_with_rows` can safely start reading for uncompacted
+        notes: right after `_COMPACTED_THROUGH_HINT`, if that hint is
+        confirmed still accurate, or the top of the tab otherwise.
+        Confirming it only re-reads *that one row* -- compaction only
+        ever adds a `compaction_id`, never removes one, so once a row is
+        seen compacted it stays compacted unless a user edits it by
+        hand, which this catches."""
+        hinted = self._hints.get(_COMPACTED_THROUGH_HINT)
+        if hinted is None or hinted < _FIRST_DATA_ROW:
+            return _FIRST_DATA_ROW
+        check = self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, f"A{hinted}:{_LAST_COLUMN}{hinted}"
+        )
+        compaction_id_index = header_row.index("compaction_id")
+        if check and len(check[0]) > compaction_id_index and check[0][compaction_id_index].strip():
+            return hinted + 1
+        return _FIRST_DATA_ROW
 
     def read(self, *, include_compacted: bool = False) -> list[NotedTime]:
         """Every note, sorted by timestamp -- notes are appended in
@@ -202,16 +258,34 @@ class NotedTimeSheet:
         can't clobber a concurrent `mark_compacted` stamp on one of
         them."""
         header_row = self._read_header()
-        previous_rows = self._sheets_client.read_rows_in_sheet(
-            self._spreadsheet_id, self._sheet_id, _DATA_RANGE
-        )
-        next_row = _FIRST_DATA_ROW + len(previous_rows)
+        next_row = self._next_row()
         self._sheets_client.write_rows_in_sheet(
             self._spreadsheet_id,
             self._sheet_id,
             f"A{next_row}:{_LAST_COLUMN}",
             [noted_time.to_row(header_row, None)],
         )
+        self._hints.set(_NEXT_ROW_HINT, next_row + 1)
+
+    def _next_row(self) -> int:
+        """The row this tab's next new note should go in: a hinted row,
+        if confirmed still blank (along with a few rows after it -- a
+        crash between a previous append writing its row and updating the
+        hint would otherwise leave the hint one short), or a full count
+        of the existing rows otherwise."""
+        hinted = self._hints.get(_NEXT_ROW_HINT)
+        if hinted is not None and hinted >= _FIRST_DATA_ROW:
+            check = self._sheets_client.read_rows_in_sheet(
+                self._spreadsheet_id,
+                self._sheet_id,
+                f"A{hinted}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}",
+            )
+            if not any(any(cell.strip() for cell in row) for row in check):
+                return hinted
+        existing = self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, _DATA_RANGE
+        )
+        return _FIRST_DATA_ROW + len(existing)
 
     def mark_compacted(self, note_ids: list[str], compaction_id: str) -> None:
         """Stamp `compaction_id` onto the notes `note_ids` (see

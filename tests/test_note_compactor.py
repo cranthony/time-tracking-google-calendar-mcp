@@ -6,6 +6,7 @@ import pytest
 from googleapiclient.errors import HttpError
 
 from tests.event_time_helpers import event_at, time_at
+from tests.fake_row_hints import FakeRowHints
 from tests.fake_sheets import FakeSheets
 from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
 from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect, Reschedule
@@ -52,10 +53,11 @@ class Setup:
         self.sheets.write_rows_in_sheet(
             "s", _NOTES_TAB, "A1:C1", [["timestamp", "description", "compaction_id"]]
         )
-        self.notes = NotedTimeSheet(self.sheets, "s", _NOTES_TAB)
+        self.hints = FakeRowHints()
+        self.notes = NotedTimeSheet(self.sheets, "s", _NOTES_TAB, self.hints)
         for at, description in notes:
             self.append_note(at, description)
-        self.journal = CompactionJournal(self.sheets, "s", _JOURNAL_TAB)
+        self.journal = CompactionJournal(self.sheets, "s", _JOURNAL_TAB, self.hints)
         self.calendar = FakeCalendar(events if events is not None else _day())
         self.client = MagicMock()
         self.now = now

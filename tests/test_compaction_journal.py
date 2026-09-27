@@ -1,8 +1,9 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 
 from tests.event_time_helpers import event_at, time_at
+from tests.fake_row_hints import FakeRowHints
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet
 from utilities.compaction_journal import (
@@ -25,9 +26,9 @@ from utilities.note_compaction import (
 _SHEET_ID = 7
 
 
-def _journal(sheets=None):
+def _journal(sheets=None, hints=None):
     sheets = sheets or FakeSheets()
-    return CompactionJournal(sheets, "spreadsheet-1", _SHEET_ID), sheets
+    return CompactionJournal(sheets, "spreadsheet-1", _SHEET_ID, hints or FakeRowHints()), sheets
 
 
 def _plan():
@@ -152,6 +153,45 @@ class TestStartAndLoad:
         assert len(journal.load("big").steps) == 200
 
 
+class TestStartHints:
+    def test_uses_a_confirmed_hint_instead_of_a_full_read(self):
+        sheets = FakeSheets()
+        hints = FakeRowHints()
+        hints.set("journal_next_row", 5)
+        client = MagicMock(wraps=sheets)
+        journal = CompactionJournal(client, "spreadsheet-1", _SHEET_ID, hints)
+
+        _start(journal)
+
+        # load() itself does a full scan to find a compaction by id --
+        # it's start()'s own read that this hint is meant to spare.
+        assert not any(c.args[2] == "A2:H" for c in client.read_rows_in_sheet.call_args_list)
+        assert journal.load("abc123").row == 5
+
+    def test_falls_back_when_the_hinted_row_is_not_actually_blank(self):
+        # The hint is far short of where the data actually ends (e.g. a
+        # crash between an earlier start()'s write and its hint update) --
+        # can't be trusted, so this recounts from the top.
+        sheets = FakeSheets()
+        sheets.write_rows_in_sheet("spreadsheet-1", _SHEET_ID, "A2:H", [["x"] * 8 for _ in range(20)])
+        hints = FakeRowHints()
+        hints.set("journal_next_row", 3)
+        journal = CompactionJournal(sheets, "spreadsheet-1", _SHEET_ID, hints)
+
+        _start(journal)
+
+        assert journal.load("abc123").row == 22
+        assert hints.get("journal_next_row") == 28  # 22 + 1 compaction + 2 dispositions + 3 changes
+
+    def test_updates_the_hint_after_a_full_read(self):
+        hints = FakeRowHints()
+        journal, _ = _journal(hints=hints)
+
+        _start(journal)
+
+        assert hints.get("journal_next_row") == 8  # 1 compaction + 2 dispositions + 3 changes
+
+
 class TestStatus:
     def test_set_status_updates_the_compaction_row_only(self):
         journal, sheets = _journal()
@@ -194,16 +234,20 @@ class TestStatus:
 
 class TestEnsure:
     def test_creates_and_tags_the_tab_with_a_header_row(self):
+        # Also ensures the shared row-hints tab (utilities/row_hints.py) --
+        # its own tagged tab, created/tagged first, its header written
+        # before the journal tab's own.
         sheets_client = MagicMock()
         sheets_client.find_sheet_id.return_value = None
-        sheets_client.add_sheet.return_value = 55
+        sheets_client.add_sheet.side_effect = [55, 56]
 
         CompactionJournal.ensure(sheets_client, "spreadsheet-1")
 
-        sheets_client.create_sheet_metadata.assert_called_once_with(
-            "spreadsheet-1", 55, "sheet-role", calendar_metadata_sheet.COMPACTIONS_SHEET_ROLE
-        )
-        header = sheets_client.write_rows_in_sheet.call_args.args[3][0]
+        assert sheets_client.create_sheet_metadata.call_args_list == [
+            call("spreadsheet-1", 55, "sheet-role", calendar_metadata_sheet.COMPACTIONS_SHEET_ROLE),
+            call("spreadsheet-1", 56, "sheet-role", "row-hints"),
+        ]
+        header = sheets_client.write_rows_in_sheet.call_args_list[-1].args[3][0]
         assert header[:3] == ["compaction_id", "step", "kind"]
 
     def test_reuses_an_existing_tab(self):

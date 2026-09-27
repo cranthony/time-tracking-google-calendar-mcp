@@ -30,6 +30,11 @@ A compaction's status moves `planned` -> `applying` -> `applied` ->
 `abandoned`. `applying` and `applied` are the "open" states: a new
 compaction is refused while one exists, so it has to be resumed or
 abandoned first.
+
+This tab only ever grows, so `start` -- appending a new compaction's rows
+-- uses `utilities/row_hints.py`'s `RowHints` to seek straight to the
+next free row instead of reading the whole tab just to count it, falling
+back to that full read if the hint doesn't check out.
 """
 
 from __future__ import annotations
@@ -49,6 +54,7 @@ from utilities.note_compaction import (
     NoteEffect,
     Reschedule,
 )
+from utilities.row_hints import RowHints
 
 PLANNED = "planned"
 APPLYING = "applying"
@@ -62,6 +68,11 @@ _HEADER_RANGE = "A1:H1"
 _DATA_RANGE = "A2:H"
 _FIRST_DATA_ROW = 2
 _STATUS_COLUMN = "G"
+
+_NEXT_ROW_HINT = "journal_next_row"
+_CONFIRM_ROWS = 5
+"""See utilities/row_hints.py -- how many rows a hint's confirmation
+check reads before trusting it."""
 
 
 @dataclass
@@ -98,10 +109,13 @@ class JournalCompaction:
 
 
 class CompactionJournal:
-    def __init__(self, sheets_client: SheetsClient, spreadsheet_id: str, sheet_id: int) -> None:
+    def __init__(
+        self, sheets_client: SheetsClient, spreadsheet_id: str, sheet_id: int, hints: RowHints
+    ) -> None:
         self._sheets_client = sheets_client
         self._spreadsheet_id = spreadsheet_id
         self._sheet_id = sheet_id
+        self._hints = hints
 
     @staticmethod
     def ensure(sheets_client: SheetsClient, spreadsheet_id: str) -> "CompactionJournal":
@@ -114,9 +128,10 @@ class CompactionJournal:
             role=calendar_metadata_sheet.COMPACTIONS_SHEET_ROLE,
             title=calendar_metadata_sheet.COMPACTIONS_SHEET_TITLE,
         )
+        hints = RowHints.ensure(sheets_client, spreadsheet_id)
         if created:
             sheets_client.write_rows_in_sheet(spreadsheet_id, sheet_id, _HEADER_RANGE, [_HEADER])
-        return CompactionJournal(sheets_client, spreadsheet_id, sheet_id)
+        return CompactionJournal(sheets_client, spreadsheet_id, sheet_id, hints)
 
     def start(
         self,
@@ -181,11 +196,26 @@ class CompactionJournal:
                     change.reason,
                 ]
             )
-        existing = self._read_rows()
-        first_row = _FIRST_DATA_ROW + len(existing)
+        first_row = self._next_row()
         self._sheets_client.write_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, f"A{first_row}:H", rows
         )
+        self._hints.set(_NEXT_ROW_HINT, first_row + len(rows))
+
+    def _next_row(self) -> int:
+        """The row this journal's next compaction should start at: a
+        hinted row, if confirmed still blank (along with a few rows
+        after it -- a crash between a previous `start`'s write and its
+        hint update would otherwise leave the hint one short), or a full
+        count of the existing rows otherwise."""
+        hinted = self._hints.get(_NEXT_ROW_HINT)
+        if hinted is not None and hinted >= _FIRST_DATA_ROW:
+            check = self._sheets_client.read_rows_in_sheet(
+                self._spreadsheet_id, self._sheet_id, f"A{hinted}:H{hinted + _CONFIRM_ROWS - 1}"
+            )
+            if not any(any(cell.strip() for cell in row) for row in check):
+                return hinted
+        return _FIRST_DATA_ROW + len(self._read_rows())
 
     def load(self, compaction_id: str) -> JournalCompaction:
         """The compaction `compaction_id`, with everything needed to
