@@ -22,6 +22,7 @@ from config import (
     get_mcp_resource_url,
     get_workos_authkit_domain,
 )
+from oauth_proxy import oauth_proxy_handlers
 from utilities.event_labels import EventLabels, EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.memory_diagnostics import track
@@ -63,6 +64,9 @@ if _TRANSPORT == "streamable-http":
             validate_token_resource=False,
         ),
     )
+    # For browser-based clients only; see oauth_proxy.py for why.
+    for _path, _handler in oauth_proxy_handlers(get_workos_authkit_domain()).items():
+        mcp.custom_route(_path, methods=["POST"])(_handler)
 else:
     mcp = MCPServer("time-tracking-google-calendar-mcp")
 
