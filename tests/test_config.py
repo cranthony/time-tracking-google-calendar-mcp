@@ -97,6 +97,20 @@ class TestGetMcpResourceUrl:
             config.get_mcp_resource_url()
 
 
+class TestGetCorsAllowedOrigins:
+    def test_empty_when_unset(self, monkeypatch):
+        monkeypatch.delenv("MCP_CORS_ALLOWED_ORIGINS", raising=False)
+
+        assert config.get_cors_allowed_origins() == []
+
+    def test_splits_trims_and_drops_trailing_slashes(self, monkeypatch):
+        monkeypatch.setenv(
+            "MCP_CORS_ALLOWED_ORIGINS", " https://a.example/ , https://b.example,,"
+        )
+
+        assert config.get_cors_allowed_origins() == ["https://a.example", "https://b.example"]
+
+
 class TestBuildCalendarClient:
     def test_passes_config_through_to_from_credentials(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
