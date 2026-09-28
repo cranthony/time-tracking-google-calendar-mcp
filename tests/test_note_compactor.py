@@ -576,6 +576,20 @@ class TestReschedule:
         assert (patch.start, patch.end) == (time_at("12:15"), time_at("12:45"))
         assert patch.is_fixed_time is True
 
+    def test_rescheduling_bedtime_near_the_end_of_the_day_plans_and_commits(self):
+        setup = Setup([("09:05", "email"), ("10:20", "report")], now="19:45")
+        bedtime = Reschedule(event_id="s1", start=time_at("22:30"), end=time_at("08:00") + timedelta(days=1))
+
+        planned = setup.compactor.dry_run(setup.email_then_report(), reschedules=[bedtime])
+        setup.compactor.commit(planned.compaction_id)
+
+        assert planned.status == "planned"
+        assert any("doesn't adjust the next day" in w for w in planned.warnings)
+        patch = next(
+            c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "s1"
+        )
+        assert (patch.start, patch.end) == (time_at("22:30"), time_at("08:00") + timedelta(days=1))
+
     def test_a_reschedule_with_no_notes_at_all_is_rejected_as_nothing_to_compact(self):
         # Reschedules only ever ride along with a compaction round today --
         # there's no way to trigger one with zero uncompacted notes.
