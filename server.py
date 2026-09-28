@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from starlette.middleware.cors import CORSMiddleware
+from starlette.types import ASGIApp
 
 from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError
 from calendar_clients.google_sheets import cached_sheet_reads
@@ -16,6 +18,7 @@ from config import (
     build_compaction_journal,
     build_event_labels,
     build_noted_time_sheet,
+    get_cors_allowed_origins,
     get_mcp_resource_url,
     get_workos_authkit_domain,
 )
@@ -399,14 +402,46 @@ def abandon_compaction(compaction_id: str) -> CompactionResult:
             raise ToolError(str(exc)) from exc
 
 
+def with_cors(app: ASGIApp) -> ASGIApp:
+    """Lets browser-based MCP clients (e.g. the Time Tracker web app) call
+    [app] cross-origin: answers their CORS preflights -- before auth, which
+    would otherwise reject them with a 401, since preflights never carry a
+    bearer token -- and exposes Mcp-Session-Id, which the Streamable HTTP
+    transport needs the client to read back. Allows localhost on any port,
+    for local development, plus MCP_CORS_ALLOWED_ORIGINS.
+
+    This grants a page nothing it could use without a bearer token of its
+    own: auth is the Authorization header, never cookies, so it isn't
+    something a cross-origin page can borrow from the user's browser."""
+    return CORSMiddleware(
+        app,
+        allow_origins=get_cors_allowed_origins(),
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?",
+        allow_methods=["GET", "POST", "DELETE"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "Last-Event-ID",
+            "Mcp-Protocol-Version",
+            "Mcp-Session-Id",
+        ],
+        expose_headers=["Mcp-Session-Id", "WWW-Authenticate"],
+    )
+
+
 if __name__ == "__main__":
     if _TRANSPORT == "streamable-http":
+        import uvicorn
+
         # Every Render web service must bind 0.0.0.0 and the $PORT it
         # assigns (default 10000 locally, to match Render's own default).
-        mcp.run(
-            transport="streamable-http",
-            host="0.0.0.0",
+        # Same as mcp.run(transport="streamable-http"), plus with_cors.
+        host = "0.0.0.0"
+        uvicorn.run(
+            with_cors(mcp.streamable_http_app(host=host)),
+            host=host,
             port=int(os.environ.get("PORT", 10000)),
+            log_level=mcp.settings.log_level.lower(),
         )
     else:
         mcp.run()

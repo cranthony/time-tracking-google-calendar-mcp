@@ -93,6 +93,17 @@ def get_mcp_resource_url() -> str:
     )
 
 
+def get_cors_allowed_origins() -> list[str]:
+    """Extra browser origins (e.g. "https://time-tracker.example.com") allowed
+    to call this server's HTTP transport cross-origin, from the
+    comma-separated MCP_CORS_ALLOWED_ORIGINS environment variable. Empty if
+    unset. Localhost origins are always allowed on top of these (see
+    server.with_cors), so a web client under local development needs
+    nothing set here."""
+    value = os.environ.get("MCP_CORS_ALLOWED_ORIGINS", "")
+    return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+
+
 def build_calendar_client() -> CalendarClient:
     """Construct a CalendarClient from environment configuration (and a
     local .env file, if present)."""

@@ -5,6 +5,10 @@ from unittest.mock import MagicMock
 
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
+from starlette.applications import Starlette
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+from starlette.testclient import TestClient
 
 import server
 from calendar_clients import google_sheets
@@ -734,3 +738,56 @@ class TestMemoryTracking:
         server.get_notes()
 
         assert labels == ["get_notes"]
+
+
+class TestWithCors:
+    @pytest.fixture
+    def client(self, monkeypatch):
+        monkeypatch.setenv("MCP_CORS_ALLOWED_ORIGINS", "https://tracker.example")
+
+        async def mcp_endpoint(request):
+            # Stands in for the real endpoint, auth included: anything
+            # without a bearer token gets a 401.
+            if "authorization" not in request.headers:
+                return PlainTextResponse("unauthorized", status_code=401)
+            return PlainTextResponse("ok", headers={"Mcp-Session-Id": "session-1"})
+
+        app = Starlette(routes=[Route("/mcp", mcp_endpoint, methods=["POST"])])
+        return TestClient(server.with_cors(app))
+
+    @staticmethod
+    def preflight(client, origin):
+        return client.options(
+            "/mcp",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type,mcp-session-id,mcp-protocol-version",
+            },
+        )
+
+    @pytest.mark.parametrize(
+        "origin", ["http://localhost:8765", "http://127.0.0.1:3000", "https://tracker.example"]
+    )
+    def test_answers_preflight_before_auth(self, client, origin):
+        response = self.preflight(client, origin)
+
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == origin
+
+    @pytest.mark.parametrize(
+        "origin", ["https://evil.example", "http://localhost.evil.example", "https://localhost:8765"]
+    )
+    def test_rejects_other_origins(self, client, origin):
+        response = self.preflight(client, origin)
+
+        assert response.status_code == 400
+        assert "access-control-allow-origin" not in response.headers
+
+    def test_exposes_session_id(self, client):
+        response = client.post(
+            "/mcp", headers={"Origin": "http://localhost:8765", "Authorization": "Bearer t"}
+        )
+
+        assert response.headers["mcp-session-id"] == "session-1"
+        assert "mcp-session-id" in response.headers["access-control-expose-headers"].lower()
