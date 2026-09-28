@@ -753,6 +753,132 @@ class TestReschedule:
             )
 
 
+def _evening(*extra):
+    """The standard day, plus `extra` events before bedtime (20:00)."""
+    return sorted(_day() + list(extra), key=lambda e: e.start)
+
+
+_NEXT_DAY = timedelta(days=1)
+
+
+class TestRescheduleSleep:
+    """Rescheduling the end-of-day sleep event moves where the day ends,
+    rather than placing it like any other fact -- see `_end_day_at`."""
+
+    def _plan(self, day_events, reschedule, *, now="08:00", notes=(), dispositions=()):
+        return plan_compaction(list(notes), list(dispositions), day_events, time_at(now), reschedules=[reschedule])
+
+    def test_a_later_bedtime_just_moves_it(self):
+        plan = self._plan(
+            _day(), Reschedule(event_id="s1", start=time_at("22:30"), end=time_at("07:00") + _NEXT_DAY)
+        )
+
+        changes = _by_event(plan)
+        assert set(changes) == {"s1"}
+        assert _span(changes["s1"].after) == (time_at("22:30"), time_at("07:00") + _NEXT_DAY)
+        assert changes["s1"].after.is_fixed_time is True
+        assert plan.warnings == []
+
+    def test_an_earlier_bedtime_shortens_what_runs_past_it(self):
+        reading = event_at("18:00-20:00", id="e5", summary="Reading", priority=3)
+
+        plan = self._plan(
+            _evening(reading),
+            Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["e5"].after) == (time_at("18:00"), time_at("19:00"))
+        assert changes["e5"].reason.startswith("shortened to end at the new bedtime")
+        assert _span(changes["s1"].after) == (time_at("19:00"), time_at("07:00") + _NEXT_DAY)
+        # Nothing of Reading is carried over past the sleep, into the next day.
+        assert [c for c in plan.changes if c.action == "create"] == []
+
+    def test_an_earlier_bedtime_cancels_what_starts_after_it(self):
+        journal = event_at("19:30-20:00", id="e5", summary="Journal", priority=1)
+
+        plan = self._plan(
+            _evening(journal),
+            Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
+        )
+
+        change = _by_event(plan)["e5"]
+        assert change.action == "cancel"
+        assert change.reason.startswith("doesn't fit before the new bedtime")
+
+    def test_an_earlier_bedtime_cancels_what_it_cannot_shorten_that_far(self):
+        call = event_at("18:30-20:00", id="e5", summary="Call", priority=1, min_duration=timedelta(hours=1))
+
+        plan = self._plan(
+            _evening(call),
+            Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
+        )
+
+        assert _by_event(plan)["e5"].action == "cancel"
+
+    def test_an_earlier_bedtime_over_a_fixed_time_event_is_an_error(self):
+        call = event_at(
+            "18:30-19:30", id="e5", summary="Call", is_fixed_time=True, min_duration=timedelta(hours=1)
+        )
+
+        with pytest.raises(CompactionError, match="'Call' is fixed"):
+            self._plan(
+                _evening(call),
+                Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
+            )
+
+    @pytest.mark.parametrize(
+        "reschedule",
+        [
+            Reschedule(event_id="s1", end=time_at("08:00") + _NEXT_DAY),
+            Reschedule(event_id="s1", start=time_at("22:00")),  # keeps its length: wakes at 09:00
+        ],
+        ids=["later wake", "later start, same length"],
+    )
+    def test_moving_its_end_warns_that_the_next_day_is_not_adjusted(self, reschedule):
+        plan = self._plan(_day(), reschedule)
+
+        assert set(_by_event(plan)) == {"s1"}
+        assert len(plan.warnings) == 1
+        assert "doesn't adjust the next day" in plan.warnings[0]
+
+    def test_facts_before_it_still_reflow_into_the_day(self):
+        # A noted activity running into the evening needs something after it
+        # to push into -- normally the sleep event, which is also moving.
+        reading = event_at("17:00-19:00", id="e5", summary="Reading", priority=3)
+
+        plan = self._plan(
+            _evening(reading),
+            Reschedule(event_id="s1", start=time_at("22:00"), end=time_at("07:00") + _NEXT_DAY),
+            now="19:30",
+            notes=[_note(2, "17:30")],
+            dispositions=[_disposition(2, _effect("starts", event_id="e5"))],
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["e5"].after) == (time_at("17:30"), time_at("19:30"))
+        assert _span(changes["s1"].after) == (time_at("22:00"), time_at("07:00") + _NEXT_DAY)
+
+    def test_a_past_event_outside_the_noted_span_is_still_left_alone(self):
+        # The noted span ends at 11:30; the reschedule doesn't stretch it to
+        # the next morning, so Review (14:00-15:00, already over) isn't
+        # treated as something the notes skipped.
+        plan = self._plan(
+            _day(),
+            Reschedule(event_id="s1", start=time_at("22:00"), end=time_at("07:00") + _NEXT_DAY),
+            now="16:00",
+            notes=[_note(2, "09:05"), _note(3, "10:20"), _note(4, "11:30")],
+            dispositions=[
+                _disposition(2, _effect("starts", event_id="e1")),
+                _disposition(3, _effect("ends", event_id="e1"), _effect("starts", event_id="e2")),
+                _disposition(4, _effect("ends", event_id="e2")),
+            ],
+        )
+
+        assert "e4" not in _by_event(plan)
+        assert any("left alone" in w and "Review" in w for w in plan.warnings)
+
+
 class TestEventState:
     def test_round_trips_through_json(self):
         state = EventState.from_event(

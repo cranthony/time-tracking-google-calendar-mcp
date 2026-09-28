@@ -357,6 +357,14 @@ def compact_notes(
     just a new start moves it without changing how long it runs. An event
     a note already accounts for can't also be rescheduled.
 
+    Rescheduling the end-of-day sleep event moves where the day ends: an
+    earlier bedtime shortens or cancels whatever no longer fits before
+    it, a later one leaves the evening free. Its end (the wake-up time)
+    starts the next day, which compaction never adjusts -- so to change
+    only the bedtime, pass the new start AND the sleep's current end
+    (a start alone keeps its length, moving the wake-up time too). If the
+    wake-up time does change, the plan warns; tell the user.
+
     Step 3: after the user agrees, call with that compaction_id and
     dry_run=False to apply it. It's safe to call again if it fails partway
     -- it resumes exactly where it stopped. With a compaction_id and

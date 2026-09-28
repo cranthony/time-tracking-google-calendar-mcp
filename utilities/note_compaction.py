@@ -89,6 +89,12 @@ account for. Unlike a note's activity, a reschedule isn't bounded by
 `now`: it's normally about the future. An event already accounted for by
 a note can't also be rescheduled directly, and two facts (of either kind)
 can't overlap in time -- both are reported like any other invalid input.
+
+Rescheduling the end-of-day sleep event is the exception: it moves where
+the day ends instead of being placed within it, since nothing in the day
+comes after it to reflow into. Its end starts the next day, which is
+never adjusted -- only warned about. See `_end_day_at`. A reschedule also
+never widens the span the notes account for (see `_simulate`).
 """
 
 from __future__ import annotations
@@ -320,6 +326,13 @@ class _Fact:
     event: Event = None  # type: ignore[assignment]
     base: Event | None = None
     reason: str = "recorded as what actually happened, and pinned in place"
+    rescheduled: bool = False
+    """From a `Reschedule`, not from any note."""
+
+    @property
+    def moves_day_end(self) -> bool:
+        """A reschedule of the end-of-day sleep event -- see `_end_day_at`."""
+        return self.rescheduled and self.base is not None and bool(self.base.is_end_of_day_sleep)
 
 
 def plan_compaction(
@@ -755,6 +768,7 @@ def _build_reschedule_facts(
                 event=event,
                 base=base,
                 reason="moved as requested, and pinned in place",
+                rescheduled=True,
             )
         )
     return facts
@@ -773,6 +787,69 @@ def _check_fact_overlaps(facts: list[_Fact], problems: list[str]) -> None:
                 )
 
 
+def _end_day_at(
+    fact: _Fact,
+    working: list[Event],
+    explicit_cancel: dict[str, str],
+    day_end_reasons: dict[str, str],
+    warnings: list[str],
+) -> list[Event]:
+    """Move the day's end to where `fact` reschedules the end-of-day sleep
+    event, and return `working` with it there.
+
+    This isn't placed like any other fact (`reallocate_for_new_event`),
+    because that needs something after the placed event for the rest to
+    reflow into, and nothing in the day comes after its own sleep event
+    -- the day is cut off there (see `ReallocatingCalendar.
+    list_day_events`). It would also, given the chance, carry the rest of
+    an interrupted evening event over to after the sleep, into the next
+    day. So instead:
+
+    - a later bedtime just leaves the evening it frees up free;
+    - an earlier one shortens whatever runs past the new bedtime to end
+      there, and cancels what starts after it (or can't be shortened
+      that far without going under its `min_duration`); a fixed-time
+      event in the way is an error, the same as two facts overlapping;
+    - the sleep's end -- the start of the next day -- is moved as asked,
+      but nothing in the next day is adjusted for it: compacting one day
+      never changes the next. That gets a warning instead, since the
+      next day's first events may now overlap it.
+    """
+    sleep = fact.event
+    bedtime = fact.start
+    problems: list[str] = []
+    kept: list[Event] = []
+    for event in working:
+        if event.id == fact.base.id:
+            continue
+        if event.end <= bedtime:
+            kept.append(event)
+            continue
+        if event.is_fixed_time:
+            problems.append(
+                f"can't move {sleep.summary!r} to start at {bedtime.isoformat()}: "
+                f"{event.summary!r} is fixed at {event.start.isoformat()} to {event.end.isoformat()}"
+            )
+            continue
+        if event.start < bedtime and bedtime - event.start >= (event.min_duration or timedelta(0)):
+            event.end = bedtime
+            if event.id is not None:
+                day_end_reasons[event.id] = f"shortened to end at the new bedtime, {bedtime.isoformat()}"
+            kept.append(event)
+        elif event.id is not None:
+            explicit_cancel[event.id] = f"doesn't fit before the new bedtime, {bedtime.isoformat()}"
+        # else: the unsaved remainder of a split event -- just never created.
+    if problems:
+        raise CompactionError("\n".join(problems))
+    if fact.end != fact.base.end:
+        warnings.append(
+            f"{sleep.summary!r} now ends at {fact.end.isoformat()} instead of "
+            f"{fact.base.end.isoformat()}. Compaction doesn't adjust the next day for that -- "
+            "check the next day's first events, and move them with update_event if they now overlap."
+        )
+    return sorted(kept + [sleep], key=lambda e: e.start)
+
+
 def _simulate(
     facts: list[_Fact],
     day_events: list[Event],
@@ -786,8 +863,11 @@ def _simulate(
 
     base_ids = {f.base.id for f in facts if f.base}
     mapped_ids = {m.event.id for f in facts for m in f.members if m.event} | base_ids
-    span_start = facts[0].start
-    span_end = facts[-1].end
+    # The span the notes account for -- not stretched by a reschedule,
+    # which says nothing about what happened around it.
+    noted = [f for f in facts if not f.rescheduled]
+    span_start = noted[0].start if noted else None
+    span_end = noted[-1].end if noted else None
 
     explicit_cancel: dict[str, str] = {}
     for fact in facts:
@@ -802,7 +882,7 @@ def _simulate(
             continue
         if event.end > now:
             continue
-        if event.start >= span_start and event.end <= span_end:
+        if noted and event.start >= span_start and event.end <= span_end:
             explicit_cancel[event.id] = "no note accounts for it, and it's in the past"
         else:
             left_alone.append(event.summary or event.id)
@@ -812,15 +892,22 @@ def _simulate(
             + ", ".join(repr(name) for name in left_alone)
         )
 
+    # A moved sleep event stays put until its own turn below, so the facts
+    # before it still have the day's end to reflow into.
+    day_end_ids = {f.base.id for f in facts if f.moves_day_end}
     working = sorted(
         (
             copies[event_id]
             for event_id in copies
-            if event_id not in base_ids and event_id not in explicit_cancel
+            if (event_id not in base_ids or event_id in day_end_ids) and event_id not in explicit_cancel
         ),
         key=lambda e: e.start,
     )
+    day_end_reasons: dict[str, str] = {}
     for fact in facts:
+        if fact.moves_day_end:
+            working = _end_day_at(fact, working, explicit_cancel, day_end_reasons, warnings)
+            continue
         # reallocate_for_new_event wants only the day *from* the new event's
         # start onward (at most the first event may overlap that start), so
         # whatever already ended before this fact -- including every
@@ -888,7 +975,7 @@ def _simulate(
                     CompactionChange(
                         action="update",
                         event_id=event_id,
-                        reason="moved to make room for the actual events",
+                        reason=day_end_reasons.get(event_id, "moved to make room for the actual events"),
                         before=EventState.from_event(before),
                         after=EventState.from_event(after),
                     )
