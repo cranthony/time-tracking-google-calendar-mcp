@@ -879,6 +879,83 @@ class TestRescheduleSleep:
         assert any("left alone" in w and "Review" in w for w in plan.warnings)
 
 
+class TestNotedSleep:
+    """A note starting the end-of-day sleep event: its end is the day's
+    end, already known, so nothing needs to be asked about it -- and like a
+    rescheduled sleep, it moves where the day ends."""
+
+    def _day(self):
+        return [
+            event_at("21:00-23:30", id="e1", summary="Reading", priority=3),
+            event_at(
+                "00:00+1-07:00+1",
+                id="s1",
+                summary="Sleep",
+                priority=0,
+                is_end_of_day_sleep=True,
+                is_fixed_time=True,
+                min_duration=timedelta(hours=7),
+            ),
+        ]
+
+    def _notes(self):
+        return [_note(1, "23:47", "Starting to get ready for bed"), _note(2, "00:01+1", "Finished")]
+
+    def _get_ready(self):
+        return _disposition(1, _effect("starts_unplanned", summary="Get ready for bed"))
+
+    def test_a_note_starting_sleep_keeps_its_planned_end_without_asking(self):
+        plan = plan_compaction(
+            self._notes(),
+            [
+                self._get_ready(),
+                _disposition(2, _effect("ends", started_by_note="n1"), _effect("starts", event_id="s1")),
+            ],
+            self._day(),
+            time_at("07:00+1"),
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["s1"].after) == (time_at("00:01+1"), time_at("07:00+1"))
+        created = [c for c in plan.changes if c.action == "create"]
+        assert [(c.after.summary, _span(c.after)) for c in created] == [
+            ("Get ready for bed", (time_at("23:47"), time_at("00:01+1")))
+        ]
+        assert not any("doesn't adjust the next day" in w for w in plan.warnings)
+
+    def test_an_earlier_noted_bedtime_shortens_what_runs_past_it(self):
+        plan = plan_compaction(
+            [_note(1, "23:00")],
+            [_disposition(1, _effect("starts", event_id="s1"))],
+            self._day(),
+            time_at("07:00+1"),
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["s1"].after) == (time_at("23:00"), time_at("07:00+1"))
+        assert _span(changes["e1"].after) == (time_at("21:00"), time_at("23:00"))
+
+    def test_rescheduling_sleep_makes_room_for_an_activity_before_it(self):
+        plan = plan_compaction(
+            self._notes(),
+            [self._get_ready(), _disposition(2, _effect("ends", started_by_note="n1"))],
+            self._day(),
+            time_at("07:00+1"),
+            reschedules=[Reschedule(event_id="s1", start=time_at("00:01+1"), end=time_at("07:00+1"))],
+        )
+
+        assert _span(_by_event(plan)["s1"].after) == (time_at("00:01+1"), time_at("07:00+1"))
+
+    def test_overlapping_a_fixed_sleep_nothing_accounts_for_says_so(self):
+        with pytest.raises(CompactionError, match="overlaps 'Sleep'.*fixed-time and no note accounts for"):
+            plan_compaction(
+                self._notes(),
+                [self._get_ready(), _disposition(2, _effect("ends", started_by_note="n1"))],
+                self._day(),
+                time_at("07:00+1"),
+            )
+
+
 class TestEventState:
     def test_round_trips_through_json(self):
         state = EventState.from_event(

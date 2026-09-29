@@ -373,7 +373,9 @@ def compact_notes(
     starts the next day, which compaction never adjusts -- so to change
     only the bedtime, pass the new start AND the sleep's current end
     (a start alone keeps its length, moving the wake-up time too). If the
-    wake-up time does change, the plan warns; tell the user.
+    wake-up time does change, the plan warns; tell the user. A note
+    starting the sleep event (e.g. "going to bed now") does the same
+    thing: sleep keeps its planned end, so it needs no end note.
 
     Step 3: after the user agrees, call with that compaction_id and
     dry_run=False to apply it. It's safe to call again if it fails partway
