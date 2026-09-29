@@ -47,7 +47,9 @@ Only notes with a `starts`/`ends` effect are *boundaries*.
   gap is filled by extending it, not left empty. The last such activity
   is still in progress: it runs to `now`, or to its planned end if that's
   later. If the day is already over there is no "now" to run to, so
-  nothing is guessed: the planner asks when it ended.
+  nothing is guessed: the planner asks when it ended. The end-of-day
+  sleep event is the exception: its planned end *is* the day's end, so
+  it just keeps it.
 - An activity with only an end note honors that end, and its start is
   pulled back to the *previous* boundary's time, again so nothing is left
   empty. (With no previous boundary it keeps its planned start.)
@@ -90,9 +92,11 @@ account for. Unlike a note's activity, a reschedule isn't bounded by
 a note can't also be rescheduled directly, and two facts (of either kind)
 can't overlap in time -- both are reported like any other invalid input.
 
-Rescheduling the end-of-day sleep event is the exception: it moves where
-the day ends instead of being placed within it, since nothing in the day
-comes after it to reflow into. Its end starts the next day, which is
+The end-of-day sleep event is the exception, whether a reschedule or a
+note places it: it moves where the day ends instead of being placed
+within it, since nothing in the day comes after it to reflow into. That
+happens before any other fact is placed, so the rest reflow into the
+day as it will actually end. Its end starts the next day, which is
 never adjusted -- only warned about. See `_end_day_at`. A reschedule also
 never widens the span the notes account for (see `_simulate`).
 """
@@ -331,8 +335,9 @@ class _Fact:
 
     @property
     def moves_day_end(self) -> bool:
-        """A reschedule of the end-of-day sleep event -- see `_end_day_at`."""
-        return self.rescheduled and self.base is not None and bool(self.base.is_end_of_day_sleep)
+        """The end-of-day sleep event, whether a note or a reschedule
+        placed it -- see `_end_day_at`."""
+        return self.base is not None and bool(self.base.is_end_of_day_sleep)
 
 
 def plan_compaction(
@@ -572,6 +577,11 @@ def _compute_intervals(
                 i = position[activity.start_note.id]
                 if i + 1 < len(boundary):
                     end = boundary[i + 1].timestamp
+                elif activity.event is not None and activity.event.is_end_of_day_sleep:
+                    # The day ends when its sleep does, so that end is
+                    # already known -- anything that could end it sooner
+                    # belongs to the next day, which isn't in this batch.
+                    end = activity.event.end
                 else:
                     # Still in progress: to now, or its planned end if that's
                     # later. (On a day that's already over, `now` is the end
@@ -892,21 +902,24 @@ def _simulate(
             + ", ".join(repr(name) for name in left_alone)
         )
 
-    # A moved sleep event stays put until its own turn below, so the facts
-    # before it still have the day's end to reflow into.
-    day_end_ids = {f.base.id for f in facts if f.moves_day_end}
     working = sorted(
         (
             copies[event_id]
             for event_id in copies
-            if (event_id not in base_ids or event_id in day_end_ids) and event_id not in explicit_cancel
+            if event_id not in base_ids and event_id not in explicit_cancel
         ),
         key=lambda e: e.start,
     )
+    # The day's end is settled first, so every other fact reflows into the
+    # day as it will actually end -- e.g. an activity noted just before a
+    # later-than-planned bedtime, which would otherwise collide with the
+    # sleep event's old start.
     day_end_reasons: dict[str, str] = {}
     for fact in facts:
         if fact.moves_day_end:
             working = _end_day_at(fact, working, explicit_cancel, day_end_reasons, warnings)
+    for fact in facts:
+        if fact.moves_day_end:
             continue
         # reallocate_for_new_event wants only the day *from* the new event's
         # start onward (at most the first event may overlap that start), so
@@ -914,6 +927,17 @@ def _simulate(
         # earlier fact -- is set aside and can't be disturbed.
         head = [e for e in working if e.end <= fact.start]
         tail = [e for e in working if e.end > fact.start]
+        pinned = next((e for e in tail if e.is_fixed_time and e.start < fact.end), None)
+        if pinned is not None:
+            # Reflowing can never move a fixed-time event out of the way,
+            # so say so directly rather than let reallocation fail on it.
+            raise CompactionError(
+                f"{fact.event.summary!r} ({fact.start.isoformat()} to {fact.end.isoformat()}) "
+                f"overlaps {pinned.summary!r} ({pinned.start.isoformat()} to "
+                f"{pinned.end.isoformat()}), which is fixed-time and no note accounts for. If a "
+                f"note shows when {pinned.summary!r} actually started or ended, give it a "
+                "'starts'/'ends' effect for that event; otherwise reschedule it."
+            )
         try:
             changed = reallocate_for_new_event(tail, fact.event, options)
         except ValueError as exc:
