@@ -18,6 +18,7 @@ from config import (
     build_compaction_journal,
     build_event_labels,
     build_noted_time_sheet,
+    get_allowed_user_ids,
     get_cors_allowed_origins,
     get_mcp_resource_url,
     get_workos_authkit_domain,
@@ -52,7 +53,9 @@ if _TRANSPORT == "streamable-http":
     mcp = MCPServer(
         "time-tracking-google-calendar-mcp",
         token_verifier=WorkOSTokenVerifier(
-            authkit_domain=get_workos_authkit_domain(), resource=_resource_url
+            authkit_domain=get_workos_authkit_domain(),
+            resource=_resource_url,
+            allowed_user_ids=get_allowed_user_ids(),
         ),
         auth=AuthSettings(
             issuer_url=get_workos_authkit_domain(),
