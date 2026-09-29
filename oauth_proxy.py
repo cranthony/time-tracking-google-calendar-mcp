@@ -31,7 +31,7 @@ TOKEN_PATH = "/oauth/token"
 
 _UPSTREAM_PATHS = {REGISTER_PATH: "/oauth2/register", TOKEN_PATH: "/oauth2/token"}
 _REQUEST_HEADERS = ("Content-Type", "Accept")
-_RESPONSE_HEADERS = ("Content-Type", "Cache-Control", "Pragma")
+_RESPONSE_HEADERS = ("Content-Type", "Cache-Control")
 # Cloudflare, in front of AuthKit, rejects urllib's default User-Agent
 # ("Python-urllib/3.x") on the registration endpoint (error 1010).
 _USER_AGENT = "time-tracking-google-calendar-mcp oauth-proxy"
