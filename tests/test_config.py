@@ -97,6 +97,23 @@ class TestGetMcpResourceUrl:
             config.get_mcp_resource_url()
 
 
+class TestGetAllowedUserIds:
+    def test_splits_and_trims(self, monkeypatch):
+        monkeypatch.setenv("MCP_ALLOWED_USER_IDS", " user_1 , user_2,,")
+
+        assert config.get_allowed_user_ids() == frozenset({"user_1", "user_2"})
+
+    @pytest.mark.parametrize("value", [None, "", " , "])
+    def test_raises_when_empty_rather_than_allowing_everyone(self, monkeypatch, value):
+        if value is None:
+            monkeypatch.delenv("MCP_ALLOWED_USER_IDS", raising=False)
+        else:
+            monkeypatch.setenv("MCP_ALLOWED_USER_IDS", value)
+
+        with pytest.raises(config.ConfigError):
+            config.get_allowed_user_ids()
+
+
 class TestGetCorsAllowedOrigins:
     def test_empty_when_unset(self, monkeypatch):
         monkeypatch.delenv("MCP_CORS_ALLOWED_ORIGINS", raising=False)

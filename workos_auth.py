@@ -30,10 +30,11 @@ logger = logging.getLogger(__name__)
 
 class WorkOSTokenVerifier(TokenVerifier):
     """Verifies a bearer token was issued by `authkit_domain` for
-    `resource` (this server's own public URL) -- see the module docstring.
+    `resource` (this server's own public URL), to one of
+    `allowed_user_ids` -- see the module docstring.
     """
 
-    def __init__(self, *, authkit_domain: str, resource: str) -> None:
+    def __init__(self, *, authkit_domain: str, resource: str, allowed_user_ids: frozenset[str]) -> None:
         # Trailing slashes are easy to pick up when copying a URL out of a
         # browser or dashboard, and break both the JWKS URL below (a
         # double slash there gets redirected, which PyJWKClient can't
@@ -42,6 +43,12 @@ class WorkOSTokenVerifier(TokenVerifier):
         # slashed value never matches) -- strip it defensively.
         self._authkit_domain = authkit_domain.rstrip("/")
         self._resource = resource
+        # A genuine token only proves WorkOS signed someone in -- anyone
+        # who can get an account in this AuthKit environment (e.g. by
+        # signing up, if that's allowed) gets one. This is what limits it
+        # to the people this server's data belongs to: the token's `sub`
+        # (the WorkOS user id, "user_...") has to be one of these.
+        self._allowed_user_ids = allowed_user_ids
         # `{authkit_domain}/oauth2/jwks` is the JWKS endpoint WorkOS's own
         # MCP docs use to verify these tokens (a different endpoint from
         # regular AuthKit session tokens' JWKS, which lives under
@@ -69,6 +76,12 @@ class WorkOSTokenVerifier(TokenVerifier):
                 self._authkit_domain,
                 self._resource,
             )
+            return None
+        user_id = claims.get("sub")
+        if user_id not in self._allowed_user_ids:
+            # A WorkOS user id isn't a secret, and logging it is how you
+            # find your own to add to MCP_ALLOWED_USER_IDS.
+            logger.warning("Rejected bearer token for user %r: not in MCP_ALLOWED_USER_IDS", user_id)
             return None
         return AccessToken(
             token=token,

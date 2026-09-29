@@ -11,6 +11,9 @@ AUTHKIT_DOMAIN = "https://example.authkit.app"
 RESOURCE = "https://my-service.onrender.com/mcp"
 
 
+ALLOWED = frozenset({"user_123", "user_456"})
+
+
 @pytest.fixture(scope="module")
 def keypair():
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -31,7 +34,7 @@ def _token(private_key, **claim_overrides) -> str:
 
 
 def _verifier(public_key) -> WorkOSTokenVerifier:
-    verifier = WorkOSTokenVerifier(authkit_domain=AUTHKIT_DOMAIN, resource=RESOURCE)
+    verifier = WorkOSTokenVerifier(authkit_domain=AUTHKIT_DOMAIN, resource=RESOURCE, allowed_user_ids=ALLOWED)
     verifier._jwks_client.get_signing_key_from_jwt = lambda token: SimpleNamespace(key=public_key)
     return verifier
 
@@ -91,8 +94,35 @@ class TestWorkOSTokenVerifier:
 
         assert result.scopes == ["calendar:read", "calendar:write"]
 
+    @pytest.mark.parametrize("user_id", ["user_123", "user_456"])
+    async def test_allowed_users_are_accepted(self, keypair, user_id):
+        private_key, public_key = keypair
+
+        assert await _verifier(public_key).verify_token(_token(private_key, sub=user_id)) is not None
+
+    async def test_other_users_are_rejected(self, keypair, caplog):
+        private_key, public_key = keypair
+
+        result = await _verifier(public_key).verify_token(_token(private_key, sub="user_stranger"))
+
+        assert result is None
+        # Logged, so you can find your own id to allow.
+        assert "user_stranger" in caplog.text
+
+    async def test_token_without_a_user_is_rejected(self, keypair):
+        private_key, public_key = keypair
+        token = jwt.encode(
+            {"iss": AUTHKIT_DOMAIN, "aud": RESOURCE, "exp": int(time.time()) + 300},
+            private_key,
+            algorithm="RS256",
+        )
+
+        assert await _verifier(public_key).verify_token(token) is None
+
     def test_trailing_slash_on_authkit_domain_is_stripped(self):
-        verifier = WorkOSTokenVerifier(authkit_domain=AUTHKIT_DOMAIN + "/", resource=RESOURCE)
+        verifier = WorkOSTokenVerifier(
+            authkit_domain=AUTHKIT_DOMAIN + "/", resource=RESOURCE, allowed_user_ids=ALLOWED
+        )
 
         assert verifier._authkit_domain == AUTHKIT_DOMAIN
         assert verifier._jwks_client.uri == f"{AUTHKIT_DOMAIN}/oauth2/jwks"
@@ -101,7 +131,9 @@ class TestWorkOSTokenVerifier:
         self, keypair
     ):
         private_key, public_key = keypair
-        verifier = WorkOSTokenVerifier(authkit_domain=AUTHKIT_DOMAIN + "/", resource=RESOURCE)
+        verifier = WorkOSTokenVerifier(
+            authkit_domain=AUTHKIT_DOMAIN + "/", resource=RESOURCE, allowed_user_ids=ALLOWED
+        )
         verifier._jwks_client.get_signing_key_from_jwt = lambda token: SimpleNamespace(key=public_key)
 
         result = await verifier.verify_token(_token(private_key))

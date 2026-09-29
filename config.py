@@ -93,6 +93,24 @@ def get_mcp_resource_url() -> str:
     )
 
 
+def get_allowed_user_ids() -> frozenset[str]:
+    """The WorkOS user ids ("user_...") allowed to use this server's HTTP
+    transport, from the comma-separated MCP_ALLOWED_USER_IDS environment
+    variable. Required when MCP_TRANSPORT=streamable-http: a valid token
+    only proves WorkOS signed *someone* in, so without this, anyone able
+    to get an account in the AuthKit environment could use this server.
+    Refusing to start is safer than silently allowing everyone."""
+    value = os.environ.get("MCP_ALLOWED_USER_IDS", "")
+    ids = frozenset(user_id.strip() for user_id in value.split(",") if user_id.strip())
+    if not ids:
+        raise ConfigError(
+            "MCP_ALLOWED_USER_IDS is not set. Set it to your WorkOS user id "
+            '(e.g. "user_01ABC...", from the Users page of the WorkOS dashboard) '
+            '-- see the README\'s "Deploying" section.'
+        )
+    return ids
+
+
 def get_cors_allowed_origins() -> list[str]:
     """Extra browser origins (e.g. "https://time-tracker.example.com") allowed
     to call this server's HTTP transport cross-origin, from the

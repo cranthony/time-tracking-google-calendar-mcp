@@ -17,6 +17,8 @@ services:
         value: /etc/secrets/token.json
       - key: WORKOS_AUTHKIT_DOMAIN
         sync: false
+      - key: MCP_ALLOWED_USER_IDS
+        sync: false
 
 # This blueprint covers the build/start command and plain env vars only.
 # Two things still need to be done by hand in the Render dashboard after
