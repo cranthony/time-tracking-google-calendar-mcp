@@ -78,6 +78,11 @@ _CANDIDATE_WINDOW = timedelta(hours=1)
 """How far either side of a note's time a planned event may start or end
 and still be offered to it as a candidate."""
 
+_PREVIOUS_EVENT_WINDOW = timedelta(minutes=15)
+"""How long before a day's start an event may have ended and still be
+offered as `previous_event_id` -- the event just before the day, e.g. last
+night's sleep, which ends exactly where the next day starts."""
+
 DISPOSITION_GUIDE = (
     "Give every note in `notes` above (by its id) one disposition, and only those notes -- "
     "not ones from get_notes or an earlier prepare_compaction call, even if they're still "
@@ -101,7 +106,11 @@ DISPOSITION_GUIDE = (
     "without changing its length) -- for 'move lunch later and adjust the afternoon accordingly' "
     "style requests that aren't about what a note means. It reflows the rest of the day around it "
     "exactly like a note-derived activity, in the same plan; an event already accounted for by a "
-    "note can't also be rescheduled."
+    "note can't also be rescheduled. "
+    "`previous_event_id`, if set, is the event that ended in the 15 minutes before this day began "
+    "(usually last night's sleep); it's listed in `events` too. To record that it actually ran later -- e.g. the "
+    "user slept in -- give the note that marks its real end an 'ends' effect for it (it keeps its "
+    "own start), or reschedule it; the morning reflows around it. No note can 'starts' it."
 )
 
 
@@ -139,6 +148,12 @@ class CompactionContext:
     the day if that's earlier."""
 
     day_end: datetime | None = None
+    previous_event_id: str | None = None
+    """The event that ended just before this day began (usually last
+    night's sleep), if any. It's in `events` too, and can be ended later
+    by a note or rescheduled -- see `plan_compaction`'s
+    `previous_event`."""
+
     remaining_note_count: int = 0
     """Uncompacted notes belonging to later days -- compact those in
     later rounds."""
@@ -179,6 +194,7 @@ class _Day:
     day_end: datetime
     now: datetime
     remaining: int
+    previous: Event | None = None
 
 
 class NoteCompactor:
@@ -208,13 +224,16 @@ class NoteCompactor:
         day = self._day(now)
         if day is None:
             return CompactionContext(notes=[], events=[], open_compaction=open_id)
+        first = min(n.note.timestamp for n in day.notes) if day.notes else None
         return CompactionContext(
             notes=[
                 ContextNote(
                     id=n.id,
                     timestamp=n.note.timestamp,
                     description=n.note.description,
-                    candidates=_candidates(n.note.timestamp, day.events),
+                    candidates=_candidates(
+                        n.note.timestamp, day.events, day.previous if n.note.timestamp == first else None
+                    ),
                 )
                 for n in day.notes
             ],
@@ -229,11 +248,12 @@ class NoteCompactor:
                     priority=e.priority,
                     is_fixed_time=e.is_fixed_time,
                 )
-                for e in day.events
+                for e in ([day.previous] if day.previous else []) + day.events
                 if e.id
             ],
             now=day.now,
             day_end=day.day_end,
+            previous_event_id=day.previous.id if day.previous else None,
             remaining_note_count=day.remaining,
             open_compaction=open_id,
         )
@@ -247,7 +267,12 @@ class NoteCompactor:
             return CompactionResult(status="nothing_to_compact", message="there are no uncompacted notes")
         try:
             plan = plan_compaction(
-                _plan_notes(day), dispositions, day.events, day.now, reschedules=reschedules
+                _plan_notes(day),
+                dispositions,
+                day.events,
+                day.now,
+                reschedules=reschedules,
+                previous_event=day.previous,
             )
         except NeedsClarification as exc:
             return CompactionResult(
@@ -340,7 +365,8 @@ class NoteCompactor:
         if not sheet_notes:
             return None
         anchor = self._journal.last_stamped_now() or min(n.note.timestamp for n in sheet_notes)
-        events = [e for e in self._calendar.list_day_events(anchor) if e.status != "cancelled"]
+        previous, day_events = self._calendar.list_day_with_previous(anchor, _PREVIOUS_EVENT_WINDOW)
+        events = [e for e in day_events if e.status != "cancelled"]
         sleep = next((e for e in events if e.is_end_of_day_sleep), None)
         day_end = sleep.end if sleep is not None else anchor + timedelta(hours=24)
         in_day = [n for n in sheet_notes if n.note.timestamp <= day_end]
@@ -350,6 +376,7 @@ class NoteCompactor:
             day_end=day_end,
             now=min(now, day_end),
             remaining=len(sheet_notes) - len(in_day),
+            previous=previous,
         )
 
     def _supersede_planned(self) -> int:
@@ -381,7 +408,12 @@ class NoteCompactor:
         if day is None or {n.id for n in day.notes} != set(journal.note_ids):
             raise stale
         plan = plan_compaction(
-            _plan_notes(day), journal.dispositions, day.events, day.now, reschedules=journal.reschedules
+            _plan_notes(day),
+            journal.dispositions,
+            day.events,
+            day.now,
+            reschedules=journal.reschedules,
+            previous_event=day.previous,
         )
 
         def comparable(changes: list[CompactionChange]) -> list[tuple]:
@@ -410,14 +442,20 @@ def _plan_notes(day: _Day) -> list[PlanNote]:
     ]
 
 
-def _candidates(timestamp: datetime, events: list[Event]) -> list[str]:
+def _candidates(timestamp: datetime, events: list[Event], previous: Event | None = None) -> list[str]:
+    """`previous` (the event before the day, offered to the day's first
+    note) is listed last: however long after its planned end the note
+    is, it may be what the note ends -- e.g. "finally up"."""
     near = [
         e
         for e in events
         if e.id and e.end > timestamp - _CANDIDATE_WINDOW and e.start < timestamp + _CANDIDATE_WINDOW
     ]
     near.sort(key=lambda e: abs(e.start - timestamp))
-    return [e.id for e in near]
+    ids = [e.id for e in near]
+    if previous is not None and previous.id and previous.id not in ids:
+        ids.append(previous.id)
+    return ids
 
 
 def _new_event_id(compaction_id: str, step: int) -> str:

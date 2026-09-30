@@ -46,6 +46,10 @@ class FakeCalendar:
                 return events[: i + 1]
         return events
 
+    def list_day_with_previous(self, start, lookback):
+        ended = [replace(e) for e in self.events if start - lookback < e.end <= start]
+        return max(ended, key=lambda e: e.end, default=None), self.list_day_events(start)
+
 
 class Setup:
     def __init__(self, notes, events=None, now="11:30"):
@@ -544,6 +548,71 @@ class TestDayByDay:
         context = setup.compactor.prepare()
 
         assert "gr1" in [e.id for e in context.events]
+
+
+class TestPreviousEvent:
+    """The event that ended just before a day began -- here, last night's
+    sleep -- is offered with that day, so a late wake-up can extend it."""
+
+    def _slept_in(self):
+        events = [
+            event_at("09:00-10:00", id="e1", summary="Email", priority=2),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+            event_at("07:00+1-08:00+1", id="gr1", summary="Getting Ready", priority=2),
+            event_at("08:00+1-12:00+1", id="w1", summary="Work", priority=3),
+            event_at("22:00+1-23:30+1", id="s2", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+        setup = Setup([("09:05", "email")], events=events, now="08:00+1")
+        planned = setup.compactor.dry_run([setup.d(2, _e("marker"))])
+        setup.compactor.commit(planned.compaction_id)
+        setup.client.reset_mock()
+        setup.append_note("08:30+1", "finally up")
+        setup.now = "09:00+1"
+        return setup
+
+    def test_prepare_offers_it_to_the_days_first_note(self):
+        setup = self._slept_in()
+
+        context = setup.compactor.prepare()
+
+        assert context.previous_event_id == "s1"
+        assert [e.id for e in context.events] == ["s1", "gr1", "w1", "s2"]
+        assert "s1" in context.notes[0].candidates
+        assert context.day_end == time_at("23:30+1")
+
+    def test_a_late_wake_up_extends_it_and_reflows_the_morning(self):
+        setup = self._slept_in()
+        planned = setup.compactor.dry_run(
+            [setup.d(3, _e("ends", event_id="s1"), _e("starts", event_id="gr1"))]
+        )
+        changes = {c.event_id: c for c in planned.changes}
+        assert (changes["s1"].after.start, changes["s1"].after.end) == (time_at("20:00"), time_at("08:30+1"))
+        assert changes["gr1"].after.start == time_at("08:30+1")
+
+        setup.compactor.commit(planned.compaction_id)
+
+        patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
+        assert patches["s1"].end == time_at("08:30+1")
+        assert "s2" not in patches
+
+    def test_an_event_that_ended_longer_ago_is_not_offered(self):
+        events = [
+            event_at("09:00-10:00", id="e1", summary="Email", priority=2),
+            event_at("10:00-10:40", id="e2", summary="Call", priority=2),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+        setup = Setup([("09:05", "email"), ("11:00", "done")], events=events, now="11:00")
+        planned = setup.compactor.dry_run(
+            [setup.d(2, _e("starts", event_id="e1")), setup.d(3, _e("marker"))]
+        )
+        setup.compactor.commit(planned.compaction_id)
+        # The last compaction left off at 11:00; the call ended at 10:40.
+        setup.append_note("11:30", "lunch")
+        setup.now = "11:45"
+
+        context = setup.compactor.prepare()
+
+        assert context.previous_event_id is None
 
 
 class TestReschedule:

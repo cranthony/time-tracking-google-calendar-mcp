@@ -335,7 +335,9 @@ def prepare_compaction() -> CompactionContext:
     likeliest to be what it refers to) and that day's planned events, plus
     instructions for interpreting them. Read the free-form notes, decide
     what each means, then call compact_notes with one disposition per
-    note. Read-only."""
+    note. `previous_event_id`, if set, is the event that ended just before
+    the day began (usually last night's sleep): end it with a later note,
+    or reschedule it, to record e.g. sleeping in. Read-only."""
     with track("prepare_compaction"), cached_sheet_reads():
         return get_note_compactor().prepare()
 
