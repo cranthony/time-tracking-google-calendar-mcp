@@ -4,6 +4,7 @@ import pytest
 
 from tests.event_time_helpers import event_at, time_at
 from utilities.reallocation import (
+    FixedTimeConflict,
     ReallocationOptions,
     _duration,
     _effective_min_duration,
@@ -656,10 +657,20 @@ class TestFixedTimeRepair:
         b = event_at(
             "10:00-11:00", id="b1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
         )
-        new_event = event_at("09:30-09:45", priority=1)
+        new_event = event_at("09:30-09:45", summary="Call", priority=1)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(FixedTimeConflict) as raised:
             reallocate_for_new_event([a, b], new_event, ReallocationOptions())
+
+        message = str(raised.value)
+        assert message.startswith(
+            "'Call' (2026-01-01T09:30:00+00:00 to 2026-01-01T09:45:00+00:00) doesn't fit: "
+            "making room for it would move fixed-time"
+        )
+        assert "Shorten it, or move it somewhere with room." in message
+        # Named where they actually are, not where a repair pass left them.
+        assert "(2026-01-01T09:00:00+00:00 to 2026-01-01T10:00:00+00:00)" in message
+        assert isinstance(raised.value, ValueError)
 
     def test_unrelated_fixed_time_event_is_left_alone(self):
         leading = event_at("08:30-10:00", id="lead1", priority=3)

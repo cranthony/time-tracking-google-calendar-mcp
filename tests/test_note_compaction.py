@@ -859,7 +859,7 @@ class TestRescheduleSleep:
             "18:30-19:30", id="e5", summary="Call", is_fixed_time=True, min_duration=timedelta(hours=1)
         )
 
-        with pytest.raises(CompactionError, match="'Call' is fixed"):
+        with pytest.raises(CompactionError, match="doesn't fit starting at .*fixed-time 'Call'"):
             self._plan(
                 _evening(call),
                 Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
@@ -985,7 +985,7 @@ class TestNotedSleep:
         assert _span(_by_event(plan)["s1"].after) == (time_at("00:01+1"), time_at("07:00+1"))
 
     def test_overlapping_a_fixed_sleep_nothing_accounts_for_says_so(self):
-        with pytest.raises(CompactionError, match="overlaps 'Sleep'.*fixed-time and no note accounts for"):
+        with pytest.raises(CompactionError, match="doesn't fit: it overlaps fixed-time 'Sleep'"):
             plan_compaction(
                 self._notes(),
                 [self._get_ready(), _disposition(2, _effect("ends", started_by_note="n1"))],
