@@ -46,9 +46,9 @@ class FakeCalendar:
                 return events[: i + 1]
         return events
 
-    def event_before(self, time, lookback=timedelta(hours=24)):
-        ended = [replace(e) for e in self.events if time - lookback < e.end <= time]
-        return max(ended, key=lambda e: e.end, default=None)
+    def list_day_with_previous(self, start, lookback):
+        ended = [replace(e) for e in self.events if start - lookback < e.end <= start]
+        return max(ended, key=lambda e: e.end, default=None), self.list_day_events(start)
 
 
 class Setup:
@@ -594,6 +594,25 @@ class TestPreviousEvent:
         patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
         assert patches["s1"].end == time_at("08:30+1")
         assert "s2" not in patches
+
+    def test_an_event_that_ended_longer_ago_is_not_offered(self):
+        events = [
+            event_at("09:00-10:00", id="e1", summary="Email", priority=2),
+            event_at("10:00-10:40", id="e2", summary="Call", priority=2),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+        setup = Setup([("09:05", "email"), ("11:00", "done")], events=events, now="11:00")
+        planned = setup.compactor.dry_run(
+            [setup.d(2, _e("starts", event_id="e1")), setup.d(3, _e("marker"))]
+        )
+        setup.compactor.commit(planned.compaction_id)
+        # The last compaction left off at 11:00; the call ended at 10:40.
+        setup.append_note("11:30", "lunch")
+        setup.now = "11:45"
+
+        context = setup.compactor.prepare()
+
+        assert context.previous_event_id is None
 
 
 class TestReschedule:

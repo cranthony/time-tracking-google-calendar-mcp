@@ -78,6 +78,11 @@ _CANDIDATE_WINDOW = timedelta(hours=1)
 """How far either side of a note's time a planned event may start or end
 and still be offered to it as a candidate."""
 
+_PREVIOUS_EVENT_WINDOW = timedelta(minutes=15)
+"""How long before a day's start an event may have ended and still be
+offered as `previous_event_id` -- the event just before the day, e.g. last
+night's sleep, which ends exactly where the next day starts."""
+
 DISPOSITION_GUIDE = (
     "Give every note in `notes` above (by its id) one disposition, and only those notes -- "
     "not ones from get_notes or an earlier prepare_compaction call, even if they're still "
@@ -102,8 +107,8 @@ DISPOSITION_GUIDE = (
     "style requests that aren't about what a note means. It reflows the rest of the day around it "
     "exactly like a note-derived activity, in the same plan; an event already accounted for by a "
     "note can't also be rescheduled. "
-    "`previous_event_id`, if set, is the event that ended just before this day began (usually last "
-    "night's sleep); it's listed in `events` too. To record that it actually ran later -- e.g. the "
+    "`previous_event_id`, if set, is the event that ended in the 15 minutes before this day began "
+    "(usually last night's sleep); it's listed in `events` too. To record that it actually ran later -- e.g. the "
     "user slept in -- give the note that marks its real end an 'ends' effect for it (it keeps its "
     "own start), or reschedule it; the morning reflows around it. No note can 'starts' it."
 )
@@ -360,7 +365,8 @@ class NoteCompactor:
         if not sheet_notes:
             return None
         anchor = self._journal.last_stamped_now() or min(n.note.timestamp for n in sheet_notes)
-        events = [e for e in self._calendar.list_day_events(anchor) if e.status != "cancelled"]
+        previous, day_events = self._calendar.list_day_with_previous(anchor, _PREVIOUS_EVENT_WINDOW)
+        events = [e for e in day_events if e.status != "cancelled"]
         sleep = next((e for e in events if e.is_end_of_day_sleep), None)
         day_end = sleep.end if sleep is not None else anchor + timedelta(hours=24)
         in_day = [n for n in sheet_notes if n.note.timestamp <= day_end]
@@ -370,7 +376,7 @@ class NoteCompactor:
             day_end=day_end,
             now=min(now, day_end),
             remaining=len(sheet_notes) - len(in_day),
-            previous=self._calendar.event_before(anchor),
+            previous=previous,
         )
 
     def _supersede_planned(self) -> int:

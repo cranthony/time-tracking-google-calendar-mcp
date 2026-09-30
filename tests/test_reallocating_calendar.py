@@ -101,27 +101,50 @@ class TestReallocatingCalendarListDayEvents:
         assert [e.id for e in events] == ["s"]
 
 
-class TestReallocatingCalendarEventBefore:
-    def test_returns_the_latest_event_ending_at_or_before_the_time(self):
-        start = datetime(2026, 1, 2, 7, 0, tzinfo=timezone.utc)
-        earlier = Event(id="a", start=start - timedelta(hours=10), end=start - timedelta(hours=8))
-        sleep = Event(id="s", start=start - timedelta(hours=8), end=start, is_end_of_day_sleep=True)
-        # list_events also returns anything overlapping the end of the window.
-        overlapping = Event(id="o", start=start - timedelta(minutes=30), end=start + timedelta(hours=1))
+class TestReallocatingCalendarListDayWithPrevious:
+    _START = datetime(2026, 1, 2, 7, 0, tzinfo=timezone.utc)
+
+    def _call(self, events):
         client = MagicMock()
-        client.list_events = MagicMock(return_value=[earlier, sleep, overlapping])
+        client.list_events = MagicMock(return_value=events)
+        result = ReallocatingCalendar(client).list_day_with_previous(self._START, timedelta(minutes=15))
+        client.list_events.assert_called_once_with(
+            self._START - timedelta(minutes=15), self._START + timedelta(hours=24)
+        )
+        return result
 
-        result = ReallocatingCalendar(client).event_before(start)
+    def test_splits_off_the_event_that_ended_in_the_lookback(self):
+        start = self._START
+        last_night = Event(
+            id="s0", start=start - timedelta(hours=8), end=start, is_end_of_day_sleep=True
+        )
+        morning = Event(id="m", start=start, end=start + timedelta(hours=1))
+        tonight = Event(
+            id="s1", start=start + timedelta(hours=15), end=start + timedelta(hours=24),
+            is_end_of_day_sleep=True,
+        )
 
-        assert result.id == "s"
-        client.list_events.assert_called_once_with(start - timedelta(hours=24), start)
+        previous, day = self._call([last_night, morning, tonight])
+
+        assert previous.id == "s0"
+        # Last night's sleep doesn't end the day -- tonight's does.
+        assert [e.id for e in day] == ["m", "s1"]
+
+    def test_picks_the_latest_ending_and_skips_cancelled_ones(self):
+        start = self._START
+        earlier = Event(id="a", start=start - timedelta(minutes=30), end=start - timedelta(minutes=10))
+        cancelled = Event(id="c", start=start - timedelta(minutes=20), end=start, status="cancelled")
+        running = Event(id="r", start=start - timedelta(minutes=5), end=start + timedelta(hours=1))
+
+        previous, day = self._call([earlier, cancelled, running])
+
+        assert previous.id == "a"
+        assert [e.id for e in day] == ["r"]
 
     def test_none_when_nothing_ended_in_the_lookback(self):
-        start = datetime(2026, 1, 2, 7, 0, tzinfo=timezone.utc)
-        client = MagicMock()
-        client.list_events = MagicMock(return_value=[])
+        previous, day = self._call([])
 
-        assert ReallocatingCalendar(client).event_before(start) is None
+        assert previous is None and day == []
 
 
 class TestReallocatingCalendarCreateEvent:

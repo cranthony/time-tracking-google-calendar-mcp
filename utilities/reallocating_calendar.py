@@ -54,31 +54,24 @@ class ReallocatingCalendar:
         position would cut off the rest of the day before `update_event`
         gets a chance to exclude it itself.
         """
-        events = self._client.list_events(start, start + timedelta(hours=24))
-        sleep_index = next(
-            (
-                i
-                for i, event in enumerate(events)
-                if event.is_end_of_day_sleep and event.id != ignore_id
-            ),
-            None,
-        )
-        if sleep_index is not None:
-            events = events[: sleep_index + 1]
-        return events
+        return _truncate_at_sleep(self._client.list_events(start, start + timedelta(hours=24)), ignore_id)
 
-    def event_before(self, time: datetime, lookback: timedelta = timedelta(hours=24)) -> Event | None:
-        """The event that ended most recently at or before `time` (looking
-        back at most `lookback`), if any -- the one just before a day that
-        starts at `time`, which `list_day_events(time)` never includes.
-        Typically the previous night's sleep."""
-        events = self._client.list_events(time - lookback, time)
-        ended = [
-            e
-            for e in events
-            if e.start is not None and e.end is not None and e.end <= time and e.status != "cancelled"
-        ]
-        return max(ended, key=lambda e: e.end, default=None)
+    def list_day_with_previous(
+        self, start: datetime, lookback: timedelta
+    ) -> tuple[Event | None, list[Event]]:
+        """`list_day_events(start)`, plus the event that ended within
+        `lookback` before `start` (the latest-ending one, if several did),
+        from the same single fetch -- the event just before the day,
+        typically the previous night's sleep, which the day itself never
+        includes. Only events ending after `start` can end the day, so
+        that sleep doesn't cut it off."""
+        events = self._client.list_events(start - lookback, start + timedelta(hours=24))
+        before = [e for e in events if e.end is not None and e.end <= start]
+        day = [e for e in events if e.end is None or e.end > start]
+        previous = max(
+            (e for e in before if e.status != "cancelled"), key=lambda e: e.end, default=None
+        )
+        return previous, _truncate_at_sleep(day)
 
     def create_event(self, new_event: Event, options: ReallocationOptions) -> list[Event]:
         """Create `new_event`, reallocating time from `list_day_events
@@ -158,3 +151,13 @@ class ReallocatingCalendar:
             else self._client.update_event(planned)
             for planned in plan
         ]
+
+
+def _truncate_at_sleep(events: list[Event], ignore_id: str | None = None) -> list[Event]:
+    """`events`, cut off after the first `is_end_of_day_sleep` event other
+    than `ignore_id` -- see `ReallocatingCalendar.list_day_events`."""
+    sleep_index = next(
+        (i for i, event in enumerate(events) if event.is_end_of_day_sleep and event.id != ignore_id),
+        None,
+    )
+    return events[: sleep_index + 1] if sleep_index is not None else events
