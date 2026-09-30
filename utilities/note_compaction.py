@@ -99,6 +99,18 @@ happens before any other fact is placed, so the rest reflow into the
 day as it will actually end. Its end starts the next day, which is
 never adjusted -- only warned about. See `_end_day_at`. A reschedule also
 never widens the span the notes account for (see `_simulate`).
+
+## The event before the day
+
+A day starts where the previous one ended, so the event that ended just
+before it -- normally the previous night's sleep -- isn't one of
+`day_events`. It can be passed separately, as `previous_event`, so a
+late wake-up can be recorded: an `ends` effect on it (or a reschedule)
+extends it into the day, and the day reflows around it like any other
+fact. It always keeps its own start, since it began before any note in
+this day could, and so no note can `starts` it. It's never the day's
+end, even if it's a sleep event, and is left alone when nothing refers
+to it.
 """
 
 from __future__ import annotations
@@ -333,11 +345,9 @@ class _Fact:
     rescheduled: bool = False
     """From a `Reschedule`, not from any note."""
 
-    @property
-    def moves_day_end(self) -> bool:
-        """The end-of-day sleep event, whether a note or a reschedule
-        placed it -- see `_end_day_at`."""
-        return self.base is not None and bool(self.base.is_end_of_day_sleep)
+    moves_day_end: bool = False
+    """The day's own end-of-day sleep event, whether a note or a
+    reschedule placed it -- see `_end_day_at`."""
 
 
 def plan_compaction(
@@ -347,11 +357,14 @@ def plan_compaction(
     now: datetime,
     options: ReallocationOptions | None = None,
     reschedules: list[Reschedule] | None = None,
+    previous_event: Event | None = None,
 ) -> CompactionPlan:
     """Plan the calendar changes that `dispositions` (the interpretation
     of `notes`) and `reschedules` (direct "move this event" instructions,
     see the module docstring's "Rescheduling" section) imply for
-    `day_events`, as of `now`. Raises `CompactionError` (listing
+    `day_events`, as of `now`. `previous_event`, if given, is the event
+    that ended just before the day began -- see the module docstring's
+    "The event before the day". Raises `CompactionError` (listing
     everything wrong at once) if the dispositions or reschedules are
     invalid, or `NeedsClarification` if any note is `ambiguous`. Never
     mutates its arguments."""
@@ -363,13 +376,18 @@ def plan_compaction(
 
     ordered = [n for _, n in sorted(enumerate(notes), key=lambda p: (p[1].timestamp, p[0]))]
     events_by_id = {e.id: e for e in day_events if e.id and e.status != "cancelled"}
+    if previous_event is not None and previous_event.id and previous_event.status != "cancelled":
+        events_by_id.setdefault(previous_event.id, previous_event)
+    else:
+        previous_event = None
+    previous_id = previous_event.id if previous_event else None
 
     by_note = _index_dispositions(notes, dispositions, problems)
     for note in ordered:
         if note.timestamp > now:
             problems.append(f"note {note.id} is timestamped after now ({now.isoformat()})")
 
-    activities = _build_activities(ordered, by_note, events_by_id, problems, questions)
+    activities = _build_activities(ordered, by_note, events_by_id, previous_id, problems, questions)
     if problems:
         raise CompactionError("\n".join(problems))
     if questions:
@@ -379,7 +397,15 @@ def plan_compaction(
     if activities:
         sleep = next((e for e in day_events if e.is_end_of_day_sleep and e.status != "cancelled"), None)
         _compute_intervals(
-            ordered, by_note, activities, now, sleep.end if sleep else None, problems, questions, warnings
+            ordered,
+            by_note,
+            activities,
+            now,
+            sleep.end if sleep else None,
+            previous_id,
+            problems,
+            questions,
+            warnings,
         )
         if problems:
             raise CompactionError("\n".join(problems))
@@ -405,7 +431,10 @@ def plan_compaction(
             changes=[],
             warnings=["no note starts or ends anything, and nothing was rescheduled; nothing to do"],
         )
-    return _simulate(all_facts, day_events, events_by_id, now, options, warnings)
+    sleep = next((e for e in day_events if e.is_end_of_day_sleep and e.status != "cancelled"), None)
+    for fact in all_facts:
+        fact.moves_day_end = sleep is not None and fact.base is not None and fact.base.id == sleep.id
+    return _simulate(all_facts, day_events, previous_event, events_by_id, now, options, warnings)
 
 
 def _index_dispositions(
@@ -435,6 +464,7 @@ def _build_activities(
     ordered: list[PlanNote],
     by_note: dict[str, NoteDisposition],
     events_by_id: dict[str, Event],
+    previous_id: str | None,
     problems: list[str],
     questions: list[str],
 ) -> dict[str, _Activity]:
@@ -481,6 +511,12 @@ def _build_activities(
                     )
                 continue
             if effect.kind == "starts":
+                if effect.event_id is not None and effect.event_id == previous_id:
+                    problems.append(
+                        f"note {note.id}: event {effect.event_id} ended before this day began, so "
+                        "no note in it can start it -- use 'ends' to say when it actually ended"
+                    )
+                    continue
                 activity = planned(effect.event_id, note)
                 if activity is None:
                     continue
@@ -559,6 +595,7 @@ def _compute_intervals(
     activities: dict[str, _Activity],
     now: datetime,
     day_over_at: datetime | None,
+    previous_id: str | None,
     problems: list[str],
     questions: list[str],
     warnings: list[str],
@@ -597,7 +634,10 @@ def _compute_intervals(
         else:
             end = activity.end_note.timestamp
             i = position[activity.end_note.id]
-            if i > 0:
+            if activity.event is not None and activity.event.id == previous_id:
+                # It began before this day, so no note here marks its start.
+                start = activity.event.start
+            elif i > 0:
                 start = boundary[i - 1].timestamp
             elif activity.event is not None and activity.event.start < end:
                 start = activity.event.start
@@ -863,12 +903,18 @@ def _end_day_at(
 def _simulate(
     facts: list[_Fact],
     day_events: list[Event],
+    previous_event: Event | None,
     events_by_id: dict[str, Event],
     now: datetime,
     options: ReallocationOptions,
     warnings: list[str],
 ) -> CompactionPlan:
+    # The event before the day is never part of the day being reflowed:
+    # it's only written back if a fact moved it.
+    previous_id = previous_event.id if previous_event else None
     originals = {e.id: replace(e) for e in day_events if e.id}
+    if previous_event is not None:
+        originals[previous_id] = replace(previous_event)
     copies = {e.id: replace(e) for e in day_events if e.id and e.status != "cancelled"}
 
     base_ids = {f.base.id for f in facts if f.base}
@@ -888,7 +934,7 @@ def _simulate(
                 )
     left_alone: list[str] = []
     for event in events_by_id.values():
-        if event.id in mapped_ids or event.is_end_of_day_sleep:
+        if event.id in mapped_ids or event.is_end_of_day_sleep or event.id == previous_id:
             continue
         if event.end > now:
             continue
@@ -983,7 +1029,7 @@ def _simulate(
                     before=EventState.from_event(before),
                 )
             )
-        else:
+        elif event_id in copies:
             after = copies[event_id]
             if after.status == "cancelled":
                 changes.append(

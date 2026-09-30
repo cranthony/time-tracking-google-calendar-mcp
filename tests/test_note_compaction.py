@@ -956,6 +956,105 @@ class TestNotedSleep:
             )
 
 
+class TestPreviousEvent:
+    """The event that ended just before the day began (typically last
+    night's sleep) can be ended later by a note, or rescheduled -- e.g. to
+    record sleeping in -- and the day reflows around it."""
+
+    def _previous(self, **overrides):
+        fields = dict(id="s0", summary="Sleep", priority=0, is_end_of_day_sleep=True)
+        fields.update(overrides)
+        return event_at("00:00-07:00", **fields)
+
+    def _day(self):
+        return [
+            event_at("07:00-08:00", id="gr", summary="Getting Ready", priority=2),
+            event_at("08:00-12:00", id="w", summary="Work", priority=3),
+            event_at("22:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+
+    def _plan(self, notes, dispositions, *, reschedules=None, now="09:00", previous=None):
+        return plan_compaction(
+            notes,
+            dispositions,
+            self._day(),
+            time_at(now),
+            reschedules=reschedules,
+            previous_event=previous or self._previous(),
+        )
+
+    def test_a_note_ending_it_late_extends_it_and_reflows_the_morning(self):
+        plan = self._plan(
+            [_note(1, "08:30", "woke up")],
+            [_disposition(1, _effect("ends", event_id="s0"), _effect("starts", event_id="gr"))],
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["s0"].after) == (time_at("00:00"), time_at("08:30"))
+        assert changes["s0"].after.is_fixed_time is True
+        assert _span(changes["gr"].after) == (time_at("08:30"), time_at("09:00"))
+        # The day's own end is untouched.
+        assert "s1" not in changes
+        assert not any("doesn't adjust the next day" in w for w in plan.warnings)
+
+    def test_what_it_overslept_through_is_cancelled(self):
+        plan = self._plan(
+            [_note(1, "08:30", "woke up")],
+            [_disposition(1, _effect("ends", event_id="s0"), _effect("starts", event_id="w"))],
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["s0"].after) == (time_at("00:00"), time_at("08:30"))
+        assert changes["gr"].action == "cancel"
+        # Still in progress, so it runs to its planned end.
+        assert _span(changes["w"].after) == (time_at("08:30"), time_at("12:00"))
+
+    def test_it_can_be_rescheduled_to_end_later(self):
+        plan = self._plan([], [], reschedules=[Reschedule(event_id="s0", end=time_at("08:30"))], now="07:30")
+
+        changes = _by_event(plan)
+        # An end alone keeps its length, so give the start too to keep bedtime.
+        assert _span(changes["s0"].after) == (time_at("01:30"), time_at("08:30"))
+
+        plan = self._plan(
+            [],
+            [],
+            reschedules=[Reschedule(event_id="s0", start=time_at("00:00"), end=time_at("08:30"))],
+            now="07:30",
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["s0"].after) == (time_at("00:00"), time_at("08:30"))
+        # Nothing is noted yet, so the morning is pushed back, not cancelled.
+        assert _span(changes["gr"].after) == (time_at("08:30"), time_at("09:30"))
+        assert _span(changes["w"].after) == (time_at("09:30"), time_at("13:30"))
+
+    def test_left_alone_when_nothing_refers_to_it(self):
+        plan = self._plan(
+            [_note(1, "07:05", "getting ready")], [_disposition(1, _effect("starts", event_id="gr"))]
+        )
+
+        assert "s0" not in _by_event(plan)
+        assert not any("Sleep" in w and "left alone" in w for w in plan.warnings)
+
+    def test_no_note_can_start_it(self):
+        with pytest.raises(CompactionError, match="ended before this day began"):
+            self._plan([_note(1, "08:30")], [_disposition(1, _effect("starts", event_id="s0"))])
+
+    def test_an_ordinary_event_works_the_same_way(self):
+        previous = event_at("05:00-07:00", id="p", summary="Night shift", priority=2)
+
+        plan = self._plan(
+            [_note(1, "07:20", "finally left")],
+            [_disposition(1, _effect("ends", event_id="p"), _effect("starts", event_id="gr"))],
+            previous=previous,
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["p"].after) == (time_at("05:00"), time_at("07:20"))
+        assert _span(changes["gr"].after) == (time_at("07:20"), time_at("09:00"))
+
+
 class TestEventState:
     def test_round_trips_through_json(self):
         state = EventState.from_event(

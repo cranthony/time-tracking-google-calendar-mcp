@@ -67,6 +67,19 @@ class ReallocatingCalendar:
             events = events[: sleep_index + 1]
         return events
 
+    def event_before(self, time: datetime, lookback: timedelta = timedelta(hours=24)) -> Event | None:
+        """The event that ended most recently at or before `time` (looking
+        back at most `lookback`), if any -- the one just before a day that
+        starts at `time`, which `list_day_events(time)` never includes.
+        Typically the previous night's sleep."""
+        events = self._client.list_events(time - lookback, time)
+        ended = [
+            e
+            for e in events
+            if e.start is not None and e.end is not None and e.end <= time and e.status != "cancelled"
+        ]
+        return max(ended, key=lambda e: e.end, default=None)
+
     def create_event(self, new_event: Event, options: ReallocationOptions) -> list[Event]:
         """Create `new_event`, reallocating time from `list_day_events
         (new_event.start)` as needed to make room for it (see

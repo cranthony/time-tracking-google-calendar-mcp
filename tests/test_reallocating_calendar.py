@@ -101,6 +101,29 @@ class TestReallocatingCalendarListDayEvents:
         assert [e.id for e in events] == ["s"]
 
 
+class TestReallocatingCalendarEventBefore:
+    def test_returns_the_latest_event_ending_at_or_before_the_time(self):
+        start = datetime(2026, 1, 2, 7, 0, tzinfo=timezone.utc)
+        earlier = Event(id="a", start=start - timedelta(hours=10), end=start - timedelta(hours=8))
+        sleep = Event(id="s", start=start - timedelta(hours=8), end=start, is_end_of_day_sleep=True)
+        # list_events also returns anything overlapping the end of the window.
+        overlapping = Event(id="o", start=start - timedelta(minutes=30), end=start + timedelta(hours=1))
+        client = MagicMock()
+        client.list_events = MagicMock(return_value=[earlier, sleep, overlapping])
+
+        result = ReallocatingCalendar(client).event_before(start)
+
+        assert result.id == "s"
+        client.list_events.assert_called_once_with(start - timedelta(hours=24), start)
+
+    def test_none_when_nothing_ended_in_the_lookback(self):
+        start = datetime(2026, 1, 2, 7, 0, tzinfo=timezone.utc)
+        client = MagicMock()
+        client.list_events = MagicMock(return_value=[])
+
+        assert ReallocatingCalendar(client).event_before(start) is None
+
+
 class TestReallocatingCalendarCreateEvent:
     def test_requires_start_and_end(self):
         client = make_client(MagicMock())
