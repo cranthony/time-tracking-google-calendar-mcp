@@ -120,7 +120,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from calendar_clients.google_calendar import Event
-from utilities.reallocation import ReallocationOptions, reallocate_for_new_event
+from utilities.reallocation import FixedTimeConflict, ReallocationOptions, reallocate_for_new_event
 
 EffectKind = Literal["starts", "starts_unplanned", "ends", "marker", "ignore", "ambiguous"]
 
@@ -824,6 +824,12 @@ def _build_reschedule_facts(
     return facts
 
 
+_SHORTEN_OR_MOVE = (
+    "For a reschedule, give it an earlier end or a later start; for a noted activity, check the "
+    "notes that bound it."
+)
+
+
 def _check_fact_overlaps(facts: list[_Fact], problems: list[str]) -> None:
     """Facts come from two independent sources (notes and reschedules), so
     nothing upstream already guarantees they don't collide in time."""
@@ -877,8 +883,9 @@ def _end_day_at(
             continue
         if event.is_fixed_time:
             problems.append(
-                f"can't move {sleep.summary!r} to start at {bedtime.isoformat()}: "
-                f"{event.summary!r} is fixed at {event.start.isoformat()} to {event.end.isoformat()}"
+                f"{sleep.summary!r} doesn't fit starting at {bedtime.isoformat()}: fixed-time "
+                f"{event.summary!r} ({event.start.isoformat()} to {event.end.isoformat()}) is in "
+                "the way and can't move. Start it later."
             )
             continue
         if event.start < bedtime and bedtime - event.start >= (event.min_duration or timedelta(0)):
@@ -979,18 +986,25 @@ def _simulate(
             # so say so directly rather than let reallocation fail on it.
             raise CompactionError(
                 f"{fact.event.summary!r} ({fact.start.isoformat()} to {fact.end.isoformat()}) "
-                f"overlaps {pinned.summary!r} ({pinned.start.isoformat()} to "
-                f"{pinned.end.isoformat()}), which is fixed-time and no note accounts for. If a "
-                f"note shows when {pinned.summary!r} actually started or ended, give it a "
-                "'starts'/'ends' effect for that event; otherwise reschedule it."
+                f"doesn't fit: it overlaps fixed-time {pinned.summary!r} "
+                f"({pinned.start.isoformat()} to {pinned.end.isoformat()}), which can't move. "
+                f"{_SHORTEN_OR_MOVE} If a note shows when {pinned.summary!r} actually started or "
+                "ended, give it a 'starts'/'ends' effect for that event instead."
             )
         try:
             changed = reallocate_for_new_event(tail, fact.event, options)
+        except FixedTimeConflict as exc:
+            raise CompactionError(f"{exc} {_SHORTEN_OR_MOVE}") from exc
         except ValueError as exc:
+            hint = (
+                " A day needs an event after the last noted time (normally the end-of-day sleep "
+                "event) for the rest to reflow into."
+                if not any(e.end > fact.end for e in tail)
+                else ""
+            )
             raise CompactionError(
                 f"can't fit {fact.event.summary!r} ({fact.start.isoformat()} to "
-                f"{fact.end.isoformat()}) into the day: {exc}. A day needs an event after the "
-                "last noted time (normally the end-of-day sleep event) for the rest to reflow into."
+                f"{fact.end.isoformat()}) into the day: {exc}.{hint}"
             ) from exc
         known = {id(e) for e in tail}
         alive = [e for e in tail if e.status != "cancelled"]
@@ -1000,8 +1014,9 @@ def _simulate(
     for fact in facts:
         if fact.event.status == "cancelled" or (fact.event.start, fact.event.end) != (fact.start, fact.end):
             raise CompactionError(
-                f"couldn't keep {fact.event.summary!r} at {fact.start.isoformat()} to "
-                f"{fact.end.isoformat()} while reflowing the rest of the day"
+                f"{fact.event.summary!r} ({fact.start.isoformat()} to {fact.end.isoformat()}) "
+                "doesn't fit: the rest of the day can't be moved around it without moving it too. "
+                f"{_SHORTEN_OR_MOVE}"
             )
 
     changes: list[CompactionChange] = []

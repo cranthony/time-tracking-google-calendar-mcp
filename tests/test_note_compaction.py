@@ -742,6 +742,44 @@ class TestReschedule:
                 ],
             )
 
+    def test_moving_an_event_later_reflows_around_a_fixed_time_event_further_on(self):
+        day = [
+            event_at("09:35-12:30", id="w", summary="Work", priority=3),
+            event_at("12:30-13:30", id="l", summary="Lunch", priority=1),
+            event_at("13:30-17:00", id="a", summary="Afternoon", priority=3),
+            event_at(
+                "17:00-18:00",
+                id="c",
+                summary="Commute",
+                priority=2,
+                is_fixed_time=True,
+                min_duration=timedelta(hours=1),
+            ),
+            event_at("22:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+
+        plan = plan_compaction(
+            [_note(1, "10:00"), _note(2, "10:41")],
+            [
+                _disposition(1, _effect("starts_unplanned", summary="Laying in bed")),
+                _disposition(2, _effect("ends", started_by_note="n1")),
+            ],
+            day,
+            time_at("10:45"),
+            reschedules=[Reschedule(event_id="w", start=time_at("11:30"))],
+        )
+
+        changes = _by_event(plan)
+        # 10:41-11:30 stays free; Work keeps its length.
+        assert _span(changes["w"].after) == (time_at("11:30"), time_at("14:25"))
+        assert _span(changes["a"].after) == (time_at("15:25"), time_at("17:00"))
+        assert "c" not in changes
+        created = sorted((c.after.summary, _span(c.after)) for c in plan.changes if c.action == "create")
+        assert created == [
+            ("Afternoon", (time_at("18:00"), time_at("18:55"))),
+            ("Laying in bed", (time_at("10:00"), time_at("10:41"))),
+        ]
+
     def test_rejects_a_reschedule_of_an_event_a_note_already_accounts_for(self):
         with pytest.raises(CompactionError, match="already accounted for by a note"):
             plan_compaction(
@@ -821,7 +859,7 @@ class TestRescheduleSleep:
             "18:30-19:30", id="e5", summary="Call", is_fixed_time=True, min_duration=timedelta(hours=1)
         )
 
-        with pytest.raises(CompactionError, match="'Call' is fixed"):
+        with pytest.raises(CompactionError, match="doesn't fit starting at .*fixed-time 'Call'"):
             self._plan(
                 _evening(call),
                 Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
@@ -947,7 +985,7 @@ class TestNotedSleep:
         assert _span(_by_event(plan)["s1"].after) == (time_at("00:01+1"), time_at("07:00+1"))
 
     def test_overlapping_a_fixed_sleep_nothing_accounts_for_says_so(self):
-        with pytest.raises(CompactionError, match="overlaps 'Sleep'.*fixed-time and no note accounts for"):
+        with pytest.raises(CompactionError, match="doesn't fit: it overlaps fixed-time 'Sleep'"):
             plan_compaction(
                 self._notes(),
                 [self._get_ready(), _disposition(2, _effect("ends", started_by_note="n1"))],

@@ -58,12 +58,17 @@ cancelled outright if the day doesn't have enough other capacity (step
 event that moved away from its original position without being
 cancelled, and re-runs the whole algorithm once more per such event,
 treating it as a new arrival being reinserted at that exact original
-position -- reclaiming whatever's now occupying it, which may in turn
+position -- like any other arrival, it's given only the day from that
+position onward (whatever ended before it is set aside, untouched, and
+kept for any later repair pass) -- reclaiming whatever's now occupying
+it, which may in turn
 displace another `is_fixed_time` event, triggering a further repair
-pass. This repeats until nothing needs repairing, or raises `ValueError`
-if two or more `is_fixed_time` events can't simultaneously hold their
-original positions (their combined repairs would cycle forever
-otherwise). A fixed-time event that's successfully repaired back to
+pass. This repeats until nothing needs repairing, or raises
+`FixedTimeConflict` (a `ValueError` saying `new_event` doesn't fit, and
+naming the fixed-time events in the way) if a fixed-time event can't be
+put back -- two or more of them can't simultaneously hold their original
+positions, so their combined repairs would cycle forever, or a repair
+pass has nothing after it to reclaim from. A fixed-time event that's successfully repaired back to
 exactly where it started isn't reported as changed -- nothing about it
 actually needs to be written back.
 
@@ -156,7 +161,7 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Protocol
+from typing import NoReturn, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -516,6 +521,25 @@ class _Reallocation:
         return changed
 
 
+class FixedTimeConflict(ValueError):
+    """`new_event` doesn't fit: making room for it would move one or more
+    fixed-time events, and they can't all keep their positions. The
+    message names them, and is meant to be shown as is -- the fix is to
+    shorten or move `new_event`."""
+
+    def __init__(self, new_event: Schedulable, start: datetime, end: datetime, fixed: list[Schedulable]):
+        names = " and ".join(
+            f"{e.summary or e.id!r} ({e.start.isoformat()} to {e.end.isoformat()})" for e in fixed
+        )
+        super().__init__(
+            f"{new_event.summary or new_event.id!r} ({start.isoformat()} to {end.isoformat()}) "
+            f"doesn't fit: making room for it would move fixed-time {names}, which can't move. "
+            "Shorten it, or move it somewhere with room."
+        )
+        self.new_event = new_event
+        self.fixed = fixed
+
+
 def reallocate_for_new_event(
     day_events: list[Schedulable], new_event: Schedulable, options: ReallocationOptions
 ) -> list[Schedulable]:
@@ -528,9 +552,10 @@ def reallocate_for_new_event(
 
     Raises `ValueError` if `day_events` fails step 0's validation (not
     sorted, overlapping, already contains `new_event`'s `id`, or has
-    nothing ending after `new_event.end`), or if a fixed-time repair pass
-    (see "Fixed time" above) can't converge because two or more
-    fixed-time events conflict. Given valid, non-conflicting `day_events`,
+    nothing ending after `new_event.end`), or `FixedTimeConflict` (a
+    `ValueError`) if a fixed-time repair pass (see "Fixed time" above)
+    can't converge because two or more fixed-time events conflict --
+    i.e. `new_event` doesn't fit. Given valid, non-conflicting `day_events`,
     reallocating itself can't otherwise fail: the immediately preceding
     event, if any, always shrinks enough to clear `new_event.start`
     (step 1), and every other event can be shrunk and then cancelled
@@ -553,6 +578,11 @@ def reallocate_for_new_event(
     changed: dict[int, Schedulable] = {}
     current_day_events = day_events
     current_new_event = new_event
+    requested = (new_event.start, new_event.end)
+    repaired: list[Schedulable] = []
+    # What a repair pass leaves out because it ended before the repaired
+    # event's start -- kept so a later repair pass still sees the whole day.
+    set_aside: list[Schedulable] = []
 
     # Each fixed-time event can plausibly need repairing once per
     # cascade; one more pass than that without converging means two or
@@ -560,7 +590,15 @@ def reallocate_for_new_event(
     # loop forever repairing each other in turn.
     for _ in range(len(fixed_time_originals) + 1):
         pass_result = _Reallocation(current_day_events, current_new_event, options)
-        for event in pass_result.run():
+        try:
+            ran = pass_result.run()
+        except ValueError:
+            if current_new_event is new_event:
+                raise
+            # A repair pass that can't even run means that fixed-time
+            # event can't go back where it was.
+            _raise_fixed_time_conflict(new_event, requested, repaired, fixed_time_originals)
+        for event in ran:
             changed[id(event)] = event
 
         shifted = next(
@@ -575,17 +613,27 @@ def reallocate_for_new_event(
             break
 
         event, original_start, original_end = shifted
-        current_day_events = [
-            e for e in pass_result.day_events if e is not event and e.status != "cancelled"
-        ]
+        if all(e is not event for e in repaired):
+            repaired.append(event)
+        remaining = sorted(
+            (
+                e
+                for e in set_aside + pass_result.day_events
+                if e is not event and e.status != "cancelled"
+            ),
+            key=lambda e: e.start,
+        )
+        # A repair pass is just another new arrival, so -- like any caller
+        # -- it gets only the day from its start onward (step 1 needs any
+        # overlap of that start to be the first event). What ended before
+        # it can't be disturbed by putting it back anyway.
+        set_aside = [e for e in remaining if e.end <= original_start]
+        current_day_events = [e for e in remaining if e.end > original_start]
         event.start = original_start
         event.end = original_end
         current_new_event = event
     else:
-        raise ValueError(
-            "Two or more fixed-time events conflict -- they can't all keep their "
-            "original start/end times."
-        )
+        _raise_fixed_time_conflict(new_event, requested, repaired, fixed_time_originals)
 
     # A fixed-time event repaired back to exactly where it started hasn't
     # really changed -- don't report it (and so don't write it back).
@@ -594,3 +642,16 @@ def reallocate_for_new_event(
             changed.pop(id(event), None)
 
     return sorted(changed.values(), key=lambda event: event.start)
+
+
+def _raise_fixed_time_conflict(
+    new_event: Schedulable,
+    requested: tuple[datetime, datetime],
+    repaired: list[Schedulable],
+    fixed_time_originals: dict[int, tuple[Schedulable, datetime, datetime]],
+) -> NoReturn:
+    # Name them where they belong, not wherever the last pass left them.
+    for event in repaired:
+        _, original_start, original_end = fixed_time_originals[id(event)]
+        event.start, event.end = original_start, original_end
+    raise FixedTimeConflict(new_event, *requested, repaired)
