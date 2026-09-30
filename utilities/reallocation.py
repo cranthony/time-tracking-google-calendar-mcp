@@ -58,7 +58,10 @@ cancelled outright if the day doesn't have enough other capacity (step
 event that moved away from its original position without being
 cancelled, and re-runs the whole algorithm once more per such event,
 treating it as a new arrival being reinserted at that exact original
-position -- reclaiming whatever's now occupying it, which may in turn
+position -- like any other arrival, it's given only the day from that
+position onward (whatever ended before it is set aside, untouched, and
+kept for any later repair pass) -- reclaiming whatever's now occupying
+it, which may in turn
 displace another `is_fixed_time` event, triggering a further repair
 pass. This repeats until nothing needs repairing, or raises `ValueError`
 if two or more `is_fixed_time` events can't simultaneously hold their
@@ -553,6 +556,9 @@ def reallocate_for_new_event(
     changed: dict[int, Schedulable] = {}
     current_day_events = day_events
     current_new_event = new_event
+    # What a repair pass leaves out because it ended before the repaired
+    # event's start -- kept so a later repair pass still sees the whole day.
+    set_aside: list[Schedulable] = []
 
     # Each fixed-time event can plausibly need repairing once per
     # cascade; one more pass than that without converging means two or
@@ -575,9 +581,20 @@ def reallocate_for_new_event(
             break
 
         event, original_start, original_end = shifted
-        current_day_events = [
-            e for e in pass_result.day_events if e is not event and e.status != "cancelled"
-        ]
+        remaining = sorted(
+            (
+                e
+                for e in set_aside + pass_result.day_events
+                if e is not event and e.status != "cancelled"
+            ),
+            key=lambda e: e.start,
+        )
+        # A repair pass is just another new arrival, so -- like any caller
+        # -- it gets only the day from its start onward (step 1 needs any
+        # overlap of that start to be the first event). What ended before
+        # it can't be disturbed by putting it back anyway.
+        set_aside = [e for e in remaining if e.end <= original_start]
+        current_day_events = [e for e in remaining if e.end > original_start]
         event.start = original_start
         event.end = original_end
         current_new_event = event

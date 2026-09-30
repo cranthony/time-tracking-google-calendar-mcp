@@ -987,10 +987,15 @@ def _simulate(
         try:
             changed = reallocate_for_new_event(tail, fact.event, options)
         except ValueError as exc:
+            hint = (
+                " A day needs an event after the last noted time (normally the end-of-day sleep "
+                "event) for the rest to reflow into."
+                if not any(e.end > fact.end for e in tail)
+                else ""
+            )
             raise CompactionError(
                 f"can't fit {fact.event.summary!r} ({fact.start.isoformat()} to "
-                f"{fact.end.isoformat()}) into the day: {exc}. A day needs an event after the "
-                "last noted time (normally the end-of-day sleep event) for the rest to reflow into."
+                f"{fact.end.isoformat()}) into the day: {exc}.{hint}"
             ) from exc
         known = {id(e) for e in tail}
         alive = [e for e in tail if e.status != "cancelled"]

@@ -575,6 +575,31 @@ class TestFixedTimeRepair:
         assert new_event.end - new_event.start == timedelta(minutes=30)
         assert new_event.start >= preceding.end
 
+    def test_repairing_a_fixed_time_event_later_in_the_day_splits_what_was_pushed_into_it(self):
+        # new_event pushes lunch and afternoon later, into a fixed-time
+        # commute. Repairing the commute must only look at the day from
+        # its own start onward: afternoon now straddles it, with new_event
+        # and lunch still ahead of it in the day.
+        lunch = event_at("12:30-13:30", id="l1", priority=1)
+        afternoon = event_at("13:30-17:00", id="af1", priority=3)
+        commute = event_at(
+            "17:00-18:00", id="c1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
+        )
+        sleep = event_at("22:00-07:00+1", id="s1", priority=0)
+        new_event = event_at("11:30-14:25", id="w1", priority=3)
+
+        result = reallocate_for_new_event(
+            [lunch, afternoon, commute, sleep], new_event, ReallocationOptions()
+        )
+
+        assert (commute.start, commute.end) == (time_at("17:00"), time_at("18:00"))
+        assert commute not in result
+        assert (new_event.start, new_event.end) == (time_at("11:30"), time_at("14:25"))
+        assert (lunch.start, lunch.end) == (time_at("14:25"), time_at("15:25"))
+        assert (afternoon.start, afternoon.end) == (time_at("15:25"), time_at("17:00"))
+        continuation = next(e for e in result if e.id is None)
+        assert (continuation.start, continuation.end) == (time_at("18:00"), time_at("18:55"))
+
     def test_fixed_time_event_that_gets_cancelled_is_not_repaired(self):
         # Nothing else in the day can cover new_event's full span, so
         # fixed (despite is_fixed_time) is cancelled outright in step 5's
