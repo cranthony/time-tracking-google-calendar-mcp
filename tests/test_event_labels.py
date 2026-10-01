@@ -24,7 +24,7 @@ def _sheets_client(rows: list[list[str]]) -> MagicMock:
     tests/test_calendar_metadata_sheet.py and
     tests/test_event_label_sheet.py's TestEventLabelSheetEnsure for
     that."""
-    state = {"A1:E1": [_HEADER_ROW], "A2:E": rows}
+    state = {"A1:F1": [_HEADER_ROW], "A2:F": rows}
     sheets_client = MagicMock()
     sheets_client.find_sheet_id.return_value = _EVENT_LABELS_SHEET_ID
     sheets_client.read_rows_in_sheet.side_effect = lambda _spreadsheet_id, _sheet_id, rng: state[rng]
@@ -74,8 +74,8 @@ class TestInit:
         assert sheets_client.write_rows_in_sheet.call_args_list[-1].args == (
             "new-sheet",
             0,
-            "A2:E",
-            [["l1", "Design Work", "#8e24aa", "", ""]],
+            "A2:F",
+            [["l1", "Design Work", "#8e24aa", "", "", ""]],
         )
 
 
@@ -181,7 +181,7 @@ class TestSyncLabels:
         assert result == [
             EventLabel(id="new-id", name="Design Work", background_color="#8e24aa", priority=2)
         ]
-        assert sheets_client.read_rows_in_sheet(None, _EVENT_LABELS_SHEET_ID, "A2:E") == [
+        assert sheets_client.read_rows_in_sheet(None, _EVENT_LABELS_SHEET_ID, "A2:F") == [
             ["new-id", "Design Work", "#8e24aa", "2", ""]
         ]
 
@@ -357,3 +357,38 @@ class TestUpdateLabel:
         assert sent_labels == [
             RawEventLabel(id="l1", background_color="#8e24aa", name="New Name")
         ]
+
+    def test_clear_fields_blanks_them(self):
+        calendar_client = _tracked_calendar_client(
+            raw_labels=[RawEventLabel(id="l1", background_color="#8e24aa", name="Design Work")],
+        )
+        calendar_client.replace_event_labels.return_value = [
+            RawEventLabel(id="l1", background_color="#fbd75b", name=None),
+        ]
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "1", "TRUE"]])
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        result = event_labels.update_label(
+            EventLabel(id="l1"), clear_fields=["name", "background_color", "fixed_time"]
+        )
+
+        # A cleared background_color follows the label's priority again.
+        sent_labels = calendar_client.replace_event_labels.call_args.args[0]
+        assert sent_labels == [RawEventLabel(id="l1", background_color="#fbd75b", name=None)]
+        assert result == [EventLabel(id="l1", priority=1)]
+
+    def test_rejects_clearing_the_id(self):
+        calendar_client = _tracked_calendar_client(raw_labels=[])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "", ""]])
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        with pytest.raises(ValueError):
+            event_labels.update_label(EventLabel(id="l1"), clear_fields=["id"])
+
+    def test_rejects_setting_and_clearing_the_same_field(self):
+        calendar_client = _tracked_calendar_client(raw_labels=[])
+        sheets_client = _sheets_client([["l1", "Design Work", "#8e24aa", "", ""]])
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        with pytest.raises(ValueError):
+            event_labels.update_label(EventLabel(id="l1", name="New"), clear_fields=["name"])

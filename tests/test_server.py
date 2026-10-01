@@ -479,7 +479,16 @@ class TestUpdateEventLabel:
         result = server.update_event_label(updated_label)
 
         assert result == resulting_labels
-        event_labels.update_label.assert_called_once_with(updated_label)
+        event_labels.update_label.assert_called_once_with(updated_label, ())
+
+    def test_passes_clear_fields_through(self, monkeypatch):
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.update_label.return_value = []
+        label = EventLabel(id="l1")
+
+        server.update_event_label(label, clear_fields=["background_color", "note"])
+
+        event_labels.update_label.assert_called_once_with(label, ["background_color", "note"])
 
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
         event_labels = _fake_event_labels(monkeypatch)

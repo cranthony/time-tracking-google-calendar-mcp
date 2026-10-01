@@ -29,8 +29,14 @@ _ID_COLUMN_PIXEL_WIDTH = 60
 """Narrow -- users aren't expected to care about the ID column's
 contents, just that it's there and round-trips."""
 
-_HEADER_RANGE = "A1:E1"
-_DATA_RANGE = "A2:E"
+_HEADER_RANGE = "A1:F1"
+_DATA_RANGE = "A2:F"
+
+_OPTIONAL_COLUMNS = frozenset({"note"})
+"""Header columns a tab may lack and still be read: `note` was added
+after tabs already existed in the wild, so a tab without one keeps
+working -- it just can't hold a note until its header gains one (see
+`_check_note_column`)."""
 
 
 @dataclass(kw_only=True)
@@ -64,6 +70,11 @@ class EventLabel:
     purely from the sheet, the same way `priority` is -- Google
     Calendar's raw label resource has no room for it either."""
 
+    note: str | None = None
+    """Free-text note about this label, e.g. what it's for. Sheet-only,
+    like `priority`/`fixed_time`, and purely informational: nothing
+    reads it but people and the agent."""
+
     @classmethod
     def from_raw(cls, raw: RawEventLabel) -> "EventLabel":
         return cls(**asdict(raw))
@@ -90,6 +101,7 @@ class EventLabel:
             fixed_time=(
                 decoded["fixed_time"].strip().lower() == "true" if decoded.get("fixed_time") else None
             ),
+            note=decoded.get("note") or None,
         )
 
     def to_row(self, header_row: list[str], original_row: list[str] | None = None) -> list[str]:
@@ -180,6 +192,7 @@ class EventLabelSheet:
     def write(self, event_labels: list[EventLabel]) -> None:
         """Overwrite this tab's data rows with `event_labels`."""
         header_row = self._read_header()
+        _check_note_column(header_row, event_labels)
         previous_rows = self._sheets_client.read_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, _DATA_RANGE
         )
@@ -191,6 +204,7 @@ class EventLabelSheet:
     def append(self, label: EventLabel) -> None:
         """Add `label` as a new row at the end of this tab."""
         header_row = self._read_header()
+        _check_note_column(header_row, [label])
         previous_rows = self._sheets_client.read_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, _DATA_RANGE
         )
@@ -202,9 +216,19 @@ class EventLabelSheet:
     def _read_header(self) -> list[str]:
         rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)
         header_row = rows[0] if rows else []
-        expected = {f.name for f in fields(EventLabel)}
+        expected = {f.name for f in fields(EventLabel)} - _OPTIONAL_COLUMNS
         if not expected <= set(header_row):
             raise ValueError(
                 f"Missing expected header columns at {_HEADER_RANGE}: {expected - set(header_row)}"
             )
         return header_row
+
+
+def _check_note_column(header_row: list[str], event_labels: list[EventLabel]) -> None:
+    """Refuse to write a note to a tab with no `note` column -- `to_row`
+    would otherwise drop it without a word (see `_OPTIONAL_COLUMNS`)."""
+    if "note" not in header_row and any(label.note is not None for label in event_labels):
+        raise ValueError(
+            f"This event labels tab has no \"note\" column; add that header in {_HEADER_RANGE} "
+            "to store label notes"
+        )
