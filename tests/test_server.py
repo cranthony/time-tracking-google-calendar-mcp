@@ -106,7 +106,7 @@ def _public_event(**overrides) -> PublicEvent:
 
 
 class TestPublicEvent:
-    def test_hides_is_end_of_day_sleep_from_its_fields(self):
+    def test_hides_internal_fields_from_its_fields(self):
         field_names = {f.name for f in dataclasses.fields(PublicEvent)}
 
         assert field_names.isdisjoint(server.INTERNAL_EVENT_FIELDS)
@@ -122,23 +122,25 @@ class TestPublicEvent:
             f.name for f in dataclasses.fields(Event)
         } - server.INTERNAL_EVENT_FIELDS
 
-    def test_from_event_drops_is_end_of_day_sleep(self):
-        event = _event(id="abc123", priority=1, is_end_of_day_sleep=True)
+    def test_from_event_exposes_is_end_of_day_sleep_and_recurring_event_id(self):
+        event = _event(id="abc123", is_end_of_day_sleep=True, recurring_event_id="series-1")
 
         public_event = PublicEvent.from_event(event)
 
-        assert public_event.id == "abc123"
-        assert public_event.priority == 1
-        assert not hasattr(public_event, "is_end_of_day_sleep")
+        assert public_event.is_end_of_day_sleep is True
+        assert public_event.recurring_event_id == "series-1"
 
-    def test_to_event_never_sets_is_end_of_day_sleep(self):
-        public_event = _public_event(id="abc123", priority=1)
+    def test_to_event_ignores_is_end_of_day_sleep_and_recurring_event_id(self):
+        public_event = _public_event(
+            id="abc123", priority=1, is_end_of_day_sleep=True, recurring_event_id="series-1"
+        )
 
         event = public_event.to_event()
 
         assert event.id == "abc123"
         assert event.priority == 1
         assert event.is_end_of_day_sleep is None
+        assert event.recurring_event_id is None
 
     def test_from_event_carries_event_label_id(self):
         event = _event(id="abc123", event_label_id="label-1")
@@ -234,15 +236,18 @@ class TestListEvents:
         assert result == [PublicEvent.from_event(events[0])]
         client.list_events.assert_called_once_with(min_time, max_time)
 
-    def test_result_carries_no_is_end_of_day_sleep_value(self, monkeypatch):
+    def test_result_carries_is_end_of_day_sleep_and_recurring_event_id(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        client.list_events.return_value = [_event(id="abc123", is_end_of_day_sleep=True)]
+        client.list_events.return_value = [
+            _event(id="abc123", is_end_of_day_sleep=True, recurring_event_id="series-1")
+        ]
 
         result = server.list_events(
             datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
         )
 
-        assert not hasattr(result[0], "is_end_of_day_sleep")
+        assert result[0].is_end_of_day_sleep is True
+        assert result[0].recurring_event_id == "series-1"
 
     def test_omits_cancelled_events(self, monkeypatch):
         client = _fake_client(monkeypatch)
@@ -302,7 +307,7 @@ class TestGetEvent:
         result = server.get_event("abc123")
 
         assert result == PublicEvent.from_event(event)
-        assert not hasattr(result, "is_end_of_day_sleep")
+        assert result.is_end_of_day_sleep is True
         client.get_event.assert_called_once_with("abc123")
 
     def test_raises_tool_error_for_cancelled_event(self, monkeypatch):

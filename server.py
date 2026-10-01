@@ -73,9 +73,7 @@ if _TRANSPORT == "streamable-http":
 else:
     mcp = MCPServer("time-tracking-google-calendar-mcp")
 
-INTERNAL_EVENT_FIELDS = frozenset(
-    {"is_end_of_day_sleep", "status", "recurring_event_id", "label_priority", "label_is_fixed_time"}
-)
+INTERNAL_EVENT_FIELDS = frozenset({"status", "label_priority", "label_is_fixed_time"})
 """Event fields the agent talking to this server should never see or set,
 at all -- not just left null. Enforced by PublicEvent actually lacking
 these fields (so they never appear in a tool's schema or result), not by
@@ -106,7 +104,14 @@ class PublicEvent:
     priority/is_fixed_time so that sending a listed event straight back
     to update_event never copies its label's values onto the event
     itself, which would stop it following later changes to the label.
-    to_event ignores them."""
+    to_event ignores them.
+
+    is_end_of_day_sleep/recurring_event_id are read-only too, and
+    to_event ignores them as well. is_end_of_day_sleep decides where a
+    day ends for reallocation (see utilities/reallocating_calendar.py),
+    so a wrong mark would quietly change what later updates shrink, move
+    or cancel; it's only set by hand, via calendar_cli.py.
+    recurring_event_id is assigned by Google and can't be set at all."""
 
     id: str | None = None
     summary: str | None = None
@@ -122,6 +127,8 @@ class PublicEvent:
     is_cancelled: bool = False
     effective_priority: int | None = None
     effective_is_fixed_time: bool | None = None
+    is_end_of_day_sleep: bool | None = None
+    recurring_event_id: str | None = None
 
     @classmethod
     def from_event(cls, event: Event) -> "PublicEvent":
@@ -140,6 +147,8 @@ class PublicEvent:
             is_cancelled=event.status == "cancelled",
             effective_priority=event.effective_priority,
             effective_is_fixed_time=event.effective_is_fixed_time,
+            is_end_of_day_sleep=event.is_end_of_day_sleep,
+            recurring_event_id=event.recurring_event_id,
         )
 
     def to_event(self) -> Event:
@@ -236,7 +245,9 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     """List events between min_time and max_time. effective_priority/
     effective_is_fixed_time are what reallocation actually uses: the
     event's own priority/is_fixed_time, falling back to its event
-    label's."""
+    label's. is_end_of_day_sleep marks the sleep event that ends a day;
+    recurring_event_id is the id of an instance's recurring series. All
+    four are read-only: update_event and create_event ignore them."""
     with track("list_events"), cached_sheet_reads():
         events = get_calendar_client().list_events(min_time, max_time)
         return _public_events([event for event in events if event.status != "cancelled"])
@@ -245,7 +256,8 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
 @mcp.tool()
 def get_event(id: str) -> PublicEvent:
     """Get a single event by its ID. See list_events for
-    effective_priority/effective_is_fixed_time."""
+    effective_priority/effective_is_fixed_time/is_end_of_day_sleep/
+    recurring_event_id."""
     with track("get_event"), cached_sheet_reads():
         event = get_calendar_client().get_event(id)
         if event.status == "cancelled":
