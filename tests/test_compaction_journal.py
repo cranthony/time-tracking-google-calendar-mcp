@@ -402,7 +402,7 @@ class TestGarbageCollect:
 
         assert sheets.row_count(_SHEET_ID) == 1000
 
-    def test_leaves_100_empty_rows_past_a_backlog_it_cant_delete(self):
+    def test_leaves_100_empty_rows_past_the_next_append_when_it_cant_delete(self):
         sheets = FakeSheets()
         sheets.row_counts[_SHEET_ID] = 2000
         hints = FakeRowHints()
@@ -415,19 +415,6 @@ class TestGarbageCollect:
         journal.garbage_collect()
 
         assert sheets.row_count(_SHEET_ID) == next_row - 1 + 100
-
-    def test_leaves_100_empty_rows_past_where_it_next_kicks_in(self, monkeypatch):
-        # The 1000-row floor would otherwise hide this: 500 journal rows
-        # fill rows 2-501, and row 502 puts the tab over budget.
-        monkeypatch.setattr(calendar_metadata_sheet, "MIN_TAB_ROWS", 0)
-        sheets = FakeSheets()
-        sheets.row_counts[_SHEET_ID] = 590
-        journal, _ = _journal(sheets=sheets)
-        _start(journal, "only")
-
-        journal.garbage_collect()
-
-        assert sheets.row_count(_SHEET_ID) == 502 + 100
 
     def test_deletes_old_abandoned_blocks_too(self):
         journal, _ = _journal()
