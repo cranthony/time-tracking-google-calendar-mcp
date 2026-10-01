@@ -46,8 +46,24 @@ def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
     return reallocating_calendar
 
 
+@pytest.fixture(autouse=True)
+def _no_event_labels(monkeypatch):
+    """Every event tool fills in effective_priority/effective_is_fixed_time
+    from the event labels tab -- faked here as having no labels at all, so
+    tests that don't care about labels never touch a real sheet. Tests
+    that do care set label_priorities/label_fixed_times themselves.
+    Seeds the cache rather than replacing get_calendar_with_event_labels,
+    so its own caching tests still exercise the real one."""
+    event_labels = MagicMock()
+    event_labels.label_priorities.return_value = {}
+    event_labels.label_fixed_times.return_value = {}
+    monkeypatch.setattr(server, "_event_labels", event_labels)
+
+
 def _fake_event_labels(monkeypatch) -> MagicMock:
     event_labels = MagicMock()
+    event_labels.label_priorities.return_value = {}
+    event_labels.label_fixed_times.return_value = {}
     monkeypatch.setattr(server, "get_calendar_with_event_labels", lambda: event_labels)
     return event_labels
 
@@ -96,7 +112,12 @@ class TestPublicEvent:
         assert field_names.isdisjoint(server.INTERNAL_EVENT_FIELDS)
         # is_cancelled has no Event equivalent -- it's derived from the
         # hidden status field, not a field PublicEvent passes through.
-        event_derived_fields = field_names - {"is_cancelled"}
+        # Likewise the effective_* fields, derived from the event label.
+        event_derived_fields = field_names - {
+            "is_cancelled",
+            "effective_priority",
+            "effective_is_fixed_time",
+        }
         assert event_derived_fields == {
             f.name for f in dataclasses.fields(Event)
         } - server.INTERNAL_EVENT_FIELDS
@@ -125,6 +146,36 @@ class TestPublicEvent:
         public_event = PublicEvent.from_event(event)
 
         assert public_event.event_label_id == "label-1"
+
+    def test_from_event_effective_fields_default_to_the_events_own(self):
+        event = _event(id="abc123", priority=1, is_fixed_time=True)
+
+        public_event = PublicEvent.from_event(event)
+
+        assert public_event.effective_priority == 1
+        assert public_event.effective_is_fixed_time is True
+
+    def test_from_event_takes_effective_fields_from_the_effective_event(self):
+        event = _event(id="abc123", event_label_id="label-1")
+        effective = _event(id="abc123", event_label_id="label-1", priority=0, is_fixed_time=True)
+
+        public_event = PublicEvent.from_event(event, effective)
+
+        assert public_event.priority is None
+        assert public_event.is_fixed_time is None
+        assert public_event.effective_priority == 0
+        assert public_event.effective_is_fixed_time is True
+
+    def test_to_event_ignores_effective_fields(self):
+        public_event = _public_event(
+            id="abc123", effective_priority=0, effective_is_fixed_time=True
+        )
+
+        event = public_event.to_event()
+
+        assert event.priority is None
+        assert event.is_fixed_time is None
+        assert event.min_duration is None
 
     def test_to_event_carries_event_label_id(self):
         public_event = _public_event(id="abc123", event_label_id="label-1")
@@ -205,6 +256,41 @@ class TestListEvents:
 
         assert [event.id for event in result] == ["abc123"]
 
+    def test_fills_in_effective_fields_from_the_event_label(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.label_priorities.return_value = {"label-1": 0}
+        event_labels.label_fixed_times.return_value = {"label-1": True}
+        client.list_events.return_value = [_event(id="abc123", event_label_id="label-1")]
+
+        result = server.list_events(
+            datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+        )
+
+        assert result[0].effective_priority == 0
+        assert result[0].effective_is_fixed_time is True
+        # The event's own fields stay unset, so sending it back to
+        # update_event doesn't copy the label's values onto it.
+        assert result[0].priority is None
+        assert result[0].is_fixed_time is None
+        assert result[0].min_duration is None
+
+    def test_events_own_values_win_over_the_event_label(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.label_priorities.return_value = {"label-1": 0}
+        event_labels.label_fixed_times.return_value = {"label-1": True}
+        client.list_events.return_value = [
+            _event(id="abc123", event_label_id="label-1", priority=3, is_fixed_time=False)
+        ]
+
+        result = server.list_events(
+            datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+        )
+
+        assert result[0].effective_priority == 3
+        assert result[0].effective_is_fixed_time is False
+
 
 class TestGetEvent:
     def test_delegates_to_calendar_client(self, monkeypatch):
@@ -224,6 +310,20 @@ class TestGetEvent:
 
         with pytest.raises(ToolError):
             server.get_event("abc123")
+
+    def test_fills_in_effective_fields_from_the_event_label(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.label_priorities.return_value = {"label-1": 0}
+        event_labels.label_fixed_times.return_value = {"label-1": True}
+        client.get_event.return_value = _event(id="abc123", event_label_id="label-1")
+
+        result = server.get_event("abc123")
+
+        assert result.effective_priority == 0
+        assert result.effective_is_fixed_time is True
+        assert result.priority is None
+        assert result.is_fixed_time is None
 
 
 class TestUpdateEvent:
@@ -249,6 +349,19 @@ class TestUpdateEvent:
         result = server.update_event(_public_event(id="abc123"))
 
         assert {e.id for e in result} == {"abc123", "def456"}
+
+    def test_fills_in_effective_fields_from_the_event_label(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.label_priorities.return_value = {"label-1": 0}
+        reallocating_calendar.update_event.return_value = [
+            _event(id="abc123", event_label_id="label-1")
+        ]
+
+        result = server.update_event(_public_event(id="abc123"))
+
+        assert result[0].effective_priority == 0
+        assert result[0].priority is None
 
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)

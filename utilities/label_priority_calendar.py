@@ -42,16 +42,10 @@ class LabelPriorityCalendar:
         self._event_labels = event_labels
 
     def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:
-        events = self._client.list_events(time_min, time_max)
-        priorities = self._event_labels.label_priorities()
-        fixed_times = self._event_labels.label_fixed_times()
-        return [self._fill_in(event, priorities, fixed_times) for event in events]
+        return fill_in_from_labels(self._client.list_events(time_min, time_max), self._event_labels)
 
     def get_event(self, event_id: str) -> Event:
-        event = self._client.get_event(event_id)
-        return self._fill_in(
-            event, self._event_labels.label_priorities(), self._event_labels.label_fixed_times()
-        )
+        return fill_in_from_labels([self._client.get_event(event_id)], self._event_labels)[0]
 
     def create_event(self, event: Event) -> Event:
         return self._client.create_event(event)
@@ -59,27 +53,37 @@ class LabelPriorityCalendar:
     def update_event(self, event: Event) -> Event:
         return self._client.update_event(event)
 
-    @staticmethod
-    def _fill_in(
-        event: Event, priorities: dict[str, int | None], fixed_times: dict[str, bool | None]
-    ) -> Event:
-        if event.event_label_id is None:
-            return event
 
-        updates: dict = {}
-        if event.priority is None:
-            priority = priorities.get(event.event_label_id)
-            if priority is not None:
-                updates["priority"] = priority
-        if event.is_fixed_time is None:
-            fixed_time = fixed_times.get(event.event_label_id)
-            if fixed_time:
-                updates["is_fixed_time"] = True
-                # Mirrors Event.from_api's own handling of an explicit
-                # is_fixed_time: its min_duration must be its own full
-                # duration, not whatever was separately set (or wasn't).
-                updates["min_duration"] = event.end - event.start
+def fill_in_from_labels(events: list[Event], event_labels: EventLabels) -> list[Event]:
+    """`events`, each with its label's priority/is_fixed_time filled in
+    the way LabelPriorityCalendar fills them in on read -- for callers
+    (server.py's event tools) that already have events read some other
+    way. Never mutates `events` themselves."""
+    priorities = event_labels.label_priorities()
+    fixed_times = event_labels.label_fixed_times()
+    return [_fill_in(event, priorities, fixed_times) for event in events]
 
-        if not updates:
-            return event
-        return replace(event, **updates)
+
+def _fill_in(
+    event: Event, priorities: dict[str, int | None], fixed_times: dict[str, bool | None]
+) -> Event:
+    if event.event_label_id is None:
+        return event
+
+    updates: dict = {}
+    if event.priority is None:
+        priority = priorities.get(event.event_label_id)
+        if priority is not None:
+            updates["priority"] = priority
+    if event.is_fixed_time is None:
+        fixed_time = fixed_times.get(event.event_label_id)
+        if fixed_time:
+            updates["is_fixed_time"] = True
+            # Mirrors Event.from_api's own handling of an explicit
+            # is_fixed_time: its min_duration must be its own full
+            # duration, not whatever was separately set (or wasn't).
+            updates["min_duration"] = event.end - event.start
+
+    if not updates:
+        return event
+    return replace(event, **updates)

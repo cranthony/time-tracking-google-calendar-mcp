@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 from calendar_clients.google_calendar import Event
-from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.label_priority_calendar import LabelPriorityCalendar, fill_in_from_labels
 
 UTC = timezone.utc
 
@@ -201,6 +201,19 @@ class TestGetEvent:
         event = calendar.get_event("abc123")
 
         assert event.is_fixed_time is True
+
+
+class TestFillInFromLabels:
+    def test_fills_in_already_read_events(self):
+        _, _, event_labels = _calendar({"label-1": 3}, {"label-1": True})
+        original = _event(event_label_id="label-1")
+
+        events = fill_in_from_labels([original, _event(id="def456")], event_labels)
+
+        assert events[0].priority == 3
+        assert events[0].is_fixed_time is True
+        assert events[1].priority is None
+        assert original.priority is None
 
 
 class TestCreateAndUpdateEvent:

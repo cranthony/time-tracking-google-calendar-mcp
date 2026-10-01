@@ -25,7 +25,7 @@ from config import (
 )
 from oauth_proxy import oauth_proxy_handlers
 from utilities.event_labels import EventLabels, EventLabel
-from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.label_priority_calendar import LabelPriorityCalendar, fill_in_from_labels
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
@@ -94,7 +94,16 @@ class PublicEvent:
 
     is_cancelled only ever moves from False to True: setting it False has
     no effect (see to_event), since there's no way to un-cancel a
-    cancelled event."""
+    cancelled event.
+
+    effective_priority/effective_is_fixed_time are read-only: the values
+    reallocation actually uses, i.e. priority/is_fixed_time with the
+    event label's own value filled in when the event doesn't set one (see
+    utilities/label_priority_calendar.py). Kept separate from
+    priority/is_fixed_time so that sending a listed event straight back
+    to update_event never copies its label's values onto the event
+    itself, which would stop it following later changes to the label.
+    to_event ignores them."""
 
     id: str | None = None
     summary: str | None = None
@@ -108,9 +117,16 @@ class PublicEvent:
     priority: int | None = None
     event_label_id: str | None = None
     is_cancelled: bool = False
+    effective_priority: int | None = None
+    effective_is_fixed_time: bool | None = None
 
     @classmethod
-    def from_event(cls, event: Event) -> "PublicEvent":
+    def from_event(cls, event: Event, effective: Event | None = None) -> "PublicEvent":
+        """`effective`: `event` with its label's values filled in (see
+        _public_events), the source of effective_priority/
+        effective_is_fixed_time. Defaults to `event` itself."""
+        if effective is None:
+            effective = event
         return cls(
             id=event.id,
             summary=event.summary,
@@ -124,6 +140,8 @@ class PublicEvent:
             priority=event.priority,
             event_label_id=event.event_label_id,
             is_cancelled=event.status == "cancelled",
+            effective_priority=effective.priority,
+            effective_is_fixed_time=effective.is_fixed_time,
         )
 
     def to_event(self) -> Event:
@@ -207,22 +225,34 @@ def get_note_compactor() -> NoteCompactor:
     return _note_compactor
 
 
+def _public_events(events: list[Event]) -> list[PublicEvent]:
+    """`events` as PublicEvents, with effective_priority/
+    effective_is_fixed_time filled in from each one's event label -- see
+    PublicEvent. Every event tool's result goes through this."""
+    effective = fill_in_from_labels(events, get_calendar_with_event_labels())
+    return [PublicEvent.from_event(event, eff) for event, eff in zip(events, effective)]
+
+
 @mcp.tool()
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
-    """List events between min_time and max_time."""
+    """List events between min_time and max_time. effective_priority/
+    effective_is_fixed_time are what reallocation actually uses: the
+    event's own priority/is_fixed_time, falling back to its event
+    label's."""
     with track("list_events"), cached_sheet_reads():
         events = get_calendar_client().list_events(min_time, max_time)
-        return [PublicEvent.from_event(event) for event in events if event.status != "cancelled"]
+        return _public_events([event for event in events if event.status != "cancelled"])
 
 
 @mcp.tool()
 def get_event(id: str) -> PublicEvent:
-    """Get a single event by its ID."""
+    """Get a single event by its ID. See list_events for
+    effective_priority/effective_is_fixed_time."""
     with track("get_event"), cached_sheet_reads():
         event = get_calendar_client().get_event(id)
         if event.status == "cancelled":
             raise ToolError(f"Event {id} has been cancelled.")
-        return PublicEvent.from_event(event)
+        return _public_events([event])[0]
 
 
 @mcp.tool()
@@ -238,7 +268,7 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
             )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
-        return [PublicEvent.from_event(e) for e in applied]
+        return _public_events(applied)
 
 
 @mcp.tool()
@@ -250,7 +280,7 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
             applied = get_reallocating_calendar().create_event(new_event, ReallocationOptions())
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
-        return [PublicEvent.from_event(e) for e in applied]
+        return _public_events(applied)
 
 
 @mcp.tool()
@@ -258,7 +288,7 @@ def delete_event(id: str) -> list[PublicEvent]:
     """Delete an event by its ID. Returns the events affected by the deletion."""
     with track("delete_event"), cached_sheet_reads():
         cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
-        return [PublicEvent.from_event(cancelled)]
+        return _public_events([cancelled])
 
 
 @mcp.tool()
