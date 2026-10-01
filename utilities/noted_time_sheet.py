@@ -17,10 +17,12 @@ no id column here, and no EventLabels-equivalent reconciliation layer
 above this one: server.py/calendar_cli.py talk to NotedTimeSheet
 directly.
 
-A note itself is never deleted directly. Compacting it
-(utilities/note_compactor.py) stamps its row's `compaction_id` instead,
-and `read`/`read_with_rows` return only unstamped ("uncompacted") notes
-unless asked otherwise. A note's row, together with its timestamp, forms
+Compacting a note (utilities/note_compactor.py) stamps its row's
+`compaction_id` rather than removing it, and `read`/`read_with_rows`
+return only unstamped ("uncompacted") notes unless asked otherwise. An
+uncompacted note can be corrected with `edit` or removed with `delete`,
+which blanks its row rather than deleting it, so no other note's row --
+and so its id -- moves. A note's row, together with its timestamp, forms
 its id (see `SheetNote`) -- stable as long as nothing shifts rows out
 from under it, which normal operation never does; see `garbage_collect`
 below for the one thing that does.
@@ -46,7 +48,7 @@ terminal, stamped state and never needs those rows read again.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from datetime import datetime
 
 from calendar_clients.google_sheets import SheetsClient
@@ -143,6 +145,25 @@ class SheetNote:
     @property
     def id(self) -> str:
         return f"{self.note.timestamp.isoformat()}#{self.row}"
+
+    def with_id(self) -> "NoteWithId":
+        return NoteWithId(
+            id=self.id,
+            timestamp=self.note.timestamp,
+            description=self.note.description,
+            compaction_id=self.note.compaction_id,
+        )
+
+
+@dataclass(kw_only=True)
+class NoteWithId:
+    """A note as handed to a client: its fields plus its `SheetNote.id`,
+    which `NotedTimeSheet.edit`/`delete` (and compaction) refer to it by."""
+
+    id: str
+    timestamp: datetime
+    description: str | None = None
+    compaction_id: str | None = None
 
 
 def parse_note_id(note_id: str) -> tuple[datetime, int]:
@@ -269,11 +290,12 @@ class NotedTimeSheet:
             for i, noted_time in enumerate(noted_times)
         ])
 
-    def append(self, noted_time: NotedTime) -> None:
-        """Add `noted_time` as a new row at the end of this tab. Writes
-        only that new row -- never rewriting the existing ones -- so it
-        can't clobber a concurrent `mark_compacted` stamp on one of
-        them. Garbage-collects first (see `garbage_collect`)."""
+    def append(self, noted_time: NotedTime) -> SheetNote:
+        """Add `noted_time` as a new row at the end of this tab, returning
+        it with that row. Writes only that new row -- never rewriting the
+        existing ones -- so it can't clobber a concurrent `mark_compacted`
+        stamp on one of them. Garbage-collects first (see
+        `garbage_collect`)."""
         self.garbage_collect()
         header_row = self._read_header()
         next_row = self._next_row()
@@ -284,6 +306,71 @@ class NotedTimeSheet:
             [noted_time.to_row(header_row, None)],
         )
         self._hints.set(_NEXT_ROW_HINT, next_row + 1)
+        return SheetNote(row=next_row, note=noted_time)
+
+    def edit(
+        self, note_id: str, *, timestamp: datetime | None = None, description: str | None = None
+    ) -> SheetNote:
+        """Change the uncompacted note `note_id`'s `timestamp` and/or
+        `description` in place -- `None` keeps the current value, and an
+        empty `description` clears it. Rewrites only that row. Returns the
+        edited note; if its timestamp changed, so did its id. Raises
+        `ValueError` if `note_id` no longer names that note (see
+        `mark_compacted`) or it's already compacted."""
+        row, note, header_row, original = self._uncompacted_row(note_id)
+        edited = replace(
+            note,
+            timestamp=timestamp if timestamp is not None else note.timestamp,
+            description=note.description if description is None else (description if description.strip() else None),
+        )
+        self._sheets_client.write_rows_in_sheet(
+            self._spreadsheet_id,
+            self._sheet_id,
+            f"A{row}:{_LAST_COLUMN}{row}",
+            [edited.to_row(header_row, original)],
+        )
+        return SheetNote(row=row, note=edited)
+
+    def delete(self, note_id: str) -> NotedTime:
+        """Remove the uncompacted note `note_id`, returning what it was.
+        Blanks its row rather than deleting it, so no other note's row
+        (and id) shifts; reads already skip blank rows, and
+        `garbage_collect` eventually removes it. Raises `ValueError` like
+        `edit`."""
+        row, note, header_row, _ = self._uncompacted_row(note_id)
+        self._sheets_client.write_rows_in_sheet(
+            self._spreadsheet_id,
+            self._sheet_id,
+            f"A{row}:{_LAST_COLUMN}{row}",
+            [[""] * len(header_row)],
+        )
+        return note
+
+    def _uncompacted_row(self, note_id: str) -> tuple[int, NotedTime, list[str], list[str]]:
+        """(row, note, header row, that row's raw cells) for `note_id`,
+        checking it still names an uncompacted note."""
+        timestamp, row = parse_note_id(note_id)
+        header_row = self._read_header()
+        rows = (
+            self._sheets_client.read_rows_in_sheet(
+                self._spreadsheet_id, self._sheet_id, f"A{row}:{_LAST_COLUMN}{row}"
+            )
+            if row >= _FIRST_DATA_ROW
+            else []
+        )
+        cells = rows[0] if rows else []
+        note = NotedTime.from_row(header_row, cells) if any(c.strip() for c in cells) else None
+        if note is None or note.timestamp != timestamp:
+            raise ValueError(
+                f"row {row} no longer holds the note {note_id!r} -- it was edited or removed since "
+                "it was read; list the notes again for current ids"
+            )
+        if note.compaction_id is not None:
+            raise ValueError(
+                f"note {note_id!r} was already compacted (by {note.compaction_id!r}), so it can't be "
+                "changed -- change the calendar event it became instead"
+            )
+        return row, note, header_row, cells
 
     def garbage_collect(self) -> None:
         """Delete the oldest already-compacted rows from the top of this

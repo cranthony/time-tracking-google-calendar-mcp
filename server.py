@@ -29,7 +29,7 @@ from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, NoteDisposition, Reschedule
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
-from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
+from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 from workos_auth import WorkOSTokenVerifier
@@ -307,25 +307,60 @@ def sync_event_labels_from_sheet() -> list[EventLabel]:
 
 
 @mcp.tool()
-def note(noted_time: NotedTime) -> NotedTime:
+def note(noted_time: NotedTime) -> NoteWithId:
     """Record a new time note -- a timestamp, with an optional
-    description of what it marks. Returns the note as recorded."""
+    description of what it marks. Returns the note as recorded, with the
+    id edit_note/delete_note refer to it by."""
     with track("note"), cached_sheet_reads():
         # compaction_id is set only by compaction, never by a caller.
         recorded = replace(noted_time, compaction_id=None)
-        get_noted_time_sheet().append(recorded)
-        return recorded
+        return get_noted_time_sheet().append(recorded).with_id()
 
 
 @mcp.tool()
-def get_notes(include_compacted: bool = False) -> list[NotedTime]:
-    """List the recorded time notes, sorted by timestamp. Only notes that
-    haven't been compacted yet, unless include_compacted is true. For
-    browsing/review only -- may span many days. To compact notes, use
-    prepare_compaction instead; it returns just the notes for the current
-    round, which is what compact_notes expects."""
+def get_notes(include_compacted: bool = False) -> list[NoteWithId]:
+    """List the recorded time notes, sorted by timestamp, each with the id
+    edit_note/delete_note refer to it by. Only notes that haven't been
+    compacted yet, unless include_compacted is true. For browsing/review
+    only -- may span many days. To compact notes, use prepare_compaction
+    instead; it returns just the notes for the current round, which is
+    what compact_notes expects."""
     with track("get_notes"), cached_sheet_reads():
-        return get_noted_time_sheet().read(include_compacted=include_compacted)
+        notes = get_noted_time_sheet().read_with_rows(include_compacted=include_compacted)
+        return [n.with_id() for n in sorted(notes, key=lambda n: n.note.timestamp)]
+
+
+@mcp.tool()
+def edit_note(
+    note_id: str, timestamp: datetime | None = None, description: str | None = None
+) -> NoteWithId:
+    """Correct an uncompacted note (by its id, from get_notes or
+    prepare_compaction): a new timestamp and/or description. Whichever is
+    left out keeps its current value; an empty description clears it.
+    Returns the edited note -- if the timestamp changed, so did its id.
+    Compacted notes can't be changed (edit the calendar event they became
+    instead). If a dry-run plan included this note, run a new dry run
+    afterward -- that plan can no longer be committed."""
+    with track("edit_note"), cached_sheet_reads():
+        try:
+            return get_note_compactor().edit_note(
+                note_id, timestamp=timestamp, description=description
+            ).with_id()
+        except CompactionError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def delete_note(note_id: str) -> NotedTime:
+    """Delete an uncompacted note (by its id, from get_notes or
+    prepare_compaction), returning what it was. Other notes' ids are
+    unaffected. Compacted notes can't be deleted. If a dry-run plan
+    included this note, run a new dry run afterward."""
+    with track("delete_note"), cached_sheet_reads():
+        try:
+            return get_note_compactor().delete_note(note_id)
+        except CompactionError as exc:
+            raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
