@@ -444,7 +444,8 @@ class TestNotedTimeSheetGarbageCollect:
     def test_deletes_the_oldest_compacted_rows_once_over_budget(self):
         fake = FakeSheets()
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        # 255 compacted, then one uncompacted -- 256 total, 6 over budget.
+        # 255 compacted, then one uncompacted -- 256 total, over the
+        # 250-row budget, so it's trimmed to 150.
         rows = [[_T1, "a", "cmp1"] for _ in range(255)] + [[_T2, "recent"]]
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
         hints = FakeRowHints()
@@ -453,9 +454,9 @@ class TestNotedTimeSheetGarbageCollect:
         sheet.garbage_collect()
 
         remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
-        assert len(remaining) == 250
+        assert len(remaining) == 150
         assert remaining[-1] == [_T2, "recent"]
-        assert hints.get("notes_next_row") == 252  # 2 + 250
+        assert hints.get("notes_next_row") == 152  # 2 + 150
         assert hints.get("notes_compacted_through_row") == 1  # reset, not recomputed
 
     def test_leaves_the_tab_at_least_1000_rows_long(self):
@@ -519,7 +520,7 @@ class TestNotedTimeSheetGarbageCollect:
         sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
 
         remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
-        assert len(remaining) == 251  # 255 - 5 deleted (over budget) + 1 appended
+        assert len(remaining) == 151  # trimmed from 255 to 150, + 1 appended
         assert remaining[-1] == [_T1]
 
 
