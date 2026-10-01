@@ -274,8 +274,8 @@ class NoteCompactor:
                     end=e.end,
                     description=e.description,
                     event_label_id=e.event_label_id,
-                    priority=e.priority,
-                    is_fixed_time=e.is_fixed_time,
+                    priority=e.effective_priority,
+                    is_fixed_time=e.effective_is_fixed_time,
                 )
                 for e in day.events
                 if e.id

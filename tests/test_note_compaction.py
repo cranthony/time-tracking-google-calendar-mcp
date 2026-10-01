@@ -591,6 +591,15 @@ class TestFixedTimeEvents:
         with pytest.raises(CompactionError, match="doesn't fit: it overlaps fixed-time 'Call'"):
             _plan([], [EventDecision(action="create", summary="Gym", start=time_at("11:30"), end=time_at("12:30"))], day)
 
+    def test_an_event_fixed_time_only_through_its_label_is_fixed_too(self):
+        day = [
+            event_at("12:00-13:00", id="c", summary="Call", label_is_fixed_time=True),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+
+        with pytest.raises(CompactionError, match="doesn't fit: it overlaps fixed-time 'Call'"):
+            _plan([], [EventDecision(action="create", summary="Gym", start=time_at("11:30"), end=time_at("12:30"))], day)
+
 
 class TestTimeline:
     def _salsa(self):

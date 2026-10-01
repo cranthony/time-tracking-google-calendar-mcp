@@ -18,12 +18,14 @@ with whatever `day_events` it's handed.
 
 ## Priority
 
-Every event has a `priority` (lower number = more important); lower priority
+Every event has an `effective_priority` (its own `priority`, falling back
+to its event label's -- see `Event.effective_priority`; lower number =
+more important); lower priority
 events (and free time) shrink, and are cancelled outright if shrinking isn't
 enough, before higher priority ones are (step 5) -- priority only decides
 the order events are drawn from, not whether an event is eligible at all.
 Free time is the lowest possible priority (`math.inf`). An event with no
-`priority` set is treated as priority `2`.
+`effective_priority` is treated as priority `2`.
 
 ## Minimum duration
 
@@ -37,24 +39,23 @@ min_duration_overrides` (event id → minutes) overrides an event's effective
 
 ## Fixed time
 
-An event with `is_fixed_time` true must end up at exactly the `start`/`end`
-it already has when `day_events` is handed in — not just its own duration
-protected (the same convention as "Minimum duration" above applies here
-too: a `Schedulable` whose `is_fixed_time` is true should already have its
-`min_duration` set to its own full duration, since its duration can't
-shrink either — `Event.from_api` does this at load time for an explicit
-`is_fixed_time`, and `utilities/label_priority_calendar.py` does it when
-one is inherited from the event's label).
+An event with `effective_is_fixed_time` true (its own `is_fixed_time`,
+falling back to its event label's -- see `Event.effective_is_fixed_time`)
+must end up at exactly the `start`/`end` it already has when `day_events`
+is handed in — not just its own duration protected: its duration can't
+shrink either, so its effective `min_duration` is always its own full
+duration, whatever its `min_duration` field says (see
+`_effective_min_duration`).
 
 Nothing in steps 1-6 treats a fixed-time event specially: it can still be
 displaced during a single pass, exactly like any other event of the same
 priority -- moved whole to make room for a preceding overlap (step 1,
-since its `min_duration` always equals its own duration, it's never the
+since its effective `min_duration` always equals its own duration, it's never the
 one split into a continuation -- see step 1's "otherwise" branch), or
 cancelled outright if the day doesn't have enough other capacity (step
 5's second pass, which ignores `min_duration` -- and therefore
 `is_fixed_time` -- entirely). What's special is what happens *after*:
-`reallocate_for_new_event` inspects the result for any `is_fixed_time`
+`reallocate_for_new_event` inspects the result for any fixed-time
 event that moved away from its original position without being
 cancelled, and re-runs the whole algorithm once more per such event,
 treating it as a new arrival being reinserted at that exact original
@@ -62,7 +63,7 @@ position -- like any other arrival, it's given only the day from that
 position onward (whatever ended before it is set aside, untouched, and
 kept for any later repair pass) -- reclaiming whatever's now occupying
 it, which may in turn
-displace another `is_fixed_time` event, triggering a further repair
+displace another fixed-time event, triggering a further repair
 pass. This repeats until nothing needs repairing, or raises
 `FixedTimeConflict` (a `ValueError` saying `new_event` doesn't fit, and
 naming the fixed-time events in the way) if a fixed-time event can't be
@@ -168,16 +169,22 @@ logger = logging.getLogger(__name__)
 
 class Schedulable(Protocol):
     """The fields of an event that reallocation's algorithm actually reads
-    or writes."""
+    or writes. Reads only the effective priority/fixed-time-ness, never
+    writes either, so whatever an event inherits from its label is never
+    written back as its own."""
 
     id: str | None
     summary: str | None
     start: datetime
     end: datetime
     status: str | None
-    priority: int | None
     min_duration: timedelta | None
-    is_fixed_time: bool | None
+
+    @property
+    def effective_priority(self) -> int | None: ...
+
+    @property
+    def effective_is_fixed_time(self) -> bool | None: ...
 
     def clone(self) -> "Schedulable":
         """A copy of the underlying object (not just this `Schedulable`
@@ -199,8 +206,8 @@ def _overlap(event: Schedulable, new_event: Schedulable) -> timedelta:
 
 
 def _effective_priority(event: Schedulable) -> float:
-    """`event.priority`, or `2` if unset (see "Priority" above)."""
-    return event.priority if event.priority is not None else 2
+    """`event.effective_priority`, or `2` if unset (see "Priority" above)."""
+    return event.effective_priority if event.effective_priority is not None else 2
 
 
 def _effective_min_duration(
@@ -208,9 +215,14 @@ def _effective_min_duration(
 ) -> timedelta:
     """`event.min_duration`, or the override for `event.id` in
     `min_duration_overrides` (minutes) if there is one, or `0` if neither
-    is set (see "Minimum duration" above)."""
+    is set (see "Minimum duration" above). A fixed-time event's is always
+    its own full duration (see "Fixed time" above) -- needed for one
+    that's fixed-time only through its label, whose own `min_duration`
+    nothing has forced."""
     if event.id is not None and event.id in min_duration_overrides:
         return timedelta(minutes=min_duration_overrides[event.id])
+    if event.effective_is_fixed_time:
+        return _duration(event)
     return event.min_duration or timedelta(0)
 
 
@@ -572,7 +584,9 @@ def reallocate_for_new_event(
     # tracked here: it's always placed exactly where the caller asked, so
     # it can never "shift" relative to itself.
     fixed_time_originals: dict[int, tuple[Schedulable, datetime, datetime]] = {
-        id(event): (event, event.start, event.end) for event in day_events if event.is_fixed_time
+        id(event): (event, event.start, event.end)
+        for event in day_events
+        if event.effective_is_fixed_time
     }
 
     changed: dict[int, Schedulable] = {}
