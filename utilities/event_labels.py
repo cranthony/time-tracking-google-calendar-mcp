@@ -23,7 +23,8 @@ which the raw one has.
 
 from __future__ import annotations
 
-from dataclasses import asdict, astuple, replace
+from collections.abc import Collection
+from dataclasses import asdict, astuple, fields, replace
 
 from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel
 from calendar_clients.google_sheets import SheetsClient
@@ -138,11 +139,25 @@ class EventLabels:
         self._event_label_sheet.append(label)
         return self.sync_labels()
 
-    def update_label(self, label: EventLabel) -> list[EventLabel]:
-        """Requires that label.id is filled in. The other fields may not be filled in,
-        to keep the current value."""
+    def update_label(
+        self, label: EventLabel, clear_fields: Collection[str] = ()
+    ) -> list[EventLabel]:
+        """Requires that label.id is filled in. The other fields may be
+        left `None` to keep their current value; name one in
+        `clear_fields` to blank it instead. Clearing `background_color`
+        makes the label's color follow its `priority` again (see
+        `EventLabel.to_raw`)."""
         if not label.id:
             raise ValueError(f"Update requires label ID, but none supplied for {label}")
+        clearable = {f.name for f in fields(EventLabel)} - {"id"}
+        unknown = set(clear_fields) - clearable
+        if unknown:
+            raise ValueError(
+                f"Can't clear {sorted(unknown)}; clearable fields are {sorted(clearable)}"
+            )
+        both = {field for field in clear_fields if getattr(label, field) is not None}
+        if both:
+            raise ValueError(f"Can't both set and clear {sorted(both)}")
         sheet_labels = self._get_sheet_labels()
         if label.id not in {l.id for l in sheet_labels}:
             raise ValueError(f"Update requires valid label ID, but {label.id} is unknown")
@@ -151,5 +166,7 @@ class EventLabels:
         for field, value in asdict(label).items():
             if field != "id" and value is not None:
                 setattr(sheet_labels[label_to_edit_index], field, value)
+        for field in clear_fields:
+            setattr(sheet_labels[label_to_edit_index], field, None)
         self._event_label_sheet.write(sheet_labels)
         return self.sync_labels()

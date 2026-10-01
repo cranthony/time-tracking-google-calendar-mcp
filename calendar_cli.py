@@ -14,7 +14,7 @@ Usage:
     python calendar_cli.py update_raw_label <label_id> key=value [key=value ...]
     python calendar_cli.py delete_raw_label <label_id>
     python calendar_cli.py create_label key=value [key=value ...]
-    python calendar_cli.py update_label <label_id> key=value [key=value ...]
+    python calendar_cli.py update_label <label_id> [key=value ...] [--clear attribute ...]
     python calendar_cli.py sync_labels
     python calendar_cli.py note <ago> [description]
     python calendar_cli.py get_notes
@@ -59,9 +59,10 @@ Usage:
   `utilities/event_labels.py`'s richer `EventLabel` (via `EventLabels`),
   which also has a `priority` and a `fixed_time` flag
   (`background_color=value`/`name=value`/`priority=value`/
-  `fixed_time=value` pairs; `background_color` may be left unset if
-  `priority` is given, deriving it the same way `Event.colorId` does;
-  whichever is omitted on `update_label` keeps its current value). Both
+  `fixed_time=value`/`note=value` pairs; `background_color` may be left
+  unset if `priority` is given, deriving it the same way `Event.colorId`
+  does; whichever is omitted on `update_label` keeps its current value,
+  and `--clear <attribute>` blanks one). Both
   read and write through this calendar's event label sheet (creating
   one, pre-populated with the calendar's current labels, the first time
   either of them runs if it doesn't exist yet), which is the only place
@@ -208,6 +209,7 @@ _LABEL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "name": str,
     "priority": int,
     "fixed_time": _parse_bool,
+    "note": str,
 }
 """Every utilities.event_labels.EventLabel attribute create_label/
 update_label may set, mapped to a function parsing its command-line
@@ -446,18 +448,25 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     update_label_parser = subparsers.add_parser(
-        "update_label", help="Update an existing event label's color, name, and/or priority."
+        "update_label", help="Update any of an existing event label's properties."
     )
     update_label_parser.add_argument("label_id", help="The label id.")
     update_label_parser.add_argument(
         "properties",
         metavar="key=value",
-        nargs="+",
+        nargs="*",
         type=_parse_label_key_value,
         help=(
-            "One or more EventLabel attribute=value pairs to set. Valid "
+            "EventLabel attribute=value pairs to set. Valid "
             f"attributes: {', '.join(sorted(_LABEL_ATTRIBUTE_PARSERS))}."
         ),
+    )
+    update_label_parser.add_argument(
+        "--clear",
+        action="append",
+        default=[],
+        choices=sorted(_LABEL_ATTRIBUTE_PARSERS),
+        help="An attribute to blank; repeat for several.",
     )
 
     subparsers.add_parser(
@@ -587,25 +596,16 @@ def main() -> None:
         label = client.delete_event_label(args.label_id)
         print(f"Deleted event label {label.id}.")
     elif args.command == "create_label":
-        fields = dict(args.properties)
-        new_label = EventLabel(
-            background_color=fields.get("background_color"),
-            name=fields.get("name"),
-            priority=fields.get("priority"),
-        )
+        new_label = EventLabel(**dict(args.properties))
         labels = build_event_labels().create_label(new_label)
         for label in labels:
             print(_format_event_details(label))
             print()
     elif args.command == "update_label":
-        fields = dict(args.properties)
-        updated_label = EventLabel(
-            id=args.label_id,
-            background_color=fields.get("background_color"),
-            name=fields.get("name"),
-            priority=fields.get("priority"),
-        )
-        labels = build_event_labels().update_label(updated_label)
+        if not args.properties and not args.clear:
+            parser.error("update_label requires at least one key=value or --clear")
+        updated_label = EventLabel(id=args.label_id, **dict(args.properties))
+        labels = build_event_labels().update_label(updated_label, args.clear)
         for label in labels:
             print(_format_event_details(label))
             print()

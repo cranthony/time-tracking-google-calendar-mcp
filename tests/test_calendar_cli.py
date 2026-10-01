@@ -795,6 +795,22 @@ class TestMainCreateLabel:
             EventLabel(background_color=None, name="Design Work", priority=None)
         )
 
+    def test_passes_fixed_time_and_note(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.create_label.return_value = [_event_label()]
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["calendar_cli.py", "create_label", "name=Focus", "fixed_time=false", "note=Mornings"],
+        )
+
+        calendar_cli.main()
+
+        event_labels.create_label.assert_called_once_with(
+            EventLabel(name="Focus", fixed_time=False, note="Mornings")
+        )
+
 
 class TestMainUpdateLabel:
     def test_updates_background_color(self, capsys, monkeypatch):
@@ -810,7 +826,7 @@ class TestMainUpdateLabel:
         calendar_cli.main()
 
         event_labels.update_label.assert_called_once_with(
-            EventLabel(id="label-1", background_color="#d50000", name=None, priority=None)
+            EventLabel(id="label-1", background_color="#d50000", name=None, priority=None), []
         )
         assert "#d50000" in capsys.readouterr().out
 
@@ -825,7 +841,7 @@ class TestMainUpdateLabel:
         calendar_cli.main()
 
         event_labels.update_label.assert_called_once_with(
-            EventLabel(id="label-1", background_color=None, name="New name", priority=None)
+            EventLabel(id="label-1", background_color=None, name="New name", priority=None), []
         )
 
     def test_updates_priority(self, monkeypatch):
@@ -841,7 +857,7 @@ class TestMainUpdateLabel:
         calendar_cli.main()
 
         event_labels.update_label.assert_called_once_with(
-            EventLabel(id="label-1", background_color=None, name=None, priority=3)
+            EventLabel(id="label-1", background_color=None, name=None, priority=3), []
         )
 
     def test_requires_at_least_one_property(self, monkeypatch):
@@ -853,6 +869,54 @@ class TestMainUpdateLabel:
             calendar_cli.main()
 
         event_labels.update_label.assert_not_called()
+
+    def test_passes_fixed_time_and_note(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.update_label.return_value = [_event_label()]
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["calendar_cli.py", "update_label", "label-1", "fixed_time=true", "note=Deep work"],
+        )
+
+        calendar_cli.main()
+
+        event_labels.update_label.assert_called_once_with(
+            EventLabel(id="label-1", fixed_time=True, note="Deep work"), []
+        )
+
+    def test_clears_attributes(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        event_labels = _fake_event_labels(monkeypatch)
+        event_labels.update_label.return_value = [_event_label()]
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "calendar_cli.py",
+                "update_label",
+                "label-1",
+                "--clear",
+                "background_color",
+                "--clear",
+                "note",
+            ],
+        )
+
+        calendar_cli.main()
+
+        event_labels.update_label.assert_called_once_with(
+            EventLabel(id="label-1"), ["background_color", "note"]
+        )
+
+    def test_requires_something_to_change(self, monkeypatch):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+        _fake_event_labels(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update_label", "label-1"])
+
+        with pytest.raises(SystemExit):
+            calendar_cli.main()
 
 
 class TestResolveNoteTimestamp:

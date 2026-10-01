@@ -4,6 +4,7 @@ import logging
 import os
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
+from typing import Literal
 
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
@@ -305,10 +306,11 @@ def delete_event(id: str) -> list[PublicEvent]:
 def create_event_label(
     label: EventLabel
 ) -> list[EventLabel]:
-    """Create a new event label with the given optional name and
-    priority. Returns the resulting list of every event label -- there's
-    no separate way to list labels; use this, update_event_label, or
-    sync_event_labels_from_sheet to see the current ones."""
+    """Create a new event label with the given optional name, color,
+    priority, fixed_time and note. Returns the resulting list of every
+    event label -- there's no separate way to list labels; use this,
+    update_event_label, or sync_event_labels_from_sheet to see the
+    current ones."""
     with track("create_event_label"), cached_sheet_reads():
         try:
             return get_calendar_with_event_labels().create_label(label)
@@ -316,14 +318,22 @@ def create_event_label(
             raise ToolError(str(exc)) from exc
 
 
+EventLabelField = Literal["name", "background_color", "priority", "fixed_time", "note"]
+"""Every EventLabel field update_event_label can clear -- all but id."""
+
+
 @mcp.tool()
-def update_event_label(label: EventLabel) -> list[EventLabel]:
-    """Update an existing event label's background color, name, and/or
-    priority. Any omitted properties keep their current value. Returns
-    the resulting list of every event label -- see create_event_label."""
+def update_event_label(
+    label: EventLabel, clear_fields: list[EventLabelField] | None = None
+) -> list[EventLabel]:
+    """Update any of an existing event label's properties. Omitted
+    properties keep their current value; list one in clear_fields to
+    blank it instead (clearing background_color makes the label's color
+    follow its priority again). Returns the resulting list of every
+    event label -- see create_event_label."""
     with track("update_event_label"), cached_sheet_reads():
         try:
-            return get_calendar_with_event_labels().update_label(label)
+            return get_calendar_with_event_labels().update_label(label, clear_fields or ())
         except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
 
@@ -332,7 +342,7 @@ def update_event_label(label: EventLabel) -> list[EventLabel]:
 def sync_event_labels_from_sheet() -> list[EventLabel]:
     """Make this calendar's event labels match its tracked event label
     sheet exactly: rows with a blank ID become new labels, rows with a
-    matching ID overwrite that label's name/color/priority, and any
+    matching ID overwrite that label's name and color, and any
     label with no matching row is deleted. Returns the resulting labels
     -- call this with no sheet changes pending to just see the current
     ones; there's no separate list tool. Fails if no event label sheet
