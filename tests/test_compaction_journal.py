@@ -362,17 +362,17 @@ class TestGarbageCollect:
 
         journal.garbage_collect()
 
-        # 10 rows over budget (510 - 500); each block is 6 rows, so the
-        # oldest 2 blocks (12 rows) are deleted -- enough to clear it.
-        with pytest.raises(CompactionError, match="no compaction with id 'c0'"):
-            journal.load(ids[0])
-        with pytest.raises(CompactionError, match="no compaction with id 'c1'"):
-            journal.load(ids[1])
-        assert journal.load(ids[2]).id == ids[2]  # stamped, but not needed to delete
+        # 510 rows is over the 500-row budget, so it's trimmed to 400:
+        # each block is 6 rows, so the oldest 19 blocks (114 rows) are
+        # deleted -- the fewest that get it there.
+        for compaction_id in ids[:19]:
+            with pytest.raises(CompactionError, match=f"no compaction with id '{compaction_id}'"):
+                journal.load(compaction_id)
+        assert journal.load(ids[19]).id == ids[19]  # stamped, but not needed to delete
         assert journal.load(ids[-2]).id == ids[-2]  # the last *stamped* one -- preserved
         assert journal.load(ids[-1]).status == PLANNED  # still open -- preserved
-        assert hints.get("journal_next_row") == 2 + total_rows - 2 * self._BLOCK_ROWS
-        assert hints.get("journal_latest_compaction_row") == 2 + 84 * self._BLOCK_ROWS - 2 * self._BLOCK_ROWS
+        assert hints.get("journal_next_row") == 2 + total_rows - 19 * self._BLOCK_ROWS
+        assert hints.get("journal_latest_compaction_row") == 2 + 84 * self._BLOCK_ROWS - 19 * self._BLOCK_ROWS
 
     def test_leaves_the_tab_at_least_1000_rows_long(self):
         # Earlier garbage collection already shrank the tab's grid; without

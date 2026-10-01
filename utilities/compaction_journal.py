@@ -94,7 +94,12 @@ _CONFIRM_ROWS = 5
 check reads before trusting it."""
 
 _MAX_ROWS = 500
-"""garbage_collect keeps this tab's data rows at or under this count."""
+"""garbage_collect kicks in once this tab has more data rows than this."""
+
+_TRIM_TO_ROWS = _MAX_ROWS - 100
+"""What garbage_collect trims this tab's data rows down to once it kicks
+in -- well under `_MAX_ROWS`, not just back to it, so it doesn't kick in
+again on the very next append."""
 
 
 @dataclass
@@ -261,12 +266,13 @@ class CompactionJournal:
         deletes a prefix of them: every block up to, but never including,
         the most recently *stamped* one or the first block that isn't
         `stamped`/`abandoned`, whichever comes first, stopping as soon as
-        enough rows are gone (or there's nothing left it can safely
-        delete)."""
+        it's down to `_TRIM_TO_ROWS` data rows (or there's nothing left
+        it can safely delete)."""
         next_row = self._next_row()
-        excess = (next_row - _FIRST_DATA_ROW) - _MAX_ROWS
-        if excess <= 0:
+        data_rows = next_row - _FIRST_DATA_ROW
+        if data_rows <= _MAX_ROWS:
             return
+        excess = data_rows - _TRIM_TO_ROWS
         blocks: list[list] = []  # [compaction_id, status_of_its_compaction_row, row_count]
         for row in self._read_rows():
             compaction_id = row[0]
