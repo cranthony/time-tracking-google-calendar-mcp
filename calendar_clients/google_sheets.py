@@ -274,15 +274,28 @@ class SheetsClient:
                 fields="updatedSpreadsheet(sheets(properties(sheetId,gridProperties(rowCount))))",
             )
         )
-        row_count = next(
-            (
-                sheet["properties"]["gridProperties"]["rowCount"]
-                for sheet in response.get("updatedSpreadsheet", {}).get("sheets", [])
-                if sheet["properties"]["sheetId"] == sheet_id
-            ),
-            None,
+        row_count = _row_count(response.get("updatedSpreadsheet", {}), sheet_id)
+        self._grow_to(spreadsheet_id, sheet_id, row_count, keep_at_least)
+
+    def ensure_row_count(self, spreadsheet_id: str, sheet_id: int, at_least: int) -> None:
+        """Add empty rows at the bottom of the tab identified by
+        `sheet_id` until it has at least `at_least` rows in all (data
+        and blank) -- `delete_rows`'s `keep_at_least` without a delete,
+        for a tab that may already be shorter than it should be. One read
+        request for the tab's current size, plus one more only when rows
+        actually need adding."""
+        response = _execute(
+            self._sheets_service.spreadsheets().get(
+                spreadsheetId=spreadsheet_id,
+                fields="sheets(properties(sheetId,gridProperties(rowCount)))",
+            )
         )
-        if row_count is None or row_count >= keep_at_least:
+        self._grow_to(spreadsheet_id, sheet_id, _row_count(response, sheet_id), at_least)
+
+    def _grow_to(
+        self, spreadsheet_id: str, sheet_id: int, row_count: int | None, at_least: int
+    ) -> None:
+        if row_count is None or row_count >= at_least:
             return
         _execute(
             self._sheets_service.spreadsheets().batchUpdate(
@@ -293,7 +306,7 @@ class SheetsClient:
                             "appendDimension": {
                                 "sheetId": sheet_id,
                                 "dimension": "ROWS",
-                                "length": keep_at_least - row_count,
+                                "length": at_least - row_count,
                             }
                         }
                     ]
@@ -461,6 +474,20 @@ def _forget_cached_reads(spreadsheet_id: str, sheet_id: int | None = None) -> No
         return
     for key in [k for k in cache if k[0] == spreadsheet_id and sheet_id in (None, k[1])]:
         del cache[key]
+
+
+def _row_count(spreadsheet: dict, sheet_id: int) -> int | None:
+    """The `sheet_id` tab's grid row count from a spreadsheet resource
+    fetched with `sheets(properties(sheetId,gridProperties(rowCount)))`,
+    or `None` if it isn't there."""
+    return next(
+        (
+            sheet["properties"]["gridProperties"]["rowCount"]
+            for sheet in spreadsheet.get("sheets", [])
+            if sheet["properties"]["sheetId"] == sheet_id
+        ),
+        None,
+    )
 
 
 _A1_RANGE = re.compile(r"^([A-Z]+)(\d+):([A-Z]+)(\d*)$")

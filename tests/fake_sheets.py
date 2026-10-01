@@ -7,7 +7,7 @@ from a row down), "C3:C3"/"C2:C4" (a bounded block), and "A1:C1" (a row).
 Like the real API, a read trims trailing empty cells from each row and
 returns blank rows in the middle as `[]`; each tab has a grid of
 `row_counts[sheet_id]` rows (1000, like a new tab, unless set), which
-deleting rows shrinks; and a write past the end of the grid fails.
+deleting rows shrinks and `ensure_row_count` grows; and a write past the end of the grid fails.
 """
 
 from __future__ import annotations
@@ -102,6 +102,9 @@ class FakeSheets:
                 shifted[(r - count, c)] = v
             # rows within [start_row, end_row] are dropped
         self.cells[sheet_id] = shifted
+
+    def ensure_row_count(self, spreadsheet_id: str, sheet_id: int, at_least: int) -> None:
+        self.row_counts[sheet_id] = max(self.row_count(sheet_id), at_least)
 
     def cell(self, sheet_id: int, address: str) -> str:
         match = re.match(r"^([A-Z]+)(\d+)$", address)

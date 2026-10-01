@@ -379,11 +379,16 @@ class NotedTimeSheet:
         contiguous prefix, stopping at the first uncompacted note --
         an uncompacted backlog alone can leave this over budget, since
         there's nothing safe to delete for it. See the module docstring
-        for what this means for a note's row number and id."""
+        for what this means for a note's row number and id.
+
+        Whether or not it deletes anything, it also leaves the tab long
+        enough to keep appending into -- see
+        `calendar_metadata_sheet.rows_to_keep`."""
         header_row = self._read_header()
         next_row = self._next_row()
         excess = (next_row - _FIRST_DATA_ROW) - _MAX_ROWS
         if excess <= 0:
+            self._ensure_room(next_row)
             return
         check = self._sheets_client.read_rows_in_sheet(
             self._spreadsheet_id,
@@ -397,19 +402,25 @@ class NotedTimeSheet:
                 break
             deletable += 1
         if deletable == 0:
+            self._ensure_room(next_row)
             return
         self._sheets_client.delete_rows(
             self._spreadsheet_id,
             self._sheet_id,
             start_row=_FIRST_DATA_ROW,
             end_row=_FIRST_DATA_ROW + deletable - 1,
-            keep_at_least=calendar_metadata_sheet.MIN_TAB_ROWS,
+            keep_at_least=calendar_metadata_sheet.rows_to_keep(next_row - deletable),
         )
         self._hints.set(_NEXT_ROW_HINT, next_row - deletable)
         # Deleting only ever confirmed compacted-or-blank rows, so a full
         # reset is always safe -- just possibly conservative if the
         # compacted prefix actually ran longer than `excess`.
         self._hints.set(_COMPACTED_THROUGH_HINT, _FIRST_DATA_ROW - 1)
+
+    def _ensure_room(self, next_row: int) -> None:
+        self._sheets_client.ensure_row_count(
+            self._spreadsheet_id, self._sheet_id, calendar_metadata_sheet.rows_to_keep(next_row)
+        )
 
     def _next_row(self) -> int:
         """The row this tab's next new note should go in: a hinted row,
