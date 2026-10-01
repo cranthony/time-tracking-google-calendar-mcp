@@ -188,6 +188,29 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#eventLabelId
     for more information."""
 
+    label_priority: int | None = None
+    """The priority of this event's event label (`event_label_id`), if
+    known -- filled in on read by `utilities/label_priority_calendar.py`,
+    never by `from_api`, and never sent to the API (see `to_api_body`).
+    Kept apart from `priority`, which is only ever the event's own, so
+    writing an event back never copies its label's priority onto it. Read
+    `effective_priority` for the value that actually applies."""
+
+    label_is_fixed_time: bool | None = None
+    """`label_priority`'s counterpart for `is_fixed_time`. Read
+    `effective_is_fixed_time` for the value that actually applies."""
+
+    @property
+    def effective_priority(self) -> int | None:
+        """`priority`, falling back to `label_priority` when unset."""
+        return self.priority if self.priority is not None else self.label_priority
+
+    @property
+    def effective_is_fixed_time(self) -> bool | None:
+        """`is_fixed_time`, falling back to `label_is_fixed_time` when
+        unset."""
+        return self.is_fixed_time if self.is_fixed_time is not None else self.label_is_fixed_time
+
     @classmethod
     def from_api(cls, data: dict) -> "Event":
         private_properties = data.get("extendedProperties", {}).get("private", {})
@@ -249,7 +272,8 @@ class Event:
             # should mean "leave the color the same".
             body["colorId"] = _color_id_for_priority(self.priority)
         # recurring_event_id is deliberately never sent: it's assigned by
-        # Google, not something a client sets.
+        # Google, not something a client sets. Nor are label_priority/
+        # label_is_fixed_time: they belong to the label, not the event.
 
         private_properties = _format_properties(
             self,

@@ -7,6 +7,7 @@ import pytest
 from calendar_clients.google_calendar import CalendarClient, Event
 from tests.event_time_helpers import event_at, time_at
 from utilities import reallocating_calendar
+from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
 
@@ -161,6 +162,54 @@ class TestReallocatingCalendarCreateEvent:
         # later is never reclaimed from (a gap absorbs it), so it's left
         # out of the plan entirely -- not created, not updated.
         assert result == [preceding, new_event]
+
+    def test_never_writes_label_derived_values_onto_the_events_it_touches(self):
+        # Both existing events get their priority/fixed-time-ness only from
+        # their labels. Reallocation honors both -- the fixed-time one stays
+        # put, the prioritized one shrinks -- but only what reallocation
+        # itself changed is sent back, never the label's values.
+        day = datetime(2026, 1, 1, tzinfo=UTC)
+        prioritized = Event(
+            id="p1",
+            summary="Prioritized",
+            event_label_id="label-p",
+            start=day + timedelta(hours=9),
+            end=day + timedelta(hours=10),
+        )
+        fixed = Event(
+            id="f1",
+            summary="Fixed",
+            event_label_id="label-f",
+            start=day + timedelta(hours=10),
+            end=day + timedelta(hours=11),
+        )
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[prioritized, fixed])
+        client.create_event = MagicMock(side_effect=lambda event: event)
+        client.update_event = MagicMock(side_effect=lambda event: event)
+        event_labels = MagicMock()
+        event_labels.label_priorities.return_value = {"label-p": 3, "label-f": 0}
+        event_labels.label_fixed_times.return_value = {"label-f": True}
+
+        new_event = Event(
+            summary="New",
+            start=day + timedelta(hours=9, minutes=30),
+            end=day + timedelta(hours=10),
+            priority=1,
+        )
+        ReallocatingCalendar(LabelPriorityCalendar(client, event_labels)).create_event(
+            new_event, ReallocationOptions()
+        )
+
+        (written,), _ = client.update_event.call_args
+        assert written.id == "p1"
+        assert (written.start, written.end) == (
+            day + timedelta(hours=9),
+            day + timedelta(hours=9, minutes=30),
+        )
+        body = written.to_api_body()
+        assert "colorId" not in body
+        assert "extendedProperties" not in body
 
 
 class TestReallocatingCalendarUpdateEvent:

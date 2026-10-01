@@ -73,7 +73,9 @@ if _TRANSPORT == "streamable-http":
 else:
     mcp = MCPServer("time-tracking-google-calendar-mcp")
 
-INTERNAL_EVENT_FIELDS = frozenset({"is_end_of_day_sleep", "status", "recurring_event_id"})
+INTERNAL_EVENT_FIELDS = frozenset(
+    {"is_end_of_day_sleep", "status", "recurring_event_id", "label_priority", "label_is_fixed_time"}
+)
 """Event fields the agent talking to this server should never see or set,
 at all -- not just left null. Enforced by PublicEvent actually lacking
 these fields (so they never appear in a tool's schema or result), not by
@@ -96,10 +98,11 @@ class PublicEvent:
     no effect (see to_event), since there's no way to un-cancel a
     cancelled event.
 
-    effective_priority/effective_is_fixed_time are read-only: the values
-    reallocation actually uses, i.e. priority/is_fixed_time with the
-    event label's own value filled in when the event doesn't set one (see
-    utilities/label_priority_calendar.py). Kept separate from
+    effective_priority/effective_is_fixed_time are read-only: Event's
+    properties of the same name, the values reallocation actually uses,
+    i.e. priority/is_fixed_time falling back to the event label's own
+    value when the event doesn't set one (see utilities/
+    label_priority_calendar.py). Kept separate from
     priority/is_fixed_time so that sending a listed event straight back
     to update_event never copies its label's values onto the event
     itself, which would stop it following later changes to the label.
@@ -121,12 +124,7 @@ class PublicEvent:
     effective_is_fixed_time: bool | None = None
 
     @classmethod
-    def from_event(cls, event: Event, effective: Event | None = None) -> "PublicEvent":
-        """`effective`: `event` with its label's values filled in (see
-        _public_events), the source of effective_priority/
-        effective_is_fixed_time. Defaults to `event` itself."""
-        if effective is None:
-            effective = event
+    def from_event(cls, event: Event) -> "PublicEvent":
         return cls(
             id=event.id,
             summary=event.summary,
@@ -140,8 +138,8 @@ class PublicEvent:
             priority=event.priority,
             event_label_id=event.event_label_id,
             is_cancelled=event.status == "cancelled",
-            effective_priority=effective.priority,
-            effective_is_fixed_time=effective.is_fixed_time,
+            effective_priority=event.effective_priority,
+            effective_is_fixed_time=event.effective_is_fixed_time,
         )
 
     def to_event(self) -> Event:
@@ -229,8 +227,8 @@ def _public_events(events: list[Event]) -> list[PublicEvent]:
     """`events` as PublicEvents, with effective_priority/
     effective_is_fixed_time filled in from each one's event label -- see
     PublicEvent. Every event tool's result goes through this."""
-    effective = fill_in_from_labels(events, get_calendar_with_event_labels())
-    return [PublicEvent.from_event(event, eff) for event, eff in zip(events, effective)]
+    events = fill_in_from_labels(events, get_calendar_with_event_labels())
+    return [PublicEvent.from_event(event) for event in events]
 
 
 @mcp.tool()

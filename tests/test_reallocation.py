@@ -54,8 +54,21 @@ class TestEffectivePriority:
     def test_returns_two_when_unset(self):
         assert _effective_priority(event_at("09:00-10:00", priority=None)) == 2
 
+    def test_falls_back_to_the_labels_priority(self):
+        assert _effective_priority(event_at("09:00-10:00", label_priority=0)) == 0
+
+    def test_own_priority_wins_over_the_labels(self):
+        assert _effective_priority(event_at("09:00-10:00", priority=3, label_priority=0)) == 3
+
 
 class TestEffectiveMinDuration:
+    def test_is_the_full_duration_for_an_event_fixed_time_through_its_label(self):
+        event = event_at("09:00-10:00", id="abc123", label_is_fixed_time=True)
+
+        assert _effective_min_duration(event, {}) == timedelta(hours=1)
+        # Only reallocation's view of it -- the event itself is untouched.
+        assert event.min_duration is None
+
     def test_returns_own_min_duration_when_no_override(self):
         event = event_at("09:00-10:00", id="abc123", min_duration=timedelta(minutes=20))
 
@@ -575,6 +588,21 @@ class TestFixedTimeRepair:
         assert new_event in result
         assert new_event.end - new_event.start == timedelta(minutes=30)
         assert new_event.start >= preceding.end
+
+    def test_an_event_fixed_time_through_its_label_is_repaired_without_being_pinned(self):
+        # Same as above, but preceding is fixed-time only through its
+        # label, with no min_duration of its own.
+        preceding = event_at("09:00-09:30", id="p1", priority=1, label_is_fixed_time=True)
+        anchor = event_at("09:30-10:30", id="a1", priority=1)
+        new_event = event_at("09:10-09:40", priority=1)
+
+        result = reallocate_for_new_event([preceding, anchor], new_event, ReallocationOptions())
+
+        assert (preceding.start, preceding.end) == (time_at("09:00"), time_at("09:30"))
+        assert preceding not in result
+        assert new_event.start >= preceding.end
+        assert preceding.is_fixed_time is None
+        assert preceding.min_duration is None
 
     def test_repairing_a_fixed_time_event_later_in_the_day_splits_what_was_pushed_into_it(self):
         # new_event pushes lunch and afternoon later, into a fixed-time

@@ -155,11 +155,12 @@ class TestPublicEvent:
         assert public_event.effective_priority == 1
         assert public_event.effective_is_fixed_time is True
 
-    def test_from_event_takes_effective_fields_from_the_effective_event(self):
-        event = _event(id="abc123", event_label_id="label-1")
-        effective = _event(id="abc123", event_label_id="label-1", priority=0, is_fixed_time=True)
+    def test_from_event_takes_effective_fields_from_the_events_label(self):
+        event = _event(
+            id="abc123", event_label_id="label-1", label_priority=0, label_is_fixed_time=True
+        )
 
-        public_event = PublicEvent.from_event(event, effective)
+        public_event = PublicEvent.from_event(event)
 
         assert public_event.priority is None
         assert public_event.is_fixed_time is None

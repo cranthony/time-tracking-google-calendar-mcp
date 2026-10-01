@@ -170,13 +170,17 @@ class TestParseRawLabelKeyValue:
 
 
 class TestUpdatableAttributeParsers:
-    def test_covers_every_event_attribute_except_id_and_recurring_event_id(self):
+    def test_covers_every_event_attribute_the_api_accepts_except_id(self):
         # id would repoint the patch at a different event; recurring_event_id
         # is assigned by Google and never sent to the API, so setting it here
-        # would silently have no effect.
+        # would silently have no effect. label_priority/label_is_fixed_time
+        # belong to the event's label, not the event, and are never sent
+        # to the API either.
         event_attributes = {f.name for f in dataclasses.fields(Event)} - {
             "id",
             "recurring_event_id",
+            "label_priority",
+            "label_is_fixed_time",
         }
 
         assert set(calendar_cli._UPDATABLE_ATTRIBUTE_PARSERS) == event_attributes
