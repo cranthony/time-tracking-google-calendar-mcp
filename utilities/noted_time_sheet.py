@@ -70,7 +70,12 @@ _FIRST_DATA_ROW = 2
 """Row 1 is the header."""
 
 _MAX_ROWS = 250
-"""garbage_collect keeps this tab's data rows at or under this count."""
+"""garbage_collect kicks in once this tab has more data rows than this."""
+
+_TRIM_TO_ROWS = _MAX_ROWS - 100
+"""What garbage_collect trims this tab's data rows down to once it kicks
+in -- well under `_MAX_ROWS`, not just back to it, so it doesn't kick in
+again on the very next append."""
 
 
 @dataclass(kw_only=True)
@@ -374,17 +379,19 @@ class NotedTimeSheet:
 
     def garbage_collect(self) -> None:
         """Delete the oldest already-compacted rows from the top of this
-        tab once it's grown past `_MAX_ROWS` data rows, so it (and every
-        read of it) doesn't keep growing forever. Only ever trims a
+        tab once it's grown past `_MAX_ROWS` data rows, down to
+        `_TRIM_TO_ROWS`, so it (and every read of it) doesn't keep
+        growing forever. Only ever trims a
         contiguous prefix, stopping at the first uncompacted note --
         an uncompacted backlog alone can leave this over budget, since
         there's nothing safe to delete for it. See the module docstring
         for what this means for a note's row number and id."""
         header_row = self._read_header()
         next_row = self._next_row()
-        excess = (next_row - _FIRST_DATA_ROW) - _MAX_ROWS
-        if excess <= 0:
+        data_rows = next_row - _FIRST_DATA_ROW
+        if data_rows <= _MAX_ROWS:
             return
+        excess = data_rows - _TRIM_TO_ROWS
         check = self._sheets_client.read_rows_in_sheet(
             self._spreadsheet_id,
             self._sheet_id,
