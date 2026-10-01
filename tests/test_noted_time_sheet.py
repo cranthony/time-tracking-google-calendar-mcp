@@ -484,7 +484,7 @@ class TestNotedTimeSheetGarbageCollect:
 
         assert fake.row_count(_SHEET_ID) == 1000
 
-    def test_leaves_100_empty_rows_past_the_next_append_when_it_cant_delete(self):
+    def test_leaves_100_empty_rows_past_a_backlog_it_cant_delete(self):
         fake = FakeSheets()
         fake.row_counts[_SHEET_ID] = 1000
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
@@ -495,6 +495,20 @@ class TestNotedTimeSheetGarbageCollect:
         sheet.garbage_collect()
 
         assert fake.row_count(_SHEET_ID) == 952 - 1 + 100  # next append goes in row 952
+
+    def test_leaves_100_empty_rows_past_where_it_next_kicks_in(self, monkeypatch):
+        # The 1000-row floor would otherwise hide this: 250 notes fill
+        # rows 2-251, and the 251st (row 252) puts the tab over budget.
+        monkeypatch.setattr(calendar_metadata_sheet, "MIN_TAB_ROWS", 0)
+        fake = FakeSheets()
+        fake.row_counts[_SHEET_ID] = 300
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", [[_T2, "recent"]])
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, FakeRowHints())
+
+        sheet.garbage_collect()
+
+        assert fake.row_count(_SHEET_ID) == 252 + 100
 
     def test_does_nothing_if_the_oldest_row_is_already_uncompacted(self):
         fake = FakeSheets()

@@ -110,20 +110,22 @@ MIN_TAB_ROWS = 1000
 after garbage collection -- writing past the end of a tab's grid fails,
 and 1000 is what Sheets gives a new tab."""
 
-APPEND_HEADROOM_ROWS = 100
-"""How many empty rows, starting at the row the next append goes in,
-garbage collection always leaves at the bottom of a tab -- so a tab
-whose data has grown close to (or past) `MIN_TAB_ROWS`, e.g. because an
-uncompacted backlog left nothing safe to delete, still has room for
-what's appended before the next garbage collection."""
+GC_HEADROOM_ROWS = 100
+"""How many empty rows garbage collection always leaves past the point
+where it next expects to kick in (the last row a tab's data reaches
+before it's over its row budget, or the row data has already reached,
+if a backlog it can't delete has it over budget already) -- so a tab is
+never too short to grow into its own budget, plus some slack for
+whatever's appended between one garbage collection and the next."""
 
 
-def rows_to_keep(next_row: int) -> int:
-    """The fewest rows a tab whose next append goes in `next_row` should
-    have after garbage collection: `MIN_TAB_ROWS`, or enough for
-    `APPEND_HEADROOM_ROWS` empty rows from `next_row` on, whichever is
-    more."""
-    return max(MIN_TAB_ROWS, next_row - 1 + APPEND_HEADROOM_ROWS)
+def rows_to_keep(next_row: int, kicks_in_after_row: int) -> int:
+    """The fewest rows a tab should have after garbage collection, given
+    that its next append goes in `next_row` and its garbage collection
+    next has something to do once data reaches past `kicks_in_after_row`:
+    `GC_HEADROOM_ROWS` past whichever of those is further down, or
+    `MIN_TAB_ROWS`, whichever is more."""
+    return max(MIN_TAB_ROWS, max(next_row - 1, kicks_in_after_row) + GC_HEADROOM_ROWS)
 
 TIME_NOTES_SHEET_ROLE = "uncompacted-time-notes"
 TIME_NOTES_SHEET_TITLE = "Noted Times"

@@ -306,7 +306,9 @@ class CompactionJournal:
             self._sheet_id,
             start_row=_FIRST_DATA_ROW,
             end_row=_FIRST_DATA_ROW + deletable_rows - 1,
-            keep_at_least=calendar_metadata_sheet.rows_to_keep(next_row - deletable_rows),
+            keep_at_least=calendar_metadata_sheet.rows_to_keep(
+                next_row - deletable_rows, _FIRST_DATA_ROW + _MAX_ROWS
+            ),
         )
         self._hints.set(_NEXT_ROW_HINT, next_row - deletable_rows)
         latest = self._hints.get(_LATEST_COMPACTION_ROW_HINT)
@@ -315,7 +317,9 @@ class CompactionJournal:
 
     def _ensure_room(self, next_row: int) -> None:
         self._sheets_client.ensure_row_count(
-            self._spreadsheet_id, self._sheet_id, calendar_metadata_sheet.rows_to_keep(next_row)
+            self._spreadsheet_id,
+            self._sheet_id,
+            calendar_metadata_sheet.rows_to_keep(next_row, _FIRST_DATA_ROW + _MAX_ROWS),
         )
 
     def _latest_compaction_start_row(self, compaction_id: str) -> int:

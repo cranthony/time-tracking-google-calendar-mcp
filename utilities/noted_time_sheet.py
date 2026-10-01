@@ -409,7 +409,9 @@ class NotedTimeSheet:
             self._sheet_id,
             start_row=_FIRST_DATA_ROW,
             end_row=_FIRST_DATA_ROW + deletable - 1,
-            keep_at_least=calendar_metadata_sheet.rows_to_keep(next_row - deletable),
+            keep_at_least=calendar_metadata_sheet.rows_to_keep(
+                next_row - deletable, _FIRST_DATA_ROW + _MAX_ROWS
+            ),
         )
         self._hints.set(_NEXT_ROW_HINT, next_row - deletable)
         # Deleting only ever confirmed compacted-or-blank rows, so a full
@@ -419,7 +421,9 @@ class NotedTimeSheet:
 
     def _ensure_room(self, next_row: int) -> None:
         self._sheets_client.ensure_row_count(
-            self._spreadsheet_id, self._sheet_id, calendar_metadata_sheet.rows_to_keep(next_row)
+            self._spreadsheet_id,
+            self._sheet_id,
+            calendar_metadata_sheet.rows_to_keep(next_row, _FIRST_DATA_ROW + _MAX_ROWS),
         )
 
     def _next_row(self) -> int:
