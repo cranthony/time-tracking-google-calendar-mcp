@@ -2,9 +2,9 @@
 metadata spreadsheet (see utilities/calendar_metadata_sheet.py).
 
 Compacting notes is a series of calendar writes that can die halfway, and
-the model's interpretation of the notes (the dispositions) exists only in
-a conversation. So before anything is applied, the whole approved plan --
-the dispositions, and every step with its before/after state -- is written
+the model's interpretation of the notes (its decisions) exists only in a
+conversation. So before anything is applied, the whole approved plan --
+the decisions, and every step with its before/after state -- is written
 here, and each step is checked off as it's applied. That makes it possible
 to finish exactly the plan that was approved after a failure, and leaves a
 before-state record of every change.
@@ -15,9 +15,12 @@ Layout: one row per fact, all in the same eight columns --
 
 - `kind == "compaction"` (step 0): the compaction itself. `status` is
   where it is in its life (see below); `detail` is JSON with `now`, the
-  ids of the notes it consumes, and any planner warnings.
-- `kind == "disposition"`: one per note. `event_id` holds the *note* id
-  and `before` holds that note's effects as JSON.
+  ids of the notes it consumes, the ids of notes it was told to ignore,
+  and any planner warnings.
+- `kind == "decision"`: one per `EventDecision`, as JSON in `before`
+  (`event_id` repeats its event id, if it has one, for reading the tab by
+  hand). Rows of the retired `disposition` kind, from before decisions
+  replaced them, are skipped.
 - `kind` in `update`/`create`/`cancel`: one calendar change (`step` is
   1-based, in the order they're applied). `status` is `pending` or `done`;
   `detail` is the human-readable reason.
@@ -66,10 +69,8 @@ from utilities.note_compaction import (
     CompactionChange,
     CompactionError,
     CompactionPlan,
+    EventDecision,
     EventState,
-    NoteDisposition,
-    NoteEffect,
-    Reschedule,
 )
 from utilities.row_hints import RowHints
 
@@ -115,8 +116,8 @@ class JournalCompaction:
     now: datetime
     note_ids: list[str]
     warnings: list[str]
-    dispositions: list[NoteDisposition]
-    reschedules: list[Reschedule] = field(default_factory=list)
+    decisions: list[EventDecision]
+    ignore_notes: list[str] = field(default_factory=list)
     steps: list[JournalStep] = field(default_factory=list)
     row: int = 0
 
@@ -160,13 +161,13 @@ class CompactionJournal:
         *,
         now: datetime,
         note_ids: list[str],
-        dispositions: list[NoteDisposition],
+        decisions: list[EventDecision],
         plan: CompactionPlan,
-        reschedules: list[Reschedule] | None = None,
+        ignore_notes: list[str] | None = None,
     ) -> None:
         """Record a new `planned` compaction: the compaction row, one row
-        per disposition, and one `pending` row per step -- all in one
-        write, so a crash can't leave half a plan recorded."""
+        per decision, and one `pending` row per step -- all in one write,
+        so a crash can't leave half a plan recorded."""
         rows: list[list[str]] = [
             [
                 compaction_id,
@@ -181,24 +182,19 @@ class CompactionJournal:
                         "now": now.isoformat(),
                         "note_ids": note_ids,
                         "warnings": plan.warnings,
-                        "reschedules": [r.to_json_dict() for r in reschedules or []],
+                        "ignore_notes": ignore_notes or [],
                     }
                 ),
             ]
         ]
-        for disposition in dispositions:
+        for decision in decisions:
             rows.append(
                 [
                     compaction_id,
                     "0",
-                    "disposition",
-                    disposition.note_id,
-                    json.dumps(
-                        [
-                            {k: v for k, v in effect.__dict__.items() if v is not None}
-                            for effect in disposition.effects
-                        ]
-                    ),
+                    "decision",
+                    decision.event_id or "",
+                    json.dumps(decision.to_json_dict()),
                     "",
                     "",
                     "",
@@ -321,8 +317,8 @@ class CompactionJournal:
         before it belongs to a *different* compaction (or none), so the
         hint is genuinely sitting at a compaction boundary and not
         partway through `compaction_id`'s own earlier rows (which would
-        silently miss its `compaction`-kind row and any dispositions
-        before the hint)."""
+        silently miss its `compaction`-kind row and any decisions before
+        the hint)."""
         hinted = self._hints.get(_LATEST_COMPACTION_ROW_HINT)
         if hinted is None or hinted < _FIRST_DATA_ROW:
             return _FIRST_DATA_ROW
@@ -349,7 +345,7 @@ class CompactionJournal:
         compaction's rows instead of the journal's entire history."""
         start_row = self._latest_compaction_start_row(compaction_id)
         compaction: JournalCompaction | None = None
-        dispositions: list[NoteDisposition] = []
+        decisions: list[EventDecision] = []
         steps: list[JournalStep] = []
         rows = self._sheets_client.read_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, f"A{start_row}:H"
@@ -367,16 +363,14 @@ class CompactionJournal:
                     now=datetime.fromisoformat(detail["now"]),
                     note_ids=detail["note_ids"],
                     warnings=detail.get("warnings", []),
-                    dispositions=[],
-                    reschedules=[Reschedule.from_json_dict(r) for r in detail.get("reschedules", [])],
+                    decisions=[],
+                    ignore_notes=detail.get("ignore_notes", []),
                     row=sheet_row,
                 )
+            elif kind == "decision":
+                decisions.append(EventDecision.from_json_dict(json.loads(row[4])))
             elif kind == "disposition":
-                dispositions.append(
-                    NoteDisposition(
-                        note_id=row[3], effects=[NoteEffect(**e) for e in json.loads(row[4])]
-                    )
-                )
+                continue
             else:
                 steps.append(
                     JournalStep(
@@ -392,7 +386,7 @@ class CompactionJournal:
                 )
         if compaction is None:
             raise CompactionError(f"there's no compaction with id {compaction_id!r}")
-        compaction.dispositions = dispositions
+        compaction.decisions = decisions
         compaction.steps = sorted(steps, key=lambda s: s.step)
         return compaction
 
@@ -411,9 +405,9 @@ class CompactionJournal:
 
     def last_stamped_now(self) -> datetime | None:
         """The `now` of the most recently stamped compaction, or `None` if
-        none has ever been stamped. The next day's window starts here, so
-        it never re-fetches a calendar range that's already been finalized
-        or misses one that ends right at the boundary."""
+        none has ever been stamped. The next compaction window starts here
+        (unless its day starts later), so it never re-offers a calendar
+        range that's already been settled."""
         latest: datetime | None = None
         for row in self._read_rows():
             if row[2] != "compaction" or row[6] != STAMPED:

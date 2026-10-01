@@ -40,6 +40,12 @@ class ReallocatingCalendar:
     def __init__(self, client: _EventCalendar) -> None:
         self._client = client
 
+    def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:
+        """Every event overlapping `time_min`..`time_max`, through the same
+        view `list_day_events` reads -- for callers (note compaction) that
+        need to decide where a day starts themselves."""
+        return self._client.list_events(time_min, time_max)
+
     def list_day_events(self, start: datetime, ignore_id: str | None = None) -> list[Event]:
         """The events reallocation should treat as `start`'s "day": everything
         from `start` through roughly 24 hours later, truncated after the

@@ -1,100 +1,62 @@
-"""Compaction planning: turning a day's free-form time notes, plus a
-model's interpretation of them, into calendar changes.
+"""Compaction planning: realigning a day's planned events to its free-form
+time notes, and turning that into calendar changes.
 
-The notes are treated as the authority on what actually happened. Reading
-free-form text is *not* this module's job -- the MCP client (a model) does
-that, and hands back one `NoteDisposition` per note saying what each note
-means. This module is the deterministic half: a pure function,
-`plan_compaction`, with no API access, that validates those dispositions
-and works out exactly which events to update, create, and cancel. That
-keeps everything risky testable, and the plan previewable before anything
-is written.
+Notes are sparse: you jot one down when something notable happens, not at
+every event boundary. So the planner starts from the plan and treats a
+note as evidence that changes it, never as the only evidence of what
+happened. **Silence means on schedule**: a past event no decision mentions
+is recorded exactly as planned. Nothing is merged, cancelled or stretched
+to fill a gap unless a decision says so.
 
-## What a note can mean (`NoteEffect`)
+Reading free-form text is *not* this module's job -- the MCP client (a
+model) does that, compares the notes to the plan (see
+utilities/compaction_timeline.py for the two-lane view it's given), and
+hands back one `EventDecision` per event the notes show happened
+differently. This module is the deterministic half: a pure function,
+`plan_compaction`, with no API access, that validates those decisions and
+works out exactly which events to update, create, and cancel -- and the
+resulting two-lane `Timeline` to show the user -- so everything risky is
+testable and the plan is previewable before anything is written.
 
-A note has one or more *effects*:
+## Decisions (`EventDecision`)
 
-- `starts` (a planned event's id) or `starts_unplanned` (a summary, for
-  something that wasn't in the plan): an activity began at the note's time.
-- `ends` (a planned event's id, or -- for an unplanned activity -- the id
-  of the note that started it): an activity ended at the note's time.
-- `marker`: just an annotation of what was happening. It changes nothing
-  on its own, but its text is appended to the description of the event it
-  falls inside, so it survives compaction.
-- `ignore`: no effect at all.
-- `ambiguous` (a question): the model can't tell; the plan refuses to
-  proceed and hands the question back so the user can be asked.
-
-Notes commonly do two things at once (ending one activity while starting
-the next), so a note may combine `starts`/`starts_unplanned`/`ends`
-effects. `marker`, `ignore` and `ambiguous` must stand alone.
-
-Any `starts`/`starts_unplanned`/`ends` effect may also carry `rename`
-(override the resulting event's title -- the merge below would otherwise
-pick it automatically) and/or `annotate` (extra text for the resulting
-event's description, alongside any `marker` text that lands in the same
-span). These exist for the user to redirect after seeing a preview --
-"call this X instead", "note that Y happened" -- without needing a new
-tool: correct the relevant effect and call `compact_notes` again, the
-same as correcting any other disposition.
-
-## Turning effects into time
-
-Only notes with a `starts`/`ends` effect are *boundaries*.
-
-- An activity with a start note and an end note runs exactly between them.
-- An activity with only a start note runs until the next boundary -- the
-  gap is filled by extending it, not left empty. The last such activity
-  is still in progress: it runs to `now`, or to its planned end if that's
-  later. If the day is already over there is no "now" to run to, so
-  nothing is guessed: the planner asks when it ended.
-- An activity with only an end note honors that end, and its start is
-  pulled back to the *previous* boundary's time, again so nothing is left
-  empty. (With no previous boundary it keeps its planned start.)
-- Time after an explicit end and before the next boundary is genuinely
-  unaccounted for, and stays free.
-
-Two activities that come out overlapping -- e.g. "9:00 started email",
-"9:30 done with report" gives the email [9:00, 9:30] and the report
-[9:00, 9:30] -- are **merged into one event** ("email and report") rather
-than guessing which one it was. The first planned one keeps its id; any
-other planned one is cancelled. An explicit `rename` on either overrides
-that auto-generated title; two different `rename`s for the same merged
-event is a conflict, reported like any other invalid disposition.
+- `keep` (a planned event's id): it happened. Each edge stays where it was
+  planned unless the decision moves it: `start_note`/`end_note` (a note
+  id) sets that edge to the note's time and links the note to it;
+  `start`/`end` sets an explicit time (alongside a note, when the note
+  gives a time relative to itself -- "leaving 15 minutes early"). Also
+  how an event is renamed (`summary`) or given extra description text
+  (`annotate`) without moving it.
+- `cancel` (an event id): it didn't happen.
+- `create` (a `summary`, both edges, optionally an `event_label_id`):
+  something that happened that wasn't planned.
+- `merge` (an event id, `into` another): fold one event into another, for
+  when the user doesn't remember where one ended and the next began. The
+  target grows to cover both and is titled after both (unless renamed);
+  the merged one is cancelled. Never implied -- a decision has to ask for
+  it.
 
 ## What happens to the rest of the calendar
 
-- The past is treated as certain. Each resulting activity becomes a
-  *fact*: its event is set to exactly that interval, and pinned
-  (`is_fixed_time`) so no later reallocation moves it.
-- A planned event that no note accounts for, and that falls entirely
-  inside the noted span in the past, is cancelled. One in the past but
-  outside the span isn't evidenced either way, so it's left alone (with a
-  warning).
+- The past is treated as certain. Every resulting past event -- decided,
+  or untouched and so on schedule -- becomes a *fact*, pinned
+  (`is_fixed_time`) so no later reallocation moves it. Facts may not
+  overlap: if moving one edge runs into another event, the plan is
+  rejected naming the overlap, and the decisions have to say which edge
+  gives way. Planned end-of-day sleep events are facts too (so a note
+  can't silently eat into one), just never pinned.
+- A `keep` that moves an event in the future is a direct reschedule: it's
+  pinned where it's put, the same as a past fact.
 - Everything else -- the future -- reflows around the facts using
-  `utilities/reallocation.py`, simulated in memory here, so a plan can be
-  previewed without touching the calendar.
+  `utilities/reallocation.py`, simulated in memory here.
+- Every note that doesn't set an edge, and isn't listed in
+  `ignore_notes`, has its text added to the description of the event it
+  falls within, so it survives compaction.
 
-## Rescheduling (`Reschedule`)
-
-A `Reschedule` is a direct instruction, not derived from any note: move
-planned event `event_id` to a new `start`/`end` -- either may be left out
-(not both), filled in from the other plus the event's current duration,
-so giving just a new `start` moves it there without changing how long it
-runs. It becomes a fact the same way a note-derived activity does --
-pinned in place, with the rest of the day reflowing around it -- so "move
-lunch later and adjust the work blocks accordingly" is just another fact
-in the same plan, previewed and applied alongside whatever the notes
-account for. Unlike a note's activity, a reschedule isn't bounded by
-`now`: it's normally about the future. An event already accounted for by
-a note can't also be rescheduled directly, and two facts (of either kind)
-can't overlap in time -- both are reported like any other invalid input.
-
-Rescheduling the end-of-day sleep event is the exception: it moves where
-the day ends instead of being placed within it, since nothing in the day
-comes after it to reflow into. Its end starts the next day, which is
-never adjusted -- only warned about. See `_end_day_at`. A reschedule also
-never widens the span the notes account for (see `_simulate`).
+Moving the day's own end-of-day sleep event is the exception: it moves
+where the day ends instead of being placed within it, since nothing in
+the day comes after it to reflow into. Its end starts the next day, which
+is never adjusted -- only warned about. See `_end_day_at`.
 """
 
 from __future__ import annotations
@@ -104,89 +66,58 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from calendar_clients.google_calendar import Event
+from utilities.compaction_timeline import Timeline, TimelineEvent, TimelineNote, build_timeline
 from utilities.reallocation import ReallocationOptions, reallocate_for_new_event
 
-EffectKind = Literal["starts", "starts_unplanned", "ends", "marker", "ignore", "ambiguous"]
+DecisionAction = Literal["keep", "cancel", "create", "merge"]
 
-_BOUNDARY_KINDS = ("starts", "starts_unplanned", "ends")
-_STANDALONE_KINDS = ("marker", "ignore", "ambiguous")
+_DATETIME_FIELDS = ("start", "end")
 
 
 @dataclass(kw_only=True)
-class NoteEffect:
-    """One thing a note means -- see the module docstring. Which of the
-    optional fields are meaningful depends on `kind`."""
+class EventDecision:
+    """What actually happened to one event -- see the module docstring.
+    Which of the optional fields are meaningful depends on `action`."""
 
-    kind: EffectKind
+    action: DecisionAction
     event_id: str | None = None
-    """`starts`/`ends`: the id of a planned event (one of the ids this
-    day's context offered)."""
-
-    started_by_note: str | None = None
-    """`ends`, for an unplanned activity instead of `event_id`: the id of
-    the note whose `starts_unplanned` effect began it."""
+    """`keep`/`cancel`/`merge`: the id of one of the day's events."""
 
     summary: str | None = None
-    """`starts_unplanned`: the new activity's title."""
+    """`create`: the new event's title. `keep`: a new title for it."""
 
-    event_label_id: str | None = None
-    """`starts_unplanned`: optionally, an event label to assign it."""
-
-    question: str | None = None
-    """`ambiguous`: what to ask the user."""
-
-    rename: str | None = None
-    """`starts`/`starts_unplanned`/`ends` only: override the resulting
-    event's title instead of the one it would otherwise get (the planned
-    event's own summary, `starts_unplanned`'s `summary`, or -- if two
-    activities merge -- their titles joined together). Typically used
-    after a preview, when the user wants something called differently
-    than the notes alone would produce."""
-
-    annotate: str | None = None
-    """`starts`/`starts_unplanned`/`ends` only: extra text to add to the
-    resulting event's description, alongside any `marker` text that lands
-    in the same span. Unlike `marker`, this can accompany an effect that
-    also starts or ends the activity."""
-
-
-@dataclass(kw_only=True)
-class NoteDisposition:
-    """The model's interpretation of one note."""
-
-    note_id: str
-    effects: list[NoteEffect]
-
-
-@dataclass(kw_only=True)
-class Reschedule:
-    """A direct instruction to move planned event `event_id` to a new
-    `start`/`end` -- not derived from any note. See the module docstring's
-    "Rescheduling" section. `start` or `end` (or both) must be given;
-    whichever is left out is filled in from the other plus the event's
-    current duration, so giving just a new `start` keeps its length and
-    moves it, rather than risking a negative-length event by holding its
-    old clock-time end fixed."""
-
-    event_id: str
     start: datetime | None = None
     end: datetime | None = None
+    """`keep`/`create`: an explicit time for that edge."""
+
+    start_note: str | None = None
+    end_note: str | None = None
+    """`keep`/`create`: the id of the note that marks that edge. Sets the
+    edge to the note's time, unless `start`/`end` gives one explicitly."""
+
+    into: str | None = None
+    """`merge`: the id of the event to merge this one into."""
+
+    annotate: str | None = None
+    """`keep`/`create`: extra text for the event's description."""
+
+    event_label_id: str | None = None
+    """`create`: optionally, an event label to assign it."""
 
     def to_json_dict(self) -> dict:
-        data: dict = {"event_id": self.event_id}
-        if self.start is not None:
-            data["start"] = self.start.isoformat()
-        if self.end is not None:
-            data["end"] = self.end.isoformat()
-        return data
+        return {
+            key: (value.isoformat() if isinstance(value, datetime) else value)
+            for key, value in self.__dict__.items()
+            if value is not None
+        }
 
     @classmethod
-    def from_json_dict(cls, data: dict) -> "Reschedule":
-        return cls(
-            event_id=data["event_id"],
-            start=datetime.fromisoformat(data["start"]) if "start" in data else None,
-            end=datetime.fromisoformat(data["end"]) if "end" in data else None,
-        )
+    def from_json_dict(cls, data: dict) -> "EventDecision":
+        parsed = dict(data)
+        for key in _DATETIME_FIELDS:
+            if key in parsed:
+                parsed[key] = datetime.fromisoformat(parsed[key])
+        return cls(**parsed)
 
 
 @dataclass(kw_only=True)
@@ -283,508 +214,397 @@ class CompactionChange:
 class CompactionPlan:
     changes: list[CompactionChange]
     warnings: list[str] = field(default_factory=list)
+    timeline: Timeline | None = None
 
 
 class CompactionError(ValueError):
-    """The dispositions (or the calendar they were checked against) can't
-    be turned into a plan. The message says what to fix, and lists the
-    valid choices where there are any -- it's written to be read by the
-    model that produced the dispositions."""
-
-
-class NeedsClarification(CompactionError):
-    """One or more notes were marked `ambiguous`; `questions` are for the
-    user."""
-
-    def __init__(self, questions: list[str]):
-        super().__init__("needs clarification: " + " | ".join(questions))
-        self.questions = questions
-
-
-@dataclass
-class _Activity:
-    key: str
-    event: Event | None
-    summary: str
-    label_id: str | None = None
-    start_note: PlanNote | None = None
-    end_note: PlanNote | None = None
-    start: datetime | None = None
-    end: datetime | None = None
-    rename: str | None = None
-    rename_note: PlanNote | None = None
-    """Which note set `rename` -- for the conflict message if another
-    note tries to set it to something different."""
-    annotations: list[tuple[PlanNote, str]] = field(default_factory=list)
+    """The decisions (or the calendar they were checked against) can't be
+    turned into a plan. The message says what to fix, and lists the valid
+    choices where there are any -- it's written to be read by the model
+    that produced the decisions."""
 
 
 @dataclass
 class _Fact:
+    """An event whose resulting time is certain: it's placed exactly
+    there, and everything else reflows around it."""
+
+    key: str
     start: datetime
     end: datetime
-    members: list[_Activity]
-    event: Event = None  # type: ignore[assignment]
-    base: Event | None = None
-    reason: str = "recorded as what actually happened, and pinned in place"
-    rescheduled: bool = False
-    """From a `Reschedule`, not from any note."""
+    event: Event
+    base: Event | None
+    reason: str
+    start_note: PlanNote | None = None
+    end_note: PlanNote | None = None
+    default: bool = False
+    """Not mentioned by any decision: a past event recorded as planned.
+    Stays where it is in the working day (pinned) instead of being placed
+    like a decided fact."""
 
-    @property
-    def moves_day_end(self) -> bool:
-        """A reschedule of the end-of-day sleep event -- see `_end_day_at`."""
-        return self.rescheduled and self.base is not None and bool(self.base.is_end_of_day_sleep)
+    moves_day_end: bool = False
+    """A move of the day's own end-of-day sleep event -- see `_end_day_at`."""
+
+    annotations: list[str] = field(default_factory=list)
 
 
 def plan_compaction(
     notes: list[PlanNote],
-    dispositions: list[NoteDisposition],
+    decisions: list[EventDecision],
     day_events: list[Event],
     now: datetime,
+    *,
+    ignore_notes: list[str] | None = None,
+    day_start: datetime | None = None,
     options: ReallocationOptions | None = None,
-    reschedules: list[Reschedule] | None = None,
 ) -> CompactionPlan:
-    """Plan the calendar changes that `dispositions` (the interpretation
-    of `notes`) and `reschedules` (direct "move this event" instructions,
-    see the module docstring's "Rescheduling" section) imply for
-    `day_events`, as of `now`. Raises `CompactionError` (listing
-    everything wrong at once) if the dispositions or reschedules are
-    invalid, or `NeedsClarification` if any note is `ambiguous`. Never
-    mutates its arguments."""
+    """Plan the calendar changes that `decisions` (what the notes show
+    happened, event by event) imply for `day_events`, as of `now`.
+
+    `day_start` is where this day begins: the day's own end-of-day sleep
+    event (the one moving which moves bedtime) is the first that starts
+    after it, and any sleep event before it is just the end of the
+    previous night, adjustable like anything else. Without it, the first
+    sleep event is the day's own.
+
+    Raises `CompactionError` (listing everything wrong at once) if the
+    decisions are invalid or leave past events overlapping. Never mutates
+    its arguments."""
     options = options or ReallocationOptions()
-    reschedules = reschedules or []
-    warnings: list[str] = []
+    ignored = set(ignore_notes or [])
     problems: list[str] = []
-    questions: list[str] = []
+    warnings: list[str] = []
 
     ordered = [n for _, n in sorted(enumerate(notes), key=lambda p: (p[1].timestamp, p[0]))]
-    events_by_id = {e.id: e for e in day_events if e.id and e.status != "cancelled"}
-
-    by_note = _index_dispositions(notes, dispositions, problems)
+    notes_by_id = {n.id: n for n in notes}
     for note in ordered:
         if note.timestamp > now:
             problems.append(f"note {note.id} is timestamped after now ({now.isoformat()})")
+    for note_id in sorted(ignored - set(notes_by_id)):
+        problems.append(f"ignore_notes: {note_id!r} isn't one of this round's notes; {_valid_notes(notes)}")
 
-    activities = _build_activities(ordered, by_note, events_by_id, problems, questions)
-    if problems:
-        raise CompactionError("\n".join(problems))
-    if questions:
-        raise NeedsClarification(questions)
-
-    facts: list[_Fact] = []
-    if activities:
-        sleep = next((e for e in day_events if e.is_end_of_day_sleep and e.status != "cancelled"), None)
-        _compute_intervals(
-            ordered, by_note, activities, now, sleep.end if sleep else None, problems, questions, warnings
-        )
-        if problems:
-            raise CompactionError("\n".join(problems))
-        if questions:
-            raise NeedsClarification(questions)
-        facts = _merge_into_facts(activities, warnings)
-        _build_fact_events(facts, ordered, by_note, problems, warnings)
-        if problems:
-            raise CompactionError("\n".join(problems))
-
-    noted_ids = {f.base.id for f in facts if f.base}
-    reschedule_facts = _build_reschedule_facts(reschedules, events_by_id, noted_ids, problems)
-    if problems:
-        raise CompactionError("\n".join(problems))
-
-    all_facts = sorted(facts + reschedule_facts, key=lambda f: f.start)
-    _check_fact_overlaps(all_facts, problems)
-    if problems:
-        raise CompactionError("\n".join(problems))
-
-    if not all_facts:
-        return CompactionPlan(
-            changes=[],
-            warnings=["no note starts or ends anything, and nothing was rescheduled; nothing to do"],
-        )
-    return _simulate(all_facts, day_events, events_by_id, now, options, warnings)
-
-
-def _index_dispositions(
-    notes: list[PlanNote], dispositions: list[NoteDisposition], problems: list[str]
-) -> dict[str, NoteDisposition]:
-    known = [n.id for n in notes]
-    by_note: dict[str, NoteDisposition] = {}
-    for disposition in dispositions:
-        if disposition.note_id not in known:
-            problems.append(
-                f"disposition for unknown note {disposition.note_id!r}; valid note ids: {', '.join(known)}"
-            )
-        elif disposition.note_id in by_note:
-            problems.append(f"note {disposition.note_id} has more than one disposition")
-        else:
-            by_note[disposition.note_id] = disposition
-    missing = [note_id for note_id in known if note_id not in by_note]
-    if missing:
-        problems.append(
-            f"no disposition for note(s) {', '.join(missing)} -- every note needs one "
-            "(use kind 'ignore' for a note with no effect)"
-        )
-    return by_note
-
-
-def _build_activities(
-    ordered: list[PlanNote],
-    by_note: dict[str, NoteDisposition],
-    events_by_id: dict[str, Event],
-    problems: list[str],
-    questions: list[str],
-) -> dict[str, _Activity]:
-    valid_ids = ", ".join(sorted(events_by_id)) or "(none)"
-    activities: dict[str, _Activity] = {}
-
-    def planned(event_id: str | None, note: PlanNote) -> _Activity | None:
-        if not event_id or event_id not in events_by_id:
-            problems.append(
-                f"note {note.id}: event {event_id!r} isn't one of this day's planned events; "
-                f"valid event ids: {valid_ids}"
-            )
-            return None
-        event = events_by_id[event_id]
-        return activities.setdefault(
-            event_id, _Activity(key=event_id, event=event, summary=event.summary or "")
-        )
-
-    for note in ordered:
-        disposition = by_note.get(note.id)
-        if disposition is None:
-            continue
-        effects = disposition.effects
-        if not effects:
-            problems.append(f"note {note.id} has no effects (use kind 'ignore' if it means nothing)")
-            continue
-        if len(effects) > 1 and any(e.kind in _STANDALONE_KINDS for e in effects):
-            problems.append(
-                f"note {note.id}: 'marker', 'ignore' and 'ambiguous' can't be combined with other effects"
-            )
-            continue
-        for effect in effects:
-            if effect.kind == "ambiguous":
-                questions.append(
-                    f"note {note.id} ({note.timestamp.isoformat()}, {note.description!r}): "
-                    f"{effect.question or 'what does this note mean?'}"
-                )
-                continue
-            if effect.kind in ("marker", "ignore"):
-                if effect.rename is not None or effect.annotate is not None:
-                    problems.append(
-                        f"note {note.id}: 'rename'/'annotate' only make sense on "
-                        "starts/starts_unplanned/ends effects"
-                    )
-                continue
-            if effect.kind == "starts":
-                activity = planned(effect.event_id, note)
-                if activity is None:
-                    continue
-                if activity.start_note is not None:
-                    problems.append(
-                        f"note {note.id}: event {effect.event_id} was already started by "
-                        f"note {activity.start_note.id}"
-                    )
-                else:
-                    activity.start_note = note
-            elif effect.kind == "starts_unplanned":
-                key = f"new:{note.id}"
-                if not (effect.summary or "").strip():
-                    problems.append(f"note {note.id}: 'starts_unplanned' needs a summary")
-                    continue
-                elif key in activities:
-                    problems.append(f"note {note.id} starts more than one unplanned activity")
-                    continue
-                else:
-                    activity = _Activity(
-                        key=key,
-                        event=None,
-                        summary=effect.summary.strip(),
-                        label_id=effect.event_label_id,
-                        start_note=note,
-                    )
-                    activities[key] = activity
-            elif effect.kind == "ends":
-                if bool(effect.event_id) == bool(effect.started_by_note):
-                    problems.append(
-                        f"note {note.id}: 'ends' needs exactly one of event_id (a planned event) "
-                        "or started_by_note (the note that started an unplanned activity)"
-                    )
-                    continue
-                if effect.event_id:
-                    activity = planned(effect.event_id, note)
-                else:
-                    activity = activities.get(f"new:{effect.started_by_note}")
-                    if activity is None:
-                        problems.append(
-                            f"note {note.id}: started_by_note {effect.started_by_note!r} isn't an "
-                            "earlier note that started an unplanned activity"
-                        )
-                if activity is None:
-                    continue
-                if activity.end_note is not None:
-                    problems.append(f"note {note.id}: {activity.summary!r} was already ended by note {activity.end_note.id}")
-                else:
-                    activity.end_note = note
-            else:
-                problems.append(f"note {note.id}: unknown effect kind {effect.kind!r}")
-                continue
-            _apply_overrides(activity, effect, note, problems)
-    return activities
-
-
-def _apply_overrides(
-    activity: _Activity, effect: NoteEffect, note: PlanNote, problems: list[str]
-) -> None:
-    if effect.rename is not None:
-        if activity.rename is not None and activity.rename != effect.rename:
-            problems.append(
-                f"note {note.id}: renames {activity.summary!r} to {effect.rename!r}, but note "
-                f"{activity.rename_note.id} already renamed it to {activity.rename!r}"
-            )
-        else:
-            activity.rename = effect.rename
-            activity.rename_note = note
-    if effect.annotate is not None:
-        activity.annotations.append((note, effect.annotate))
-
-
-def _compute_intervals(
-    ordered: list[PlanNote],
-    by_note: dict[str, NoteDisposition],
-    activities: dict[str, _Activity],
-    now: datetime,
-    day_over_at: datetime | None,
-    problems: list[str],
-    questions: list[str],
-    warnings: list[str],
-) -> None:
-    boundary = [
-        n for n in ordered if any(e.kind in _BOUNDARY_KINDS for e in by_note[n.id].effects)
-    ]
-    position = {n.id: i for i, n in enumerate(boundary)}
-
-    for activity in activities.values():
-        if activity.start_note is not None:
-            start = activity.start_note.timestamp
-            if activity.end_note is not None:
-                end = activity.end_note.timestamp
-            else:
-                i = position[activity.start_note.id]
-                if i + 1 < len(boundary):
-                    end = boundary[i + 1].timestamp
-                else:
-                    # Still in progress: to now, or its planned end if that's
-                    # later. (On a day that's already over, `now` is the end
-                    # of that day, so there's no real "now" to run to.)
-                    end = max(now, activity.event.end) if activity.event else now
-                    if day_over_at is not None and end >= day_over_at:
-                        questions.append(
-                            f"When did {activity.summary!r} end? Note "
-                            f"{activity.start_note.id} started it, nothing says it ended, and "
-                            "that day is over."
-                        )
-                        continue
-        else:
-            end = activity.end_note.timestamp
-            i = position[activity.end_note.id]
-            if i > 0:
-                start = boundary[i - 1].timestamp
-            elif activity.event is not None and activity.event.start < end:
-                start = activity.event.start
-                warnings.append(
-                    f"{activity.summary!r} only has an end note and no earlier note, so it keeps "
-                    "its planned start"
-                )
-            else:
-                problems.append(
-                    f"{activity.summary!r} is ended by note {activity.end_note.id} but nothing says "
-                    "when it began; add a start note, or mark that note ambiguous"
-                )
-                continue
-        if end <= start:
-            problems.append(
-                f"{activity.summary!r} would run from {start.isoformat()} to {end.isoformat()}, "
-                "which isn't a positive length -- two notes probably share a timestamp"
-            )
-            continue
-        activity.start, activity.end = start, end
-
-
-def _merge_into_facts(activities: dict[str, _Activity], warnings: list[str]) -> list[_Fact]:
-    ordered = sorted(
-        activities.values(), key=lambda a: (a.start, a.event is None, a.end)
+    live = sorted(
+        (e for e in day_events if e.id and e.status != "cancelled"), key=lambda e: e.start
     )
-    facts: list[_Fact] = []
-    for activity in ordered:
-        if facts and activity.start < facts[-1].end:
-            facts[-1].members.append(activity)
-            facts[-1].end = max(facts[-1].end, activity.end)
-        else:
-            facts.append(_Fact(start=activity.start, end=activity.end, members=[activity]))
-    for fact in facts:
-        if len(fact.members) > 1:
-            names = _joined_summary(fact.members)
-            warnings.append(
-                f"the notes put {len(fact.members)} activities at the same time, so they were "
-                f"merged into one event, {names!r} ({fact.start.isoformat()} to "
-                f"{fact.end.isoformat()})"
-            )
-    return facts
+    events_by_id = {e.id: e for e in live}
+    copies = {e.id: replace(e) for e in live}
+    sleeps = [e for e in live if e.is_end_of_day_sleep]
+    closing = next((e for e in sleeps if day_start is None or e.start > day_start), None)
 
-
-def _joined_summary(members: list[_Activity]) -> str:
-    names: list[str] = []
-    for member in members:
-        if member.summary and member.summary not in names:
-            names.append(member.summary)
-    return " and ".join(names)
-
-
-def _build_fact_events(
-    facts: list[_Fact],
-    ordered: list[PlanNote],
-    by_note: dict[str, NoteDisposition],
-    problems: list[str],
-    warnings: list[str],
-) -> None:
-    # A fact's title: an explicit rename if every member that gave one
-    # agrees, the auto-joined summary otherwise. Two different renames for
-    # the same merged event is a real conflict -- reported like any other
-    # invalid disposition, not silently resolved by picking one.
-    for fact in facts:
-        renames = {m.rename for m in fact.members if m.rename is not None}
-        if len(renames) > 1:
-            by = ", ".join(
-                f"{m.rename!r} (note {m.rename_note.id})" for m in fact.members if m.rename is not None
-            )
-            problems.append(
-                f"conflicting names for the events merged into one activity "
-                f"({fact.start.isoformat()} to {fact.end.isoformat()}): {by}"
-            )
-            continue
-        summary = next(iter(renames), None) or _joined_summary(fact.members)
-        planned = [m for m in fact.members if m.event is not None]
-        if planned:
-            fact.base = planned[0].event
-            event = replace(fact.base)
-        else:
-            event = Event(event_label_id=next((m.label_id for m in fact.members if m.label_id), None))
-        event.summary = summary
-        event.start = fact.start
-        event.end = fact.end
-        event.is_fixed_time = True
-        event.min_duration = fact.end - fact.start
-        fact.event = event
+    resolved = _resolve(decisions, notes, notes_by_id, events_by_id, closing, now, problems)
     if problems:
-        return
+        raise CompactionError("\n".join(problems))
+    facts, cancels, merged_into, touched = resolved
 
-    # Every annotation for a fact -- both explicit `annotate` effects and
-    # `marker` notes landing in its span -- collected and merged into one
-    # "Notes:" section, in chronological order.
-    annotations: dict[int, list[tuple[datetime, str]]] = {}
-    for fact in facts:
-        for member in fact.members:
-            for note, text in member.annotations:
-                if text.strip():
-                    annotations.setdefault(id(fact), []).append((note.timestamp, text.strip()))
-
-    for note in ordered:
-        effects = by_note[note.id].effects
-        if not effects or effects[0].kind != "marker" or not (note.description or "").strip():
+    decided_ids = {f.base.id for f in facts if f.base} | set(cancels) | set(touched)
+    for event in live:
+        if event.id in decided_ids or event.end > now:
             continue
-        target = next((f for f in facts if f.start <= note.timestamp < f.end), None)
-        if target is None:
-            target = next((f for f in reversed(facts) if f.end <= note.timestamp), None)
-        if target is None:
-            warnings.append(
-                f"marker note {note.id} ({note.description!r}) comes before every activity, so its "
-                "text wasn't attached to any event"
-            )
-            continue
-        annotations.setdefault(id(target), []).append((note.timestamp, note.description.strip()))
-
-    for fact in facts:
-        lines = sorted(annotations.get(id(fact), []), key=lambda pair: pair[0])
-        if not lines:
-            continue
-        formatted = [
-            f"- {timestamp.astimezone(fact.start.tzinfo).strftime('%H:%M')} {text}"
-            for timestamp, text in lines
-        ]
-        current = fact.event.description
-        prefix = f"{current}\n\nNotes:\n" if current else "Notes:\n"
-        fact.event.description = prefix + "\n".join(formatted)
-
-
-def _build_reschedule_facts(
-    reschedules: list[Reschedule],
-    events_by_id: dict[str, Event],
-    noted_ids: set[str],
-    problems: list[str],
-) -> list[_Fact]:
-    valid_ids = ", ".join(sorted(events_by_id)) or "(none)"
-    seen: set[str] = set()
-    facts: list[_Fact] = []
-    for reschedule in reschedules:
-        if reschedule.event_id in seen:
-            problems.append(f"event {reschedule.event_id} is rescheduled more than once")
-            continue
-        seen.add(reschedule.event_id)
-        if reschedule.event_id not in events_by_id:
-            problems.append(
-                f"can't reschedule {reschedule.event_id!r}: not one of this day's planned "
-                f"events; valid event ids: {valid_ids}"
-            )
-            continue
-        if reschedule.event_id in noted_ids:
-            problems.append(
-                f"event {reschedule.event_id} is already accounted for by a note; it can't "
-                "also be rescheduled directly"
-            )
-            continue
-        if reschedule.start is None and reschedule.end is None:
-            problems.append(f"rescheduling {reschedule.event_id} needs a start, an end, or both")
-            continue
-        base = events_by_id[reschedule.event_id]
-        duration = base.end - base.start
-        start = reschedule.start if reschedule.start is not None else reschedule.end - duration
-        end = reschedule.end if reschedule.end is not None else reschedule.start + duration
-        if end <= start:
-            problems.append(
-                f"rescheduling {reschedule.event_id} to run from {start.isoformat()} to "
-                f"{end.isoformat()} isn't a positive length"
-            )
-            continue
-        event = replace(base)
-        event.start = start
-        event.end = end
-        event.is_fixed_time = True
-        event.min_duration = end - start
+        copy = copies[event.id]
+        if not event.is_end_of_day_sleep:
+            copy.is_fixed_time = True
+            copy.min_duration = copy.end - copy.start
         facts.append(
             _Fact(
-                start=start,
-                end=end,
-                members=[],
-                event=event,
-                base=base,
-                reason="moved as requested, and pinned in place",
-                rescheduled=True,
+                key=event.id,
+                start=copy.start,
+                end=copy.end,
+                event=copy,
+                base=event,
+                reason="happened as planned -- no note says otherwise -- so pinned in place",
+                default=True,
             )
         )
-    return facts
+    facts.sort(key=lambda f: (f.start, f.end))
+    _check_overlaps(facts, problems)
+    if problems:
+        raise CompactionError("\n".join(problems))
+
+    for event_id, decision in touched.items():
+        if decision.summary:
+            copies[event_id].summary = decision.summary
+    annotated = _annotate(ordered, ignored, facts, touched, copies, cancels, warnings)
+
+    simulated = _simulate(facts, copies, cancels, options, warnings)
+    changes = _changes(facts, events_by_id, copies, cancels, simulated)
+    if not changes:
+        warnings.append("nothing on the calendar needs to change")
+    timeline = _timeline(
+        ordered, ignored, facts, live, copies, cancels, merged_into, annotated, simulated, now
+    )
+    return CompactionPlan(changes=changes, warnings=warnings, timeline=timeline)
 
 
-def _check_fact_overlaps(facts: list[_Fact], problems: list[str]) -> None:
-    """Facts come from two independent sources (notes and reschedules), so
-    nothing upstream already guarantees they don't collide in time."""
+def _valid_notes(notes: list[PlanNote]) -> str:
+    return "valid note ids: " + (", ".join(n.id for n in notes) or "(none)")
+
+
+def _resolve(
+    decisions: list[EventDecision],
+    notes: list[PlanNote],
+    notes_by_id: dict[str, PlanNote],
+    events_by_id: dict[str, Event],
+    closing: Event | None,
+    now: datetime,
+    problems: list[str],
+) -> tuple[list[_Fact], dict[str, str], dict[str, str], dict[str, EventDecision]]:
+    """Validate `decisions` and turn them into facts (events whose time is
+    now certain), cancellations (id -> reason), merges (merged id -> the
+    id it was merged into), and `touched` events -- kept, in the future
+    and not moved, so just renamed or annotated in place."""
+    valid_events = "valid event ids: " + (", ".join(sorted(events_by_id)) or "(none)")
+
+    def edge(label: str, explicit: datetime | None, note_id: str | None, fallback: datetime | None):
+        note = None
+        if note_id is not None:
+            note = notes_by_id.get(note_id)
+            if note is None:
+                problems.append(f"{label}: {note_id!r} isn't one of this round's notes; {_valid_notes(notes)}")
+        if explicit is not None:
+            return explicit, note
+        return (note.timestamp if note is not None else fallback), note
+
+    by_event: dict[str, EventDecision] = {}
+    creates: list[tuple[str, EventDecision]] = []
+    for number, decision in enumerate(decisions, start=1):
+        label = f"decision {number} ({decision.action}{' ' + decision.event_id if decision.event_id else ''})"
+        moves = any(
+            v is not None for v in (decision.start, decision.end, decision.start_note, decision.end_note)
+        )
+        if decision.action == "create":
+            if decision.event_id is not None or decision.into is not None:
+                problems.append(f"{label}: 'create' takes a summary and times, not event_id or into")
+            elif not (decision.summary or "").strip():
+                problems.append(f"{label}: 'create' needs a summary")
+            else:
+                creates.append((label, decision))
+            continue
+        if decision.action not in ("keep", "cancel", "merge"):
+            problems.append(f"{label}: unknown action {decision.action!r}; use keep, cancel, create or merge")
+            continue
+        if decision.event_id not in events_by_id:
+            problems.append(f"{label}: {decision.event_id!r} isn't one of this day's events; {valid_events}")
+            continue
+        if decision.event_id in by_event:
+            problems.append(f"{label}: event {decision.event_id} has more than one decision")
+            continue
+        if decision.action != "keep" and (moves or decision.summary or decision.annotate):
+            problems.append(
+                f"{label}: times, notes, summary and annotate only go with 'keep' or 'create'"
+            )
+            continue
+        if decision.action == "merge":
+            if decision.into not in events_by_id or decision.into == decision.event_id:
+                problems.append(f"{label}: 'into' must be the id of another of this day's events; {valid_events}")
+                continue
+            if closing is not None and closing.id in (decision.event_id, decision.into):
+                problems.append(f"{label}: the end-of-day sleep event can't be merged")
+                continue
+        elif decision.into is not None:
+            problems.append(f"{label}: 'into' only goes with 'merge'")
+            continue
+        by_event[decision.event_id] = decision
+
+    merges: dict[str, list[str]] = {}
+    for event_id, decision in by_event.items():
+        if decision.action != "merge":
+            continue
+        target = by_event.get(decision.into)
+        if target is not None and target.action != "keep":
+            problems.append(
+                f"can't merge {event_id} into {decision.into}: that event is itself being "
+                f"{'cancelled' if target.action == 'cancel' else 'merged'}"
+            )
+            continue
+        merges.setdefault(decision.into, []).append(event_id)
+
+    facts: list[_Fact] = []
+    cancels: dict[str, str] = {}
+    merged_into: dict[str, str] = {}
+    touched: dict[str, EventDecision] = {}
+    for event_id, decision in by_event.items():
+        if decision.action == "cancel":
+            cancels[event_id] = "cancelled -- it didn't happen"
+        elif decision.action == "merge" and decision.into in merges:
+            merged_into[event_id] = decision.into
+            cancels[event_id] = f"merged into {events_by_id[decision.into].summary!r}"
+
+    for event_id in sorted(set(merges) | {i for i, d in by_event.items() if d.action == "keep"}):
+        base = events_by_id[event_id]
+        decision = by_event.get(event_id) or EventDecision(action="keep", event_id=event_id)
+        label = f"keep {event_id}"
+        start, start_note = edge(label, decision.start, decision.start_note, base.start)
+        end, end_note = edge(label, decision.end, decision.end_note, base.end)
+        members = [base] + [events_by_id[i] for i in merges.get(event_id, [])]
+        for member in members[1:]:
+            start, end = min(start, member.start), max(end, member.end)
+        if end <= start:
+            problems.append(
+                f"{label}: {base.summary!r} would run from {start.isoformat()} to {end.isoformat()}, "
+                "which isn't a positive length"
+            )
+            continue
+        changed = (start, end) != (base.start, base.end)
+        if not changed and end > now and event_id not in merges:
+            touched[event_id] = decision
+            continue
+        event = replace(base)
+        names: list[str] = []
+        for member in members:
+            if member.summary and member.summary not in names:
+                names.append(member.summary)
+        event.summary = (decision.summary or "").strip() or " and ".join(names) or base.summary
+        event.start, event.end = start, end
+        event.is_fixed_time = True
+        event.min_duration = end - start
+        if event_id in merges:
+            reason = (
+                f"merged with {', '.join(repr(m.summary) for m in members[1:])} -- where one ended "
+                "and the next began isn't remembered -- and pinned in place"
+            )
+        elif not changed:
+            reason = "happened as planned, and pinned in place"
+        elif start >= now:
+            reason = "moved as requested, and pinned in place"
+        else:
+            reason = "realigned to match the notes, and pinned in place"
+        facts.append(
+            _Fact(
+                key=event_id,
+                start=start,
+                end=end,
+                event=event,
+                base=base,
+                reason=reason,
+                start_note=start_note,
+                end_note=end_note,
+                moves_day_end=closing is not None and event_id == closing.id,
+                annotations=[decision.annotate.strip()] if (decision.annotate or "").strip() else [],
+            )
+        )
+
+    for number, (label, decision) in enumerate(creates, start=1):
+        start, start_note = edge(label, decision.start, decision.start_note, None)
+        end, end_note = edge(label, decision.end, decision.end_note, None)
+        if start is None or end is None:
+            problems.append(
+                f"{label}: 'create' needs both a start and an end (a time or a note each; "
+                "for something still going on, end it at now)"
+            )
+            continue
+        if end <= start:
+            problems.append(
+                f"{label}: {decision.summary!r} would run from {start.isoformat()} to "
+                f"{end.isoformat()}, which isn't a positive length"
+            )
+            continue
+        facts.append(
+            _Fact(
+                key=f"new:{number}",
+                start=start,
+                end=end,
+                event=Event(
+                    summary=decision.summary.strip(),
+                    start=start,
+                    end=end,
+                    event_label_id=decision.event_label_id,
+                    is_fixed_time=True,
+                    min_duration=end - start,
+                ),
+                base=None,
+                reason="something the notes show happened that wasn't planned",
+                start_note=start_note,
+                end_note=end_note,
+                annotations=[decision.annotate.strip()] if (decision.annotate or "").strip() else [],
+            )
+        )
+    return facts, cancels, merged_into, touched
+
+
+def _check_overlaps(facts: list[_Fact], problems: list[str]) -> None:
+    """Past events (and directly moved ones) are certain, so two of them
+    can't share time -- and which one gives way is for the decisions to
+    say, not for the planner to guess."""
     for i, earlier in enumerate(facts):
         for later in facts[i + 1 :]:
-            if earlier.start < later.end and later.start < earlier.end:
-                problems.append(
-                    f"{earlier.event.summary!r} ({earlier.start.isoformat()} to "
-                    f"{earlier.end.isoformat()}) overlaps {later.event.summary!r} "
-                    f"({later.start.isoformat()} to {later.end.isoformat()})"
-                )
+            if later.start >= earlier.end:
+                continue
+            problems.append(
+                f"{_describe(earlier)} overlaps {_describe(later)}. Decide which gives way -- move "
+                "one of their edges with 'keep', cancel one, or (only if the user confirms they "
+                "don't remember where one ended and the other began) merge them -- and ask the "
+                "user if the notes don't say."
+            )
+
+
+def _describe(fact: _Fact) -> str:
+    how = "on schedule" if fact.default else "as decided"
+    return (
+        f"{fact.event.summary!r} ({fact.key}, {how}, {fact.start.isoformat()} to "
+        f"{fact.end.isoformat()})"
+    )
+
+
+def _annotate(
+    ordered: list[PlanNote],
+    ignored: set[str],
+    facts: list[_Fact],
+    touched: dict[str, EventDecision],
+    copies: dict[str, Event],
+    cancels: dict[str, str],
+    warnings: list[str],
+) -> dict[str, str]:
+    """Add every note that doesn't set an edge (and isn't ignored), and
+    every `annotate`, to the description of the event it belongs to.
+    Returns note id -> the title of the event it was added to."""
+    anchors = {n.id for f in facts for n in (f.start_note, f.end_note) if n is not None}
+    fact_ids = {f.base.id for f in facts if f.base}
+    # Where each candidate event ends up, as far as is known before the
+    # reflow: facts exactly, everything else where it is now.
+    targets: list[tuple[datetime, datetime, str, Event]] = [
+        (f.start, f.end, f.key, f.event) for f in facts
+    ] + [
+        (e.start, e.end, event_id, e)
+        for event_id, e in copies.items()
+        if event_id not in fact_ids and event_id not in cancels
+    ]
+    lines: dict[str, list[tuple[datetime | None, str]]] = {}
+    events: dict[str, Event] = {}
+    annotated: dict[str, str] = {}
+    for note in ordered:
+        text = (note.description or "").strip()
+        if note.id in anchors or note.id in ignored or not text:
+            continue
+        hit = next((t for t in targets if t[0] <= note.timestamp < t[1]), None) or next(
+            (t for t in targets if t[0] < note.timestamp <= t[1]), None
+        )
+        if hit is None:
+            warnings.append(
+                f"note {note.id} ({text!r}) doesn't fall within any event, so its text wasn't "
+                "added anywhere"
+            )
+            continue
+        lines.setdefault(hit[2], []).append((note.timestamp, text))
+        events[hit[2]] = hit[3]
+        annotated[note.id] = hit[3].summary or hit[2]
+    for fact in facts:
+        for text in fact.annotations:
+            lines.setdefault(fact.key, []).append((None, text))
+            events[fact.key] = fact.event
+    for event_id, decision in touched.items():
+        if (decision.annotate or "").strip():
+            lines.setdefault(event_id, []).append((None, decision.annotate.strip()))
+            events[event_id] = copies[event_id]
+
+    for key, entries in lines.items():
+        event = events[key]
+        timed = sorted((e for e in entries if e[0] is not None), key=lambda e: e[0])
+        formatted = [
+            f"- {moment.astimezone(event.start.tzinfo).strftime('%H:%M')} {text}" for moment, text in timed
+        ] + [f"- {text}" for moment, text in entries if moment is None]
+        prefix = f"{event.description}\n\nNotes:\n" if event.description else "Notes:\n"
+        event.description = prefix + "\n".join(formatted)
+    return annotated
 
 
 def _end_day_at(
@@ -794,8 +614,8 @@ def _end_day_at(
     day_end_reasons: dict[str, str],
     warnings: list[str],
 ) -> list[Event]:
-    """Move the day's end to where `fact` reschedules the end-of-day sleep
-    event, and return `working` with it there.
+    """Move the day's end to where `fact` puts its end-of-day sleep event,
+    and return `working` with it there.
 
     This isn't placed like any other fact (`reallocate_for_new_event`),
     because that needs something after the placed event for the rest to
@@ -850,63 +670,42 @@ def _end_day_at(
     return sorted(kept + [sleep], key=lambda e: e.start)
 
 
+@dataclass
+class _Simulated:
+    working: list[Event]
+    """The day as it ends up, including new (unsaved, id-less) events."""
+
+    reflow_cancelled: set[str]
+    day_end_reasons: dict[str, str]
+
+
 def _simulate(
     facts: list[_Fact],
-    day_events: list[Event],
-    events_by_id: dict[str, Event],
-    now: datetime,
+    copies: dict[str, Event],
+    cancels: dict[str, str],
     options: ReallocationOptions,
     warnings: list[str],
-) -> CompactionPlan:
-    originals = {e.id: replace(e) for e in day_events if e.id}
-    copies = {e.id: replace(e) for e in day_events if e.id and e.status != "cancelled"}
-
-    base_ids = {f.base.id for f in facts if f.base}
-    mapped_ids = {m.event.id for f in facts for m in f.members if m.event} | base_ids
-    # The span the notes account for -- not stretched by a reschedule,
-    # which says nothing about what happened around it.
-    noted = [f for f in facts if not f.rescheduled]
-    span_start = noted[0].start if noted else None
-    span_end = noted[-1].end if noted else None
-
-    explicit_cancel: dict[str, str] = {}
-    for fact in facts:
-        for member in fact.members:
-            if member.event is not None and member.event.id != (fact.base.id if fact.base else None):
-                explicit_cancel[member.event.id] = (
-                    f"merged into {fact.event.summary!r}, which the notes show as one activity"
-                )
-    left_alone: list[str] = []
-    for event in events_by_id.values():
-        if event.id in mapped_ids or event.is_end_of_day_sleep:
-            continue
-        if event.end > now:
-            continue
-        if noted and event.start >= span_start and event.end <= span_end:
-            explicit_cancel[event.id] = "no note accounts for it, and it's in the past"
-        else:
-            left_alone.append(event.summary or event.id)
-    if left_alone:
-        warnings.append(
-            "planned events in the past but outside the noted span were left alone: "
-            + ", ".join(repr(name) for name in left_alone)
-        )
-
+) -> _Simulated:
+    """Place every decided fact into the day, reflowing the rest around
+    it, in memory. `copies` is updated in place to where each existing
+    event ends up; `cancels` gains anything a moved bedtime cancels."""
+    decided = [f for f in facts if not f.default]
+    base_ids = {f.base.id for f in decided if f.base}
     # A moved sleep event stays put until its own turn below, so the facts
     # before it still have the day's end to reflow into.
-    day_end_ids = {f.base.id for f in facts if f.moves_day_end}
+    day_end_ids = {f.base.id for f in decided if f.moves_day_end}
     working = sorted(
         (
             copies[event_id]
             for event_id in copies
-            if (event_id not in base_ids or event_id in day_end_ids) and event_id not in explicit_cancel
+            if (event_id not in base_ids or event_id in day_end_ids) and event_id not in cancels
         ),
         key=lambda e: e.start,
     )
     day_end_reasons: dict[str, str] = {}
-    for fact in facts:
+    for fact in decided:
         if fact.moves_day_end:
-            working = _end_day_at(fact, working, explicit_cancel, day_end_reasons, warnings)
+            working = _end_day_at(fact, working, cancels, day_end_reasons, warnings)
             continue
         # reallocate_for_new_event wants only the day *from* the new event's
         # start onward (at most the first event may overlap that start), so
@@ -933,64 +732,63 @@ def _simulate(
                 f"couldn't keep {fact.event.summary!r} at {fact.start.isoformat()} to "
                 f"{fact.end.isoformat()} while reflowing the rest of the day"
             )
+    return _Simulated(
+        working=working,
+        reflow_cancelled={i for i, e in copies.items() if e.status == "cancelled" and i not in cancels},
+        day_end_reasons=day_end_reasons,
+    )
 
+
+def _changes(
+    facts: list[_Fact],
+    events_by_id: dict[str, Event],
+    copies: dict[str, Event],
+    cancels: dict[str, str],
+    simulated: _Simulated,
+) -> list[CompactionChange]:
     changes: list[CompactionChange] = []
-    fact_by_base = {f.base.id: f for f in facts if f.base}
-    for event_id, before in originals.items():
-        if before.status == "cancelled":
-            continue
-        if event_id in fact_by_base:
-            fact = fact_by_base[event_id]
+    decided_by_base = {f.base.id: f for f in facts if f.base and not f.default}
+    default_ids = {f.base.id for f in facts if f.default}
+    for event_id, original in events_by_id.items():
+        before = EventState.from_event(original)
+        if event_id in cancels:
             changes.append(
-                CompactionChange(
-                    action="update",
-                    event_id=event_id,
-                    reason=fact.reason,
-                    before=EventState.from_event(before),
-                    after=EventState.from_event(fact.event),
-                )
+                CompactionChange(action="cancel", event_id=event_id, reason=cancels[event_id], before=before)
             )
-        elif event_id in explicit_cancel:
+            continue
+        if event_id in decided_by_base:
+            fact = decided_by_base[event_id]
+            after, reason = EventState.from_event(fact.event), fact.reason
+        elif event_id in simulated.reflow_cancelled:
             changes.append(
                 CompactionChange(
                     action="cancel",
                     event_id=event_id,
-                    reason=explicit_cancel[event_id],
-                    before=EventState.from_event(before),
+                    reason="no room was left for it once the actual events were placed",
+                    before=before,
                 )
             )
+            continue
         else:
-            after = copies[event_id]
-            if after.status == "cancelled":
-                changes.append(
-                    CompactionChange(
-                        action="cancel",
-                        event_id=event_id,
-                        reason="no room was left for it once the actual events were placed",
-                        before=EventState.from_event(before),
-                    )
-                )
-            elif (after.start, after.end) != (before.start, before.end):
-                changes.append(
-                    CompactionChange(
-                        action="update",
-                        event_id=event_id,
-                        reason=day_end_reasons.get(event_id, "moved to make room for the actual events"),
-                        before=EventState.from_event(before),
-                        after=EventState.from_event(after),
-                    )
-                )
+            after = EventState.from_event(copies[event_id])
+            only_notes = replace(after, description=before.description) == before
+            if only_notes:
+                reason = "added the notes that fall during it"
+            elif event_id in default_ids:
+                reason = next(f.reason for f in facts if f.default and f.base.id == event_id)
+            else:
+                reason = simulated.day_end_reasons.get(event_id, "moved to make room for the actual events")
+        if after != before:
+            changes.append(
+                CompactionChange(action="update", event_id=event_id, reason=reason, before=before, after=after)
+            )
     fact_events = {id(f.event) for f in facts}
     for fact in facts:
         if fact.base is None:
             changes.append(
-                CompactionChange(
-                    action="create",
-                    reason="something the notes show happened that wasn't planned",
-                    after=EventState.from_event(fact.event),
-                )
+                CompactionChange(action="create", reason=fact.reason, after=EventState.from_event(fact.event))
             )
-    for event in working:
+    for event in simulated.working:
         if event.id is None and id(event) not in fact_events:
             changes.append(
                 CompactionChange(
@@ -1001,11 +799,117 @@ def _simulate(
             )
 
     order = {"cancel": 0, "update": 1, "create": 2}
-    changes.sort(
-        key=lambda c: (
-            order[c.action],
-            (c.after or c.before).start,
-            c.event_id or "",
+    changes.sort(key=lambda c: (order[c.action], (c.after or c.before).start, c.event_id or ""))
+    return changes
+
+
+def _timeline(
+    ordered: list[PlanNote],
+    ignored: set[str],
+    facts: list[_Fact],
+    live: list[Event],
+    copies: dict[str, Event],
+    cancels: dict[str, str],
+    merged_into: dict[str, str],
+    annotated: dict[str, str],
+    simulated: _Simulated,
+    now: datetime,
+) -> Timeline:
+    decided_by_base = {f.base.id: f for f in facts if f.base and not f.default}
+    default_ids = {f.base.id for f in facts if f.default}
+    events: list[TimelineEvent] = []
+    for original in live:
+        planned = dict(event_id=original.id, planned_start=original.start, planned_end=original.end)
+        if original.id in cancels:
+            target = decided_by_base.get(merged_into.get(original.id))
+            events.append(
+                TimelineEvent(
+                    summary=original.summary or original.id,
+                    status="merged" if target else "cancelled",
+                    merged_into=target.event.summary if target else None,
+                    **planned,
+                )
+            )
+            continue
+        if original.id in simulated.reflow_cancelled:
+            events.append(TimelineEvent(summary=original.summary or original.id, status="cancelled", **planned))
+            continue
+        fact = decided_by_base.get(original.id)
+        final = fact.event if fact else copies[original.id]
+        same = (final.start, final.end) == (original.start, original.end)
+        if fact is not None:
+            status = ("on_schedule" if final.end <= now else "planned") if same else "adjusted"
+        elif original.id in default_ids:
+            status = "on_schedule"
+        else:
+            status = "planned" if same else "reflowed"
+        events.append(
+            TimelineEvent(
+                summary=final.summary or original.id,
+                status=status,
+                start=final.start,
+                end=final.end,
+                start_note=fact.start_note.id if fact and fact.start_note else None,
+                end_note=fact.end_note.id if fact and fact.end_note else None,
+                **planned,
+            )
         )
+    fact_events = {id(f.event) for f in facts}
+    for fact in facts:
+        if fact.base is None:
+            events.append(
+                TimelineEvent(
+                    summary=fact.event.summary,
+                    status="new",
+                    start=fact.start,
+                    end=fact.end,
+                    start_note=fact.start_note.id if fact.start_note else None,
+                    end_note=fact.end_note.id if fact.end_note else None,
+                )
+            )
+    for event in simulated.working:
+        if event.id is None and id(event) not in fact_events:
+            events.append(TimelineEvent(summary=event.summary or "", status="new", start=event.start, end=event.end))
+
+    anchors: dict[str, list[str]] = {}
+    for fact in facts:
+        if fact.start_note is not None:
+            anchors.setdefault(fact.start_note.id, []).append(f"start of {fact.event.summary}")
+        if fact.end_note is not None:
+            anchors.setdefault(fact.end_note.id, []).append(f"end of {fact.event.summary}")
+    notes = [
+        TimelineNote(
+            id=note.id,
+            time=note.timestamp,
+            text=note.description,
+            anchors=anchors.get(note.id, []),
+            annotates=annotated.get(note.id),
+            ignored=note.id in ignored,
+        )
+        for note in ordered
+    ]
+    return build_timeline(notes, events, now)
+
+
+def planned_timeline(notes: list[PlanNote], day_events: list[Event], now: datetime) -> Timeline:
+    """The two lanes before anything is decided: the notes beside the
+    day's events as planned -- what a model compares to make its
+    decisions."""
+    return build_timeline(
+        [TimelineNote(id=n.id, time=n.timestamp, text=n.description) for n in notes],
+        [
+            TimelineEvent(
+                summary=e.summary or e.id,
+                status="planned",
+                event_id=e.id,
+                start=e.start,
+                end=e.end,
+                planned_start=e.start,
+                planned_end=e.end,
+            )
+            for e in day_events
+            if e.id and e.status != "cancelled"
+        ],
+        now,
+        decided=False,
     )
-    return CompactionPlan(changes=changes, warnings=warnings)

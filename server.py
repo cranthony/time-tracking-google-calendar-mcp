@@ -27,7 +27,7 @@ from oauth_proxy import oauth_proxy_handlers
 from utilities.event_labels import EventLabels, EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.memory_diagnostics import track
-from utilities.note_compaction import CompactionError, NoteDisposition, Reschedule
+from utilities.note_compaction import CompactionError, EventDecision
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
 from utilities.reallocation import ReallocationOptions
@@ -332,48 +332,43 @@ def get_notes(include_compacted: bool = False) -> list[NotedTime]:
 def prepare_compaction() -> CompactionContext:
     """Step 1 of compacting notes into the calendar. Returns one day's
     worth of uncompacted notes (each with an id and the planned events
-    likeliest to be what it refers to) and that day's planned events, plus
-    instructions for interpreting them. Read the free-form notes, decide
-    what each means, then call compact_notes with one disposition per
-    note. Read-only."""
+    nearest it), that day's planned events, a `timeline` showing the two
+    side by side, and instructions. Compare the notes to the plan, decide
+    which events the notes show happened differently, then call
+    compact_notes with those decisions. Read-only."""
     with track("prepare_compaction"), cached_sheet_reads():
         return get_note_compactor().prepare()
 
 
 @mcp.tool()
 def compact_notes(
-    dispositions: list[NoteDisposition] | None = None,
-    reschedules: list[Reschedule] | None = None,
+    decisions: list[EventDecision] | None = None,
+    ignore_notes: list[str] | None = None,
     compaction_id: str | None = None,
     dry_run: bool = True,
 ) -> CompactionResult:
-    """Steps 2 and 3 of compacting notes: turn the notes -- treated as the
-    authority on what actually happened -- into calendar changes. The past
-    becomes fact and the future reflows around it.
+    """Steps 2 and 3 of compacting notes: realign the day's events to the
+    notes and turn that into calendar changes. The past becomes fact and
+    the future reflows around it.
 
-    Step 2: call with `dispositions` (exactly one per note in
-    prepare_compaction's last `notes` -- not notes from get_notes or an
-    earlier round) and dry_run=True (the default). Nothing is changed; you
-    get the proposed changes and a compaction_id. If a note was marked
-    'ambiguous' you get the questions to ask the user instead. Show the
-    user the changes.
+    Step 2: call with `decisions` -- one per event the notes show happened
+    differently from the plan (keep with moved edges, cancel, create, or
+    merge; see prepare_compaction's instructions). Any past event you don't
+    mention is recorded as on schedule. Notes that don't set an event edge
+    are added to the event they fall within, except those in
+    `ignore_notes`. dry_run=True (the default) changes nothing: you get the
+    proposed changes, a compaction_id, and a `timeline` of the notes beside
+    the resulting events -- show that to the user as two parallel lanes.
+    If past events would overlap, the call fails naming them: decide which
+    gives way (asking the user if the notes don't say) and call again.
 
-    `reschedules` is optional and separate from the notes: a direct "move
-    this planned event to a new start and/or end" instruction (e.g. the
-    user asks to move lunch later and have the afternoon adjust around
-    it), applied in the same plan and reflowing the day the same way a
-    note-derived activity does. start/end may be given individually --
-    the other is filled in from the event's current duration, so giving
-    just a new start moves it without changing how long it runs. An event
-    a note already accounts for can't also be rescheduled.
-
-    Rescheduling the end-of-day sleep event moves where the day ends: an
-    earlier bedtime shortens or cancels whatever no longer fits before
-    it, a later one leaves the evening free. Its end (the wake-up time)
-    starts the next day, which compaction never adjusts -- so to change
-    only the bedtime, pass the new start AND the sleep's current end
-    (a start alone keeps its length, moving the wake-up time too). If the
-    wake-up time does change, the plan warns; tell the user.
+    A 'keep' that moves a future event reschedules it, reflowing the rest
+    of the day around it in the same plan. Moving the end-of-day sleep
+    event moves where the day ends: an earlier bedtime shortens or cancels
+    whatever no longer fits before it, a later one leaves the evening
+    free. Its end (the wake-up time) starts the next day, which compaction
+    never adjusts -- so move only its start to change only the bedtime. If
+    the wake-up time does change, the plan warns; tell the user.
 
     Step 3: after the user agrees, call with that compaction_id and
     dry_run=False to apply it. It's safe to call again if it fails partway
@@ -385,11 +380,9 @@ def compact_notes(
             if compaction_id is None:
                 if not dry_run:
                     raise CompactionError(
-                        "run a dry run first (dispositions, dry_run=True) and pass its compaction_id"
+                        "run a dry run first (decisions, dry_run=True) and pass its compaction_id"
                     )
-                if dispositions is None:
-                    raise CompactionError("dispositions are required for a dry run")
-                return compactor.dry_run(dispositions, reschedules)
+                return compactor.dry_run(decisions or [], ignore_notes)
             if dry_run:
                 return compactor.describe(compaction_id)
             return compactor.commit(compaction_id)
