@@ -300,6 +300,7 @@ class CompactionJournal:
             self._sheet_id,
             start_row=_FIRST_DATA_ROW,
             end_row=_FIRST_DATA_ROW + deletable_rows - 1,
+            keep_at_least=calendar_metadata_sheet.MIN_TAB_ROWS,
         )
         self._hints.set(_NEXT_ROW_HINT, next_row - deletable_rows)
         latest = self._hints.get(_LATEST_COMPACTION_ROW_HINT)

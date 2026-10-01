@@ -230,16 +230,29 @@ class SheetsClient:
         )
 
     def delete_rows(
-        self, spreadsheet_id: str, sheet_id: int, *, start_row: int, end_row: int
+        self,
+        spreadsheet_id: str,
+        sheet_id: int,
+        *,
+        start_row: int,
+        end_row: int,
+        keep_at_least: int = 0,
     ) -> None:
         """Permanently delete rows `start_row` through `end_row` (both
         1-based, inclusive) from the tab identified by `sheet_id`,
-        shifting every row below up to fill the gap. There's no matching
-        "insert" -- nothing in this app needs one. Used to garbage-collect
-        old rows from an only-ever-growing, append-only tab (see
-        utilities/row_hints.py and each such tab's own `garbage_collect`)."""
+        shifting every row below up to fill the gap. Used to
+        garbage-collect old rows from an only-ever-growing, append-only
+        tab (see utilities/row_hints.py and each such tab's own
+        `garbage_collect`).
+
+        Deleting rows shrinks the tab's grid, and a write past the end of
+        the grid fails -- so if that leaves the tab with fewer than
+        `keep_at_least` rows in all, empty rows are added at the bottom to
+        make up the difference. The delete reports the tab's remaining
+        row count itself, so this costs a second request only when rows
+        actually need adding."""
         _forget_cached_reads(spreadsheet_id, sheet_id)
-        _execute(
+        response = _execute(
             self._sheets_service.spreadsheets().batchUpdate(
                 spreadsheetId=spreadsheet_id,
                 body={
@@ -252,6 +265,35 @@ class SheetsClient:
                                     "startIndex": start_row - 1,
                                     "endIndex": end_row,
                                 }
+                            }
+                        }
+                    ],
+                    "includeSpreadsheetInResponse": True,
+                    "responseIncludeGridData": False,
+                },
+                fields="updatedSpreadsheet(sheets(properties(sheetId,gridProperties(rowCount))))",
+            )
+        )
+        row_count = next(
+            (
+                sheet["properties"]["gridProperties"]["rowCount"]
+                for sheet in response.get("updatedSpreadsheet", {}).get("sheets", [])
+                if sheet["properties"]["sheetId"] == sheet_id
+            ),
+            None,
+        )
+        if row_count is None or row_count >= keep_at_least:
+            return
+        _execute(
+            self._sheets_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body={
+                    "requests": [
+                        {
+                            "appendDimension": {
+                                "sheetId": sheet_id,
+                                "dimension": "ROWS",
+                                "length": keep_at_least - row_count,
                             }
                         }
                     ]

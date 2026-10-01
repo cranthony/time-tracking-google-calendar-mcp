@@ -374,6 +374,21 @@ class TestGarbageCollect:
         assert hints.get("journal_next_row") == 2 + total_rows - 2 * self._BLOCK_ROWS
         assert hints.get("journal_latest_compaction_row") == 2 + 84 * self._BLOCK_ROWS - 2 * self._BLOCK_ROWS
 
+    def test_leaves_the_tab_at_least_1000_rows_long(self):
+        # Earlier garbage collection already shrank the tab's grid; without
+        # topping it back up, it would eventually run out of rows to append
+        # into.
+        sheets = FakeSheets()
+        sheets.row_counts[_SHEET_ID] = 600
+        journal, _ = _journal(sheets=sheets)
+        for i in range(85):
+            _start(journal, f"c{i}")
+            journal.set_status(journal.load(f"c{i}"), STAMPED)
+
+        journal.garbage_collect()
+
+        assert sheets.row_count(_SHEET_ID) == 1000
+
     def test_deletes_old_abandoned_blocks_too(self):
         journal, _ = _journal()
         for i in range(85):
