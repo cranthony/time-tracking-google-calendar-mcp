@@ -389,33 +389,6 @@ class TestGarbageCollect:
 
         assert sheets.row_count(_SHEET_ID) == 1000
 
-    def test_tops_up_a_short_tab_even_under_the_row_budget(self):
-        # A tab shrunk by garbage collection before the minimum was kept
-        # never goes back over budget to trigger a delete -- it has to be
-        # topped up anyway, or a compaction runs off its end.
-        sheets = FakeSheets()
-        sheets.row_counts[_SHEET_ID] = 590
-        journal, _ = _journal(sheets=sheets)
-        _start(journal, "only")
-
-        journal.garbage_collect()
-
-        assert sheets.row_count(_SHEET_ID) == 1000
-
-    def test_leaves_100_empty_rows_past_the_next_append_when_it_cant_delete(self):
-        sheets = FakeSheets()
-        sheets.row_counts[_SHEET_ID] = 2000
-        hints = FakeRowHints()
-        journal, _ = _journal(sheets=sheets, hints=hints)
-        for i in range(200):  # all still open, so none can be deleted
-            _start(journal, f"c{i}")
-        next_row = hints.get("journal_next_row")
-        sheets.row_counts[_SHEET_ID] = next_row + 10
-
-        journal.garbage_collect()
-
-        assert sheets.row_count(_SHEET_ID) == next_row - 1 + 100
-
     def test_deletes_old_abandoned_blocks_too(self):
         journal, _ = _journal()
         for i in range(85):

@@ -473,29 +473,6 @@ class TestNotedTimeSheetGarbageCollect:
 
         assert fake.row_count(_SHEET_ID) == 1000
 
-    def test_tops_up_a_short_tab_even_under_the_row_budget(self):
-        fake = FakeSheets()
-        fake.row_counts[_SHEET_ID] = 300
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", [[_T2, "recent"]])
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, FakeRowHints())
-
-        sheet.garbage_collect()
-
-        assert fake.row_count(_SHEET_ID) == 1000
-
-    def test_leaves_100_empty_rows_past_the_next_append_when_it_cant_delete(self):
-        fake = FakeSheets()
-        fake.row_counts[_SHEET_ID] = 1000
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        # An uncompacted backlog of 950 notes: nothing is safe to delete.
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", [[_T2, "x"] for _ in range(950)])
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, FakeRowHints())
-
-        sheet.garbage_collect()
-
-        assert fake.row_count(_SHEET_ID) == 952 - 1 + 100  # next append goes in row 952
-
     def test_does_nothing_if_the_oldest_row_is_already_uncompacted(self):
         fake = FakeSheets()
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])

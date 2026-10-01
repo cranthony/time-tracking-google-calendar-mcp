@@ -128,47 +128,6 @@ class TestDeleteRows:
         assert (range_["startIndex"], range_["endIndex"]) == (6, 7)
 
 
-class TestEnsureRowCount:
-    @staticmethod
-    def _service_with_rows(row_count):
-        sheets_service = MagicMock()
-        sheets_service.spreadsheets.return_value.get.return_value.execute.return_value = {
-            "sheets": [
-                {"properties": {"sheetId": 7, "gridProperties": {"rowCount": 5000}}},
-                {"properties": {"sheetId": 42, "gridProperties": {"rowCount": row_count}}},
-            ]
-        }
-        return sheets_service
-
-    def test_adds_the_missing_rows(self):
-        sheets_service = self._service_with_rows(590)
-        client = make_client(sheets_service)
-
-        client.ensure_row_count("sheet-1", 42, 1000)
-
-        sheets_service.spreadsheets.return_value.get.assert_called_once_with(
-            spreadsheetId="sheet-1",
-            fields="sheets(properties(sheetId,gridProperties(rowCount)))",
-        )
-        sheets_service.spreadsheets.return_value.batchUpdate.assert_called_once_with(
-            spreadsheetId="sheet-1",
-            body={
-                "requests": [
-                    {"appendDimension": {"sheetId": 42, "dimension": "ROWS", "length": 410}}
-                ]
-            },
-        )
-
-    @pytest.mark.parametrize("row_count", [1000, 1200])
-    def test_adds_nothing_when_the_tab_already_has_enough(self, row_count):
-        sheets_service = self._service_with_rows(row_count)
-        client = make_client(sheets_service)
-
-        client.ensure_row_count("sheet-1", 42, 1000)
-
-        sheets_service.spreadsheets.return_value.batchUpdate.assert_not_called()
-
-
 class TestAddSheet:
     def test_sends_add_sheet_request_and_returns_new_sheet_id(self):
         sheets_service = MagicMock()

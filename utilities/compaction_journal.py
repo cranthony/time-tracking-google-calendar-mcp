@@ -262,15 +262,10 @@ class CompactionJournal:
         the most recently *stamped* one or the first block that isn't
         `stamped`/`abandoned`, whichever comes first, stopping as soon as
         enough rows are gone (or there's nothing left it can safely
-        delete).
-
-        Whether or not it deletes anything, it also leaves the tab long
-        enough to keep appending into -- see
-        `calendar_metadata_sheet.rows_to_keep`."""
+        delete)."""
         next_row = self._next_row()
         excess = (next_row - _FIRST_DATA_ROW) - _MAX_ROWS
         if excess <= 0:
-            self._ensure_room(next_row)
             return
         blocks: list[list] = []  # [compaction_id, status_of_its_compaction_row, row_count]
         for row in self._read_rows():
@@ -299,24 +294,18 @@ class CompactionJournal:
                 break
 
         if deletable_blocks == 0:
-            self._ensure_room(next_row)
             return
         self._sheets_client.delete_rows(
             self._spreadsheet_id,
             self._sheet_id,
             start_row=_FIRST_DATA_ROW,
             end_row=_FIRST_DATA_ROW + deletable_rows - 1,
-            keep_at_least=calendar_metadata_sheet.rows_to_keep(next_row - deletable_rows),
+            keep_at_least=calendar_metadata_sheet.MIN_TAB_ROWS,
         )
         self._hints.set(_NEXT_ROW_HINT, next_row - deletable_rows)
         latest = self._hints.get(_LATEST_COMPACTION_ROW_HINT)
         if latest is not None:
             self._hints.set(_LATEST_COMPACTION_ROW_HINT, max(_FIRST_DATA_ROW, latest - deletable_rows))
-
-    def _ensure_room(self, next_row: int) -> None:
-        self._sheets_client.ensure_row_count(
-            self._spreadsheet_id, self._sheet_id, calendar_metadata_sheet.rows_to_keep(next_row)
-        )
 
     def _latest_compaction_start_row(self, compaction_id: str) -> int:
         """Where `load` can start reading for `compaction_id`: the hinted
