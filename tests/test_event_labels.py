@@ -15,7 +15,7 @@ pre-refactor EventLabelSheet(sheets_client, event_label_sheet_id) it
 replaces."""
 
 
-def _sheets_client(rows: list[list[str]]) -> MagicMock:
+def _sheets_client(rows: list[list[str]], header_row: list[str] = _HEADER_ROW) -> MagicMock:
     """A SheetsClient mock backed by an in-memory header/data range, so
     reads reflect whatever the code under test last wrote. Simulates an
     event-labels tab that's already tagged (see _EVENT_LABELS_SHEET_ID),
@@ -24,7 +24,7 @@ def _sheets_client(rows: list[list[str]]) -> MagicMock:
     tests/test_calendar_metadata_sheet.py and
     tests/test_event_label_sheet.py's TestEventLabelSheetEnsure for
     that."""
-    state = {"A1:F1": [_HEADER_ROW], "A2:F": rows}
+    state = {"A1:F1": [header_row], "A2:F": rows}
     sheets_client = MagicMock()
     sheets_client.find_sheet_id.return_value = _EVENT_LABELS_SHEET_ID
     sheets_client.read_rows_in_sheet.side_effect = lambda _spreadsheet_id, _sheet_id, rng: state[rng]
@@ -154,6 +154,22 @@ class TestSyncLabels:
         assert result == [
             EventLabel(id="l1", name="Design Work", background_color="#8e24aa", priority=1)
         ]
+
+    def test_returns_each_labels_note(self):
+        calendar_client = _tracked_calendar_client(
+            raw_labels=[RawEventLabel(id="l1", background_color="#8e24aa", name="Design Work")],
+        )
+        sheets_client = _sheets_client(
+            [["l1", "Design Work", "#8e24aa", "1", "", "Deep work"]],
+            header_row=_HEADER_ROW + ["note"],
+        )
+        event_labels = EventLabels(calendar_client, sheets_client)
+
+        result = event_labels.sync_labels()
+
+        assert [label.note for label in result] == ["Deep work"]
+        # A note is sheet-only, so it never makes the calendar look out of sync.
+        calendar_client.replace_event_labels.assert_not_called()
 
     def test_leaves_the_calendar_untouched_when_already_in_sync(self):
         calendar_client = _tracked_calendar_client(
