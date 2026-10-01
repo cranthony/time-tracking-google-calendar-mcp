@@ -18,6 +18,8 @@ Usage:
     python calendar_cli.py sync_labels
     python calendar_cli.py note <ago> [description]
     python calendar_cli.py get_notes
+    python calendar_cli.py edit_note <note_id> [--ago <ago> | --at <time>] [--description <text>]
+    python calendar_cli.py delete_note <note_id>
 
 - `list` shows events between `from` before now and `to` after now, each a
   duration parsed with pytimeparse (e.g. "1h", "90m", "2d", "1:30") —
@@ -88,15 +90,24 @@ Usage:
   calendar's tracked noted-times tab (`utilities/noted_time_sheet.py`'s
   `NotedTimeSheet`, creating that tab, pre-populated with just its
   header row, the first time this runs if it doesn't exist yet).
-- `get_notes` lists every recorded note, sorted by timestamp (via
-  `NotedTimeSheet.read`) -- there's still no command to delete a note;
-  open the sheet directly for that.
+- `get_notes` lists every uncompacted note, sorted by timestamp, each
+  with its id (`utilities/noted_time_sheet.py`'s `SheetNote.id`) --
+  what `edit_note`/`delete_note` take.
+- `edit_note` corrects an uncompacted note: a new time (`--ago`, a
+  duration before now like `note`'s, or `--at`, an ISO 8601 time) and/or
+  a new `--description` (`--description ""` clears it). Whatever isn't
+  given keeps its current value. Prints the edited note -- its id changes
+  if its time did. `delete_note` removes one. Both refuse a compacted
+  note, a stale id (list the notes again), or a note in a compaction
+  that's partway through being applied (see
+  `utilities/note_compactor.py`'s `edit_note`/`delete_note`).
 """
 
 from __future__ import annotations
 
 import argparse
 import dataclasses
+import sys
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -105,10 +116,17 @@ import pytimeparse
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
-from config import build_calendar_client, build_event_labels, build_noted_time_sheet
+from config import (
+    build_calendar_client,
+    build_compaction_journal,
+    build_event_labels,
+    build_noted_time_sheet,
+)
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
-from utilities.noted_time_sheet import NotedTime
+from utilities.note_compaction import CompactionError
+from utilities.note_compactor import delete_note, edit_note
+from utilities.noted_time_sheet import NotedTime, SheetNote
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 
@@ -281,8 +299,18 @@ def _format_event_label_line(label: EventLabel) -> str:
     return f"{label.id}\t{label.background_color}\t{priority}\t{label.name or ''}"
 
 
-def _format_noted_time_line(noted_time: NotedTime) -> str:
-    return f"{noted_time.timestamp.isoformat()}\t{noted_time.description or ''}"
+def _format_sheet_note_line(sheet_note: SheetNote) -> str:
+    note = sheet_note.note
+    return f"{sheet_note.id}\t{note.timestamp.isoformat()}\t{note.description or ''}"
+
+
+def _parse_time(value: str) -> datetime:
+    """An ISO 8601 time; one without a UTC offset is taken as local time."""
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{value!r} isn't an ISO 8601 time") from exc
+    return parsed if parsed.tzinfo is not None else parsed.astimezone()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -448,8 +476,28 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers.add_parser(
-        "get_notes", help="List every recorded uncompacted time note, sorted by timestamp."
+        "get_notes", help="List every uncompacted time note, with its id, sorted by timestamp."
     )
+
+    edit_note_parser = subparsers.add_parser(
+        "edit_note", help="Change an uncompacted note's time and/or description."
+    )
+    edit_note_parser.add_argument("note_id", help="The note's id, as get_notes prints it.")
+    time_group = edit_note_parser.add_mutually_exclusive_group()
+    time_group.add_argument(
+        "--ago",
+        type=_parse_duration,
+        help='New time, as a pytimeparse duration before now (e.g. "1h", "90m").',
+    )
+    time_group.add_argument(
+        "--at", type=_parse_time, help="New time, in ISO 8601 (local time if no UTC offset)."
+    )
+    edit_note_parser.add_argument(
+        "--description", help='New description ("" clears it).'
+    )
+
+    delete_note_parser = subparsers.add_parser("delete_note", help="Delete an uncompacted note.")
+    delete_note_parser.add_argument("note_id", help="The note's id, as get_notes prints it.")
 
     return parser
 
@@ -569,14 +617,38 @@ def main() -> None:
         noted_time = NotedTime(
             timestamp=resolve_note_timestamp(args.ago), description=args.description
         )
-        build_noted_time_sheet().append(noted_time)
+        appended = build_noted_time_sheet().append(noted_time)
+        print(f"id: {appended.id}")
         print(_format_event_details(noted_time))
     elif args.command == "get_notes":
-        noted_times = build_noted_time_sheet().read()
-        if not noted_times:
+        sheet_notes = sorted(build_noted_time_sheet().read_with_rows(), key=lambda n: n.note.timestamp)
+        if not sheet_notes:
             print("No notes found.")
-        for noted_time in noted_times:
-            print(_format_noted_time_line(noted_time))
+        for sheet_note in sheet_notes:
+            print(_format_sheet_note_line(sheet_note))
+    elif args.command == "edit_note":
+        if args.ago is None and args.at is None and args.description is None:
+            parser.error("edit_note needs at least one of --ago, --at or --description")
+        timestamp = resolve_note_timestamp(args.ago) if args.ago is not None else args.at
+        try:
+            edited = edit_note(
+                build_noted_time_sheet(),
+                build_compaction_journal(),
+                args.note_id,
+                timestamp=timestamp,
+                description=args.description,
+            )
+        except CompactionError as exc:
+            sys.exit(f"error: {exc}")
+        print(f"id: {edited.id}")
+        print(_format_event_details(edited.note))
+    elif args.command == "delete_note":
+        try:
+            deleted = delete_note(build_noted_time_sheet(), build_compaction_journal(), args.note_id)
+        except CompactionError as exc:
+            sys.exit(f"error: {exc}")
+        print("Deleted:")
+        print(_format_event_details(deleted))
 
 
 if __name__ == "__main__":

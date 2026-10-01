@@ -619,6 +619,118 @@ class TestDayByDay:
         assert [e.id for e in context.events][:2] == ["s1", "gr1"]
 
 
+class TestSleepingIn:
+    """The event that ended just before the compaction window -- here,
+    last night's sleep -- is offered with it, so a late wake-up can extend
+    it."""
+
+    def _slept_in(self):
+        events = [
+            event_at("09:00-10:00", id="e1", summary="Email", priority=2),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+            event_at("07:00+1-08:00+1", id="gr1", summary="Getting Ready", priority=2),
+            event_at("08:00+1-12:00+1", id="w1", summary="Work", priority=3),
+            event_at("22:00+1-23:30+1", id="s2", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+        setup = Setup([("09:05", "email")], events=events, now="08:00+1")
+        planned = setup.compactor.dry_run([])
+        setup.compactor.commit(planned.compaction_id)
+        setup.client.reset_mock()
+        setup.append_note("08:30+1", "finally up")
+        setup.now = "09:00+1"
+        return setup
+
+    def test_prepare_offers_it_to_the_days_first_note(self):
+        setup = self._slept_in()
+
+        context = setup.compactor.prepare()
+
+        assert [e.id for e in context.events] == ["s1", "gr1", "w1", "s2"]
+        assert "s1" in context.notes[0].candidates
+        assert context.day_end == time_at("23:30+1")
+
+    def test_extending_it_over_the_morning_needs_the_morning_moved_too(self):
+        setup = self._slept_in()
+
+        with pytest.raises(CompactionError, match="'Sleep' \\(s1, as decided.*overlaps 'Getting Ready'"):
+            setup.compactor.dry_run(
+                [EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3))]
+            )
+
+    def test_a_late_wake_up_extends_it_and_reflows_the_rest_of_the_morning(self):
+        setup = self._slept_in()
+        planned = setup.compactor.dry_run(
+            [
+                EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3)),
+                EventDecision(
+                    action="keep", event_id="gr1", start_note=setup.note_id(3), end=time_at("09:00+1")
+                ),
+            ]
+        )
+        changes = {c.event_id: c for c in planned.changes}
+        assert (changes["s1"].after.start, changes["s1"].after.end) == (time_at("20:00"), time_at("08:30+1"))
+        assert changes["w1"].after.start == time_at("09:00+1")
+
+        setup.compactor.commit(planned.compaction_id)
+
+        patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
+        assert patches["s1"].end == time_at("08:30+1")
+        assert "s2" not in patches
+
+
+class TestEditAndDeleteNotes:
+    def test_edits_and_deletes_uncompacted_notes(self):
+        setup = _standard()
+
+        edited = setup.compactor.edit_note(setup.note_id(2), description="inbox zero")
+        setup.compactor.delete_note(setup.note_id(3))
+
+        notes = setup.notes.read_with_rows()
+        assert [(n.id, n.note.description) for n in notes] == [(edited.id, "inbox zero")]
+
+    def test_a_stale_id_is_a_compaction_error(self):
+        setup = _standard()
+        stale = setup.note_id(2)
+        setup.compactor.edit_note(stale, timestamp=time_at("09:10"))
+
+        with pytest.raises(CompactionError, match="no longer holds the note"):
+            setup.compactor.delete_note(stale)
+
+    def test_a_planned_compaction_does_not_block_it_but_can_no_longer_be_committed(self):
+        setup = _standard()
+        planned = setup.compactor.dry_run(setup.email_then_report())
+
+        setup.compactor.edit_note(setup.note_id(3), timestamp=time_at("10:25"))
+
+        with pytest.raises(CompactionError, match="changed since"):
+            setup.compactor.commit(planned.compaction_id)
+
+    @pytest.mark.parametrize("change", ["edit", "delete"])
+    def test_refused_while_a_compaction_with_that_note_is_being_applied(self, change):
+        setup = _standard()
+        planned = setup.compactor.dry_run(setup.email_then_report())
+        setup.journal.set_status(setup.journal.load(planned.compaction_id), APPLYING)
+        note_id = setup.note_id(2)
+
+        with pytest.raises(CompactionError, match="is applying"):
+            if change == "edit":
+                setup.compactor.edit_note(note_id, description="x")
+            else:
+                setup.compactor.delete_note(note_id)
+
+        assert setup.notes.read_with_rows()[0].note.description == "email"
+
+    def test_a_note_outside_the_compaction_being_applied_can_still_change(self):
+        setup = _standard()
+        planned = setup.compactor.dry_run(setup.email_then_report())
+        setup.journal.set_status(setup.journal.load(planned.compaction_id), APPLYING)
+        setup.append_note("08:00+1", "next day")
+
+        setup.compactor.edit_note(setup.note_id(4), description="tomorrow")
+
+        assert setup.notes.read_with_rows()[-1].note.description == "tomorrow"
+
+
 class TestMovingFutureEvents:
     def test_a_keep_with_new_times_reschedules_a_future_event(self):
         setup = _standard()

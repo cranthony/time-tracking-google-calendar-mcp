@@ -74,7 +74,7 @@ from utilities.note_compaction import (
     plan_compaction,
     planned_timeline,
 )
-from utilities.noted_time_sheet import NotedTimeSheet, SheetNote
+from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
 
 _CANDIDATE_WINDOW = timedelta(hours=1)
@@ -111,6 +111,9 @@ DECISION_GUIDE = (
     "event it falls within; list any that shouldn't be in `ignore_notes`. Use only note ids from "
     "`notes` (only this round's -- notes for later days aren't offered yet, see "
     "`remaining_note_count`) and event ids from `events`. "
+    "`events` may start with one that ended just before `compaction_window_start` (usually last "
+    "night's sleep); if a note shows it actually ran later -- the user slept in -- move its end "
+    "with 'keep', and say when whatever it now overlaps happened. "
     "A 'keep' that moves a future event reschedules it: it's pinned there and the rest of the day "
     "reflows around it, in the same plan -- for 'move lunch later and adjust the afternoon' "
     "requests. The day's own end-of-day sleep event works differently: moving its start moves "
@@ -209,6 +212,9 @@ class _Day:
     day_end: datetime
     now: datetime
     remaining: int
+    previous: Event | None = None
+    """The event that ended just before the compaction window, if one
+    was offered."""
 
 
 class NoteCompactor:
@@ -238,13 +244,16 @@ class NoteCompactor:
         day = self._day(now)
         if day is None:
             return CompactionContext(notes=[], events=[], open_compaction=open_id)
+        first = min(n.note.timestamp for n in day.notes) if day.notes else None
         return CompactionContext(
             notes=[
                 ContextNote(
                     id=n.id,
                     timestamp=n.note.timestamp,
                     description=n.note.description,
-                    candidates=_candidates(n.note.timestamp, day.events),
+                    candidates=_candidates(
+                        n.note.timestamp, day.events, day.previous if n.note.timestamp == first else None
+                    ),
                 )
                 for n in day.notes
             ],
@@ -353,6 +362,16 @@ class NoteCompactor:
             message=f"applied {len(journal.steps)} change(s) and marked {len(journal.note_ids)} note(s) compacted",
         )
 
+    def edit_note(
+        self, note_id: str, *, timestamp: datetime | None = None, description: str | None = None
+    ) -> SheetNote:
+        """See the module-level `edit_note`."""
+        return edit_note(self._notes, self._journal, note_id, timestamp=timestamp, description=description)
+
+    def delete_note(self, note_id: str) -> NotedTime:
+        """See the module-level `delete_note`."""
+        return delete_note(self._notes, self._journal, note_id)
+
     def abandon(self, compaction_id: str) -> CompactionResult:
         journal = self._journal.load(compaction_id)
         if journal.status == STAMPED:
@@ -403,8 +422,9 @@ class NoteCompactor:
         )
         if closing is not None:
             events = events[: closing + 1]
-        if earlier:
-            events.insert(0, max(earlier, key=lambda e: e.end))
+        previous = max(earlier, key=lambda e: e.end) if earlier else None
+        if previous is not None:
+            events.insert(0, previous)
         day_end = events[-1].end if closing is not None else day_start + timedelta(hours=24)
         in_day = [n for n in sheet_notes if n.note.timestamp <= day_end]
         return _Day(
@@ -415,6 +435,7 @@ class NoteCompactor:
             day_end=day_end,
             now=min(now, day_end),
             remaining=len(sheet_notes) - len(in_day),
+            previous=previous,
         )
 
     def _supersede_planned(self) -> int:
@@ -473,6 +494,47 @@ class NoteCompactor:
             self._client.update_event(_patch_for(step))
 
 
+def edit_note(
+    notes: NotedTimeSheet,
+    journal: CompactionJournal,
+    note_id: str,
+    *,
+    timestamp: datetime | None = None,
+    description: str | None = None,
+) -> SheetNote:
+    """`NotedTimeSheet.edit`, refused (`CompactionError`) for a note a
+    compaction is partway through applying -- see `_require_not_being_applied`."""
+    _require_not_being_applied(journal, note_id)
+    try:
+        return notes.edit(note_id, timestamp=timestamp, description=description)
+    except ValueError as exc:
+        raise CompactionError(str(exc)) from exc
+
+
+def delete_note(notes: NotedTimeSheet, journal: CompactionJournal, note_id: str) -> NotedTime:
+    """`NotedTimeSheet.delete`, refused like `edit_note`."""
+    _require_not_being_applied(journal, note_id)
+    try:
+        return notes.delete(note_id)
+    except ValueError as exc:
+        raise CompactionError(str(exc)) from exc
+
+
+def _require_not_being_applied(journal: CompactionJournal, note_id: str) -> None:
+    """A compaction being applied stamps its notes last, and only checks
+    their timestamps, not what they say -- so changing one of them
+    midway would get the changed note stamped as if it were the one
+    planned for. (A compaction that's only `planned` needs no guard: its
+    commit re-checks the notes and refuses if they changed.)"""
+    for compaction_id, status in journal.open_compactions():
+        if note_id in journal.load(compaction_id).note_ids:
+            raise CompactionError(
+                f"note {note_id!r} is part of compaction {compaction_id}, which is {status} -- "
+                f"finish it with compact_notes(compaction_id={compaction_id!r}, dry_run=False), or "
+                "abandon it with abandon_compaction, first"
+            )
+
+
 def _plan_notes(day: _Day) -> list[PlanNote]:
     return [
         PlanNote(id=n.id, timestamp=n.note.timestamp, description=n.note.description)
@@ -480,14 +542,21 @@ def _plan_notes(day: _Day) -> list[PlanNote]:
     ]
 
 
-def _candidates(timestamp: datetime, events: list[Event]) -> list[str]:
+def _candidates(timestamp: datetime, events: list[Event], previous: Event | None = None) -> list[str]:
+    """`previous` (the event just before the compaction window, offered
+    to the day's first note) is listed last: however long after its
+    planned end the note is, it may be what the note ends -- e.g.
+    "finally up"."""
     near = [
         e
         for e in events
         if e.id and e.end > timestamp - _CANDIDATE_WINDOW and e.start < timestamp + _CANDIDATE_WINDOW
     ]
     near.sort(key=lambda e: abs(e.start - timestamp))
-    return [e.id for e in near]
+    ids = [e.id for e in near]
+    if previous is not None and previous.id and previous.id not in ids:
+        ids.append(previous.id)
+    return ids
 
 
 def _new_event_id(compaction_id: str, step: int) -> str:

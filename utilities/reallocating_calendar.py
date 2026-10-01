@@ -60,18 +60,7 @@ class ReallocatingCalendar:
         position would cut off the rest of the day before `update_event`
         gets a chance to exclude it itself.
         """
-        events = self._client.list_events(start, start + timedelta(hours=24))
-        sleep_index = next(
-            (
-                i
-                for i, event in enumerate(events)
-                if event.is_end_of_day_sleep and event.id != ignore_id
-            ),
-            None,
-        )
-        if sleep_index is not None:
-            events = events[: sleep_index + 1]
-        return events
+        return _truncate_at_sleep(self._client.list_events(start, start + timedelta(hours=24)), ignore_id)
 
     def create_event(self, new_event: Event, options: ReallocationOptions) -> list[Event]:
         """Create `new_event`, reallocating time from `list_day_events
@@ -151,3 +140,13 @@ class ReallocatingCalendar:
             else self._client.update_event(planned)
             for planned in plan
         ]
+
+
+def _truncate_at_sleep(events: list[Event], ignore_id: str | None = None) -> list[Event]:
+    """`events`, cut off after the first `is_end_of_day_sleep` event other
+    than `ignore_id` -- see `ReallocatingCalendar.list_day_events`."""
+    sleep_index = next(
+        (i for i, event in enumerate(events) if event.is_end_of_day_sleep and event.id != ignore_id),
+        None,
+    )
+    return events[: sleep_index + 1] if sleep_index is not None else events

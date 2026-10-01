@@ -85,8 +85,10 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `create_event_label` | `(label: EventLabel) -> list[EventLabel]` |
 | `update_event_label` | `(label: EventLabel) -> list[EventLabel]` |
 | `sync_event_labels_from_sheet` | `() -> list[EventLabel]` |
-| `note` | `(noted_time: NotedTime) -> NotedTime` |
-| `get_notes` | `(include_compacted: bool = False) -> list[NotedTime]` |
+| `note` | `(noted_time: NotedTime) -> NoteWithId` |
+| `get_notes` | `(include_compacted: bool = False) -> list[NoteWithId]` |
+| `edit_note` | `(note_id: str, timestamp: datetime \| None, description: str \| None) -> NoteWithId` |
+| `delete_note` | `(note_id: str) -> NotedTime` |
 | `prepare_compaction` | `() -> CompactionContext` |
 | `compact_notes` | `(decisions: list[EventDecision] \| None, ignore_notes: list[str] \| None, compaction_id: str \| None, dry_run: bool = True) -> CompactionResult` |
 | `abandon_compaction` | `(compaction_id: str) -> CompactionResult` |
@@ -107,7 +109,9 @@ Calendar creation is deliberately *not* an MCP tool — see [Calendar access mod
 
 `EventLabel.priority` gives a label the same priority-coloring concept `Event.colorId` already has, but expressed as an arbitrary hex color instead of one of the 11 fixed ones — with one important difference from `Event.priority`: **Google Calendar's label resource has no field for it at all.** Passing `priority` to `create_event_label`/`update_event_label` only derives that call's `background_color` (via the public `calendar_clients.google_calendar.color_for_priority`) when `background_color` is left unset; it isn't persisted anywhere Calendar can hand back later. The only place a label's priority is actually remembered is a synced **event labels tab** — see [Calendar metadata sheets](#calendar-metadata-sheets) below; every label tool's result has `priority` filled in from that tab, `None` for a label with no matching row.
 
-The `note` tool records a new time note (`utilities/noted_time_sheet.py`'s `NotedTime`: a required `timestamp`, and an optional free-text `description` of what it marks) by appending it to this calendar's noted-times tab (via `NotedTimeSheet.append`, which writes only the new row — see [Calendar metadata sheets](#calendar-metadata-sheets) below), returning the note as recorded. A caller can't set a note's `compaction_id`; only compaction does. `get_notes` lists the notes that haven't been compacted yet, sorted by timestamp (or all of them with `include_compacted`). There's no tool to delete a note: they're turned into calendar changes by compacting them — see [Compacting notes](#compacting-notes) below.
+The `note` tool records a new time note (`utilities/noted_time_sheet.py`'s `NotedTime`: a required `timestamp`, and an optional free-text `description` of what it marks) by appending it to this calendar's noted-times tab (via `NotedTimeSheet.append`, which writes only the new row — see [Calendar metadata sheets](#calendar-metadata-sheets) below), returning the note as recorded along with its id (`NoteWithId`: the note's timestamp and sheet row together, e.g. `2026-01-01T09:05:00+00:00#5`). A caller can't set a note's `compaction_id`; only compaction does. `get_notes` lists the notes that haven't been compacted yet, sorted by timestamp and each with its id (or all of them with `include_compacted`).
+
+`edit_note` corrects an uncompacted note by id — a new `timestamp` and/or `description` (whichever is left out keeps its value; an empty `description` clears it) — and returns it with its id, which changes if its timestamp did. `delete_note` removes one, by blanking its row rather than deleting it, so no other note's id changes. Both refuse a stale id (the note was edited or removed since it was listed), an already-compacted note (change the calendar event it became instead), and a note in a compaction that's partway through being applied — that compaction stamps its notes last, so changing one midway would get the changed note stamped. A dry-run plan that included the note can't be committed afterward (committing re-checks the notes); just run a new dry run. Notes are otherwise turned into calendar changes by compacting them — see [Compacting notes](#compacting-notes) below.
 
 Every label write reads the full label list, changes it in memory, and writes the whole thing back (the API has no way to touch a single label in place), which is a lost-update race if two callers do this concurrently. `CalendarClient.replace_event_labels` (what `EventLabels` builds every one of these tools on) guards against that with the calendar's own `etag`: it's sent back as an `If-Match` precondition on the write, so a write based on a label list that's since changed fails with `EventLabelConflictError` (surfaced as a `ToolError`) instead of silently overwriting the other change. Confirmed empirically against the real API, since Google's docs only document `If-Match` for Events, not Calendars.
 
@@ -193,7 +197,7 @@ Two layers work together for the event labels tab specifically, the same split a
 
 **Creating the spreadsheet and its event-labels tab is implicit, not a separate step:** constructing `EventLabels` for a calendar (`EventLabels.__init__`, what every one of `build_event_labels`'s callers — the MCP tools, `calendar_cli.py`'s non-`_raw_` label commands — do first) ensures both exist, creating whichever doesn't yet: a new spreadsheet needs its default first tab renamed/tagged and pre-populated with the calendar's *current* labels (Priority left blank — Calendar doesn't know one); an already-tracked one just needs its tab found (or, the first time after upgrading past a version that predates per-tab tagging, adopted and tagged in place — see `ensure_spreadsheet`'s `_LEGACY_SPREADSHEET_ID_METADATA_KEY` fallback). [`create_calendar.py`](create_calendar.py) (see [Calendar access model](#calendar-access-model) above) triggers this proactively right after creating the calendar (or for an already-configured one) purely so its URL gets printed for you right away — nothing else *requires* running it first; the first `create_event_label`/`update_event_label`/`sync_event_labels_from_sheet` call would create it on the fly just the same.
 
-The noted-times tab is simpler, since a noted time has no Calendar API counterpart to reconcile with: [`utilities/noted_time_sheet.py`](utilities/noted_time_sheet.py)'s `NotedTimeSheet` (`NotedTimeSheet.ensure` finds or creates/tags the tab, with just its header row, the same way `EventLabelSheet.ensure` does) is what `server.py`/`calendar_cli.py` talk to directly — no `EventLabels`-equivalent layer above it. The `note`/`get_notes` MCP tools and the `note`/`get_notes` CLI commands (same names, different surfaces — see [MCP tools](#mcp-tools) above and [Command-line utilities](#command-line-utilities) below) call `NotedTimeSheet.append`/`read` respectively; `note` also creates the spreadsheet/tab on the fly if neither exists yet, the same as the event-label tools.
+The noted-times tab is simpler, since a noted time has no Calendar API counterpart to reconcile with: [`utilities/noted_time_sheet.py`](utilities/noted_time_sheet.py)'s `NotedTimeSheet` (`NotedTimeSheet.ensure` finds or creates/tags the tab, with just its header row, the same way `EventLabelSheet.ensure` does) is what `server.py`/`calendar_cli.py` talk to directly — no `EventLabels`-equivalent layer above it. The `note`/`get_notes` MCP tools and the `note`/`get_notes` CLI commands (same names, different surfaces — see [MCP tools](#mcp-tools) above and [Command-line utilities](#command-line-utilities) below) call `NotedTimeSheet.append`/`read_with_rows` respectively (and `edit_note`/`delete_note` call `NotedTimeSheet.edit`/`delete`, through `utilities/note_compactor.py`'s guard against changing a note mid-compaction); `note` also creates the spreadsheet/tab on the fly if neither exists yet, the same as the event-label tools.
 
 **There's deliberately no "list labels" tool or command.** Every operation below reconciles the calendar with the sheet (the sheet always wins wherever they disagree) and returns the *entire* resulting label list, not just whatever it specifically touched — so any of them doubles as "show me the current labels", and a dedicated list operation would just be `sync_labels` under a name that hides that it also writes:
 
@@ -246,6 +250,15 @@ Both paths are required arguments (no defaults), so where they live is up to wha
 To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — `config.py` loads `.env` automatically (via `python-dotenv`) if one is present. `.env` is gitignored, so nothing personal ends up committed.
 
 If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) instead of run standalone, set these same variables in that host's server config under its `env` field — no `.env` file needed in that case.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The tests need no credentials or configuration. [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs them on Python 3.11 and 3.13 for every pull request into `main` and every push to it. To block merging until they pass, make the `pytest (Python 3.11)` and `pytest (Python 3.13)` checks required for `main` in the repository's branch protection settings (Settings → Branches, or Rules → Rulesets).
 
 ## Deploying
 
@@ -382,8 +395,16 @@ python calendar_cli.py note 0s "Started focus block"
 # A note for 30 minutes ago, with no description
 python calendar_cli.py note 30m
 
-# List the notes that haven't been compacted yet
+# List the notes that haven't been compacted yet, each with its id
 python calendar_cli.py get_notes
+
+# Correct a note's description, or move it to 20 minutes ago / an exact time
+python calendar_cli.py edit_note "2026-01-01T09:05:00+00:00#5" --description "Started standup"
+python calendar_cli.py edit_note "2026-01-01T09:05:00+00:00#5" --ago 20m
+python calendar_cli.py edit_note "2026-01-01T09:05:00+00:00#5" --at 2026-01-01T09:10:00-04:00
+
+# Delete a note
+python calendar_cli.py delete_note "2026-01-01T09:05:00+00:00#5"
 ```
 
 `from`/`to` are each a duration relative to *now* — parsed with [pytimeparse](https://pypi.org/project/pytimeparse/) (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`) — giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
@@ -400,7 +421,7 @@ For a recurring event, the id from `list`/`get` names one specific *instance*.  
 
 `create_label`/`update_label` take the same kind of `key=value` pairs as `update_properties`, plus `priority` (`background_color`/`name`/`priority`). Along with `sync_labels` below, they manage the same labels as `utilities/event_labels.py`'s richer `EventLabel` (via `EventLabels`), and all three print the *entire* resulting label list, not just the one label touched — see [MCP tools](#mcp-tools) and [Calendar metadata sheets](#calendar-metadata-sheets) above for how `priority`/`background_color` interact, why `priority` doesn't stick around on its own, and why there's no dedicated `list_labels` command. `update_label` requires an existing `label_id`. There's no `delete_label` either — delete a row from the event labels tab directly, then run `sync_labels`. See Google's [event labels guide](https://developers.google.com/workspace/calendar/api/guides/labels).
 
-`note` takes a positional `ago` (required -- like `from`/`to` above, a pytimeparse duration, e.g. `"1h"`, `"90m"`, `"0s"` for right now, resolved via `resolve_note_timestamp` the same way `list`'s window is resolved via `resolve_window`) and an optional positional `description` (quote it if it contains spaces), builds a `utilities/noted_time_sheet.py` `NotedTime` from them, and appends it to this calendar's noted-times tab via `NotedTimeSheet.append` — see [MCP tools](#mcp-tools) and [Calendar metadata sheets](#calendar-metadata-sheets) above. `get_notes` lists every recorded note (via `NotedTimeSheet.read`) -- there's still no `delete` command for notes; open the sheet directly for that.
+`note` takes a positional `ago` (required -- like `from`/`to` above, a pytimeparse duration, e.g. `"1h"`, `"90m"`, `"0s"` for right now, resolved via `resolve_note_timestamp` the same way `list`'s window is resolved via `resolve_window`) and an optional positional `description` (quote it if it contains spaces), builds a `utilities/noted_time_sheet.py` `NotedTime` from them, and appends it to this calendar's noted-times tab via `NotedTimeSheet.append` — see [MCP tools](#mcp-tools) and [Calendar metadata sheets](#calendar-metadata-sheets) above. `get_notes` lists every uncompacted note with its id (via `NotedTimeSheet.read_with_rows`). `edit_note <note_id>` takes `--ago` (a duration before now, like `note`'s) or `--at` (an ISO 8601 time, local if it has no UTC offset) for a new time, and/or `--description` (`""` clears it); `delete_note <note_id>` removes the note. Both refuse a compacted note, a stale id, or a note in a compaction that's partway through being applied, printing why and exiting non-zero — see `edit_note`/`delete_note` under [MCP tools](#mcp-tools).
 
 `sync_labels` always syncs from this calendar's tracked event labels tab and prints the resulting labels — see [Calendar metadata sheets](#calendar-metadata-sheets) above for how that tab comes to exist in the first place.
 

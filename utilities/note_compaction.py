@@ -67,7 +67,7 @@ from typing import Literal
 
 from calendar_clients.google_calendar import Event
 from utilities.compaction_timeline import Timeline, TimelineEvent, TimelineNote, build_timeline
-from utilities.reallocation import ReallocationOptions, reallocate_for_new_event
+from utilities.reallocation import FixedTimeConflict, ReallocationOptions, reallocate_for_new_event
 
 DecisionAction = Literal["keep", "cancel", "create", "merge"]
 
@@ -647,8 +647,9 @@ def _end_day_at(
             continue
         if event.is_fixed_time:
             problems.append(
-                f"can't move {sleep.summary!r} to start at {bedtime.isoformat()}: "
-                f"{event.summary!r} is fixed at {event.start.isoformat()} to {event.end.isoformat()}"
+                f"{sleep.summary!r} doesn't fit starting at {bedtime.isoformat()}: fixed-time "
+                f"{event.summary!r} ({event.start.isoformat()} to {event.end.isoformat()}) is in "
+                "the way and can't move. Start it later."
             )
             continue
         if event.start < bedtime and bedtime - event.start >= (event.min_duration or timedelta(0)):
@@ -668,6 +669,9 @@ def _end_day_at(
             "check the next day's first events, and move them with update_event if they now overlap."
         )
     return sorted(kept + [sleep], key=lambda e: e.start)
+
+
+_SHORTEN_OR_MOVE = "Give it an earlier end or a later start with 'keep', or check the notes that bound it."
 
 
 @dataclass
@@ -691,21 +695,20 @@ def _simulate(
     event ends up; `cancels` gains anything a moved bedtime cancels."""
     decided = [f for f in facts if not f.default]
     base_ids = {f.base.id for f in decided if f.base}
-    # A moved sleep event stays put until its own turn below, so the facts
-    # before it still have the day's end to reflow into.
-    day_end_ids = {f.base.id for f in decided if f.moves_day_end}
     working = sorted(
-        (
-            copies[event_id]
-            for event_id in copies
-            if (event_id not in base_ids or event_id in day_end_ids) and event_id not in cancels
-        ),
+        (copies[event_id] for event_id in copies if event_id not in base_ids and event_id not in cancels),
         key=lambda e: e.start,
     )
+    # The day's end is settled first, so every other fact reflows into the
+    # day as it will actually end -- e.g. an activity noted just before a
+    # later-than-planned bedtime, which would otherwise collide with the
+    # sleep event's old start.
     day_end_reasons: dict[str, str] = {}
     for fact in decided:
         if fact.moves_day_end:
             working = _end_day_at(fact, working, cancels, day_end_reasons, warnings)
+    for fact in decided:
+        if fact.moves_day_end:
             continue
         # reallocate_for_new_event wants only the day *from* the new event's
         # start onward (at most the first event may overlap that start), so
@@ -713,13 +716,31 @@ def _simulate(
         # earlier fact -- is set aside and can't be disturbed.
         head = [e for e in working if e.end <= fact.start]
         tail = [e for e in working if e.end > fact.start]
+        pinned = next((e for e in tail if e.is_fixed_time and e.start < fact.end), None)
+        if pinned is not None:
+            # Reflowing can never move a fixed-time event out of the way,
+            # so say so directly rather than let reallocation fail on it.
+            raise CompactionError(
+                f"{fact.event.summary!r} ({fact.start.isoformat()} to {fact.end.isoformat()}) "
+                f"doesn't fit: it overlaps fixed-time {pinned.summary!r} "
+                f"({pinned.start.isoformat()} to {pinned.end.isoformat()}), which can't move. "
+                f"{_SHORTEN_OR_MOVE} If a note shows when {pinned.summary!r} actually started or "
+                "ended, move it with 'keep' too."
+            )
         try:
             changed = reallocate_for_new_event(tail, fact.event, options)
+        except FixedTimeConflict as exc:
+            raise CompactionError(f"{exc} {_SHORTEN_OR_MOVE}") from exc
         except ValueError as exc:
+            hint = (
+                " A day needs an event after the last noted time (normally the end-of-day sleep "
+                "event) for the rest to reflow into."
+                if not any(e.end > fact.end for e in tail)
+                else ""
+            )
             raise CompactionError(
                 f"can't fit {fact.event.summary!r} ({fact.start.isoformat()} to "
-                f"{fact.end.isoformat()}) into the day: {exc}. A day needs an event after the "
-                "last noted time (normally the end-of-day sleep event) for the rest to reflow into."
+                f"{fact.end.isoformat()}) into the day: {exc}.{hint}"
             ) from exc
         known = {id(e) for e in tail}
         alive = [e for e in tail if e.status != "cancelled"]
@@ -729,8 +750,9 @@ def _simulate(
     for fact in facts:
         if fact.event.status == "cancelled" or (fact.event.start, fact.event.end) != (fact.start, fact.end):
             raise CompactionError(
-                f"couldn't keep {fact.event.summary!r} at {fact.start.isoformat()} to "
-                f"{fact.end.isoformat()} while reflowing the rest of the day"
+                f"{fact.event.summary!r} ({fact.start.isoformat()} to {fact.end.isoformat()}) "
+                "doesn't fit: the rest of the day can't be moved around it without moving it too. "
+                f"{_SHORTEN_OR_MOVE}"
             )
     return _Simulated(
         working=working,

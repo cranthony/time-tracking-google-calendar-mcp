@@ -444,7 +444,7 @@ class TestMovingBedtime:
             "18:30-19:30", id="e5", summary="Call", is_fixed_time=True, min_duration=timedelta(hours=1)
         )
 
-        with pytest.raises(CompactionError, match="'Call' is fixed"):
+        with pytest.raises(CompactionError, match="doesn't fit starting at .*fixed-time 'Call'"):
             _plan([], [_keep("s1", start=time_at("19:00"))], self._evening(call), now="08:00")
 
     def test_moving_its_end_warns_that_the_next_day_is_not_adjusted(self):
@@ -483,6 +483,113 @@ class TestMovingBedtime:
 
         assert _by_event(plan)["s0"].after.end == time_at("07:20+1")
         assert plan.warnings == []
+
+
+class TestNotedSleep:
+    """Going to bed later than planned: the day's end is settled before
+    anything else is placed, so an activity noted just before the new
+    bedtime reflows against it, not against the sleep's old start."""
+
+    def _day(self):
+        return [
+            event_at("21:00-23:30", id="e1", summary="Reading", priority=3),
+            event_at(
+                "00:00+1-07:00+1",
+                id="s1",
+                summary="Sleep",
+                priority=0,
+                is_end_of_day_sleep=True,
+                is_fixed_time=True,
+                min_duration=timedelta(hours=7),
+            ),
+        ]
+
+    def _notes(self):
+        return [_note(1, "23:47", "Starting to get ready for bed"), _note(2, "00:01+1", "Finished")]
+
+    def _get_ready(self):
+        return EventDecision(action="create", summary="Get ready for bed", start_note="n1", end_note="n2")
+
+    def test_a_later_bedtime_makes_room_for_an_activity_before_it(self):
+        plan = _plan(
+            self._notes(), [self._get_ready(), _keep("s1", start_note="n2")], self._day(), now="07:00+1"
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["s1"].after) == (time_at("00:01+1"), time_at("07:00+1"))
+        created = [c for c in plan.changes if c.action == "create"]
+        assert [(c.after.summary, _span(c.after)) for c in created] == [
+            ("Get ready for bed", (time_at("23:47"), time_at("00:01+1")))
+        ]
+        assert not any("doesn't adjust the next day" in w for w in plan.warnings)
+
+    def test_an_earlier_bedtime_needs_what_ran_past_it_ended_too(self):
+        with pytest.raises(CompactionError, match="'Reading' \\(e1, on schedule"):
+            _plan([_note(1, "23:00")], [_keep("s1", start_note="n1")], self._day(), now="07:00+1")
+
+        plan = _plan(
+            [_note(1, "23:00")],
+            [_keep("s1", start_note="n1"), _keep("e1", end_note="n1")],
+            self._day(),
+            now="07:00+1",
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["s1"].after) == (time_at("23:00"), time_at("07:00+1"))
+        assert _span(changes["e1"].after) == (time_at("21:00"), time_at("23:00"))
+
+    def test_running_into_sleep_without_moving_it_is_rejected(self):
+        with pytest.raises(CompactionError, match="overlaps 'Sleep' \\(s1, on schedule"):
+            _plan(self._notes(), [self._get_ready()], self._day(), now="07:00+1")
+
+
+class TestFixedTimeEvents:
+    def test_moving_an_event_later_reflows_around_a_fixed_time_event_further_on(self):
+        day = [
+            event_at("09:35-12:30", id="w", summary="Work", priority=3),
+            event_at("12:30-13:30", id="l", summary="Lunch", priority=1),
+            event_at("13:30-17:00", id="a", summary="Afternoon", priority=3),
+            event_at(
+                "17:00-18:00",
+                id="c",
+                summary="Commute",
+                priority=2,
+                is_fixed_time=True,
+                min_duration=timedelta(hours=1),
+            ),
+            event_at("22:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+
+        plan = _plan(
+            [_note(1, "10:00"), _note(2, "10:41")],
+            [
+                EventDecision(action="create", summary="Laying in bed", start_note="n1", end_note="n2"),
+                _keep("w", start=time_at("11:30"), end=time_at("14:25")),
+            ],
+            day,
+            now="10:45",
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["w"].after) == (time_at("11:30"), time_at("14:25"))
+        assert _span(changes["a"].after) == (time_at("15:25"), time_at("17:00"))
+        assert "c" not in changes
+        created = sorted((c.after.summary, _span(c.after)) for c in plan.changes if c.action == "create")
+        assert created == [
+            ("Afternoon", (time_at("18:00"), time_at("18:55"))),
+            ("Laying in bed", (time_at("10:00"), time_at("10:41"))),
+        ]
+
+    def test_overlapping_a_fixed_time_event_nobody_moved_says_so(self):
+        day = [
+            event_at(
+                "12:00-13:00", id="c", summary="Call", is_fixed_time=True, min_duration=timedelta(hours=1)
+            ),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+
+        with pytest.raises(CompactionError, match="doesn't fit: it overlaps fixed-time 'Call'"):
+            _plan([], [EventDecision(action="create", summary="Gym", start=time_at("11:30"), end=time_at("12:30"))], day)
 
 
 class TestTimeline:

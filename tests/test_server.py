@@ -17,7 +17,7 @@ from server import PublicEvent
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
 from utilities.note_compaction import CompactionError, EventDecision
-from utilities.noted_time_sheet import NotedTime
+from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
 
@@ -406,15 +406,21 @@ class TestSyncEventLabelsFromSheet:
 class TestNote:
     def test_appends_to_the_noted_time_sheet_and_returns_it(self, monkeypatch):
         noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.append.side_effect = lambda n: SheetNote(row=7, note=n)
         noted_time = NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
 
         result = server.note(noted_time)
 
-        assert result == noted_time
+        assert result == NoteWithId(
+            id="2026-01-01T09:00:00+00:00#7",
+            timestamp=noted_time.timestamp,
+            description="Started work",
+        )
         noted_time_sheet.append.assert_called_once_with(noted_time)
 
     def test_never_lets_a_caller_set_the_compaction_id(self, monkeypatch):
         noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
+        noted_time_sheet.append.side_effect = lambda n: SheetNote(row=7, note=n)
         noted_time = NotedTime(
             timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), compaction_id="sneaky"
         )
@@ -426,25 +432,72 @@ class TestNote:
 
 
 class TestGetNotes:
-    def test_returns_the_noted_time_sheets_uncompacted_notes(self, monkeypatch):
+    def test_returns_the_uncompacted_notes_with_ids_sorted_by_timestamp(self, monkeypatch):
         noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
-        noted_times = [
-            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+        noted_time_sheet.read_with_rows.return_value = [
+            SheetNote(row=2, note=NotedTime(timestamp=datetime(2026, 1, 1, 10, 0, tzinfo=UTC))),
+            SheetNote(
+                row=3,
+                note=NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work"),
+            ),
         ]
-        noted_time_sheet.read.return_value = noted_times
 
         result = server.get_notes()
 
-        assert result == noted_times
-        noted_time_sheet.read.assert_called_once_with(include_compacted=False)
+        assert [n.id for n in result] == [
+            "2026-01-01T09:00:00+00:00#3",
+            "2026-01-01T10:00:00+00:00#2",
+        ]
+        assert result[0].description == "Started work"
+        noted_time_sheet.read_with_rows.assert_called_once_with(include_compacted=False)
 
     def test_can_include_compacted_notes(self, monkeypatch):
         noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
-        noted_time_sheet.read.return_value = []
+        noted_time_sheet.read_with_rows.return_value = []
 
         server.get_notes(include_compacted=True)
 
-        noted_time_sheet.read.assert_called_once_with(include_compacted=True)
+        noted_time_sheet.read_with_rows.assert_called_once_with(include_compacted=True)
+
+
+class TestEditNote:
+    def test_delegates_to_the_compactor_and_returns_the_new_id(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        new_time = datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+        compactor.edit_note.return_value = SheetNote(
+            row=5, note=NotedTime(timestamp=new_time, description="Standup")
+        )
+
+        result = server.edit_note("2026-01-01T09:00:00+00:00#5", timestamp=new_time)
+
+        assert result.id == "2026-01-01T09:30:00+00:00#5"
+        compactor.edit_note.assert_called_once_with(
+            "2026-01-01T09:00:00+00:00#5", timestamp=new_time, description=None
+        )
+
+    def test_reports_a_refusal_as_a_tool_error(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        compactor.edit_note.side_effect = CompactionError("already compacted")
+
+        with pytest.raises(ToolError, match="already compacted"):
+            server.edit_note("2026-01-01T09:00:00+00:00#5", description="x")
+
+
+class TestDeleteNote:
+    def test_delegates_to_the_compactor(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        result = server.delete_note("2026-01-01T09:00:00+00:00#5")
+
+        assert result is compactor.delete_note.return_value
+        compactor.delete_note.assert_called_once_with("2026-01-01T09:00:00+00:00#5")
+
+    def test_reports_a_refusal_as_a_tool_error(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        compactor.delete_note.side_effect = CompactionError("no longer holds")
+
+        with pytest.raises(ToolError, match="no longer holds"):
+            server.delete_note("2026-01-01T09:00:00+00:00#5")
 
 
 def _fake_compactor(monkeypatch) -> MagicMock:

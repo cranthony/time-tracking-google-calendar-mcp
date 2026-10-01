@@ -11,7 +11,8 @@ from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
-from utilities.noted_time_sheet import NotedTime
+from utilities.note_compaction import CompactionError
+from utilities.noted_time_sheet import NotedTime, SheetNote
 
 UTC = timezone.utc
 
@@ -939,24 +940,138 @@ class TestMainGetNotes:
     def test_lists_notes(self, capsys, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
-        noted_time_sheet.read.return_value = [
-            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work")
+        noted_time_sheet.read_with_rows.return_value = [
+            SheetNote(row=3, note=NotedTime(timestamp=datetime(2026, 1, 1, 10, 0, tzinfo=UTC))),
+            SheetNote(
+                row=2,
+                note=NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Started work"),
+            ),
         ]
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "get_notes"])
 
         calendar_cli.main()
 
-        noted_time_sheet.read.assert_called_once_with()
-        out = capsys.readouterr().out
-        assert "2026-01-01T09:00:00+00:00" in out
-        assert "Started work" in out
+        noted_time_sheet.read_with_rows.assert_called_once_with()
+        lines = capsys.readouterr().out.splitlines()
+        assert lines == [
+            "2026-01-01T09:00:00+00:00#2\t2026-01-01T09:00:00+00:00\tStarted work",
+            "2026-01-01T10:00:00+00:00#3\t2026-01-01T10:00:00+00:00\t",
+        ]
 
     def test_prints_message_when_no_notes(self, capsys, monkeypatch):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
         noted_time_sheet = _fake_noted_time_sheet(monkeypatch)
-        noted_time_sheet.read.return_value = []
+        noted_time_sheet.read_with_rows.return_value = []
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "get_notes"])
 
         calendar_cli.main()
 
         assert "No notes found." in capsys.readouterr().out
+
+
+_NOTE_ID = "2026-01-01T09:00:00+00:00#5"
+
+
+def _fake_note_edits(monkeypatch):
+    """Stubs edit_note/delete_note as the CLI imports them, recording calls."""
+    monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+    monkeypatch.setattr(calendar_cli, "build_noted_time_sheet", lambda: "notes")
+    monkeypatch.setattr(calendar_cli, "build_compaction_journal", lambda: "journal")
+    edit, delete = MagicMock(), MagicMock()
+    monkeypatch.setattr(calendar_cli, "edit_note", edit)
+    monkeypatch.setattr(calendar_cli, "delete_note", delete)
+    return edit, delete
+
+
+class TestMainEditNote:
+    def test_edits_the_description(self, capsys, monkeypatch):
+        edit, _ = _fake_note_edits(monkeypatch)
+        edit.return_value = SheetNote(
+            row=5, note=NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="Standup")
+        )
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "edit_note", _NOTE_ID, "--description", "Standup"]
+        )
+
+        calendar_cli.main()
+
+        edit.assert_called_once_with("notes", "journal", _NOTE_ID, timestamp=None, description="Standup")
+        out = capsys.readouterr().out
+        assert f"id: {_NOTE_ID}" in out
+        assert "Standup" in out
+
+    def test_takes_a_new_time_as_a_duration_before_now(self, monkeypatch):
+        edit, _ = _fake_note_edits(monkeypatch)
+        edit.return_value = SheetNote(row=5, note=NotedTime(timestamp=datetime(2026, 1, 1, tzinfo=UTC)))
+        fixed = datetime(2026, 1, 1, 8, 30, tzinfo=UTC)
+        resolve = MagicMock(return_value=fixed)
+        monkeypatch.setattr(calendar_cli, "resolve_note_timestamp", resolve)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "edit_note", _NOTE_ID, "--ago", "30m"])
+
+        calendar_cli.main()
+
+        resolve.assert_called_once_with(1800.0)
+        assert edit.call_args.kwargs == {"timestamp": fixed, "description": None}
+
+    def test_takes_a_new_time_as_an_iso_time(self, monkeypatch):
+        edit, _ = _fake_note_edits(monkeypatch)
+        edit.return_value = SheetNote(row=5, note=NotedTime(timestamp=datetime(2026, 1, 1, tzinfo=UTC)))
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "edit_note", _NOTE_ID, "--at", "2026-01-01T09:30:00+00:00"]
+        )
+
+        calendar_cli.main()
+
+        assert edit.call_args.kwargs["timestamp"] == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+
+    def test_an_empty_description_is_passed_through_to_clear_it(self, monkeypatch):
+        edit, _ = _fake_note_edits(monkeypatch)
+        edit.return_value = SheetNote(row=5, note=NotedTime(timestamp=datetime(2026, 1, 1, tzinfo=UTC)))
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "edit_note", _NOTE_ID, "--description", ""])
+
+        calendar_cli.main()
+
+        assert edit.call_args.kwargs["description"] == ""
+
+    @pytest.mark.parametrize(
+        "extra",
+        [[], ["--ago", "1h", "--at", "2026-01-01T09:30:00+00:00"], ["--at", "not-a-time"]],
+        ids=["nothing to change", "both times", "bad time"],
+    )
+    def test_rejects_bad_arguments(self, monkeypatch, extra):
+        edit, _ = _fake_note_edits(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "edit_note", _NOTE_ID, *extra])
+
+        with pytest.raises(SystemExit):
+            calendar_cli.main()
+
+        edit.assert_not_called()
+
+    def test_reports_a_refusal_and_exits_nonzero(self, monkeypatch):
+        edit, _ = _fake_note_edits(monkeypatch)
+        edit.side_effect = CompactionError("already compacted")
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "edit_note", _NOTE_ID, "--description", "x"])
+
+        with pytest.raises(SystemExit, match="error: already compacted"):
+            calendar_cli.main()
+
+
+class TestMainDeleteNote:
+    def test_deletes_and_prints_what_it_was(self, capsys, monkeypatch):
+        _, delete = _fake_note_edits(monkeypatch)
+        delete.return_value = NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, tzinfo=UTC), description="oops")
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "delete_note", _NOTE_ID])
+
+        calendar_cli.main()
+
+        delete.assert_called_once_with("notes", "journal", _NOTE_ID)
+        out = capsys.readouterr().out
+        assert "Deleted:" in out and "oops" in out
+
+    def test_reports_a_refusal_and_exits_nonzero(self, monkeypatch):
+        _, delete = _fake_note_edits(monkeypatch)
+        delete.side_effect = CompactionError("no longer holds the note")
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "delete_note", _NOTE_ID])
+
+        with pytest.raises(SystemExit, match="no longer holds the note"):
+            calendar_cli.main()
