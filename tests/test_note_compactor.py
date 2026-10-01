@@ -615,6 +615,59 @@ class TestPreviousEvent:
         assert context.previous_event_id is None
 
 
+class TestEditAndDeleteNotes:
+    def test_edits_and_deletes_uncompacted_notes(self):
+        setup = _standard()
+
+        edited = setup.compactor.edit_note(setup.note_id(2), description="inbox zero")
+        setup.compactor.delete_note(setup.note_id(3))
+
+        notes = setup.notes.read_with_rows()
+        assert [(n.id, n.note.description) for n in notes] == [(edited.id, "inbox zero")]
+
+    def test_a_stale_id_is_a_compaction_error(self):
+        setup = _standard()
+        stale = setup.note_id(2)
+        setup.compactor.edit_note(stale, timestamp=time_at("09:10"))
+
+        with pytest.raises(CompactionError, match="no longer holds the note"):
+            setup.compactor.delete_note(stale)
+
+    def test_a_planned_compaction_does_not_block_it_but_can_no_longer_be_committed(self):
+        setup = _standard()
+        planned = setup.compactor.dry_run(setup.email_then_report())
+
+        setup.compactor.edit_note(setup.note_id(3), timestamp=time_at("10:25"))
+
+        with pytest.raises(CompactionError, match="changed since"):
+            setup.compactor.commit(planned.compaction_id)
+
+    @pytest.mark.parametrize("change", ["edit", "delete"])
+    def test_refused_while_a_compaction_with_that_note_is_being_applied(self, change):
+        setup = _standard()
+        planned = setup.compactor.dry_run(setup.email_then_report())
+        setup.journal.set_status(setup.journal.load(planned.compaction_id), APPLYING)
+        note_id = setup.note_id(2)
+
+        with pytest.raises(CompactionError, match="is applying"):
+            if change == "edit":
+                setup.compactor.edit_note(note_id, description="x")
+            else:
+                setup.compactor.delete_note(note_id)
+
+        assert setup.notes.read_with_rows()[0].note.description == "email"
+
+    def test_a_note_outside_the_compaction_being_applied_can_still_change(self):
+        setup = _standard()
+        planned = setup.compactor.dry_run(setup.email_then_report())
+        setup.journal.set_status(setup.journal.load(planned.compaction_id), APPLYING)
+        setup.append_note("08:00+1", "next day")
+
+        setup.compactor.edit_note(setup.note_id(4), description="tomorrow")
+
+        assert setup.notes.read_with_rows()[-1].note.description == "tomorrow"
+
+
 class TestReschedule:
     def test_dry_run_plans_and_journals_a_reschedule_alongside_dispositions(self):
         setup = _standard()

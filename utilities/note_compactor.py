@@ -71,7 +71,7 @@ from utilities.note_compaction import (
     Reschedule,
     plan_compaction,
 )
-from utilities.noted_time_sheet import NotedTimeSheet, SheetNote
+from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
 
 _CANDIDATE_WINDOW = timedelta(hours=1)
@@ -346,6 +346,16 @@ class NoteCompactor:
             message=f"applied {len(journal.steps)} change(s) and marked {len(journal.note_ids)} note(s) compacted",
         )
 
+    def edit_note(
+        self, note_id: str, *, timestamp: datetime | None = None, description: str | None = None
+    ) -> SheetNote:
+        """See the module-level `edit_note`."""
+        return edit_note(self._notes, self._journal, note_id, timestamp=timestamp, description=description)
+
+    def delete_note(self, note_id: str) -> NotedTime:
+        """See the module-level `delete_note`."""
+        return delete_note(self._notes, self._journal, note_id)
+
     def abandon(self, compaction_id: str) -> CompactionResult:
         journal = self._journal.load(compaction_id)
         if journal.status == STAMPED:
@@ -433,6 +443,47 @@ class NoteCompactor:
                     raise
         else:
             self._client.update_event(_patch_for(step))
+
+
+def edit_note(
+    notes: NotedTimeSheet,
+    journal: CompactionJournal,
+    note_id: str,
+    *,
+    timestamp: datetime | None = None,
+    description: str | None = None,
+) -> SheetNote:
+    """`NotedTimeSheet.edit`, refused (`CompactionError`) for a note a
+    compaction is partway through applying -- see `_require_not_being_applied`."""
+    _require_not_being_applied(journal, note_id)
+    try:
+        return notes.edit(note_id, timestamp=timestamp, description=description)
+    except ValueError as exc:
+        raise CompactionError(str(exc)) from exc
+
+
+def delete_note(notes: NotedTimeSheet, journal: CompactionJournal, note_id: str) -> NotedTime:
+    """`NotedTimeSheet.delete`, refused like `edit_note`."""
+    _require_not_being_applied(journal, note_id)
+    try:
+        return notes.delete(note_id)
+    except ValueError as exc:
+        raise CompactionError(str(exc)) from exc
+
+
+def _require_not_being_applied(journal: CompactionJournal, note_id: str) -> None:
+    """A compaction being applied stamps its notes last, and only checks
+    their timestamps, not what they say -- so changing one of them
+    midway would get the changed note stamped as if it were the one
+    planned for. (A compaction that's only `planned` needs no guard: its
+    commit re-checks the notes and refuses if they changed.)"""
+    for compaction_id, status in journal.open_compactions():
+        if note_id in journal.load(compaction_id).note_ids:
+            raise CompactionError(
+                f"note {note_id!r} is part of compaction {compaction_id}, which is {status} -- "
+                f"finish it with compact_notes(compaction_id={compaction_id!r}, dry_run=False), or "
+                "abandon it with abandon_compaction, first"
+            )
 
 
 def _plan_notes(day: _Day) -> list[PlanNote]:

@@ -587,3 +587,101 @@ class TestNotedTimeSheetMarkCompacted:
         make_sheet(sheets_client).mark_compacted([], "cmp1")
 
         sheets_client.write_rows_in_sheet.assert_not_called()
+
+
+def _fake_sheet(rows):
+    """A NotedTimeSheet over an in-memory FakeSheets tab holding `rows`."""
+    sheets = FakeSheets()
+    sheets.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+    if rows:
+        sheets.write_rows_in_sheet("sheet-1", _SHEET_ID, f"A2:C{len(rows) + 1}", rows)
+    return make_sheet(sheets)
+
+
+class TestNotedTimeSheetAppendReturnsTheRow:
+    def test_returns_the_note_with_the_row_it_went_in(self):
+        sheet = _fake_sheet([[_T1, "a"]])
+
+        appended = sheet.append(NotedTime(timestamp=datetime.fromisoformat(_T2), description="b"))
+
+        assert appended.id == _id(_T2, 3)
+        assert [n.id for n in sheet.read_with_rows()] == [_id(_T1, 2), _id(_T2, 3)]
+
+
+class TestNotedTimeSheetEdit:
+    def test_changes_the_description_in_place(self):
+        sheet = _fake_sheet([[_T1, "a"], [_T2, "b"]])
+
+        edited = sheet.edit(_id(_T1, 2), description="started work")
+
+        assert edited.id == _id(_T1, 2)
+        notes = sheet.read_with_rows()
+        assert [(n.id, n.note.description) for n in notes] == [
+            (_id(_T1, 2), "started work"),
+            (_id(_T2, 3), "b"),
+        ]
+
+    def test_changing_the_timestamp_changes_the_id_but_not_the_row(self):
+        sheet = _fake_sheet([[_T1, "a"], [_T2, "b"]])
+        later = "2026-01-01T09:30:00+00:00"
+
+        edited = sheet.edit(_id(_T1, 2), timestamp=datetime.fromisoformat(later))
+
+        assert edited.id == _id(later, 2)
+        assert edited.note.description == "a"
+        assert [n.id for n in sheet.read_with_rows()] == [_id(later, 2), _id(_T2, 3)]
+
+    def test_an_empty_description_clears_it(self):
+        sheet = _fake_sheet([[_T1, "a"]])
+
+        sheet.edit(_id(_T1, 2), description="  ")
+
+        assert sheet.read_with_rows()[0].note.description is None
+
+    def test_refuses_a_stale_id(self):
+        sheet = _fake_sheet([[_T2, "edited since it was read"]])
+
+        with pytest.raises(ValueError, match="no longer holds the note"):
+            sheet.edit(_id(_T1, 2), description="x")
+
+    def test_refuses_a_compacted_note(self):
+        sheet = _fake_sheet([[_T1, "a", "cmp1"]])
+
+        with pytest.raises(ValueError, match="already compacted"):
+            sheet.edit(_id(_T1, 2), description="x")
+
+        assert sheet.read_with_rows(include_compacted=True)[0].note.description == "a"
+
+
+class TestNotedTimeSheetDelete:
+    def test_blanks_the_row_without_moving_any_other_note(self):
+        sheet = _fake_sheet([[_T1, "a"], [_T2, "b"], [_T2, "c"]])
+
+        deleted = sheet.delete(_id(_T2, 3))
+
+        assert deleted.description == "b"
+        assert [(n.id, n.note.description) for n in sheet.read_with_rows()] == [
+            (_id(_T1, 2), "a"),
+            (_id(_T2, 4), "c"),
+        ]
+
+    def test_a_deleted_id_is_stale_afterward(self):
+        sheet = _fake_sheet([[_T1, "a"]])
+        sheet.delete(_id(_T1, 2))
+
+        with pytest.raises(ValueError, match="no longer holds the note"):
+            sheet.delete(_id(_T1, 2))
+
+    def test_refuses_a_compacted_note(self):
+        sheet = _fake_sheet([[_T1, "a", "cmp1"]])
+
+        with pytest.raises(ValueError, match="already compacted"):
+            sheet.delete(_id(_T1, 2))
+
+    def test_the_next_note_still_appends_after_the_last_one(self):
+        sheet = _fake_sheet([[_T1, "a"], [_T2, "b"]])
+        sheet.delete(_id(_T1, 2))
+
+        appended = sheet.append(NotedTime(timestamp=datetime.fromisoformat(_T2), description="c"))
+
+        assert appended.id == _id(_T2, 4)
