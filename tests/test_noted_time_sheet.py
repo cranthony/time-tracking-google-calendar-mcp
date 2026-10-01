@@ -458,6 +458,21 @@ class TestNotedTimeSheetGarbageCollect:
         assert hints.get("notes_next_row") == 252  # 2 + 250
         assert hints.get("notes_compacted_through_row") == 1  # reset, not recomputed
 
+    def test_leaves_the_tab_at_least_1000_rows_long(self):
+        # Earlier garbage collection already shrank the tab's grid; without
+        # topping it back up, it would eventually run out of rows to append
+        # into.
+        fake = FakeSheets()
+        fake.row_counts[_SHEET_ID] = 300
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        rows = [[_T1, "a", "cmp1"] for _ in range(255)] + [[_T2, "recent"]]
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
+        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, FakeRowHints())
+
+        sheet.garbage_collect()
+
+        assert fake.row_count(_SHEET_ID) == 1000
+
     def test_does_nothing_if_the_oldest_row_is_already_uncompacted(self):
         fake = FakeSheets()
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])

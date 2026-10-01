@@ -5,7 +5,9 @@ tab, say) instead of a MagicMock with canned return values.
 Supports the subset of A1 notation this app uses: "A2:H" (open-ended,
 from a row down), "C3:C3"/"C2:C4" (a bounded block), and "A1:C1" (a row).
 Like the real API, a read trims trailing empty cells from each row and
-returns blank rows in the middle as `[]`.
+returns blank rows in the middle as `[]`; each tab has a grid of
+`row_counts[sheet_id]` rows (1000, like a new tab, unless set), which
+deleting rows shrinks; and a write past the end of the grid fails.
 """
 
 from __future__ import annotations
@@ -23,12 +25,18 @@ def _column_number(letters: str) -> int:
 
 
 class FakeSheets:
+    DEFAULT_ROW_COUNT = 1000
+
     def __init__(self) -> None:
         self.cells: dict[int, dict[tuple[int, int], str]] = {}
         self.writes: list[tuple[int, str]] = []
+        self.row_counts: dict[int, int] = {}
 
     def _tab(self, sheet_id: int) -> dict[tuple[int, int], str]:
         return self.cells.setdefault(sheet_id, {})
+
+    def row_count(self, sheet_id: int) -> int:
+        return self.row_counts.setdefault(sheet_id, self.DEFAULT_ROW_COUNT)
 
     @staticmethod
     def _parse(rng: str) -> tuple[int, int, int, int | None]:
@@ -62,14 +70,29 @@ class FakeSheets:
         self, spreadsheet_id: str, sheet_id: int, rng: str, rows: list[list[str]]
     ) -> None:
         first_col, first_row, _last_col, _last_row = self._parse(rng)
+        last_written = first_row + len(rows) - 1
+        if last_written > self.row_count(sheet_id):
+            raise ValueError(
+                f"Range ({rng}) exceeds grid limits: row {last_written} of a "
+                f"{self.row_count(sheet_id)}-row tab"
+            )
         self.writes.append((sheet_id, rng))
         tab = self._tab(sheet_id)
         for i, row in enumerate(rows):
             for j, value in enumerate(row):
                 tab[(first_row + i, first_col + j)] = value
 
-    def delete_rows(self, spreadsheet_id: str, sheet_id: int, *, start_row: int, end_row: int) -> None:
+    def delete_rows(
+        self,
+        spreadsheet_id: str,
+        sheet_id: int,
+        *,
+        start_row: int,
+        end_row: int,
+        keep_at_least: int = 0,
+    ) -> None:
         count = end_row - start_row + 1
+        self.row_counts[sheet_id] = max(self.row_count(sheet_id) - count, keep_at_least)
         tab = self._tab(sheet_id)
         shifted = {}
         for (r, c), v in tab.items():

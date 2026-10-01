@@ -70,9 +70,51 @@ class TestDeleteRows:
                             }
                         }
                     }
+                ],
+                "includeSpreadsheetInResponse": True,
+                "responseIncludeGridData": False,
+            },
+            fields="updatedSpreadsheet(sheets(properties(sheetId,gridProperties(rowCount))))",
+        )
+
+    @staticmethod
+    def _rows_left(sheets_service, row_count):
+        sheets_service.spreadsheets.return_value.batchUpdate.return_value.execute.return_value = {
+            "updatedSpreadsheet": {
+                "sheets": [
+                    {"properties": {"sheetId": 7, "gridProperties": {"rowCount": 5000}}},
+                    {"properties": {"sheetId": 42, "gridProperties": {"rowCount": row_count}}},
+                ]
+            }
+        }
+
+    def test_adds_rows_back_when_the_tab_is_left_with_too_few(self):
+        sheets_service = MagicMock()
+        self._rows_left(sheets_service, 940)
+        client = make_client(sheets_service)
+
+        client.delete_rows("sheet-1", 42, start_row=2, end_row=61, keep_at_least=1000)
+
+        batch_update = sheets_service.spreadsheets.return_value.batchUpdate
+        assert batch_update.call_count == 2
+        assert batch_update.call_args.kwargs == {
+            "spreadsheetId": "sheet-1",
+            "body": {
+                "requests": [
+                    {"appendDimension": {"sheetId": 42, "dimension": "ROWS", "length": 60}}
                 ]
             },
-        )
+        }
+
+    @pytest.mark.parametrize("row_count", [1000, 1200])
+    def test_adds_nothing_when_the_tab_still_has_enough(self, row_count):
+        sheets_service = MagicMock()
+        self._rows_left(sheets_service, row_count)
+        client = make_client(sheets_service)
+
+        client.delete_rows("sheet-1", 42, start_row=2, end_row=61, keep_at_least=1000)
+
+        assert sheets_service.spreadsheets.return_value.batchUpdate.call_count == 1
 
     def test_a_single_row_range_deletes_just_that_row(self):
         sheets_service = MagicMock()

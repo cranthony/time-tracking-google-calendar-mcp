@@ -105,6 +105,11 @@ def ensure_tab(
     return sheet_id, True
 
 
+MIN_TAB_ROWS = 1000
+"""The fewest rows (data and blank, header included) a tab is left with
+after garbage collection deletes some -- writing past the end of a tab's
+grid fails, and 1000 is what Sheets gives a new tab."""
+
 TIME_NOTES_SHEET_ROLE = "uncompacted-time-notes"
 TIME_NOTES_SHEET_TITLE = "Noted Times"
 """See `utilities/noted_time_sheet.py`'s `NotedTimeSheet` for the tab

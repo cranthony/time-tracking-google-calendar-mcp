@@ -403,6 +403,7 @@ class NotedTimeSheet:
             self._sheet_id,
             start_row=_FIRST_DATA_ROW,
             end_row=_FIRST_DATA_ROW + deletable - 1,
+            keep_at_least=calendar_metadata_sheet.MIN_TAB_ROWS,
         )
         self._hints.set(_NEXT_ROW_HINT, next_row - deletable)
         # Deleting only ever confirmed compacted-or-blank rows, so a full
