@@ -5,13 +5,14 @@
 
 The flow, as the MCP tools expose it:
 
-1. `prepare` -- read-only. Hands the client one *reallocation day* of
-   uncompacted notes (each with a stable id and a shortlist of nearby
-   planned events) plus that day's planned events. The client reads the
-   free-form notes and decides what each one means.
-2. `dry_run` -- validates the client's dispositions and writes the plan
-   to the journal as `planned`, returning it (and a compaction id) for
-   review. Nothing on the calendar changes.
+1. `prepare` -- read-only. Hands the client one day of uncompacted notes
+   (each with a stable id and a shortlist of nearby planned events), that
+   day's planned events, and the two side by side as a `Timeline` (see
+   utilities/compaction_timeline.py). The client compares them and
+   decides, event by event, what the notes show happened differently.
+2. `dry_run` -- validates the client's decisions and writes the plan to
+   the journal as `planned`, returning it (and a compaction id, and the
+   resulting timeline) for review. Nothing on the calendar changes.
 3. `commit` -- applies a `planned` compaction after checking the notes and
    calendar still match what was previewed, journaling each step as it
    goes, and only then stamps the notes as compacted. If it dies partway
@@ -19,20 +20,22 @@ The flow, as the MCP tools expose it:
    approved and how far it got. A compaction that can't be finished can be
    `abandon`ed.
 
-A day at a time: notes are processed one reallocation day (see
-`ReallocatingCalendar.list_day_events`) per compaction, oldest first, so a
-backlog spanning several days takes one compaction per day. Each day's
-window starts where the last *stamped* compaction's `now` left off (the
-first note's timestamp, only if nothing has ever been stamped), so a
-calendar event that already ended before the next note is written --
-this morning's getting-ready block, an earlier work block -- is still in
-range instead of silently falling outside the fetch window.
+A day at a time: notes are processed one day per compaction, oldest
+first, so a backlog spanning several days takes one compaction per day.
+The day is the one the oldest uncompacted note falls in: it starts when
+the last end-of-day sleep event that began before that note ends (or at
+the note, if it's earlier -- a note written before the planned wake-up
+time), and runs to the end of the next end-of-day sleep event after that
+(or 24 hours, if there isn't one).
 
-`dry_run` also takes `reschedules` -- direct "move this planned event"
-instructions alongside the note dispositions, for redirecting the plan
-itself ("move lunch later and adjust the afternoon accordingly") rather
-than interpreting what happened. See `utilities/note_compaction.py`'s
-`Reschedule`; it's journaled and applied in the same plan as the notes.
+A day can take several compactions, so the events offered -- the
+*compaction window* -- start at the later of the day's start and the last
+*stamped* compaction's `now`: whatever an earlier compaction already
+settled isn't offered again. The one event that ended within `_LOOKBACK`
+before the compaction window starts is offered too, so an event the last
+compaction closed off at "now" (or the night's sleep) can still be
+stretched. Every past event offered is recorded as on schedule unless
+the client's decisions say otherwise (see utilities/note_compaction.py).
 
 `prepare` also garbage-collects the journal (`CompactionJournal.
 garbage_collect`) before doing anything else -- see there, and
@@ -62,14 +65,14 @@ from utilities.compaction_journal import (
     JournalCompaction,
     JournalStep,
 )
+from utilities.compaction_timeline import Timeline
 from utilities.note_compaction import (
     CompactionChange,
     CompactionError,
-    NeedsClarification,
-    NoteDisposition,
+    EventDecision,
     PlanNote,
-    Reschedule,
     plan_compaction,
+    planned_timeline,
 )
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
@@ -78,39 +81,50 @@ _CANDIDATE_WINDOW = timedelta(hours=1)
 """How far either side of a note's time a planned event may start or end
 and still be offered to it as a candidate."""
 
-_PREVIOUS_EVENT_WINDOW = timedelta(minutes=15)
-"""How long before a day's start an event may have ended and still be
-offered as `previous_event_id` -- the event just before the day, e.g. last
-night's sleep, which ends exactly where the next day starts."""
+_LOOKBACK = timedelta(minutes=15)
+"""How long before the compaction window starts an event may have ended
+and still be offered (only the latest one) -- see the module docstring."""
 
-DISPOSITION_GUIDE = (
-    "Give every note in `notes` above (by its id) one disposition, and only those notes -- "
-    "not ones from get_notes or an earlier prepare_compaction call, even if they're still "
-    "uncompacted. Notes past this round belong to a later day and aren't offered yet (see "
-    "`remaining_note_count`); compact_notes rejects a disposition for any other note id. "
-    "Each disposition is made of effects. "
-    "'starts' {event_id}: a planned event began at that time. "
-    "'starts_unplanned' {summary}: something that wasn't planned began. "
-    "'ends' {event_id} (or {started_by_note} for an unplanned activity): it ended at that time. "
-    "'marker': just an annotation of what was happening. 'ignore': no meaning. "
-    "'ambiguous' {question}: you can't tell -- ask the user. "
-    "A note often ends one activity and starts the next: give it both effects. "
-    "Only use event ids from `events`; each note's `candidates` are the likeliest. "
-    "'marker', 'ignore' and 'ambiguous' can't be combined with other effects. "
-    "'starts'/'starts_unplanned'/'ends' may also carry {rename} (override the resulting event's "
-    "title) and/or {annotate} (extra text for its description) -- typically set these after showing "
-    "the user a dry run and hearing what they want changed, then call compact_notes again. "
-    "Separately, `reschedules` (a compact_notes argument, not a disposition) directly moves a "
-    "planned event to a new {start} and/or {end} (either may be left out -- not both -- and is "
-    "filled in from the other plus the event's current duration, so giving just {start} moves it "
-    "without changing its length) -- for 'move lunch later and adjust the afternoon accordingly' "
-    "style requests that aren't about what a note means. It reflows the rest of the day around it "
-    "exactly like a note-derived activity, in the same plan; an event already accounted for by a "
-    "note can't also be rescheduled. "
-    "`previous_event_id`, if set, is the event that ended in the 15 minutes before this day began "
-    "(usually last night's sleep); it's listed in `events` too. To record that it actually ran later -- e.g. the "
-    "user slept in -- give the note that marks its real end an 'ends' effect for it (it keeps its "
-    "own start), or reschedule it; the morning reflows around it. No note can 'starts' it."
+DECISION_GUIDE = (
+    "`timeline` shows this day's notes beside its planned events. Compare them and decide, event "
+    "by event, what the notes show happened differently -- then call compact_notes with those "
+    "`decisions`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly "
+    "as planned, so only mention the events the notes contradict. Notes are sparse -- the user "
+    "doesn't note every event, so a missing start or end note never means an event didn't happen "
+    "or ran into its neighbor. "
+    "Each decision has an `action`: "
+    "'keep' {event_id}: it happened; each edge stays as planned unless you move it -- "
+    "{start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to "
+    "it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to "
+    "itself, e.g. 'leaving 15 minutes early'). 'keep' also takes {summary} to rename an event and "
+    "{annotate} to add text to its description. "
+    "'cancel' {event_id}: it didn't happen. "
+    "'create' {summary, a start and an end (a time or note each), event_label_id?}: something "
+    "unplanned happened. "
+    "'merge' {event_id, into}: fold one event into another, titled after both -- ONLY when the user "
+    "has told you they don't remember where one ended and the other began; never just because the "
+    "notes are sparse. "
+    "Past events can't overlap: if a moved edge runs into another past event, compact_notes rejects "
+    "the plan and names the overlap. Decide which edge gives way (an overrun usually delays or "
+    "shortens the next event), and ask the user if the notes don't tell you. "
+    "Every note you don't use as a start_note/end_note has its text added to the description of the "
+    "event it falls within; list any that shouldn't be in `ignore_notes`. Use only note ids from "
+    "`notes` (only this round's -- notes for later days aren't offered yet, see "
+    "`remaining_note_count`) and event ids from `events`. "
+    "`events` may start with one that ended just before `compaction_window_start` (usually last "
+    "night's sleep); if a note shows it actually ran later -- the user slept in -- move its end "
+    "with 'keep', and say when whatever it now overlaps happened. "
+    "A 'keep' that moves a future event reschedules it: it's pinned there and the rest of the day "
+    "reflows around it, in the same plan -- for 'move lunch later and adjust the afternoon' "
+    "requests. The day's own end-of-day sleep event works differently: moving its start moves "
+    "bedtime (an earlier one shortens or cancels what runs past it), and its end -- the wake-up "
+    "time -- starts the next day, which compaction never adjusts, so move only its start to "
+    "change only bedtime. "
+    "After every dry run, show the user the result's `timeline` as two parallel lanes -- notes on "
+    "the left, events on the right, aligned by time, with each anchoring note joined to the event "
+    "edge it sets -- drawing it as a visual if you can render one, otherwise showing "
+    "`timeline.text` verbatim in a code block. Then list the warnings and ask whether to apply it, "
+    "or what to change."
 )
 
 
@@ -148,12 +162,6 @@ class CompactionContext:
     the day if that's earlier."""
 
     day_end: datetime | None = None
-    previous_event_id: str | None = None
-    """The event that ended just before this day began (usually last
-    night's sleep), if any. It's in `events` too, and can be ended later
-    by a note or rescheduled -- see `plan_compaction`'s
-    `previous_event`."""
-
     remaining_note_count: int = 0
     """Uncompacted notes belonging to later days -- compact those in
     later rounds."""
@@ -162,13 +170,20 @@ class CompactionContext:
     """The id of a compaction that's begun but not finished, if any. It
     must be resumed or abandoned before a new one can start."""
 
-    instructions: str = DISPOSITION_GUIDE
+    compaction_window_start: datetime | None = None
+    """Where the events offered start: the later of the day's start and
+    the last compaction -- see the module docstring."""
+
+    timeline: Timeline | None = None
+    """`notes` beside `events` as planned -- see
+    utilities/compaction_timeline.py."""
+
+    instructions: str = DECISION_GUIDE
 
 
 @dataclass(kw_only=True)
 class CompactionResult:
     status: Literal[
-        "needs_clarification",
         "planned",
         "applied",
         "already_compacted",
@@ -179,22 +194,27 @@ class CompactionResult:
     compaction_id: str | None = None
     changes: list[CompactionChange] = None  # type: ignore[assignment]
     warnings: list[str] = None  # type: ignore[assignment]
-    questions: list[str] = None  # type: ignore[assignment]
+    timeline: Timeline | None = None
+    """For a dry run: the notes beside the events as they'd end up -- show
+    this to the user (see `DECISION_GUIDE`)."""
 
     def __post_init__(self) -> None:
         self.changes = self.changes or []
         self.warnings = self.warnings or []
-        self.questions = self.questions or []
 
 
 @dataclass
 class _Day:
     notes: list[SheetNote]
     events: list[Event]
+    day_start: datetime
+    compaction_window_start: datetime
     day_end: datetime
     now: datetime
     remaining: int
     previous: Event | None = None
+    """The event that ended just before the compaction window, if one
+    was offered."""
 
 
 class NoteCompactor:
@@ -207,9 +227,9 @@ class NoteCompactor:
         journal: CompactionJournal,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
-        """`calendar` reads a day's events (it's the same label-priority-
-        aware view reallocation uses); `client` is what the planned
-        changes are written through."""
+        """`calendar` reads the day's events (through the same label-
+        priority-aware view reallocation uses); `client` is what the
+        planned changes are written through."""
         self._calendar = calendar
         self._client = client
         self._notes = notes
@@ -248,58 +268,54 @@ class NoteCompactor:
                     priority=e.priority,
                     is_fixed_time=e.is_fixed_time,
                 )
-                for e in ([day.previous] if day.previous else []) + day.events
+                for e in day.events
                 if e.id
             ],
             now=day.now,
             day_end=day.day_end,
-            previous_event_id=day.previous.id if day.previous else None,
             remaining_note_count=day.remaining,
             open_compaction=open_id,
+            compaction_window_start=day.compaction_window_start,
+            timeline=planned_timeline(_plan_notes(day), day.events, day.now),
         )
 
     def dry_run(
-        self, dispositions: list[NoteDisposition], reschedules: list[Reschedule] | None = None
+        self, decisions: list[EventDecision], ignore_notes: list[str] | None = None
     ) -> CompactionResult:
         self._require_no_open_compaction()
         day = self._day(self._clock())
         if day is None:
             return CompactionResult(status="nothing_to_compact", message="there are no uncompacted notes")
-        try:
-            plan = plan_compaction(
-                _plan_notes(day),
-                dispositions,
-                day.events,
-                day.now,
-                reschedules=reschedules,
-                previous_event=day.previous,
-            )
-        except NeedsClarification as exc:
-            return CompactionResult(
-                status="needs_clarification",
-                message="ask the user these, then call again with the corrected dispositions",
-                questions=exc.questions,
-            )
+        plan = plan_compaction(
+            _plan_notes(day),
+            decisions,
+            day.events,
+            day.now,
+            ignore_notes=ignore_notes,
+            day_start=day.day_start,
+        )
         superseded = self._supersede_planned()
         compaction_id = uuid.uuid4().hex[:12]
         self._journal.start(
             compaction_id,
             now=day.now,
             note_ids=[n.id for n in day.notes],
-            dispositions=dispositions,
+            decisions=decisions,
+            ignore_notes=ignore_notes or [],
             plan=plan,
-            reschedules=reschedules,
         )
         return CompactionResult(
             status="planned",
             compaction_id=compaction_id,
             changes=plan.changes,
             warnings=plan.warnings,
+            timeline=plan.timeline,
             message=(
                 f"{len(plan.changes)} calendar change(s) planned for {len(day.notes)} note(s); "
-                "nothing has been changed yet. Show this to the user, then call compact_notes "
-                f"with compaction_id={compaction_id!r} and dry_run=False to apply it. If they want "
-                "something different, correct the dispositions and call compact_notes again "
+                "nothing has been changed yet. Show the user `timeline` as two lanes (see the "
+                "instructions from prepare_compaction), then call compact_notes with "
+                f"compaction_id={compaction_id!r} and dry_run=False to apply it. If they want "
+                "something different, correct the decisions and call compact_notes again "
                 "(this plan is then replaced)."
                 + (f" (Replaced {superseded} earlier unapplied plan(s).)" if superseded else "")
             ),
@@ -374,15 +390,48 @@ class NoteCompactor:
         sheet_notes = self._notes.read_with_rows()
         if not sheet_notes:
             return None
-        anchor = self._journal.last_stamped_now() or min(n.note.timestamp for n in sheet_notes)
-        previous, day_events = self._calendar.list_day_with_previous(anchor, _PREVIOUS_EVENT_WINDOW)
-        events = [e for e in day_events if e.status != "cancelled"]
-        sleep = next((e for e in events if e.is_end_of_day_sleep), None)
-        day_end = sleep.end if sleep is not None else anchor + timedelta(hours=24)
+        first = min(n.note.timestamp for n in sheet_notes)
+        # The day the oldest note falls in starts when the night before it
+        # ends -- or at the note, if it was written before the wake-up time.
+        recent = self._calendar.list_events(first - timedelta(hours=24), first + timedelta(seconds=1))
+        opening = max(
+            (e for e in recent if e.is_end_of_day_sleep and e.status != "cancelled" and e.start <= first),
+            key=lambda e: e.start,
+            default=None,
+        )
+        day_start = min(opening.end, first) if opening is not None else first
+        last_stamped = self._journal.last_stamped_now()
+        compaction_window_start = (
+            max(day_start, last_stamped) if last_stamped is not None else day_start
+        )
+
+        fetched = sorted(
+            (
+                e
+                for e in self._calendar.list_events(
+                    compaction_window_start - _LOOKBACK, day_start + timedelta(hours=24)
+                )
+                if e.status != "cancelled"
+            ),
+            key=lambda e: e.start,
+        )
+        earlier = [e for e in fetched if e.end <= compaction_window_start]
+        events = [e for e in fetched if e.end > compaction_window_start]
+        closing = next(
+            (i for i, e in enumerate(events) if e.is_end_of_day_sleep and e.start > day_start), None
+        )
+        if closing is not None:
+            events = events[: closing + 1]
+        previous = max(earlier, key=lambda e: e.end) if earlier else None
+        if previous is not None:
+            events.insert(0, previous)
+        day_end = events[-1].end if closing is not None else day_start + timedelta(hours=24)
         in_day = [n for n in sheet_notes if n.note.timestamp <= day_end]
         return _Day(
             notes=in_day,
             events=events,
+            day_start=day_start,
+            compaction_window_start=compaction_window_start,
             day_end=day_end,
             now=min(now, day_end),
             remaining=len(sheet_notes) - len(in_day),
@@ -419,11 +468,11 @@ class NoteCompactor:
             raise stale
         plan = plan_compaction(
             _plan_notes(day),
-            journal.dispositions,
+            journal.decisions,
             day.events,
             day.now,
-            reschedules=journal.reschedules,
-            previous_event=day.previous,
+            ignore_notes=journal.ignore_notes,
+            day_start=day.day_start,
         )
 
         def comparable(changes: list[CompactionChange]) -> list[tuple]:
@@ -494,9 +543,10 @@ def _plan_notes(day: _Day) -> list[PlanNote]:
 
 
 def _candidates(timestamp: datetime, events: list[Event], previous: Event | None = None) -> list[str]:
-    """`previous` (the event before the day, offered to the day's first
-    note) is listed last: however long after its planned end the note
-    is, it may be what the note ends -- e.g. "finally up"."""
+    """`previous` (the event just before the compaction window, offered
+    to the day's first note) is listed last: however long after its
+    planned end the note is, it may be what the note ends -- e.g.
+    "finally up"."""
     near = [
         e
         for e in events

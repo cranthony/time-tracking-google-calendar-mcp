@@ -18,10 +18,8 @@ from utilities.note_compaction import (
     CompactionChange,
     CompactionError,
     CompactionPlan,
+    EventDecision,
     EventState,
-    NoteDisposition,
-    NoteEffect,
-    Reschedule,
 )
 
 _SHEET_ID = 7
@@ -49,27 +47,21 @@ def _plan():
     )
 
 
-def _dispositions():
+def _decisions():
     return [
-        NoteDisposition(note_id="n2", effects=[NoteEffect(kind="starts", event_id="e1")]),
-        NoteDisposition(
-            note_id="n3",
-            effects=[
-                NoteEffect(kind="ends", event_id="e1"),
-                NoteEffect(kind="starts_unplanned", summary="Coffee"),
-            ],
-        ),
+        EventDecision(action="keep", event_id="e1", start_note="n2", end=time_at("10:20")),
+        EventDecision(action="create", summary="Coffee", start_note="n3", end=time_at("10:40")),
     ]
 
 
-def _start(journal, compaction_id="abc123", reschedules=None):
+def _start(journal, compaction_id="abc123", ignore_notes=None):
     journal.start(
         compaction_id,
         now=time_at("11:00"),
         note_ids=["n2", "n3"],
-        dispositions=_dispositions(),
+        decisions=_decisions(),
         plan=_plan(),
-        reschedules=reschedules,
+        ignore_notes=ignore_notes,
     )
 
 
@@ -85,8 +77,8 @@ class TestStartAndLoad:
         assert loaded.now == time_at("11:00")
         assert loaded.note_ids == ["n2", "n3"]
         assert loaded.warnings == ["a warning"]
-        assert loaded.dispositions == _dispositions()
-        assert loaded.reschedules == []
+        assert loaded.decisions == _decisions()
+        assert loaded.ignore_notes == []
         assert [(s.step, s.action, s.event_id, s.status) for s in loaded.steps] == [
             (1, "cancel", "e9", "pending"),
             (2, "update", "e1", "pending"),
@@ -95,21 +87,21 @@ class TestStartAndLoad:
         plan = _plan()
         assert loaded.changes() == plan.changes
 
-    def test_round_trips_reschedules(self):
+    def test_round_trips_ignored_notes(self):
         journal, _ = _journal()
-        reschedules = [Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))]
 
-        _start(journal, reschedules=reschedules)
+        _start(journal, ignore_notes=["n3"])
 
-        assert journal.load("abc123").reschedules == reschedules
+        assert journal.load("abc123").ignore_notes == ["n3"]
 
-    def test_round_trips_a_reschedule_with_only_a_start(self):
-        journal, _ = _journal()
-        reschedules = [Reschedule(event_id="e3", start=time_at("12:15"))]
+    def test_skips_rows_of_the_retired_disposition_kind(self):
+        journal, sheets = _journal()
+        _start(journal)
+        sheets.write_rows_in_sheet(
+            "spreadsheet-1", _SHEET_ID, "A8:H8", [["abc123", "0", "disposition", "n2", "[]", "", "", ""]]
+        )
 
-        _start(journal, reschedules=reschedules)
-
-        assert journal.load("abc123").reschedules == reschedules
+        assert journal.load("abc123").decisions == _decisions()
 
     def test_writes_everything_in_one_write_so_a_crash_cannot_leave_half_a_plan(self):
         journal, sheets = _journal()
@@ -148,7 +140,7 @@ class TestStartAndLoad:
             ]
         )
 
-        journal.start("big", now=time_at("11:00"), note_ids=[], dispositions=[], plan=big)
+        journal.start("big", now=time_at("11:00"), note_ids=[], decisions=[], plan=big)
 
         assert max(len(v) for v in sheets.cells[_SHEET_ID].values()) < 50_000
         assert len(journal.load("big").steps) == 200
@@ -204,7 +196,7 @@ class TestStartHints:
         _start(journal)
 
         assert journal.load("abc123").row == 22
-        assert hints.get("journal_next_row") == 28  # 22 + 1 compaction + 2 dispositions + 3 changes
+        assert hints.get("journal_next_row") == 28  # 22 + 1 compaction + 2 decisions + 3 changes
 
     def test_falls_back_when_the_hinted_row_overshoots_past_a_gap(self):
         # Real data ends at row 6, but the hint points at row 20, with
@@ -227,7 +219,7 @@ class TestStartHints:
 
         _start(journal)
 
-        assert hints.get("journal_next_row") == 8  # 1 compaction + 2 dispositions + 3 changes
+        assert hints.get("journal_next_row") == 8  # 1 compaction + 2 decisions + 3 changes
 
     def test_sets_the_latest_compaction_row_hint(self):
         hints = FakeRowHints()
@@ -294,7 +286,7 @@ class TestLoadHints:
 
         loaded = journal.load("second")
 
-        assert loaded.dispositions == _dispositions()
+        assert loaded.decisions == _decisions()
 
     def test_falls_back_when_the_hint_points_somewhere_else_entirely(self):
         hints = FakeRowHints()
@@ -346,7 +338,7 @@ class TestStatus:
 
 
 class TestGarbageCollect:
-    _BLOCK_ROWS = 6  # 1 compaction row + 2 dispositions + 3 changes, per _start()
+    _BLOCK_ROWS = 6  # 1 compaction row + 2 decisions + 3 changes, per _start()
 
     def test_does_nothing_under_the_row_budget(self):
         journal, _ = _journal()
@@ -423,7 +415,7 @@ class TestGarbageCollect:
                 for i in range(500)
             ]
         )
-        journal.start("current", now=time_at("11:00"), note_ids=[], dispositions=[], plan=big_plan)
+        journal.start("current", now=time_at("11:00"), note_ids=[], decisions=[], plan=big_plan)
         # "current" is left planned (open) -- can't be deleted, and its
         # size alone already exceeds the budget. "old2" is the last
         # *stamped* compaction, so it's preserved too -- only "old1" is

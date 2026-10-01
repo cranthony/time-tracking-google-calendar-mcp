@@ -2,17 +2,17 @@ from datetime import timedelta
 
 import pytest
 
+from calendar_clients.google_calendar import Event
 from tests.event_time_helpers import event_at, time_at
 from utilities.note_compaction import (
     CompactionError,
+    EventDecision,
     EventState,
-    NeedsClarification,
-    NoteDisposition,
-    NoteEffect,
     PlanNote,
-    Reschedule,
     plan_compaction,
 )
+
+_NEXT_DAY = timedelta(days=1)
 
 
 def _day():
@@ -25,16 +25,39 @@ def _day():
     ]
 
 
+def _evening():
+    """The salsa evening: notes only mark leaving early and finishing dinner."""
+    return [
+        event_at("17:00-18:15", id="w", summary="Work", priority=2),
+        event_at("18:30-19:30", id="salsa", summary="Google Salsa class", priority=2),
+        event_at("19:30-20:00", id="dinner", summary="Dinner", priority=2),
+        event_at("20:00-21:00", id="read", summary="Reading", priority=3),
+        event_at("22:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+    ]
+
+
+def _overnight():
+    """Last night's sleep, then the next day (the day after `DAY`)."""
+    return [
+        event_at("20:00-07:00+1", id="s0", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        event_at("07:00+1-08:00+1", id="gr", summary="Getting Ready", priority=2),
+        Event(
+            id="s1",
+            summary="Sleep",
+            start=time_at("22:00+1"),
+            end=time_at("07:00+1") + _NEXT_DAY,
+            priority=0,
+            is_end_of_day_sleep=True,
+        ),
+    ]
+
+
 def _note(number: int, at: str, description: str | None = None) -> PlanNote:
     return PlanNote(id=f"n{number}", timestamp=time_at(at), description=description)
 
 
-def _effect(kind: str, **fields) -> NoteEffect:
-    return NoteEffect(kind=kind, **fields)
-
-
-def _disposition(number: int, *effects: NoteEffect) -> NoteDisposition:
-    return NoteDisposition(note_id=f"n{number}", effects=list(effects))
+def _keep(event_id: str, **fields) -> EventDecision:
+    return EventDecision(action="keep", event_id=event_id, **fields)
 
 
 def _by_event(plan):
@@ -45,611 +68,110 @@ def _span(state: EventState) -> tuple:
     return state.start, state.end
 
 
-class TestBasicPlanning:
-    def test_a_start_note_runs_until_the_next_boundary_and_the_last_runs_to_now(self):
-        plan = plan_compaction(
-            [_note(2, "09:05"), _note(3, "10:20")],
+def _plan(notes, decisions, day=None, now="11:30", **kwargs):
+    return plan_compaction(notes, decisions, day if day is not None else _day(), time_at(now), **kwargs)
+
+
+class TestSilenceMeansOnSchedule:
+    def test_past_events_nobody_mentions_are_pinned_where_they_were_planned(self):
+        plan = _plan([], [])
+
+        changes = _by_event(plan)
+        assert set(changes) == {"e1", "e2"}
+        assert _span(changes["e1"].after) == (time_at("09:00"), time_at("10:00"))
+        assert changes["e1"].after.is_fixed_time is True
+        assert changes["e1"].after.min_duration_minutes == 60
+        assert "as planned" in changes["e1"].reason
+
+    def test_an_already_pinned_past_event_needs_no_change(self):
+        day = _day()
+        day[0].is_fixed_time = True
+        day[0].min_duration = timedelta(hours=1)
+
+        assert "e1" not in _by_event(_plan([], [], day))
+
+    def test_an_event_still_in_progress_is_left_alone(self):
+        assert "e2" not in _by_event(_plan([], [], now="10:30"))
+
+    def test_an_end_note_for_one_event_does_not_merge_it_with_the_one_before(self):
+        # Only dinner's end was noted: the class and dinner's start still
+        # happened as planned, and nothing is merged or cancelled.
+        plan = _plan(
+            [_note(1, "18:15", "Leaving for salsa early to prep"), _note(2, "20:10", "Done with dinner")],
             [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("ends", event_id="e1"), _effect("starts", event_id="e2")),
+                EventDecision(action="create", summary="Salsa prep", start_note="n1", end=time_at("18:30")),
+                _keep("dinner", end_note="n2"),
+                _keep("read", start_note="n2"),
             ],
-            _day(),
-            time_at("11:30"),
+            _evening(),
+            now="22:30",
+        )
+
+        changes = _by_event(plan)
+        assert _span(changes["salsa"].after) == (time_at("18:30"), time_at("19:30"))
+        assert changes["salsa"].after.summary == "Google Salsa class"
+        assert _span(changes["dinner"].after) == (time_at("19:30"), time_at("20:10"))
+        assert _span(changes["read"].after) == (time_at("20:10"), time_at("21:00"))
+        assert not any(c.action == "cancel" for c in plan.changes)
+        [created] = [c for c in plan.changes if c.action == "create"]
+        assert _span(created.after) == (time_at("18:15"), time_at("18:30"))
+
+    def test_the_end_of_day_sleep_event_is_never_pinned(self):
+        plan = _plan([], [], now="07:00+1")
+
+        assert "s1" not in _by_event(plan)
+
+
+class TestKeep:
+    def test_notes_set_the_edges_they_mark_and_the_result_is_pinned(self):
+        plan = _plan(
+            [_note(1, "09:05"), _note(2, "10:20")],
+            [_keep("e1", start_note="n1", end_note="n2"), _keep("e2", start_note="n2")],
         )
 
         changes = _by_event(plan)
         assert _span(changes["e1"].after) == (time_at("09:05"), time_at("10:20"))
-        # Still in progress: runs to now, since that's later than its planned end.
-        assert _span(changes["e2"].after) == (time_at("10:20"), time_at("11:30"))
         assert changes["e1"].after.is_fixed_time is True
         assert changes["e1"].after.min_duration_minutes == 75
+        assert "realigned" in changes["e1"].reason
+        # An edge left out stays as planned.
+        assert _span(changes["e2"].after) == (time_at("10:20"), time_at("11:00"))
         # The future is untouched.
         assert "e3" not in changes and "e4" not in changes
 
-    def test_the_in_progress_activity_keeps_its_planned_end_when_that_is_later(self):
-        plan = plan_compaction(
-            [_note(2, "09:05")],
-            [_disposition(2, _effect("starts", event_id="e1"))],
-            _day(),
-            time_at("09:30"),
+    def test_an_explicit_time_wins_over_its_note(self):
+        # "Leaving 15 minutes early" -- the note's own time isn't the edge.
+        plan = _plan(
+            [_note(1, "08:30", "leaving in 15")],
+            [_keep("e1", start=time_at("08:45"), start_note="n1")],
         )
 
-        assert _span(_by_event(plan)["e1"].after) == (time_at("09:05"), time_at("10:00"))
+        assert _span(_by_event(plan)["e1"].after) == (time_at("08:45"), time_at("10:00"))
+        email = next(e for e in plan.timeline.events if e.event_id == "e1")
+        assert email.start_note == "n1"
 
-    def test_an_in_progress_activity_on_a_finished_day_asks_when_it_ended(self):
-        # A past day being compacted the next afternoon: `now` is clamped to
-        # the end of that day, so there's no real "now" to run it to.
-        with pytest.raises(NeedsClarification) as excinfo:
-            plan_compaction(
-                [_note(2, "10:20")],
-                [_disposition(2, _effect("starts", event_id="e2"))],
-                _day(),
-                time_at("07:00+1"),
-            )
+    def test_renames_and_annotates(self):
+        plan = _plan([], [_keep("e1", summary="Deep work", annotate="phone rang")])
 
-        assert "When did 'Report' end?" in excinfo.value.questions[0]
-        assert "n2" in excinfo.value.questions[0]
+        change = _by_event(plan)["e1"]
+        assert change.after.summary == "Deep work"
+        assert change.after.description == "Notes:\n- phone rang"
 
-    def test_an_in_progress_activity_runs_to_now_even_after_the_sleep_block_starts(self):
-        # 21:00 is after the 20:00 start of the sleep block but well before it
-        # ends: the user is still up, so it runs to now, not to bedtime.
-        plan = plan_compaction(
-            [_note(2, "10:20")],
-            [_disposition(2, _effect("starts", event_id="e2"))],
-            _day(),
-            time_at("21:00"),
-        )
+    def test_renaming_a_future_event_does_not_pin_it(self):
+        change = _by_event(_plan([], [_keep("e3", summary="Team lunch")]))["e3"]
 
-        assert _span(_by_event(plan)["e2"].after) == (time_at("10:20"), time_at("21:00"))
-        assert not any("bedtime" in w for w in plan.warnings)
-        # The sleep block gives way instead.
-        assert _by_event(plan)["s1"].after.start == time_at("21:00")
+        assert change.after.summary == "Team lunch"
+        assert change.after.is_fixed_time is None
+        assert _span(change.after) == (time_at("12:00"), time_at("13:00"))
 
-    def test_an_in_progress_activity_earlier_than_bedtime_has_no_warning(self):
-        plan = plan_compaction(
-            [_note(2, "10:20")],
-            [_disposition(2, _effect("starts", event_id="e2"))],
-            _day(),
-            time_at("11:30"),
-        )
-
-        assert not any("bedtime" in w for w in plan.warnings)
-
-    def test_an_explicit_end_leaves_the_following_gap_free(self):
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:30"), _note(4, "10:15")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("ends", event_id="e1")),
-                _disposition(4, _effect("starts", event_id="e2")),
-            ],
-            _day(),
-            time_at("10:30"),
-        )
+    def test_moving_a_future_event_reschedules_it_and_reflows_the_rest(self):
+        plan = _plan([], [_keep("e3", start=time_at("13:30"), end=time_at("14:30"))])
 
         changes = _by_event(plan)
-        assert _span(changes["e1"].after) == (time_at("09:00"), time_at("09:30"))
-        assert _span(changes["e2"].after) == (time_at("10:15"), time_at("11:00"))
-
-    def test_an_end_only_note_pulls_its_start_back_to_the_previous_boundary(self):
-        # e2 has no start note: its start extends back to the previous
-        # boundary (the note that ended e1) so no gap is left before it.
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:30"), _note(4, "10:15")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("ends", event_id="e1")),
-                _disposition(4, _effect("ends", event_id="e2")),
-            ],
-            _day(),
-            time_at("10:30"),
-        )
-
-        changes = _by_event(plan)
-        assert _span(changes["e1"].after) == (time_at("09:00"), time_at("09:30"))
-        assert _span(changes["e2"].after) == (time_at("09:30"), time_at("10:15"))
-
-    def test_an_end_only_note_with_no_earlier_note_keeps_the_planned_start(self):
-        plan = plan_compaction(
-            [_note(2, "09:40")],
-            [_disposition(2, _effect("ends", event_id="e1"))],
-            _day(),
-            time_at("10:00"),
-        )
-
-        assert _span(_by_event(plan)["e1"].after) == (time_at("09:00"), time_at("09:40"))
-        assert any("keeps its planned start" in w for w in plan.warnings)
-
-    def test_an_unplanned_activity_becomes_a_new_event_and_pushes_the_rest_later(self):
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:50"), _note(4, "10:30")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(
-                    3,
-                    _effect("ends", event_id="e1"),
-                    _effect("starts_unplanned", summary="Coffee chat", event_label_id="lab"),
-                ),
-                _disposition(4, _effect("ends", started_by_note="n3")),
-            ],
-            _day(),
-            time_at("10:45"),
-        )
-
-        created = [c for c in plan.changes if c.action == "create"]
-        assert len(created) == 1
-        assert created[0].after.summary == "Coffee chat"
-        assert _span(created[0].after) == (time_at("09:50"), time_at("10:30"))
-        assert created[0].after.event_label_id == "lab"
-        assert created[0].event_id is None
-        # The report was planned for 10:00 but the coffee chat runs to
-        # 10:30, so it's pushed later.
-        assert _by_event(plan)["e2"].after.start == time_at("10:30")
-
-    def test_unplanned_summaries_and_events_are_not_mutated(self):
-        day = _day()
-        before = [(e.start, e.end, e.summary, e.status) for e in day]
-
-        plan_compaction(
-            [_note(2, "09:05")],
-            [_disposition(2, _effect("starts", event_id="e1"))],
-            day,
-            time_at("09:30"),
-        )
-
-        assert [(e.start, e.end, e.summary, e.status) for e in day] == before
-
-
-class TestMerging:
-    def test_an_end_note_colliding_with_the_previous_start_merges_into_one_event(self):
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:30")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("ends", event_id="e2")),
-            ],
-            _day(),
-            time_at("09:45"),
-        )
-
-        changes = _by_event(plan)
-        assert changes["e1"].after.summary == "Email and Report"
-        assert _span(changes["e1"].after) == (time_at("09:00"), time_at("09:30"))
-        assert changes["e2"].action == "cancel"
-        assert "merged" in changes["e2"].reason
-        assert any("merged into one event" in w for w in plan.warnings)
-
-    def test_an_unplanned_activity_merged_with_a_planned_one_keeps_the_planned_id(self):
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:30")],
-            [
-                _disposition(2, _effect("starts_unplanned", summary="Support call")),
-                _disposition(3, _effect("ends", event_id="e1")),
-            ],
-            _day(),
-            time_at("09:45"),
-        )
-
-        changes = _by_event(plan)
-        assert changes["e1"].after.summary == "Email and Support call"
-        assert not [c for c in plan.changes if c.action == "create"]
-
-
-class TestMarkers:
-    def test_marker_text_is_appended_to_the_event_it_falls_inside(self):
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:20", "tried the new build, flaky"), _note(4, "09:50")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("marker")),
-                _disposition(4, _effect("ends", event_id="e1")),
-            ],
-            _day(),
-            time_at("10:00"),
-        )
-
-        assert _by_event(plan)["e1"].after.description == "Notes:\n- 09:20 tried the new build, flaky"
-
-    def test_marker_text_is_added_below_an_existing_description(self):
-        day = _day()
-        day[0].description = "Weekly inbox zero"
-
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:20", "note one"), _note(4, "09:25", "note two")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("marker")),
-                _disposition(4, _effect("marker")),
-            ],
-            day,
-            time_at("10:00"),
-        )
-
-        assert _by_event(plan)["e1"].after.description == (
-            "Weekly inbox zero\n\nNotes:\n- 09:20 note one\n- 09:25 note two"
-        )
-
-    def test_a_marker_before_every_activity_is_reported_not_lost_silently(self):
-        plan = plan_compaction(
-            [_note(2, "08:00", "woke up"), _note(3, "09:00")],
-            [_disposition(2, _effect("marker")), _disposition(3, _effect("starts", event_id="e1"))],
-            _day(),
-            time_at("09:30"),
-        )
-
-        assert any("woke up" in w for w in plan.warnings)
-
-
-class TestRenameAndAnnotate:
-    def test_rename_on_starts_overrides_the_events_own_summary(self):
-        plan = plan_compaction(
-            [_note(2, "09:05"), _note(3, "10:20")],
-            [
-                _disposition(2, _effect("starts", event_id="e1", rename="Deep work")),
-                _disposition(3, _effect("ends", event_id="e1")),
-            ],
-            _day(),
-            time_at("10:30"),
-        )
-
-        assert _by_event(plan)["e1"].after.summary == "Deep work"
-
-    def test_rename_on_ends_also_overrides_the_summary(self):
-        plan = plan_compaction(
-            [_note(2, "09:05"), _note(3, "10:20")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("ends", event_id="e1", rename="Deep work")),
-            ],
-            _day(),
-            time_at("10:30"),
-        )
-
-        assert _by_event(plan)["e1"].after.summary == "Deep work"
-
-    def test_the_same_rename_from_both_the_start_and_end_note_is_not_a_conflict(self):
-        plan = plan_compaction(
-            [_note(2, "09:05"), _note(3, "10:20")],
-            [
-                _disposition(2, _effect("starts", event_id="e1", rename="Deep work")),
-                _disposition(3, _effect("ends", event_id="e1", rename="Deep work")),
-            ],
-            _day(),
-            time_at("10:30"),
-        )
-
-        assert _by_event(plan)["e1"].after.summary == "Deep work"
-
-    def test_rename_on_starts_unplanned_overrides_its_own_summary(self):
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:30")],
-            [
-                _disposition(
-                    2, _effect("starts_unplanned", summary="Coffee", rename="Actual coffee break")
-                ),
-                _disposition(3, _effect("ends", started_by_note="n2")),
-            ],
-            _day(),
-            time_at("09:45"),
-        )
-
-        created = next(c for c in plan.changes if c.action == "create")
-        assert created.after.summary == "Actual coffee break"
-
-    def test_rename_overrides_the_auto_joined_summary_of_a_merge(self):
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "09:30")],
-            [
-                _disposition(2, _effect("starts", event_id="e1", rename="Morning block")),
-                _disposition(3, _effect("ends", event_id="e2")),
-            ],
-            _day(),
-            time_at("09:45"),
-        )
-
-        assert _by_event(plan)["e1"].after.summary == "Morning block"
-
-    def test_two_different_renames_for_the_same_event_conflict(self):
-        with pytest.raises(CompactionError, match="already renamed it to 'Focus'"):
-            plan_compaction(
-                [_note(2, "09:05"), _note(3, "10:20")],
-                [
-                    _disposition(2, _effect("starts", event_id="e1", rename="Focus")),
-                    _disposition(3, _effect("ends", event_id="e1", rename="Emails")),
-                ],
-                _day(),
-                time_at("10:30"),
-            )
-
-    def test_two_different_renames_merged_by_overlap_conflict(self):
-        with pytest.raises(CompactionError, match="conflicting names.*Morning stuff.*Combined work"):
-            plan_compaction(
-                [_note(2, "09:00"), _note(3, "09:30")],
-                [
-                    _disposition(2, _effect("starts", event_id="e1", rename="Morning stuff")),
-                    _disposition(3, _effect("ends", event_id="e2", rename="Combined work")),
-                ],
-                _day(),
-                time_at("09:45"),
-            )
-
-    def test_annotate_on_starts_adds_to_the_description(self):
-        plan = plan_compaction(
-            [_note(2, "09:05"), _note(3, "10:20")],
-            [
-                _disposition(2, _effect("starts", event_id="e1", annotate="phone rang once")),
-                _disposition(3, _effect("ends", event_id="e1")),
-            ],
-            _day(),
-            time_at("10:30"),
-        )
-
-        assert _by_event(plan)["e1"].after.description == "Notes:\n- 09:05 phone rang once"
-
-    def test_annotate_and_marker_text_are_merged_in_chronological_order(self):
-        plan = plan_compaction(
-            [_note(2, "09:05"), _note(3, "09:20", "got a coffee"), _note(4, "10:20")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("marker")),
-                _disposition(4, _effect("ends", event_id="e1", annotate="wrapped up early")),
-            ],
-            _day(),
-            time_at("10:30"),
-        )
-
-        assert _by_event(plan)["e1"].after.description == (
-            "Notes:\n- 09:20 got a coffee\n- 10:20 wrapped up early"
-        )
-
-    def test_annotate_is_added_below_an_existing_description(self):
-        day = _day()
-        day[0].description = "Weekly inbox zero"
-
-        plan = plan_compaction(
-            [_note(2, "09:05"), _note(3, "10:20")],
-            [
-                _disposition(2, _effect("starts", event_id="e1", annotate="interrupted once")),
-                _disposition(3, _effect("ends", event_id="e1")),
-            ],
-            day,
-            time_at("10:30"),
-        )
-
-        assert _by_event(plan)["e1"].after.description == (
-            "Weekly inbox zero\n\nNotes:\n- 09:05 interrupted once"
-        )
-
-    def test_rename_and_annotate_are_rejected_on_marker(self):
-        with pytest.raises(CompactionError, match="only make sense on starts/starts_unplanned/ends"):
-            plan_compaction(
-                [_note(2, "09:00")],
-                [_disposition(2, _effect("marker", annotate="oops"))],
-                _day(),
-                time_at("09:30"),
-            )
-
-    def test_rename_is_rejected_on_ignore(self):
-        with pytest.raises(CompactionError, match="only make sense on starts/starts_unplanned/ends"):
-            plan_compaction(
-                [_note(2, "09:00")],
-                [_disposition(2, _effect("ignore", rename="whatever"))],
-                _day(),
-                time_at("09:30"),
-            )
-
-
-class TestUnmappedEvents:
-    def test_a_planned_event_inside_the_noted_span_that_no_note_accounts_for_is_cancelled(self):
-        day = _day() + [event_at("10:30-11:00", id="e5", summary="Standup", priority=2)]
-        day.sort(key=lambda e: e.start)
-        # Make room in the input: e2 (10:00-11:00) overlaps e5, so shrink it.
-        day[[e.id for e in day].index("e2")].end = time_at("10:30")
-
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "10:00"), _note(4, "12:00")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("starts", event_id="e2")),
-                _disposition(4, _effect("ends", event_id="e2"), _effect("starts", event_id="e3")),
-            ],
-            day,
-            time_at("12:30"),
-        )
-
-        assert _by_event(plan)["e5"].action == "cancel"
-        assert "no note accounts" in _by_event(plan)["e5"].reason
-
-    def test_a_past_event_outside_the_noted_span_is_left_alone_with_a_warning(self):
-        plan = plan_compaction(
-            [_note(2, "10:00")],
-            [_disposition(2, _effect("starts", event_id="e2"))],
-            _day(),
-            time_at("10:30"),
-        )
-
-        assert "e1" not in _by_event(plan)
-        assert any("left alone" in w and "Email" in w for w in plan.warnings)
-
-    def test_the_end_of_day_sleep_event_is_never_cancelled_for_lack_of_a_note(self):
-        day = _day()
-        day[-1].start = time_at("11:30")  # a sleep block inside the noted span, in the past
-        day[-1].end = time_at("11:45")
-
-        plan = plan_compaction(
-            [_note(2, "09:00"), _note(3, "12:00"), _note(4, "12:30")],
-            [
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("ends", event_id="e1"), _effect("starts", event_id="e3")),
-                _disposition(4, _effect("ends", event_id="e3")),
-            ],
-            day,
-            time_at("12:45"),
-        )
-
-        sleep = _by_event(plan).get("s1")
-        assert sleep is None or "no note accounts" not in sleep.reason
-
-
-class TestValidation:
-    def _plan(self, notes, dispositions, now="11:00"):
-        return plan_compaction(notes, dispositions, _day(), time_at(now))
-
-    def test_every_note_needs_a_disposition(self):
-        with pytest.raises(CompactionError, match="no disposition for note.*n3"):
-            self._plan(
-                [_note(2, "09:00"), _note(3, "09:30")],
-                [_disposition(2, _effect("starts", event_id="e1"))],
-            )
-
-    def test_an_unknown_note_id_is_rejected_with_the_valid_ones(self):
-        with pytest.raises(CompactionError, match="unknown note 'n9'.*n2"):
-            self._plan(
-                [_note(2, "09:00")],
-                [_disposition(2, _effect("ignore")), _disposition(9, _effect("ignore"))],
-            )
-
-    def test_an_unknown_event_id_is_rejected_with_the_valid_ones(self):
-        with pytest.raises(CompactionError, match=r"'nope'.*valid event ids: e1, e2, e3, e4, s1"):
-            self._plan([_note(2, "09:00")], [_disposition(2, _effect("starts", event_id="nope"))])
-
-    def test_a_note_cannot_have_a_marker_and_another_effect(self):
-        with pytest.raises(CompactionError, match="can't be combined"):
-            self._plan(
-                [_note(2, "09:00")],
-                [_disposition(2, _effect("marker"), _effect("starts", event_id="e1"))],
-            )
-
-    def test_an_event_cannot_be_started_twice(self):
-        with pytest.raises(CompactionError, match="already started by note n2"):
-            self._plan(
-                [_note(2, "09:00"), _note(3, "09:30")],
-                [
-                    _disposition(2, _effect("starts", event_id="e1")),
-                    _disposition(3, _effect("starts", event_id="e1")),
-                ],
-            )
-
-    def test_ends_needs_exactly_one_target(self):
-        with pytest.raises(CompactionError, match="exactly one of event_id"):
-            self._plan([_note(2, "09:00")], [_disposition(2, _effect("ends"))])
-
-    def test_ends_of_an_unplanned_activity_must_reference_its_starting_note(self):
-        with pytest.raises(CompactionError, match="started_by_note 'n7'"):
-            self._plan(
-                [_note(2, "09:00")], [_disposition(2, _effect("ends", started_by_note="n7"))]
-            )
-
-    def test_starts_unplanned_needs_a_summary(self):
-        with pytest.raises(CompactionError, match="needs a summary"):
-            self._plan([_note(2, "09:00")], [_disposition(2, _effect("starts_unplanned"))])
-
-    def test_notes_after_now_are_rejected(self):
-        with pytest.raises(CompactionError, match="after now"):
-            self._plan(
-                [_note(2, "12:00")], [_disposition(2, _effect("starts", event_id="e3"))], now="11:00"
-            )
-
-    def test_two_boundaries_at_the_same_time_are_rejected_not_given_zero_length(self):
-        with pytest.raises(CompactionError, match="isn't a positive length"):
-            self._plan(
-                [_note(2, "09:00"), _note(3, "09:00")],
-                [
-                    _disposition(2, _effect("starts", event_id="e1")),
-                    _disposition(3, _effect("starts", event_id="e2")),
-                ],
-            )
-
-    def test_every_problem_is_reported_at_once(self):
-        with pytest.raises(CompactionError) as excinfo:
-            self._plan(
-                [_note(2, "09:00"), _note(3, "09:30")],
-                [_disposition(2, _effect("starts", event_id="nope"))],
-            )
-
-        assert "nope" in str(excinfo.value)
-        assert "no disposition for note" in str(excinfo.value)
-
-    def test_ambiguous_notes_come_back_as_questions(self):
-        with pytest.raises(NeedsClarification) as excinfo:
-            self._plan(
-                [_note(2, "09:00", "lunch??")],
-                [_disposition(2, _effect("ambiguous", question="Did lunch start or end here?"))],
-            )
-
-        assert len(excinfo.value.questions) == 1
-        assert "n2" in excinfo.value.questions[0]
-        assert "Did lunch start or end here?" in excinfo.value.questions[0]
-
-    def test_a_note_that_ends_something_with_no_start_evidence_is_rejected(self):
-        day = _day()
-        day[0].start = time_at("10:00")  # planned start is after the note
-        day[0].end = time_at("10:30")
-        day[1].start = time_at("10:30")
-
-        with pytest.raises(CompactionError, match="nothing says when it began"):
-            plan_compaction(
-                [_note(2, "09:30")],
-                [_disposition(2, _effect("ends", event_id="e1"))],
-                day,
-                time_at("11:00"),
-            )
-
-    def test_no_boundary_notes_means_nothing_to_do(self):
-        plan = self._plan([_note(2, "09:00", "hmm")], [_disposition(2, _effect("marker"))])
-
-        assert plan.changes == []
-
-
-class TestReschedule:
-    def test_moves_the_event_and_reflows_around_it_with_no_notes_involved(self):
-        plan = plan_compaction(
-            [],
-            [],
-            _day(),
-            time_at("11:30"),
-            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))],
-        )
-
-        changes = _by_event(plan)
-        assert _span(changes["e3"].after) == (time_at("12:15"), time_at("12:45"))
+        assert _span(changes["e3"].after) == (time_at("13:30"), time_at("14:30"))
         assert changes["e3"].after.is_fixed_time is True
-        assert changes["e3"].reason == "moved as requested, and pinned in place"
-        # Nothing else needed to move: the gap after e3's new slot absorbed it.
-        assert set(changes) == {"e3"}
-
-    def test_a_start_only_keeps_the_events_current_duration(self):
-        # e3 (Lunch) is normally 12:00-13:00, an hour long.
-        plan = plan_compaction(
-            [],
-            [],
-            _day(),
-            time_at("11:30"),
-            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"))],
-        )
-
-        assert _span(_by_event(plan)["e3"].after) == (time_at("12:15"), time_at("13:15"))
-
-    def test_an_end_only_keeps_the_events_current_duration(self):
-        plan = plan_compaction(
-            [],
-            [],
-            _day(),
-            time_at("11:30"),
-            reschedules=[Reschedule(event_id="e3", end=time_at("12:30"))],
-        )
-
-        assert _span(_by_event(plan)["e3"].after) == (time_at("11:30"), time_at("12:30"))
-
-    def test_rejects_a_reschedule_with_neither_start_nor_end(self):
-        with pytest.raises(CompactionError, match="needs a start, an end, or both"):
-            plan_compaction(
-                [],
-                [],
-                _day(),
-                time_at("11:30"),
-                reschedules=[Reschedule(event_id="e3")],
-            )
+        assert "moved as requested" in changes["e3"].reason
+        assert changes["e4"].after.start == time_at("14:30")
 
     def test_reflows_a_contiguous_block_and_keeps_a_later_fixed_time_event_pinned(self):
         day = [
@@ -666,150 +188,230 @@ class TestReschedule:
             event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
         ]
 
-        plan = plan_compaction(
-            [],
-            [],
-            day,
-            time_at("10:00"),
-            reschedules=[Reschedule(event_id="lunch", start=time_at("12:15"), end=time_at("12:45"))],
-        )
+        plan = _plan([], [_keep("lunch", start=time_at("12:15"), end=time_at("12:45"))], day, now="10:00")
 
         changes = _by_event(plan)
         assert _span(changes["lunch"].after) == (time_at("12:15"), time_at("12:45"))
         assert _span(changes["work"].after) == (time_at("12:00"), time_at("12:15"))
         assert "commute" not in changes
-        created = [c for c in plan.changes if c.action == "create"]
-        assert len(created) == 1
-        assert created[0].after.summary == "Work"
-        assert _span(created[0].after) == (time_at("12:45"), time_at("14:00"))
+        [created] = [c for c in plan.changes if c.action == "create"]
+        assert created.after.summary == "Work"
+        assert _span(created.after) == (time_at("12:45"), time_at("14:00"))
 
-    def test_a_note_and_a_reschedule_can_apply_together(self):
-        plan = plan_compaction(
-            [_note(2, "09:05")],
-            [_disposition(2, _effect("starts", event_id="e1"))],
-            _day(),
-            time_at("09:30"),
-            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))],
-        )
+    def test_does_not_mutate_its_inputs(self):
+        day = _day()
+        decisions = [_keep("e1", summary="Deep work", end=time_at("09:30"))]
 
-        changes = _by_event(plan)
-        assert changes["e1"].reason == "recorded as what actually happened, and pinned in place"
-        assert changes["e3"].reason == "moved as requested, and pinned in place"
+        _plan([], decisions, day)
 
-    def test_rejects_an_unknown_event_id(self):
-        with pytest.raises(CompactionError, match="not one of this day's planned events"):
-            plan_compaction(
-                [],
-                [],
-                _day(),
-                time_at("11:30"),
-                reschedules=[Reschedule(event_id="nope", start=time_at("12:15"), end=time_at("12:45"))],
-            )
+        assert (day[0].summary, day[0].end) == ("Email", time_at("10:00"))
+        assert decisions[0].summary == "Deep work"
 
-    def test_rejects_a_non_positive_length(self):
-        with pytest.raises(CompactionError, match="isn't a positive length"):
-            plan_compaction(
-                [],
-                [],
-                _day(),
-                time_at("11:30"),
-                reschedules=[Reschedule(event_id="e3", start=time_at("12:45"), end=time_at("12:15"))],
-            )
 
-    def test_rejects_the_same_event_rescheduled_twice(self):
-        with pytest.raises(CompactionError, match="rescheduled more than once"):
-            plan_compaction(
-                [],
-                [],
-                _day(),
-                time_at("11:30"),
-                reschedules=[
-                    Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45")),
-                    Reschedule(event_id="e3", start=time_at("12:30"), end=time_at("13:00")),
-                ],
-            )
+class TestOverlaps:
+    def test_an_overrun_into_a_past_event_is_rejected_naming_both(self):
+        with pytest.raises(CompactionError) as excinfo:
+            _plan([_note(1, "10:20")], [_keep("e1", end_note="n1")])
 
-    def test_rejects_overlapping_reschedules(self):
-        with pytest.raises(CompactionError, match="overlaps"):
-            plan_compaction(
-                [],
-                [],
-                _day(),
-                time_at("11:30"),
-                reschedules=[
-                    Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45")),
-                    Reschedule(event_id="e4", start=time_at("12:30"), end=time_at("13:00")),
-                ],
-            )
+        message = str(excinfo.value)
+        assert "'Email' (e1, as decided" in message
+        assert "overlaps 'Report' (e2, on schedule" in message
+        assert "Decide which gives way" in message
 
-    def test_moving_an_event_later_reflows_around_a_fixed_time_event_further_on(self):
-        day = [
-            event_at("09:35-12:30", id="w", summary="Work", priority=3),
-            event_at("12:30-13:30", id="l", summary="Lunch", priority=1),
-            event_at("13:30-17:00", id="a", summary="Afternoon", priority=3),
-            event_at(
-                "17:00-18:00",
-                id="c",
-                summary="Commute",
-                priority=2,
-                is_fixed_time=True,
-                min_duration=timedelta(hours=1),
-            ),
-            event_at("22:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
-        ]
+    def test_it_passes_once_the_decisions_say_which_gives_way(self):
+        plan = _plan([_note(1, "10:20")], [_keep("e1", end_note="n1"), _keep("e2", start_note="n1")])
 
-        plan = plan_compaction(
-            [_note(1, "10:00"), _note(2, "10:41")],
-            [
-                _disposition(1, _effect("starts_unplanned", summary="Laying in bed")),
-                _disposition(2, _effect("ends", started_by_note="n1")),
-            ],
+        assert _span(_by_event(plan)["e2"].after) == (time_at("10:20"), time_at("11:00"))
+
+    def test_an_overrun_into_an_event_still_in_progress_reflows_it(self):
+        plan = _plan([_note(1, "10:20")], [_keep("e1", end_note="n1")], now="10:30")
+
+        assert _by_event(plan)["e2"].after.start == time_at("10:20")
+
+    def test_a_new_event_over_a_past_one_is_rejected(self):
+        with pytest.raises(CompactionError, match="'Coffee'.*overlaps 'Email'|'Email'.*overlaps 'Coffee'"):
+            _plan([], [EventDecision(action="create", summary="Coffee", start=time_at("09:30"), end=time_at("09:45"))])
+
+    def test_a_note_cannot_silently_eat_into_last_nights_sleep(self):
+        day = _overnight()
+
+        with pytest.raises(CompactionError, match="'Sleep' \\(s0, on schedule"):
+            _plan([_note(1, "06:40+1")], [_keep("gr", start_note="n1")], day, now="09:00+1", day_start=time_at("06:40+1"))
+
+    def test_waking_early_shortens_last_nights_sleep_when_asked(self):
+        day = _overnight()
+
+        plan = _plan(
+            [_note(1, "06:40+1")],
+            [_keep("s0", end_note="n1"), _keep("gr", start_note="n1")],
             day,
-            time_at("10:45"),
-            reschedules=[Reschedule(event_id="w", start=time_at("11:30"))],
+            now="09:00+1",
+            day_start=time_at("06:40+1"),
         )
 
         changes = _by_event(plan)
-        # 10:41-11:30 stays free; Work keeps its length.
-        assert _span(changes["w"].after) == (time_at("11:30"), time_at("14:25"))
-        assert _span(changes["a"].after) == (time_at("15:25"), time_at("17:00"))
-        assert "c" not in changes
-        created = sorted((c.after.summary, _span(c.after)) for c in plan.changes if c.action == "create")
-        assert created == [
-            ("Afternoon", (time_at("18:00"), time_at("18:55"))),
-            ("Laying in bed", (time_at("10:00"), time_at("10:41"))),
-        ]
+        assert changes["s0"].after.end == time_at("06:40+1")
+        assert "s1" not in changes
+        assert not plan.warnings
 
-    def test_rejects_a_reschedule_of_an_event_a_note_already_accounts_for(self):
-        with pytest.raises(CompactionError, match="already accounted for by a note"):
-            plan_compaction(
-                [_note(2, "09:05")],
-                [_disposition(2, _effect("starts", event_id="e1"))],
-                _day(),
-                time_at("09:30"),
-                reschedules=[Reschedule(event_id="e1", start=time_at("12:15"), end=time_at("12:45"))],
+
+class TestCancelCreateAndMerge:
+    def test_cancel(self):
+        change = _by_event(_plan([], [EventDecision(action="cancel", event_id="e2")]))["e2"]
+
+        assert change.action == "cancel"
+        assert "didn't happen" in change.reason
+
+    def test_create_makes_a_pinned_new_event(self):
+        plan = _plan(
+            [_note(1, "11:05", "coffee"), _note(2, "11:20")],
+            [EventDecision(action="create", summary="Coffee", start_note="n1", end_note="n2", event_label_id="L1")],
+        )
+
+        [created] = [c for c in plan.changes if c.action == "create"]
+        assert _span(created.after) == (time_at("11:05"), time_at("11:20"))
+        assert created.after.is_fixed_time is True
+        assert created.after.event_label_id == "L1"
+        # Its anchoring note's text isn't added to it -- it set its edge.
+        assert created.after.description is None
+
+    def test_create_needs_both_edges(self):
+        with pytest.raises(CompactionError, match="needs both a start and an end"):
+            _plan([_note(1, "11:05")], [EventDecision(action="create", summary="Coffee", start_note="n1")])
+
+    def test_create_needs_a_summary(self):
+        with pytest.raises(CompactionError, match="needs a summary"):
+            _plan([], [EventDecision(action="create", start=time_at("11:05"), end=time_at("11:20"))])
+
+    def test_merge_folds_one_event_into_another(self):
+        plan = _plan([], [EventDecision(action="merge", event_id="e2", into="e1")])
+
+        changes = _by_event(plan)
+        assert changes["e2"].action == "cancel"
+        assert changes["e2"].reason == "merged into 'Email'"
+        assert _span(changes["e1"].after) == (time_at("09:00"), time_at("11:00"))
+        assert changes["e1"].after.summary == "Email and Report"
+        report = next(e for e in plan.timeline.events if e.event_id == "e2")
+        assert (report.status, report.merged_into) == ("merged", "Email and Report")
+
+    def test_a_rename_on_the_target_overrides_the_joined_title(self):
+        plan = _plan(
+            [], [EventDecision(action="merge", event_id="e2", into="e1"), _keep("e1", summary="Morning work")]
+        )
+
+        assert _by_event(plan)["e1"].after.summary == "Morning work"
+
+    def test_cannot_merge_into_a_cancelled_event(self):
+        with pytest.raises(CompactionError, match="itself being cancelled"):
+            _plan(
+                [],
+                [
+                    EventDecision(action="merge", event_id="e2", into="e1"),
+                    EventDecision(action="cancel", event_id="e1"),
+                ],
             )
 
-
-def _evening(*extra):
-    """The standard day, plus `extra` events before bedtime (20:00)."""
-    return sorted(_day() + list(extra), key=lambda e: e.start)
-
-
-_NEXT_DAY = timedelta(days=1)
+    def test_the_end_of_day_sleep_event_cannot_be_merged(self):
+        with pytest.raises(CompactionError, match="can't be merged"):
+            _plan([], [EventDecision(action="merge", event_id="e4", into="s1")], now="16:00")
 
 
-class TestRescheduleSleep:
-    """Rescheduling the end-of-day sleep event moves where the day ends,
-    rather than placing it like any other fact -- see `_end_day_at`."""
+class TestNotesAddedToEvents:
+    def test_a_note_that_sets_no_edge_is_added_to_the_event_it_falls_within(self):
+        plan = _plan([_note(1, "09:20", "phone rang"), _note(2, "09:40", "back to it")], [])
 
-    def _plan(self, day_events, reschedule, *, now="08:00", notes=(), dispositions=()):
-        return plan_compaction(list(notes), list(dispositions), day_events, time_at(now), reschedules=[reschedule])
+        assert _by_event(plan)["e1"].after.description == "Notes:\n- 09:20 phone rang\n- 09:40 back to it"
+
+    def test_notes_and_annotate_text_go_below_an_existing_description(self):
+        day = _day()
+        day[0].description = "Inbox zero"
+
+        plan = _plan([_note(1, "09:20", "phone rang")], [_keep("e1", annotate="mostly replies")], day)
+
+        assert _by_event(plan)["e1"].after.description == (
+            "Inbox zero\n\nNotes:\n- 09:20 phone rang\n- mostly replies"
+        )
+
+    def test_a_note_added_to_a_future_event_still_in_progress_changes_only_its_description(self):
+        change = _by_event(_plan([_note(1, "10:15", "started outline")], [], now="10:30"))["e2"]
+
+        assert change.reason == "added the notes that fall during it"
+        assert change.after.is_fixed_time is None
+
+    def test_ignored_notes_are_not_added(self):
+        plan = _plan([_note(1, "09:20", "phone rang")], [], ignore_notes=["n1"])
+
+        assert _by_event(plan)["e1"].after.description is None
+        assert plan.timeline.notes[0].ignored is True
+
+    def test_a_note_outside_every_event_is_reported(self):
+        plan = _plan([_note(1, "11:10", "wandered")], [])
+
+        assert any("doesn't fall within any event" in w for w in plan.warnings)
+
+
+class TestValidation:
+    def test_an_unknown_event_id_is_rejected_with_the_valid_ones(self):
+        with pytest.raises(CompactionError, match="valid event ids: e1, e2, e3, e4, s1"):
+            _plan([], [_keep("nope")])
+
+    def test_an_unknown_note_id_is_rejected_with_the_valid_ones(self):
+        with pytest.raises(CompactionError, match="'n9' isn't one of this round's notes; valid note ids: n1"):
+            _plan([_note(1, "09:05")], [_keep("e1", start_note="n9")])
+
+    def test_an_unknown_ignored_note_is_rejected(self):
+        with pytest.raises(CompactionError, match="ignore_notes: 'n9'"):
+            _plan([], [], ignore_notes=["n9"])
+
+    def test_an_event_cannot_have_two_decisions(self):
+        with pytest.raises(CompactionError, match="more than one decision"):
+            _plan([], [_keep("e1"), EventDecision(action="cancel", event_id="e1")])
+
+    def test_times_only_go_with_keep_and_create(self):
+        with pytest.raises(CompactionError, match="only go with 'keep' or 'create'"):
+            _plan([], [EventDecision(action="cancel", event_id="e1", end=time_at("09:30"))])
+
+    def test_an_unknown_action_is_rejected(self):
+        with pytest.raises(CompactionError, match="unknown action 'skip'"):
+            _plan([], [EventDecision(action="skip", event_id="e1")])
+
+    def test_a_non_positive_length_is_rejected(self):
+        with pytest.raises(CompactionError, match="isn't a positive length"):
+            _plan([], [_keep("e1", end=time_at("09:00"))])
+
+    def test_notes_after_now_are_rejected(self):
+        with pytest.raises(CompactionError, match="timestamped after now"):
+            _plan([_note(1, "12:00")], [])
+
+    def test_every_problem_is_reported_at_once(self):
+        with pytest.raises(CompactionError) as excinfo:
+            _plan([], [_keep("nope"), _keep("e1", start_note="n9")])
+
+        assert "'nope'" in str(excinfo.value) and "'n9'" in str(excinfo.value)
+
+    def test_with_nothing_to_change_it_says_so(self):
+        day = [e for e in _day() if e.id != "e1" and e.id != "e2"]
+
+        plan = _plan([], [], day)
+
+        assert plan.changes == []
+        assert plan.warnings == ["nothing on the calendar needs to change"]
+
+
+class TestMovingBedtime:
+    """Moving the day's own end-of-day sleep event moves where the day
+    ends, rather than placing it like any other fact -- see `_end_day_at`."""
+
+    @staticmethod
+    def _evening(*extra):
+        return [
+            event_at("17:00-18:00", id="e1", summary="Dinner", priority=1),
+            *extra,
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
 
     def test_a_later_bedtime_just_moves_it(self):
-        plan = self._plan(
-            _day(), Reschedule(event_id="s1", start=time_at("22:30"), end=time_at("07:00") + _NEXT_DAY)
-        )
+        plan = _plan([], [_keep("s1", start=time_at("22:30"))], now="08:00")
 
         changes = _by_event(plan)
         assert set(changes) == {"s1"}
@@ -820,39 +422,22 @@ class TestRescheduleSleep:
     def test_an_earlier_bedtime_shortens_what_runs_past_it(self):
         reading = event_at("18:00-20:00", id="e5", summary="Reading", priority=3)
 
-        plan = self._plan(
-            _evening(reading),
-            Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
-        )
+        plan = _plan([], [_keep("s1", start=time_at("19:00"))], self._evening(reading), now="08:00")
 
         changes = _by_event(plan)
         assert _span(changes["e5"].after) == (time_at("18:00"), time_at("19:00"))
         assert changes["e5"].reason.startswith("shortened to end at the new bedtime")
-        assert _span(changes["s1"].after) == (time_at("19:00"), time_at("07:00") + _NEXT_DAY)
         # Nothing of Reading is carried over past the sleep, into the next day.
         assert [c for c in plan.changes if c.action == "create"] == []
 
     def test_an_earlier_bedtime_cancels_what_starts_after_it(self):
         journal = event_at("19:30-20:00", id="e5", summary="Journal", priority=1)
 
-        plan = self._plan(
-            _evening(journal),
-            Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
-        )
+        plan = _plan([], [_keep("s1", start=time_at("19:00"))], self._evening(journal), now="08:00")
 
         change = _by_event(plan)["e5"]
         assert change.action == "cancel"
         assert change.reason.startswith("doesn't fit before the new bedtime")
-
-    def test_an_earlier_bedtime_cancels_what_it_cannot_shorten_that_far(self):
-        call = event_at("18:30-20:00", id="e5", summary="Call", priority=1, min_duration=timedelta(hours=1))
-
-        plan = self._plan(
-            _evening(call),
-            Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
-        )
-
-        assert _by_event(plan)["e5"].action == "cancel"
 
     def test_an_earlier_bedtime_over_a_fixed_time_event_is_an_error(self):
         call = event_at(
@@ -860,67 +445,50 @@ class TestRescheduleSleep:
         )
 
         with pytest.raises(CompactionError, match="doesn't fit starting at .*fixed-time 'Call'"):
-            self._plan(
-                _evening(call),
-                Reschedule(event_id="s1", start=time_at("19:00"), end=time_at("07:00") + _NEXT_DAY),
-            )
+            _plan([], [_keep("s1", start=time_at("19:00"))], self._evening(call), now="08:00")
 
-    @pytest.mark.parametrize(
-        "reschedule",
-        [
-            Reschedule(event_id="s1", end=time_at("08:00") + _NEXT_DAY),
-            Reschedule(event_id="s1", start=time_at("22:00")),  # keeps its length: wakes at 09:00
-        ],
-        ids=["later wake", "later start, same length"],
-    )
-    def test_moving_its_end_warns_that_the_next_day_is_not_adjusted(self, reschedule):
-        plan = self._plan(_day(), reschedule)
+    def test_moving_its_end_warns_that_the_next_day_is_not_adjusted(self):
+        plan = _plan([], [_keep("s1", end=time_at("08:00") + _NEXT_DAY)], now="08:00")
 
         assert set(_by_event(plan)) == {"s1"}
         assert len(plan.warnings) == 1
         assert "doesn't adjust the next day" in plan.warnings[0]
 
     def test_facts_before_it_still_reflow_into_the_day(self):
-        # A noted activity running into the evening needs something after it
-        # to push into -- normally the sleep event, which is also moving.
         reading = event_at("17:00-19:00", id="e5", summary="Reading", priority=3)
 
-        plan = self._plan(
-            _evening(reading),
-            Reschedule(event_id="s1", start=time_at("22:00"), end=time_at("07:00") + _NEXT_DAY),
+        plan = _plan(
+            [_note(1, "17:30"), _note(2, "19:30")],
+            [_keep("e5", start_note="n1", end_note="n2"), _keep("s1", start=time_at("22:00"))],
+            [event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True), reading],
             now="19:30",
-            notes=[_note(2, "17:30")],
-            dispositions=[_disposition(2, _effect("starts", event_id="e5"))],
         )
 
         changes = _by_event(plan)
         assert _span(changes["e5"].after) == (time_at("17:30"), time_at("19:30"))
         assert _span(changes["s1"].after) == (time_at("22:00"), time_at("07:00") + _NEXT_DAY)
 
-    def test_a_past_event_outside_the_noted_span_is_still_left_alone(self):
-        # The noted span ends at 11:30; the reschedule doesn't stretch it to
-        # the next morning, so Review (14:00-15:00, already over) isn't
-        # treated as something the notes skipped.
-        plan = self._plan(
-            _day(),
-            Reschedule(event_id="s1", start=time_at("22:00"), end=time_at("07:00") + _NEXT_DAY),
-            now="16:00",
-            notes=[_note(2, "09:05"), _note(3, "10:20"), _note(4, "11:30")],
-            dispositions=[
-                _disposition(2, _effect("starts", event_id="e1")),
-                _disposition(3, _effect("ends", event_id="e1"), _effect("starts", event_id="e2")),
-                _disposition(4, _effect("ends", event_id="e2")),
-            ],
+    def test_with_a_day_start_last_nights_sleep_is_not_the_days_end(self):
+        day = _overnight()
+
+        # Sleeping in pushes into the morning -- an ordinary fact, not a
+        # move of the day's end (which would warn about the next day).
+        plan = _plan(
+            [_note(1, "07:20+1", "up")],
+            [_keep("s0", end_note="n1"), _keep("gr", start_note="n1")],
+            day,
+            now="09:00+1",
+            day_start=time_at("07:00+1"),
         )
 
-        assert "e4" not in _by_event(plan)
-        assert any("left alone" in w and "Review" in w for w in plan.warnings)
+        assert _by_event(plan)["s0"].after.end == time_at("07:20+1")
+        assert plan.warnings == []
 
 
 class TestNotedSleep:
-    """A note starting the end-of-day sleep event: its end is the day's
-    end, already known, so nothing needs to be asked about it -- and like a
-    rescheduled sleep, it moves where the day ends."""
+    """Going to bed later than planned: the day's end is settled before
+    anything else is placed, so an activity noted just before the new
+    bedtime reflows against it, not against the sleep's old start."""
 
     def _day(self):
         return [
@@ -940,17 +508,11 @@ class TestNotedSleep:
         return [_note(1, "23:47", "Starting to get ready for bed"), _note(2, "00:01+1", "Finished")]
 
     def _get_ready(self):
-        return _disposition(1, _effect("starts_unplanned", summary="Get ready for bed"))
+        return EventDecision(action="create", summary="Get ready for bed", start_note="n1", end_note="n2")
 
-    def test_a_note_starting_sleep_keeps_its_planned_end_without_asking(self):
-        plan = plan_compaction(
-            self._notes(),
-            [
-                self._get_ready(),
-                _disposition(2, _effect("ends", started_by_note="n1"), _effect("starts", event_id="s1")),
-            ],
-            self._day(),
-            time_at("07:00+1"),
+    def test_a_later_bedtime_makes_room_for_an_activity_before_it(self):
+        plan = _plan(
+            self._notes(), [self._get_ready(), _keep("s1", start_note="n2")], self._day(), now="07:00+1"
         )
 
         changes = _by_event(plan)
@@ -961,136 +523,155 @@ class TestNotedSleep:
         ]
         assert not any("doesn't adjust the next day" in w for w in plan.warnings)
 
-    def test_an_earlier_noted_bedtime_shortens_what_runs_past_it(self):
-        plan = plan_compaction(
+    def test_an_earlier_bedtime_needs_what_ran_past_it_ended_too(self):
+        with pytest.raises(CompactionError, match="'Reading' \\(e1, on schedule"):
+            _plan([_note(1, "23:00")], [_keep("s1", start_note="n1")], self._day(), now="07:00+1")
+
+        plan = _plan(
             [_note(1, "23:00")],
-            [_disposition(1, _effect("starts", event_id="s1"))],
+            [_keep("s1", start_note="n1"), _keep("e1", end_note="n1")],
             self._day(),
-            time_at("07:00+1"),
+            now="07:00+1",
         )
 
         changes = _by_event(plan)
         assert _span(changes["s1"].after) == (time_at("23:00"), time_at("07:00+1"))
         assert _span(changes["e1"].after) == (time_at("21:00"), time_at("23:00"))
 
-    def test_rescheduling_sleep_makes_room_for_an_activity_before_it(self):
-        plan = plan_compaction(
-            self._notes(),
-            [self._get_ready(), _disposition(2, _effect("ends", started_by_note="n1"))],
-            self._day(),
-            time_at("07:00+1"),
-            reschedules=[Reschedule(event_id="s1", start=time_at("00:01+1"), end=time_at("07:00+1"))],
-        )
-
-        assert _span(_by_event(plan)["s1"].after) == (time_at("00:01+1"), time_at("07:00+1"))
-
-    def test_overlapping_a_fixed_sleep_nothing_accounts_for_says_so(self):
-        with pytest.raises(CompactionError, match="doesn't fit: it overlaps fixed-time 'Sleep'"):
-            plan_compaction(
-                self._notes(),
-                [self._get_ready(), _disposition(2, _effect("ends", started_by_note="n1"))],
-                self._day(),
-                time_at("07:00+1"),
-            )
+    def test_running_into_sleep_without_moving_it_is_rejected(self):
+        with pytest.raises(CompactionError, match="overlaps 'Sleep' \\(s1, on schedule"):
+            _plan(self._notes(), [self._get_ready()], self._day(), now="07:00+1")
 
 
-class TestPreviousEvent:
-    """The event that ended just before the day began (typically last
-    night's sleep) can be ended later by a note, or rescheduled -- e.g. to
-    record sleeping in -- and the day reflows around it."""
-
-    def _previous(self, **overrides):
-        fields = dict(id="s0", summary="Sleep", priority=0, is_end_of_day_sleep=True)
-        fields.update(overrides)
-        return event_at("00:00-07:00", **fields)
-
-    def _day(self):
-        return [
-            event_at("07:00-08:00", id="gr", summary="Getting Ready", priority=2),
-            event_at("08:00-12:00", id="w", summary="Work", priority=3),
+class TestFixedTimeEvents:
+    def test_moving_an_event_later_reflows_around_a_fixed_time_event_further_on(self):
+        day = [
+            event_at("09:35-12:30", id="w", summary="Work", priority=3),
+            event_at("12:30-13:30", id="l", summary="Lunch", priority=1),
+            event_at("13:30-17:00", id="a", summary="Afternoon", priority=3),
+            event_at(
+                "17:00-18:00",
+                id="c",
+                summary="Commute",
+                priority=2,
+                is_fixed_time=True,
+                min_duration=timedelta(hours=1),
+            ),
             event_at("22:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
         ]
 
-    def _plan(self, notes, dispositions, *, reschedules=None, now="09:00", previous=None):
-        return plan_compaction(
-            notes,
-            dispositions,
-            self._day(),
-            time_at(now),
-            reschedules=reschedules,
-            previous_event=previous or self._previous(),
-        )
-
-    def test_a_note_ending_it_late_extends_it_and_reflows_the_morning(self):
-        plan = self._plan(
-            [_note(1, "08:30", "woke up")],
-            [_disposition(1, _effect("ends", event_id="s0"), _effect("starts", event_id="gr"))],
+        plan = _plan(
+            [_note(1, "10:00"), _note(2, "10:41")],
+            [
+                EventDecision(action="create", summary="Laying in bed", start_note="n1", end_note="n2"),
+                _keep("w", start=time_at("11:30"), end=time_at("14:25")),
+            ],
+            day,
+            now="10:45",
         )
 
         changes = _by_event(plan)
-        assert _span(changes["s0"].after) == (time_at("00:00"), time_at("08:30"))
-        assert changes["s0"].after.is_fixed_time is True
-        assert _span(changes["gr"].after) == (time_at("08:30"), time_at("09:00"))
-        # The day's own end is untouched.
-        assert "s1" not in changes
-        assert not any("doesn't adjust the next day" in w for w in plan.warnings)
+        assert _span(changes["w"].after) == (time_at("11:30"), time_at("14:25"))
+        assert _span(changes["a"].after) == (time_at("15:25"), time_at("17:00"))
+        assert "c" not in changes
+        created = sorted((c.after.summary, _span(c.after)) for c in plan.changes if c.action == "create")
+        assert created == [
+            ("Afternoon", (time_at("18:00"), time_at("18:55"))),
+            ("Laying in bed", (time_at("10:00"), time_at("10:41"))),
+        ]
 
-    def test_what_it_overslept_through_is_cancelled(self):
-        plan = self._plan(
-            [_note(1, "08:30", "woke up")],
-            [_disposition(1, _effect("ends", event_id="s0"), _effect("starts", event_id="w"))],
+    def test_overlapping_a_fixed_time_event_nobody_moved_says_so(self):
+        day = [
+            event_at(
+                "12:00-13:00", id="c", summary="Call", is_fixed_time=True, min_duration=timedelta(hours=1)
+            ),
+            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+
+        with pytest.raises(CompactionError, match="doesn't fit: it overlaps fixed-time 'Call'"):
+            _plan([], [EventDecision(action="create", summary="Gym", start=time_at("11:30"), end=time_at("12:30"))], day)
+
+
+class TestTimeline:
+    def _salsa(self):
+        return _plan(
+            [
+                _note(1, "18:15", "Leaving for salsa early to prep"),
+                _note(2, "19:00", "Learned the cross-body lead"),
+                _note(3, "20:10", "Done with dinner"),
+            ],
+            [
+                EventDecision(action="create", summary="Salsa prep", start_note="n1", end=time_at("18:30")),
+                _keep("dinner", end_note="n3"),
+                _keep("read", start_note="n3"),
+            ],
+            _evening(),
+            now="20:30",
         )
 
-        changes = _by_event(plan)
-        assert _span(changes["s0"].after) == (time_at("00:00"), time_at("08:30"))
-        assert changes["gr"].action == "cancel"
-        # Still in progress, so it runs to its planned end.
-        assert _span(changes["w"].after) == (time_at("08:30"), time_at("12:00"))
+    def test_reports_what_happened_to_each_event(self):
+        statuses = {e.summary: e.status for e in self._salsa().timeline.events}
 
-    def test_it_can_be_rescheduled_to_end_later(self):
-        plan = self._plan([], [], reschedules=[Reschedule(event_id="s0", end=time_at("08:30"))], now="07:30")
+        assert statuses == {
+            "Work": "on_schedule",
+            "Salsa prep": "new",
+            "Google Salsa class": "on_schedule",
+            "Dinner": "adjusted",
+            "Reading": "adjusted",
+            "Sleep": "planned",
+        }
 
-        changes = _by_event(plan)
-        # An end alone keeps its length, so give the start too to keep bedtime.
-        assert _span(changes["s0"].after) == (time_at("01:30"), time_at("08:30"))
+    def test_reports_what_each_note_did(self):
+        notes = {n.id: n for n in self._salsa().timeline.notes}
 
-        plan = self._plan(
+        assert notes["n1"].anchors == ["start of Salsa prep"]
+        assert notes["n2"].annotates == "Google Salsa class"
+        assert notes["n3"].anchors == ["end of Dinner", "start of Reading"]
+
+    def test_renders_the_two_lanes_side_by_side(self):
+        lines = self._salsa().timeline.text.splitlines()
+
+        def row(prefix):
+            return next(line for line in lines if line.startswith(prefix))
+
+        assert "Leaving for salsa early to prep" in row("18:15") and "─ ├ Salsa prep · new" in row("18:15")
+        assert row("18:30").endswith("├ Google Salsa class · on schedule")
+        assert "● Learned the cross-body lead" in row("19:00")
+        assert row("19:00").endswith("│   ↳ added to Google Salsa class")
+        assert "─ └ Dinner ends · 10m late (planned 20:00)" in row("20:10")
+        assert any("├ Reading · starts 10m late (planned 20:00)" in line for line in lines)
+        assert "┄┄ now" in row("20:30")
+
+    def test_shows_cancelled_and_moved_events(self):
+        plan = _plan(
             [],
-            [],
-            reschedules=[Reschedule(event_id="s0", start=time_at("00:00"), end=time_at("08:30"))],
-            now="07:30",
+            [EventDecision(action="cancel", event_id="e2"), _keep("e3", start=time_at("12:30"), end=time_at("13:30"))],
         )
 
-        changes = _by_event(plan)
-        assert _span(changes["s0"].after) == (time_at("00:00"), time_at("08:30"))
-        # Nothing is noted yet, so the morning is pushed back, not cancelled.
-        assert _span(changes["gr"].after) == (time_at("08:30"), time_at("09:30"))
-        assert _span(changes["w"].after) == (time_at("09:30"), time_at("13:30"))
+        text = plan.timeline.text
+        assert "✕ Report · cancelled (was 10:00–11:00)" in text
+        assert "┌ Lunch · moved 30m later (planned 12:00–13:00)" in text
 
-    def test_left_alone_when_nothing_refers_to_it(self):
-        plan = self._plan(
-            [_note(1, "07:05", "getting ready")], [_disposition(1, _effect("starts", event_id="gr"))]
+    def test_marks_notes_that_were_not_added_anywhere(self):
+        plan = _plan([_note(1, "11:10", "wandered"), _note(2, "09:20", "skip me")], [], ignore_notes=["n2"])
+
+        assert "○ wandered" in plan.timeline.text
+        assert "○ skip me" in plan.timeline.text
+
+
+class TestEventDecision:
+    def test_round_trips_through_json(self):
+        decision = EventDecision(
+            action="keep", event_id="e1", start=time_at("09:05"), end_note="n2", annotate="x"
         )
 
-        assert "s0" not in _by_event(plan)
-        assert not any("Sleep" in w and "left alone" in w for w in plan.warnings)
+        assert EventDecision.from_json_dict(decision.to_json_dict()) == decision
 
-    def test_no_note_can_start_it(self):
-        with pytest.raises(CompactionError, match="ended before this day began"):
-            self._plan([_note(1, "08:30")], [_disposition(1, _effect("starts", event_id="s0"))])
-
-    def test_an_ordinary_event_works_the_same_way(self):
-        previous = event_at("05:00-07:00", id="p", summary="Night shift", priority=2)
-
-        plan = self._plan(
-            [_note(1, "07:20", "finally left")],
-            [_disposition(1, _effect("ends", event_id="p"), _effect("starts", event_id="gr"))],
-            previous=previous,
-        )
-
-        changes = _by_event(plan)
-        assert _span(changes["p"].after) == (time_at("05:00"), time_at("07:20"))
-        assert _span(changes["gr"].after) == (time_at("07:20"), time_at("09:00"))
+    def test_json_omits_unset_fields(self):
+        assert EventDecision(action="cancel", event_id="e1").to_json_dict() == {
+            "action": "cancel",
+            "event_id": "e1",
+        }
 
 
 class TestEventState:

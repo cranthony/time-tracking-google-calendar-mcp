@@ -40,6 +40,12 @@ class ReallocatingCalendar:
     def __init__(self, client: _EventCalendar) -> None:
         self._client = client
 
+    def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:
+        """Every event overlapping `time_min`..`time_max`, through the same
+        view `list_day_events` reads -- for callers (note compaction) that
+        need to decide where a day starts themselves."""
+        return self._client.list_events(time_min, time_max)
+
     def list_day_events(self, start: datetime, ignore_id: str | None = None) -> list[Event]:
         """The events reallocation should treat as `start`'s "day": everything
         from `start` through roughly 24 hours later, truncated after the
@@ -55,23 +61,6 @@ class ReallocatingCalendar:
         gets a chance to exclude it itself.
         """
         return _truncate_at_sleep(self._client.list_events(start, start + timedelta(hours=24)), ignore_id)
-
-    def list_day_with_previous(
-        self, start: datetime, lookback: timedelta
-    ) -> tuple[Event | None, list[Event]]:
-        """`list_day_events(start)`, plus the event that ended within
-        `lookback` before `start` (the latest-ending one, if several did),
-        from the same single fetch -- the event just before the day,
-        typically the previous night's sleep, which the day itself never
-        includes. Only events ending after `start` can end the day, so
-        that sleep doesn't cut it off."""
-        events = self._client.list_events(start - lookback, start + timedelta(hours=24))
-        before = [e for e in events if e.end is not None and e.end <= start]
-        day = [e for e in events if e.end is None or e.end > start]
-        previous = max(
-            (e for e in before if e.status != "cancelled"), key=lambda e: e.end, default=None
-        )
-        return previous, _truncate_at_sleep(day)
 
     def create_event(self, new_event: Event, options: ReallocationOptions) -> list[Event]:
         """Create `new_event`, reallocating time from `list_day_events

@@ -5,11 +5,12 @@ from unittest.mock import MagicMock
 import pytest
 from googleapiclient.errors import HttpError
 
+from calendar_clients.google_calendar import Event
 from tests.event_time_helpers import event_at, time_at
 from tests.fake_row_hints import FakeRowHints
 from tests.fake_sheets import FakeSheets
 from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
-from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect, Reschedule
+from utilities.note_compaction import CompactionError, CompactionPlan, EventDecision
 from utilities.note_compactor import NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
 
@@ -27,28 +28,18 @@ def _day():
 
 
 class FakeCalendar:
-    """Just the `list_day_events` the compactor reads a day through --
-    handing back fresh copies each call, like the real label-aware view."""
+    """Just the `list_events` the compactor reads a day through -- handing
+    back fresh copies each call, like the real label-aware view."""
 
     def __init__(self, events):
         self.events = events
 
-    def list_day_events(self, start):
-        # Like the real one: what overlaps the next 24 hours, cut off after
-        # the first end-of-day sleep event.
-        window_end = start + timedelta(hours=24)
-        events = sorted(
-            (replace(e) for e in self.events if e.end > start and e.start < window_end),
+    def list_events(self, time_min, time_max):
+        # Like the Calendar API: everything overlapping the range.
+        return sorted(
+            (replace(e) for e in self.events if e.end > time_min and e.start < time_max),
             key=lambda e: e.start,
         )
-        for i, event in enumerate(events):
-            if event.is_end_of_day_sleep:
-                return events[: i + 1]
-        return events
-
-    def list_day_with_previous(self, start, lookback):
-        ended = [replace(e) for e in self.events if start - lookback < e.end <= start]
-        return max(ended, key=lambda e: e.end, default=None), self.list_day_events(start)
 
 
 class Setup:
@@ -80,18 +71,22 @@ class Setup:
         """The id of the note in sheet row `row` (see SheetNote.id)."""
         return next(n.id for n in self.notes.read_with_rows(include_compacted=True) if n.row == row)
 
-    def d(self, row, *effects):
-        return NoteDisposition(note_id=self.note_id(row), effects=list(effects))
-
     def email_then_report(self):
+        """The 09:05 note started the email; the 10:20 note ended it and
+        started the report, which then ran to its planned end."""
         return [
-            self.d(2, _e("starts", event_id="e1")),
-            self.d(3, _e("ends", event_id="e1"), _e("starts", event_id="e2")),
+            EventDecision(action="keep", event_id="e1", start_note=self.note_id(2), end_note=self.note_id(3)),
+            EventDecision(action="keep", event_id="e2", start_note=self.note_id(3)),
         ]
 
-
-def _e(kind, **fields):
-    return NoteEffect(kind=kind, **fields)
+    def coffee_instead_of_email(self):
+        """Coffee from the 09:00 note to the 09:30 one, then the email."""
+        return [
+            EventDecision(
+                action="create", summary="Coffee", start_note=self.note_id(2), end_note=self.note_id(3)
+            ),
+            EventDecision(action="keep", event_id="e1", start_note=self.note_id(3)),
+        ]
 
 
 def _standard():
@@ -114,7 +109,16 @@ class TestPrepare:
         assert context.day_end == time_at("07:00+1")
         assert context.remaining_note_count == 0
         assert context.open_compaction is None
-        assert "starts_unplanned" in context.instructions
+        assert "SILENCE MEANS ON SCHEDULE" in context.instructions
+
+    def test_offers_the_notes_beside_the_planned_events_as_a_timeline(self):
+        context = _standard().compactor.prepare()
+
+        assert [n.text for n in context.timeline.notes] == ["email", "report"]
+        assert [e.event_id for e in context.timeline.events] == ["e1", "e2", "e3", "s1"]
+        assert {e.status for e in context.timeline.events} == {"planned"}
+        assert "● email" in context.timeline.text
+        assert "┌ Email" in context.timeline.text
 
     def test_with_no_uncompacted_notes_there_is_nothing_to_offer(self):
         setup = Setup([])
@@ -153,6 +157,99 @@ class TestPrepare:
         assert setup.compactor.prepare().open_compaction == planned.compaction_id
 
 
+class TestTheCompactionWindow:
+    """The notes are on the day after `DAY`; the night before it is
+    `DAY`'s evening."""
+
+    def _events(self):
+        return [
+            event_at("19:00-20:00", id="r0", summary="Reading", priority=2),
+            event_at("20:00-07:00+1", id="s0", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+            event_at("07:00+1-08:00+1", id="gr", summary="Getting Ready", priority=2),
+            event_at("09:00+1-10:00+1", id="w1", summary="Work", priority=2),
+            event_at("10:00+1-11:00+1", id="w2", summary="Email", priority=2),
+            Event(
+                id="s1",
+                summary="Sleep",
+                start=time_at("22:00+1"),
+                end=time_at("07:00+1") + timedelta(days=1),
+                priority=0,
+                is_end_of_day_sleep=True,
+            ),
+        ]
+
+    def _setup(self, note_at="09:05+1"):
+        return Setup([(note_at, "note")], events=self._events(), now="11:30+1")
+
+    def _stamp_a_compaction_at(self, setup, now):
+        """Record a finished compaction whose `now` was `now`, as if the
+        previous round had been compacted then."""
+        setup.journal.start(
+            "prev", now=time_at(now), note_ids=[], decisions=[], plan=CompactionPlan(changes=[])
+        )
+        setup.journal.set_status(setup.journal.load("prev"), STAMPED)
+
+    def test_with_no_earlier_compaction_it_starts_when_the_night_before_ended(self):
+        context = self._setup().compactor.prepare()
+
+        assert context.compaction_window_start == time_at("07:00+1")
+        # The night's sleep ended right as the window starts, so it's
+        # offered too -- it may need stretching ("slept in").
+        assert [e.id for e in context.events] == ["s0", "gr", "w1", "w2", "s1"]
+        assert context.day_end == time_at("07:00+1") + timedelta(days=1)
+
+    def test_a_compaction_before_the_day_started_does_not_reach_back_past_it(self):
+        setup = self._setup()
+        self._stamp_a_compaction_at(setup, "19:45")
+
+        context = setup.compactor.prepare()
+
+        assert context.compaction_window_start == time_at("07:00+1")
+        assert [e.id for e in context.events] == ["s0", "gr", "w1", "w2", "s1"]
+
+    def test_a_later_compaction_the_same_day_starts_the_window_there(self):
+        # Compacted at 10:05, just after work ended -- so work is offered
+        # too, to be stretched if it ran late, but nothing before it is.
+        setup = self._setup(note_at="10:20+1")
+        self._stamp_a_compaction_at(setup, "10:05+1")
+
+        context = setup.compactor.prepare()
+
+        assert context.compaction_window_start == time_at("10:05+1")
+        assert [e.id for e in context.events] == ["w1", "w2", "s1"]
+
+    def test_the_event_just_before_the_window_can_be_stretched(self):
+        setup = self._setup(note_at="10:20+1")
+        self._stamp_a_compaction_at(setup, "10:05+1")
+
+        result = setup.compactor.dry_run(
+            [
+                EventDecision(action="keep", event_id="w1", end_note=setup.note_id(2)),
+                EventDecision(action="keep", event_id="w2", start_note=setup.note_id(2)),
+            ]
+        )
+
+        work = next(c for c in result.changes if c.event_id == "w1")
+        assert work.after.end == time_at("10:20+1")
+
+    def test_an_event_that_ended_longer_before_the_window_is_not_offered(self):
+        setup = self._setup(note_at="10:40+1")
+        self._stamp_a_compaction_at(setup, "10:30+1")
+
+        context = setup.compactor.prepare()
+
+        assert [e.id for e in context.events] == ["w2", "s1"]
+
+    def test_a_note_written_before_the_planned_wake_up_starts_the_day_there(self):
+        context = self._setup(note_at="06:40+1").compactor.prepare()
+
+        assert context.compaction_window_start == time_at("06:40+1")
+        # The night's sleep runs into the day, so it's offered (to be
+        # shortened), but it isn't the day's own end.
+        assert [e.id for e in context.events] == ["s0", "gr", "w1", "w2", "s1"]
+        assert context.day_end == time_at("07:00+1") + timedelta(days=1)
+
+
 class TestDryRun:
     def test_plans_and_journals_without_touching_the_calendar_or_the_notes(self):
         setup = _standard()
@@ -167,24 +264,51 @@ class TestDryRun:
         setup.client.create_event.assert_not_called()
         assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
 
-    def test_ambiguous_notes_come_back_as_questions_and_nothing_is_journaled(self):
+    def test_returns_the_resulting_timeline_to_show_the_user(self):
         setup = _standard()
 
-        result = setup.compactor.dry_run(
-            [setup.d(2, _e("ambiguous", question="Was that the email?")), setup.d(3, _e("ignore"))]
-        )
+        result = setup.compactor.dry_run(setup.email_then_report())
 
-        assert result.status == "needs_clarification"
-        assert "Was that the email?" in result.questions[0]
-        assert result.compaction_id is None
-        assert setup.journal.open_compactions() == []
-        assert [w for w in setup.sheets.writes if w[0] == _JOURNAL_TAB] == []
+        email = next(e for e in result.timeline.events if e.event_id == "e1")
+        assert email.status == "adjusted"
+        assert (email.start_note, email.end_note) == (setup.note_id(2), setup.note_id(3))
+        assert "two lanes" in result.message
+        assert "└ Email ends · 20m late (planned 10:00)" in result.timeline.text
 
-    def test_invalid_dispositions_raise_with_what_to_fix(self):
+    def test_with_no_decisions_every_past_event_is_recorded_on_schedule(self):
         setup = _standard()
 
-        with pytest.raises(CompactionError, match="no disposition for note"):
-            setup.compactor.dry_run([setup.d(2, _e("starts", event_id="e1"))])
+        result = setup.compactor.dry_run([])
+
+        by_event = {c.event_id: c for c in result.changes}
+        assert set(by_event) == {"e1", "e2"}
+        assert by_event["e1"].after.is_fixed_time is True
+        assert (by_event["e1"].after.start, by_event["e1"].after.end) == (time_at("09:00"), time_at("10:00"))
+
+    def test_journals_the_decisions_and_ignored_notes(self):
+        setup = _standard()
+
+        result = setup.compactor.dry_run(setup.email_then_report(), ignore_notes=[setup.note_id(3)])
+
+        journal = setup.journal.load(result.compaction_id)
+        assert journal.decisions == setup.email_then_report()
+        assert journal.ignore_notes == [setup.note_id(3)]
+
+    def test_invalid_decisions_raise_with_what_to_fix(self):
+        setup = _standard()
+
+        with pytest.raises(CompactionError, match="isn't one of this day's events"):
+            setup.compactor.dry_run([EventDecision(action="keep", event_id="nope")])
+
+    def test_overlapping_past_events_are_rejected_for_the_model_to_resolve(self):
+        setup = _standard()
+
+        with pytest.raises(CompactionError, match="'Email'.*overlaps 'Report'"):
+            setup.compactor.dry_run(
+                [EventDecision(action="keep", event_id="e1", end_note=setup.note_id(3))]
+            )
+
+        assert setup.journal.compactions_with_status(PLANNED) == []
 
     def test_nothing_to_compact_when_there_are_no_notes(self):
         assert Setup([]).compactor.dry_run([]).status == "nothing_to_compact"
@@ -219,23 +343,22 @@ class TestDryRun:
 
         setup.client.update_event.assert_not_called()
 
-    def test_a_rejected_plan_can_be_redone_with_corrected_dispositions(self):
+    def test_a_rejected_plan_can_be_redone_with_corrected_decisions(self):
         setup = _standard()
         setup.compactor.dry_run(setup.email_then_report())
 
-        # The user says the 10:20 note actually *ended* the email, and the
-        # report didn't start until later -- so redo it without touching
-        # the calendar or calling prepare again.
+        # The user says the report never happened -- redo it without
+        # touching the calendar or calling prepare again.
         revised = setup.compactor.dry_run(
-            [setup.d(2, _e("starts", event_id="e1")), setup.d(3, _e("ends", event_id="e1"))]
+            [
+                EventDecision(action="keep", event_id="e1", start_note=setup.note_id(2), end_note=setup.note_id(3)),
+                EventDecision(action="cancel", event_id="e2"),
+            ]
         )
 
         by_event = {c.event_id: c for c in revised.changes}
-        assert by_event["e1"].reason.startswith("recorded as what actually happened")
         assert by_event["e1"].after.end == time_at("10:20")
-        # The report isn't recorded as started any more -- it's only nudged
-        # aside to clear the email.
-        assert not by_event["e2"].reason.startswith("recorded as what actually happened")
+        assert by_event["e2"].action == "cancel"
         setup.client.update_event.assert_not_called()
 
     def test_a_plan_that_fails_validation_leaves_the_earlier_plan_alone(self):
@@ -243,52 +366,22 @@ class TestDryRun:
         first = setup.compactor.dry_run(setup.email_then_report())
 
         with pytest.raises(CompactionError):
-            setup.compactor.dry_run([setup.d(2, _e("starts", event_id="nope"))])
+            setup.compactor.dry_run([EventDecision(action="keep", event_id="nope")])
 
         assert setup.journal.load(first.compaction_id).status == PLANNED
 
-    def test_an_activity_with_no_end_on_a_finished_day_asks_when_it_ended(self):
-        # Compacting yesterday: nothing says when the report ended, and
-        # there's no "now" to run it to, so it isn't guessed.
-        setup = _standard()
-        setup.now = "12:00+1"
-
-        result = setup.compactor.dry_run(setup.email_then_report())
-
-        assert result.status == "needs_clarification"
-        assert "When did 'Report' end?" in result.questions[0]
-        assert setup.journal.compactions_with_status(PLANNED) == []
-
-    def test_running_late_on_the_current_day_runs_the_activity_to_now_not_to_bedtime(self):
-        # 21:00 is past the 20:00 start of the sleep block but the day isn't
-        # over: the report ran until now, and the sleep block gives way.
-        setup = _standard()
-        setup.now = "21:00"
-
-        result = setup.compactor.dry_run(setup.email_then_report())
-
-        assert result.status == "planned"
-        report = next(c for c in result.changes if c.event_id == "e2")
-        assert report.after.end == time_at("21:00")
-        assert not any("bedtime" in w for w in result.warnings)
-
     def test_a_rejected_plan_can_be_redone_with_a_rename_and_a_note(self):
-        # The user reviews the first dry run and asks for a different
-        # title and a note -- redone the same way any other correction is,
-        # with no new tool and without touching the calendar.
         setup = _standard()
         setup.compactor.dry_run(setup.email_then_report())
 
-        revised = setup.compactor.dry_run(
-            [
-                setup.d(2, _e("starts", event_id="e1", rename="Deep work", annotate="phone rang")),
-                setup.d(3, _e("ends", event_id="e1"), _e("starts", event_id="e2")),
-            ]
-        )
+        decisions = setup.email_then_report()
+        decisions[0].summary = "Deep work"
+        decisions[0].annotate = "phone rang"
+        revised = setup.compactor.dry_run(decisions)
 
         email = next(c for c in revised.changes if c.event_id == "e1")
         assert email.after.summary == "Deep work"
-        assert email.after.description == "Notes:\n- 09:05 phone rang"
+        assert email.after.description == "Notes:\n- phone rang"
         setup.client.update_event.assert_not_called()
 
 
@@ -303,7 +396,8 @@ class TestCommit:
         patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
         assert (patches["e1"].start, patches["e1"].end) == (time_at("09:05"), time_at("10:20"))
         assert patches["e1"].is_fixed_time is True
-        assert (patches["e2"].start, patches["e2"].end) == (time_at("10:20"), time_at("11:30"))
+        # Only what changed: the report still ended as planned.
+        assert (patches["e2"].start, patches["e2"].end) == (time_at("10:20"), None)
         journal = setup.journal.load(planned.compaction_id)
         assert journal.status == STAMPED
         assert all(s.status == "done" for s in journal.steps)
@@ -326,9 +420,7 @@ class TestCommit:
 
     def test_cancelled_events_are_patched_to_cancelled(self):
         setup = Setup([("09:00", None), ("09:30", None)])
-        planned = setup.compactor.dry_run(
-            [setup.d(2, _e("starts", event_id="e1")), setup.d(3, _e("ends", event_id="e2"))]
-        )
+        planned = setup.compactor.dry_run([EventDecision(action="cancel", event_id="e2")])
 
         setup.compactor.commit(planned.compaction_id)
 
@@ -339,12 +431,7 @@ class TestCommit:
 
     def test_created_events_get_deterministic_ids(self):
         setup = Setup([("09:00", None), ("09:30", None)])
-        planned = setup.compactor.dry_run(
-            [
-                setup.d(2, _e("starts_unplanned", summary="Coffee")),
-                setup.d(3, _e("ends", started_by_note=setup.note_id(2))),
-            ]
-        )
+        planned = setup.compactor.dry_run(setup.coffee_instead_of_email())
 
         setup.compactor.commit(planned.compaction_id)
 
@@ -356,12 +443,7 @@ class TestCommit:
 
     def test_a_retried_create_that_already_exists_counts_as_done(self):
         setup = Setup([("09:00", None), ("09:30", None)])
-        planned = setup.compactor.dry_run(
-            [
-                setup.d(2, _e("starts_unplanned", summary="Coffee")),
-                setup.d(3, _e("ends", started_by_note=setup.note_id(2))),
-            ]
-        )
+        planned = setup.compactor.dry_run(setup.coffee_instead_of_email())
         setup.client.create_event.side_effect = HttpError(MagicMock(status=409), b"exists")
 
         result = setup.compactor.commit(planned.compaction_id)
@@ -371,12 +453,7 @@ class TestCommit:
 
     def test_other_create_errors_are_not_swallowed(self):
         setup = Setup([("09:00", None), ("09:30", None)])
-        planned = setup.compactor.dry_run(
-            [
-                setup.d(2, _e("starts_unplanned", summary="Coffee")),
-                setup.d(3, _e("ends", started_by_note=setup.note_id(2))),
-            ]
-        )
+        planned = setup.compactor.dry_run(setup.coffee_instead_of_email())
         setup.client.create_event.side_effect = HttpError(MagicMock(status=500), b"boom")
 
         with pytest.raises(HttpError):
@@ -513,46 +590,39 @@ class TestDescribeAndAbandon:
 
 class TestDayByDay:
     def test_the_next_days_notes_become_available_once_the_first_is_compacted(self):
-        setup = Setup([("09:05", "email"), ("10:20", "report"), ("11:00", "done")])
+        setup = Setup([("09:05", "email"), ("10:20", "report")])
         setup.append_note("08:00+1", "next day")
         setup.now = "09:00+1"
-        planned = setup.compactor.dry_run(
-            [
-                setup.d(2, _e("starts", event_id="e1")),
-                setup.d(3, _e("ends", event_id="e1"), _e("starts", event_id="e2")),
-                setup.d(4, _e("ends", event_id="e2")),
-            ]
-        )
+        planned = setup.compactor.dry_run(setup.email_then_report())
         setup.compactor.commit(planned.compaction_id)
 
         context = setup.compactor.prepare()
 
-        assert [n.id for n in context.notes] == [setup.note_id(5)]
+        assert [n.id for n in context.notes] == [setup.note_id(4)]
         assert context.remaining_note_count == 0
 
-    def test_the_next_days_window_starts_where_the_stamped_compaction_left_off(self):
-        # A "Getting Ready" block ends before the next day's first note --
-        # if the window started at that note's own timestamp, this event
-        # would already have ended and never be fetched at all.
+    def test_the_next_days_compaction_window_starts_where_the_last_one_left_off(self):
         events = [
             event_at("09:00-10:00", id="e1", summary="Email", priority=2),
             event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
             event_at("07:00+1-07:30+1", id="gr1", summary="Getting Ready", priority=2),
         ]
         setup = Setup([("09:05", "email")], events=events, now="08:00+1")
-        planned = setup.compactor.dry_run([setup.d(2, _e("marker"))])
+        planned = setup.compactor.dry_run([])
         setup.compactor.commit(planned.compaction_id)
         assert setup.journal.last_stamped_now() == time_at("07:00+1")
         setup.append_note("08:15+1", "left for work")
 
         context = setup.compactor.prepare()
 
-        assert "gr1" in [e.id for e in context.events]
+        assert context.compaction_window_start == time_at("07:00+1")
+        assert [e.id for e in context.events][:2] == ["s1", "gr1"]
 
 
-class TestPreviousEvent:
-    """The event that ended just before a day began -- here, last night's
-    sleep -- is offered with that day, so a late wake-up can extend it."""
+class TestSleepingIn:
+    """The event that ended just before the compaction window -- here,
+    last night's sleep -- is offered with it, so a late wake-up can extend
+    it."""
 
     def _slept_in(self):
         events = [
@@ -563,7 +633,7 @@ class TestPreviousEvent:
             event_at("22:00+1-23:30+1", id="s2", summary="Sleep", priority=0, is_end_of_day_sleep=True),
         ]
         setup = Setup([("09:05", "email")], events=events, now="08:00+1")
-        planned = setup.compactor.dry_run([setup.d(2, _e("marker"))])
+        planned = setup.compactor.dry_run([])
         setup.compactor.commit(planned.compaction_id)
         setup.client.reset_mock()
         setup.append_note("08:30+1", "finally up")
@@ -575,44 +645,37 @@ class TestPreviousEvent:
 
         context = setup.compactor.prepare()
 
-        assert context.previous_event_id == "s1"
         assert [e.id for e in context.events] == ["s1", "gr1", "w1", "s2"]
         assert "s1" in context.notes[0].candidates
         assert context.day_end == time_at("23:30+1")
 
-    def test_a_late_wake_up_extends_it_and_reflows_the_morning(self):
+    def test_extending_it_over_the_morning_needs_the_morning_moved_too(self):
+        setup = self._slept_in()
+
+        with pytest.raises(CompactionError, match="'Sleep' \\(s1, as decided.*overlaps 'Getting Ready'"):
+            setup.compactor.dry_run(
+                [EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3))]
+            )
+
+    def test_a_late_wake_up_extends_it_and_reflows_the_rest_of_the_morning(self):
         setup = self._slept_in()
         planned = setup.compactor.dry_run(
-            [setup.d(3, _e("ends", event_id="s1"), _e("starts", event_id="gr1"))]
+            [
+                EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3)),
+                EventDecision(
+                    action="keep", event_id="gr1", start_note=setup.note_id(3), end=time_at("09:00+1")
+                ),
+            ]
         )
         changes = {c.event_id: c for c in planned.changes}
         assert (changes["s1"].after.start, changes["s1"].after.end) == (time_at("20:00"), time_at("08:30+1"))
-        assert changes["gr1"].after.start == time_at("08:30+1")
+        assert changes["w1"].after.start == time_at("09:00+1")
 
         setup.compactor.commit(planned.compaction_id)
 
         patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
         assert patches["s1"].end == time_at("08:30+1")
         assert "s2" not in patches
-
-    def test_an_event_that_ended_longer_ago_is_not_offered(self):
-        events = [
-            event_at("09:00-10:00", id="e1", summary="Email", priority=2),
-            event_at("10:00-10:40", id="e2", summary="Call", priority=2),
-            event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
-        ]
-        setup = Setup([("09:05", "email"), ("11:00", "done")], events=events, now="11:00")
-        planned = setup.compactor.dry_run(
-            [setup.d(2, _e("starts", event_id="e1")), setup.d(3, _e("marker"))]
-        )
-        setup.compactor.commit(planned.compaction_id)
-        # The last compaction left off at 11:00; the call ended at 10:40.
-        setup.append_note("11:30", "lunch")
-        setup.now = "11:45"
-
-        context = setup.compactor.prepare()
-
-        assert context.previous_event_id is None
 
 
 class TestEditAndDeleteNotes:
@@ -668,41 +731,30 @@ class TestEditAndDeleteNotes:
         assert setup.notes.read_with_rows()[-1].note.description == "tomorrow"
 
 
-class TestReschedule:
-    def test_dry_run_plans_and_journals_a_reschedule_alongside_dispositions(self):
+class TestMovingFutureEvents:
+    def test_a_keep_with_new_times_reschedules_a_future_event(self):
         setup = _standard()
-
-        result = setup.compactor.dry_run(
-            setup.email_then_report(),
-            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))],
-        )
-
-        assert result.status == "planned"
-        assert {c.event_id for c in result.changes} == {"e1", "e2", "e3"}
-        assert setup.journal.load(result.compaction_id).reschedules == [
-            Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))
+        decisions = setup.email_then_report() + [
+            EventDecision(action="keep", event_id="e3", start=time_at("12:15"), end=time_at("12:45"))
         ]
 
-    def test_commit_applies_the_reschedule(self):
-        setup = _standard()
-        planned = setup.compactor.dry_run(
-            setup.email_then_report(),
-            reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))],
-        )
-
+        planned = setup.compactor.dry_run(decisions)
         setup.compactor.commit(planned.compaction_id)
 
+        assert {c.event_id for c in planned.changes} == {"e1", "e2", "e3"}
         patch = next(
             c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e3"
         )
         assert (patch.start, patch.end) == (time_at("12:15"), time_at("12:45"))
         assert patch.is_fixed_time is True
 
-    def test_rescheduling_bedtime_near_the_end_of_the_day_plans_and_commits(self):
+    def test_moving_bedtime_near_the_end_of_the_day_plans_and_commits(self):
         setup = Setup([("09:05", "email"), ("10:20", "report")], now="19:45")
-        bedtime = Reschedule(event_id="s1", start=time_at("22:30"), end=time_at("08:00") + timedelta(days=1))
+        bedtime = EventDecision(
+            action="keep", event_id="s1", start=time_at("22:30"), end=time_at("08:00") + timedelta(days=1)
+        )
 
-        planned = setup.compactor.dry_run(setup.email_then_report(), reschedules=[bedtime])
+        planned = setup.compactor.dry_run(setup.email_then_report() + [bedtime])
         setup.compactor.commit(planned.compaction_id)
 
         assert planned.status == "planned"
@@ -712,25 +764,14 @@ class TestReschedule:
         )
         assert (patch.start, patch.end) == (time_at("22:30"), time_at("08:00") + timedelta(days=1))
 
-    def test_a_reschedule_with_no_notes_at_all_is_rejected_as_nothing_to_compact(self):
-        # Reschedules only ever ride along with a compaction round today --
-        # there's no way to trigger one with zero uncompacted notes.
+    def test_with_no_notes_at_all_there_is_nothing_to_compact(self):
         setup = Setup([])
 
         result = setup.compactor.dry_run(
-            [], reschedules=[Reschedule(event_id="e3", start=time_at("12:15"), end=time_at("12:45"))]
+            [EventDecision(action="keep", event_id="e3", start=time_at("12:15"))]
         )
 
         assert result.status == "nothing_to_compact"
-
-    def test_rejects_a_reschedule_of_an_event_a_note_already_accounts_for(self):
-        setup = _standard()
-
-        with pytest.raises(CompactionError, match="already accounted for by a note"):
-            setup.compactor.dry_run(
-                setup.email_then_report(),
-                reschedules=[Reschedule(event_id="e1", start=time_at("12:15"), end=time_at("12:45"))],
-            )
 
 
 class TestGarbageCollection:

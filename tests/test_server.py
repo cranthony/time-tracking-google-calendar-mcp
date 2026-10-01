@@ -16,7 +16,7 @@ from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.event_labels import EventLabel
 from utilities.label_priority_calendar import LabelPriorityCalendar
-from utilities.note_compaction import CompactionError, NoteDisposition, NoteEffect, Reschedule
+from utilities.note_compaction import CompactionError, EventDecision
 from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
@@ -526,30 +526,31 @@ class TestPrepareCompaction:
 
 
 class TestCompactNotes:
-    def test_a_dry_run_with_dispositions_plans(self, monkeypatch):
+    def test_a_dry_run_with_decisions_plans(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
-        dispositions = [NoteDisposition(note_id="n2", effects=[NoteEffect(kind="ignore")])]
+        decisions = [EventDecision(action="cancel", event_id="e1")]
 
-        result = server.compact_notes(dispositions=dispositions)
+        result = server.compact_notes(decisions=decisions)
 
         assert result is compactor.dry_run.return_value
-        compactor.dry_run.assert_called_once_with(dispositions, None)
+        compactor.dry_run.assert_called_once_with(decisions, None)
 
-    def test_a_dry_run_with_reschedules_passes_them_through(self, monkeypatch):
+    def test_a_dry_run_passes_ignored_notes_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
-        dispositions = [NoteDisposition(note_id="n2", effects=[NoteEffect(kind="ignore")])]
-        reschedules = [
-            Reschedule(
-                event_id="e1",
-                start=datetime(2026, 1, 1, 12, 15, tzinfo=UTC),
-                end=datetime(2026, 1, 1, 12, 45, tzinfo=UTC),
-            )
+        decisions = [
+            EventDecision(action="keep", event_id="e1", end=datetime(2026, 1, 1, 12, 15, tzinfo=UTC))
         ]
 
-        result = server.compact_notes(dispositions=dispositions, reschedules=reschedules)
+        server.compact_notes(decisions=decisions, ignore_notes=["n2"])
 
-        assert result is compactor.dry_run.return_value
-        compactor.dry_run.assert_called_once_with(dispositions, reschedules)
+        compactor.dry_run.assert_called_once_with(decisions, ["n2"])
+
+    def test_a_dry_run_with_no_decisions_records_everything_as_on_schedule(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        server.compact_notes()
+
+        compactor.dry_run.assert_called_once_with([], None)
 
     def test_a_dry_run_with_a_compaction_id_describes_the_stored_plan(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -571,15 +572,9 @@ class TestCompactNotes:
         compactor = _fake_compactor(monkeypatch)
 
         with pytest.raises(ToolError, match="dry run first"):
-            server.compact_notes(dispositions=[], dry_run=False)
+            server.compact_notes(decisions=[], dry_run=False)
 
         compactor.commit.assert_not_called()
-
-    def test_a_dry_run_needs_dispositions(self, monkeypatch):
-        _fake_compactor(monkeypatch)
-
-        with pytest.raises(ToolError, match="dispositions are required"):
-            server.compact_notes()
 
     def test_compaction_errors_become_tool_errors(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)

@@ -101,52 +101,6 @@ class TestReallocatingCalendarListDayEvents:
         assert [e.id for e in events] == ["s"]
 
 
-class TestReallocatingCalendarListDayWithPrevious:
-    _START = datetime(2026, 1, 2, 7, 0, tzinfo=timezone.utc)
-
-    def _call(self, events):
-        client = MagicMock()
-        client.list_events = MagicMock(return_value=events)
-        result = ReallocatingCalendar(client).list_day_with_previous(self._START, timedelta(minutes=15))
-        client.list_events.assert_called_once_with(
-            self._START - timedelta(minutes=15), self._START + timedelta(hours=24)
-        )
-        return result
-
-    def test_splits_off_the_event_that_ended_in_the_lookback(self):
-        start = self._START
-        last_night = Event(
-            id="s0", start=start - timedelta(hours=8), end=start, is_end_of_day_sleep=True
-        )
-        morning = Event(id="m", start=start, end=start + timedelta(hours=1))
-        tonight = Event(
-            id="s1", start=start + timedelta(hours=15), end=start + timedelta(hours=24),
-            is_end_of_day_sleep=True,
-        )
-
-        previous, day = self._call([last_night, morning, tonight])
-
-        assert previous.id == "s0"
-        # Last night's sleep doesn't end the day -- tonight's does.
-        assert [e.id for e in day] == ["m", "s1"]
-
-    def test_picks_the_latest_ending_and_skips_cancelled_ones(self):
-        start = self._START
-        earlier = Event(id="a", start=start - timedelta(minutes=30), end=start - timedelta(minutes=10))
-        cancelled = Event(id="c", start=start - timedelta(minutes=20), end=start, status="cancelled")
-        running = Event(id="r", start=start - timedelta(minutes=5), end=start + timedelta(hours=1))
-
-        previous, day = self._call([earlier, cancelled, running])
-
-        assert previous.id == "a"
-        assert [e.id for e in day] == ["r"]
-
-    def test_none_when_nothing_ended_in_the_lookback(self):
-        previous, day = self._call([])
-
-        assert previous is None and day == []
-
-
 class TestReallocatingCalendarCreateEvent:
     def test_requires_start_and_end(self):
         client = make_client(MagicMock())
