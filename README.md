@@ -241,6 +241,15 @@ To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill 
 
 If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) instead of run standalone, set these same variables in that host's server config under its `env` field — no `.env` file needed in that case.
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The tests need no credentials or configuration. [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs them on Python 3.11 and 3.13 for every pull request into `main` and every push to it. To block merging until they pass, make the `pytest (Python 3.11)` and `pytest (Python 3.13)` checks required for `main` in the repository's branch protection settings (Settings → Branches, or Rules → Rulesets).
+
 ## Deploying
 
 Hosting this remotely (e.g. on [Render](https://render.com/)) involves **two independent OAuth concerns** — don't confuse them:
