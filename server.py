@@ -405,9 +405,12 @@ def compact_notes(
     never adjusts -- so move only its start to change only the bedtime. If
     the wake-up time does change, the plan warns; tell the user.
 
-    Step 3: after the user agrees, call with that compaction_id and
-    dry_run=False to apply it. It's safe to call again if it fails partway
-    -- it resumes exactly where it stopped. With a compaction_id and
+    Step 3: only after the user has explicitly approved this specific plan,
+    having seen it -- never in the same turn as the dry run, and a request
+    to compact made before they saw the plan isn't approval -- call with
+    that compaction_id and dry_run=False to apply it. If that fails
+    partway, calling it again resumes exactly where it stopped -- the plan
+    is already approved, so that needs no new approval. With a compaction_id and
     dry_run=True you just get that compaction's stored plan back."""
     with track("compact_notes"), cached_sheet_reads():
         compactor = get_note_compactor()

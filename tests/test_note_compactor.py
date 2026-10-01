@@ -264,6 +264,19 @@ class TestDryRun:
         setup.client.create_event.assert_not_called()
         assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
 
+    def test_tells_the_model_to_wait_for_explicit_approval_before_applying(self):
+        # The server can't tell whether the user replied, so both the
+        # instructions and the dry run's own message have to say it.
+        setup = _standard()
+
+        context = setup.compactor.prepare()
+        result = setup.compactor.dry_run(setup.email_then_report())
+
+        for text in (context.instructions, result.message):
+            assert "STOP and wait for the user's reply" in text
+            assert "explicitly approved this plan after seeing it" in text
+            assert "isn't approval" in text
+
     def test_returns_the_resulting_timeline_to_show_the_user(self):
         setup = _standard()
 

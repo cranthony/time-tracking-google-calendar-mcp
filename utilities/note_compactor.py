@@ -85,6 +85,15 @@ _LOOKBACK = timedelta(minutes=15)
 """How long before the compaction window starts an event may have ended
 and still be offered (only the latest one) -- see the module docstring."""
 
+_APPROVAL_RULE = (
+    "Then STOP and wait for the user's reply. Only call compact_notes with dry_run=False once the "
+    "user has explicitly approved this plan after seeing it -- never in the same turn as the dry "
+    "run. A request to compact made before they saw the plan (\"compact my notes\") isn't approval "
+    "of it."
+)
+"""Repeated wherever a model is told what to do after a dry run: the
+server can't tell whether the user replied, so this rests on the model."""
+
 DECISION_GUIDE = (
     "`timeline` shows this day's notes beside its planned events. Compare them and decide, event "
     "by event, what the notes show happened differently -- then call compact_notes with those "
@@ -123,8 +132,8 @@ DECISION_GUIDE = (
     "After every dry run, show the user the result's `timeline` as two parallel lanes -- notes on "
     "the left, events on the right, aligned by time, with each anchoring note joined to the event "
     "edge it sets -- drawing it as a visual if you can render one, otherwise showing "
-    "`timeline.text` verbatim in a code block. Then list the warnings and ask whether to apply it, "
-    "or what to change."
+    "`timeline.text` verbatim in a code block, and list the warnings, asking whether to apply it "
+    "or what to change. " + _APPROVAL_RULE
 )
 
 
@@ -313,10 +322,11 @@ class NoteCompactor:
             message=(
                 f"{len(plan.changes)} calendar change(s) planned for {len(day.notes)} note(s); "
                 "nothing has been changed yet. Show the user `timeline` as two lanes (see the "
-                "instructions from prepare_compaction), then call compact_notes with "
-                f"compaction_id={compaction_id!r} and dry_run=False to apply it. If they want "
-                "something different, correct the decisions and call compact_notes again "
-                "(this plan is then replaced)."
+                "instructions from prepare_compaction) and the warnings. "
+                + _APPROVAL_RULE
+                + f" Once they approve, apply it with compaction_id={compaction_id!r} and "
+                "dry_run=False. If they want something different, correct the decisions and call "
+                "compact_notes again (this plan is then replaced)."
                 + (f" (Replaced {superseded} earlier unapplied plan(s).)" if superseded else "")
             ),
         )
