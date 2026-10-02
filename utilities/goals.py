@@ -40,6 +40,7 @@ from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEv
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
 from utilities.event_label_sheet import EventLabelSheet
+from utilities.goal_measures import MEASURE_SHAPE_PROBLEM, measure_problems
 from utilities.goal_periods import last_ended, parse_period, period_containing
 from utilities.goal_sheet import CADENCES, GOAL_STATUSES, Goal, GoalSheet
 
@@ -244,7 +245,7 @@ class Goals:
         new.id = self._new_id(tree)
         new.created = self._today()
         new.label_id = str(uuid.uuid5(_LABEL_ID_NAMESPACE, new.id))
-        return self._commit(tree.goals + [new])
+        return self._commit(tree.goals + [new], check_measures={new.id})
 
     def update_goal(self, goal: Goal, clear_fields: Collection[str] = ()) -> GoalList:
         """Set whichever of `goal`'s fields aren't `None` (other than the
@@ -269,7 +270,7 @@ class Goals:
                 setattr(target, field.name, value)
         for name in clear_fields:
             setattr(target, name, None)
-        return self._commit(goals)
+        return self._commit(goals, check_measures={goal.id} if goal.measure is not None else ())
 
     def sync(self) -> GoalList:
         """Make the calendar's labels match the sheet's active goals (after
@@ -288,11 +289,15 @@ class Goals:
         if changed:
             self._sheet.write(goals)
 
-    def _commit(self, goals: list[Goal], *, write: bool = True) -> GoalList:
+    def _commit(
+        self, goals: list[Goal], *, write: bool = True, check_measures: Collection[str] | None = None
+    ) -> GoalList:
         """Validate `goals`, write them to the sheet (unless `write` is
         false), then make the calendar's labels match. Everything that can
-        be refused is checked before anything is written."""
-        _validate(goals)
+        be refused is checked before anything is written. Measures are
+        checked in full only for the goals in `check_measures` (all of
+        them if `None`); see `_validate`."""
+        _validate(goals, check_measures)
         tree = GoalTree(goals)
         raw_labels, etag = self._calendar_client.list_event_labels()
         if not tree.goals and any(label.name for label in raw_labels):
@@ -433,8 +438,14 @@ def _stale_periods(goal: Goal, today: date) -> int | None:
     return count
 
 
-def _validate(goals: list[Goal]) -> None:
-    """Raise ValueError listing everything wrong with `goals` as a whole."""
+def _validate(goals: list[Goal], check_measures: Collection[str] | None = None) -> None:
+    """Raise ValueError listing everything wrong with `goals` as a whole.
+
+    Measures are checked in full (utilities/goal_measures.py) only for the
+    goals in `check_measures` -- those being created or given a measure --
+    or for all of them if it's `None`, as when syncing hand edits. Any
+    other goal's measure need only have a "kind", so one saved before the
+    full checks existed can't block edits to other goals."""
     problems = []
     ids = [goal.id for goal in goals]
     for goal_id in sorted({i for i in ids if ids.count(i) > 1 and i}):
@@ -465,9 +476,10 @@ def _validate(goals: list[Goal]) -> None:
                 problems.append(f"{label} can't be its own ancestor")
         if goal.cadence is not None and goal.cadence not in CADENCES:
             problems.append(f"{label}'s cadence must be one of {', '.join(CADENCES)}")
-        if goal.measure is not None and not (
-            isinstance(goal.measure, dict) and isinstance(goal.measure.get("kind"), str)
-        ):
-            problems.append(f'{label}\'s measure must be an object with a "kind"')
+        if goal.measure is not None:
+            found = measure_problems(goal.measure)
+            if check_measures is not None and goal.id not in check_measures:
+                found = [p for p in found if p == MEASURE_SHAPE_PROBLEM]
+            problems.extend(f"{label}'s measure {problem}" for problem in found)
     if problems:
         raise ValueError("; ".join(problems))

@@ -389,7 +389,20 @@ def create_goal(goal: Goal) -> GoalList:
     its color (background_color, or derived from priority). priority and
     fixed_time are inherited by sub-goals and events that don't set their
     own. id, label_id and created are assigned. Returns the resulting
-    proposed, active and inactive goals."""
+    proposed, active and inactive goals.
+
+    A goal with a cadence can have a measure: how each period's health
+    (0-100) is rated. Targets are per period of its cadence. One of:
+    {"kind": "duration", "target_min": 600} (minutes of its events),
+    {"kind": "count", "target": 1, "noun": "dinners"} (number of events),
+    {"kind": "wake_time", "target": "07:00", "grace_min": 10,
+    "zero_at_min": 60} (full marks within the grace, none at zero_at_min
+    late), {"kind": "subjective", "prompt": "How did it go?"} (rated in a
+    reflection), {"kind": "llm", "rubric": "..."} (you propose a rating
+    against the rubric in a reflection), or {"kind": "rollup", "agg":
+    "min"} (min or mean of its sub-goals' ratings). Only the fields shown
+    are allowed; noun, grace_min, zero_at_min, prompt and agg are
+    optional."""
     with track("create_goal"), cached_sheet_reads():
         try:
             return get_goal_store().create_goal(goal)
@@ -415,8 +428,9 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
     existed; no event can be given it). Only an active goal holds an event
     label and is assessed; any other status frees its label but keeps its
     history, and making it active again restores the label, and its past
-    events' color with it. Returns the resulting proposed, active and
-    inactive goals."""
+    events' color with it. A new measure replaces the old one whole, and
+    is checked as for create_goal. Returns the resulting proposed, active
+    and inactive goals."""
     with track("update_goal"), cached_sheet_reads():
         try:
             return get_goal_store().update_goal(goal, clear_fields or ())
