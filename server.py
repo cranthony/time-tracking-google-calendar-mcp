@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 from mcp.server.auth.settings import AuthSettings
@@ -26,7 +26,8 @@ from config import (
 )
 from oauth_proxy import oauth_proxy_handlers
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
-from utilities.goal_sheet import Goal
+from utilities.goal_health import Assessment, GoalHealth
+from utilities.goal_sheet import Cadence, Goal
 from utilities.goals import GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
@@ -187,6 +188,7 @@ class PublicEvent:
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
 _goals: Goals | None = None
+_goal_health: GoalHealth | None = None
 _noted_time_sheet: NotedTimeSheet | None = None
 _note_compactor: NoteCompactor | None = None
 
@@ -212,6 +214,15 @@ def get_reallocating_calendar() -> ReallocatingCalendar:
     if _reallocating_calendar is None:
         _reallocating_calendar = ReallocatingCalendar(GoalCalendar(get_calendar_client(), get_goal_store()))
     return _reallocating_calendar
+
+
+def get_goal_health() -> GoalHealth:
+    """Lazily construct and cache the GoalHealth, the same way the other
+    get_* helpers cache theirs."""
+    global _goal_health
+    if _goal_health is None:
+        _goal_health = GoalHealth(get_calendar_client(), get_goal_store())
+    return _goal_health
 
 
 def get_goal_store() -> Goals:
@@ -394,6 +405,68 @@ def sync_goals_from_sheet() -> GoalList:
         try:
             return get_goal_store().sync()
         except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def measure_goals(
+    cadence: Cadence, period: str | None = None, goal_ids: list[str] | None = None
+) -> list[Assessment]:
+    """Proposed assessments for the active goals with this cadence whose
+    measure the calendar can answer (duration, count, wake_time, rollup),
+    for one period: e.g. "2026-09-30" (daily), "week-2026-09-27" (weekly,
+    Sunday to Saturday), "2026-09" (monthly), "2026-09..10" (every two
+    months). The default is the most recent period that has fully ended.
+    Each has an explanation of how its 0-100 rating was reached. Writes
+    nothing; ratings are only confirmed in a reflection."""
+    with track("measure_goals"), cached_sheet_reads():
+        try:
+            return get_goal_health().measure(cadence, period, goal_ids)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def record_assessments(assessments: list[Assessment]) -> list[Assessment]:
+    """Record assessments (a 0-100 rating, or "skip", of a goal for one
+    period of its cadence) as proposed -- e.g. a rating the user gives in
+    passing, or one measure_goals proposed. Recording a goal's period
+    again replaces it. They're only confirmed, and only count toward a
+    goal's health, once a reflection confirms them. Returns them as
+    recorded."""
+    with track("record_assessments"), cached_sheet_reads():
+        try:
+            return get_goal_health().record_assessments(assessments)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def get_goal_history(
+    goal_ids: list[str],
+    cadence: Cadence | None = None,
+    start: date | None = None,
+    end: date | None = None,
+) -> list[Assessment]:
+    """Assessments of these goals between start and end (both inclusive),
+    proposed and confirmed, by goal then period. By default, the last 12
+    periods of each goal's cadence."""
+    with track("get_goal_history"), cached_sheet_reads():
+        try:
+            return get_goal_health().history(goal_ids, cadence, start, end)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def rebuild_goal_health_cache() -> GoalList:
+    """Recompute every goal's at-a-glance health (health, health_period,
+    health_trend in the goals tab) from its confirmed assessments, e.g.
+    after hand edits. Returns every goal, inactive ones included."""
+    with track("rebuild_goal_health_cache"), cached_sheet_reads():
+        try:
+            return get_goal_health().rebuild_cache()
+        except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
 

@@ -85,6 +85,17 @@ class Goal:
     created: date | None = None
     """Read-only: when it was created."""
 
+    health: int | None = None
+    """Read-only cache: its latest confirmed rating (0-100) at its cadence
+    -- see utilities/goal_health.py, which keeps these three up to date."""
+
+    health_period: str | None = None
+    """Read-only cache: the period `health` (or a skip) covers."""
+
+    health_trend: str | None = None
+    """Read-only cache: its last 8 confirmed ratings at its cadence, oldest
+    first and comma-separated, "-" for a period with none."""
+
     @classmethod
     def from_row(cls, header_row: list[str], data: list[str]) -> "Goal":
         cells = {header: (data[i] if i < len(data) else "") for i, header in enumerate(header_row)}
@@ -100,7 +111,7 @@ class Goal:
             value = text(name)
             return date.fromisoformat(value) if value is not None else None
 
-        priority, measure = text("priority"), text("measure")
+        priority, measure, health = text("priority"), text("measure"), text("health")
         return cls(
             id=text("id"),
             parent_id=text("parent_id"),
@@ -116,6 +127,9 @@ class Goal:
             note=text("note"),
             label_id=text("label_id"),
             created=day("created"),
+            health=int(health) if health is not None else None,
+            health_period=text("health_period"),
+            health_trend=text("health_trend"),
         )
 
     def to_row(self, header_row: list[str], original_row: list[str] | None = None) -> list[str]:
@@ -156,6 +170,9 @@ HEADER_ROW = [
     "deadline",
     "created",
     "note",
+    "health",
+    "health_period",
+    "health_trend",
 ]
 """A new goals tab's columns, in order -- every `Goal` field."""
 
@@ -227,7 +244,7 @@ class GoalSheet:
     def write(self, goals: list[Goal]) -> None:
         """Overwrite the data rows with `goals`, keeping any unknown
         columns' cells, and blanking rows left over from a longer list."""
-        header_row = self._read_header()
+        header_row = self._with_columns_for(goals, self._read_header())
         previous = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
         by_id = {
             Goal.from_row(header_row, row).id: row for row in previous if any(cell.strip() for cell in row)
@@ -236,6 +253,20 @@ class GoalSheet:
         # Blank out whatever's left below (including rows a user blanked).
         rows += [[""] * len(header_row)] * max(0, len(previous) - len(goals))
         self._sheets_client.write_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE, rows)
+
+    def _with_columns_for(self, goals: list[Goal], header_row: list[str]) -> list[str]:
+        """`header_row`, plus a column for any field one of `goals` has a
+        value for but the tab has no column for yet (e.g. the health cache
+        on a tab made before it existed), added to the tab itself."""
+        missing = [
+            name for name in HEADER_ROW
+            if name not in header_row and any(getattr(goal, name) is not None for goal in goals)
+        ]
+        if not missing:
+            return header_row
+        header_row = header_row + missing
+        self._sheets_client.write_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE, [header_row])
+        return header_row
 
     def _read_header(self) -> list[str]:
         rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)

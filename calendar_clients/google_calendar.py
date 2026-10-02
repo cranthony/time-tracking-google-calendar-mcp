@@ -475,6 +475,86 @@ class CalendarClient:
     def __init__(self, service, calendar_id: str):
         self._service = service
         self._calendar_id = calendar_id
+        self._time_zone: ZoneInfo | None = None
+
+    @property
+    def calendar_id(self) -> str:
+        return self._calendar_id
+
+    def for_calendar(self, calendar_id: str) -> "CalendarClient":
+        """A client for another of this app's calendars, sharing this one's
+        credentials."""
+        return CalendarClient(self._service, calendar_id)
+
+    def create_calendar(
+        self, summary: str, description: str | None = None, time_zone: str | None = None
+    ) -> str:
+        """Create a new secondary calendar (this app's scope allows only
+        calendars it creates), returning its id."""
+        body = Calendar(summary=summary, description=description).to_api_body()
+        if time_zone is not None:
+            body["timeZone"] = time_zone
+        return self._service.calendars().insert(body=body).execute()["id"]
+
+    def hide_calendar(self, calendar_id: str) -> bool:
+        """Best effort: hide `calendar_id` from the user's calendar list in
+        Google Calendar. Returns whether that worked -- this app's
+        calendar.app.created scope may not cover the calendar list."""
+        try:
+            self._service.calendarList().patch(calendarId=calendar_id, body={"hidden": True}).execute()
+            return True
+        except HttpError:
+            return False
+
+    def get_time_zone(self) -> ZoneInfo:
+        """This calendar's own time zone (fetched once, then remembered) --
+        what its days, weeks and months are counted in."""
+        if self._time_zone is None:
+            calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
+            self._time_zone = ZoneInfo(calendar.get("timeZone") or "UTC")
+        return self._time_zone
+
+    def list_event_resources(
+        self, time_min: datetime, time_max: datetime, *, private_property: str | None = None
+    ) -> list[dict]:
+        """Every event overlapping `time_min`..`time_max`, as the API's own
+        dicts (all-day events included, unlike `list_events`), optionally
+        only those with the private extended property `private_property`
+        ("key=value"). Follows `nextPageToken` like `list_events`."""
+        items: list[dict] = []
+        page_token: str | None = None
+        while True:
+            kwargs = {"pageToken": page_token} if page_token else {}
+            if private_property is not None:
+                kwargs["privateExtendedProperty"] = private_property
+            response = (
+                self._service.events()
+                .list(
+                    calendarId=self._calendar_id,
+                    timeMin=time_min.isoformat(),
+                    timeMax=time_max.isoformat(),
+                    singleEvents=True,
+                    maxResults=_LIST_PAGE_SIZE,
+                    **kwargs,
+                )
+                .execute()
+            )
+            items.extend(response.get("items", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                return items
+
+    def upsert_event_resource(self, event_id: str, body: dict) -> dict:
+        """Create the event `event_id` from the API dict `body`, or, if one
+        with that id already exists, overwrite it with `body` -- so a
+        caller-chosen id (5-1024 characters of a-v and 0-9) makes writing
+        the same thing twice harmless."""
+        try:
+            return self._service.events().insert(calendarId=self._calendar_id, body={**body, "id": event_id}).execute()
+        except HttpError as exc:
+            if exc.resp.status != 409:
+                raise
+        return self._service.events().patch(calendarId=self._calendar_id, eventId=event_id, body=body).execute()
 
     @classmethod
     def from_credentials(
