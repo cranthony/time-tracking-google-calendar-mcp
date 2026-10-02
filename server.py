@@ -111,6 +111,12 @@ class PublicEvent:
     the same order) and event_label_id (derived from the primary goal --
     see utilities/goal_calendar.py) are read-only: to_event ignores them.
 
+    goals_from_label is true when an event was never given goals, so its
+    goal_ids are inferred from its label (the goal that owns the label),
+    not stored. Sending it back with goals_from_label still true leaves
+    them inferred, whatever goal_ids says; to store goals, send goal_ids
+    with goals_from_label false (or left out).
+
     effective_priority/effective_is_fixed_time are read-only: Event's
     properties of the same name, the values reallocation actually uses,
     i.e. priority/is_fixed_time falling back to the primary goal's (or
@@ -139,6 +145,7 @@ class PublicEvent:
     priority: int | None = None
     goal_ids: list[str] | None = None
     goal_names: list[str] | None = None
+    goals_from_label: bool = False
     event_label_id: str | None = None
     is_cancelled: bool = False
     effective_priority: int | None = None
@@ -167,6 +174,7 @@ class PublicEvent:
             priority=event.priority,
             goal_ids=event.goal_ids,
             goal_names=names,
+            goals_from_label=event.goals_from_label,
             event_label_id=event.event_label_id,
             is_cancelled=event.status == "cancelled",
             effective_priority=event.effective_priority,
@@ -186,7 +194,8 @@ class PublicEvent:
             min_duration=self.min_duration,
             is_fixed_duration=self.is_fixed_duration,
             is_fixed_time=self.is_fixed_time,
-            goal_ids=self.goal_ids,
+            # Inferred goals, sent back, aren't the event's to store.
+            goal_ids=None if self.goals_from_label else self.goal_ids,
             priority=self.priority,
             status="cancelled" if self.is_cancelled else None,
         )
@@ -202,7 +211,7 @@ class PublicRecurrence:
     e.g. ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261231T000000Z"], with
     exactly one RRULE; schedule says them in words. The other fields are
     as for PublicEvent, and apply to every event in the series that
-    hasn't been edited on its own.
+    hasn't been edited on its own. goals_from_label is as for PublicEvent.
 
     schedule, goal_names, event_label_id and the effective_* fields are
     read-only: update_recurrence ignores them, as it does time_zone."""
@@ -222,6 +231,7 @@ class PublicRecurrence:
     priority: int | None = None
     goal_ids: list[str] | None = None
     goal_names: list[str] | None = None
+    goals_from_label: bool = False
     event_label_id: str | None = None
     effective_priority: int | None = None
     effective_is_fixed_time: bool | None = None
@@ -246,6 +256,7 @@ class PublicRecurrence:
             priority=event.priority,
             goal_ids=event.goal_ids,
             goal_names=public.goal_names,
+            goals_from_label=event.goals_from_label,
             event_label_id=event.event_label_id,
             effective_priority=event.effective_priority,
             effective_is_fixed_time=event.effective_is_fixed_time,
@@ -263,7 +274,7 @@ class PublicRecurrence:
             is_fixed_duration=self.is_fixed_duration,
             is_fixed_time=self.is_fixed_time,
             priority=self.priority,
-            goal_ids=self.goal_ids,
+            goal_ids=None if self.goals_from_label else self.goal_ids,
             recurrence=self.rules,
         )
 
@@ -383,8 +394,10 @@ def _public_events(events: list[Event]) -> list[PublicEvent]:
 def _check_goal_ids(event: PublicEvent, *, existing: bool = False) -> None:
     """Refuse goal_ids that don't name goals, suggesting close matches, or
     that add a deleted goal to the event. An `existing` event may keep a
-    deleted goal it already has, so sending it back unchanged still works."""
-    if not event.goal_ids:
+    deleted goal it already has, so sending it back unchanged still works.
+    Goals inferred from a label (goals_from_label) aren't written, so aren't
+    checked."""
+    if not event.goal_ids or event.goals_from_label:
         return
     tree = get_goal_store().tree()
     already: list[str] = []

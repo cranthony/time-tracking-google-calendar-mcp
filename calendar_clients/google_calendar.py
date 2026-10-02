@@ -244,6 +244,13 @@ class Event:
     """`goal_priority`'s counterpart for `is_fixed_time`. Read
     `effective_is_fixed_time` for the value that actually applies."""
 
+    goals_from_label: bool = False
+    """Whether `goal_ids` were inferred from the event's label, on read, for
+    an event that was never given goals (see `utilities/goal_calendar.py`),
+    rather than stored on it. Such goal_ids are never sent to the API (see
+    `to_api_body`), so writing an event back never turns the inference into
+    a stored tag; only goal_ids set with this false are stored."""
+
     @property
     def effective_priority(self) -> int | None:
         """`priority`, falling back to `goal_priority` when unset."""
@@ -336,6 +343,9 @@ class Event:
                 "goal_ids": " ".join,
             },
         )
+        if self.goals_from_label:
+            # Inferred, not the event's own: see goals_from_label.
+            private_properties.pop(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}goal_ids", None)
         if private_properties:
             body["extendedProperties"] = {"private": private_properties}
 
