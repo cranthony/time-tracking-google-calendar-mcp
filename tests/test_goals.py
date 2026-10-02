@@ -258,6 +258,16 @@ class TestCreateGoal:
         with pytest.raises(ValueError, match="goal '.+'s measure \"agg\" must be one of min, mean"):
             goals.sync()
 
+    def test_a_measures_goal_ids_must_be_goals(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+        cooking = _by_name(goals)["Cooking"]
+
+        with pytest.raises(ValueError, match="names 'nope', which isn't a goal"):
+            goals.update_goal(
+                Goal(id=cooking.id, measure={"kind": "count", "target": 1, "goal_ids": [cooking.id, "nope"]})
+            )
+
     def test_sibling_names_must_differ(self):
         goals, _, _ = _goals()
         goals.create_goal(Goal(name="Cooking"))
@@ -484,3 +494,33 @@ class TestGoalTree:
 
         assert [g.id for g in tree.chain("a")] == ["a", "b"]
         assert {g.id for g in tree.ordered()} == {"a", "b"}
+
+
+class TestReorderGoals:
+    def _names(self, goals):
+        return [goal.name for goal in goals.get_goals().goals]
+
+    def test_orders_siblings_among_the_places_they_hold(self):
+        goals, calendar, _ = _goals()
+        for name in ["Cooking", "Hosting", "Reading"]:
+            goals.create_goal(Goal(name=name))
+        goals.create_goal(Goal(name="Tofu", parent_id=_by_name(goals)["Cooking"].id))
+        goals.create_goal(Goal(name="Curry", parent_id=_by_name(goals)["Cooking"].id))
+        by_name = _by_name(goals)
+        writes = calendar.writes
+
+        goals.reorder_goals([by_name["Reading"].id, by_name["Cooking"].id, by_name["Hosting"].id])
+        goals.reorder_goals([by_name["Curry"].id, by_name["Tofu"].id])
+
+        assert self._names(goals) == ["Reading", "Cooking", "Curry", "Tofu", "Hosting"]
+        assert calendar.writes == writes  # No labels touched.
+
+    @pytest.mark.parametrize("which, message", [([], "Say which"), (["Cooking", "Tofu"], "Only sibling goals")])
+    def test_refuses_what_it_cant_order(self, which, message):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+        goals.create_goal(Goal(name="Tofu", parent_id=_by_name(goals)["Cooking"].id))
+        by_name = _by_name(goals)
+
+        with pytest.raises(ValueError, match=message):
+            goals.reorder_goals([by_name[name].id for name in which])

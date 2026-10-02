@@ -280,6 +280,45 @@ class TestMeasure:
         assert cooked.metrics == {"minutes": 220, "target_min": 300}
         assert "Feel" not in {store.tree().by_id[i].name for i in proposals}  # subjective: not measured
 
+    def test_a_measure_can_look_at_other_goals_events_instead(self):
+        health, store, calendar, goals = _setup(self._goals())
+        cooking, hosting = goals["Cooking"], goals["Hosting"]
+        store.create_goal(Goal(name="Brunch", parent_id=hosting.id))
+        brunch = next(g for g in store.tree().goals if g.name == "Brunch")
+        store.update_goal(
+            Goal(id=cooking.id, measure={"kind": "duration", "target_min": 300, "goal_ids": [hosting.id]})
+        )
+        calendar.events = [
+            _event("2026-09-21T18:00", "2026-09-21T20:00", [cooking.id]),  # its own: not counted
+            _event("2026-09-23T18:00", "2026-09-23T19:00", [hosting.id]),  # 60
+            _event("2026-09-24T10:00", "2026-09-24T11:30", [brunch.id]),  # 90, Hosting's sub-goal
+        ]
+
+        (cooked,) = health.measure("weekly", goal_ids=[cooking.id])
+
+        assert cooked.metrics == {"minutes": 150, "target_min": 300}
+
+    def test_a_sub_goal_can_look_at_its_parents_events(self):
+        health, store, calendar, goals = _setup(self._goals())
+        cooking = goals["Cooking"]
+        store.create_goal(
+            Goal(
+                name="Tofu",
+                parent_id=cooking.id,
+                cadence="weekly",
+                measure={"kind": "count", "target": 4, "goal_ids": [cooking.id]},
+            )
+        )
+        tofu = next(g for g in store.tree().goals if g.name == "Tofu")
+        calendar.events = [
+            _event("2026-09-21T18:00", "2026-09-21T20:00", [cooking.id]),
+            _event("2026-09-23T18:00", "2026-09-23T19:00", [tofu.id]),
+        ]
+
+        (counted,) = health.measure("weekly", goal_ids=[tofu.id])
+
+        assert counted.metrics == {"count": 2, "target": 4}
+
     def test_count_and_an_events_label_standing_in_for_its_goal(self):
         health, store, calendar, goals = _setup(self._goals())
         hosting = goals["Hosting"]

@@ -6,13 +6,19 @@ the goal silently unmeasured.
 
 | kind         | fields                                                  |
 | ------------ | ------------------------------------------------------- |
-| `duration`   | `target_min` (> 0): minutes per period                  |
-| `count`      | `target` (> 0): events per period; optional `noun`      |
+| `duration`   | `target_min` (> 0): minutes per period; optional        |
+|              | `goal_ids`                                              |
+| `count`      | `target` (> 0): events per period; optional `noun` and  |
+|              | `goal_ids`                                              |
 | `wake_time`  | `target` ("HH:MM"); optional `grace_min` (>= 0, default |
 |              | 0) and `zero_at_min` (> grace, default 60)              |
 | `subjective` | optional `prompt`: the question asked in a reflection   |
 | `llm`        | `rubric`: what the model rates the period against       |
 | `rollup`     | optional `agg`: "min" (default) or "mean" of sub-goals  |
+
+A duration or count measure looks at the events serving its own goal or
+any of its sub-goals -- or, given `goal_ids`, those serving any of these
+goals or their sub-goals instead (utilities/goals.py checks they're goals).
 """
 
 from __future__ import annotations
@@ -21,8 +27,8 @@ import re
 from typing import Any
 
 MEASURE_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
-    "duration": (frozenset({"target_min"}), frozenset()),
-    "count": (frozenset({"target"}), frozenset({"noun"})),
+    "duration": (frozenset({"target_min"}), frozenset({"goal_ids"})),
+    "count": (frozenset({"target"}), frozenset({"noun", "goal_ids"})),
     "wake_time": (frozenset({"target"}), frozenset({"grace_min", "zero_at_min"})),
     "subjective": (frozenset(), frozenset({"prompt"})),
     "llm": (frozenset({"rubric"}), frozenset()),
@@ -61,6 +67,12 @@ def measure_problems(measure: Any) -> list[str]:
         if name in measure and not (isinstance(measure[name], str) and measure[name].strip()):
             problems.append(f'"{name}" must be non-empty text')
 
+    if "goal_ids" in measure and not (
+        isinstance(measure["goal_ids"], list)
+        and measure["goal_ids"]
+        and all(isinstance(goal_id, str) and goal_id for goal_id in measure["goal_ids"])
+    ):
+        problems.append('"goal_ids" must be a list of goal ids, not empty')
     if kind == "duration":
         positive("target_min")
     elif kind == "count":

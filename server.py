@@ -556,7 +556,9 @@ def create_goal(goal: Goal) -> GoalList:
     against the rubric in a reflection), or {"kind": "rollup", "agg":
     "min"} (min or mean of its sub-goals' ratings). Only the fields shown
     are allowed; noun, grace_min, zero_at_min, prompt and agg are
-    optional."""
+    optional. A duration or count measure looks at the events of the goal
+    and its sub-goals, or, given "goal_ids": [...], at those of these goals
+    and their sub-goals instead."""
     with track("create_goal"), cached_sheet_reads():
         try:
             return get_goal_store().create_goal(goal)
@@ -588,6 +590,20 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
     with track("update_goal"), cached_sheet_reads():
         try:
             return get_goal_store().update_goal(goal, clear_fields or ())
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def reorder_goals(goal_ids: list[str]) -> GoalList:
+    """Put sibling goals (sharing a parent) in this order, among the places
+    they already hold: goals are listed parents before children, siblings
+    in this order. Name all of a parent's sub-goals (or all the top-level
+    goals) to order them all. Returns the resulting proposed, active and
+    inactive goals."""
+    with track("reorder_goals"), cached_sheet_reads():
+        try:
+            return get_goal_store().reorder_goals(goal_ids)
         except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
 
