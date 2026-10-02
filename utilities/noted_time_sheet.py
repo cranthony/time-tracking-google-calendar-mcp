@@ -8,12 +8,11 @@ knows the tab's shape (header row, which range holds data) and, via
 calendar_metadata_sheet.ensure_tab, how to find/create *the* tab for a
 calendar, but nothing about how a note should be presented -- that's
 server.py/calendar_cli.py's job, one layer up, the same split
-utilities/event_label_sheet.py's EventLabelSheet (which this mirrors)
-has with utilities/event_labels.py.
+utilities/goal_sheet.py's GoalSheet has with utilities/goals.py.
 
-Unlike an event label, a noted time has no counterpart on the Calendar
-API to reconcile with -- it's purely a Sheet-native record -- so there's
-no id column here, and no EventLabels-equivalent reconciliation layer
+Unlike a goal, a noted time has no counterpart on the Calendar API to
+reconcile with -- it's purely a Sheet-native record -- so there's no id
+column here, and no Goals-equivalent reconciliation layer
 above this one: server.py/calendar_cli.py talk to NotedTimeSheet
 directly.
 

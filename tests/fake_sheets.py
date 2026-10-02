@@ -31,6 +31,8 @@ class FakeSheets:
         self.cells: dict[int, dict[tuple[int, int], str]] = {}
         self.writes: list[tuple[int, str]] = []
         self.row_counts: dict[int, int] = {}
+        self.tags: dict[tuple[str, str], int] = {}
+        self.titles: dict[int, str] = {}
 
     def _tab(self, sheet_id: int) -> dict[tuple[int, int], str]:
         return self.cells.setdefault(sheet_id, {})
@@ -106,3 +108,28 @@ class FakeSheets:
     def cell(self, sheet_id: int, address: str) -> str:
         match = re.match(r"^([A-Z]+)(\d+)$", address)
         return self._tab(sheet_id).get((int(match.group(2)), _column_number(match.group(1))), "")
+
+    # Tab management, for code that finds/creates tabs itself (e.g.
+    # utilities/goals.py's migration). Tabs are tagged with developer
+    # metadata the way calendar_metadata_sheet does it.
+
+    def find_sheet_id(self, spreadsheet_id: str, key: str, value: str) -> int | None:
+        return next((sheet_id for (k, v), sheet_id in self.tags.items() if (k, v) == (key, value)), None)
+
+    def create_sheet_metadata(self, spreadsheet_id: str, sheet_id: int, key: str, value: str) -> None:
+        self.tags[(key, value)] = sheet_id
+
+    def add_sheet(self, spreadsheet_id: str, title: str, *, tab_color=None) -> int:
+        sheet_id = max([0, *self.titles, *self.cells]) + 1
+        self.titles[sheet_id] = title
+        return sheet_id
+
+    def update_sheet_properties(self, spreadsheet_id: str, sheet_id: int, *, title=None, tab_color=None) -> None:
+        if title is not None:
+            self.titles[sheet_id] = title
+
+    def set_column_width(self, spreadsheet_id: str, *, sheet_id: int, column_index: int, pixel_width: int) -> None:
+        pass
+
+    def create_spreadsheet(self, title: str) -> str:
+        return "new-spreadsheet"

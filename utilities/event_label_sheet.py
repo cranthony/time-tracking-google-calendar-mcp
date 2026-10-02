@@ -1,6 +1,11 @@
-"""Manages the tab a calendar's event labels are synced with, within its
+"""Manages the tab a calendar's event labels were synced with, within its
 shared calendar metadata spreadsheet (see
 utilities/calendar_metadata_sheet.py).
+
+Superseded by goals (utilities/goal_sheet.py, utilities/goals.py): the
+only thing that still reads this tab is `Goals`' one-time migration of a
+calendar's labels into goals. Kept so that migration can read a tab
+written by an earlier version.
 
 calendar_clients/google_calendar.py's CalendarClient and calendar_clients/
 google_sheets.py's SheetsClient are thin, pure API wrappers -- neither has any
@@ -9,8 +14,7 @@ them: it knows the tab's shape (header row, ID column narrowed, which range
 holds data) and, via calendar_metadata_sheet.ensure_tab, how to find/create
 *the* tab for a calendar, but nothing about what a row means as an event
 label, or how syncing it should reconcile with the calendar's actual labels
--- that's utilities/event_labels.py's job, one layer up, which is why this
-module works in plain rows (list[str]), not an EventLabel object.
+-- that was the job of the (since removed) EventLabels, one layer up.
 """
 
 from __future__ import annotations
@@ -43,10 +47,8 @@ working -- it just can't hold a note until its header gains one (see
 class EventLabel:
     """One of a calendar's custom event labels, plus its priority (see
     the module docstring). `id`/`name`/`background_color` mirror
-    `calendar_clients.google_calendar.EventLabel`; `priority` is sourced
-    from -- and, via `EventLabels.sync_from_sheet`, written back to -- a
-    synced event label sheet, and is `None` if no sheet tracks this
-    label (or no sheet has been created at all)."""
+    `calendar_clients.google_calendar.EventLabel`; `priority` was sourced
+    only from the event label sheet."""
 
     id: str | None = None
     """Uniquely identifies the label within its calendar. `None` until
@@ -57,8 +59,7 @@ class EventLabel:
 
     background_color: str | None = None
     """Hex color (e.g. "#8e24aa") events with this label are shown in.
-    May be left `None` to derive one from `priority` instead -- see
-    `EventLabels.create_label`/`update_label`."""
+    May be left `None` to derive one from `priority` instead."""
 
     priority: int | None = None
     """This label's priority, if known -- see the module docstring."""

@@ -74,7 +74,6 @@ A new tab, tagged with `sheet-role = goals` and found the same way as the existi
 | `measure` | JSON | Optional; the measure spec in §7. Kept small (< 1 kB) |
 | `target` | string | Optional free-text target ("300 min/week", "v1 shipped") |
 | `deadline` | date | Optional |
-| `order` | int | Sort order among siblings |
 | `created` | date | Set on creation; anchors the first period that gets assessed |
 | `note` | string | Short free text, like a label note today |
 | `health` | cache | Latest confirmed rating at the goal's cadence (§8) |
@@ -100,15 +99,15 @@ An event serves **zero or more goals**, ordered so that the first is its **prima
 Stored as one private extended property on the event:
 
 ```
-extendedProperties.private["cascading-time-tracker-goals"] = "g7k2qp g2m9aa"
+extendedProperties.private["cascading-time-tracker-goal_ids"] = "g7k2qp g2m9aa"
 ```
 
-A space-separated list of ids, primary first. With the existing `cascading-time-tracker-` prefix this uses 28 of the 44 characters a key can have, and the value limit (1024 characters) allows over 140 goals per event. Like `priority` and `min_duration`, it's read and written through `Event`'s `_parse_properties`/`_format_properties`, as a new `Event.goal_ids: list[str] | None`.
+A space-separated list of ids, primary first. With the existing `cascading-time-tracker-` prefix this uses 31 of the 44 characters a key can have, and the value limit (1024 characters) allows over 140 goals per event. Like `priority` and `min_duration`, it's read and written through `Event`'s `_parse_properties`/`_format_properties`, as a new `Event.goal_ids: list[str] | None`.
 
 **`eventLabelId` is derived from the goals and never set by hand.** On every write, a new `GoalCalendar` (replacing `LabelPriorityCalendar`) sets the event's label from its primary goal. The rule differs between insert and update, because the probe found that Calendar rejects a stale label id on insert but accepts one on patch (§5):
 
-- **Update (patch):** the primary goal's own reserved `label_id`, **whether or not the goal is active**. While the goal is inactive the event shows the default color. When the goal is reactivated, the event recolors without being rewritten.
-- **Insert:** the primary goal's `label_id` if the goal is active, otherwise the nearest active ancestor's, otherwise none. This covers events created by reallocation's splits and compaction's `create` too, since every insert goes through `GoalCalendar`. The next update to the event switches it to the goal's own id.
+- **Update (patch):** the primary goal's own reserved `label_id` if the event already carries it, **whether or not the goal is active**: the probe showed Calendar accepts re-sending an event's existing removed label, so the event recolors when the goal is reactivated, without being rewritten. Otherwise the same as an insert. (The probe didn't test patching an event with a removed label it *didn't* already have, so the implementation doesn't.)
+- **Insert:** the primary goal's `label_id` if the goal is active, otherwise the nearest active ancestor's, otherwise none. This covers events created by reallocation's splits and compaction's `create` too, since every insert goes through `GoalCalendar`. Such an event keeps the ancestor's label until its goals are rewritten.
 
 Two consequences:
 
@@ -129,7 +128,7 @@ Google Calendar allows at most 200 labels per calendar. The client app already h
 
 - **Deactivating** a goal removes its label from the calendar and frees a slot. Its `label_id` stays reserved in the sheet.
 - **Reactivating** a goal re-adds the label **with the same UUID**. The Calendars reference allows a client-supplied `id` ("must be unique within the calendar and follow UUID format"), and the probe confirmed it. Events keep their now-dangling `eventLabelId`, so the goal's history is linked to the label again without any events being rewritten.
-- **Activating past the limit** fails with a `ToolError` that names the budget and suggests goals to deactivate (the active goals with no events in the last 60 days).
+- **Activating past the limit** fails with a `ToolError` that names the budget, before anything is written. (Suggesting which goals to deactivate, e.g. those with no events in the last 60 days, is left for later.)
 
 ### What happens to events whose label is removed?
 
@@ -283,7 +282,6 @@ class Goal:
     measure: dict | None = None        # §7
     target: str | None = None
     deadline: date | None = None
-    order: int | None = None
     note: str | None = None
     # read-only, ignored on input:
     label_id: str | None = None
@@ -474,7 +472,7 @@ This replaces `EventLabelsScreen`, `EventLabelsRepository`, `EventLabelDialog` a
 The migration runs once and automatically, the first time `Goals` is constructed for a calendar (the same lazy-ensure pattern as `EventLabels.__init__`):
 
 1. Create the Goals tab. Each named Event Labels row becomes a top-level, **active** goal: a new short `id`, `label_id` = the existing label id (no events change, and the colors stay identical), with name, color, priority, fixed_time and note copied across. Unnamed labels aren't migrated; they stay on the calendar untouched.
-2. Rename the old tab to "Event Labels (migrated)" and retag it `event-labels-migrated`, so it's kept for reference but no longer read.
+2. Rename the old tab to "Event Labels (migrated)", so it's kept for reference. It keeps its tag, but nothing reads it once a goals tab exists. The goals tab is tagged only after its rows are written, so an interrupted migration just runs again.
 3. Events need no rewrite: their goals are read from `eventLabelId` when the goals property is missing (§4). They gain the property the next time any tool writes them.
 4. The tool removal is a breaking change to the MCP surface. Ship the client's Goals page in the same release window, since the client calls `update_event_label` today.
 
@@ -485,7 +483,7 @@ You can then reorganize: give migrated goals parents, cadences and measures, add
 | Phase | Server (this repo) | Client |
 | --- | --- | --- |
 | 0 (done) | Ran `probe_label_lifecycle.py` (§5). `list_events` pages through results. Fixed the two latent bugs the probe exposed: the stale label id on inserts (§5) and silent description truncation in compaction (§6.2) | – |
-| 1: Goals replace labels | `GoalSheet`/`Goals` (replacing `EventLabelSheet`/`EventLabels`), `Event.goal_ids`, `GoalCalendar` (replacing `LabelPriorityCalendar`), the migration, the goal and event tools in §9.2–9.3, removal of the label tools | Goals page (list, toggle, edit), event goal chips |
+| 1 (done): Goals replace labels | `GoalSheet`/`Goals` (replacing `EventLabelSheet`/`EventLabels`), `Event.goal_ids`, `GoalCalendar` (replacing `LabelPriorityCalendar`), the migration, the goal and event tools in §9.2–9.3, removal of the label tools | Goals page (list, toggle, edit), event goal chips |
 | 2: Health storage | The Goal Health calendar, `record_assessments`, `get_goal_history`, cache columns, `measure_goals` (duration/count/wake_time/rollup) | Health dots, sparklines, history chart |
 | 3: Compaction + reflection | Goal Hints, compaction suggestions and goal lane, `prepare_reflection`/`record_reflection` | – (the reflection runs in the MCP client) |
 | 4: Rich descriptions | Goal Details tab, Drive images, the description tools | Markdown/Mermaid rendering and editor |

@@ -13,9 +13,10 @@ Usage:
     python calendar_cli.py create_raw_label key=value [key=value ...]
     python calendar_cli.py update_raw_label <label_id> key=value [key=value ...]
     python calendar_cli.py delete_raw_label <label_id>
-    python calendar_cli.py create_label key=value [key=value ...]
-    python calendar_cli.py update_label <label_id> [key=value ...] [--clear attribute ...]
-    python calendar_cli.py sync_labels
+    python calendar_cli.py list_goals [--all]
+    python calendar_cli.py create_goal key=value [key=value ...]
+    python calendar_cli.py update_goal <goal_id> [key=value ...] [--clear attribute ...]
+    python calendar_cli.py sync_goals
     python calendar_cli.py note <ago> [description]
     python calendar_cli.py get_notes
     python calendar_cli.py edit_note <note_id> [--ago <ago> | --at <time>] [--description <text>]
@@ -27,7 +28,9 @@ Usage:
 - `get` shows a single event by its id.
 - `update_properties` sets the given attributes on the event and patches
   them in, without fetching it first — any attribute not given is left
-  untouched.
+  untouched. `goal_ids` is comma-separated (an empty value clears them);
+  setting it also sets the event's label from its goals (see
+  utilities/goal_calendar.py).
 - `update` moves/resizes an existing event (at least one of `start`/`end`
   is required; whichever is omitted is kept as the event's current
   value) via ReallocatingCalendar.update_event, reallocating time from
@@ -52,36 +55,21 @@ Usage:
   but with no concept of priority: Calendar itself has no field for one,
   so `create_raw_label`/`update_raw_label` take only
   `background_color=value`/`name=value` pairs, and `background_color` is
-  required for `create_raw_label`. Prefer `create_label`/`update_label`
-  below unless you specifically want to bypass priority-derived colors
-  and the event label sheet.
-- `create_label`/`update_label` manage the same labels, but as
-  `utilities/event_labels.py`'s richer `EventLabel` (via `EventLabels`),
-  which also has a `priority` and a `fixed_time` flag
-  (`background_color=value`/`name=value`/`priority=value`/
-  `fixed_time=value`/`note=value` pairs; `background_color` may be left
-  unset if `priority` is given, deriving it the same way `Event.colorId`
-  does; whichever is omitted on `update_label` keeps its current value,
-  and `--clear <attribute>` blanks one). Both
-  read and write through this calendar's event label sheet (creating
-  one, pre-populated with the calendar's current labels, the first time
-  either of them runs if it doesn't exist yet), which is the only place
-  `priority`/`fixed_time` are remembered, and both print the *entire*
-  resulting label list, not just the one label touched -- along with
-  `sync_labels` below, that's also how you list the current labels;
-  there's no separate `list_labels` command, since it would just be
-  `sync_labels` under a misleading name. There's no `delete_label`
-  either -- delete a row from the sheet directly (e.g. by opening it in
-  Google Sheets) and run `sync_labels` to apply that. Defining a label here doesn't do
-  anything to any event on its own -- set an event's `event_label_id`
-  (via `create`/`update`/`update_properties` above) to assign one. See
-  https://developers.google.com/workspace/calendar/api/guides/labels
-- `sync_labels` makes this calendar's event labels match its event label
-  sheet exactly (via `EventLabels.sync_labels`) -- change a row's
-  color/priority, add a row with a blank ID to create a new label, or
-  delete a row to delete its label, then run this to apply those changes
-  back to the calendar (and to see the resulting labels, even with no
-  sheet changes pending).
+  required for `create_raw_label`. Labels are normally managed through
+  goals (below), which own one label each while active -- a raw label
+  that isn't an active goal's is removed the next time goals sync.
+- `list_goals`/`create_goal`/`update_goal`/`sync_goals` manage this
+  calendar's goals (`utilities/goals.py`'s `Goals`), stored in the Goals
+  tab of its metadata spreadsheet (migrated from its event labels the
+  first time any of them runs). Each prints the resulting goals, one per
+  line: id, active or not, and path. `list_goals` shows the active ones
+  (`--all` for inactive ones too) without changing anything.
+  `create_goal` needs `name=...`; `update_goal` sets whichever
+  attributes are given and blanks any named with `--clear`.
+  `active=false` frees the goal's label but keeps its history.
+  `sync_goals` applies hand edits to the Goals tab to the calendar's
+  labels. `measure` is JSON (e.g. `measure={"kind":"duration"}`) and
+  `deadline` an ISO date. See docs/goals-design.md.
 - `note` records a new uncompacted time note -- `ago` is required, and
   (like `list`'s `from`/`to` above) a pytimeparse duration (e.g. "1h",
   "90m", "0s" for right now) giving how long before *now* this note is
@@ -108,9 +96,10 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import json
 import sys
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import pytimeparse
@@ -120,11 +109,12 @@ from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from config import (
     build_calendar_client,
     build_compaction_journal,
-    build_event_labels,
+    build_goals,
     build_noted_time_sheet,
 )
-from utilities.event_labels import EventLabel
-from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.goal_calendar import GoalCalendar
+from utilities.goal_sheet import Goal
+from utilities.goals import CLEARABLE_FIELDS, GoalList
 from utilities.note_compaction import CompactionError
 from utilities.note_compactor import delete_note, edit_note
 from utilities.noted_time_sheet import NotedTime, SheetNote
@@ -163,8 +153,8 @@ def _parse_iso_datetime(value: str) -> datetime:
 # Every Event attribute that update_properties may set, other than `id`
 # (changing id would repoint the patch at a different event) and
 # `recurring_event_id` (assigned by Google, never sent to the API -- setting
-# it here would silently have no effect) or `label_priority`/
-# `label_is_fixed_time` (the event's label's, never sent to the API either),
+# it here would silently have no effect) or `goal_priority`/
+# `goal_is_fixed_time` (the event's goal's, never sent to the API either),
 # mapped to a function parsing its
 # command-line string value into the right type.
 _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
@@ -180,6 +170,7 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "priority": int,
     "is_end_of_day_sleep": _parse_bool,
     "event_label_id": str,
+    "goal_ids": lambda s: [goal_id.strip() for goal_id in s.split(",") if goal_id.strip()],
 }
 
 
@@ -204,21 +195,21 @@ requires background_color (enforced by CalendarClient.create_event_label
 itself, not here)."""
 
 
-_LABEL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
-    "background_color": str,
+_GOAL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
+    "parent_id": str,
     "name": str,
+    "active": _parse_bool,
+    "background_color": str,
     "priority": int,
     "fixed_time": _parse_bool,
+    "cadence": str,
+    "measure": json.loads,
+    "target": str,
+    "deadline": date.fromisoformat,
     "note": str,
 }
-"""Every utilities.event_labels.EventLabel attribute create_label/
-update_label may set, mapped to a function parsing its command-line
-string value into the right type. create_label needs at least one of
-background_color/priority (background_color is derived from priority if
-omitted, defaulting even further if neither is given -- see
-EventLabels.create_label) -- there's no fixed set of "required" keys the
-way _REQUIRED_CREATE_ATTRIBUTES is for Event, since either one alone is
-enough."""
+"""Every utilities.goal_sheet.Goal attribute create_goal/update_goal may
+set, mapped to a function parsing its command-line string value."""
 
 
 def _parse_key_value_pair(
@@ -228,8 +219,7 @@ def _parse_key_value_pair(
     parsed value), looking `key` up in `attribute_parsers` to find how to
     parse `value` -- the shared logic behind `_parse_event_key_value`
     (Event attributes), `_parse_raw_label_key_value` (raw EventLabel
-    attributes), and `_parse_label_key_value` (utilities.event_labels.
-    EventLabel attributes)."""
+    attributes), and `_parse_goal_key_value` (Goal attributes)."""
     if "=" not in value:
         raise argparse.ArgumentTypeError(f"expected key=value, got {value!r}")
     key, raw_value = value.split("=", 1)
@@ -255,10 +245,10 @@ def _parse_raw_label_key_value(value: str) -> tuple[str, Any]:
     return _parse_key_value_pair(value, _RAW_LABEL_ATTRIBUTE_PARSERS)
 
 
-def _parse_label_key_value(value: str) -> tuple[str, Any]:
-    """Parse a "key=value" command-line argument into (EventLabel
-    attribute name, parsed value), for use as an argparse `type`."""
-    return _parse_key_value_pair(value, _LABEL_ATTRIBUTE_PARSERS)
+def _parse_goal_key_value(value: str) -> tuple[str, Any]:
+    """Parse a "key=value" command-line argument into (Goal attribute
+    name, parsed value), for use as an argparse `type`."""
+    return _parse_key_value_pair(value, _GOAL_ATTRIBUTE_PARSERS)
 
 
 def resolve_window(
@@ -285,7 +275,7 @@ def _format_event_line(event: Event) -> str:
     return f"{event.id}\t{event.start.isoformat()} - {event.end.isoformat()}\t{event.summary}"
 
 
-def _format_event_details(event: Event | RawEventLabel | EventLabel | NotedTime) -> str:
+def _format_event_details(event: Event | RawEventLabel | NotedTime) -> str:
     lines = []
     for field in dataclasses.fields(event):
         value = getattr(event, field.name)
@@ -298,9 +288,12 @@ def _format_raw_event_label_line(label: RawEventLabel) -> str:
     return f"{label.id}\t{label.background_color}\t{label.name or ''}"
 
 
-def _format_event_label_line(label: EventLabel) -> str:
-    priority = label.priority if label.priority is not None else ""
-    return f"{label.id}\t{label.background_color}\t{priority}\t{label.name or ''}"
+def _print_goals(goal_list: GoalList) -> None:
+    if not goal_list.goals:
+        print("No goals found.")
+    for goal in goal_list.goals:
+        print(f"{goal.id}\t{'active' if goal.active else 'inactive'}\t{goal.path}")
+    print(f"({goal_list.label_slots_used} of {goal_list.label_slots_total} event labels in use)")
 
 
 def _format_sheet_note_line(sheet_note: SheetNote) -> str:
@@ -434,44 +427,39 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     delete_raw_label_parser.add_argument("label_id", help="The label id.")
 
-    create_label_parser = subparsers.add_parser("create_label", help="Create a new event label.")
-    create_label_parser.add_argument(
+    list_goals_parser = subparsers.add_parser("list_goals", help="List this calendar's goals.")
+    list_goals_parser.add_argument("--all", action="store_true", help="Include inactive goals.")
+
+    create_goal_parser = subparsers.add_parser("create_goal", help="Create a new goal.")
+    create_goal_parser.add_argument(
         "properties",
         metavar="key=value",
         nargs="+",
-        type=_parse_label_key_value,
+        type=_parse_goal_key_value,
         help=(
-            "One or more EventLabel attribute=value pairs; at least one of "
-            "background_color/priority is required (background_color is derived from "
-            f"priority if omitted). Valid attributes: {', '.join(sorted(_LABEL_ATTRIBUTE_PARSERS))}."
+            "Goal attribute=value pairs; name is required. Valid attributes: "
+            f"{', '.join(sorted(_GOAL_ATTRIBUTE_PARSERS))}."
         ),
     )
 
-    update_label_parser = subparsers.add_parser(
-        "update_label", help="Update any of an existing event label's properties."
-    )
-    update_label_parser.add_argument("label_id", help="The label id.")
-    update_label_parser.add_argument(
+    update_goal_parser = subparsers.add_parser("update_goal", help="Update any of a goal's properties.")
+    update_goal_parser.add_argument("goal_id", help="The goal id.")
+    update_goal_parser.add_argument(
         "properties",
         metavar="key=value",
         nargs="*",
-        type=_parse_label_key_value,
-        help=(
-            "EventLabel attribute=value pairs to set. Valid "
-            f"attributes: {', '.join(sorted(_LABEL_ATTRIBUTE_PARSERS))}."
-        ),
+        type=_parse_goal_key_value,
+        help=f"Goal attribute=value pairs to set. Valid attributes: {', '.join(sorted(_GOAL_ATTRIBUTE_PARSERS))}.",
     )
-    update_label_parser.add_argument(
+    update_goal_parser.add_argument(
         "--clear",
         action="append",
         default=[],
-        choices=sorted(_LABEL_ATTRIBUTE_PARSERS),
+        choices=sorted(CLEARABLE_FIELDS),
         help="An attribute to blank; repeat for several.",
     )
 
-    subparsers.add_parser(
-        "sync_labels", help="Sync event labels from this calendar's tracked event label sheet."
-    )
+    subparsers.add_parser("sync_goals", help="Apply hand edits to the Goals tab to the calendar's labels.")
 
     note_parser = subparsers.add_parser("note", help="Record a new uncompacted time note.")
     note_parser.add_argument(
@@ -514,13 +502,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _build_reallocating_calendar(client: CalendarClient) -> ReallocatingCalendar:
-    """A ReallocatingCalendar wrapping client plus a LabelPriorityCalendar,
-    so reallocation sees an event's label-derived priority as the fallback
+    """A ReallocatingCalendar wrapping client plus a GoalCalendar, so
+    reallocation sees an event's goal-derived priority as the fallback
     whenever the event itself doesn't set one. Built lazily -- only
-    `update`/`create` below need it -- since constructing an EventLabels
-    may create this calendar's event label sheet on first use (see
-    utilities/event_labels.py)."""
-    return ReallocatingCalendar(LabelPriorityCalendar(client, build_event_labels()))
+    `update`/`create` below need it -- since constructing a Goals may
+    create (or migrate into) this calendar's goals tab on first use (see
+    utilities/goals.py)."""
+    return ReallocatingCalendar(GoalCalendar(client, build_goals()))
 
 
 def main() -> None:
@@ -542,7 +530,9 @@ def main() -> None:
         event = Event(id=args.id)
         for key, value in args.properties:
             setattr(event, key, value)
-        updated_event = client.update_event(event)
+        # Setting goals also sets the label they imply.
+        writer = GoalCalendar(client, build_goals()) if event.goal_ids is not None else client
+        updated_event = writer.update_event(event)
         print(_format_event_details(updated_event))
     elif args.command == "update":
         fields = dict(args.properties)
@@ -595,26 +585,22 @@ def main() -> None:
     elif args.command == "delete_raw_label":
         label = client.delete_event_label(args.label_id)
         print(f"Deleted event label {label.id}.")
-    elif args.command == "create_label":
-        new_label = EventLabel(**dict(args.properties))
-        labels = build_event_labels().create_label(new_label)
-        for label in labels:
-            print(_format_event_details(label))
-            print()
-    elif args.command == "update_label":
-        if not args.properties and not args.clear:
-            parser.error("update_label requires at least one key=value or --clear")
-        updated_label = EventLabel(id=args.label_id, **dict(args.properties))
-        labels = build_event_labels().update_label(updated_label, args.clear)
-        for label in labels:
-            print(_format_event_details(label))
-            print()
-    elif args.command == "sync_labels":
-        labels = build_event_labels().sync_labels()
-        if not labels:
-            print("No event labels found.")
-        for label in labels:
-            print(_format_event_label_line(label))
+    elif args.command in ("list_goals", "create_goal", "update_goal", "sync_goals"):
+        try:
+            if args.command == "list_goals":
+                goal_list = build_goals().get_goals(include_inactive=args.all)
+            elif args.command == "create_goal":
+                goal_list = build_goals().create_goal(Goal(**dict(args.properties)))
+            elif args.command == "update_goal":
+                if not args.properties and not args.clear:
+                    parser.error("update_goal requires at least one key=value or --clear")
+                goal = Goal(id=args.goal_id, **dict(args.properties))
+                goal_list = build_goals().update_goal(goal, args.clear)
+            else:
+                goal_list = build_goals().sync()
+        except ValueError as exc:
+            sys.exit(f"error: {exc}")
+        _print_goals(goal_list)
     elif args.command == "note":
         noted_time = NotedTime(
             timestamp=resolve_note_timestamp(args.ago), description=args.description

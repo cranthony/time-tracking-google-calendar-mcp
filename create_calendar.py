@@ -8,16 +8,16 @@ to create that dedicated calendar, then set GOOGLE_CALENDAR_ID to the ID it
 prints.
 
 This also ensures that calendar's metadata spreadsheet (see utilities/
-calendar_metadata_sheet.py) exists, with its event labels tab (see
-utilities/event_labels.py's EventLabels) and noted-times tab (see
+calendar_metadata_sheet.py) exists, with its goals tab (see
+utilities/goals.py's Goals) and noted-times tab (see
 utilities/noted_time_sheet.py's NotedTimeSheet) both provisioned, in the
 same step, since there's no MCP tool or CLI command that provisions the
 spreadsheet itself -- same one-time, human-run bootstrap reasoning as
 the calendar itself, even though both tabs' *data* does have tools
-(create_event_label/etc., note) once this has run.
-(Constructing an EventLabels/NotedTimeSheet for a calendar that doesn't
+(create_goal/etc., note) once this has run.
+(Constructing a Goals/NotedTimeSheet for a calendar that doesn't
 have one yet creates its spreadsheet/tab automatically -- see
-EventLabels.__init__/NotedTimeSheet.ensure -- so this is really just
+Goals.__init__/NotedTimeSheet.ensure -- so this is really just
 those two constructor calls, not a separate step; it's also safe to run
 again later, since each reuses whatever's already tracked/tagged instead
 of creating something new.)
@@ -41,7 +41,7 @@ from googleapiclient.discovery import build
 
 from calendar_clients.google_auth import load_credentials
 from calendar_clients.google_calendar import Calendar, EventLabelConflictError
-from config import build_event_labels, build_noted_time_sheet, get_credentials_path, get_token_path
+from config import build_goals, build_noted_time_sheet, get_credentials_path, get_token_path
 
 DEFAULT_SUMMARY = "Time Tracking"
 DEFAULT_DESCRIPTION = "Calendar managed by Cascading Time Tracker"
@@ -55,12 +55,11 @@ def create_calendar(summary: str, description: str | None = None) -> Calendar:
     return Calendar.from_api(response)
 
 
-def create_event_label_sheet_for_calendar(calendar_id: str) -> str:
-    """Ensure `calendar_id` has an event label sheet (creating one,
-    pre-populated with its current labels, if it doesn't already -- see
-    `EventLabels.__init__`), returning the shared metadata spreadsheet's
-    id."""
-    return build_event_labels(calendar_id).sheet_id
+def create_goals_sheet_for_calendar(calendar_id: str) -> str:
+    """Ensure `calendar_id` has a goals tab (creating one, migrated from its
+    current labels, if it doesn't already -- see `Goals.__init__`),
+    returning the shared metadata spreadsheet's id."""
+    return build_goals(calendar_id).spreadsheet_id
 
 
 def create_time_notes_sheet_for_calendar(calendar_id: str) -> str:
@@ -90,7 +89,7 @@ def main() -> None:
         print("Set GOOGLE_CALENDAR_ID to this value.")
 
     try:
-        spreadsheet_id = create_event_label_sheet_for_calendar(calendar_id)
+        spreadsheet_id = create_goals_sheet_for_calendar(calendar_id)
         create_time_notes_sheet_for_calendar(calendar_id)
     except EventLabelConflictError as exc:
         # Another writer changed the calendar (e.g. a concurrent run of
