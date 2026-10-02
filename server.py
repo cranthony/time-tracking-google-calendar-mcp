@@ -702,7 +702,12 @@ def rebuild_goal_health_cache() -> GoalList:
 def prepare_reflection(cadence: Cadence, period: str | None = None) -> ReflectionContext:
     """Start a reflection: everything needed to confirm the health ratings
     due for one period of a cadence -- by default the oldest recent period
-    with no reflection yet. Returns the goals to rate (with recent ratings,
+    with no reflection yet. Days run from waking to waking, bounded by the
+    end-of-day sleep events (midnight where there's none), and so do weeks
+    and months. A daily reflection with no period named returns only
+    choices -- the current day, then the most recent days without a
+    reflection -- to ask the user about, then call this again with the
+    period picked. Otherwise returns the goals to rate (with recent ratings,
     and a proposed rating with its explanation where one was recorded or
     could be measured), shorter-cadence goals to review, minutes per goal,
     the period's events and notes (daily and weekly), the last reflection's

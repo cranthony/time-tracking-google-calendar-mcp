@@ -36,6 +36,7 @@ from typing import Any, Literal
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from utilities.goal_calendar import fill_in_from_goals
+from utilities.sleep_days import listing_range, period_window
 from utilities.goal_periods import Period, last_ended, parse_period, period_containing
 from utilities.goal_sheet import GOAL_STATUSES, Cadence, Goal
 from utilities.goals import GoalList, Goals, GoalTree
@@ -283,9 +284,11 @@ class GoalHealth:
         end = datetime.combine(span.end, time(), tz)
         events: list[Event] = []
         if any(g.measure["kind"] != "rollup" for g in goals):
-            # From a day early, for the sleep that ends on the first day.
-            listed = self._client.list_events(start - timedelta(days=1), end)
+            # With the sleeps that bound the period, whose days run from
+            # waking to waking -- see utilities/sleep_days.py.
+            listed = self._client.list_events(*listing_range(span, tz))
             events = [e for e in fill_in_from_goals(listed, tree) if e.status != "cancelled"]
+            start, end = period_window(span, events, tz, self._now())
         proposals = []
         for goal in goals:
             measured = _MEASURES[goal.measure["kind"]](self, goal, span, start, end, events, tree)
