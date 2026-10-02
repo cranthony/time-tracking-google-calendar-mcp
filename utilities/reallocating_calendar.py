@@ -12,10 +12,11 @@ itself.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import Event, EventLabel
 from utilities.reallocation import ReallocationOptions, reallocate_for_new_event
 
 
@@ -30,6 +31,7 @@ class _EventCalendar(Protocol):
     def get_event(self, event_id: str) -> Event: ...
     def create_event(self, event: Event) -> Event: ...
     def update_event(self, event: Event) -> Event: ...
+    def list_event_labels(self) -> tuple[list[EventLabel], str | None]: ...
 
 
 class ReallocatingCalendar:
@@ -72,6 +74,14 @@ class ReallocatingCalendar:
         """
         if new_event.start is None or new_event.end is None:
             raise ValueError("new_event.start and new_event.end are required to create an event")
+        if new_event.event_label_id is not None and new_event.event_label_id not in self._label_ids():
+            # Calendar rejects inserting an event with a label it doesn't
+            # have -- and by then reallocation would already have patched
+            # whatever comes before this event in the plan. Refuse before
+            # anything is applied instead.
+            raise ValueError(
+                f"Event label {new_event.event_label_id!r} doesn't exist on this calendar"
+            )
         day_events = self.list_day_events(new_event.start)
         return self._apply_reallocation(day_events, new_event, options)
 
@@ -134,12 +144,35 @@ class ReallocatingCalendar:
         self, day_events: list[Event], event: Event, options: ReallocationOptions
     ) -> list[Event]:
         plan = reallocate_for_new_event(day_events, event, options)
+        plan = self._without_stale_labels(plan, event)
         return [
             self._client.create_event(planned)
             if planned.id is None
             else self._client.update_event(planned)
             for planned in plan
         ]
+
+    def _without_stale_labels(self, plan: list[Event], event: Event) -> list[Event]:
+        """`plan`, with the label dropped from any event split off another
+        (inserted, but not `event` itself) whose label has since been
+        removed from the calendar. An existing event keeps a removed
+        label's id, and can still be patched with it, but Calendar rejects
+        inserting a new event with it (HTTP 400) -- and a split's
+        continuation is a clone of an existing event, label and all. Only
+        reads the calendar's labels when some continuation has one."""
+        continuations = [
+            planned for planned in plan
+            if planned.id is None and planned is not event and planned.event_label_id is not None
+        ]
+        if not continuations:
+            return plan
+        label_ids = self._label_ids()
+        stale = {id(planned) for planned in continuations if planned.event_label_id not in label_ids}
+        return [replace(planned, event_label_id=None) if id(planned) in stale else planned for planned in plan]
+
+    def _label_ids(self) -> set[str]:
+        labels, _etag = self._client.list_event_labels()
+        return {label.id for label in labels if label.id is not None}
 
 
 def _truncate_at_sleep(events: list[Event], ignore_id: str | None = None) -> list[Event]:

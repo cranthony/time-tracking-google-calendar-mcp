@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 
-from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import MAX_DESCRIPTION_BYTES, Event
 from tests.event_time_helpers import event_at, time_at
 from utilities.note_compaction import (
     CompactionError,
@@ -331,6 +331,30 @@ class TestNotesAddedToEvents:
         assert _by_event(plan)["e1"].after.description == (
             "Inbox zero\n\nNotes:\n- 09:20 phone rang\n- mostly replies"
         )
+
+    def test_notes_that_would_overflow_a_description_are_refused_naming_them(self):
+        # Calendar silently cuts a description past MAX_DESCRIPTION_BYTES.
+        day = _day()
+        day[0].description = "x" * (MAX_DESCRIPTION_BYTES - 20)
+
+        with pytest.raises(CompactionError, match=r"'Email'.*ignore_notes \(n1, n2\)"):
+            _plan([_note(1, "09:20", "phone rang"), _note(2, "09:40", "back to it")], [], day)
+
+    def test_an_overflowing_annotate_is_refused(self):
+        with pytest.raises(CompactionError, match=r"'Email'.*shorten its `annotate`"):
+            _plan([], [_keep("e1", annotate="x" * MAX_DESCRIPTION_BYTES)])
+
+    def test_the_limit_counts_utf8_bytes(self):
+        # Under the limit in characters, over it in bytes.
+        with pytest.raises(CompactionError, match="bytes"):
+            _plan([], [_keep("e1", annotate="é" * (MAX_DESCRIPTION_BYTES // 2))])
+
+    def test_a_description_that_just_fits_is_kept(self):
+        annotate = "x" * (MAX_DESCRIPTION_BYTES - len("Notes:\n- "))
+
+        plan = _plan([], [_keep("e1", annotate=annotate)])
+
+        assert len(_by_event(plan)["e1"].after.description) == MAX_DESCRIPTION_BYTES
 
     def test_a_note_added_to_a_future_event_still_in_progress_changes_only_its_description(self):
         change = _by_event(_plan([_note(1, "10:15", "started outline")], [], now="10:30"))["e2"]

@@ -69,6 +69,7 @@ from utilities.compaction_timeline import Timeline
 from utilities.note_compaction import (
     CompactionChange,
     CompactionError,
+    CompactionPlan,
     EventDecision,
     PlanNote,
     plan_compaction,
@@ -295,14 +296,7 @@ class NoteCompactor:
         day = self._day(self._clock())
         if day is None:
             return CompactionResult(status="nothing_to_compact", message="there are no uncompacted notes")
-        plan = plan_compaction(
-            _plan_notes(day),
-            decisions,
-            day.events,
-            day.now,
-            ignore_notes=ignore_notes,
-            day_start=day.day_start,
-        )
+        plan = self._plan(day, decisions, ignore_notes)
         superseded = self._supersede_planned()
         compaction_id = uuid.uuid4().hex[:12]
         self._journal.start(
@@ -476,20 +470,47 @@ class NoteCompactor:
         )
         if day is None or {n.id for n in day.notes} != set(journal.note_ids):
             raise stale
-        plan = plan_compaction(
-            _plan_notes(day),
-            journal.decisions,
-            day.events,
-            day.now,
-            ignore_notes=journal.ignore_notes,
-            day_start=day.day_start,
-        )
+        plan = self._plan(day, journal.decisions, journal.ignore_notes)
 
         def comparable(changes: list[CompactionChange]) -> list[tuple]:
             return [(c.action, c.event_id, c.before, c.after) for c in changes]
 
         if comparable(plan.changes) != comparable(journal.changes()):
             raise stale
+
+    def _plan(
+        self, day: _Day, decisions: list[EventDecision], ignore_notes: list[str] | None
+    ) -> CompactionPlan:
+        """`plan_compaction` for `day`, checked against the calendar's
+        current labels: Calendar rejects inserting an event with a label it
+        doesn't have (HTTP 400), which would stop the commit partway -- and
+        every retry with it. A `create` decision naming such a label is an
+        error for the model to fix; any other created event (a split
+        continuation, cloned label and all, from reflowing the day) just
+        drops it. Only reads the labels when a created event has one."""
+        plan = plan_compaction(
+            _plan_notes(day), decisions, day.events, day.now, ignore_notes=ignore_notes, day_start=day.day_start
+        )
+        labelled = [c for c in plan.changes if c.action == "create" and c.after.event_label_id is not None]
+        if not labelled:
+            return plan
+        labels, _etag = self._client.list_event_labels()
+        label_ids = {label.id for label in labels}
+        unknown = sorted({
+            d.event_label_id
+            for d in decisions
+            if d.action == "create" and d.event_label_id is not None and d.event_label_id not in label_ids
+        })
+        if unknown:
+            valid = ", ".join(f"{label.id} ({label.name})" for label in labels if label.name) or "none"
+            raise CompactionError(
+                f"'create' names event label(s) this calendar doesn't have: {', '.join(unknown)}; "
+                f"valid labels: {valid}"
+            )
+        for change in labelled:
+            if change.after.event_label_id not in label_ids:
+                change.after.event_label_id = None
+        return plan
 
     def _apply_step(self, journal: JournalCompaction, step: JournalStep) -> None:
         if step.action == "create":

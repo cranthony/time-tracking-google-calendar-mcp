@@ -28,6 +28,18 @@ Calendars do have, kept clearly delimited from -- and never overwriting --
 whatever human-readable description surrounds it."""
 
 
+MAX_DESCRIPTION_BYTES = 8192
+"""The longest event description Calendar keeps: anything longer is
+silently cut to this length, with no error (found empirically -- see
+probe_label_lifecycle.py and docs/goals-design.md section 6.2). Measured
+there with ASCII, so whether the limit counts characters or bytes is
+unknown; treating it as UTF-8 bytes is the safe reading."""
+
+_LIST_PAGE_SIZE = 2500
+"""The most events Calendar returns per `events.list` page (its own
+maximum for `maxResults`) -- see CalendarClient.list_events."""
+
+
 def _parse_calendar_metadata(description: str | None) -> dict[str, str]:
     if not description:
         return {}
@@ -468,18 +480,31 @@ class CalendarClient:
         return cls(service, calendar_id=calendar_id)
 
     def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:
-        response = (
-            self._service.events()
-            .list(
-                calendarId=self._calendar_id,
-                timeMin=time_min.isoformat(),
-                timeMax=time_max.isoformat(),
-                singleEvents=True,
-                orderBy="startTime",
+        """Every event between `time_min` and `time_max`, following
+        `nextPageToken` until the last page -- Calendar returns at most
+        `_LIST_PAGE_SIZE` events per page (250 if asked for nothing), so a
+        week or more of events can span several."""
+        events: list[Event] = []
+        page_token: str | None = None
+        while True:
+            page_kwargs = {"pageToken": page_token} if page_token else {}
+            response = (
+                self._service.events()
+                .list(
+                    calendarId=self._calendar_id,
+                    timeMin=time_min.isoformat(),
+                    timeMax=time_max.isoformat(),
+                    singleEvents=True,
+                    orderBy="startTime",
+                    maxResults=_LIST_PAGE_SIZE,
+                    **page_kwargs,
+                )
+                .execute()
             )
-            .execute()
-        )
-        return [Event.from_api(item) for item in response.get("items", [])]
+            events.extend(Event.from_api(item) for item in response.get("items", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                return events
 
     def get_event(self, event_id: str) -> Event:
         response = (

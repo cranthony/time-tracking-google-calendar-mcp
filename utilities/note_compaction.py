@@ -65,7 +65,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from typing import Literal
 
-from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import MAX_DESCRIPTION_BYTES, Event
 from utilities.compaction_timeline import Timeline, TimelineEvent, TimelineNote, build_timeline
 from utilities.reallocation import FixedTimeConflict, ReallocationOptions, reallocate_for_new_event
 
@@ -323,7 +323,9 @@ def plan_compaction(
     for event_id, decision in touched.items():
         if decision.summary:
             copies[event_id].summary = decision.summary
-    annotated = _annotate(ordered, ignored, facts, touched, copies, cancels, warnings)
+    annotated = _annotate(ordered, ignored, facts, touched, copies, cancels, warnings, problems)
+    if problems:
+        raise CompactionError("\n".join(problems))
 
     simulated = _simulate(facts, copies, cancels, options, warnings)
     changes = _changes(facts, events_by_id, copies, cancels, simulated)
@@ -553,10 +555,14 @@ def _annotate(
     copies: dict[str, Event],
     cancels: dict[str, str],
     warnings: list[str],
+    problems: list[str],
 ) -> dict[str, str]:
     """Add every note that doesn't set an edge (and isn't ignored), and
     every `annotate`, to the description of the event it belongs to.
-    Returns note id -> the title of the event it was added to."""
+    Returns note id -> the title of the event it was added to.
+
+    A description that would grow past `MAX_DESCRIPTION_BYTES` is a
+    problem, not a warning: Calendar would silently cut it short."""
     anchors = {n.id for f in facts for n in (f.start_note, f.end_note) if n is not None}
     fact_ids = {f.base.id for f in facts if f.base}
     # Where each candidate event ends up, as far as is known before the
@@ -570,6 +576,7 @@ def _annotate(
     ]
     lines: dict[str, list[tuple[datetime | None, str]]] = {}
     events: dict[str, Event] = {}
+    note_ids: dict[str, list[str]] = {}
     annotated: dict[str, str] = {}
     for note in ordered:
         text = (note.description or "").strip()
@@ -586,6 +593,7 @@ def _annotate(
             continue
         lines.setdefault(hit[2], []).append((note.timestamp, text))
         events[hit[2]] = hit[3]
+        note_ids.setdefault(hit[2], []).append(note.id)
         annotated[note.id] = hit[3].summary or hit[2]
     for fact in facts:
         for text in fact.annotations:
@@ -604,6 +612,17 @@ def _annotate(
         ] + [f"- {text}" for moment, text in entries if moment is None]
         prefix = f"{event.description}\n\nNotes:\n" if event.description else "Notes:\n"
         event.description = prefix + "\n".join(formatted)
+        size = len(event.description.encode("utf-8"))
+        if size > MAX_DESCRIPTION_BYTES:
+            # Untimed entries are `annotate` text; timed ones are notes.
+            fixes = ["shorten its `annotate`"] if any(moment is None for moment, _ in entries) else []
+            if note_ids.get(key):
+                fixes.insert(0, f"leave notes out with ignore_notes ({', '.join(note_ids[key])})")
+            problems.append(
+                f"the description of {event.summary or key!r} would be {size} bytes with these notes "
+                f"added, over the {MAX_DESCRIPTION_BYTES} Calendar keeps (it silently cuts the rest)"
+                + (f"; {' or '.join(fixes)}" if fixes else "")
+            )
     return annotated
 
 
