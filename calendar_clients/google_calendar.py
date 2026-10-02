@@ -163,6 +163,28 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#recurringEventId
     for more information."""
 
+    recurrence: list[str] | None = None
+    """For a recurring series' master event, its rules: RFC 5545 lines such
+    as "RRULE:FREQ=WEEKLY;BYDAY=MO,WE", "EXDATE:..." or "RDATE:...". `None`
+    for a single event or an instance -- see `utilities/recurrences.py`.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#recurrence
+    for more information."""
+
+    time_zone: str | None = None
+    """The IANA time zone its start and end are in (e.g. "America/New_York"),
+    if the event says. A recurring series needs one, so its instances keep
+    their wall-clock time across daylight saving changes; sent with start
+    and end whenever they are.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#start.timeZone
+    for more information."""
+
+    original_start: datetime | None = None
+    """For an instance of a recurring event, when its series' rules put it
+    -- which differs from `start` if it was moved on its own. Read-only,
+    like `recurring_event_id`.
+    See https://developers.google.com/workspace/calendar/api/v3/reference/events#originalStartTime
+    for more information."""
+
     min_duration: timedelta | None = None
     """The minimum duration this event may be shrunk to (e.g. by whatever
     resolves overlaps between events)."""
@@ -264,6 +286,9 @@ class Event:
             location=data.get("location"),
             status=data.get("status"),
             recurring_event_id=data.get("recurringEventId"),
+            recurrence=data.get("recurrence"),
+            time_zone=data["start"].get("timeZone"),
+            original_start=_parse_datetime(data["originalStartTime"]) if "originalStartTime" in data else None,
             event_label_id=data.get("eventLabelId"),
             **app_properties,
         )
@@ -278,9 +303,11 @@ class Event:
         if self.summary is not None:
             body["summary"] = self.summary
         if self.start is not None:
-            body["start"] = _format_datetime(self.start)
+            body["start"] = _format_datetime(self.start, self.time_zone)
         if self.end is not None:
-            body["end"] = _format_datetime(self.end)
+            body["end"] = _format_datetime(self.end, self.time_zone)
+        if self.recurrence is not None:
+            body["recurrence"] = list(self.recurrence)
         if self.description is not None:
             body["description"] = self.description
         if self.location is not None:
@@ -294,8 +321,8 @@ class Event:
             # might be a partial update, in which case a missing priority
             # should mean "leave the color the same".
             body["colorId"] = _color_id_for_priority(self.priority)
-        # recurring_event_id is deliberately never sent: it's assigned by
-        # Google, not something a client sets. Nor are goal_priority/
+        # recurring_event_id and original_start are deliberately never
+        # sent: they're assigned by Google, not something a client sets. Nor are goal_priority/
         # goal_is_fixed_time: they belong to the goal, not the event.
 
         private_properties = _format_properties(
@@ -426,10 +453,13 @@ def _parse_datetime(value: dict) -> datetime:
     return parsed
 
 
-def _format_datetime(value: datetime) -> dict:
+def _format_datetime(value: datetime, time_zone: str | None = None) -> dict:
     if value.tzinfo is None:
         raise ValueError(f"datetime {value!r} must be timezone-aware")
-    return {"dateTime": value.isoformat()}
+    formatted = {"dateTime": value.isoformat()}
+    if time_zone is not None:
+        formatted["timeZone"] = time_zone
+    return formatted
 
 
 def _parse_properties(
@@ -635,6 +665,31 @@ class CalendarClient:
             .execute()
         )
         return Event.from_api(response)
+
+    def list_instances(self, event_id: str, time_max: datetime) -> list[Event]:
+        """The instances of the recurring series `event_id` that start
+        before `time_max`, cancelled ones included (they still count
+        towards a COUNT rule), following `nextPageToken`."""
+        events: list[Event] = []
+        page_token: str | None = None
+        while True:
+            page_kwargs = {"pageToken": page_token} if page_token else {}
+            response = (
+                self._service.events()
+                .instances(
+                    calendarId=self._calendar_id,
+                    eventId=event_id,
+                    timeMax=time_max.isoformat(),
+                    showDeleted=True,
+                    maxResults=_LIST_PAGE_SIZE,
+                    **page_kwargs,
+                )
+                .execute()
+            )
+            events.extend(Event.from_api(item) for item in response.get("items", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                return events
 
     def delete_event(self, event_id: str) -> None:
         self._service.events().delete(

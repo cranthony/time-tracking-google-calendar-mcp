@@ -120,6 +120,38 @@ class TestEvent:
 
         assert event.recurring_event_id == "abc123"
 
+    def test_from_api_extracts_a_series_rules_and_time_zone(self):
+        data = api_event("abc123", "2026-01-05T09:00:00-05:00", "2026-01-05T10:00:00-05:00")
+        data["start"]["timeZone"] = "America/New_York"
+        data["recurrence"] = ["RRULE:FREQ=WEEKLY;BYDAY=MO"]
+
+        event = Event.from_api(data)
+
+        assert event.recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO"]
+        assert event.time_zone == "America/New_York"
+
+    def test_from_api_extracts_an_instances_original_start(self):
+        data = api_event("abc123_x", "2026-01-06T15:00:00+00:00", "2026-01-06T16:00:00+00:00")
+        data["originalStartTime"] = {"dateTime": "2026-01-05T14:00:00+00:00"}
+
+        assert Event.from_api(data).original_start == datetime(2026, 1, 5, 14, tzinfo=UTC)
+
+    def test_to_api_body_sends_rules_and_time_zone_but_never_original_start(self):
+        start = datetime(2026, 1, 5, 9, tzinfo=EST)
+        event = Event(
+            start=start,
+            end=start + timedelta(hours=1),
+            time_zone="America/New_York",
+            recurrence=["RRULE:FREQ=DAILY"],
+            original_start=start,
+        )
+
+        body = event.to_api_body()
+
+        assert body["recurrence"] == ["RRULE:FREQ=DAILY"]
+        assert body["start"]["timeZone"] == body["end"]["timeZone"] == "America/New_York"
+        assert "originalStartTime" not in body
+
     def test_from_api_extracts_event_label_id(self):
         data = api_event(
             "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
@@ -586,6 +618,25 @@ class TestCalendarClientListEvents:
             call.kwargs.get("pageToken") for call in service.events.return_value.list.call_args_list
         ]
         assert page_tokens == [None, "page-2", "page-3"]
+
+    def test_list_instances_includes_cancelled_ones_and_follows_pages(self):
+        service = MagicMock()
+        instances = service.events.return_value.instances
+        instances.return_value.execute.side_effect = [
+            {
+                "items": [api_event("s_1", "2026-01-05T09:00:00+00:00", "2026-01-05T10:00:00+00:00")],
+                "nextPageToken": "page-2",
+            },
+            {"items": [api_event("s_2", "2026-01-12T09:00:00+00:00", "2026-01-12T10:00:00+00:00")]},
+        ]
+        client = make_client(service)
+
+        events = client.list_instances("s", datetime(2026, 1, 19, tzinfo=UTC))
+
+        assert [e.id for e in events] == ["s_1", "s_2"]
+        first = instances.call_args_list[0].kwargs
+        assert (first["eventId"], first["showDeleted"], first["timeMax"]) == ("s", True, "2026-01-19T00:00:00+00:00")
+        assert instances.call_args_list[1].kwargs["pageToken"] == "page-2"
 
     def test_list_events_returns_empty_list_when_no_items(self):
         service = MagicMock()

@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
@@ -36,6 +37,7 @@ from utilities.note_compactor import CompactionContext, CompactionResult, NoteCo
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
+from utilities.recurrences import Recurrences, describe_rules
 from workos_auth import WorkOSTokenVerifier
 
 # Without this, INFO-level logs (utilities/memory_diagnostics.py's, e.g.)
@@ -77,9 +79,13 @@ if _TRANSPORT == "streamable-http":
 else:
     mcp = MCPServer("time-tracking-google-calendar-mcp")
 
-INTERNAL_EVENT_FIELDS = frozenset({"status", "goal_priority", "goal_is_fixed_time"})
+INTERNAL_EVENT_FIELDS = frozenset(
+    {"status", "goal_priority", "goal_is_fixed_time", "recurrence", "time_zone", "original_start"}
+)
 """Event fields the agent talking to this server should never see or set,
-at all -- not just left null. Enforced by PublicEvent actually lacking
+at all -- not just left null. A series' recurrence and time_zone are seen
+and set through PublicRecurrence instead (see get_recurrence), and
+original_start is only used to split one. Enforced by PublicEvent actually lacking
 these fields (so they never appear in a tool's schema or result), not by
 convention -- see PublicEvent below. tests/test_server.py's
 TestPublicEvent asserts these are exactly the fields PublicEvent is
@@ -186,6 +192,82 @@ class PublicEvent:
         )
 
 
+@dataclass(kw_only=True)
+class PublicRecurrence:
+    """A recurring series of events, as a whole -- see utilities/
+    recurrences.py. id is the series' own id, which is every one of its
+    events' recurring_event_id. start/end are when its first event starts
+    and ends; time_zone keeps its events at the same wall-clock time
+    across daylight saving changes. rules are its RFC 5545 rule lines,
+    e.g. ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261231T000000Z"], with
+    exactly one RRULE; schedule says them in words. The other fields are
+    as for PublicEvent, and apply to every event in the series that
+    hasn't been edited on its own.
+
+    schedule, goal_names, event_label_id and the effective_* fields are
+    read-only: update_recurrence ignores them, as it does time_zone."""
+
+    id: str | None = None
+    summary: str | None = None
+    start: datetime | None = None
+    end: datetime | None = None
+    time_zone: str | None = None
+    rules: list[str] | None = None
+    schedule: str | None = None
+    description: str | None = None
+    location: str | None = None
+    min_duration: timedelta | None = None
+    is_fixed_duration: bool | None = None
+    is_fixed_time: bool | None = None
+    priority: int | None = None
+    goal_ids: list[str] | None = None
+    goal_names: list[str] | None = None
+    event_label_id: str | None = None
+    effective_priority: int | None = None
+    effective_is_fixed_time: bool | None = None
+
+    @classmethod
+    def from_event(cls, event: Event, tree: GoalTree) -> "PublicRecurrence":
+        public = PublicEvent.from_event(event, tree)
+        zone = ZoneInfo(event.time_zone) if event.time_zone else None
+        return cls(
+            id=event.id,
+            summary=event.summary,
+            start=event.start.astimezone(zone) if zone and event.start else event.start,
+            end=event.end.astimezone(zone) if zone and event.end else event.end,
+            time_zone=event.time_zone,
+            rules=event.recurrence,
+            schedule=describe_rules(event.recurrence, zone),
+            description=event.description,
+            location=event.location,
+            min_duration=event.min_duration,
+            is_fixed_duration=event.is_fixed_duration,
+            is_fixed_time=event.is_fixed_time,
+            priority=event.priority,
+            goal_ids=event.goal_ids,
+            goal_names=public.goal_names,
+            event_label_id=event.event_label_id,
+            effective_priority=event.effective_priority,
+            effective_is_fixed_time=event.effective_is_fixed_time,
+        )
+
+    def to_event(self) -> Event:
+        return Event(
+            id=self.id,
+            summary=self.summary,
+            start=self.start,
+            end=self.end,
+            description=self.description,
+            location=self.location,
+            min_duration=self.min_duration,
+            is_fixed_duration=self.is_fixed_duration,
+            is_fixed_time=self.is_fixed_time,
+            priority=self.priority,
+            goal_ids=self.goal_ids,
+            recurrence=self.rules,
+        )
+
+
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
 _goals: Goals | None = None
@@ -193,6 +275,7 @@ _goal_health: GoalHealth | None = None
 _reflections: Reflections | None = None
 _noted_time_sheet: NotedTimeSheet | None = None
 _note_compactor: NoteCompactor | None = None
+_recurrences: Recurrences | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -243,6 +326,24 @@ def get_goal_store() -> Goals:
     if _goals is None:
         _goals = build_goals()
     return _goals
+
+
+def get_recurrences() -> Recurrences:
+    """Lazily construct and cache the Recurrences, the same way the other
+    get_* helpers cache theirs. Writes go through a GoalCalendar, so each
+    series' label follows its goals."""
+    global _recurrences
+    if _recurrences is None:
+        client = get_calendar_client()
+        _recurrences = Recurrences(
+            GoalCalendar(client, get_goal_store()), client.list_instances, client.get_time_zone
+        )
+    return _recurrences
+
+
+def _public_recurrences(events: list[Event]) -> list[PublicRecurrence]:
+    tree = get_goal_store().tree()
+    return [PublicRecurrence.from_event(event, tree) for event in fill_in_from_goals(events, tree)]
 
 
 def get_noted_time_sheet() -> NotedTimeSheet:
@@ -306,7 +407,9 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     actually uses: the event's own priority/is_fixed_time, falling back
     to its primary goal's. is_end_of_day_sleep marks the sleep event that
     ends a day; recurring_event_id is the id of an instance's recurring
-    series; event_label_id is the calendar label derived from its goals.
+    series (see get_recurrence and update_recurrence to read and edit the
+    series as a whole); event_label_id is the calendar label derived from
+    its goals.
     goal_names, the effective_* fields, is_end_of_day_sleep,
     recurring_event_id and event_label_id are read-only: update_event and
     create_event ignore them."""
@@ -341,6 +444,57 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
         return _public_events(applied)
+
+
+@mcp.tool()
+def get_recurrence(id: str) -> PublicRecurrence:
+    """A recurring series, by its id or the id of any of its events (an
+    event's recurring_event_id is its series' id). See PublicRecurrence
+    for its fields."""
+    with track("get_recurrence"), cached_sheet_reads():
+        try:
+            return _public_recurrences([get_recurrences().series(id)])[0]
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def update_recurrence(
+    recurrence: PublicRecurrence, starting_at_event_id: str | None = None
+) -> list[PublicRecurrence]:
+    """Edit a recurring series (recurrence.id is its id, or any of its
+    events'): every field given is set, those left out are kept. Applies
+    to all its events, except any edited on their own -- or, with
+    starting_at_event_id, to that event and the ones after it only ("this
+    and following"): the series is split there (see split_recurrence) and
+    only the later part is edited. start/end are its first event's, as
+    get_recurrence gave them; when it's split, the later part moves by as
+    much as they changed. rules replace its rules whole. Series aren't
+    reallocated. Returns the edited series, then the earlier part if it
+    was split."""
+    with track("update_recurrence"), cached_sheet_reads():
+        _check_goal_ids(recurrence, existing=True)
+        try:
+            updated = get_recurrences().update(recurrence.to_event(), starting_at_event_id)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return _public_recurrences(updated)
+
+
+@mcp.tool()
+def split_recurrence(event_id: str) -> list[PublicRecurrence]:
+    """Split the recurring series event_id is one of at that event: the
+    series ends just before it, and a copy starts at it, so the two can be
+    edited apart. A COUNT is shared between them; events after the split
+    that were edited on their own lose those edits, as in Google Calendar.
+    Returns the series from the event on, then the one before it (none if
+    it was the series' first event, which leaves nothing to split)."""
+    with track("split_recurrence"), cached_sheet_reads():
+        try:
+            earlier, later = get_recurrences().split(event_id)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return _public_recurrences([later] + ([earlier] if earlier else []))
 
 
 @mcp.tool()
