@@ -190,7 +190,7 @@ Google Calendar works well as a time-series store for this, provided three thing
 ```
 
 - **Rating scale:** an integer 0–100, shown in three bands: 0–39 🔴, 40–69 🟡, 70–100 🟢. The band thresholds are display-only constants, so changing them later rewrites no history. `skip` explicitly records "not assessed / not applicable this period", so a reflection that ran can be told apart from one that never happened. Ratings are integers so they're easy to filter on and average.
-- **`metrics`** holds the raw measured values as compact JSON (≤ 1024 characters per value). The rating's explanation goes in `description`.
+- **`metrics`** holds the raw measured values as compact JSON (≤ 1024 characters per value). The rating's one-line explanation is a property of its own, `cascading-time-tracker-explanation`, and `description` holds only the rationale.
 - **`status`:** `proposed` or `confirmed`. **Nothing is confirmed outside a reflection, measured ratings included** (§7). A `proposed` assessment may be written ahead of time, e.g. by a scheduled agent (§11.5), but only `confirmed` ratings feed the at-a-glance health and history charts.
 - Total size per event is far below Calendar's limit (300 properties, 32 kB).
 
@@ -246,7 +246,7 @@ The `measure` column holds a small JSON spec. The kinds below are a starting set
 - "Hosted 0 of 1 dinners → 0"
 - "Min of 3 sub-goals (92, 75, 60) → 60"
 
-The reflection shows the explanations together, so a typical answer is "yes" to all of them, or "yes, except bump cooking to 70 because I was sick". The explanation is stored as the start of the assessment's `description`, followed by any note you add.
+The reflection shows the explanations together, so a typical answer is "yes" to all of them, or "yes, except bump cooking to 70 because I was sick". The explanation is stored in its own property, and any note you add is the assessment's `description`.
 
 **Double counting** is intended: a dinner that serves two goals counts in full toward both. Durations answer "how much time went toward X", not "how is my time partitioned".
 
@@ -484,7 +484,7 @@ You can then reorganize: give migrated goals parents, cadences and measures, add
 | --- | --- | --- |
 | 0 (done) | Ran `probe_label_lifecycle.py` (§5). `list_events` pages through results. Fixed the two latent bugs the probe exposed: the stale label id on inserts (§5) and silent description truncation in compaction (§6.2) | – |
 | 1 (done): Goals replace labels | `GoalSheet`/`Goals` (replacing `EventLabelSheet`/`EventLabels`), `Event.goal_ids`, `GoalCalendar` (replacing `LabelPriorityCalendar`), the migration, the goal and event tools in §9.2–9.3, removal of the label tools | Goals page (list, toggle, edit), event goal chips |
-| 2: Health storage | The Goal Health calendar, `record_assessments`, `get_goal_history`, cache columns, `measure_goals` (duration/count/wake_time/rollup) | Health dots, sparklines, history chart |
+| 2 (done): Health storage | The Goal Health calendar, `record_assessments`, `get_goal_history`, cache columns, `measure_goals` (duration/count/wake_time/rollup) | Health dots, sparklines, history chart |
 | 3: Compaction + reflection | Goal Hints, compaction suggestions and goal lane, `prepare_reflection`/`record_reflection` | – (the reflection runs in the MCP client) |
 | 4: Rich descriptions | Goal Details tab, Drive images, the description tools | Markdown/Mermaid rendering and editor |
 

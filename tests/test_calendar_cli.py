@@ -186,7 +186,8 @@ class TestUpdatableAttributeParsers:
 
 class TestGoalAttributeParsers:
     def test_covers_every_goal_attribute_except_the_read_only_ones(self):
-        goal_attributes = {f.name for f in dataclasses.fields(Goal)} - {"id", "label_id", "created"}
+        read_only = {"id", "label_id", "created", "health", "health_period", "health_trend"}
+        goal_attributes = {f.name for f in dataclasses.fields(Goal)} - read_only
 
         assert set(calendar_cli._GOAL_ATTRIBUTE_PARSERS) == goal_attributes
 

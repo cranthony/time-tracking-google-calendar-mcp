@@ -31,12 +31,13 @@ import secrets
 import uuid
 from collections.abc import Callable, Collection
 from dataclasses import astuple, dataclass, fields, replace
-from datetime import date
+from datetime import date, datetime
 
 from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel, color_for_priority
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
 from utilities.event_label_sheet import EventLabelSheet
+from utilities.goal_periods import last_ended, parse_period, period_containing
 from utilities.goal_sheet import CADENCES, Goal, GoalSheet
 
 MAX_LABELS = 200
@@ -60,15 +61,21 @@ CLEARABLE_FIELDS = frozenset(
 """Goal fields `update_goal` can blank. Not `name`/`active` (always
 needed) nor the read-only `id`/`label_id`/`created`."""
 
-_READ_ONLY_FIELDS = frozenset({"id", "label_id", "created"})
+_READ_ONLY_FIELDS = frozenset({"id", "label_id", "created", "health", "health_period", "health_trend"})
 
 
 @dataclass(kw_only=True)
 class ListedGoal(Goal):
     """A goal as tools return it: plus its `path` from the top of the
-    tree, e.g. "Cooking › Vegetarian › Tofu tikka"."""
+    tree, e.g. "Cooking › Vegetarian › Tofu tikka", and how many of its
+    periods have ended with no confirmed assessment since its last one."""
 
     path: str | None = None
+
+    stale_periods: int | None = None
+    """Fully ended periods of its cadence since `health_period` (or since
+    it was created, if it's never been assessed); `None` without a
+    cadence."""
 
 
 @dataclass(kw_only=True)
@@ -172,10 +179,11 @@ class Goals:
         calendar_client: CalendarClient,
         sheets_client: SheetsClient,
         *,
-        today: Callable[[], date] = date.today,
+        today: Callable[[], date] | None = None,
     ) -> None:
         self._calendar_client = calendar_client
-        self._today = today
+        # Days are the calendar's own, not this server's.
+        self._today = today or (lambda: datetime.now(calendar_client.get_time_zone()).date())
         spreadsheet_id, is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
             calendar_client, sheets_client
         )
@@ -202,10 +210,11 @@ class Goals:
         tree = self.tree()
         new = replace(
             goal,
-            id=self._new_id(tree),
+            **{name: None for name in _READ_ONLY_FIELDS},
             active=True if goal.active is None else goal.active,
-            created=self._today(),
         )
+        new.id = self._new_id(tree)
+        new.created = self._today()
         new.label_id = str(uuid.uuid5(_LABEL_ID_NAMESPACE, new.id))
         return self._commit(tree.goals + [new])
 
@@ -237,6 +246,18 @@ class Goals:
         """Make the calendar's labels match the sheet's active goals (after
         hand edits to the sheet). Validates the sheet first."""
         return self._commit(self.tree().goals, write=False)
+
+    def set_health(self, health: dict[str, tuple[int | None, str | None, str | None]]) -> None:
+        """Set goals' health cache -- (health, health_period, health_trend)
+        by goal id; see utilities/goal_health.py. Touches no labels."""
+        goals = [replace(goal) for goal in self.tree().goals]
+        changed = False
+        for goal in goals:
+            if goal.id in health and (goal.health, goal.health_period, goal.health_trend) != health[goal.id]:
+                goal.health, goal.health_period, goal.health_trend = health[goal.id]
+                changed = True
+        if changed:
+            self._sheet.write(goals)
 
     def _commit(self, goals: list[Goal], *, write: bool = True) -> GoalList:
         """Validate `goals`, write them to the sheet (unless `write` is
@@ -280,9 +301,14 @@ class Goals:
 
     def _listing(self, tree: GoalTree, raw_labels: list[RawEventLabel], include_inactive: bool) -> GoalList:
         unnamed = sum(1 for label in raw_labels if not label.name)
+        today = self._today()
         return GoalList(
             goals=[
-                ListedGoal(**{f.name: getattr(goal, f.name) for f in fields(Goal)}, path=tree.path(goal.id))
+                ListedGoal(
+                    **{f.name: getattr(goal, f.name) for f in fields(Goal)},
+                    path=tree.path(goal.id),
+                    stale_periods=_stale_periods(goal, today),
+                )
                 for goal in tree.ordered()
                 if include_inactive or goal.active
             ],
@@ -343,6 +369,28 @@ class Goals:
         if labels_tab is not None:
             sheets_client.update_sheet_properties(spreadsheet_id, labels_tab, title=_MIGRATED_TAB_TITLE)
         return sheet
+
+
+def _stale_periods(goal: Goal, today: date) -> int | None:
+    """See ListedGoal.stale_periods."""
+    if goal.cadence not in CADENCES:
+        return None
+    try:
+        latest = parse_period(goal.cadence, goal.health_period) if goal.health_period else None
+    except ValueError:
+        latest = None  # Assessed at a cadence it no longer has.
+    if latest is not None:
+        period = latest.next()
+    elif goal.created is not None:
+        period = period_containing(goal.cadence, goal.created)
+    else:
+        return None
+    last = last_ended(goal.cadence, today)
+    count = 0
+    while period.start <= last.start and count < 1000:
+        count += 1
+        period = period.next()
+    return count
 
 
 def _validate(goals: list[Goal]) -> None:

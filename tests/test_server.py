@@ -15,6 +15,7 @@ from calendar_clients import google_sheets
 from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
 from utilities.goal_calendar import GoalCalendar
+from utilities.goal_health import Assessment
 from utilities.goal_sheet import Goal
 from utilities.goals import GoalList, GoalTree
 from utilities.note_compaction import CompactionError, EventDecision
@@ -564,6 +565,78 @@ class TestSyncGoalsFromSheet:
 
         with pytest.raises(ToolError):
             server.sync_goals_from_sheet()
+
+
+def _fake_goal_health(monkeypatch) -> MagicMock:
+    health = MagicMock()
+    monkeypatch.setattr(server, "get_goal_health", lambda: health)
+    return health
+
+
+class TestGoalHealthTools:
+    def test_measure_goals_delegates(self, monkeypatch):
+        health = _fake_goal_health(monkeypatch)
+        health.measure.return_value = []
+
+        assert server.measure_goals("weekly", "week-2026-09-20", ["g1"]) == []
+        health.measure.assert_called_once_with("weekly", "week-2026-09-20", ["g1"])
+
+    def test_record_assessments_delegates(self, monkeypatch):
+        health = _fake_goal_health(monkeypatch)
+        assessment = Assessment(goal_id="g1", cadence="daily", period="2026-10-01", rating=80, method="subjective")
+        health.record_assessments.return_value = [assessment]
+
+        assert server.record_assessments([assessment]) == [assessment]
+        health.record_assessments.assert_called_once_with([assessment])
+
+    def test_get_goal_history_delegates(self, monkeypatch):
+        from datetime import date
+
+        health = _fake_goal_health(monkeypatch)
+        health.history.return_value = []
+
+        server.get_goal_history(["g1"], "daily", date(2026, 9, 1), date(2026, 9, 30))
+
+        health.history.assert_called_once_with(["g1"], "daily", date(2026, 9, 1), date(2026, 9, 30))
+
+    def test_rebuild_goal_health_cache_delegates(self, monkeypatch):
+        health = _fake_goal_health(monkeypatch)
+        goal_list = GoalList(goals=[], label_slots_used=0)
+        health.rebuild_cache.return_value = goal_list
+
+        assert server.rebuild_goal_health_cache() is goal_list
+
+    @pytest.mark.parametrize(
+        "tool, method, args",
+        [
+            ("measure_goals", "measure", ("daily",)),
+            ("record_assessments", "record_assessments", ([],)),
+            ("get_goal_history", "history", (["g1"],)),
+            ("rebuild_goal_health_cache", "rebuild_cache", ()),
+        ],
+    )
+    def test_wrap_value_errors_as_tool_errors_and_are_tracked(self, monkeypatch, tool, method, args):
+        health = _fake_goal_health(monkeypatch)
+        getattr(health, method).side_effect = ValueError("'2026-13' isn't a period")
+        labels = _tracked_labels(monkeypatch)
+
+        with pytest.raises(ToolError, match="isn't a period"):
+            getattr(server, tool)(*args)
+
+        assert labels == [tool]
+
+
+class TestGetGoalHealth:
+    def test_caches_across_calls_on_the_shared_client_and_goals(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        goals = MagicMock()
+        monkeypatch.setattr(server, "get_goal_store", lambda: goals)
+        monkeypatch.setattr(server, "_goal_health", None)
+
+        first = server.get_goal_health()
+
+        assert first is server.get_goal_health()
+        assert first._client is client and first._goals is goals
 
 
 class TestNote:
