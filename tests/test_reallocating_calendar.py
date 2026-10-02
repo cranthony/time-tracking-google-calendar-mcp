@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-from calendar_clients.google_calendar import CalendarClient, Event
+from calendar_clients.google_calendar import CalendarClient, Event, EventLabel
 from tests.event_time_helpers import event_at, time_at
 from utilities import reallocating_calendar
 from utilities.label_priority_calendar import LabelPriorityCalendar
@@ -210,6 +210,86 @@ class TestReallocatingCalendarCreateEvent:
         body = written.to_api_body()
         assert "colorId" not in body
         assert "extendedProperties" not in body
+
+
+def _split_day(event_label_id: str) -> tuple[Event, Event]:
+    """A 9:00-11:00 event labelled `event_label_id`, and a new 9:30-10:00
+    event that splits it, leaving a 10:00-11:00 continuation."""
+    day = datetime(2026, 1, 1, tzinfo=UTC)
+    existing = Event(
+        id="e1",
+        summary="Existing",
+        event_label_id=event_label_id,
+        start=day + timedelta(hours=9),
+        end=day + timedelta(hours=11),
+        priority=3,
+    )
+    new_event = Event(
+        summary="New",
+        start=day + timedelta(hours=9, minutes=30),
+        end=day + timedelta(hours=10),
+        priority=1,
+    )
+    return existing, new_event
+
+
+class TestReallocatingCalendarStaleLabels:
+    def _client(self, day_events: list[Event], label_ids: list[str]) -> CalendarClient:
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=day_events)
+        client.create_event = MagicMock(side_effect=lambda event: event)
+        client.update_event = MagicMock(side_effect=lambda event: event)
+        client.list_event_labels = MagicMock(
+            return_value=([EventLabel(id=i, background_color="#000000") for i in label_ids], "etag")
+        )
+        return client
+
+    def test_a_split_continuation_drops_a_label_the_calendar_no_longer_has(self):
+        # Calendar rejects inserting an event with a removed label's id,
+        # but the original keeps it (and can still be patched with it).
+        existing, new_event = _split_day("removed-label")
+        client = self._client([existing], label_ids=["other-label"])
+
+        ReallocatingCalendar(client).create_event(new_event, ReallocationOptions())
+
+        created = [c.args[0] for c in client.create_event.call_args_list]
+        continuation = next(e for e in created if e is not new_event)
+        assert continuation.summary == "Existing"
+        assert continuation.event_label_id is None
+        (updated,), _ = client.update_event.call_args
+        assert updated.id == "e1"
+        assert updated.event_label_id == "removed-label"
+
+    def test_a_split_continuation_keeps_a_label_the_calendar_still_has(self):
+        existing, new_event = _split_day("live-label")
+        client = self._client([existing], label_ids=["live-label"])
+
+        ReallocatingCalendar(client).create_event(new_event, ReallocationOptions())
+
+        created = [c.args[0] for c in client.create_event.call_args_list]
+        continuation = next(e for e in created if e is not new_event)
+        assert continuation.event_label_id == "live-label"
+
+    def test_labels_are_only_read_when_a_continuation_has_one(self):
+        existing, new_event = _split_day("live-label")
+        existing.event_label_id = None
+        client = self._client([existing], label_ids=[])
+
+        ReallocatingCalendar(client).create_event(new_event, ReallocationOptions())
+
+        assert client.create_event.call_count == 2
+        client.list_event_labels.assert_not_called()
+
+    def test_a_new_event_with_an_unknown_label_is_refused_before_anything_is_applied(self):
+        existing, new_event = _split_day("live-label")
+        new_event.event_label_id = "no-such-label"
+        client = self._client([existing], label_ids=["live-label"])
+
+        with pytest.raises(ValueError, match="no-such-label"):
+            ReallocatingCalendar(client).create_event(new_event, ReallocationOptions())
+
+        client.create_event.assert_not_called()
+        client.update_event.assert_not_called()
 
 
 class TestReallocatingCalendarUpdateEvent:

@@ -5,12 +5,19 @@ from unittest.mock import MagicMock
 import pytest
 from googleapiclient.errors import HttpError
 
-from calendar_clients.google_calendar import Event
+from calendar_clients.google_calendar import Event, EventLabel
 from tests.event_time_helpers import event_at, time_at
 from tests.fake_row_hints import FakeRowHints
 from tests.fake_sheets import FakeSheets
 from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
-from utilities.note_compaction import CompactionError, CompactionPlan, EventDecision
+from utilities import note_compactor
+from utilities.note_compaction import (
+    CompactionChange,
+    CompactionError,
+    CompactionPlan,
+    EventDecision,
+    EventState,
+)
 from utilities.note_compactor import NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
 
@@ -802,3 +809,72 @@ class TestGarbageCollection:
         compactor.prepare()
 
         spy_journal.garbage_collect.assert_called_once()
+
+
+class TestEventLabels:
+    """Calendar rejects inserting an event with a label it doesn't have
+    (HTTP 400), so created events are checked against its labels."""
+
+    def _with_labels(self, setup, *label_ids):
+        setup.client.list_event_labels.return_value = (
+            [EventLabel(id=i, name=f"Label {i}", background_color="#000000") for i in label_ids],
+            "etag",
+        )
+
+    def _labelled_coffee(self, setup, label_id):
+        decisions = setup.coffee_instead_of_email()
+        decisions[0].event_label_id = label_id
+        return decisions
+
+    def test_a_create_with_an_unknown_label_is_refused_at_the_dry_run(self):
+        setup = Setup([("09:00", None), ("09:30", None)])
+        self._with_labels(setup, "real")
+
+        with pytest.raises(CompactionError, match=r"doesn't have: made-up; valid labels: real \(Label real\)"):
+            setup.compactor.dry_run(self._labelled_coffee(setup, "made-up"))
+
+    def test_a_create_with_a_known_label_keeps_it(self):
+        setup = Setup([("09:00", None), ("09:30", None)])
+        self._with_labels(setup, "real")
+        planned = setup.compactor.dry_run(self._labelled_coffee(setup, "real"))
+
+        setup.compactor.commit(planned.compaction_id)
+
+        assert setup.client.create_event.call_args.args[0].event_label_id == "real"
+
+    def test_a_label_removed_after_the_preview_stops_the_commit_before_any_change(self):
+        setup = Setup([("09:00", None), ("09:30", None)])
+        self._with_labels(setup, "real")
+        planned = setup.compactor.dry_run(self._labelled_coffee(setup, "real"))
+        self._with_labels(setup)
+
+        with pytest.raises(CompactionError, match="real"):
+            setup.compactor.commit(planned.compaction_id)
+
+        setup.client.create_event.assert_not_called()
+        setup.client.update_event.assert_not_called()
+
+    def test_other_created_events_drop_a_label_the_calendar_no_longer_has(self, monkeypatch):
+        # E.g. a split continuation, cloned (label and all) from an event
+        # whose label has since been removed -- not the model's to fix.
+        setup = Setup([("09:00", None), ("09:30", None)])
+        self._with_labels(setup, "real")
+        continuation = CompactionChange(
+            action="create",
+            reason="split",
+            after=EventState(summary="Report (cont.)", event_label_id="removed"),
+        )
+        monkeypatch.setattr(
+            note_compactor, "plan_compaction", lambda *args, **kwargs: CompactionPlan(changes=[continuation])
+        )
+
+        planned = setup.compactor.dry_run(setup.email_then_report())
+
+        assert planned.changes[0].after.event_label_id is None
+
+    def test_labels_are_only_read_when_a_created_event_has_one(self):
+        setup = Setup([("09:00", None), ("09:30", None)])
+
+        setup.compactor.dry_run(setup.coffee_instead_of_email())
+
+        setup.client.list_event_labels.assert_not_called()

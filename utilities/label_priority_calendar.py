@@ -27,7 +27,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime
 
-from calendar_clients.google_calendar import CalendarClient, Event
+from calendar_clients.google_calendar import CalendarClient, Event, EventLabel
 from utilities.event_labels import EventLabels
 
 
@@ -37,9 +37,9 @@ class LabelPriorityCalendar:
     (Event.event_label_id) whenever it's read (list_events/get_event).
     The event's own priority/is_fixed_time are never touched, and still
     win over the label's (see Event.effective_priority/
-    effective_is_fixed_time). create_event/update_event are passed
-    straight through unchanged; Event.to_api_body never sends the label_*
-    fields."""
+    effective_is_fixed_time). create_event/update_event/list_event_labels
+    are passed straight through unchanged; Event.to_api_body never sends
+    the label_* fields."""
 
     def __init__(self, client: CalendarClient, event_labels: EventLabels) -> None:
         self._client = client
@@ -56,6 +56,9 @@ class LabelPriorityCalendar:
 
     def update_event(self, event: Event) -> Event:
         return self._client.update_event(event)
+
+    def list_event_labels(self) -> tuple[list[EventLabel], str]:
+        return self._client.list_event_labels()
 
 
 def fill_in_from_labels(events: list[Event], event_labels: EventLabels) -> list[Event]:

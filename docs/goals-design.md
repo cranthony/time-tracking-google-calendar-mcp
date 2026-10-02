@@ -149,7 +149,12 @@ The probe checked the API only. Whether the Calendar UI paints the re-added labe
 
 **So deactivation and reactivation touch no events at all.** The only constraint is on inserts, and §4's insert rule handles it: never insert with an inactive goal's label id.
 
-> **This is a latent bug today, independent of goals.** Reallocation splits an event by cloning it (`continuation = preceding.clone()` in `utilities/reallocation.py`) and inserting the clone through `CalendarClient.create_event`. If the original's label has since been deleted with `sync_event_labels_from_sheet`, the clone carries the stale `eventLabelId` and the insert fails with a 400, so the whole `create_event`/`update_event` call fails partway. Compaction's `create` decisions take an `event_label_id` from the model and could hit the same error. `GoalCalendar`'s insert rule fixes both, but the bug exists before goals ship. A small fix now: in `create_event`, drop an `event_label_id` that isn't in the calendar's current label list.
+> **This was a bug before goals (fixed in phase 0).** Reallocation splits an event by cloning it (`continuation = preceding.clone()` in `utilities/reallocation.py`) and inserting the clone. If the original's label had since been deleted, the clone carried the stale `eventLabelId` and the insert failed with a 400, partway through applying the plan. Now:
+> - `ReallocatingCalendar` drops a removed label from a split continuation before inserting it.
+> - It refuses a new event with an unknown label up front, before anything is applied.
+> - `NoteCompactor` does the same for compaction plans: a `create` decision naming an unknown label fails the dry run, and any other created event drops a removed label.
+>
+> `GoalCalendar`'s insert rule replaces these checks in phase 1.
 
 ## 6. Storing health assessments in Google Calendar
 
@@ -190,11 +195,11 @@ Google Calendar works well as a time-series store for this, provided three thing
 - **`status`:** `proposed` or `confirmed`. **Nothing is confirmed outside a reflection, measured ratings included** (§7). A `proposed` assessment may be written ahead of time, e.g. by a scheduled agent (§11.5), but only `confirmed` ratings feed the at-a-glance health and history charts.
 - Total size per event is far below Calendar's limit (300 properties, 32 kB).
 
-**Reflection journal entries** are events on the same calendar with `kind = reflection`, `cadence` and `period` (no `goal`). The journal text is in `description`.
+**Reflection journal entries** are events on the same calendar with `kind = reflection`, `cadence` and `period` (no `goal`). The journal text is in `description`. Any "next time I'll…" intentions go in a `cascading-time-tracker-intentions` property as JSON, for the next reflection to read back.
 
 **Description limit: 8,192 characters, truncated silently.** The probe wrote 8,000-, 32,000- and 128,000-character descriptions: the first came back intact, and both longer ones came back cut to exactly 8,192 characters, with no error. (It used ASCII, so whether the limit counts characters or bytes for non-ASCII text is untested.) So `record_reflection` and `record_assessments` reject a journal or rationale over **8,000 characters** with a `ToolError`, leaving room for a header line. After every write they compare the description read back with what was sent, and fail loudly on a mismatch rather than lose text. If longer journals turn out to matter, the overflow could go in a **Reflection Journal** sheet tab keyed by the reflection event's id, but that's not planned.
 
-> **The same limit affects compaction today.** `utilities/note_compaction.py`'s `_annotate` appends note text to an event's description with no length check, so a long-running event that gathers many notes, or an already-long description, would be silently truncated at 8,192 characters by Calendar. Any "next time I'll…" intentions go in a `cascading-time-tracker-intentions` property as JSON, for the next reflection to read back.
+> **The same limit affected compaction (fixed in phase 0).** `utilities/note_compaction.py`'s `_annotate` appended note text to an event's description with no length check. It now rejects a plan that would grow a description past `MAX_DESCRIPTION_BYTES` (8,192, counted as UTF-8 bytes), naming the notes to leave out with `ignore_notes`.
 
 ### 6.3 Idempotent writes
 
@@ -479,7 +484,7 @@ You can then reorganize: give migrated goals parents, cadences and measures, add
 
 | Phase | Server (this repo) | Client |
 | --- | --- | --- |
-| 0 | ~~Run `probe_label_lifecycle.py`~~ (done, §5). Make `list_events` page through results. Fix the two latent bugs the probe exposed: the stale label id on inserts (§5) and silent description truncation in compaction (§6.2) | – |
+| 0 (done) | Ran `probe_label_lifecycle.py` (§5). `list_events` pages through results. Fixed the two latent bugs the probe exposed: the stale label id on inserts (§5) and silent description truncation in compaction (§6.2) | – |
 | 1: Goals replace labels | `GoalSheet`/`Goals` (replacing `EventLabelSheet`/`EventLabels`), `Event.goal_ids`, `GoalCalendar` (replacing `LabelPriorityCalendar`), the migration, the goal and event tools in §9.2–9.3, removal of the label tools | Goals page (list, toggle, edit), event goal chips |
 | 2: Health storage | The Goal Health calendar, `record_assessments`, `get_goal_history`, cache columns, `measure_goals` (duration/count/wake_time/rollup) | Health dots, sparklines, history chart |
 | 3: Compaction + reflection | Goal Hints, compaction suggestions and goal lane, `prepare_reflection`/`record_reflection` | – (the reflection runs in the MCP client) |

@@ -544,7 +544,33 @@ class TestCalendarClientListEvents:
             timeMax="2026-01-02T00:00:00+00:00",
             singleEvents=True,
             orderBy="startTime",
+            maxResults=2500,
         )
+
+    def test_list_events_follows_next_page_token_until_the_last_page(self):
+        service = MagicMock()
+        service.events.return_value.list.return_value.execute.side_effect = [
+            {
+                "items": [api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00")],
+                "nextPageToken": "page-2",
+            },
+            {
+                "items": [api_event("2", "2026-01-01T11:00:00+00:00", "2026-01-01T12:00:00+00:00")],
+                "nextPageToken": "page-3",
+            },
+            {"items": [api_event("3", "2026-01-01T13:00:00+00:00", "2026-01-01T14:00:00+00:00")]},
+        ]
+        client = make_client(service)
+
+        events = client.list_events(
+            datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+        )
+
+        assert [e.id for e in events] == ["1", "2", "3"]
+        page_tokens = [
+            call.kwargs.get("pageToken") for call in service.events.return_value.list.call_args_list
+        ]
+        assert page_tokens == [None, "page-2", "page-3"]
 
     def test_list_events_returns_empty_list_when_no_items(self):
         service = MagicMock()
