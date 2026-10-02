@@ -206,6 +206,10 @@ class TestCreateGoal:
             (Goal(name="Cooking", parent_id="nope"), "parent 'nope' isn't a goal"),
             (Goal(name="Cooking", cadence="hourly"), "cadence must be one of"),
             (Goal(name="Cooking", measure={"target": 3}), 'must be an object with a "kind"'),
+            (
+                Goal(name="Cooking", measure={"kind": "duration", "target_mins": 300}),
+                'measure needs "target_min"; .*measure has no field "target_mins"',
+            ),
         ],
     )
     def test_refuses_invalid_goals_without_writing_anything(self, goal, message):
@@ -216,6 +220,43 @@ class TestCreateGoal:
 
         assert goals.tree().goals == []
         assert calendar.writes == 0
+
+    def test_refuses_an_invalid_new_measure(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Wake"))
+        wake = _by_name(goals)["Wake"]
+
+        with pytest.raises(ValueError, match='"target" must be a time like "07:00"'):
+            goals.update_goal(Goal(id=wake.id, measure={"kind": "wake_time", "target": "7am"}))
+
+        assert _by_name(goals)["Wake"].measure is None
+
+    def test_an_old_invalid_measure_doesnt_block_other_edits(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+        goals.create_goal(Goal(name="Hosting"))
+        saved = goals.tree().goals
+        cooking = next(g for g in saved if g.name == "Cooking")
+        cooking.measure = {"kind": "duration", "target_mins": 300}  # Saved before measures were checked.
+        goals._sheet.write(saved)
+
+        goals.update_goal(Goal(id=_by_name(goals)["Hosting"].id, note="Weekly"))
+        goals.update_goal(Goal(id=cooking.id, note="Vegetarian"))
+
+        assert _by_name(goals)["Hosting"].note == "Weekly"
+        assert _by_name(goals)["Cooking"].note == "Vegetarian"
+        with pytest.raises(ValueError, match='has no field "target_mins"'):
+            goals.update_goal(Goal(id=cooking.id, measure={"kind": "duration", "target_mins": 600}))
+
+    def test_sync_checks_every_measure(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+        saved = goals.tree().goals
+        saved[0].measure = {"kind": "rollup", "agg": "max"}  # A hand edit to the sheet.
+        goals._sheet.write(saved)
+
+        with pytest.raises(ValueError, match="goal '.+'s measure \"agg\" must be one of min, mean"):
+            goals.sync()
 
     def test_sibling_names_must_differ(self):
         goals, _, _ = _goals()

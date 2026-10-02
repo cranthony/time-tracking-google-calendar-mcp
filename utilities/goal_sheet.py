@@ -83,7 +83,9 @@ class Goal:
     """How often its health is assessed; `None` if it never is."""
 
     measure: dict[str, Any] | None = None
-    """How its health is assessed -- see docs/goals-design.md section 7."""
+    """How its health is assessed: {"kind": ..., ...}, with the fields its
+    kind takes -- see utilities/goal_measures.py, and docs/goals-design.md
+    section 7."""
 
     target: str | None = None
     """Free-text target, e.g. "300 min/week"."""

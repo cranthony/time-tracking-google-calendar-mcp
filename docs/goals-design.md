@@ -239,6 +239,8 @@ The `measure` column holds a small JSON spec. The kinds below are a starting set
 | `llm` | `{"kind":"llm","rubric":"…"}` | The model reads the period's events, notes and journal, and proposes a rating with a rationale | You confirm or change it |
 | `rollup` | `{"kind":"rollup","agg":"min"}` | The children's confirmed ratings whose periods fall within this goal's period (`min` or `mean`) | Computed |
 
+A spec is checked whenever it's saved (utilities/goal_measures.py), so that a typo such as `target_mins` is refused rather than leaving the goal silently unmeasured. Each kind takes only the fields shown, its numbers must be positive (`grace_min` may be 0, and `zero_at_min` must exceed it), and `wake_time`'s `target` is `HH:MM`. Syncing hand edits checks every goal's measure; creating or updating a goal checks only the measure being set, so an old invalid one can't block edits to other goals.
+
 **Measured ratings are never confirmed automatically.** `measure_goals` (§9) computes the metric and rollup kinds **without writing anything**, and every rating, measured or not, is confirmed only during a reflection. To make agreeing with a measured rating effortless, each one carries a deterministic, one-line **`explanation`** built from the inputs and the formula, so you can check it at a glance:
 
 - "Woke 07:05; target 07:00 with 10 min grace → 92"
