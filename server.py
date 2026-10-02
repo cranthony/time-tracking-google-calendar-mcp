@@ -558,7 +558,8 @@ def create_goal(goal: Goal) -> GoalList:
     are allowed; noun, grace_min, zero_at_min, prompt and agg are
     optional. A duration or count measure looks at the events of the goal
     and its sub-goals, or, given "goal_ids": [...], at those of these goals
-    and their sub-goals instead."""
+    and their sub-goals instead; with "include_sub_goals": false, at just
+    the goals' own events, not their sub-goals'."""
     with track("create_goal"), cached_sheet_reads():
         try:
             return get_goal_store().create_goal(goal)
