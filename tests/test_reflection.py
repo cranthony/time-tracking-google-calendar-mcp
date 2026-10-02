@@ -109,15 +109,15 @@ class TestPrepare:
         assert context.journal == "good week"
 
     def test_a_days_events_run_from_waking_to_waking(self):
-        sleep_into_2nd = _event("2026-10-01T23:30", "2026-10-02T07:15", is_end_of_day_sleep=True)
-        sleep_into_3rd = _event("2026-10-03T00:45", "2026-10-03T08:00", is_end_of_day_sleep=True)
-        late = _event("2026-10-03T00:10", "2026-10-03T00:40")  # After midnight, before sleep.
-        early = _event("2026-10-02T06:00", "2026-10-02T07:00")  # Before waking: the day before.
-        reflections, *_ = _setup([_WAKE], events=[sleep_into_2nd, sleep_into_3rd, late, early])
+        sleep_into_1st = _event("2026-09-30T23:30", "2026-10-01T07:15", is_end_of_day_sleep=True)
+        sleep_into_2nd = _event("2026-10-02T00:45", "2026-10-02T08:00", is_end_of_day_sleep=True)
+        late = _event("2026-10-02T00:10", "2026-10-02T00:40")  # After midnight, before sleep.
+        early = _event("2026-10-01T06:00", "2026-10-01T07:00")  # Before waking: the day before.
+        reflections, *_ = _setup([_WAKE], events=[sleep_into_1st, sleep_into_2nd, late, early])
 
-        context = reflections.prepare("daily", "2026-10-02")
+        context = reflections.prepare("daily", "2026-10-01")
 
-        assert (context.starts, context.ends) == (sleep_into_2nd.end, sleep_into_3rd.end)
+        assert (context.starts, context.ends) == (sleep_into_1st.end, sleep_into_2nd.end)
         assert "00:10-00:40" in context.events_digest  # The night's late event...
         assert "00:45-08:00" in context.events_digest  # ...and its sleep.
         assert "06:00-07:00" not in context.events_digest

@@ -63,6 +63,18 @@ def test_a_period_still_going_on_is_refused_as_not_over():
 
     with pytest.raises(NotOver, match="isn't over yet: it ends when you wake on 2026-10-13"):
         period_window(today, events, TZ, _at(12, 20))
-    # Its last day was yesterday, but waking today isn't logged: not over either.
+    # Its last day was yesterday, but waking today isn't in the calendar: not over either.
     with pytest.raises(NotOver):
         period_window(today, events, TZ, _at(13, 9))
+
+
+def test_a_planned_sleep_still_to_come_doesnt_end_a_period():
+    tonight = _sleep(_at(12, 23), _at(13, 7))  # In the calendar ahead of time.
+    events = [_sleep(_at(11, 23), _at(12, 6, 30)), tonight]
+    today = parse_period("daily", "2026-10-12")
+
+    with pytest.raises(NotOver):
+        period_window(today, events, TZ, _at(12, 21))  # 9pm: not asleep yet.
+    with pytest.raises(NotOver):
+        period_window(today, events, TZ, _at(13, 6))  # Asleep, until 7am.
+    assert period_window(today, events, TZ, _at(13, 8)) == (_at(12, 6, 30), _at(13, 7))
