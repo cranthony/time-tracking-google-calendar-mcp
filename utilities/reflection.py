@@ -34,7 +34,7 @@ from utilities.goal_health import (
     GoalHealth,
     band,
 )
-from utilities.goal_periods import Period, last_ended, parse_period, period_containing
+from utilities.goal_periods import Period, parse_period, period_containing
 from utilities.sleep_days import current_day, listing_range, period_window
 from utilities.goal_sheet import CADENCES, Cadence, Goal
 from utilities.goals import Goals, GoalTree
@@ -47,9 +47,11 @@ MAX_INTENTIONS = 3
 _LOOKBACK_PERIODS = 12
 """How far back `prepare_reflection` looks for a period still to reflect on."""
 
-_DAY_CHOICES = 3
-"""How many unreflected days before the current one a daily reflection
-offers, newest first, when no day is named."""
+_CHOICES = 3
+"""How many completed, unreflected periods a reflection offers, newest
+first, when none is named."""
+
+_UNIT = {"daily": "day", "weekly": "week", "monthly": "month", "every_2_months": "2-month period"}
 
 _RECENT_RATINGS = 6
 
@@ -105,18 +107,18 @@ class GoalTime:
 
 
 @dataclass(kw_only=True)
-class DayChoice:
-    """A day a daily reflection could be for, offered when none was named."""
+class PeriodChoice:
+    """A period a reflection could be for, offered when none was named."""
 
     period: str
+    first_day: date
+    last_day: date
     starts: datetime
-    """When the day started: when you woke (see utilities/sleep_days.py)."""
+    """When it started: when you woke on its first day (see utilities/
+    sleep_days.py)."""
 
-    ends: datetime | None
-    """When it ended -- `None` while it's still going on."""
-
-    current: bool
-    """It's the day you're in now."""
+    ends: datetime
+    """When it ended: when you woke the day after its last."""
 
     already_reflected: bool
 
@@ -125,7 +127,7 @@ class DayChoice:
 class ReflectionContext:
     cadence: Cadence
     period: str | None
-    """`None` for a daily reflection with no day named: see `choices`."""
+    """`None` when no period was named: see `choices`."""
 
     first_day: date | None = None
     last_day: date | None = None
@@ -141,10 +143,10 @@ class ReflectionContext:
     """A reflection has already been recorded for this period; recording
     again replaces it."""
 
-    choices: list[DayChoice] = field(default_factory=list)
-    """For a daily reflection with no day named: the days to ask about --
-    the current one, then the most recent unreflected ones -- and nothing
-    else is filled in."""
+    choices: list[PeriodChoice] = field(default_factory=list)
+    """When no period was named: the periods to ask about -- the most
+    recent completed ones without a reflection, or, if every one has one,
+    the last completed one -- and nothing else is filled in."""
 
     older_unreflected: int = 0
     """Unreflected days before `choices`, within the last 12 (and since
@@ -205,9 +207,9 @@ class Reflections:
         _check_cadence(cadence)
         tree = self._goals.tree()
         today = self._health.now().date()
-        if period is None and cadence == "daily":
-            return self._day_choices(tree)
-        span = parse_period(cadence, period) if period else self._next_unreflected(cadence, tree, today)
+        if period is None:
+            return self._choices(cadence, tree)
+        span = parse_period(cadence, period)
         if span.start > today:
             raise ValueError(f"{span.id} hasn't started yet")
         reflected = self._reflection(cadence, span)
@@ -285,70 +287,57 @@ class Reflections:
             instructions=_instructions(cadence, span),
         )
 
-    def _day_choices(self, tree: GoalTree) -> ReflectionContext:
-        """The days a daily reflection could be for: the current one, then
-        the most recent unreflected ones before it -- see `_DAY_CHOICES`."""
+    def _choices(self, cadence: Cadence, tree: GoalTree) -> ReflectionContext:
+        """The periods a reflection could be for, when none was named: the
+        most recent completed ones without a reflection (see `_CHOICES`), or
+        the last completed one, if they all have one. The period you're in
+        isn't offered: it isn't over."""
         now = self._health.now()
         tz = now.tzinfo
         today = now.date()
-        recent = parse_period("daily", (today - timedelta(days=_LOOKBACK_PERIODS)).isoformat())
-        listed = self._health.calendar_client.list_events(
-            datetime.combine(recent.start, time(), tz) - timedelta(days=1),
+        around_now = self._health.calendar_client.list_events(
+            datetime.combine(today, time(), tz) - timedelta(days=1),
             datetime.combine(today, time(), tz) + timedelta(days=1),
         )
-        events = [e for e in listed if e.status != "cancelled"]
-        current = parse_period("daily", current_day(events, tz, now).isoformat())
-        created = [g.created for g in tree.goals if g.cadence == "daily" and g.created and g.status != "deleted"]
-        first = max(recent.start, min(created)) if created else current.start
-        reflected = {r["period"] for r in self._reflections("daily", first, current.end)}
+        current = period_containing(cadence, current_day(around_now, tz, now))
+        completed = current.previous()
+        first = _periods_back(completed, _LOOKBACK_PERIODS - 1).start
+        created = [g.created for g in tree.goals if g.cadence == cadence and g.created and g.status != "deleted"]
+        first = max(first, period_containing(cadence, min(created)).start) if created else completed.start
+        reflected = {r["period"] for r in self._reflections(cadence, first, completed.end)}
+        unreflected = []
+        span = completed
+        while span.start >= first:
+            if span.id not in reflected:
+                unreflected.append(span)
+            span = span.previous()
+        offered = unreflected[:_CHOICES] or [completed]
 
-        def choice(day: Period) -> DayChoice:
-            start, end = period_window(day, events, tz, now)
-            return DayChoice(
-                period=day.id,
+        def choice(span: Period) -> PeriodChoice:
+            listed = self._health.calendar_client.list_events(*listing_range(span, tz))
+            start, end = period_window(span, [e for e in listed if e.status != "cancelled"], tz, now)
+            return PeriodChoice(
+                period=span.id,
+                first_day=span.start,
+                last_day=span.end - timedelta(days=1),
                 starts=start,
-                ends=None if day.id == current.id and end >= now else end,
-                current=day.id == current.id,
-                already_reflected=day.id in reflected,
+                ends=end,
+                already_reflected=span.id in reflected,
             )
 
-        earlier = []
-        day = current.previous()
-        while day.start >= first:
-            if day.id not in reflected:
-                earlier.append(day)
-            day = day.previous()
         return ReflectionContext(
-            cadence="daily",
+            cadence=cadence,
             period=None,
-            choices=[choice(current)] + [choice(d) for d in earlier[:_DAY_CHOICES]],
-            older_unreflected=max(0, len(earlier) - _DAY_CHOICES),
+            choices=[choice(span) for span in offered],
+            older_unreflected=max(0, len(unreflected) - _CHOICES),
             instructions=(
-                "No day was named. Ask which day to reflect on, offering these choices: the current day "
-                "(even if it's still going on, or already reflected on, when recording again replaces it), "
-                "then the most recent days without a reflection, newest first. Mention older_unreflected "
-                "if it isn't 0: any day can be named. Then call prepare_reflection again with that day's "
-                "period."
+                f"No period was named. Ask which {_UNIT[cadence]} to reflect on, offering these choices: "
+                f"completed {_UNIT[cadence]}s without a reflection, newest first -- or, if every recent one "
+                "has one, the last completed one, which recording again replaces. Mention older_unreflected "
+                "if it isn't 0: any period can be named. Then call prepare_reflection again with the period "
+                "picked."
             ),
         )
-
-    def _next_unreflected(self, cadence: str, tree: GoalTree, today: date) -> Period:
-        """The oldest period, of the last few that have ended, with no
-        reflection yet -- or the last one to end, if they all have one."""
-        last = last_ended(cadence, today)
-        created = [g.created for g in tree.goals if g.cadence == cadence and g.created and g.status != "deleted"]
-        first = _periods_back(last, _LOOKBACK_PERIODS - 1)
-        if created:
-            first = max(first, period_containing(cadence, min(created)), key=lambda p: p.start)
-        else:
-            first = last
-        reflected = {r["period"] for r in self._reflections(cadence, first.start, last.end)}
-        period = first
-        while period.start <= last.start:
-            if period.id not in reflected:
-                return period
-            period = period.next()
-        return last
 
     # -- recording --------------------------------------------------------------
 

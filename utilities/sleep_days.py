@@ -4,9 +4,8 @@ Day D starts when you wake on D -- the end of the `is_end_of_day_sleep`
 event that ends on that date -- and lasts until you wake the next day, so
 it includes the night's sleep, as reallocation's "day" does (see
 utilities/reallocation.py). Without a sleep event ending on a date, that
-date's day starts at midnight -- but not until midday, if that's still to
-come: before then, a missing sleep is more likely not logged yet than
-skipped, so the day before carries on.
+date's day starts at DEFAULT_DAY_START (7am); until then, the day before
+carries on.
 
 A period of days (a week, a month) runs from its first day's start to the
 start of the day after its last; utilities/reflection.py and utilities/
@@ -20,6 +19,9 @@ from datetime import date, datetime, time, timedelta, tzinfo
 from calendar_clients.google_calendar import Event
 from utilities.goal_periods import Period
 
+DEFAULT_DAY_START = time(7)
+"""When a day starts if no end-of-day sleep ending on it was logged."""
+
 LISTING_MARGIN = timedelta(days=1)
 """How far past a period's midnights to list events, to find the sleeps
 that bound it."""
@@ -27,8 +29,8 @@ that bound it."""
 
 def day_start(day: date, events: list[Event], tz: tzinfo, now: datetime) -> datetime | None:
     """When `day` started: the end of the first end-of-day sleep ending on
-    it, or else its midnight -- or `None` if it hasn't started yet (see the
-    module docstring). `events` must cover `day`."""
+    it, or else DEFAULT_DAY_START on it -- or `None` if it hasn't started
+    yet. `events` must cover `day`."""
     wakes = [
         event.end
         for event in events
@@ -36,16 +38,14 @@ def day_start(day: date, events: list[Event], tz: tzinfo, now: datetime) -> date
     ]
     if wakes:
         return min(wakes)
-    midnight = datetime.combine(day, time(), tz)
-    if day < now.astimezone(tz).date() or now >= midnight + timedelta(hours=12):
-        return midnight
-    return None
+    start = datetime.combine(day, DEFAULT_DAY_START, tz)
+    return start if day < now.astimezone(tz).date() or now >= start else None
 
 
 def period_window(span: Period, events: list[Event], tz: tzinfo, now: datetime) -> tuple[datetime, datetime]:
     """Where `span` starts and ends -- its end being `now` while its last day
     is still going on. `events` must cover it with LISTING_MARGIN to spare."""
-    start = day_start(span.start, events, tz, now) or datetime.combine(span.start, time(), tz)
+    start = day_start(span.start, events, tz, now) or datetime.combine(span.start, DEFAULT_DAY_START, tz)
     end = day_start(span.end, events, tz, now) or max(now, start)
     return start, max(start, end)
 
