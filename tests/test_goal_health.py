@@ -298,6 +298,23 @@ class TestMeasure:
 
         assert cooked.metrics == {"minutes": 150, "target_min": 300}
 
+    def test_a_measure_can_leave_out_sub_goals_events(self):
+        health, store, calendar, goals = _setup(self._goals())
+        cooking = goals["Cooking"]
+        store.create_goal(Goal(name="Tofu", parent_id=cooking.id))
+        tofu = next(g for g in store.tree().goals if g.name == "Tofu")
+        store.update_goal(
+            Goal(id=cooking.id, measure={"kind": "duration", "target_min": 300, "include_sub_goals": False})
+        )
+        calendar.events = [
+            _event("2026-09-21T18:00", "2026-09-21T20:00", [cooking.id]),  # 120
+            _event("2026-09-23T18:00", "2026-09-23T19:10", [tofu.id]),  # its sub-goal: left out
+        ]
+
+        (cooked,) = health.measure("weekly", goal_ids=[cooking.id])
+
+        assert cooked.metrics == {"minutes": 120, "target_min": 300}
+
     def test_a_sub_goal_can_look_at_its_parents_events(self):
         health, store, calendar, goals = _setup(self._goals())
         cooking = goals["Cooking"]
