@@ -272,6 +272,26 @@ class Goals:
             setattr(target, name, None)
         return self._commit(goals, check_measures={goal.id} if goal.measure is not None else ())
 
+    def reorder_goals(self, goal_ids: list[str]) -> GoalList:
+        """Put sibling goals (sharing a parent) in the order `goal_ids`
+        gives, among the places they already hold -- the order they're
+        listed in, siblings being listed in sheet order. Touches no labels."""
+        if not goal_ids:
+            raise ValueError("Say which goals to reorder")
+        if len(set(goal_ids)) != len(goal_ids):
+            raise ValueError("Each goal can be listed only once")
+        tree = self.tree()
+        tree.check_goal_ids(goal_ids)
+        parents = {tree.by_id[goal_id].parent_id for goal_id in goal_ids}
+        if len(parents) > 1:
+            raise ValueError("Only sibling goals, which share a parent, can be reordered together")
+        goals = [replace(g) for g in tree.goals]
+        places = [i for i, goal in enumerate(goals) if goal.id in set(goal_ids)]
+        by_id = {goal.id: goal for goal in goals}
+        for place, goal_id in zip(places, goal_ids):
+            goals[place] = by_id[goal_id]
+        return self._commit(goals, check_measures=())
+
     def sync(self) -> GoalList:
         """Make the calendar's labels match the sheet's active goals (after
         hand edits to the sheet). Validates the sheet first."""
@@ -480,6 +500,10 @@ def _validate(goals: list[Goal], check_measures: Collection[str] | None = None) 
             found = measure_problems(goal.measure)
             if check_measures is not None and goal.id not in check_measures:
                 found = [p for p in found if p == MEASURE_SHAPE_PROBLEM]
+            elif isinstance(goal.measure, dict) and isinstance(goal.measure.get("goal_ids"), list):
+                unknown = [g for g in goal.measure["goal_ids"] if isinstance(g, str) and g not in tree.by_id]
+                if unknown:
+                    found.append(f"\"goal_ids\" names {unknown[0]!r}, which isn't a goal")
             problems.extend(f"{label}'s measure {problem}" for problem in found)
     if problems:
         raise ValueError("; ".join(problems))

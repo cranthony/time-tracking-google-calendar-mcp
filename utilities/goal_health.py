@@ -449,8 +449,10 @@ Measured = tuple[int, str, dict[str, Any]]
 
 
 def _served(events: list[Event], goal: Goal, tree: GoalTree) -> list[Event]:
-    """`events` serving `goal` or any of its descendants."""
-    wanted = {g.id for g in tree.goals if goal in tree.chain(g.id)}
+    """`events` serving `goal` or any of its descendants -- or, if its
+    measure names goal_ids, any of those or their descendants."""
+    chosen = set(goal.measure.get("goal_ids") or [goal.id])
+    wanted = {g.id for g in tree.goals if chosen & {a.id for a in tree.chain(g.id)}}
     return [e for e in events if set(e.goal_ids or ()) & wanted]
 
 
