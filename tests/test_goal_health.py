@@ -25,6 +25,10 @@ class FakeCalendar(FakeLabelCalendar):
     def __init__(self, events=()):
         super().__init__([_UNNAMED])
         self.events = list(events)
+        # A night's end-of-day sleep, 23:00-07:00, on every date with none
+        # in `events` -- so periods have the sleeps that bound them (see
+        # utilities/sleep_days.py). False for none.
+        self.nightly_sleep = True
         self.health_events: dict[str, dict] = {}
         self.created: list[tuple] = []
         self.hidden: list[str] = []
@@ -46,7 +50,19 @@ class FakeCalendar(FakeLabelCalendar):
         return self
 
     def list_events(self, time_min, time_max):
-        return [e for e in self.events if e.end > time_min and e.start < time_max]
+        events = list(self.events)
+        if self.nightly_sleep:
+            slept = {e.end.astimezone(TZ).date() for e in events if e.is_end_of_day_sleep}
+            day = time_min.astimezone(TZ).date()
+            while day <= time_max.astimezone(TZ).date():
+                wake = datetime.combine(day, time(7), TZ)
+                if day not in slept and wake <= NOW:  # Only nights already slept.
+                    events.append(
+                        Event(id=f"night-{day}", summary="Sleep", start=wake - timedelta(hours=8), end=wake,
+                              is_end_of_day_sleep=True)
+                    )
+                day += timedelta(days=1)
+        return [e for e in events if e.end > time_min and e.start < time_max]
 
     def list_event_resources(self, time_min, time_max, *, private_property=None):
         key, _, value = (private_property or "=").partition("=")
@@ -362,15 +378,18 @@ class TestMeasure:
         health, store, calendar, goals = _setup(self._goals())
         wake = goals["Wake 7am"]
         store.update_goal(Goal(id=wake.id, cadence="weekly"))
+        calendar.nightly_sleep = False
         calendar.events = [
+            _event("2026-09-19T23:00", "2026-09-20T06:50", is_end_of_day_sleep=True),  # 100, starts the week
             _event("2026-09-20T23:00", "2026-09-21T07:05", is_end_of_day_sleep=True),  # 100
             _event("2026-09-21T23:00", "2026-09-22T08:00", is_end_of_day_sleep=True),  # 0
+            _event("2026-09-26T23:00", "2026-09-27T07:00", is_end_of_day_sleep=True),  # ends the week
         ]
 
         proposals = {a.goal_id: a for a in health.measure("weekly")}
 
-        assert proposals[wake.id].rating == 50
-        assert proposals[wake.id].explanation.startswith("Mean of 2 wake-ups")
+        assert proposals[wake.id].rating == 67
+        assert proposals[wake.id].explanation.startswith("Mean of 3 wake-ups")
 
     def test_rollup_takes_its_sub_goals_confirmed_ratings(self):
         health, store, _, goals = _setup([Goal(name="Home", cadence="weekly", measure={"kind": "rollup", "agg": "min"})])

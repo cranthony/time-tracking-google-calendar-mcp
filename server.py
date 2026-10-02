@@ -702,8 +702,9 @@ def rebuild_goal_health_cache() -> GoalList:
 def prepare_reflection(cadence: Cadence, period: str | None = None) -> ReflectionContext:
     """Start a reflection: everything needed to confirm the health ratings
     due for one period of a cadence. Days run from waking to waking, bounded
-    by the end-of-day sleep events (7am where there's none), and so do weeks
-    and months. With no period named, returns only choices -- the most
+    by the end-of-day sleep events, and so do weeks and months: a period
+    whose bounding sleeps aren't logged can't be reflected on (the error
+    says which days need one), and the choices below flag them. With no period named, returns only choices -- the most
     recent completed periods without a reflection -- to ask the user about;
     then call this again with the period picked. Otherwise returns the
     goals to rate (with recent ratings,
