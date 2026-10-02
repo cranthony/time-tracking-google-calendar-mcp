@@ -63,17 +63,52 @@ class TestPrepare:
         assert reflections.prepare("weekly").period == "week-2026-09-06"
 
     def test_when_every_recent_period_is_reflected_it_offers_the_last_one_again(self):
+        reflections, *_ = _setup([_COOKING])
+        for week in ["08-30", "09-06", "09-13"]:
+            reflections.record("weekly", f"week-2026-{week}", [], dry_run=False)
+        reflections.record("weekly", "week-2026-09-20", [], journal="good week", dry_run=False)
+
+        context = reflections.prepare("weekly")
+
+        assert context.period == "week-2026-09-20"
+        assert context.already_reflected
+        assert context.journal == "good week"
+
+    def test_a_daily_reflection_with_no_day_named_offers_days_to_ask_about(self):
         reflections, *_ = _setup([_WAKE])
-        for day in range(1, 32):
-            if day <= 30:
+        unreflected = {"09-21", "09-24", "09-25", "09-28"}
+        for day in range(1, 31):
+            if f"09-{day:02d}" not in unreflected:
                 reflections.record("daily", f"2026-09-{day:02d}", [], dry_run=False)
-        reflections.record("daily", "2026-10-01", [], journal="good day", dry_run=False)
+        reflections.record("daily", "2026-10-01", [], dry_run=False)
 
         context = reflections.prepare("daily")
 
-        assert context.period == "2026-10-01"
-        assert context.already_reflected
-        assert context.journal == "good day"
+        assert context.period is None
+        # It's 21:00 on Oct 2: that day, still going on, then the newest
+        # three without a reflection; one older one isn't offered.
+        assert [(c.period, c.current, c.ends) for c in context.choices] == [
+            ("2026-10-02", True, None),
+            ("2026-09-28", False, datetime(2026, 9, 29, tzinfo=TZ)),
+            ("2026-09-25", False, datetime(2026, 9, 26, tzinfo=TZ)),
+            ("2026-09-24", False, datetime(2026, 9, 25, tzinfo=TZ)),
+        ]
+        assert context.older_unreflected == 1
+        assert "Ask which day" in context.instructions
+
+    def test_a_days_events_run_from_waking_to_waking(self):
+        sleep_into_2nd = _event("2026-10-01T23:30", "2026-10-02T07:15", is_end_of_day_sleep=True)
+        sleep_into_3rd = _event("2026-10-03T00:45", "2026-10-03T08:00", is_end_of_day_sleep=True)
+        late = _event("2026-10-03T00:10", "2026-10-03T00:40")  # After midnight, before sleep.
+        early = _event("2026-10-02T06:00", "2026-10-02T07:00")  # Before waking: the day before.
+        reflections, *_ = _setup([_WAKE], events=[sleep_into_2nd, sleep_into_3rd, late, early])
+
+        context = reflections.prepare("daily", "2026-10-02")
+
+        assert (context.starts, context.ends) == (sleep_into_2nd.end, sleep_into_3rd.end)
+        assert "00:10-00:40" in context.events_digest  # The night's late event...
+        assert "00:45-08:00" in context.events_digest  # ...and its sleep.
+        assert "06:00-07:00" not in context.events_digest
 
     def test_rates_active_goals_with_the_cadence_proposing_measured_or_recorded_ratings(self):
         reflections, health, store, calendar, goals = _setup([_COOKING, _FEEL, _WAKE])

@@ -35,6 +35,7 @@ from utilities.goal_health import (
     band,
 )
 from utilities.goal_periods import Period, last_ended, parse_period, period_containing
+from utilities.sleep_days import current_day, listing_range, period_window
 from utilities.goal_sheet import CADENCES, Cadence, Goal
 from utilities.goals import Goals, GoalTree
 from utilities.noted_time_sheet import NotedTimeSheet
@@ -45,6 +46,10 @@ MAX_INTENTIONS = 3
 
 _LOOKBACK_PERIODS = 12
 """How far back `prepare_reflection` looks for a period still to reflect on."""
+
+_DAY_CHOICES = 3
+"""How many unreflected days before the current one a daily reflection
+offers, newest first, when no day is named."""
 
 _RECENT_RATINGS = 6
 
@@ -100,14 +105,50 @@ class GoalTime:
 
 
 @dataclass(kw_only=True)
+class DayChoice:
+    """A day a daily reflection could be for, offered when none was named."""
+
+    period: str
+    starts: datetime
+    """When the day started: when you woke (see utilities/sleep_days.py)."""
+
+    ends: datetime | None
+    """When it ended -- `None` while it's still going on."""
+
+    current: bool
+    """It's the day you're in now."""
+
+    already_reflected: bool
+
+
+@dataclass(kw_only=True)
 class ReflectionContext:
     cadence: Cadence
-    period: str
-    first_day: date
-    last_day: date
-    already_reflected: bool
+    period: str | None
+    """`None` for a daily reflection with no day named: see `choices`."""
+
+    first_day: date | None = None
+    last_day: date | None = None
+    starts: datetime | None = None
+    """When the period started: when you woke on its first day."""
+
+    ends: datetime | None = None
+    """When it ended -- when you woke the day after its last -- or now, if
+    it's still going on. Its events, notes and minutes per goal are those
+    between the two."""
+
+    already_reflected: bool = False
     """A reflection has already been recorded for this period; recording
     again replaces it."""
+
+    choices: list[DayChoice] = field(default_factory=list)
+    """For a daily reflection with no day named: the days to ask about --
+    the current one, then the most recent unreflected ones -- and nothing
+    else is filled in."""
+
+    older_unreflected: int = 0
+    """Unreflected days before `choices`, within the last 12 (and since
+    the first daily goal), not offered."""
 
     journal: str | None = None
     """The journal recorded with it, if so."""
@@ -164,6 +205,8 @@ class Reflections:
         _check_cadence(cadence)
         tree = self._goals.tree()
         today = self._health.now().date()
+        if period is None and cadence == "daily":
+            return self._day_choices(tree)
         span = parse_period(cadence, period) if period else self._next_unreflected(cadence, tree, today)
         if span.start > today:
             raise ValueError(f"{span.id} hasn't started yet")
@@ -221,23 +264,72 @@ class Reflections:
         events = self._events(span, tree)
         notes = self._notes.read(include_compacted=True) if self._notes else []
         tz = self._health.now().tzinfo
-        end = datetime.combine(span.end, time(), tz)
+        start, end = period_window(span, events, tz, self._health.now())
         digested = cadence in _DIGESTED_CADENCES
         return ReflectionContext(
             cadence=cadence,
             period=span.id,
             first_day=span.start,
             last_day=span.end - timedelta(days=1),
+            starts=start,
+            ends=end,
             already_reflected=reflected is not None,
             journal=(reflected or {}).get("description") or None,
             due=due,
             reviewed=reviewed,
-            goal_time=_goal_time(events, tree, span, tz),
-            events_digest=_events_digest(events, tree, span, tz) if digested else None,
-            notes_digest=_notes_digest(notes, span, tz) if digested and self._notes else None,
+            goal_time=_goal_time(events, tree, start, end),
+            events_digest=_events_digest(events, tree, start, end, tz) if digested else None,
+            notes_digest=_notes_digest(notes, start, end, tz) if digested and self._notes else None,
             previous_intentions=_intentions(previous),
             uncompacted_notes=sum(1 for n in notes if n.compaction_id is None and n.timestamp < end),
             instructions=_instructions(cadence, span),
+        )
+
+    def _day_choices(self, tree: GoalTree) -> ReflectionContext:
+        """The days a daily reflection could be for: the current one, then
+        the most recent unreflected ones before it -- see `_DAY_CHOICES`."""
+        now = self._health.now()
+        tz = now.tzinfo
+        today = now.date()
+        recent = parse_period("daily", (today - timedelta(days=_LOOKBACK_PERIODS)).isoformat())
+        listed = self._health.calendar_client.list_events(
+            datetime.combine(recent.start, time(), tz) - timedelta(days=1),
+            datetime.combine(today, time(), tz) + timedelta(days=1),
+        )
+        events = [e for e in listed if e.status != "cancelled"]
+        current = parse_period("daily", current_day(events, tz, now).isoformat())
+        created = [g.created for g in tree.goals if g.cadence == "daily" and g.created and g.status != "deleted"]
+        first = max(recent.start, min(created)) if created else current.start
+        reflected = {r["period"] for r in self._reflections("daily", first, current.end)}
+
+        def choice(day: Period) -> DayChoice:
+            start, end = period_window(day, events, tz, now)
+            return DayChoice(
+                period=day.id,
+                starts=start,
+                ends=None if day.id == current.id and end >= now else end,
+                current=day.id == current.id,
+                already_reflected=day.id in reflected,
+            )
+
+        earlier = []
+        day = current.previous()
+        while day.start >= first:
+            if day.id not in reflected:
+                earlier.append(day)
+            day = day.previous()
+        return ReflectionContext(
+            cadence="daily",
+            period=None,
+            choices=[choice(current)] + [choice(d) for d in earlier[:_DAY_CHOICES]],
+            older_unreflected=max(0, len(earlier) - _DAY_CHOICES),
+            instructions=(
+                "No day was named. Ask which day to reflect on, offering these choices: the current day "
+                "(even if it's still going on, or already reflected on, when recording again replaces it), "
+                "then the most recent days without a reflection, newest first. Mention older_unreflected "
+                "if it isn't 0: any day can be named. Then call prepare_reflection again with that day's "
+                "period."
+            ),
         )
 
     def _next_unreflected(self, cadence: str, tree: GoalTree, today: date) -> Period:
@@ -377,8 +469,9 @@ class Reflections:
         return next((r for r in self._reflections(cadence, span.start, span.end) if r.get("period") == span.id), None)
 
     def _events(self, span: Period, tree: GoalTree) -> list[Event]:
-        tz = self._health.now().tzinfo
-        listed = self._health.calendar_client.list_events(datetime.combine(span.start, time(), tz), datetime.combine(span.end, time(), tz))
+        """The events around `span`, with the sleeps that bound it -- see
+        utilities/sleep_days.py."""
+        listed = self._health.calendar_client.list_events(*listing_range(span, self._health.now().tzinfo))
         return [e for e in fill_in_from_goals(listed, tree) if e.status != "cancelled"]
 
 
@@ -405,9 +498,7 @@ def _intentions(reflection: dict | None) -> list[str]:
         return []
 
 
-def _goal_time(events: list[Event], tree: GoalTree, span: Period, tz) -> list[GoalTime]:
-    start = datetime.combine(span.start, time(), tz)
-    end = datetime.combine(span.end, time(), tz)
+def _goal_time(events: list[Event], tree: GoalTree, start: datetime, end: datetime) -> list[GoalTime]:
     minutes: dict[str, float] = {}
     for event in events:
         overlap = (min(event.end, end) - max(event.start, start)).total_seconds() / 60
@@ -426,9 +517,7 @@ def _goal_time(events: list[Event], tree: GoalTree, span: Period, tz) -> list[Go
     return sorted(times, key=lambda t: (-t.minutes, t.path))
 
 
-def _events_digest(events: list[Event], tree: GoalTree, span: Period, tz) -> str:
-    start = datetime.combine(span.start, time(), tz)
-    end = datetime.combine(span.end, time(), tz)
+def _events_digest(events: list[Event], tree: GoalTree, start: datetime, end: datetime, tz) -> str:
     lines = []
     day = None
     for event in sorted(events, key=lambda e: e.start):
@@ -446,9 +535,7 @@ def _events_digest(events: list[Event], tree: GoalTree, span: Period, tz) -> str
     return "\n".join(lines) or "(no events)"
 
 
-def _notes_digest(notes, span: Period, tz) -> str:
-    start = datetime.combine(span.start, time(), tz)
-    end = datetime.combine(span.end, time(), tz)
+def _notes_digest(notes, start: datetime, end: datetime, tz) -> str:
     lines = [
         f"{n.timestamp.astimezone(tz):%a %m-%d %H:%M} {n.description}"
         for n in sorted(notes, key=lambda n: n.timestamp)
