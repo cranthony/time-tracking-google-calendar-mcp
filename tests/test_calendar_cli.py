@@ -175,12 +175,17 @@ class TestUpdatableAttributeParsers:
         # is assigned by Google and never sent to the API, so setting it here
         # would silently have no effect. goal_priority/goal_is_fixed_time
         # belong to the event's goal, not the event, and are never sent
-        # to the API either.
+        # to the API either. A series' recurrence/time_zone are edited
+        # through the recurrence tools (utilities/recurrences.py), and
+        # original_start, like recurring_event_id, is Google's.
         event_attributes = {f.name for f in dataclasses.fields(Event)} - {
             "id",
             "recurring_event_id",
             "goal_priority",
             "goal_is_fixed_time",
+            "recurrence",
+            "time_zone",
+            "original_start",
         }
 
         assert set(calendar_cli._UPDATABLE_ATTRIBUTE_PARSERS) == event_attributes

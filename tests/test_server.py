@@ -1129,3 +1129,33 @@ class TestWithCors:
 
         assert response.headers["mcp-session-id"] == "session-1"
         assert "mcp-session-id" in response.headers["access-control-expose-headers"].lower()
+
+
+class TestPublicRecurrence:
+    def test_shows_a_series_in_its_own_time_zone_with_its_schedule_in_words(self):
+        series = Event(
+            id="s1",
+            summary="Standup",
+            start=datetime(2026, 10, 5, 13, tzinfo=timezone.utc),
+            end=datetime(2026, 10, 5, 14, tzinfo=timezone.utc),
+            time_zone="America/New_York",
+            recurrence=["RRULE:FREQ=WEEKLY;BYDAY=MO"],
+            goal_ids=["g1"],
+        )
+        tree = GoalTree([Goal(id="g1", name="Work", status="active", label_id="l1")])
+
+        public = server.PublicRecurrence.from_event(series, tree)
+
+        assert public.start.isoformat() == "2026-10-05T09:00:00-04:00"
+        assert public.schedule == "Every week on Mon"
+        assert public.goal_names == ["Work"]
+        assert public.to_event().recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO"]
+
+    def test_update_recurrence_reports_bad_rules_as_tool_errors(self, monkeypatch):
+        recurrences = MagicMock()
+        recurrences.update.side_effect = ValueError("A series needs exactly one RRULE line")
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+        monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
+
+        with pytest.raises(ToolError, match="exactly one RRULE"):
+            server.update_recurrence(server.PublicRecurrence(id="s1", rules=["RRULE:FREQ=DAILY"] * 2))
