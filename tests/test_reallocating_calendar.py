@@ -191,8 +191,8 @@ class TestReallocatingCalendarCreateEvent:
         client.update_event = MagicMock(side_effect=lambda event: event)
         goals = MagicMock()
         goals.tree.return_value = GoalTree([
-            Goal(id="gp", name="Prioritized", active=True, label_id="label-p", priority=3),
-            Goal(id="gf", name="Fixed", active=True, label_id="label-f", priority=0, fixed_time=True),
+            Goal(id="gp", name="Prioritized", status="active", label_id="label-p", priority=3),
+            Goal(id="gf", name="Fixed", status="active", label_id="label-f", priority=0, fixed_time=True),
         ])
 
         new_event = Event(

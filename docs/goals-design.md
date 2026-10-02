@@ -31,7 +31,7 @@ Contents:
 Each goal has:
 
 - a short **name** (it's also the calendar label's name, so ≤ 50 characters) and an optional long **description** (Markdown with inline HTML, Mermaid diagrams and images; see §3.2);
-- an **active** flag. Active goals are ones you're still working on; only they take up a calendar label slot (§5). Inactive goals keep their history and can be reactivated at any time;
+- a **status**: `proposed` (suggested, not taken on yet), `active` (being worked on), `inactive` (paused), `completed` (achieved), `archived` (no longer relevant) or `deleted` (shouldn't have existed). Only active goals take up a calendar label slot (§5) and are assessed; goals of every other status keep their history and can be made active again at any time. The app lists proposed, active and inactive goals by default, with a filter for the rest. No event can be given a deleted goal, though events that already have one keep it;
 - an optional **cadence**: `daily`, `weekly`, `monthly` or `every_2_months`. This is how often its health is assessed, and the period its at-a-glance health refers to. A goal is assessed at **exactly one** cadence;
 - an optional **measure**: how its health is assessed (objective metric, subjective rating, LLM judgement, or a rollup of its sub-goals; see §7);
 - an optional **target** and **deadline** for goals that finish ("ship v1 by 2026-12-31");
@@ -318,7 +318,7 @@ class GoalList:
 
 | Tool | Signature | Notes |
 | --- | --- | --- |
-| `get_goals` | `(include_inactive: bool = False) -> GoalList` | Read-only. The tree with cached health. Inactive goals are omitted by default to keep the model's context small |
+| `get_goals` | `(statuses: list[GoalStatus] \| None = None) -> GoalList` | Read-only. The tree with cached health. By default proposed, active and inactive goals; completed, archived and deleted ones only when asked for, to keep the model's context small |
 | `create_goal` | `(goal: Goal, description: str \| None = None) -> GoalList` | Allocates `id` and `label_id`. If `active` (the default), adds the label; fails past the label budget |
 | `update_goal` | `(goal: Goal, clear_fields: list[GoalField] \| None = None) -> GoalList` | Same merge/clear semantics as `update_event_label` today. Changing `active` adds or removes the label (§5). Changing `parent_id` re-parents the goal (cycles rejected) |
 | `get_goal_description` | `(goal_id: str) -> str` | Markdown |

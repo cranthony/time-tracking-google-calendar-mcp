@@ -37,7 +37,7 @@ from typing import Any, Literal
 from calendar_clients.google_calendar import CalendarClient, Event
 from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_periods import Period, last_ended, parse_period, period_containing
-from utilities.goal_sheet import Cadence, Goal
+from utilities.goal_sheet import GOAL_STATUSES, Cadence, Goal
 from utilities.goals import GoalList, Goals, GoalTree
 
 HEALTH_CALENDAR_METADATA_KEY = "goal-health-calendar"
@@ -286,7 +286,7 @@ class GoalHealth:
     def rebuild_cache(self) -> GoalList:
         """Recompute every goal's health cache from its confirmed history."""
         self._refresh_cache({g.id for g in self._goals.tree().goals if g.cadence})
-        return self._goals.get_goals(include_inactive=True)
+        return self._goals.get_goals(GOAL_STATUSES)
 
     def _refresh_cache(self, goal_ids: set[str]) -> None:
         tree = self._goals.tree()

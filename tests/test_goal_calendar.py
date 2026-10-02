@@ -22,10 +22,10 @@ def _tree() -> GoalTree:
     """Hosting (active) > Cooking (inactive) > Tofu (inactive); Reading
     (inactive, top-level)."""
     return GoalTree([
-        Goal(id="host", name="Hosting", active=True, label_id="l-host", priority=1, fixed_time=True),
-        Goal(id="cook", name="Cooking", active=False, label_id="l-cook", parent_id="host"),
-        Goal(id="tofu", name="Tofu", active=False, label_id="l-tofu", parent_id="cook", priority=3),
-        Goal(id="read", name="Reading", active=False, label_id="l-read"),
+        Goal(id="host", name="Hosting", status="active", label_id="l-host", priority=1, fixed_time=True),
+        Goal(id="cook", name="Cooking", status="inactive", label_id="l-cook", parent_id="host"),
+        Goal(id="tofu", name="Tofu", status="inactive", label_id="l-tofu", parent_id="cook", priority=3),
+        Goal(id="read", name="Reading", status="inactive", label_id="l-read"),
     ])
 
 

@@ -27,6 +27,21 @@ from utilities import calendar_metadata_sheet
 Cadence = Literal["daily", "weekly", "monthly", "every_2_months"]
 CADENCES: tuple[str, ...] = ("daily", "weekly", "monthly", "every_2_months")
 
+GoalStatus = Literal["proposed", "active", "inactive", "completed", "archived", "deleted"]
+GOAL_STATUSES: tuple[str, ...] = ("proposed", "active", "inactive", "completed", "archived", "deleted")
+"""Where a goal stands:
+
+- `proposed`: suggested, but not taken on yet.
+- `active`: being worked on. The only status that holds a calendar label
+  and is assessed.
+- `inactive`: paused, perhaps to pick up again.
+- `completed`: achieved.
+- `archived`: no longer relevant, and kept out of the way.
+- `deleted`: shouldn't have existed. Kept only so that history and events
+  pointing at it still make sense; no event can be given it again.
+
+Every status but `active` frees the goal's label and keeps its history."""
+
 _HEADER_RANGE = "A1:Z1"
 _DATA_RANGE = "A2:Z"
 """Wide enough for every column below plus some a user (or a later
@@ -51,8 +66,8 @@ class Goal:
     name: str | None = None
     """Short name, at most 50 characters -- also its calendar label's name."""
 
-    active: bool | None = None
-    """Whether the user is still working on it. Only active goals take up
+    status: GoalStatus | None = None
+    """Where it stands -- see GOAL_STATUSES. Only `active` goals take up
     one of the calendar's event label slots."""
 
     background_color: str | None = None
@@ -96,6 +111,10 @@ class Goal:
     """Read-only cache: its last 8 confirmed ratings at its cadence, oldest
     first and comma-separated, "-" for a period with none."""
 
+    @property
+    def active(self) -> bool:
+        return self.status == "active"
+
     @classmethod
     def from_row(cls, header_row: list[str], data: list[str]) -> "Goal":
         cells = {header: (data[i] if i < len(data) else "") for i, header in enumerate(header_row)}
@@ -112,11 +131,15 @@ class Goal:
             return date.fromisoformat(value) if value is not None else None
 
         priority, measure, health = text("priority"), text("measure"), text("health")
+        status = (text("status") or "").lower() or None
+        if status is None and boolean("active") is not None:
+            # A tab from before statuses: just TRUE/FALSE.
+            status = "active" if boolean("active") else "inactive"
         return cls(
             id=text("id"),
             parent_id=text("parent_id"),
             name=text("name"),
-            active=boolean("active"),
+            status=status,
             background_color=text("background_color"),
             priority=int(priority) if priority is not None else None,
             fixed_time=boolean("fixed_time"),
@@ -138,6 +161,9 @@ class Goal:
         for i, header in enumerate(header_row):
             if header in field_names:
                 row.append(_cell(getattr(self, header)))
+            elif header == "active":
+                # Kept in step on a tab from before statuses.
+                row.append(_cell(self.active) if self.status is not None else "")
             else:
                 row.append(original_row[i] if original_row is not None and i < len(original_row) else "")
         return row
@@ -159,7 +185,7 @@ HEADER_ROW = [
     "id",
     "parent_id",
     "name",
-    "active",
+    "status",
     "label_id",
     "background_color",
     "priority",
@@ -271,7 +297,9 @@ class GoalSheet:
     def _read_header(self) -> list[str]:
         rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)
         header_row = [cell.strip() for cell in rows[0]] if rows else []
-        missing = [column for column in ("id", "name", "active", "label_id") if column not in header_row]
+        missing = [column for column in ("id", "name", "label_id") if column not in header_row]
+        if "status" not in header_row and "active" not in header_row:
+            missing.append("status")
         if missing:
             raise ValueError(f"The goals tab's header row ({_HEADER_RANGE}) is missing columns: {missing}")
         return header_row
