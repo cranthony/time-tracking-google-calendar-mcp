@@ -34,7 +34,23 @@ class TestFillInFromGoals:
         (event,) = fill_in_from_goals([_event(event_label_id="l-cook")], _tree())
 
         assert event.goal_ids == ["cook"]
+        assert event.goals_from_label
         assert (event.goal_priority, event.goal_is_fixed_time) == (1, True)  # from Hosting
+
+    def test_an_events_own_goals_arent_marked_inferred(self):
+        (event,) = fill_in_from_goals([_event(goal_ids=["host"], event_label_id="l-cook")], _tree())
+
+        assert event.goal_ids == ["host"]
+        assert not event.goals_from_label
+
+    def test_writing_back_an_inferred_event_never_stores_its_goals(self):
+        (event,) = fill_in_from_goals([_event(event_label_id="l-cook")], _tree())
+
+        written = with_goal_label(event, _tree(), inserting=False)
+
+        assert written.event_label_id == "l-cook"  # its label, untouched
+        private = written.to_api_body().get("extendedProperties", {}).get("private", {})
+        assert not any(key.endswith("goal_ids") for key in private)
 
     def test_inherits_from_the_primary_goal_only(self):
         (event,) = fill_in_from_goals([_event(goal_ids=["tofu", "host"])], _tree())

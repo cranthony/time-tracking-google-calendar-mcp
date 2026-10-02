@@ -112,6 +112,14 @@ def _public_event(**overrides) -> PublicEvent:
 
 
 class TestPublicEvent:
+    def test_goals_inferred_from_a_label_are_marked_and_not_written_back(self):
+        public = PublicEvent.from_event(Event(id="e1", goal_ids=["g1"], goals_from_label=True))
+
+        assert public.goals_from_label
+        assert public.to_event().goal_ids is None
+        public.goals_from_label = False  # Confirmed: stored.
+        assert public.to_event().goal_ids == ["g1"]
+
     def test_hides_internal_fields_from_its_fields(self):
         field_names = {f.name for f in dataclasses.fields(PublicEvent)}
 

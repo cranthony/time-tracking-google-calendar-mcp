@@ -11,7 +11,9 @@ LabelPriorityCalendar:
 - **On read** (`list_events`/`get_event`, or `fill_in_from_goals` for
   events read some other way): an event written before goals existed has
   no goal_ids, only a label -- it's read as serving the goal that owns
-  that label. Its `goal_priority`/`goal_is_fixed_time` are filled in from
+  that label, marked `goals_from_label` so the inference can be told
+  apart from goals the event was given, and is never written back as
+  if it were. Its `goal_priority`/`goal_is_fixed_time` are filled in from
   its primary goal (or that goal's nearest ancestor that sets one), so
   `Event.effective_priority`/`effective_is_fixed_time` -- all reallocation
   and compaction read -- fall back to them. The event's own
@@ -72,6 +74,7 @@ def _fill_in(event: Event, tree: GoalTree) -> Event:
         owner = tree.goal_for_label(event.event_label_id)
         if owner is None:
             return event
+        event = replace(event, goals_from_label=True)
         goal_ids = [owner.id]
     if not goal_ids:
         return replace(event, goal_ids=goal_ids)
@@ -87,7 +90,7 @@ def with_goal_label(event: Event, tree: GoalTree, *, inserting: bool) -> Event:
     """`event` with `event_label_id` derived from its goals (see the module
     docstring), or unchanged if it isn't writing `goal_ids`. On an update,
     "no label" is sent as "" (which removes one); on an insert, as None."""
-    if event.goal_ids is None:
+    if event.goal_ids is None or event.goals_from_label:
         return event
     none = None if inserting else ""
     if not event.goal_ids:

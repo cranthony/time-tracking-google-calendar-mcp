@@ -183,6 +183,7 @@ class TestUpdatableAttributeParsers:
             "recurring_event_id",
             "goal_priority",
             "goal_is_fixed_time",
+            "goals_from_label",
             "recurrence",
             "time_zone",
             "original_start",
