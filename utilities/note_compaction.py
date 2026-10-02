@@ -28,8 +28,12 @@ testable and the plan is previewable before anything is written.
   how an event is renamed (`summary`) or given extra description text
   (`annotate`) without moving it.
 - `cancel` (an event id): it didn't happen.
-- `create` (a `summary`, both edges, optionally an `event_label_id`):
-  something that happened that wasn't planned.
+- `create` (a `summary`, both edges, optionally `goal_ids`): something
+  that happened that wasn't planned.
+
+`keep` and `create` take `goal_ids` (primary first) to set the goals an
+event serves; for `keep`, leaving it out keeps them, and `[]` clears
+them.
 - `merge` (an event id, `into` another): fold one event into another, for
   when the user doesn't remember where one ended and the next began. The
   target grows to cover both and is titled after both (unless renamed);
@@ -101,8 +105,9 @@ class EventDecision:
     annotate: str | None = None
     """`keep`/`create`: extra text for the event's description."""
 
-    event_label_id: str | None = None
-    """`create`: optionally, an event label to assign it."""
+    goal_ids: list[str] | None = None
+    """`keep`/`create`: the goals it serves, primary first. For `keep`,
+    `None` keeps its goals and `[]` clears them."""
 
     def to_json_dict(self) -> dict:
         return {
@@ -114,6 +119,7 @@ class EventDecision:
     @classmethod
     def from_json_dict(cls, data: dict) -> "EventDecision":
         parsed = dict(data)
+        parsed.pop("event_label_id", None)  # From before goals.
         for key in _DATETIME_FIELDS:
             if key in parsed:
                 parsed[key] = datetime.fromisoformat(parsed[key])
@@ -144,6 +150,7 @@ class EventState:
     is_fixed_time: bool | None = None
     priority: int | None = None
     event_label_id: str | None = None
+    goal_ids: list[str] | None = None
 
     @classmethod
     def from_event(cls, event: Event) -> "EventState":
@@ -160,6 +167,7 @@ class EventState:
             is_fixed_time=event.is_fixed_time,
             priority=event.priority,
             event_label_id=event.event_label_id,
+            goal_ids=list(event.goal_ids) if event.goal_ids is not None else None,
         )
 
     def to_event(self, event_id: str | None = None) -> Event:
@@ -179,6 +187,7 @@ class EventState:
             is_fixed_time=self.is_fixed_time,
             priority=self.priority,
             event_label_id=self.event_label_id,
+            goal_ids=list(self.goal_ids) if self.goal_ids is not None else None,
         )
 
     def to_json_dict(self) -> dict:
@@ -257,6 +266,7 @@ def plan_compaction(
     ignore_notes: list[str] | None = None,
     day_start: datetime | None = None,
     options: ReallocationOptions | None = None,
+    goal_names: dict[str, str] | None = None,
 ) -> CompactionPlan:
     """Plan the calendar changes that `decisions` (what the notes show
     happened, event by event) imply for `day_events`, as of `now`.
@@ -265,7 +275,8 @@ def plan_compaction(
     event (the one moving which moves bedtime) is the first that starts
     after it, and any sleep event before it is just the end of the
     previous night, adjustable like anything else. Without it, the first
-    sleep event is the day's own.
+    sleep event is the day's own. `goal_names` (goal id -> name) labels
+    events' goals in the timeline.
 
     Raises `CompactionError` (listing everything wrong at once) if the
     decisions are invalid or leave past events overlapping. Never mutates
@@ -323,6 +334,8 @@ def plan_compaction(
     for event_id, decision in touched.items():
         if decision.summary:
             copies[event_id].summary = decision.summary
+        if decision.goal_ids is not None:
+            copies[event_id].goal_ids = list(decision.goal_ids)
     annotated = _annotate(ordered, ignored, facts, touched, copies, cancels, warnings, problems)
     if problems:
         raise CompactionError("\n".join(problems))
@@ -332,7 +345,7 @@ def plan_compaction(
     if not changes:
         warnings.append("nothing on the calendar needs to change")
     timeline = _timeline(
-        ordered, ignored, facts, live, copies, cancels, merged_into, annotated, simulated, now
+        ordered, ignored, facts, live, copies, cancels, merged_into, annotated, simulated, now, goal_names or {}
     )
     return CompactionPlan(changes=changes, warnings=warnings, timeline=timeline)
 
@@ -456,6 +469,8 @@ def _resolve(
             if member.summary and member.summary not in names:
                 names.append(member.summary)
         event.summary = (decision.summary or "").strip() or " and ".join(names) or base.summary
+        if decision.goal_ids is not None:
+            event.goal_ids = list(decision.goal_ids)
         event.start, event.end = start, end
         event.is_fixed_time = True
         event.min_duration = end - start
@@ -509,7 +524,7 @@ def _resolve(
                     summary=decision.summary.strip(),
                     start=start,
                     end=end,
-                    event_label_id=decision.event_label_id,
+                    goal_ids=list(decision.goal_ids) if decision.goal_ids is not None else None,
                     is_fixed_time=True,
                     min_duration=end - start,
                 ),
@@ -813,8 +828,11 @@ def _changes(
         else:
             after = EventState.from_event(copies[event_id])
             only_notes = replace(after, description=before.description) == before
+            only_goals = replace(after, description=before.description, goal_ids=before.goal_ids) == before
             if only_notes:
                 reason = "added the notes that fall during it"
+            elif only_goals:
+                reason = "set the goals it serves"
             elif event_id in default_ids:
                 reason = next(f.reason for f in facts if f.default and f.base.id == event_id)
             else:
@@ -855,7 +873,11 @@ def _timeline(
     annotated: dict[str, str],
     simulated: _Simulated,
     now: datetime,
+    goal_names: dict[str, str],
 ) -> Timeline:
+    def names(goal_ids) -> list[str]:
+        return [goal_names.get(g, g) for g in goal_ids or ()]
+
     decided_by_base = {f.base.id: f for f in facts if f.base and not f.default}
     default_ids = {f.base.id for f in facts if f.default}
     events: list[TimelineEvent] = []
@@ -892,6 +914,8 @@ def _timeline(
                 end=final.end,
                 start_note=fact.start_note.id if fact and fact.start_note else None,
                 end_note=fact.end_note.id if fact and fact.end_note else None,
+                goals=names(final.goal_ids),
+                new_goals=[n for n in names(final.goal_ids) if n not in names(original.goal_ids)],
                 **planned,
             )
         )
@@ -906,11 +930,21 @@ def _timeline(
                     end=fact.end,
                     start_note=fact.start_note.id if fact.start_note else None,
                     end_note=fact.end_note.id if fact.end_note else None,
+                    goals=names(fact.event.goal_ids),
+                    new_goals=names(fact.event.goal_ids),
                 )
             )
     for event in simulated.working:
         if event.id is None and id(event) not in fact_events:
-            events.append(TimelineEvent(summary=event.summary or "", status="new", start=event.start, end=event.end))
+            events.append(
+                TimelineEvent(
+                    summary=event.summary or "",
+                    status="new",
+                    start=event.start,
+                    end=event.end,
+                    goals=names(event.goal_ids),
+                )
+            )
 
     anchors: dict[str, list[str]] = {}
     for fact in facts:
@@ -932,10 +966,19 @@ def _timeline(
     return build_timeline(notes, events, now)
 
 
-def planned_timeline(notes: list[PlanNote], day_events: list[Event], now: datetime) -> Timeline:
+def planned_timeline(
+    notes: list[PlanNote],
+    day_events: list[Event],
+    now: datetime,
+    goal_names: dict[str, str] | None = None,
+    suggested: dict[str, list[str]] | None = None,
+) -> Timeline:
     """The two lanes before anything is decided: the notes beside the
     day's events as planned -- what a model compares to make its
-    decisions."""
+    decisions. `suggested` (event id -> goal ids) marks goals suggested
+    for events that have none."""
+    goal_names = goal_names or {}
+    suggested = suggested or {}
     return build_timeline(
         [TimelineNote(id=n.id, time=n.timestamp, text=n.description) for n in notes],
         [
@@ -947,6 +990,8 @@ def planned_timeline(notes: list[PlanNote], day_events: list[Event], now: dateti
                 end=e.end,
                 planned_start=e.start,
                 planned_end=e.end,
+                goals=[goal_names.get(g, g) for g in e.goal_ids or ()],
+                new_goals=[goal_names.get(g, g) for g in suggested.get(e.id, ())],
             )
             for e in day_events
             if e.id and e.status != "cancelled"
