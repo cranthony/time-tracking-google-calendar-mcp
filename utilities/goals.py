@@ -9,9 +9,12 @@ utilities/event_labels.py's `EventLabels` had:
 - Each goal reserves one label id. **A goal occupies its label exactly
   while it's active**: syncing makes the calendar's labels the active
   goals' (plus any unnamed labels, which are Calendar's own default
-  colors and always left alone). Deactivating a goal removes its label,
-  freeing one of the calendar's 200 slots; reactivating re-adds it under
-  the same id, which Calendar's events still point at.
+  colors and always left alone). Moving a goal to any other status
+  (proposed, inactive, completed, archived or deleted -- see
+  utilities/goal_sheet.py's GOAL_STATUSES) removes its label, freeing one
+  of the calendar's 200 slots, but keeps its history; making it active
+  again re-adds the label under the same id, which Calendar's events
+  still point at.
 - Goals form a tree. A goal without its own priority/fixed_time inherits
   its nearest ancestor's, and events inherit their primary goal's (see
   utilities/goal_calendar.py).
@@ -38,7 +41,7 @@ from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
 from utilities.event_label_sheet import EventLabelSheet
 from utilities.goal_periods import last_ended, parse_period, period_containing
-from utilities.goal_sheet import CADENCES, Goal, GoalSheet
+from utilities.goal_sheet import CADENCES, GOAL_STATUSES, Goal, GoalSheet
 
 MAX_LABELS = 200
 """The most event labels a calendar can have (named or not)."""
@@ -58,8 +61,12 @@ _MIGRATED_TAB_TITLE = "Event Labels (migrated)"
 CLEARABLE_FIELDS = frozenset(
     {"parent_id", "background_color", "priority", "fixed_time", "cadence", "measure", "target", "deadline", "note"}
 )
-"""Goal fields `update_goal` can blank. Not `name`/`active` (always
+"""Goal fields `update_goal` can blank. Not `name`/`status` (always
 needed) nor the read-only `id`/`label_id`/`created`."""
+
+DEFAULT_STATUSES: tuple[str, ...] = ("proposed", "active", "inactive")
+"""The goals listed unless others are asked for: those still in play.
+Completed, archived and deleted ones are listed only on request."""
 
 _READ_ONLY_FIELDS = frozenset({"id", "label_id", "created", "health", "health_period", "health_trend"})
 
@@ -74,8 +81,8 @@ class ListedGoal(Goal):
 
     stale_periods: int | None = None
     """Fully ended periods of its cadence since `health_period` (or since
-    it was created, if it's never been assessed); `None` without a
-    cadence."""
+    it was created, if it's never been assessed); `None` unless it's
+    active and has a cadence."""
 
 
 @dataclass(kw_only=True)
@@ -129,10 +136,21 @@ class GoalTree:
     def goal_for_label(self, label_id: str | None) -> Goal | None:
         return self._by_label.get(label_id) if label_id else None
 
-    def check_goal_ids(self, goal_ids: Collection[str]) -> None:
+    def check_goal_ids(
+        self, goal_ids: Collection[str], *, for_events: bool = False, already: Collection[str] = ()
+    ) -> None:
         """Raise ValueError naming any id that isn't a goal, with the
-        closest matches (by id or name) as suggestions."""
+        closest matches (by id or name) as suggestions. With `for_events`,
+        a deleted goal is refused too -- no event can be given one -- unless
+        it's in `already`, the goals the event has now."""
         unknown = [goal_id for goal_id in goal_ids if goal_id not in self.by_id]
+        deleted = [
+            g for g in goal_ids
+            if for_events and g in self.by_id and self.by_id[g].status == "deleted" and g not in already
+        ]
+        if deleted:
+            names = ", ".join(f"{g} ({self.by_id[g].name})" for g in deleted)
+            raise ValueError(f"Deleted goals can't be given to an event: {names}")
         if not unknown:
             return
         problems = []
@@ -200,9 +218,11 @@ class Goals:
         touches the calendar."""
         return GoalTree(self._sheet.read())
 
-    def get_goals(self, include_inactive: bool = False) -> GoalList:
+    def get_goals(self, statuses: Collection[str] | None = None) -> GoalList:
+        """The goals with any of `statuses` (by default DEFAULT_STATUSES)."""
+        statuses = _check_statuses(statuses)
         raw_labels, _etag = self._calendar_client.list_event_labels()
-        return self._listing(self.tree(), raw_labels, include_inactive)
+        return self._listing(self.tree(), raw_labels, statuses)
 
     def create_goal(self, goal: Goal) -> GoalList:
         if not goal.name:
@@ -211,7 +231,7 @@ class Goals:
         new = replace(
             goal,
             **{name: None for name in _READ_ONLY_FIELDS},
-            active=True if goal.active is None else goal.active,
+            status=goal.status or "active",
         )
         new.id = self._new_id(tree)
         new.created = self._today()
@@ -221,7 +241,8 @@ class Goals:
     def update_goal(self, goal: Goal, clear_fields: Collection[str] = ()) -> GoalList:
         """Set whichever of `goal`'s fields aren't `None` (other than the
         read-only ones) on the goal with `goal.id`, and blank those named
-        in `clear_fields`. Changing `active` adds or removes its label."""
+        in `clear_fields`. Making it active, or anything else, adds or
+        removes its label."""
         if not goal.id:
             raise ValueError("update_goal needs the goal's id")
         unknown = set(clear_fields) - CLEARABLE_FIELDS
@@ -280,7 +301,7 @@ class Goals:
             # The etag guards against a concurrent label change since the
             # read above (EventLabelConflictError).
             raw_labels = self._calendar_client.replace_event_labels(desired, etag)
-        return self._listing(tree, raw_labels, include_inactive=False)
+        return self._listing(tree, raw_labels, DEFAULT_STATUSES)
 
     def _check_budget(self, tree: GoalTree, raw_labels: list[RawEventLabel]) -> list[RawEventLabel]:
         """The calendar's labels as they should be for `tree`; ValueError if
@@ -295,11 +316,12 @@ class Goals:
             raise ValueError(
                 f"That would need {len(desired)} event labels, but a calendar holds {MAX_LABELS} "
                 f"({unnamed} are Calendar's own unnamed ones), so at most {MAX_LABELS - unnamed} goals "
-                "can be active at once. Deactivate a goal you're not working on (its history is kept)."
+                "can be active at once. Make one you're not working on inactive, completed or archived "
+                "(its history is kept)."
             )
         return desired
 
-    def _listing(self, tree: GoalTree, raw_labels: list[RawEventLabel], include_inactive: bool) -> GoalList:
+    def _listing(self, tree: GoalTree, raw_labels: list[RawEventLabel], statuses: Collection[str]) -> GoalList:
         unnamed = sum(1 for label in raw_labels if not label.name)
         today = self._today()
         return GoalList(
@@ -310,7 +332,7 @@ class Goals:
                     stale_periods=_stale_periods(goal, today),
                 )
                 for goal in tree.ordered()
-                if include_inactive or goal.active
+                if goal.status in statuses
             ],
             label_slots_used=unnamed + sum(1 for goal in tree.goals if goal.active),
         )
@@ -353,7 +375,7 @@ class Goals:
                 Goal(
                     id=goal_id,
                     name=unique,
-                    active=True,
+                    status="active",
                     label_id=label_id or str(uuid.uuid5(_LABEL_ID_NAMESPACE, goal_id)),
                     background_color=background_color,
                     priority=priority,
@@ -371,9 +393,18 @@ class Goals:
         return sheet
 
 
+def _check_statuses(statuses: Collection[str] | None) -> tuple[str, ...]:
+    if statuses is None:
+        return DEFAULT_STATUSES
+    unknown = sorted(set(statuses) - set(GOAL_STATUSES))
+    if unknown:
+        raise ValueError(f"Unknown goal status(es) {unknown}; statuses are {', '.join(GOAL_STATUSES)}")
+    return tuple(statuses)
+
+
 def _stale_periods(goal: Goal, today: date) -> int | None:
     """See ListedGoal.stale_periods."""
-    if goal.cadence not in CADENCES:
+    if goal.cadence not in CADENCES or not goal.active:
         return None
     try:
         latest = parse_period(goal.cadence, goal.health_period) if goal.health_period else None
@@ -414,8 +445,8 @@ def _validate(goals: list[Goal]) -> None:
             if key in siblings:
                 problems.append(f"{label} has the same name as its sibling {siblings[key]!r}")
             siblings[key] = goal.id
-        if goal.active is None:
-            problems.append(f"{label} has no active value (TRUE or FALSE)")
+        if goal.status not in GOAL_STATUSES:
+            problems.append(f"{label}'s status must be one of {', '.join(GOAL_STATUSES)}")
         if not goal.label_id:
             problems.append(f"{label} has no label_id")
         if goal.parent_id is not None:

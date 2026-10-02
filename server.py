@@ -27,7 +27,7 @@ from config import (
 from oauth_proxy import oauth_proxy_handlers
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_health import Assessment, GoalHealth
-from utilities.goal_sheet import Cadence, Goal
+from utilities.goal_sheet import Cadence, Goal, GoalStatus
 from utilities.goals import GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
@@ -266,13 +266,23 @@ def _public_events(events: list[Event]) -> list[PublicEvent]:
     return [PublicEvent.from_event(event, tree) for event in fill_in_from_goals(events, tree)]
 
 
-def _check_goal_ids(event: PublicEvent) -> None:
-    """Refuse goal_ids that don't name goals, suggesting close matches."""
-    if event.goal_ids:
-        try:
-            get_goal_store().tree().check_goal_ids(event.goal_ids)
-        except ValueError as exc:
-            raise ToolError(str(exc)) from exc
+def _check_goal_ids(event: PublicEvent, *, existing: bool = False) -> None:
+    """Refuse goal_ids that don't name goals, suggesting close matches, or
+    that add a deleted goal to the event. An `existing` event may keep a
+    deleted goal it already has, so sending it back unchanged still works."""
+    if not event.goal_ids:
+        return
+    tree = get_goal_store().tree()
+    already: list[str] = []
+    if existing and event.id and any(
+        tree.by_id[g].status == "deleted" for g in event.goal_ids if g in tree.by_id
+    ):
+        current = fill_in_from_goals([get_calendar_client().get_event(event.id)], tree)[0]
+        already = current.goal_ids or []
+    try:
+        tree.check_goal_ids(event.goal_ids, for_events=True, already=already)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
@@ -309,7 +319,7 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
     change its goals ([] for none). Returns the events affected by the
     update."""
     with track("update_event"), cached_sheet_reads():
-        _check_goal_ids(event)
+        _check_goal_ids(event, existing=True)
         updated_event = event.to_event()
         try:
             applied = get_reallocating_calendar().update_event(
@@ -343,14 +353,15 @@ def delete_event(id: str) -> list[PublicEvent]:
 
 
 @mcp.tool()
-def get_goals(include_inactive: bool = False) -> GoalList:
-    """The goal tree: every active goal (and inactive ones too with
-    include_inactive), parents before their children, each with its path
-    from the top. Also how many of the calendar's event labels are in
-    use: each active goal takes one."""
+def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
+    """The goal tree: the goals with any of these statuses (by default
+    proposed, active and inactive -- not completed, archived or deleted
+    ones), parents before their children, each with its path from the top.
+    Also how many of the calendar's event labels are in use: each active
+    goal takes one."""
     with track("get_goals"), cached_sheet_reads():
         try:
-            return get_goal_store().get_goals(include_inactive)
+            return get_goal_store().get_goals(statuses)
         except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
 
@@ -359,12 +370,13 @@ def get_goals(include_inactive: bool = False) -> GoalList:
 def create_goal(goal: Goal) -> GoalList:
     """Create a goal: a name (at most 50 characters, unique among its
     siblings), optionally a parent_id to make it a sub-goal, and any of
-    its other properties. It's active unless active is false; each active
-    goal takes one of the calendar's event labels, and its events are
-    shown in its color (background_color, or derived from priority).
-    priority and fixed_time are inherited by sub-goals and events that
-    don't set their own. id, label_id and created are assigned. Returns
-    the resulting active goals."""
+    its other properties. Its status is active unless given (e.g.
+    "proposed" for one suggested but not taken on yet); each active goal
+    takes one of the calendar's event labels, and its events are shown in
+    its color (background_color, or derived from priority). priority and
+    fixed_time are inherited by sub-goals and events that don't set their
+    own. id, label_id and created are assigned. Returns the resulting
+    proposed, active and inactive goals."""
     with track("create_goal"), cached_sheet_reads():
         try:
             return get_goal_store().create_goal(goal)
@@ -384,10 +396,14 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
     """Update a goal by id. Omitted properties keep their current value;
     list one in clear_fields to blank it instead (clearing parent_id
     makes it a top-level goal; clearing background_color makes its color
-    follow its priority). Setting active to false frees its event label
-    but keeps its history; setting it back to true restores the label,
-    and its past events' color with it. Goals are never deleted. Returns
-    the resulting active goals."""
+    follow its priority). status is one of: proposed (suggested, not taken
+    on yet), active (being worked on), inactive (paused), completed
+    (achieved), archived (no longer relevant) or deleted (shouldn't have
+    existed; no event can be given it). Only an active goal holds an event
+    label and is assessed; any other status frees its label but keeps its
+    history, and making it active again restores the label, and its past
+    events' color with it. Returns the resulting proposed, active and
+    inactive goals."""
     with track("update_goal"), cached_sheet_reads():
         try:
             return get_goal_store().update_goal(goal, clear_fields or ())
@@ -400,7 +416,8 @@ def sync_goals_from_sheet() -> GoalList:
     """After hand edits to the Goals tab of the calendar metadata
     spreadsheet, make the calendar's event labels match it: one label per
     active goal (Calendar's own unnamed labels are left alone), and any
-    other label removed. Returns the resulting active goals."""
+    other label removed. Returns the resulting proposed, active and
+    inactive goals."""
     with track("sync_goals_from_sheet"), cached_sheet_reads():
         try:
             return get_goal_store().sync()
@@ -462,7 +479,7 @@ def get_goal_history(
 def rebuild_goal_health_cache() -> GoalList:
     """Recompute every goal's at-a-glance health (health, health_period,
     health_trend in the goals tab) from its confirmed assessments, e.g.
-    after hand edits. Returns every goal, inactive ones included."""
+    after hand edits. Returns every goal, whatever its status."""
     with track("rebuild_goal_health_cache"), cached_sheet_reads():
         try:
             return get_goal_health().rebuild_cache()

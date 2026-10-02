@@ -10,7 +10,7 @@ import calendar_cli
 from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.goal_calendar import GoalCalendar
-from utilities.goal_sheet import Goal
+from utilities.goal_sheet import GOAL_STATUSES, Goal
 from utilities.goals import GoalList, GoalTree, ListedGoal
 from utilities.note_compaction import CompactionError
 from utilities.noted_time_sheet import NotedTime, SheetNote
@@ -121,8 +121,10 @@ class TestParseGoalKeyValue:
     def test_parses_name(self):
         assert calendar_cli._parse_goal_key_value("name=Design Work") == ("name", "Design Work")
 
-    def test_parses_active(self):
-        assert calendar_cli._parse_goal_key_value("active=false") == ("active", False)
+    def test_parses_a_status(self):
+        assert calendar_cli._parse_goal_key_value("status=archived") == ("status", "archived")
+        with pytest.raises(argparse.ArgumentTypeError, match="expected one of proposed, active"):
+            calendar_cli._parse_goal_key_value("status=done")
 
     def test_parses_measure_as_json(self):
         assert calendar_cli._parse_goal_key_value('measure={"kind":"duration"}') == (
@@ -356,7 +358,7 @@ class TestMainUpdateProperties:
         client.update_event.side_effect = lambda event: event
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
         goals = MagicMock()
-        goals.tree.return_value = GoalTree([Goal(id="g1", name="Cooking", active=True, label_id="label-1")])
+        goals.tree.return_value = GoalTree([Goal(id="g1", name="Cooking", status="active", label_id="label-1")])
         monkeypatch.setattr(calendar_cli, "build_goals", lambda: goals)
         monkeypatch.setattr(
             sys, "argv", ["calendar_cli.py", "update_properties", "abc123", "goal_ids=g1, g2"]
@@ -720,17 +722,25 @@ class TestMainGoals:
     def test_list_goals_prints_each_goal_and_the_label_count(self, capsys, monkeypatch):
         goals = _fake_goals(monkeypatch)
         goals.get_goals.return_value = _goal_list(
-            ListedGoal(id="g1", name="Cooking", active=True, path="Cooking"),
-            ListedGoal(id="g2", name="Tofu", active=False, path="Cooking › Tofu"),
+            ListedGoal(id="g1", name="Cooking", status="active", path="Cooking"),
+            ListedGoal(id="g2", name="Tofu", status="inactive", path="Cooking › Tofu"),
         )
 
         self._run(monkeypatch, "list_goals", "--all")
 
-        goals.get_goals.assert_called_once_with(include_inactive=True)
+        goals.get_goals.assert_called_once_with(GOAL_STATUSES)
         out = capsys.readouterr().out
         assert "g1\tactive\tCooking" in out
         assert "g2\tinactive\tCooking › Tofu" in out
         assert "(2 of 200 event labels in use)" in out
+
+    def test_list_goals_picks_statuses(self, monkeypatch):
+        goals = _fake_goals(monkeypatch)
+        goals.get_goals.return_value = _goal_list()
+
+        self._run(monkeypatch, "list_goals", "--status", "completed", "--status", "archived")
+
+        goals.get_goals.assert_called_once_with(["completed", "archived"])
 
     def test_list_goals_says_when_there_are_none(self, capsys, monkeypatch):
         goals = _fake_goals(monkeypatch)
@@ -738,7 +748,7 @@ class TestMainGoals:
 
         self._run(monkeypatch, "list_goals")
 
-        goals.get_goals.assert_called_once_with(include_inactive=False)
+        goals.get_goals.assert_called_once_with(None)
         assert "No goals found." in capsys.readouterr().out
 
     def test_create_goal(self, monkeypatch):
@@ -753,9 +763,9 @@ class TestMainGoals:
         goals = _fake_goals(monkeypatch)
         goals.update_goal.return_value = _goal_list()
 
-        self._run(monkeypatch, "update_goal", "g1", "active=false", "--clear", "cadence")
+        self._run(monkeypatch, "update_goal", "g1", "status=inactive", "--clear", "cadence")
 
-        goals.update_goal.assert_called_once_with(Goal(id="g1", active=False), ["cadence"])
+        goals.update_goal.assert_called_once_with(Goal(id="g1", status="inactive"), ["cadence"])
 
     def test_update_goal_needs_something_to_do(self, monkeypatch):
         _fake_goals(monkeypatch)

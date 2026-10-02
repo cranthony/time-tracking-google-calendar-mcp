@@ -177,7 +177,7 @@ class TestCreateGoal:
     def test_an_inactive_goal_takes_no_label(self):
         goals, calendar, _ = _goals()
 
-        goals.create_goal(Goal(name="Someday", active=False))
+        goals.create_goal(Goal(name="Someday", status="inactive"))
 
         assert calendar.named() == {}
         assert _by_name(goals)["Someday"].label_id
@@ -229,7 +229,7 @@ class TestCreateGoal:
 
         assert [g.name for g in goals.tree().goals] == ["One"]
         # ...but an inactive one still fits.
-        goals.create_goal(Goal(name="Two", active=False))
+        goals.create_goal(Goal(name="Two", status="inactive"))
 
     def test_a_concurrent_label_change_is_refused(self):
         goals, calendar, _ = _goals()
@@ -252,13 +252,13 @@ class TestUpdateGoal:
         goals.create_goal(Goal(name="Cooking"))
         cooking = _by_name(goals)["Cooking"]
 
-        result = goals.update_goal(Goal(id=cooking.id, active=False))
+        result = goals.update_goal(Goal(id=cooking.id, status="inactive"))
 
         assert calendar.named() == {}
-        assert result.goals == []  # only active goals are listed
+        assert [(g.name, g.status) for g in result.goals] == [("Cooking", "inactive")]
         assert _by_name(goals)["Cooking"].label_id == cooking.label_id
 
-        goals.update_goal(Goal(id=cooking.id, active=True))
+        goals.update_goal(Goal(id=cooking.id, status="active"))
 
         assert list(calendar.named()) == [cooking.label_id]
 
@@ -359,23 +359,52 @@ class TestGetGoals:
         goals.create_goal(Goal(name="Hosting"))
         cooking = _by_name(goals)["Cooking"]
         goals.create_goal(Goal(name="Tofu", parent_id=cooking.id))
-        goals.create_goal(Goal(name="Old", active=False))
+        goals.create_goal(Goal(name="Old", status="inactive"))
 
-        active = goals.get_goals()
-        everything = goals.get_goals(include_inactive=True)
+        active = goals.get_goals(["active"])
+        default = goals.get_goals()
 
         assert [g.path for g in active.goals] == ["Cooking", "Cooking › Tofu", "Hosting"]
-        assert [g.path for g in everything.goals] == ["Cooking", "Cooking › Tofu", "Hosting", "Old"]
+        assert [g.path for g in default.goals] == ["Cooking", "Cooking › Tofu", "Hosting", "Old"]
         assert active.label_slots_used == 4  # three active goals + the unnamed label
         assert active.label_slots_total == 200
+
+    def test_lists_proposed_active_and_inactive_goals_unless_asked_for_others(self):
+        goals, calendar, _ = _goals()
+        for status in ("proposed", "active", "inactive", "completed", "archived", "deleted"):
+            goals.create_goal(Goal(name=status.title(), status=status))
+
+        assert [g.status for g in goals.get_goals().goals] == ["proposed", "active", "inactive"]
+        assert [g.status for g in goals.get_goals(["completed", "deleted"]).goals] == ["completed", "deleted"]
+        # Only the active one holds a label.
+        assert [name for name, _color in calendar.named().values()] == ["Active"]
+
+    def test_refuses_an_unknown_status(self):
+        goals, _, _ = _goals()
+
+        with pytest.raises(ValueError, match="Unknown goal status"):
+            goals.get_goals(["done"])
+        with pytest.raises(ValueError, match="status must be one of proposed, active"):
+            goals.create_goal(Goal(name="Cooking", status="done"))
+
+    def test_a_deleted_goal_cant_be_given_to_an_event_but_one_can_keep_it(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Oops", status="deleted"))
+        tree = goals.tree()
+        oops = _by_name(goals)["Oops"]
+
+        tree.check_goal_ids([oops.id])  # it still exists
+        with pytest.raises(ValueError, match=r"Deleted goals can't be given to an event: \w+ \(Oops\)"):
+            tree.check_goal_ids([oops.id], for_events=True)
+        tree.check_goal_ids([oops.id], for_events=True, already=[oops.id])
 
 
 class TestGoalTree:
     def _tree(self):
         return GoalTree([
-            Goal(id="a", name="A", active=True, label_id="la", priority=1, fixed_time=True),
-            Goal(id="b", name="B", active=False, label_id="lb", parent_id="a"),
-            Goal(id="c", name="C", active=False, label_id="lc", parent_id="b", priority=3),
+            Goal(id="a", name="A", status="active", label_id="la", priority=1, fixed_time=True),
+            Goal(id="b", name="B", status="inactive", label_id="lb", parent_id="a"),
+            Goal(id="c", name="C", status="inactive", label_id="lc", parent_id="b", priority=3),
         ])
 
     def test_inherits_priority_and_fixed_time_from_the_nearest_ancestor_that_sets_them(self):
@@ -388,12 +417,12 @@ class TestGoalTree:
         tree = self._tree()
 
         assert tree.active_label_id("c") == "la"
-        assert GoalTree([Goal(id="x", active=False, label_id="lx")]).active_label_id("x") is None
+        assert GoalTree([Goal(id="x", status="inactive", label_id="lx")]).active_label_id("x") is None
 
     def test_survives_a_cycle_from_a_hand_edit(self):
         tree = GoalTree([
-            Goal(id="a", name="A", parent_id="b", active=True, label_id="la"),
-            Goal(id="b", name="B", parent_id="a", active=True, label_id="lb"),
+            Goal(id="a", name="A", parent_id="b", status="active", label_id="la"),
+            Goal(id="b", name="B", parent_id="a", status="active", label_id="lb"),
         ])
 
         assert [g.id for g in tree.chain("a")] == ["a", "b"]

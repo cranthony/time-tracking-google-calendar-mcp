@@ -13,7 +13,7 @@ Usage:
     python calendar_cli.py create_raw_label key=value [key=value ...]
     python calendar_cli.py update_raw_label <label_id> key=value [key=value ...]
     python calendar_cli.py delete_raw_label <label_id>
-    python calendar_cli.py list_goals [--all]
+    python calendar_cli.py list_goals [--status status ...] [--all]
     python calendar_cli.py create_goal key=value [key=value ...]
     python calendar_cli.py update_goal <goal_id> [key=value ...] [--clear attribute ...]
     python calendar_cli.py sync_goals
@@ -62,11 +62,13 @@ Usage:
   calendar's goals (`utilities/goals.py`'s `Goals`), stored in the Goals
   tab of its metadata spreadsheet (migrated from its event labels the
   first time any of them runs). Each prints the resulting goals, one per
-  line: id, active or not, and path. `list_goals` shows the active ones
-  (`--all` for inactive ones too) without changing anything.
+  line: id, status, and path. `list_goals` shows the proposed, active and
+  inactive ones (`--status` to pick others, repeatable; `--all` for every
+  status) without changing anything.
   `create_goal` needs `name=...`; `update_goal` sets whichever
   attributes are given and blanks any named with `--clear`.
-  `active=false` frees the goal's label but keeps its history.
+  `status=inactive` (or completed, archived, deleted, proposed) frees the
+  goal's label but keeps its history; `status=active` restores it.
   `sync_goals` applies hand edits to the Goals tab to the calendar's
   labels. `measure` is JSON (e.g. `measure={"kind":"duration"}`) and
   `deadline` an ISO date. See docs/goals-design.md.
@@ -113,7 +115,7 @@ from config import (
     build_noted_time_sheet,
 )
 from utilities.goal_calendar import GoalCalendar
-from utilities.goal_sheet import Goal
+from utilities.goal_sheet import GOAL_STATUSES, Goal
 from utilities.goals import CLEARABLE_FIELDS, GoalList
 from utilities.note_compaction import CompactionError
 from utilities.note_compactor import delete_note, edit_note
@@ -140,6 +142,12 @@ def _parse_bool(value: str) -> bool:
     if lowered in ("false", "0", "no"):
         return False
     raise ValueError(f"could not parse boolean: {value!r}")
+
+
+def _parse_status(value: str) -> str:
+    if value not in GOAL_STATUSES:
+        raise ValueError(f"expected one of {', '.join(GOAL_STATUSES)}")
+    return value
 
 
 def _parse_iso_datetime(value: str) -> datetime:
@@ -198,7 +206,7 @@ itself, not here)."""
 _GOAL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "parent_id": str,
     "name": str,
-    "active": _parse_bool,
+    "status": _parse_status,
     "background_color": str,
     "priority": int,
     "fixed_time": _parse_bool,
@@ -292,7 +300,7 @@ def _print_goals(goal_list: GoalList) -> None:
     if not goal_list.goals:
         print("No goals found.")
     for goal in goal_list.goals:
-        print(f"{goal.id}\t{'active' if goal.active else 'inactive'}\t{goal.path}")
+        print(f"{goal.id}\t{goal.status}\t{goal.path}")
     print(f"({goal_list.label_slots_used} of {goal_list.label_slots_total} event labels in use)")
 
 
@@ -428,7 +436,13 @@ def _build_parser() -> argparse.ArgumentParser:
     delete_raw_label_parser.add_argument("label_id", help="The label id.")
 
     list_goals_parser = subparsers.add_parser("list_goals", help="List this calendar's goals.")
-    list_goals_parser.add_argument("--all", action="store_true", help="Include inactive goals.")
+    list_goals_parser.add_argument(
+        "--status",
+        action="append",
+        choices=GOAL_STATUSES,
+        help="A status to list; repeat for several. Default: proposed, active and inactive.",
+    )
+    list_goals_parser.add_argument("--all", action="store_true", help="List goals of every status.")
 
     create_goal_parser = subparsers.add_parser("create_goal", help="Create a new goal.")
     create_goal_parser.add_argument(
@@ -588,7 +602,7 @@ def main() -> None:
     elif args.command in ("list_goals", "create_goal", "update_goal", "sync_goals"):
         try:
             if args.command == "list_goals":
-                goal_list = build_goals().get_goals(include_inactive=args.all)
+                goal_list = build_goals().get_goals(GOAL_STATUSES if args.all else args.status)
             elif args.command == "create_goal":
                 goal_list = build_goals().create_goal(Goal(**dict(args.properties)))
             elif args.command == "update_goal":

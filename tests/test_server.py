@@ -69,7 +69,7 @@ def _fake_goals(monkeypatch, *goals: Goal) -> MagicMock:
 
 
 def _goal(goal_id: str = "g1", **overrides) -> Goal:
-    fields = {"id": goal_id, "name": "Focus", "active": True, "label_id": f"label-{goal_id}"}
+    fields = {"id": goal_id, "name": "Focus", "status": "active", "label_id": f"label-{goal_id}"}
     fields.update(overrides)
     return Goal(**fields)
 
@@ -395,6 +395,20 @@ class TestUpdateEvent:
 
         reallocating_calendar.update_event.assert_not_called()
 
+    def test_an_event_can_keep_a_deleted_goal_it_already_has(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        _fake_goals(monkeypatch, _goal("g1", name="Oops", status="deleted"), _goal("g2"))
+        client.get_event.return_value = _event(id="abc123", goal_ids=["g1"])
+        reallocating_calendar.update_event.return_value = [_event(id="abc123", goal_ids=["g1"])]
+
+        server.update_event(_public_event(id="abc123", goal_ids=["g1"], summary="Renamed"))
+
+        reallocating_calendar.update_event.assert_called_once()
+        client.get_event.return_value = _event(id="abc123", goal_ids=["g2"])
+        with pytest.raises(ToolError, match="Deleted goals"):
+            server.update_event(_public_event(id="abc123", goal_ids=["g2", "g1"]))
+
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.side_effect = ValueError(
@@ -458,6 +472,15 @@ class TestCreateEvent:
 
         reallocating_calendar.create_event.assert_not_called()
 
+    def test_refuses_a_deleted_goal(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        _fake_goals(monkeypatch, _goal("g1", name="Oops", status="deleted"))
+
+        with pytest.raises(ToolError, match="Deleted goals can't be given to an event"):
+            server.create_event(_public_event(goal_ids=["g1"]))
+
+        reallocating_calendar.create_event.assert_not_called()
+
     def test_passes_valid_goal_ids_through(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         _fake_goals(monkeypatch, _goal("g1"))
@@ -492,8 +515,8 @@ class TestGetGoals:
         goal_list = GoalList(goals=[], label_slots_used=0)
         store.get_goals.return_value = goal_list
 
-        assert server.get_goals(include_inactive=True) is goal_list
-        store.get_goals.assert_called_once_with(True)
+        assert server.get_goals(["completed"]) is goal_list
+        store.get_goals.assert_called_once_with(["completed"])
 
     def test_wraps_errors_as_tool_errors(self, monkeypatch):
         store = _fake_goals(monkeypatch)
@@ -527,7 +550,7 @@ class TestUpdateGoal:
         store = _fake_goals(monkeypatch)
         goal_list = GoalList(goals=[], label_slots_used=0)
         store.update_goal.return_value = goal_list
-        goal = Goal(id="g1", active=False)
+        goal = Goal(id="g1", status="inactive")
 
         assert server.update_goal(goal) is goal_list
         store.update_goal.assert_called_once_with(goal, ())

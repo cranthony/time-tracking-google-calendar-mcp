@@ -340,7 +340,7 @@ class TestMeasure:
 
     def test_only_active_goals_with_that_cadence(self):
         health, store, _, goals = _setup(self._goals())
-        store.update_goal(Goal(id=goals["Cooking"].id, active=False))
+        store.update_goal(Goal(id=goals["Cooking"].id, status="inactive"))
 
         measured = {a.goal_id for a in health.measure("weekly")}
 
