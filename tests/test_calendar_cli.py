@@ -9,8 +9,9 @@ import pytest
 import calendar_cli
 from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
-from utilities.event_labels import EventLabel
-from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.goal_calendar import GoalCalendar
+from utilities.goal_sheet import Goal
+from utilities.goals import GoalList, GoalTree, ListedGoal
 from utilities.note_compaction import CompactionError
 from utilities.noted_time_sheet import NotedTime, SheetNote
 
@@ -34,10 +35,8 @@ def _raw_event_label(**overrides) -> RawEventLabel:
     return RawEventLabel(**fields)
 
 
-def _event_label(**overrides) -> EventLabel:
-    fields = {"id": "label-1", "background_color": "#8e24aa", "name": "Design Work"}
-    fields.update(overrides)
-    return EventLabel(**fields)
+def _goal_list(*goals: ListedGoal) -> GoalList:
+    return GoalList(goals=list(goals), label_slots_used=len(goals))
 
 
 class TestParseDuration:
@@ -118,29 +117,28 @@ class TestParseKeyValue:
             calendar_cli._parse_event_key_value("priority=not-a-number")
 
 
-class TestParseLabelKeyValue:
-    def test_parses_background_color(self):
-        assert calendar_cli._parse_label_key_value("background_color=#8e24aa") == (
-            "background_color",
-            "#8e24aa",
-        )
-
+class TestParseGoalKeyValue:
     def test_parses_name(self):
-        assert calendar_cli._parse_label_key_value("name=Design Work") == (
-            "name",
-            "Design Work",
+        assert calendar_cli._parse_goal_key_value("name=Design Work") == ("name", "Design Work")
+
+    def test_parses_active(self):
+        assert calendar_cli._parse_goal_key_value("active=false") == ("active", False)
+
+    def test_parses_measure_as_json(self):
+        assert calendar_cli._parse_goal_key_value('measure={"kind":"duration"}') == (
+            "measure",
+            {"kind": "duration"},
         )
 
-    def test_parses_priority(self):
-        assert calendar_cli._parse_label_key_value("priority=1") == ("priority", 1)
+    def test_parses_deadline_as_a_date(self):
+        from datetime import date
 
-    def test_raises_when_missing_equals_sign(self):
-        with pytest.raises(argparse.ArgumentTypeError):
-            calendar_cli._parse_label_key_value("background_color")
+        assert calendar_cli._parse_goal_key_value("deadline=2026-12-31") == ("deadline", date(2026, 12, 31))
 
-    def test_raises_on_unknown_attribute(self):
-        with pytest.raises(argparse.ArgumentTypeError):
-            calendar_cli._parse_label_key_value("id=new-id")
+    def test_raises_on_read_only_attributes(self):
+        for key in ("id", "label_id", "created"):
+            with pytest.raises(argparse.ArgumentTypeError):
+                calendar_cli._parse_goal_key_value(f"{key}=x")
 
 
 class TestParseRawLabelKeyValue:
@@ -173,26 +171,24 @@ class TestUpdatableAttributeParsers:
     def test_covers_every_event_attribute_the_api_accepts_except_id(self):
         # id would repoint the patch at a different event; recurring_event_id
         # is assigned by Google and never sent to the API, so setting it here
-        # would silently have no effect. label_priority/label_is_fixed_time
-        # belong to the event's label, not the event, and are never sent
+        # would silently have no effect. goal_priority/goal_is_fixed_time
+        # belong to the event's goal, not the event, and are never sent
         # to the API either.
         event_attributes = {f.name for f in dataclasses.fields(Event)} - {
             "id",
             "recurring_event_id",
-            "label_priority",
-            "label_is_fixed_time",
+            "goal_priority",
+            "goal_is_fixed_time",
         }
 
         assert set(calendar_cli._UPDATABLE_ATTRIBUTE_PARSERS) == event_attributes
 
 
-class TestLabelAttributeParsers:
-    def test_covers_every_label_attribute_except_id(self):
-        # id is assigned by Google when a label is created, and would
-        # repoint update_label at a different label if it could be set.
-        label_attributes = {f.name for f in dataclasses.fields(EventLabel)} - {"id"}
+class TestGoalAttributeParsers:
+    def test_covers_every_goal_attribute_except_the_read_only_ones(self):
+        goal_attributes = {f.name for f in dataclasses.fields(Goal)} - {"id", "label_id", "created"}
 
-        assert set(calendar_cli._LABEL_ATTRIBUTE_PARSERS) == label_attributes
+        assert set(calendar_cli._GOAL_ATTRIBUTE_PARSERS) == goal_attributes
 
 
 class TestRawLabelAttributeParsers:
@@ -354,6 +350,23 @@ class TestMainUpdateProperties:
         assert sent_event.description is None
         assert sent_event.location is None
 
+    def test_goal_ids_also_set_the_label_they_imply(self, monkeypatch):
+        client = MagicMock()
+        client.update_event.side_effect = lambda event: event
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
+        goals = MagicMock()
+        goals.tree.return_value = GoalTree([Goal(id="g1", name="Cooking", active=True, label_id="label-1")])
+        monkeypatch.setattr(calendar_cli, "build_goals", lambda: goals)
+        monkeypatch.setattr(
+            sys, "argv", ["calendar_cli.py", "update_properties", "abc123", "goal_ids=g1, g2"]
+        )
+
+        calendar_cli.main()
+
+        sent_event = client.update_event.call_args[0][0]
+        assert sent_event.goal_ids == ["g1", "g2"]
+        assert sent_event.event_label_id == "label-1"
+
 
 def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
     reallocating_calendar = MagicMock()
@@ -364,16 +377,16 @@ def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
 
 
 class TestBuildReallocatingCalendar:
-    def test_wraps_client_in_a_label_priority_calendar(self, monkeypatch):
+    def test_wraps_client_in_a_goal_calendar(self, monkeypatch):
         client = MagicMock()
-        event_labels = MagicMock()
-        monkeypatch.setattr(calendar_cli, "build_event_labels", lambda: event_labels)
+        goals = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_goals", lambda: goals)
 
         reallocating_calendar = calendar_cli._build_reallocating_calendar(client)
 
-        assert isinstance(reallocating_calendar._client, LabelPriorityCalendar)
+        assert isinstance(reallocating_calendar._client, GoalCalendar)
         assert reallocating_calendar._client._client is client
-        assert reallocating_calendar._client._event_labels is event_labels
+        assert reallocating_calendar._client._goals is goals
 
 
 class TestMainUpdate:
@@ -555,10 +568,10 @@ class TestMainDelete:
         assert "abc123" in capsys.readouterr().out
 
 
-def _fake_event_labels(monkeypatch) -> MagicMock:
-    event_labels = MagicMock()
-    monkeypatch.setattr(calendar_cli, "build_event_labels", lambda: event_labels)
-    return event_labels
+def _fake_goals(monkeypatch) -> MagicMock:
+    goals = MagicMock()
+    monkeypatch.setattr(calendar_cli, "build_goals", lambda: goals)
+    return goals
 
 
 def _fake_noted_time_sheet(monkeypatch) -> MagicMock:
@@ -697,226 +710,72 @@ class TestMainDeleteRawLabel:
         assert "label-1" in capsys.readouterr().out
 
 
-class TestMainSyncLabels:
-    def test_syncs_from_tracked_sheet(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.sync_labels.return_value = [_event_label(priority=1)]
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "sync_labels"])
-
+class TestMainGoals:
+    def _run(self, monkeypatch, *argv):
+        monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", *argv])
         calendar_cli.main()
 
-        event_labels.sync_labels.assert_called_once_with()
+    def test_list_goals_prints_each_goal_and_the_label_count(self, capsys, monkeypatch):
+        goals = _fake_goals(monkeypatch)
+        goals.get_goals.return_value = _goal_list(
+            ListedGoal(id="g1", name="Cooking", active=True, path="Cooking"),
+            ListedGoal(id="g2", name="Tofu", active=False, path="Cooking › Tofu"),
+        )
+
+        self._run(monkeypatch, "list_goals", "--all")
+
+        goals.get_goals.assert_called_once_with(include_inactive=True)
         out = capsys.readouterr().out
-        assert "label-1" in out
+        assert "g1\tactive\tCooking" in out
+        assert "g2\tinactive\tCooking › Tofu" in out
+        assert "(2 of 200 event labels in use)" in out
 
-    def test_prints_message_when_no_labels(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.sync_labels.return_value = []
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "sync_labels"])
+    def test_list_goals_says_when_there_are_none(self, capsys, monkeypatch):
+        goals = _fake_goals(monkeypatch)
+        goals.get_goals.return_value = _goal_list()
 
-        calendar_cli.main()
+        self._run(monkeypatch, "list_goals")
 
-        assert "No event labels found." in capsys.readouterr().out
+        goals.get_goals.assert_called_once_with(include_inactive=False)
+        assert "No goals found." in capsys.readouterr().out
 
+    def test_create_goal(self, monkeypatch):
+        goals = _fake_goals(monkeypatch)
+        goals.create_goal.return_value = _goal_list()
 
-class TestMainCreateLabel:
-    def test_creates_label_with_name(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = [_event_label()]
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "calendar_cli.py",
-                "create_label",
-                "background_color=#8e24aa",
-                "name=Design Work",
-            ],
-        )
+        self._run(monkeypatch, "create_goal", "name=Cooking", "parent_id=g1", "priority=2")
 
-        calendar_cli.main()
+        goals.create_goal.assert_called_once_with(Goal(name="Cooking", parent_id="g1", priority=2))
 
-        event_labels.create_label.assert_called_once_with(
-            EventLabel(background_color="#8e24aa", name="Design Work", priority=None)
-        )
-        out = capsys.readouterr().out
-        assert "label-1" in out
-        assert "Design Work" in out
+    def test_update_goal_sets_and_clears(self, monkeypatch):
+        goals = _fake_goals(monkeypatch)
+        goals.update_goal.return_value = _goal_list()
 
-    def test_creates_label_without_name(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = [_event_label(name=None)]
-        monkeypatch.setattr(
-            sys, "argv", ["calendar_cli.py", "create_label", "background_color=#8e24aa"]
-        )
+        self._run(monkeypatch, "update_goal", "g1", "active=false", "--clear", "cadence")
 
-        calendar_cli.main()
+        goals.update_goal.assert_called_once_with(Goal(id="g1", active=False), ["cadence"])
 
-        event_labels.create_label.assert_called_once_with(
-            EventLabel(background_color="#8e24aa", name=None, priority=None)
-        )
-
-    def test_creates_label_from_priority_alone(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = [
-            _event_label(background_color="#fbd75b", priority=1)
-        ]
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["calendar_cli.py", "create_label", "name=Design Work", "priority=1"],
-        )
-
-        calendar_cli.main()
-
-        event_labels.create_label.assert_called_once_with(
-            EventLabel(background_color=None, name="Design Work", priority=1)
-        )
-
-    def test_no_properties_required_upfront(self, monkeypatch):
-        # create_label doesn't enforce "background_color or priority" itself
-        # -- EventLabels.create_label always resolves a color, defaulting
-        # if neither is given.
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = [_event_label(background_color="#a4bdfc")]
-        monkeypatch.setattr(
-            sys, "argv", ["calendar_cli.py", "create_label", "name=Design Work"]
-        )
-
-        calendar_cli.main()
-
-        event_labels.create_label.assert_called_once_with(
-            EventLabel(background_color=None, name="Design Work", priority=None)
-        )
-
-    def test_passes_fixed_time_and_note(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = [_event_label()]
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["calendar_cli.py", "create_label", "name=Focus", "fixed_time=false", "note=Mornings"],
-        )
-
-        calendar_cli.main()
-
-        event_labels.create_label.assert_called_once_with(
-            EventLabel(name="Focus", fixed_time=False, note="Mornings")
-        )
-
-
-class TestMainUpdateLabel:
-    def test_updates_background_color(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = [_event_label(background_color="#d50000")]
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["calendar_cli.py", "update_label", "label-1", "background_color=#d50000"],
-        )
-
-        calendar_cli.main()
-
-        event_labels.update_label.assert_called_once_with(
-            EventLabel(id="label-1", background_color="#d50000", name=None, priority=None), []
-        )
-        assert "#d50000" in capsys.readouterr().out
-
-    def test_updates_name(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = [_event_label(name="New name")]
-        monkeypatch.setattr(
-            sys, "argv", ["calendar_cli.py", "update_label", "label-1", "name=New name"]
-        )
-
-        calendar_cli.main()
-
-        event_labels.update_label.assert_called_once_with(
-            EventLabel(id="label-1", background_color=None, name="New name", priority=None), []
-        )
-
-    def test_updates_priority(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = [
-            _event_label(background_color="#7ae7bf", priority=3)
-        ]
-        monkeypatch.setattr(
-            sys, "argv", ["calendar_cli.py", "update_label", "label-1", "priority=3"]
-        )
-
-        calendar_cli.main()
-
-        event_labels.update_label.assert_called_once_with(
-            EventLabel(id="label-1", background_color=None, name=None, priority=3), []
-        )
-
-    def test_requires_at_least_one_property(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update_label", "label-1"])
+    def test_update_goal_needs_something_to_do(self, monkeypatch):
+        _fake_goals(monkeypatch)
 
         with pytest.raises(SystemExit):
-            calendar_cli.main()
+            self._run(monkeypatch, "update_goal", "g1")
 
-        event_labels.update_label.assert_not_called()
+    def test_sync_goals(self, monkeypatch):
+        goals = _fake_goals(monkeypatch)
+        goals.sync.return_value = _goal_list()
 
-    def test_passes_fixed_time_and_note(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = [_event_label()]
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            ["calendar_cli.py", "update_label", "label-1", "fixed_time=true", "note=Deep work"],
-        )
+        self._run(monkeypatch, "sync_goals")
 
-        calendar_cli.main()
+        goals.sync.assert_called_once_with()
 
-        event_labels.update_label.assert_called_once_with(
-            EventLabel(id="label-1", fixed_time=True, note="Deep work"), []
-        )
+    def test_errors_exit_with_the_message(self, monkeypatch):
+        goals = _fake_goals(monkeypatch)
+        goals.create_goal.side_effect = ValueError("A goal needs a name")
 
-    def test_clears_attributes(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = [_event_label()]
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "calendar_cli.py",
-                "update_label",
-                "label-1",
-                "--clear",
-                "background_color",
-                "--clear",
-                "note",
-            ],
-        )
-
-        calendar_cli.main()
-
-        event_labels.update_label.assert_called_once_with(
-            EventLabel(id="label-1"), ["background_color", "note"]
-        )
-
-    def test_requires_something_to_change(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        _fake_event_labels(monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update_label", "label-1"])
-
-        with pytest.raises(SystemExit):
-            calendar_cli.main()
+        with pytest.raises(SystemExit, match="error: A goal needs a name"):
+            self._run(monkeypatch, "create_goal", "priority=1")
 
 
 class TestResolveNoteTimestamp:

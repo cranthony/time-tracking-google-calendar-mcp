@@ -14,8 +14,9 @@ import server
 from calendar_clients import google_sheets
 from calendar_clients.google_calendar import Event, EventLabelConflictError
 from server import PublicEvent
-from utilities.event_labels import EventLabel
-from utilities.label_priority_calendar import LabelPriorityCalendar
+from utilities.goal_calendar import GoalCalendar
+from utilities.goal_sheet import Goal
+from utilities.goals import GoalList, GoalTree
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
@@ -47,25 +48,29 @@ def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
 
 
 @pytest.fixture(autouse=True)
-def _no_event_labels(monkeypatch):
-    """Every event tool fills in effective_priority/effective_is_fixed_time
-    from the event labels tab -- faked here as having no labels at all, so
-    tests that don't care about labels never touch a real sheet. Tests
-    that do care set label_priorities/label_fixed_times themselves.
-    Seeds the cache rather than replacing get_calendar_with_event_labels,
-    so its own caching tests still exercise the real one."""
-    event_labels = MagicMock()
-    event_labels.label_priorities.return_value = {}
-    event_labels.label_fixed_times.return_value = {}
-    monkeypatch.setattr(server, "_event_labels", event_labels)
+def _no_goals(monkeypatch):
+    """Every event tool fills in goal_names and effective_priority/
+    effective_is_fixed_time from the goals tab -- faked here as having no
+    goals at all, so tests that don't care about goals never touch a real
+    sheet. Tests that do care use _fake_goals. Seeds the cache rather than
+    replacing get_goal_store, so its own caching tests still exercise the
+    real one."""
+    goals = MagicMock()
+    goals.tree.return_value = GoalTree([])
+    monkeypatch.setattr(server, "_goals", goals)
 
 
-def _fake_event_labels(monkeypatch) -> MagicMock:
-    event_labels = MagicMock()
-    event_labels.label_priorities.return_value = {}
-    event_labels.label_fixed_times.return_value = {}
-    monkeypatch.setattr(server, "get_calendar_with_event_labels", lambda: event_labels)
-    return event_labels
+def _fake_goals(monkeypatch, *goals: Goal) -> MagicMock:
+    store = MagicMock()
+    store.tree.return_value = GoalTree(list(goals))
+    monkeypatch.setattr(server, "get_goal_store", lambda: store)
+    return store
+
+
+def _goal(goal_id: str = "g1", **overrides) -> Goal:
+    fields = {"id": goal_id, "name": "Focus", "active": True, "label_id": f"label-{goal_id}"}
+    fields.update(overrides)
+    return Goal(**fields)
 
 
 def _fake_noted_time_sheet(monkeypatch) -> MagicMock:
@@ -112,11 +117,13 @@ class TestPublicEvent:
         assert field_names.isdisjoint(server.INTERNAL_EVENT_FIELDS)
         # is_cancelled has no Event equivalent -- it's derived from the
         # hidden status field, not a field PublicEvent passes through.
-        # Likewise the effective_* fields, derived from the event label.
+        # Likewise the effective_* fields and goal_names, derived from the
+        # event's goals.
         event_derived_fields = field_names - {
             "is_cancelled",
             "effective_priority",
             "effective_is_fixed_time",
+            "goal_names",
         }
         assert event_derived_fields == {
             f.name for f in dataclasses.fields(Event)
@@ -157,10 +164,8 @@ class TestPublicEvent:
         assert public_event.effective_priority == 1
         assert public_event.effective_is_fixed_time is True
 
-    def test_from_event_takes_effective_fields_from_the_events_label(self):
-        event = _event(
-            id="abc123", event_label_id="label-1", label_priority=0, label_is_fixed_time=True
-        )
+    def test_from_event_takes_effective_fields_from_the_events_goal(self):
+        event = _event(id="abc123", goal_ids=["g1"], goal_priority=0, goal_is_fixed_time=True)
 
         public_event = PublicEvent.from_event(event)
 
@@ -180,12 +185,28 @@ class TestPublicEvent:
         assert event.is_fixed_time is None
         assert event.min_duration is None
 
-    def test_to_event_carries_event_label_id(self):
+    def test_to_event_ignores_event_label_id_since_goals_decide_it(self):
         public_event = _public_event(id="abc123", event_label_id="label-1")
 
         event = public_event.to_event()
 
-        assert event.event_label_id == "label-1"
+        assert event.event_label_id is None
+
+    def test_to_event_carries_goal_ids_but_not_goal_names(self):
+        public_event = _public_event(id="abc123", goal_ids=["g1", "g2"], goal_names=["A", "B"])
+
+        event = public_event.to_event()
+
+        assert event.goal_ids == ["g1", "g2"]
+
+    def test_from_event_names_the_events_goals(self):
+        tree = GoalTree([_goal("g1", name="Cooking"), _goal("g2", name="Hosting")])
+        event = _event(id="abc123", goal_ids=["g2", "g1", "gone"])
+
+        public_event = PublicEvent.from_event(event, tree)
+
+        assert public_event.goal_ids == ["g2", "g1", "gone"]
+        assert public_event.goal_names == ["Hosting", "Cooking", "(unknown goal gone)"]
 
     def test_from_event_exposes_cancellation_alongside_its_other_fields(self):
         event = _event(id="abc123", status="cancelled", priority=1, location="Room")
@@ -262,32 +283,32 @@ class TestListEvents:
 
         assert [event.id for event in result] == ["abc123"]
 
-    def test_fills_in_effective_fields_from_the_event_label(self, monkeypatch):
+    def test_fills_in_goals_and_effective_fields_from_the_event_label(self, monkeypatch):
+        # An event written before goals has only a label: it's read as
+        # serving the goal that owns it.
         client = _fake_client(monkeypatch)
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.label_priorities.return_value = {"label-1": 0}
-        event_labels.label_fixed_times.return_value = {"label-1": True}
+        _fake_goals(monkeypatch, _goal("g1", label_id="label-1", priority=0, fixed_time=True))
         client.list_events.return_value = [_event(id="abc123", event_label_id="label-1")]
 
         result = server.list_events(
             datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
         )
 
+        assert result[0].goal_ids == ["g1"]
+        assert result[0].goal_names == ["Focus"]
         assert result[0].effective_priority == 0
         assert result[0].effective_is_fixed_time is True
         # The event's own fields stay unset, so sending it back to
-        # update_event doesn't copy the label's values onto it.
+        # update_event doesn't copy the goal's values onto it.
         assert result[0].priority is None
         assert result[0].is_fixed_time is None
         assert result[0].min_duration is None
 
-    def test_events_own_values_win_over_the_event_label(self, monkeypatch):
+    def test_events_own_values_win_over_its_goals(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.label_priorities.return_value = {"label-1": 0}
-        event_labels.label_fixed_times.return_value = {"label-1": True}
+        _fake_goals(monkeypatch, _goal("g1", priority=0, fixed_time=True))
         client.list_events.return_value = [
-            _event(id="abc123", event_label_id="label-1", priority=3, is_fixed_time=False)
+            _event(id="abc123", goal_ids=["g1"], priority=3, is_fixed_time=False)
         ]
 
         result = server.list_events(
@@ -317,12 +338,10 @@ class TestGetEvent:
         with pytest.raises(ToolError):
             server.get_event("abc123")
 
-    def test_fills_in_effective_fields_from_the_event_label(self, monkeypatch):
+    def test_fills_in_effective_fields_from_the_events_goal(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.label_priorities.return_value = {"label-1": 0}
-        event_labels.label_fixed_times.return_value = {"label-1": True}
-        client.get_event.return_value = _event(id="abc123", event_label_id="label-1")
+        _fake_goals(monkeypatch, _goal("g1", priority=0, fixed_time=True))
+        client.get_event.return_value = _event(id="abc123", goal_ids=["g1"])
 
         result = server.get_event("abc123")
 
@@ -356,18 +375,24 @@ class TestUpdateEvent:
 
         assert {e.id for e in result} == {"abc123", "def456"}
 
-    def test_fills_in_effective_fields_from_the_event_label(self, monkeypatch):
+    def test_fills_in_effective_fields_from_the_events_goal(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.label_priorities.return_value = {"label-1": 0}
-        reallocating_calendar.update_event.return_value = [
-            _event(id="abc123", event_label_id="label-1")
-        ]
+        _fake_goals(monkeypatch, _goal("g1", priority=0))
+        reallocating_calendar.update_event.return_value = [_event(id="abc123", goal_ids=["g1"])]
 
         result = server.update_event(_public_event(id="abc123"))
 
         assert result[0].effective_priority == 0
         assert result[0].priority is None
+
+    def test_refuses_goal_ids_that_arent_goals(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        _fake_goals(monkeypatch, _goal("g7k2qp", name="Cooking"))
+
+        with pytest.raises(ToolError, match=r"'g7k2qq' isn't a goal; did you mean g7k2qp \(Cooking\)"):
+            server.update_event(_public_event(id="abc123", goal_ids=["g7k2qq"]))
+
+        reallocating_calendar.update_event.assert_not_called()
 
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
@@ -423,6 +448,26 @@ class TestCreateEvent:
         with pytest.raises(ToolError):
             server.create_event(_public_event())
 
+    def test_refuses_goal_ids_that_arent_goals(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        _fake_goals(monkeypatch, _goal("g1", name="Cooking"))
+
+        with pytest.raises(ToolError, match="'cooking' isn't a goal; did you mean g1 \\(Cooking\\)"):
+            server.create_event(_public_event(goal_ids=["cooking"]))
+
+        reallocating_calendar.create_event.assert_not_called()
+
+    def test_passes_valid_goal_ids_through(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        _fake_goals(monkeypatch, _goal("g1"))
+        reallocating_calendar.create_event.return_value = [_event(id="abc123", goal_ids=["g1"])]
+
+        result = server.create_event(_public_event(goal_ids=["g1"]))
+
+        (call_new_event, _options), _ = reallocating_calendar.create_event.call_args
+        assert call_new_event.goal_ids == ["g1"]
+        assert result[0].goal_names == ["Focus"]
+
 
 class TestDeleteEvent:
     def test_delegates_to_calendar_client(self, monkeypatch):
@@ -440,95 +485,85 @@ class TestDeleteEvent:
         assert result[0].is_cancelled is True
 
 
-class TestCreateEventLabel:
-    def test_delegates_to_event_labels(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        new_label = EventLabel(background_color="#8e24aa", name="Design Work")
-        resulting_labels = [EventLabel(id="l1", background_color="#8e24aa", name="Design Work")]
-        event_labels.create_label.return_value = resulting_labels
+class TestGetGoals:
+    def test_delegates_to_goals(self, monkeypatch):
+        store = _fake_goals(monkeypatch)
+        goal_list = GoalList(goals=[], label_slots_used=0)
+        store.get_goals.return_value = goal_list
 
-        result = server.create_event_label(new_label)
+        assert server.get_goals(include_inactive=True) is goal_list
+        store.get_goals.assert_called_once_with(True)
 
-        assert result == resulting_labels
-        event_labels.create_label.assert_called_once_with(new_label)
+    def test_wraps_errors_as_tool_errors(self, monkeypatch):
+        store = _fake_goals(monkeypatch)
+        store.get_goals.side_effect = ValueError("broken tab")
 
-    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.side_effect = EventLabelConflictError("stale etag")
-
-        with pytest.raises(ToolError):
-            server.create_event_label(EventLabel(background_color="#8e24aa"))
-
-    def test_wraps_value_error_as_tool_error(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.side_effect = ValueError(
-            "background_color is required when priority is not set"
-        )
-
-        with pytest.raises(ToolError):
-            server.create_event_label(EventLabel())
+        with pytest.raises(ToolError, match="broken tab"):
+            server.get_goals()
 
 
-class TestUpdateEventLabel:
-    def test_delegates_to_event_labels(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        updated_label = EventLabel(id="l1", background_color="#000000")
-        resulting_labels = [EventLabel(id="l1", background_color="#000000", name="Design Work")]
-        event_labels.update_label.return_value = resulting_labels
+class TestCreateGoal:
+    def test_delegates_to_goals(self, monkeypatch):
+        store = _fake_goals(monkeypatch)
+        goal_list = GoalList(goals=[], label_slots_used=1)
+        store.create_goal.return_value = goal_list
+        new_goal = Goal(name="Cooking", parent_id="g1")
 
-        result = server.update_event_label(updated_label)
+        assert server.create_goal(new_goal) is goal_list
+        store.create_goal.assert_called_once_with(new_goal)
 
-        assert result == resulting_labels
-        event_labels.update_label.assert_called_once_with(updated_label, ())
-
-    def test_passes_clear_fields_through(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = []
-        label = EventLabel(id="l1")
-
-        server.update_event_label(label, clear_fields=["background_color", "note"])
-
-        event_labels.update_label.assert_called_once_with(label, ["background_color", "note"])
-
-    def test_wraps_value_error_as_tool_error(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.side_effect = ValueError("event label 'missing' not found")
+    @pytest.mark.parametrize("error", [ValueError("too many labels"), EventLabelConflictError("stale etag")])
+    def test_wraps_errors_as_tool_errors(self, monkeypatch, error):
+        store = _fake_goals(monkeypatch)
+        store.create_goal.side_effect = error
 
         with pytest.raises(ToolError):
-            server.update_event_label(EventLabel(id="missing", background_color="#000000"))
-
-    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.side_effect = EventLabelConflictError("stale etag")
-
-        with pytest.raises(ToolError):
-            server.update_event_label(EventLabel(id="l1", background_color="#000000"))
+            server.create_goal(Goal(name="Cooking"))
 
 
-class TestSyncEventLabelsFromSheet:
-    def test_delegates_to_event_labels(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        labels = [EventLabel(id="l1", background_color="#8e24aa", name="Design Work", priority=1)]
-        event_labels.sync_labels.return_value = labels
+class TestUpdateGoal:
+    def test_delegates_to_goals(self, monkeypatch):
+        store = _fake_goals(monkeypatch)
+        goal_list = GoalList(goals=[], label_slots_used=0)
+        store.update_goal.return_value = goal_list
+        goal = Goal(id="g1", active=False)
 
-        result = server.sync_event_labels_from_sheet()
+        assert server.update_goal(goal) is goal_list
+        store.update_goal.assert_called_once_with(goal, ())
 
-        assert result == labels
-        event_labels.sync_labels.assert_called_once_with()
+    def test_passes_clear_fields(self, monkeypatch):
+        store = _fake_goals(monkeypatch)
+        goal = Goal(id="g1")
 
-    def test_wraps_value_error_as_tool_error(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.sync_labels.side_effect = ValueError("No event label sheet tracked")
+        server.update_goal(goal, clear_fields=["parent_id", "cadence"])
 
-        with pytest.raises(ToolError):
-            server.sync_event_labels_from_sheet()
+        store.update_goal.assert_called_once_with(goal, ["parent_id", "cadence"])
 
-    def test_wraps_conflict_error_as_tool_error(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.sync_labels.side_effect = EventLabelConflictError("stale etag")
+    @pytest.mark.parametrize("error", [ValueError("'g9' isn't a goal"), EventLabelConflictError("stale etag")])
+    def test_wraps_errors_as_tool_errors(self, monkeypatch, error):
+        store = _fake_goals(monkeypatch)
+        store.update_goal.side_effect = error
 
         with pytest.raises(ToolError):
-            server.sync_event_labels_from_sheet()
+            server.update_goal(Goal(id="g9", name="X"))
+
+
+class TestSyncGoalsFromSheet:
+    def test_delegates_to_goals(self, monkeypatch):
+        store = _fake_goals(monkeypatch)
+        goal_list = GoalList(goals=[], label_slots_used=0)
+        store.sync.return_value = goal_list
+
+        assert server.sync_goals_from_sheet() is goal_list
+        store.sync.assert_called_once_with()
+
+    @pytest.mark.parametrize("error", [ValueError("goal 'g1' has no name"), EventLabelConflictError("stale")])
+    def test_wraps_errors_as_tool_errors(self, monkeypatch, error):
+        store = _fake_goals(monkeypatch)
+        store.sync.side_effect = error
+
+        with pytest.raises(ToolError):
+            server.sync_goals_from_sheet()
 
 
 class TestNote:
@@ -767,8 +802,8 @@ class TestGetCalendarClient:
 class TestGetReallocatingCalendar:
     def test_caches_across_calls(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        event_labels = MagicMock()
-        monkeypatch.setattr(server, "get_calendar_with_event_labels", lambda: event_labels)
+        goals = MagicMock()
+        monkeypatch.setattr(server, "get_goal_store", lambda: goals)
         monkeypatch.setattr(server, "_reallocating_calendar", None)
 
         first = server.get_reallocating_calendar()
@@ -776,25 +811,25 @@ class TestGetReallocatingCalendar:
 
         assert first is second
         assert isinstance(first, ReallocatingCalendar)
-        assert isinstance(first._client, LabelPriorityCalendar)
+        assert isinstance(first._client, GoalCalendar)
         assert first._client._client is client
-        assert first._client._event_labels is event_labels
+        assert first._client._goals is goals
 
 
-class TestGetEventLabels:
+class TestGetGoalStore:
     def test_caches_across_calls(self, monkeypatch):
         built = []
 
         def fake_build():
-            event_labels = MagicMock()
-            built.append(event_labels)
-            return event_labels
+            goals = MagicMock()
+            built.append(goals)
+            return goals
 
-        monkeypatch.setattr(server, "_event_labels", None)
-        monkeypatch.setattr(server, "build_event_labels", fake_build)
+        monkeypatch.setattr(server, "_goals", None)
+        monkeypatch.setattr(server, "build_goals", fake_build)
 
-        first = server.get_calendar_with_event_labels()
-        second = server.get_calendar_with_event_labels()
+        first = server.get_goal_store()
+        second = server.get_goal_store()
 
         assert first is second
         assert len(built) == 1
@@ -871,32 +906,23 @@ class TestMemoryTracking:
 
         assert labels == ["delete_event"]
 
-    def test_create_event_label(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.create_label.return_value = []
+    @pytest.mark.parametrize(
+        "tool, args, method",
+        [
+            ("get_goals", (), "get_goals"),
+            ("create_goal", (Goal(name="Cooking"),), "create_goal"),
+            ("update_goal", (Goal(id="g1"),), "update_goal"),
+            ("sync_goals_from_sheet", (), "sync"),
+        ],
+    )
+    def test_goal_tools(self, monkeypatch, tool, args, method):
+        store = _fake_goals(monkeypatch)
+        getattr(store, method).return_value = GoalList(goals=[], label_slots_used=0)
         labels = _tracked_labels(monkeypatch)
 
-        server.create_event_label(EventLabel(background_color="#8e24aa"))
+        getattr(server, tool)(*args)
 
-        assert labels == ["create_event_label"]
-
-    def test_update_event_label(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.update_label.return_value = []
-        labels = _tracked_labels(monkeypatch)
-
-        server.update_event_label(EventLabel(id="l1", background_color="#8e24aa"))
-
-        assert labels == ["update_event_label"]
-
-    def test_sync_event_labels_from_sheet(self, monkeypatch):
-        event_labels = _fake_event_labels(monkeypatch)
-        event_labels.sync_labels.return_value = []
-        labels = _tracked_labels(monkeypatch)
-
-        server.sync_event_labels_from_sheet()
-
-        assert labels == ["sync_event_labels_from_sheet"]
+        assert labels == [tool]
 
     def test_note(self, monkeypatch):
         _fake_noted_time_sheet(monkeypatch)

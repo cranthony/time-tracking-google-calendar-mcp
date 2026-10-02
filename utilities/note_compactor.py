@@ -237,8 +237,8 @@ class NoteCompactor:
         journal: CompactionJournal,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
-        """`calendar` reads the day's events (through the same label-
-        priority-aware view reallocation uses); `client` is what the
+        """`calendar` reads the day's events (through the same goal-aware
+        view reallocation uses); `client` is what the
         planned changes are written through."""
         self._calendar = calendar
         self._client = client

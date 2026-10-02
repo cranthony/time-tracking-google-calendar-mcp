@@ -62,17 +62,17 @@ class TestCreateCalendar:
         )
 
 
-class TestCreateEventLabelSheetForCalendar:
-    def test_delegates_to_build_event_labels(self):
-        # Constructing EventLabels (via build_event_labels) already
+class TestCreateGoalsSheetForCalendar:
+    def test_delegates_to_build_goals(self):
+        # Constructing Goals (via build_goals) already
         # creates the sheet if one isn't tracked yet -- see
-        # EventLabels.__init__ and tests/test_event_labels.py -- so this
+        # Goals.__init__ and tests/test_goals.py -- so this
         # just needs to read back its id.
-        event_labels = MagicMock()
-        event_labels.sheet_id = "sheet-1"
+        goals = MagicMock()
+        goals.spreadsheet_id = "sheet-1"
 
-        with patch.object(create_calendar, "build_event_labels", return_value=event_labels) as build:
-            result = create_calendar.create_event_label_sheet_for_calendar("cal-1")
+        with patch.object(create_calendar, "build_goals", return_value=goals) as build:
+            result = create_calendar.create_goals_sheet_for_calendar("cal-1")
 
         assert result == "sheet-1"
         build.assert_called_once_with("cal-1")
@@ -101,7 +101,7 @@ class TestMain:
         with (
             patch.object(create_calendar, "create_calendar", return_value=new_calendar) as create,
             patch.object(
-                create_calendar, "create_event_label_sheet_for_calendar", return_value="sheet-1"
+                create_calendar, "create_goals_sheet_for_calendar", return_value="sheet-1"
             ) as create_sheet,
             patch.object(
                 create_calendar, "create_time_notes_sheet_for_calendar", return_value="sheet-1"
@@ -123,7 +123,7 @@ class TestMain:
         with (
             patch.object(create_calendar, "create_calendar") as create,
             patch.object(
-                create_calendar, "create_event_label_sheet_for_calendar", return_value="sheet-1"
+                create_calendar, "create_goals_sheet_for_calendar", return_value="sheet-1"
             ) as create_sheet,
             patch.object(
                 create_calendar, "create_time_notes_sheet_for_calendar", return_value="sheet-1"
@@ -144,7 +144,7 @@ class TestMain:
 
         with patch.object(
             create_calendar,
-            "create_event_label_sheet_for_calendar",
+            "create_goals_sheet_for_calendar",
             side_effect=EventLabelConflictError("stale etag"),
         ):
             with pytest.raises(SystemExit):

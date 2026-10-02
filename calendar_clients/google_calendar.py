@@ -68,11 +68,10 @@ def color_for_priority(priority: int | None) -> tuple[str | None, str]:
     event label. The default calendar color isn't queryable by the API,
     unfortunately, so we hack it and hard-code it here.
 
-    Public (not prefixed with `_`) so that `utilities/event_labels.py`
-    can use it to derive an event label's `background_color` from a
-    priority -- something this module itself no longer has any reason
-    to do, since `EventLabel` here has no `priority` field (see its
-    docstring)."""
+    Public (not prefixed with `_`) so that `utilities/goals.py` can use
+    it to derive a goal's label color from its priority -- something this
+    module itself has no reason to do, since `EventLabel` here has no
+    `priority` field (see its docstring)."""
     if priority is None:
         priority = 2  # Default priority.
     _PRIORITY_COLORS: dict[int, tuple[str | None, str]] = {
@@ -198,30 +197,41 @@ class Event:
     `extendedProperties.private` one like `priority`/`min_duration`/etc
     above. Its color supersedes `colorId` on the calendar.
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#eventLabelId
-    for more information."""
+    for more information.
 
-    label_priority: int | None = None
-    """The priority of this event's event label (`event_label_id`), if
-    known -- filled in on read by `utilities/label_priority_calendar.py`,
-    never by `from_api`, and never sent to the API (see `to_api_body`).
-    Kept apart from `priority`, which is only ever the event's own, so
-    writing an event back never copies its label's priority onto it. Read
-    `effective_priority` for the value that actually applies."""
+    Derived from `goal_ids` whenever those are written (see `utilities/
+    goal_calendar.py`), never chosen directly by the agent."""
 
-    label_is_fixed_time: bool | None = None
-    """`label_priority`'s counterpart for `is_fixed_time`. Read
+    goal_ids: list[str] | None = None
+    """The ids of the goals this event serves (see `utilities/goals.py`),
+    primary goal first. Stored as a space-separated private extended
+    property. `None` means unknown or unchanged (an event written before
+    goals existed, or a partial update that doesn't touch them); `[]`
+    means no goals."""
+
+    goal_priority: int | None = None
+    """The priority this event inherits from its primary goal (the goal's
+    own, or its nearest ancestor's), if any -- filled in on read by
+    `utilities/goal_calendar.py`, never by `from_api`, and never sent to
+    the API (see `to_api_body`). Kept apart from `priority`, which is only
+    ever the event's own, so writing an event back never copies its
+    goal's priority onto it. Read `effective_priority` for the value that
+    actually applies."""
+
+    goal_is_fixed_time: bool | None = None
+    """`goal_priority`'s counterpart for `is_fixed_time`. Read
     `effective_is_fixed_time` for the value that actually applies."""
 
     @property
     def effective_priority(self) -> int | None:
-        """`priority`, falling back to `label_priority` when unset."""
-        return self.priority if self.priority is not None else self.label_priority
+        """`priority`, falling back to `goal_priority` when unset."""
+        return self.priority if self.priority is not None else self.goal_priority
 
     @property
     def effective_is_fixed_time(self) -> bool | None:
-        """`is_fixed_time`, falling back to `label_is_fixed_time` when
+        """`is_fixed_time`, falling back to `goal_is_fixed_time` when
         unset."""
-        return self.is_fixed_time if self.is_fixed_time is not None else self.label_is_fixed_time
+        return self.is_fixed_time if self.is_fixed_time is not None else self.goal_is_fixed_time
 
     @classmethod
     def from_api(cls, data: dict) -> "Event":
@@ -234,6 +244,7 @@ class Event:
                 "is_fixed_time": lambda s: s.lower() == "true",
                 "priority": int,
                 "is_end_of_day_sleep": lambda s: s.lower() == "true",
+                "goal_ids": str.split,
             },
         )
         start = _parse_datetime(data["start"])
@@ -284,8 +295,8 @@ class Event:
             # should mean "leave the color the same".
             body["colorId"] = _color_id_for_priority(self.priority)
         # recurring_event_id is deliberately never sent: it's assigned by
-        # Google, not something a client sets. Nor are label_priority/
-        # label_is_fixed_time: they belong to the label, not the event.
+        # Google, not something a client sets. Nor are goal_priority/
+        # goal_is_fixed_time: they belong to the goal, not the event.
 
         private_properties = _format_properties(
             self,
@@ -295,6 +306,7 @@ class Event:
                 "is_fixed_time": lambda b: "true" if b else "false",
                 "priority": str,
                 "is_end_of_day_sleep": lambda b: "true" if b else "false",
+                "goal_ids": " ".join,
             },
         )
         if private_properties:
@@ -362,13 +374,11 @@ class EventLabel:
 
     Google Calendar itself has no concept of a label's priority -- there's
     no such field on the API's label resource, so this class has no
-    `priority` field either. `utilities/event_labels.py`'s `EventLabel`
-    (a different class, despite the same name) is the higher-level
-    object that combines one of these with a priority sourced from a
-    synced Google Sheet (see that module and `EventLabelSheet` in
-    `utilities/event_label_sheet.py`) -- that's the type the MCP server
-    and most of the CLI work with; this one is for direct, raw access
-    (the CLI's `raw_label`-prefixed commands).
+    `priority` field either. Labels are managed through goals
+    (`utilities/goals.py`): each active goal owns one, with its priority
+    and everything else kept in the goals tab of a synced Google Sheet.
+    This class is for direct, raw access (the CLI's `raw_label`-prefixed
+    commands, and `Goals`' own syncing).
     """
 
     id: str | None = None

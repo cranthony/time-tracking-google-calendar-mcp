@@ -11,7 +11,7 @@ from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
 from utilities.compaction_journal import CompactionJournal
-from utilities.event_labels import EventLabels
+from utilities.goals import Goals
 from utilities.noted_time_sheet import NotedTimeSheet
 
 load_dotenv()
@@ -156,14 +156,14 @@ def _build_calendar_and_sheets_clients(
     return calendar_client, sheets_client
 
 
-def build_event_labels(calendar_id: str | None = None) -> EventLabels:
-    """Construct an EventLabels from environment configuration (and a
-    local .env file, if present). See `_build_calendar_and_sheets_clients`
-    for `calendar_id`. Constructing this ensures the calendar has an event
-    label sheet, creating one (pre-populated with its current labels) if
-    it didn't already -- see `EventLabels.__init__`."""
+def build_goals(calendar_id: str | None = None) -> Goals:
+    """Construct a Goals from environment configuration (and a local .env
+    file, if present). See `_build_calendar_and_sheets_clients` for
+    `calendar_id`. Constructing this ensures the calendar has a goals tab,
+    migrating its event labels into one if it didn't already -- see
+    `Goals.__init__`."""
     calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
-    return EventLabels(calendar_client, sheets_client)
+    return Goals(calendar_client, sheets_client)
 
 
 def build_noted_time_sheet(calendar_id: str | None = None) -> NotedTimeSheet:

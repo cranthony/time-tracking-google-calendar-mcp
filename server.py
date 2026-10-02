@@ -17,7 +17,7 @@ from calendar_clients.google_sheets import cached_sheet_reads
 from config import (
     build_calendar_client,
     build_compaction_journal,
-    build_event_labels,
+    build_goals,
     build_noted_time_sheet,
     get_allowed_user_ids,
     get_cors_allowed_origins,
@@ -25,8 +25,9 @@ from config import (
     get_workos_authkit_domain,
 )
 from oauth_proxy import oauth_proxy_handlers
-from utilities.event_labels import EventLabels, EventLabel
-from utilities.label_priority_calendar import LabelPriorityCalendar, fill_in_from_labels
+from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
+from utilities.goal_sheet import Goal
+from utilities.goals import GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
@@ -74,7 +75,7 @@ if _TRANSPORT == "streamable-http":
 else:
     mcp = MCPServer("time-tracking-google-calendar-mcp")
 
-INTERNAL_EVENT_FIELDS = frozenset({"status", "label_priority", "label_is_fixed_time"})
+INTERNAL_EVENT_FIELDS = frozenset({"status", "goal_priority", "goal_is_fixed_time"})
 """Event fields the agent talking to this server should never see or set,
 at all -- not just left null. Enforced by PublicEvent actually lacking
 these fields (so they never appear in a tool's schema or result), not by
@@ -97,14 +98,18 @@ class PublicEvent:
     no effect (see to_event), since there's no way to un-cancel a
     cancelled event.
 
+    goal_ids are the goals the event serves, primary goal first; setting
+    them is how an event is tied to goals. goal_names (their names, in
+    the same order) and event_label_id (derived from the primary goal --
+    see utilities/goal_calendar.py) are read-only: to_event ignores them.
+
     effective_priority/effective_is_fixed_time are read-only: Event's
     properties of the same name, the values reallocation actually uses,
-    i.e. priority/is_fixed_time falling back to the event label's own
-    value when the event doesn't set one (see utilities/
-    label_priority_calendar.py). Kept separate from
-    priority/is_fixed_time so that sending a listed event straight back
-    to update_event never copies its label's values onto the event
-    itself, which would stop it following later changes to the label.
+    i.e. priority/is_fixed_time falling back to the primary goal's (or
+    its nearest ancestor's) when the event doesn't set one. Kept separate
+    from priority/is_fixed_time so that sending a listed event straight
+    back to update_event never copies its goal's values onto the event
+    itself, which would stop it following later changes to the goal.
     to_event ignores them.
 
     is_end_of_day_sleep/recurring_event_id are read-only too, and
@@ -124,6 +129,8 @@ class PublicEvent:
     is_fixed_duration: bool | None = None
     is_fixed_time: bool | None = None
     priority: int | None = None
+    goal_ids: list[str] | None = None
+    goal_names: list[str] | None = None
     event_label_id: str | None = None
     is_cancelled: bool = False
     effective_priority: int | None = None
@@ -132,7 +139,13 @@ class PublicEvent:
     recurring_event_id: str | None = None
 
     @classmethod
-    def from_event(cls, event: Event) -> "PublicEvent":
+    def from_event(cls, event: Event, tree: GoalTree | None = None) -> "PublicEvent":
+        """`tree` fills in goal_names; without it they're left `None`."""
+        names = None
+        if tree is not None and event.goal_ids is not None:
+            names = [
+                tree.by_id[i].name if i in tree.by_id else f"(unknown goal {i})" for i in event.goal_ids
+            ]
         return cls(
             id=event.id,
             summary=event.summary,
@@ -144,6 +157,8 @@ class PublicEvent:
             is_fixed_duration=event.is_fixed_duration,
             is_fixed_time=event.is_fixed_time,
             priority=event.priority,
+            goal_ids=event.goal_ids,
+            goal_names=names,
             event_label_id=event.event_label_id,
             is_cancelled=event.status == "cancelled",
             effective_priority=event.effective_priority,
@@ -163,7 +178,7 @@ class PublicEvent:
             min_duration=self.min_duration,
             is_fixed_duration=self.is_fixed_duration,
             is_fixed_time=self.is_fixed_time,
-            event_label_id=self.event_label_id,
+            goal_ids=self.goal_ids,
             priority=self.priority,
             status="cancelled" if self.is_cancelled else None,
         )
@@ -171,7 +186,7 @@ class PublicEvent:
 
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
-_event_labels: EventLabels | None = None
+_goals: Goals | None = None
 _noted_time_sheet: NotedTimeSheet | None = None
 _note_compactor: NoteCompactor | None = None
 
@@ -188,31 +203,29 @@ def get_calendar_client() -> CalendarClient:
 
 def get_reallocating_calendar() -> ReallocatingCalendar:
     """Lazily construct and cache the ReallocatingCalendar, the same way
-    get_calendar_client caches its CalendarClient. Wraps a
-    LabelPriorityCalendar (get_calendar_client() plus
-    get_calendar_with_event_labels()) rather than get_calendar_client()
-    directly, so reallocation sees an event's label-derived priority as
-    the fallback whenever the event itself doesn't set one."""
+    get_calendar_client caches its CalendarClient. Wraps a GoalCalendar
+    (get_calendar_client() plus get_goal_store()) rather than
+    get_calendar_client() directly, so reallocation sees an event's
+    goal-derived priority as the fallback whenever the event itself
+    doesn't set one, and every write derives its label from its goals."""
     global _reallocating_calendar
     if _reallocating_calendar is None:
-        _reallocating_calendar = ReallocatingCalendar(
-            LabelPriorityCalendar(get_calendar_client(), get_calendar_with_event_labels())
-        )
+        _reallocating_calendar = ReallocatingCalendar(GoalCalendar(get_calendar_client(), get_goal_store()))
     return _reallocating_calendar
 
 
-def get_calendar_with_event_labels() -> EventLabels:
-    """Lazily construct and cache the EventLabels, the same way
+def get_goal_store() -> Goals:
+    """Lazily construct and cache the Goals, the same way
     get_calendar_client/get_reallocating_calendar cache theirs."""
-    global _event_labels
-    if _event_labels is None:
-        _event_labels = build_event_labels()
-    return _event_labels
+    global _goals
+    if _goals is None:
+        _goals = build_goals()
+    return _goals
 
 
 def get_noted_time_sheet() -> NotedTimeSheet:
     """Lazily construct and cache the NotedTimeSheet, the same way
-    get_calendar_with_event_labels caches its EventLabels."""
+    get_goal_store caches its Goals."""
     global _noted_time_sheet
     if _noted_time_sheet is None:
         _noted_time_sheet = build_noted_time_sheet()
@@ -234,21 +247,35 @@ def get_note_compactor() -> NoteCompactor:
 
 
 def _public_events(events: list[Event]) -> list[PublicEvent]:
-    """`events` as PublicEvents, with effective_priority/
-    effective_is_fixed_time filled in from each one's event label -- see
-    PublicEvent. Every event tool's result goes through this."""
-    events = fill_in_from_labels(events, get_calendar_with_event_labels())
-    return [PublicEvent.from_event(event) for event in events]
+    """`events` as PublicEvents, with goal_ids/goal_names and
+    effective_priority/effective_is_fixed_time filled in from each one's
+    goals -- see PublicEvent. Every event tool's result goes through
+    this."""
+    tree = get_goal_store().tree()
+    return [PublicEvent.from_event(event, tree) for event in fill_in_from_goals(events, tree)]
+
+
+def _check_goal_ids(event: PublicEvent) -> None:
+    """Refuse goal_ids that don't name goals, suggesting close matches."""
+    if event.goal_ids:
+        try:
+            get_goal_store().tree().check_goal_ids(event.goal_ids)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
-    """List events between min_time and max_time. effective_priority/
-    effective_is_fixed_time are what reallocation actually uses: the
-    event's own priority/is_fixed_time, falling back to its event
-    label's. is_end_of_day_sleep marks the sleep event that ends a day;
-    recurring_event_id is the id of an instance's recurring series. All
-    four are read-only: update_event and create_event ignore them."""
+    """List events between min_time and max_time. goal_ids are the goals
+    each event serves, primary first (goal_names gives their names).
+    effective_priority/effective_is_fixed_time are what reallocation
+    actually uses: the event's own priority/is_fixed_time, falling back
+    to its primary goal's. is_end_of_day_sleep marks the sleep event that
+    ends a day; recurring_event_id is the id of an instance's recurring
+    series; event_label_id is the calendar label derived from its goals.
+    goal_names, the effective_* fields, is_end_of_day_sleep,
+    recurring_event_id and event_label_id are read-only: update_event and
+    create_event ignore them."""
     with track("list_events"), cached_sheet_reads():
         events = get_calendar_client().list_events(min_time, max_time)
         return _public_events([event for event in events if event.status != "cancelled"])
@@ -256,9 +283,7 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
 
 @mcp.tool()
 def get_event(id: str) -> PublicEvent:
-    """Get a single event by its ID. See list_events for
-    effective_priority/effective_is_fixed_time/is_end_of_day_sleep/
-    recurring_event_id."""
+    """Get a single event by its ID. See list_events for its fields."""
     with track("get_event"), cached_sheet_reads():
         event = get_calendar_client().get_event(id)
         if event.status == "cancelled":
@@ -269,9 +294,11 @@ def get_event(id: str) -> PublicEvent:
 @mcp.tool()
 def update_event(event: PublicEvent) -> list[PublicEvent]:
     """Update an existing event, reallocating time from the rest of its
-    day as needed to make room for its new position. Returns the events
-    affected by the update."""
+    day as needed to make room for its new position. Set goal_ids to
+    change its goals ([] for none). Returns the events affected by the
+    update."""
     with track("update_event"), cached_sheet_reads():
+        _check_goal_ids(event)
         updated_event = event.to_event()
         try:
             applied = get_reallocating_calendar().update_event(
@@ -284,8 +311,10 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
 
 @mcp.tool()
 def create_event(event: PublicEvent) -> list[PublicEvent]:
-    """Create a new event. Returns the events affected by the creation."""
+    """Create a new event, optionally serving goals (goal_ids, primary
+    first). Returns the events affected by the creation."""
     with track("create_event"), cached_sheet_reads():
+        _check_goal_ids(event)
         new_event = event.to_event()
         try:
             applied = get_reallocating_calendar().create_event(new_event, ReallocationOptions())
@@ -303,55 +332,67 @@ def delete_event(id: str) -> list[PublicEvent]:
 
 
 @mcp.tool()
-def create_event_label(
-    label: EventLabel
-) -> list[EventLabel]:
-    """Create a new event label with the given optional name, color,
-    priority, fixed_time and note. Returns the resulting list of every
-    event label -- there's no separate way to list labels; use this,
-    update_event_label, or sync_event_labels_from_sheet to see the
-    current ones."""
-    with track("create_event_label"), cached_sheet_reads():
+def get_goals(include_inactive: bool = False) -> GoalList:
+    """The goal tree: every active goal (and inactive ones too with
+    include_inactive), parents before their children, each with its path
+    from the top. Also how many of the calendar's event labels are in
+    use: each active goal takes one."""
+    with track("get_goals"), cached_sheet_reads():
         try:
-            return get_calendar_with_event_labels().create_label(label)
-        except (ValueError, EventLabelConflictError) as exc:
-            raise ToolError(str(exc)) from exc
-
-
-EventLabelField = Literal["name", "background_color", "priority", "fixed_time", "note"]
-"""Every EventLabel field update_event_label can clear -- all but id."""
-
-
-@mcp.tool()
-def update_event_label(
-    label: EventLabel, clear_fields: list[EventLabelField] | None = None
-) -> list[EventLabel]:
-    """Update any of an existing event label's properties. Omitted
-    properties keep their current value; list one in clear_fields to
-    blank it instead (clearing background_color makes the label's color
-    follow its priority again). Returns the resulting list of every
-    event label -- see create_event_label."""
-    with track("update_event_label"), cached_sheet_reads():
-        try:
-            return get_calendar_with_event_labels().update_label(label, clear_fields or ())
+            return get_goal_store().get_goals(include_inactive)
         except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
-def sync_event_labels_from_sheet() -> list[EventLabel]:
-    """Make this calendar's event labels match its tracked event label
-    sheet exactly: rows with a blank ID become new labels, rows with a
-    matching ID overwrite that label's name and color, and any
-    label with no matching row is deleted. Returns the resulting labels
-    -- call this with no sheet changes pending to just see the current
-    ones; there's no separate list tool. Fails if no event label sheet
-    is tracked on this calendar -- that's
-    a one-time, human-run bootstrap step (see create_calendar.py), not
-    something this server can do on its own."""
-    with track("sync_event_labels_from_sheet"), cached_sheet_reads():
+def create_goal(goal: Goal) -> GoalList:
+    """Create a goal: a name (at most 50 characters, unique among its
+    siblings), optionally a parent_id to make it a sub-goal, and any of
+    its other properties. It's active unless active is false; each active
+    goal takes one of the calendar's event labels, and its events are
+    shown in its color (background_color, or derived from priority).
+    priority and fixed_time are inherited by sub-goals and events that
+    don't set their own. id, label_id and created are assigned. Returns
+    the resulting active goals."""
+    with track("create_goal"), cached_sheet_reads():
         try:
-            return get_calendar_with_event_labels().sync_labels()
+            return get_goal_store().create_goal(goal)
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+GoalField = Literal[
+    "parent_id", "background_color", "priority", "fixed_time", "cadence", "measure", "target", "deadline", "note"
+]
+"""Every Goal field update_goal can clear (see utilities/goals.py's
+CLEARABLE_FIELDS)."""
+
+
+@mcp.tool()
+def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> GoalList:
+    """Update a goal by id. Omitted properties keep their current value;
+    list one in clear_fields to blank it instead (clearing parent_id
+    makes it a top-level goal; clearing background_color makes its color
+    follow its priority). Setting active to false frees its event label
+    but keeps its history; setting it back to true restores the label,
+    and its past events' color with it. Goals are never deleted. Returns
+    the resulting active goals."""
+    with track("update_goal"), cached_sheet_reads():
+        try:
+            return get_goal_store().update_goal(goal, clear_fields or ())
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def sync_goals_from_sheet() -> GoalList:
+    """After hand edits to the Goals tab of the calendar metadata
+    spreadsheet, make the calendar's event labels match it: one label per
+    active goal (Calendar's own unnamed labels are left alone), and any
+    other label removed. Returns the resulting active goals."""
+    with track("sync_goals_from_sheet"), cached_sheet_reads():
+        try:
+            return get_goal_store().sync()
         except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
 

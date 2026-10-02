@@ -32,6 +32,22 @@ def api_event(event_id: str, start: str, end: str, summary: str = "Busy") -> dic
 
 
 class TestEvent:
+    @pytest.mark.parametrize(
+        "goal_ids, stored",
+        [(["g1", "g2"], "g1 g2"), ([], "")],  # [] is stored, so clearing goals sticks
+    )
+    def test_goal_ids_round_trip_through_a_private_extended_property(self, goal_ids, stored):
+        body = Event(goal_ids=goal_ids).to_api_body()
+
+        assert body["extendedProperties"]["private"] == {"cascading-time-tracker-goal_ids": stored}
+        data = api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00")
+        data["extendedProperties"] = body["extendedProperties"]
+        assert Event.from_api(data).goal_ids == goal_ids
+
+    def test_goal_ids_are_none_when_never_set(self):
+        assert Event.from_api(api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00")).goal_ids is None
+        assert "extendedProperties" not in Event().to_api_body()
+
     def test_from_api_parses_fields(self):
         event = Event.from_api(
             api_event(
@@ -502,10 +518,9 @@ class TestEventLabel:
 
     def test_has_no_priority_field(self):
         # Google Calendar has no field for a label's priority -- it's
-        # sourced only from a synced event label sheet, via
-        # utilities/event_labels.py's own (different) EventLabel class,
-        # never this one -- even if the name happens to look like it
-        # might encode one.
+        # sourced only from the goal that owns the label (see
+        # utilities/goals.py), never this class -- even if the name happens
+        # to look like it might encode one.
         label = EventLabel.from_api(
             {"id": "label-1", "backgroundColor": "#123456", "name": "P1 Design Work"}
         )
@@ -965,8 +980,8 @@ class TestCalendarClientReplaceEventLabels:
         # replace_event_labels no longer fetches its own etag (unlike
         # create/update/delete_event_label) -- it's the caller's job to
         # supply one (e.g. from a prior list_event_labels() call), since
-        # utilities/event_labels.py's EventLabels.sync_labels does other
-        # work (reading the sheet) between reading the etag and writing.
+        # utilities/goals.py's Goals does other work (validating, writing
+        # the sheet) between reading the etag and writing.
         service = MagicMock()
         service.calendars.return_value.patch.return_value.execute.return_value = {
             "labelProperties": {

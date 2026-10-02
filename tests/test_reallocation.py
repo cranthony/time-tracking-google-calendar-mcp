@@ -54,16 +54,16 @@ class TestEffectivePriority:
     def test_returns_two_when_unset(self):
         assert _effective_priority(event_at("09:00-10:00", priority=None)) == 2
 
-    def test_falls_back_to_the_labels_priority(self):
-        assert _effective_priority(event_at("09:00-10:00", label_priority=0)) == 0
+    def test_falls_back_to_the_goals_priority(self):
+        assert _effective_priority(event_at("09:00-10:00", goal_priority=0)) == 0
 
-    def test_own_priority_wins_over_the_labels(self):
-        assert _effective_priority(event_at("09:00-10:00", priority=3, label_priority=0)) == 3
+    def test_own_priority_wins_over_the_goals(self):
+        assert _effective_priority(event_at("09:00-10:00", priority=3, goal_priority=0)) == 3
 
 
 class TestEffectiveMinDuration:
-    def test_is_the_full_duration_for_an_event_fixed_time_through_its_label(self):
-        event = event_at("09:00-10:00", id="abc123", label_is_fixed_time=True)
+    def test_is_the_full_duration_for_an_event_fixed_time_through_its_goal(self):
+        event = event_at("09:00-10:00", id="abc123", goal_is_fixed_time=True)
 
         assert _effective_min_duration(event, {}) == timedelta(hours=1)
         # Only reallocation's view of it -- the event itself is untouched.
@@ -589,10 +589,10 @@ class TestFixedTimeRepair:
         assert new_event.end - new_event.start == timedelta(minutes=30)
         assert new_event.start >= preceding.end
 
-    def test_an_event_fixed_time_through_its_label_is_repaired_without_being_pinned(self):
+    def test_an_event_fixed_time_through_its_goal_is_repaired_without_being_pinned(self):
         # Same as above, but preceding is fixed-time only through its
-        # label, with no min_duration of its own.
-        preceding = event_at("09:00-09:30", id="p1", priority=1, label_is_fixed_time=True)
+        # goal, with no min_duration of its own.
+        preceding = event_at("09:00-09:30", id="p1", priority=1, goal_is_fixed_time=True)
         anchor = event_at("09:30-10:30", id="a1", priority=1)
         new_event = event_at("09:10-09:40", priority=1)
 
