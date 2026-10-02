@@ -128,15 +128,13 @@ class GoalTree:
         return next((g.fixed_time for g in self.chain(goal_id) if g.fixed_time is not None), None)
 
     def color(self, goal: Goal) -> str:
-        """The goal's label color: its own background_color; else its own
-        priority's color, if it sets one; else its parent's color, the
-        same way up the tree; else the color for no priority."""
+        """The goal's label color: its own background_color; else its
+        nearest ancestor's; else, as a last resort, its priority's color
+        (its own priority, or the one it inherits)."""
         for g in self.chain(goal.id) if goal.id else [goal]:
             if g.background_color:
                 return g.background_color
-            if g.priority is not None:
-                return color_for_priority(g.priority)[1]
-        return color_for_priority(None)[1]
+        return color_for_priority(self.priority(goal.id) if goal.id else goal.priority)[1]
 
     def active_label_id(self, goal_id: str) -> str | None:
         """The label of the goal's nearest active goal in its chain
