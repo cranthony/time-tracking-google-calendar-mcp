@@ -35,7 +35,7 @@ from utilities.goal_health import (
     band,
 )
 from utilities.goal_periods import Period, parse_period, period_containing
-from utilities.sleep_days import current_day, listing_range, period_window
+from utilities.sleep_days import MissingSleep, NotOver, current_day, listing_range, period_window
 from utilities.goal_sheet import CADENCES, Cadence, Goal
 from utilities.goals import Goals, GoalTree
 from utilities.noted_time_sheet import NotedTimeSheet
@@ -113,12 +113,17 @@ class PeriodChoice:
     period: str
     first_day: date
     last_day: date
-    starts: datetime
+    starts: datetime | None
     """When it started: when you woke on its first day (see utilities/
-    sleep_days.py)."""
+    sleep_days.py) -- `None` if that sleep isn't logged."""
 
-    ends: datetime
-    """When it ended: when you woke the day after its last."""
+    ends: datetime | None
+    """When it ended: when you woke the day after its last -- `None` if
+    that sleep isn't logged."""
+
+    missing_sleep: list[date] = field(default_factory=list)
+    """The days whose end-of-day sleep it needs but isn't logged: until
+    they are, it can't be reflected on."""
 
     already_reflected: bool
 
@@ -315,13 +320,21 @@ class Reflections:
 
         def choice(span: Period) -> PeriodChoice:
             listed = self._health.calendar_client.list_events(*listing_range(span, tz))
-            start, end = period_window(span, [e for e in listed if e.status != "cancelled"], tz, now)
+            try:
+                start, end = period_window(span, [e for e in listed if e.status != "cancelled"], tz, now)
+                missing = []
+            except MissingSleep as exc:
+                start = end = None
+                missing = exc.days
+            except NotOver:  # Not offered: only periods before the current one are.
+                raise AssertionError(f"{span.id} was offered before it ended") from None
             return PeriodChoice(
                 period=span.id,
                 first_day=span.start,
                 last_day=span.end - timedelta(days=1),
                 starts=start,
                 ends=end,
+                missing_sleep=missing,
                 already_reflected=span.id in reflected,
             )
 
@@ -334,8 +347,9 @@ class Reflections:
                 f"No period was named. Ask which {_UNIT[cadence]} to reflect on, offering these choices: "
                 f"completed {_UNIT[cadence]}s without a reflection, newest first -- or, if every recent one "
                 "has one, the last completed one, which recording again replaces. Mention older_unreflected "
-                "if it isn't 0: any period can be named. Then call prepare_reflection again with the period "
-                "picked."
+                "if it isn't 0: any period can be named. A choice with missing_sleep can't be reflected on "
+                "until those days' end-of-day sleep is logged: say so. Then call prepare_reflection again "
+                "with the period picked."
             ),
         )
 
@@ -355,6 +369,11 @@ class Reflections:
         span = parse_period(cadence, period)
         if span.start > self._health.now().date():
             raise ValueError(f"{span.id} hasn't started yet")
+        # Only a period that's over, whose bounding sleeps are logged.
+        listed = self._health.calendar_client.list_events(*listing_range(span, self._health.now().tzinfo))
+        period_window(
+            span, [e for e in listed if e.status != "cancelled"], self._health.now().tzinfo, self._health.now()
+        )
         problems = []
         seen = set()
         for a in assessments:

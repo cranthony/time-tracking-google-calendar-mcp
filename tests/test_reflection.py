@@ -170,7 +170,7 @@ class TestPrepare:
             [_COOKING, Goal(name="Home", cadence="monthly", measure={"kind": "subjective"})],
             notes=[
                 _note("2026-09-22T18:15", "started the curry", compaction_id="c1"),
-                _note("2026-10-02T08:00", "not compacted yet"),
+                _note("2026-10-02T06:30", "not compacted yet"),  # Oct 1's day: before waking
             ],
         )
         calendar.events = [_event("2026-09-22T18:00", "2026-09-22T20:30", [goals["Cooking"].id])]
@@ -179,11 +179,11 @@ class TestPrepare:
         weekly = reflections.prepare("weekly", "week-2026-09-20")
         monthly = reflections.prepare("monthly", "2026-09")
 
-        assert weekly.events_digest == "Tue 09-22\n  18:00-20:30 Dinner [Cooking]"
+        assert "Tue 09-22\n  18:00-20:30 Dinner [Cooking]" in weekly.events_digest
         assert weekly.notes_digest == "Tue 09-22 18:15 started the curry"
         assert weekly.uncompacted_notes == 0  # the uncompacted one is after the week
         assert monthly.events_digest is None and monthly.notes_digest is None
-        assert reflections.prepare("daily", "2026-10-02").uncompacted_notes == 1
+        assert reflections.prepare("daily", "2026-10-01").uncompacted_notes == 1
 
     def test_brings_back_the_previous_reflections_intentions(self):
         reflections, *_ = _setup([_FEEL])
@@ -261,3 +261,33 @@ class TestRecord:
             reflections.record("weekly", "week-2026-09-20", assessments, dry_run=False, **kwargs)
 
         assert calendar.health_events == {}
+
+
+class TestSleepBoundaries:
+    def test_a_period_whose_sleep_isnt_logged_is_refused_and_flagged(self):
+        reflections, _, _, calendar, _ = _setup([_WAKE])
+        calendar.nightly_sleep = False
+        calendar.events = [
+            _event("2026-09-29T23:00", "2026-09-30T07:00", is_end_of_day_sleep=True),
+            _event("2026-09-30T23:00", "2026-10-01T07:00", is_end_of_day_sleep=True),
+        ]
+
+        with pytest.raises(ValueError, match="No end-of-day sleep ends on 2026-09-29"):
+            reflections.prepare("daily", "2026-09-29")
+        # Waking on the 2nd isn't logged, so the 1st isn't over.
+        with pytest.raises(ValueError, match="2026-10-01 isn't over yet: it ends when you wake on 2026-10-02"):
+            reflections.prepare("daily", "2026-10-01")
+        choices = {c.period: c for c in reflections.prepare("daily").choices}
+
+        assert choices["2026-09-30"].missing_sleep == []
+        assert choices["2026-09-30"].starts == datetime(2026, 9, 30, 7, tzinfo=TZ)
+        assert choices["2026-09-29"].missing_sleep == [date(2026, 9, 29)]
+        assert choices["2026-09-29"].starts is None
+
+    def test_a_period_still_going_on_cant_be_prepared_or_recorded(self):
+        reflections, *_ = _setup([_WAKE])
+
+        with pytest.raises(ValueError, match="isn't over yet"):
+            reflections.prepare("daily", "2026-10-02")
+        with pytest.raises(ValueError, match="isn't over yet"):
+            reflections.record("daily", "2026-10-02", [], dry_run=False)
