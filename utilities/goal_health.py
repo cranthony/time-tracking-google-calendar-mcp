@@ -268,7 +268,7 @@ class GoalHealth:
         measure can be computed (see the module docstring), for `period`
         (default: the most recent one that's fully ended). Writes nothing.
         Raises utilities/sleep_days.py's MissingSleep (a ValueError) if the
-        end-of-day sleeps that bound the period aren't logged."""
+        end-of-day sleeps that bound the period aren't in the calendar."""
         tree = self._goals.tree()
         if goal_ids is not None:
             tree.check_goal_ids(goal_ids)
