@@ -265,15 +265,50 @@ class TestCancelCreateAndMerge:
     def test_create_makes_a_pinned_new_event(self):
         plan = _plan(
             [_note(1, "11:05", "coffee"), _note(2, "11:20")],
-            [EventDecision(action="create", summary="Coffee", start_note="n1", end_note="n2", event_label_id="L1")],
+            [EventDecision(action="create", summary="Coffee", start_note="n1", end_note="n2", goal_ids=["g1"])],
         )
 
         [created] = [c for c in plan.changes if c.action == "create"]
         assert _span(created.after) == (time_at("11:05"), time_at("11:20"))
         assert created.after.is_fixed_time is True
-        assert created.after.event_label_id == "L1"
+        assert created.after.goal_ids == ["g1"]
         # Its anchoring note's text isn't added to it -- it set its edge.
         assert created.after.description is None
+
+    def test_keep_can_set_or_clear_an_events_goals_alone(self):
+        day = _day()
+        day[1].goal_ids = ["old"]
+
+        plan = _plan([], [_keep("e1", goal_ids=["g1", "g2"]), _keep("e2", goal_ids=[]), _keep("e3")], day)
+
+        changes = _by_event(plan)
+        assert changes["e1"].after.goal_ids == ["g1", "g2"]
+        assert changes["e2"].after.goal_ids == []
+        assert "e3" not in changes or changes["e3"].after.goal_ids == changes["e3"].before.goal_ids
+
+    def test_a_future_events_goals_change_without_pinning_it(self):
+        plan = _plan([], [_keep("e4", goal_ids=["g1"])], now="11:30")
+
+        change = _by_event(plan)["e4"]
+        assert change.reason == "set the goals it serves"
+        assert change.after.goal_ids == ["g1"]
+        assert change.after.is_fixed_time is None
+
+    def test_the_timeline_marks_goals_and_totals_their_time(self):
+        day = _day()
+        day[0].goal_ids = ["work"]
+        day[1].goal_ids = ["work"]
+        plan = _plan(
+            [],
+            [_keep("e2", goal_ids=["work", "writing"])],
+            day,
+            goal_names={"work": "Time Tracker", "writing": "Writing"},
+        )
+
+        lines = plan.timeline.text.splitlines()
+        assert any("Email · on schedule  ◆ Time Tracker" in line for line in lines)
+        assert any("Report · on schedule  ◆ Time Tracker ◇ Writing" in line for line in lines)
+        assert "Goal time: Time Tracker 2h00m · Writing 1h00m" in lines
 
     def test_create_needs_both_edges(self):
         with pytest.raises(CompactionError, match="needs both a start and an end"):

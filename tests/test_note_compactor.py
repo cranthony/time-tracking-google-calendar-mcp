@@ -19,6 +19,8 @@ from utilities.note_compaction import (
     EventState,
 )
 from utilities.note_compactor import NoteCompactor
+from utilities.goal_sheet import Goal
+from utilities.goals import GoalTree
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
 
 _NOTES_TAB = 1
@@ -50,7 +52,7 @@ class FakeCalendar:
 
 
 class Setup:
-    def __init__(self, notes, events=None, now="11:30"):
+    def __init__(self, notes, events=None, now="11:30", goals=None):
         self.sheets = FakeSheets()
         self.sheets.write_rows_in_sheet(
             "s", _NOTES_TAB, "A1:C1", [["timestamp", "description", "compaction_id"]]
@@ -63,12 +65,17 @@ class Setup:
         self.calendar = FakeCalendar(events if events is not None else _day())
         self.client = MagicMock()
         self.now = now
+        self.goals = None
+        if goals is not None:
+            self.goals = MagicMock()
+            self.goals.tree.return_value = GoalTree(goals)
         self.compactor = NoteCompactor(
             calendar=self.calendar,
             client=self.client,
             notes=self.notes,
             journal=self.journal,
             clock=lambda: time_at(self.now),
+            goals=self.goals,
         )
 
     def append_note(self, at, description=None):
@@ -821,39 +828,6 @@ class TestEventLabels:
             "etag",
         )
 
-    def _labelled_coffee(self, setup, label_id):
-        decisions = setup.coffee_instead_of_email()
-        decisions[0].event_label_id = label_id
-        return decisions
-
-    def test_a_create_with_an_unknown_label_is_refused_at_the_dry_run(self):
-        setup = Setup([("09:00", None), ("09:30", None)])
-        self._with_labels(setup, "real")
-
-        with pytest.raises(CompactionError, match=r"doesn't have: made-up; valid labels: real \(Label real\)"):
-            setup.compactor.dry_run(self._labelled_coffee(setup, "made-up"))
-
-    def test_a_create_with_a_known_label_keeps_it(self):
-        setup = Setup([("09:00", None), ("09:30", None)])
-        self._with_labels(setup, "real")
-        planned = setup.compactor.dry_run(self._labelled_coffee(setup, "real"))
-
-        setup.compactor.commit(planned.compaction_id)
-
-        assert setup.client.create_event.call_args.args[0].event_label_id == "real"
-
-    def test_a_label_removed_after_the_preview_stops_the_commit_before_any_change(self):
-        setup = Setup([("09:00", None), ("09:30", None)])
-        self._with_labels(setup, "real")
-        planned = setup.compactor.dry_run(self._labelled_coffee(setup, "real"))
-        self._with_labels(setup)
-
-        with pytest.raises(CompactionError, match="real"):
-            setup.compactor.commit(planned.compaction_id)
-
-        setup.client.create_event.assert_not_called()
-        setup.client.update_event.assert_not_called()
-
     def test_other_created_events_drop_a_label_the_calendar_no_longer_has(self, monkeypatch):
         # E.g. a split continuation, cloned (label and all) from an event
         # whose label has since been removed -- not the model's to fix.
@@ -878,3 +852,72 @@ class TestEventLabels:
         setup.compactor.dry_run(setup.coffee_instead_of_email())
 
         setup.client.list_event_labels.assert_not_called()
+
+
+def _goal(goal_id, name, status="active"):
+    return Goal(id=goal_id, name=name, status=status, label_id=f"label-{goal_id}")
+
+
+class TestGoals:
+    _GOALS = [_goal("work", "Time Tracker"), _goal("mail", "Inbox zero"), _goal("gone", "Old", status="deleted")]
+
+    def test_prepare_lists_goals_and_suggests_them_from_earlier_events_with_the_same_title(self):
+        events = _day()
+        yesterday = [
+            replace(e, id=f"y-{e.id}", start=e.start - timedelta(days=1), end=e.end - timedelta(days=1))
+            for e in events[:2]
+        ]
+        yesterday[0].goal_ids = ["gone", "mail"]  # Email: a deleted goal isn't suggested
+        yesterday[1].goal_ids = ["work"]
+        events[1].goal_ids = ["work"]  # Report already has one: nothing suggested
+        setup = Setup([("09:05", "x")], events=yesterday + events, goals=self._GOALS)
+
+        context = setup.compactor.prepare()
+
+        by_id = {e.id: e for e in context.events}
+        assert by_id["e1"].suggested_goal_ids == ["mail"]
+        assert by_id["e2"].suggested_goal_ids is None
+        assert by_id["e2"].goal_names == ["Time Tracker"]
+        assert [g.path for g in context.goals] == ["Time Tracker", "Inbox zero"]  # active ones
+        text = context.timeline.text
+        assert "Email  ◇ Inbox zero" in text and "Report  ◆ Time Tracker" in text
+
+    def test_future_events_get_no_suggestions(self):
+        events = _day()
+        earlier = replace(events[2], id="y-e3", start=events[2].start - timedelta(days=1),
+                          end=events[2].end - timedelta(days=1), goal_ids=["work"])
+        setup = Setup([("09:05", "x")], events=[earlier] + events, goals=self._GOALS)
+
+        context = setup.compactor.prepare()
+
+        assert {e.id: e for e in context.events}["e3"].suggested_goal_ids is None  # Lunch is after now
+
+    def test_a_dry_run_refuses_unknown_or_deleted_goals(self):
+        setup = Setup([("09:00", None), ("09:30", None)], goals=self._GOALS)
+        decisions = setup.coffee_instead_of_email()
+
+        decisions[0].goal_ids = ["wrk"]
+        with pytest.raises(CompactionError, match="'wrk' isn't a goal; did you mean work"):
+            setup.compactor.dry_run(decisions)
+        decisions[0].goal_ids = ["gone"]
+        with pytest.raises(CompactionError, match="Deleted goals can't be given to an event"):
+            setup.compactor.dry_run(decisions)
+
+    def test_created_events_are_written_with_their_goals(self):
+        setup = Setup([("09:00", None), ("09:30", None)], goals=self._GOALS)
+        decisions = setup.coffee_instead_of_email()
+        decisions[0].goal_ids = ["work"]
+        planned = setup.compactor.dry_run(decisions)
+
+        setup.compactor.commit(planned.compaction_id)
+
+        assert setup.client.create_event.call_args.args[0].goal_ids == ["work"]
+
+    def test_a_goals_only_change_is_patched_as_just_that(self):
+        setup = Setup([("09:05", "x")], goals=self._GOALS)
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", goal_ids=["mail"])])
+
+        setup.compactor.commit(planned.compaction_id)
+
+        patches = [c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e1"]
+        assert any(p.goal_ids == ["mail"] for p in patches)

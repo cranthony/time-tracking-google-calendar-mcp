@@ -261,7 +261,9 @@ def get_note_compactor() -> NoteCompactor:
     if _note_compactor is None:
         _note_compactor = NoteCompactor(
             calendar=get_reallocating_calendar(),
-            client=get_calendar_client(),
+            # Written through goals, so each event's label follows them.
+            client=GoalCalendar(get_calendar_client(), get_goal_store()),
+            goals=get_goal_store(),
             notes=get_noted_time_sheet(),
             journal=build_compaction_journal(),
         )

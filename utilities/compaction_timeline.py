@@ -18,7 +18,10 @@ The text rendering, one row per moment something happens:
 
 A note joined to an event by `───` sets that event edge; a note with no
 rule had its text added to the event it falls within (`↳`), and `○` marks
-a note that wasn't added anywhere.
+a note that wasn't added anywhere. An event's goals follow its title: `◆`
+for one it already serves, `◇` for one it's being given (or, before
+anything is decided, one suggested for it). A last line totals each
+goal's time.
 """
 
 from __future__ import annotations
@@ -82,6 +85,13 @@ class TimelineEvent:
 
     merged_into: str | None = None
     """For `merged`: the title of the event it was merged into."""
+
+    goals: list[str] = field(default_factory=list)
+    """Names of the goals it serves (once this compaction is applied)."""
+
+    new_goals: list[str] = field(default_factory=list)
+    """Which of `goals` it's being given by this compaction -- or, before
+    anything is decided, names of goals suggested for it."""
 
 
 @dataclass(kw_only=True)
@@ -159,6 +169,9 @@ def render(timeline: Timeline) -> str:
             lines.append(f"{time:>5}  {left} {right}".rstrip())
     if not now_shown:
         lines.append(f"{hm(timeline.now):>5}  {'┄' * _NOTE_WIDTH}  ┄┄ now")
+    if goal_time := _goal_time(live):
+        lines.append("")
+        lines.append(f"Goal time: {goal_time}")
     if timeline.decided:
         lines.append("")
         lines.append(_LEGEND)
@@ -175,7 +188,7 @@ def _edge_lines(moment, live, removed, hm) -> list[str]:
             lines.append(f"└ {event.summary} ends{tag}")
     for event in starting:
         joint = "├" if ending else "┌"
-        lines.append(f"{joint} {event.summary}{_start_tag(event, hm)}")
+        lines.append(f"{joint} {event.summary}{_start_tag(event, hm)}{_goal_tag(event)}")
     for event in removed:
         if event.planned_start != moment:
             continue
@@ -218,6 +231,23 @@ def _end_tag(event: TimelineEvent, hm) -> str:
     return (
         f" · {_duration(end_shift)} {'late' if end_shift > timedelta(0) else 'early'}"
         f" (planned {hm(event.planned_end)})"
+    )
+
+
+def _goal_tag(event: TimelineEvent) -> str:
+    marks = [f"◆ {g}" for g in event.goals if g not in event.new_goals]
+    marks += [f"◇ {g}" for g in event.new_goals]
+    return f"  {' '.join(marks)}" if marks else ""
+
+
+def _goal_time(live: list[TimelineEvent]) -> str:
+    """Each goal's total time across `live` events, longest first."""
+    totals: dict[str, timedelta] = {}
+    for event in live:
+        for goal in dict.fromkeys(event.goals + event.new_goals):
+            totals[goal] = totals.get(goal, timedelta()) + (event.end - event.start)
+    return " · ".join(
+        f"{goal} {_duration(total)}" for goal, total in sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
     )
 
 

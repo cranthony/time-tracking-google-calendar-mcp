@@ -364,12 +364,9 @@ There's deliberately **no `delete_goal`**: assessments and events refer to goal 
 
 **Goal: tagging events with goals should cost the user almost nothing.** Compaction is already the moment when each past event is looked at, so goals are attached there, mostly automatically.
 
-1. **The server suggests goals, deterministically.** For each candidate event without `goal_ids`, `prepare_compaction` suggests, in order:
-   1. the goals of the recurring series' master event;
-   2. the **Goal Hints** tab (`normalized summary → goal_ids, last_used`), which is updated every time an event's goals are set by any tool. "Dinner with friends" learns its goals once and keeps them;
-   3. nothing. Silence means no goal, mirroring "silence means on schedule".
+1. **The server suggests goals, deterministically.** For each past event without goals, `prepare_compaction` suggests the goals of the latest event with the same title (case and spacing ignored) in the previous 4 weeks, leaving out deleted goals. Otherwise it suggests nothing: silence means no goal, mirroring "silence means on schedule". Recurring events need nothing extra, since an instance carries its series' goals. *(Built this way instead of the separate **Goal Hints** tab first planned: deriving hints from recent events needs no extra tab or write path, and keeps itself up to date.)*
 2. **The model applies suggestions without asking**, and proposes a goal for a `create` decision only when the notes clearly imply one. It asks only when it's genuinely unsure between two goals. The instructions returned by `prepare_compaction` say this explicitly.
-3. **The timeline shows goals as a third lane**, with changes marked, so a glance confirms them:
+3. **The timeline shows goals after each event's title** (built that way rather than as a third lane, so it fits a narrow screen), with changes marked, so a glance confirms them:
 
 ```
  TIME  NOTES                                 EVENTS                                  GOALS
@@ -485,7 +482,7 @@ You can then reorganize: give migrated goals parents, cadences and measures, add
 | 0 (done) | Ran `probe_label_lifecycle.py` (§5). `list_events` pages through results. Fixed the two latent bugs the probe exposed: the stale label id on inserts (§5) and silent description truncation in compaction (§6.2) | – |
 | 1 (done): Goals replace labels | `GoalSheet`/`Goals` (replacing `EventLabelSheet`/`EventLabels`), `Event.goal_ids`, `GoalCalendar` (replacing `LabelPriorityCalendar`), the migration, the goal and event tools in §9.2–9.3, removal of the label tools | Goals page (list, toggle, edit), event goal chips |
 | 2 (done): Health storage | The Goal Health calendar, `record_assessments`, `get_goal_history`, cache columns, `measure_goals` (duration/count/wake_time/rollup) | Health dots, sparklines, history chart |
-| 3: Compaction + reflection | `prepare_reflection`/`record_reflection` (done); Goal Hints, compaction suggestions and goal lane | – (the reflection runs in the MCP client) |
+| 3 (done): Compaction + reflection | `prepare_reflection`/`record_reflection`; goal suggestions and marks in compaction | – (the reflection runs in the MCP client) |
 | 4: Rich descriptions | Goal Details tab, Drive images, the description tools | Markdown/Mermaid rendering and editor |
 
 Each phase is shippable on its own. Phase 1 alone is a strict improvement over labels: hierarchy, active/inactive, unlimited goals over time.

@@ -76,11 +76,15 @@ from utilities.note_compaction import (
     planned_timeline,
 )
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote
+from utilities.goals import Goals, GoalTree
 from utilities.reallocating_calendar import ReallocatingCalendar
 
 _CANDIDATE_WINDOW = timedelta(hours=1)
 """How far either side of a note's time a planned event may start or end
 and still be offered to it as a candidate."""
+
+_HINT_HISTORY = timedelta(days=28)
+"""How far back goals are looked for to suggest for an event."""
 
 _LOOKBACK = timedelta(minutes=15)
 """How long before the compaction window starts an event may have ended
@@ -109,7 +113,7 @@ DECISION_GUIDE = (
     "itself, e.g. 'leaving 15 minutes early'). 'keep' also takes {summary} to rename an event and "
     "{annotate} to add text to its description. "
     "'cancel' {event_id}: it didn't happen. "
-    "'create' {summary, a start and an end (a time or note each), event_label_id?}: something "
+    "'create' {summary, a start and an end (a time or note each), goal_ids?}: something "
     "unplanned happened. "
     "'merge' {event_id, into}: fold one event into another, titled after both -- ONLY when the user "
     "has told you they don't remember where one ended and the other began; never just because the "
@@ -130,6 +134,14 @@ DECISION_GUIDE = (
     "bedtime (an earlier one shortens or cancels what runs past it), and its end -- the wake-up "
     "time -- starts the next day, which compaction never adjusts, so move only its start to "
     "change only bedtime. "
+    "GOALS: each event can serve goals (`goals` lists them; `goal_ids` on an event, primary "
+    "first). Tagging events with goals should cost the user almost nothing, so: for every past "
+    "event with `suggested_goal_ids`, add a 'keep' {event_id, goal_ids} applying them -- without "
+    "asking, unless the notes clearly say otherwise; give a 'create' goal_ids when the notes "
+    "clearly imply them; otherwise leave goals alone ('keep' without goal_ids keeps them, and [] "
+    "clears them). Ask about a goal only when genuinely torn between two. In the timeline, ◆ marks "
+    "a goal an event already serves and ◇ one it's being given (or, before deciding, one "
+    "suggested); a correction from the user is just a new dry run. "
     "After every dry run, show the user the result's `timeline` as two parallel lanes -- notes on "
     "the left, events on the right, aligned by time, with each anchoring note joined to the event "
     "edge it sets -- drawing it as a visual if you can render one, otherwise showing "
@@ -155,9 +167,23 @@ class ContextEvent:
     start: datetime
     end: datetime
     description: str | None = None
-    event_label_id: str | None = None
+    goal_ids: list[str] | None = None
+    """The goals it serves now, primary first."""
+
+    goal_names: list[str] | None = None
+    suggested_goal_ids: list[str] | None = None
+    """For a past event serving no goals: those the latest event with the
+    same title, in the last few weeks, served -- to apply unless the notes
+    say otherwise (see `DECISION_GUIDE`)."""
+
     priority: int | None = None
     is_fixed_time: bool | None = None
+
+
+@dataclass(kw_only=True)
+class ContextGoal:
+    id: str
+    path: str
 
 
 @dataclass(kw_only=True)
@@ -187,6 +213,9 @@ class CompactionContext:
     timeline: Timeline | None = None
     """`notes` beside `events` as planned -- see
     utilities/compaction_timeline.py."""
+
+    goals: list[ContextGoal] | None = None
+    """The goals an event can be given: every active one."""
 
     instructions: str = DECISION_GUIDE
 
@@ -236,12 +265,15 @@ class NoteCompactor:
         notes: NotedTimeSheet,
         journal: CompactionJournal,
         clock: Callable[[], datetime] | None = None,
+        goals: Goals | None = None,
     ) -> None:
         """`calendar` reads the day's events (through the same goal-aware
-        view reallocation uses); `client` is what the
-        planned changes are written through."""
+        view reallocation uses); `client` is what the planned changes are
+        written through (a GoalCalendar, so each event's label follows
+        its goals). `goals` names, suggests and checks events' goals."""
         self._calendar = calendar
         self._client = client
+        self._goals = goals
         self._notes = notes
         self._journal = journal
         self._clock = clock or (lambda: datetime.now(timezone.utc))
@@ -255,6 +287,9 @@ class NoteCompactor:
         if day is None:
             return CompactionContext(notes=[], events=[], open_compaction=open_id)
         first = min(n.note.timestamp for n in day.notes) if day.notes else None
+        tree = self._goals.tree() if self._goals else None
+        names = _goal_names(tree)
+        suggested = self._suggestions(day, tree) if tree is not None else {}
         return CompactionContext(
             notes=[
                 ContextNote(
@@ -274,7 +309,9 @@ class NoteCompactor:
                     start=e.start,
                     end=e.end,
                     description=e.description,
-                    event_label_id=e.event_label_id,
+                    goal_ids=e.goal_ids,
+                    goal_names=[names.get(g, g) for g in e.goal_ids] if e.goal_ids is not None else None,
+                    suggested_goal_ids=suggested.get(e.id),
                     priority=e.effective_priority,
                     is_fixed_time=e.effective_is_fixed_time,
                 )
@@ -286,8 +323,31 @@ class NoteCompactor:
             remaining_note_count=day.remaining,
             open_compaction=open_id,
             compaction_window_start=day.compaction_window_start,
-            timeline=planned_timeline(_plan_notes(day), day.events, day.now),
+            timeline=planned_timeline(_plan_notes(day), day.events, day.now, names, suggested),
+            goals=[
+                ContextGoal(id=g.id, path=tree.path(g.id)) for g in tree.ordered() if g.active
+            ] if tree is not None else None,
         )
+
+    def _suggestions(self, day: _Day, tree: GoalTree) -> dict[str, list[str]]:
+        """Goals to suggest for the day's past events that serve none: those
+        the latest earlier event with the same title served, within
+        _HINT_HISTORY (ignoring goals since deleted). Recurring events need
+        nothing extra: an instance's goals come with its series."""
+        bare = [e for e in day.events if e.id and not e.goal_ids and e.end <= day.now and e.summary]
+        if not bare:
+            return {}
+        start = day.compaction_window_start
+        history = self._calendar.list_events(start - _HINT_HISTORY, start)
+        hints: dict[str, list[str]] = {}
+        for event in sorted(history, key=lambda e: e.start):
+            usable = [
+                g for g in event.goal_ids or ()
+                if g in tree.by_id and tree.by_id[g].status != "deleted"
+            ]
+            if event.summary and usable and event.status != "cancelled":
+                hints[_title_key(event.summary)] = usable
+        return {e.id: hints[_title_key(e.summary)] for e in bare if _title_key(e.summary) in hints}
 
     def dry_run(
         self, decisions: list[EventDecision], ignore_notes: list[str] | None = None
@@ -481,32 +541,40 @@ class NoteCompactor:
     def _plan(
         self, day: _Day, decisions: list[EventDecision], ignore_notes: list[str] | None
     ) -> CompactionPlan:
-        """`plan_compaction` for `day`, checked against the calendar's
-        current labels: Calendar rejects inserting an event with a label it
-        doesn't have (HTTP 400), which would stop the commit partway -- and
-        every retry with it. A `create` decision naming such a label is an
-        error for the model to fix; any other created event (a split
-        continuation, cloned label and all, from reflowing the day) just
-        drops it. Only reads the labels when a created event has one."""
+        """`plan_compaction` for `day`, with the decisions' goals checked,
+        and created events' labels checked against the calendar's: Calendar
+        rejects inserting an event with a label it doesn't have (HTTP 400),
+        which would stop the commit partway -- and every retry with it. A
+        created event that has one anyway (a split continuation, cloned
+        label and all, from reflowing the day) just drops it; the label it
+        gets follows its goals when it's written. Only reads the labels when
+        a created event has one."""
+        tree = self._goals.tree() if self._goals else None
+        if tree is not None:
+            current = {e.id: e.goal_ids or [] for e in day.events if e.id}
+            problems = []
+            for d in decisions:
+                if d.goal_ids:
+                    try:
+                        tree.check_goal_ids(d.goal_ids, for_events=True, already=current.get(d.event_id, []))
+                    except ValueError as exc:
+                        problems.append(f"{d.action} {d.event_id or d.summary!r}: {exc}")
+            if problems:
+                raise CompactionError("\n".join(problems))
         plan = plan_compaction(
-            _plan_notes(day), decisions, day.events, day.now, ignore_notes=ignore_notes, day_start=day.day_start
+            _plan_notes(day),
+            decisions,
+            day.events,
+            day.now,
+            ignore_notes=ignore_notes,
+            day_start=day.day_start,
+            goal_names=_goal_names(tree),
         )
         labelled = [c for c in plan.changes if c.action == "create" and c.after.event_label_id is not None]
         if not labelled:
             return plan
         labels, _etag = self._client.list_event_labels()
         label_ids = {label.id for label in labels}
-        unknown = sorted({
-            d.event_label_id
-            for d in decisions
-            if d.action == "create" and d.event_label_id is not None and d.event_label_id not in label_ids
-        })
-        if unknown:
-            valid = ", ".join(f"{label.id} ({label.name})" for label in labels if label.name) or "none"
-            raise CompactionError(
-                f"'create' names event label(s) this calendar doesn't have: {', '.join(unknown)}; "
-                f"valid labels: {valid}"
-            )
         for change in labelled:
             if change.after.event_label_id not in label_ids:
                 change.after.event_label_id = None
@@ -590,6 +658,14 @@ def _candidates(timestamp: datetime, events: list[Event], previous: Event | None
     return ids
 
 
+def _goal_names(tree: GoalTree | None) -> dict[str, str]:
+    return {g.id: g.name or g.id for g in tree.goals if g.id} if tree is not None else {}
+
+
+def _title_key(summary: str) -> str:
+    return " ".join(summary.casefold().split())
+
+
 def _new_event_id(compaction_id: str, step: int) -> str:
     """A deterministic id for a created event (Calendar accepts a-v and
     0-9, 5-1024 characters), so retrying a create can't duplicate it."""
@@ -601,7 +677,7 @@ def _patch_for(step: JournalStep) -> Event:
         return Event(id=step.event_id, status="cancelled")
     before, after = step.before, step.after
     patch = Event(id=step.event_id)
-    for name in ("summary", "start", "end", "description", "location", "priority", "event_label_id"):
+    for name in ("summary", "start", "end", "description", "location", "priority", "event_label_id", "goal_ids"):
         value = getattr(after, name)
         if value is not None and value != getattr(before, name):
             setattr(patch, name, value)
