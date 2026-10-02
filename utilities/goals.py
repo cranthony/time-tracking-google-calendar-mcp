@@ -79,6 +79,10 @@ class ListedGoal(Goal):
 
     path: str | None = None
 
+    effective_color: str | None = None
+    """Read-only: the color its label is shown in -- its own
+    background_color, or the one it inherits (see GoalTree.color)."""
+
     stale_periods: int | None = None
     """Fully ended periods of its cadence since `health_period` (or since
     it was created, if it's never been assessed); `None` unless it's
@@ -124,9 +128,15 @@ class GoalTree:
         return next((g.fixed_time for g in self.chain(goal_id) if g.fixed_time is not None), None)
 
     def color(self, goal: Goal) -> str:
-        if goal.background_color:
-            return goal.background_color
-        return color_for_priority(self.priority(goal.id) if goal.id else goal.priority)[1]
+        """The goal's label color: its own background_color; else its own
+        priority's color, if it sets one; else its parent's color, the
+        same way up the tree; else the color for no priority."""
+        for g in self.chain(goal.id) if goal.id else [goal]:
+            if g.background_color:
+                return g.background_color
+            if g.priority is not None:
+                return color_for_priority(g.priority)[1]
+        return color_for_priority(None)[1]
 
     def active_label_id(self, goal_id: str) -> str | None:
         """The label of the goal's nearest active goal in its chain
@@ -329,6 +339,7 @@ class Goals:
                 ListedGoal(
                     **{f.name: getattr(goal, f.name) for f in fields(Goal)},
                     path=tree.path(goal.id),
+                    effective_color=tree.color(goal),
                     stale_periods=_stale_periods(goal, today),
                 )
                 for goal in tree.ordered()

@@ -174,6 +174,21 @@ class TestCreateGoal:
         tofu = _by_name(goals)["Tofu tikka"]
         assert calendar.named()[tofu.label_id] == ("Tofu tikka", _PRIORITY_1_COLOR)
 
+    def test_a_sub_goal_inherits_its_parents_own_color_unless_it_sets_a_priority(self):
+        goals, calendar, _ = _goals()
+        goals.create_goal(Goal(name="Cooking", background_color="#123456", priority=1))
+        parent = _by_name(goals)["Cooking"]
+        goals.create_goal(Goal(name="Tofu", parent_id=parent.id))
+        goals.create_goal(Goal(name="Curry", parent_id=parent.id, priority=3))
+
+        listed = {g.name: g for g in goals.get_goals().goals}
+
+        assert listed["Tofu"].effective_color == "#123456"
+        assert listed["Curry"].effective_color == color_for_priority(3)[1]
+        assert listed["Cooking"].effective_color == "#123456"
+        assert listed["Tofu"].background_color is None  # inherited, not its own
+        assert calendar.named()[listed["Tofu"].label_id] == ("Tofu", "#123456")
+
     def test_an_inactive_goal_takes_no_label(self):
         goals, calendar, _ = _goals()
 
