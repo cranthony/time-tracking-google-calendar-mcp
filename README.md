@@ -34,6 +34,7 @@ pip install -r requirements-dev.txt
 - [`utilities/reallocating_calendar.py`](utilities/reallocating_calendar.py) — the glue between the two above: `ReallocatingCalendar` wraps a `CalendarClient`-shaped calendar (see `goal_calendar.py` below) with reallocation-aware `create_event`/`update_event`, the shared entry point both `server.py` and `calendar_cli.py` use.
 - [`utilities/goal_periods.py`](utilities/goal_periods.py) — the periods goals are assessed over, one kind per cadence, and their ids (`2026-09-30`, `week-2026-09-27`, `2026-09`, `2026-09..10`). Pure date arithmetic.
 - [`utilities/goal_health.py`](utilities/goal_health.py) — `GoalHealth`: recording and reading goal assessments on the Goal Health calendar, measuring goals from the main calendar, and keeping the goals tab's health columns up to date. See [Goal health](#goal-health) below.
+- [`utilities/reflection.py`](utilities/reflection.py) — `Reflections`: preparing and recording a reflection, the conversation that confirms a period's ratings. See [Reflections](#reflections) below.
 - [`utilities/goal_calendar.py`](utilities/goal_calendar.py) — `GoalCalendar` wraps a `CalendarClient` with a `Goals`: on read (`list_events`/`get_event`) it fills in an event's goals (from its label, for an event written before goals existed) and the `goal_priority`/`goal_is_fixed_time` it inherits from them; on write it derives the event's label from its goals. The event's own `priority`/`is_fixed_time` are never touched. `ReallocatingCalendar` is built on top of this, and reallocation reads only `Event.effective_priority`/`effective_is_fixed_time` (the event's own value, falling back to its goal's) — see [Goals](#goals) below.
 - [`utilities/calendar_metadata_sheet.py`](utilities/calendar_metadata_sheet.py) — owns the *spreadsheet* a calendar's Sheet-backed data (goals, uncompacted time notes, ...) lives in: `ensure_spreadsheet` finds or creates it (adopting a pre-`calendar_metadata_sheet.py` calendar's dedicated event-label spreadsheet in place, if it finds one), `ensure_tab` finds or creates/tags one of its tabs by role, and `create_tab` creates one but only tags it once its first rows are written. See [Calendar metadata sheets](#calendar-metadata-sheets) below.
 - [`utilities/goal_sheet.py`](utilities/goal_sheet.py) — a thin, per-tab API: `GoalSheet.find`/`create` (the goals tab of a given calendar metadata spreadsheet) and, bound to it, `read`/`write` its rows as this module's own `Goal` dataclass. Columns are matched by header, so ones it doesn't know are kept as they are.
@@ -93,6 +94,8 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `record_assessments` | `(assessments: list[Assessment]) -> list[Assessment]` |
 | `get_goal_history` | `(goal_ids: list[str], cadence: Cadence \| None, start: date \| None, end: date \| None) -> list[Assessment]` |
 | `rebuild_goal_health_cache` | `() -> GoalList` |
+| `prepare_reflection` | `(cadence: Cadence, period: str \| None) -> ReflectionContext` |
+| `record_reflection` | `(cadence: Cadence, period: str, assessments: list[Assessment], journal: str \| None, intentions: list[str] \| None, dry_run: bool = True) -> ReflectionResult` |
 | `note` | `(noted_time: NotedTime) -> NoteWithId` |
 | `get_notes` | `(include_compacted: bool = False) -> list[NoteWithId]` |
 | `edit_note` | `(note_id: str, timestamp: datetime \| None, description: str \| None) -> NoteWithId` |
@@ -221,6 +224,18 @@ A goal with a **cadence** (`daily`, `weekly`, `monthly` or `every_2_months`) is 
 - **Proposed until a reflection confirms them.** `record_assessments` always writes `proposed` assessments, whatever their `status` says; only a reflection confirms one. Only confirmed ratings count toward a goal's health.
 - **Measured goals.** `measure_goals` proposes ratings for goals whose `measure` the calendar can answer, without writing anything: `{"kind": "duration", "target_min": 300}` (minutes of the goal's events, its sub-goals' included, within the period), `{"kind": "count", "target": 1}` (how many), `{"kind": "wake_time", "target": "07:00", "grace_min": 10, "zero_at_min": 60}` (when the day's end-of-day sleep ended: 100 within the grace, falling to 0 at `zero_at_min` minutes late, averaged over a longer period), and `{"kind": "rollup", "agg": "min"}` (its sub-goals' confirmed ratings in the period, `min` or `mean`). Each comes with an explanation like "3h 40m of 5h target → 73". Other kinds (`subjective`, `llm`) are rated in a reflection.
 - **At a glance.** The goals tab's **health** (the latest confirmed rating; a skip doesn't replace it), **health_period** (the latest period assessed) and **health_trend** (the last 8 periods' ratings, `-` for none) are a cache of the Goal Health calendar, kept up to date as assessments are confirmed; `rebuild_goal_health_cache` recomputes them. Listed goals also say how many of their periods have ended unassessed (`stale_periods`).
+
+## Reflections
+
+A **reflection** is a short conversation, run by the MCP client, that confirms the health ratings due for one period of one cadence — and it's the only way a rating is confirmed. See [`docs/goals-design.md`](docs/goals-design.md) section 11.
+
+- **`prepare_reflection(cadence, period?)`** (read-only) picks, by default, the oldest of the last 12 ended periods with no reflection yet (or the last one, if they all have one). It returns:
+  - the **due** goals: active ones with that cadence, each with its recent confirmed ratings and a **proposed** rating where there is one — recorded earlier, or measured from the calendar with its explanation;
+  - for a weekly or longer reflection, the shorter-cadence goals' confirmed ratings in the period to **review**, not rate again;
+  - minutes per goal (sub-goals' time included);
+  - for daily and weekly reflections, a digest of the period's events and compacted notes;
+  - the previous reflection's **intentions**, how many notes are still uncompacted (the calendar may not reflect them yet), and instructions for the conversation.
+- **`record_reflection(cadence, period, assessments, journal?, intentions?)`** previews by default and writes nothing. With `dry_run=False`, once the user agrees, it confirms the ratings (refreshing the goals' health), and records the reflection itself on the Goal Health calendar. That's an all-day event spanning the period, with the journal (up to 8,000 bytes) as its description and up to 3 intentions for the next period. Its id encodes the cadence and period, so recording again replaces it. A due goal left unrated stays unassessed; rate it `skip` to say so on purpose.
 
 ## Event colors
 

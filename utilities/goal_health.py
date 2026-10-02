@@ -142,6 +142,29 @@ class GoalHealth:
         self._refresh_cache({a.goal_id for a in written})
         return written
 
+    def check(self, assessments: list[Assessment]) -> None:
+        """Raise ValueError if any of `assessments` couldn't be recorded --
+        everything `record_assessments` checks, without writing."""
+        tree = self._goals.tree()
+        today = self._now().date()
+        for assessment in assessments:
+            self._check(assessment, tree, today)
+
+    def now(self) -> datetime:
+        """Now, in the main calendar's time zone."""
+        return self._now()
+
+    @property
+    def calendar_client(self) -> CalendarClient:
+        """The main calendar."""
+        return self._client
+
+    def health_calendar(self, *, create: bool = True) -> CalendarClient | None:
+        """The Goal Health calendar, for the reflections kept beside the
+        assessments (see utilities/reflection.py); created if need be,
+        unless `create` is false (then `None` if there isn't one yet)."""
+        return self._health_calendar(create=create)
+
     def _write(self, assessments: list[Assessment], *, status: Status) -> list[Assessment]:
         tree = self._goals.tree()
         today = self._now().date()

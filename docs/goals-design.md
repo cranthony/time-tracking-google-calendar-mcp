@@ -485,7 +485,7 @@ You can then reorganize: give migrated goals parents, cadences and measures, add
 | 0 (done) | Ran `probe_label_lifecycle.py` (§5). `list_events` pages through results. Fixed the two latent bugs the probe exposed: the stale label id on inserts (§5) and silent description truncation in compaction (§6.2) | – |
 | 1 (done): Goals replace labels | `GoalSheet`/`Goals` (replacing `EventLabelSheet`/`EventLabels`), `Event.goal_ids`, `GoalCalendar` (replacing `LabelPriorityCalendar`), the migration, the goal and event tools in §9.2–9.3, removal of the label tools | Goals page (list, toggle, edit), event goal chips |
 | 2 (done): Health storage | The Goal Health calendar, `record_assessments`, `get_goal_history`, cache columns, `measure_goals` (duration/count/wake_time/rollup) | Health dots, sparklines, history chart |
-| 3: Compaction + reflection | Goal Hints, compaction suggestions and goal lane, `prepare_reflection`/`record_reflection` | – (the reflection runs in the MCP client) |
+| 3: Compaction + reflection | `prepare_reflection`/`record_reflection` (done); Goal Hints, compaction suggestions and goal lane | – (the reflection runs in the MCP client) |
 | 4: Rich descriptions | Goal Details tab, Drive images, the description tools | Markdown/Mermaid rendering and editor |
 
 Each phase is shippable on its own. Phase 1 alone is a strict improvement over labels: hierarchy, active/inactive, unlimited goals over time.
