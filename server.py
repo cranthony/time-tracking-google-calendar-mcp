@@ -27,6 +27,7 @@ from config import (
 from oauth_proxy import oauth_proxy_handlers
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_health import Assessment, GoalHealth
+from utilities.reflection import ReflectionContext, ReflectionResult, Reflections
 from utilities.goal_sheet import Cadence, Goal, GoalStatus
 from utilities.goals import GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
@@ -189,6 +190,7 @@ _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
 _goals: Goals | None = None
 _goal_health: GoalHealth | None = None
+_reflections: Reflections | None = None
 _noted_time_sheet: NotedTimeSheet | None = None
 _note_compactor: NoteCompactor | None = None
 
@@ -223,6 +225,15 @@ def get_goal_health() -> GoalHealth:
     if _goal_health is None:
         _goal_health = GoalHealth(get_calendar_client(), get_goal_store())
     return _goal_health
+
+
+def get_reflections() -> Reflections:
+    """Lazily construct and cache the Reflections, the same way the other
+    get_* helpers cache theirs."""
+    global _reflections
+    if _reflections is None:
+        _reflections = Reflections(get_goal_health(), get_goal_store(), get_noted_time_sheet())
+    return _reflections
 
 
 def get_goal_store() -> Goals:
@@ -483,6 +494,44 @@ def rebuild_goal_health_cache() -> GoalList:
     with track("rebuild_goal_health_cache"), cached_sheet_reads():
         try:
             return get_goal_health().rebuild_cache()
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def prepare_reflection(cadence: Cadence, period: str | None = None) -> ReflectionContext:
+    """Start a reflection: everything needed to confirm the health ratings
+    due for one period of a cadence -- by default the oldest recent period
+    with no reflection yet. Returns the goals to rate (with recent ratings,
+    and a proposed rating with its explanation where one was recorded or
+    could be measured), shorter-cadence goals to review, minutes per goal,
+    the period's events and notes (daily and weekly), the last reflection's
+    intentions, and instructions for the conversation. Read-only."""
+    with track("prepare_reflection"), cached_sheet_reads():
+        try:
+            return get_reflections().prepare(cadence, period)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@mcp.tool()
+def record_reflection(
+    cadence: Cadence,
+    period: str,
+    assessments: list[Assessment],
+    journal: str | None = None,
+    intentions: list[str] | None = None,
+    dry_run: bool = True,
+) -> ReflectionResult:
+    """Finish a reflection: confirm its ratings (each for this cadence and
+    period), and record an optional journal and up to 3 intentions for the
+    next period. With dry_run (the default) nothing is written: it returns
+    a preview to show the user. With dry_run=False, once they agree, the
+    ratings are confirmed -- the only way a rating counts toward a goal's
+    health -- and the reflection is recorded; doing it again replaces it."""
+    with track("record_reflection"), cached_sheet_reads():
+        try:
+            return get_reflections().record(cadence, period, assessments, journal, intentions, dry_run=dry_run)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 

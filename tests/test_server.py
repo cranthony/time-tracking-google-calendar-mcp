@@ -649,6 +649,46 @@ class TestGoalHealthTools:
         assert labels == [tool]
 
 
+class TestReflectionTools:
+    def _fake(self, monkeypatch) -> MagicMock:
+        reflections = MagicMock()
+        monkeypatch.setattr(server, "get_reflections", lambda: reflections)
+        return reflections
+
+    def test_prepare_reflection_delegates(self, monkeypatch):
+        reflections = self._fake(monkeypatch)
+
+        server.prepare_reflection("weekly", "week-2026-09-20")
+
+        reflections.prepare.assert_called_once_with("weekly", "week-2026-09-20")
+
+    def test_record_reflection_previews_by_default(self, monkeypatch):
+        reflections = self._fake(monkeypatch)
+
+        server.record_reflection("weekly", "week-2026-09-20", [], journal="j", intentions=["i"])
+
+        reflections.record.assert_called_once_with(
+            "weekly", "week-2026-09-20", [], "j", ["i"], dry_run=True
+        )
+
+    @pytest.mark.parametrize(
+        "tool, method, args",
+        [
+            ("prepare_reflection", "prepare", ("weekly",)),
+            ("record_reflection", "record", ("weekly", "week-2026-09-20", [])),
+        ],
+    )
+    def test_wrap_value_errors_and_are_tracked(self, monkeypatch, tool, method, args):
+        reflections = self._fake(monkeypatch)
+        getattr(reflections, method).side_effect = ValueError("hasn't started yet")
+        labels = _tracked_labels(monkeypatch)
+
+        with pytest.raises(ToolError, match="hasn't started yet"):
+            getattr(server, tool)(*args)
+
+        assert labels == [tool]
+
+
 class TestGetGoalHealth:
     def test_caches_across_calls_on_the_shared_client_and_goals(self, monkeypatch):
         client = _fake_client(monkeypatch)
