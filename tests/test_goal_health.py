@@ -266,7 +266,7 @@ class TestMeasure:
         calendar.events = [
             _event("2026-09-21T18:00", "2026-09-21T20:00", [cooking.id]),  # 120
             _event("2026-09-23T18:00", "2026-09-23T19:10", [tofu.id]),  # 70, via its sub-goal
-            _event("2026-09-26T23:30", "2026-09-27T00:30", [cooking.id]),  # 30 inside the week
+            _event("2026-09-27T06:30", "2026-09-27T07:30", [cooking.id]),  # 30 inside the week, which ends at 7am
             _event("2026-09-24T18:00", "2026-09-24T19:00", ["other"]),  # not this goal
             _event("2026-09-25T18:00", "2026-09-25T19:00", [cooking.id], status="cancelled"),
         ]

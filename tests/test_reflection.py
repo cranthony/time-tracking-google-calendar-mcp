@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 
@@ -52,29 +52,34 @@ _WAKE = Goal(name="Wake", cadence="daily", measure={"kind": "subjective"})
 
 
 class TestPrepare:
-    def test_defaults_to_the_oldest_ended_period_with_no_reflection(self):
+    def test_with_no_period_named_it_offers_completed_unreflected_ones(self):
         reflections, *_ = _setup([_COOKING])
-
-        first = reflections.prepare("weekly")
-
-        assert first.period == "week-2026-08-30"  # the goals were created 2026-09-01
-        assert not first.already_reflected
-        reflections.record("weekly", first.period, [], dry_run=False)
-        assert reflections.prepare("weekly").period == "week-2026-09-06"
-
-    def test_when_every_recent_period_is_reflected_it_offers_the_last_one_again(self):
-        reflections, *_ = _setup([_COOKING])
-        for week in ["08-30", "09-06", "09-13"]:
-            reflections.record("weekly", f"week-2026-{week}", [], dry_run=False)
-        reflections.record("weekly", "week-2026-09-20", [], journal="good week", dry_run=False)
 
         context = reflections.prepare("weekly")
 
-        assert context.period == "week-2026-09-20"
-        assert context.already_reflected
-        assert context.journal == "good week"
+        assert context.period is None
+        assert not context.due
+        # It's Friday Oct 2: this week isn't over. The goals were created
+        # Sep 1, so the week of Aug 30 is the oldest; it isn't offered.
+        assert [(c.period, c.first_day, c.last_day) for c in context.choices] == [
+            ("week-2026-09-20", date(2026, 9, 20), date(2026, 9, 26)),
+            ("week-2026-09-13", date(2026, 9, 13), date(2026, 9, 19)),
+            ("week-2026-09-06", date(2026, 9, 6), date(2026, 9, 12)),
+        ]
+        assert context.older_unreflected == 1
+        assert "Ask which week" in context.instructions
 
-    def test_a_daily_reflection_with_no_day_named_offers_days_to_ask_about(self):
+    def test_when_every_recent_period_is_reflected_it_offers_the_last_one_again(self):
+        reflections, *_ = _setup([_COOKING])
+        for week in ["08-30", "09-06", "09-13", "09-20"]:
+            reflections.record("weekly", f"week-2026-{week}", [], dry_run=False)
+
+        context = reflections.prepare("weekly")
+
+        assert [(c.period, c.already_reflected) for c in context.choices] == [("week-2026-09-20", True)]
+        assert context.older_unreflected == 0
+
+    def test_a_daily_reflection_offers_completed_days_bounded_by_sleep(self):
         reflections, *_ = _setup([_WAKE])
         unreflected = {"09-21", "09-24", "09-25", "09-28"}
         for day in range(1, 31):
@@ -84,17 +89,24 @@ class TestPrepare:
 
         context = reflections.prepare("daily")
 
-        assert context.period is None
-        # It's 21:00 on Oct 2: that day, still going on, then the newest
-        # three without a reflection; one older one isn't offered.
-        assert [(c.period, c.current, c.ends) for c in context.choices] == [
-            ("2026-10-02", True, None),
-            ("2026-09-28", False, datetime(2026, 9, 29, tzinfo=TZ)),
-            ("2026-09-25", False, datetime(2026, 9, 26, tzinfo=TZ)),
-            ("2026-09-24", False, datetime(2026, 9, 25, tzinfo=TZ)),
+        # It's 21:00 on Oct 2, which isn't over: the newest three completed
+        # days without a reflection, each ending at 7am with no sleep logged.
+        assert [(c.period, c.ends) for c in context.choices] == [
+            ("2026-09-28", datetime(2026, 9, 29, 7, tzinfo=TZ)),
+            ("2026-09-25", datetime(2026, 9, 26, 7, tzinfo=TZ)),
+            ("2026-09-24", datetime(2026, 9, 25, 7, tzinfo=TZ)),
         ]
         assert context.older_unreflected == 1
         assert "Ask which day" in context.instructions
+
+    def test_a_named_period_can_be_reflected_on_again(self):
+        reflections, *_ = _setup([_COOKING])
+        reflections.record("weekly", "week-2026-09-20", [], journal="good week", dry_run=False)
+
+        context = reflections.prepare("weekly", "week-2026-09-20")
+
+        assert context.already_reflected
+        assert context.journal == "good week"
 
     def test_a_days_events_run_from_waking_to_waking(self):
         sleep_into_2nd = _event("2026-10-01T23:30", "2026-10-02T07:15", is_end_of_day_sleep=True)
