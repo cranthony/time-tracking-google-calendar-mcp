@@ -602,9 +602,11 @@ def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
     goal takes one. Each goal has minutes_24h and minutes_7d: the time
     spent on it and its sub-goals in the 24 hours and 7 days (wall-clock)
     up to as_of, when notes were last compacted into the calendar.
-    minutes_by_statuses splits the time spent on goals by the statuses of
-    the goals each event serves, so the time on goals of any statuses is
-    the sum of the entries naming any of them, each event counted once.
+    Each goal's minutes_by_statuses splits its time by the statuses of the
+    goals each event is given among it and its sub-goals (not their
+    ancestors), so its time through goals of any statuses is the sum of
+    the entries naming any of them, each event counted once; the list's
+    own minutes_by_statuses is the overall goal's.
 
     The first goal is always the overall goal (id "overall"), listed
     whatever the statuses: its sub-goals are implied to be every top-level
