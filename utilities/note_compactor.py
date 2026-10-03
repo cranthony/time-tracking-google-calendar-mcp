@@ -34,11 +34,10 @@ A day can take several compactions, so the events offered -- the
 settled isn't offered again. The one event that ended within `_LOOKBACK`
 before the compaction window starts is offered too, so an event the last
 compaction closed off at "now" (or the night's sleep) can still be
-stretched. Likewise the latest compacted note, if it's within `_LOOKBACK`
-before the compaction window starts, is offered as `previous_note`: what
-the user said just before the window often says what was going on as it
-began. The timeline shows the latest compacted note however long ago it
-was, and when the last compaction ran, as context. Every past event
+stretched. The latest compacted note, however long ago it was written,
+is offered as `previous_note`: what the user last said before the window
+often says what was going on as it began. The timeline shows it too, and
+when the last compaction ran, as context. Every past event
 offered is recorded as on schedule unless
 the client's decisions say otherwise (see utilities/note_compaction.py).
 
@@ -104,9 +103,8 @@ _HINT_HISTORY = timedelta(days=28)
 """How far back goals are looked for to suggest for an event."""
 
 _LOOKBACK = timedelta(minutes=15)
-"""How long before the compaction window starts an event may have ended,
-or the latest compacted note been written, and still be offered (only the
-latest one) -- see the module docstring."""
+"""How long before the compaction window starts an event may have ended
+and still be offered (only the latest one) -- see the module docstring."""
 
 _APPROVAL_RULE = (
     "Then STOP and wait for the user's reply. Only call compact_notes with dry_run=False once the "
@@ -155,11 +153,11 @@ DECISION_GUIDE = (
     "night's sleep); if a note shows it actually ran later -- the user slept in -- move its end "
     "with 'keep', and say when whatever it now overlaps happened. "
     "`previous_note`, if there is one, is the last note an earlier compaction already used, "
-    "written within 15 minutes before `compaction_window_start` -- context only (it can't be "
-    "used as a start_note/end_note or ignored): e.g. if it said 'starting the report', the report "
-    "was already under way as this window began, and the first note may well be its end. The "
-    "timeline always shows the latest compacted note (✓) and when the last compaction ran, both "
-    "as context. "
+    "however long ago -- context only (it can't be used as a start_note/end_note or ignored): "
+    "e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report "
+    "was already under way as this window began, and the first note may well be its end; the "
+    "longer before the window it was written, the less it says about how the window began. The "
+    "timeline shows it too (✓), and when the last compaction ran, both as context. "
     "COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at "
     "`now`, except for later events near a note (one may be what a note starts early) and, after "
     "a dry run, later events the plan changes -- e.g. pushes later after an overrun. "
@@ -259,9 +257,8 @@ class CompactionContext:
     """The goals an event can be given: every active one."""
 
     previous_note: PreviousNote | None = None
-    """The latest already-compacted note, if it was written within
-    `_LOOKBACK` before `compaction_window_start` -- see the module
-    docstring."""
+    """The latest already-compacted note, however long ago it was
+    written -- see the module docstring."""
 
     instructions: str = DECISION_GUIDE
 
@@ -347,7 +344,7 @@ class NoteCompactor:
         tree = self._goals.tree() if self._goals else None
         names = _goal_names(tree)
         suggested = self._suggestions(day, tree) if tree is not None else {}
-        previous_note = self._previous_note(day)
+        previous_note = day.latest_compacted
         candidates = {
             n.id: _candidates(n.note.timestamp, day.events, day.previous if n.note.timestamp == first else None)
             for n in day.notes
@@ -400,15 +397,6 @@ class NoteCompactor:
                 timestamp=previous_note.timestamp, description=previous_note.description
             ) if previous_note is not None else None,
         )
-
-    def _previous_note(self, day: _Day) -> NotedTime | None:
-        """The latest compacted note, if it was written within _LOOKBACK
-        before the compaction window -- see the module docstring."""
-        latest = day.latest_compacted
-        start = day.compaction_window_start
-        if latest is not None and start - _LOOKBACK <= latest.timestamp <= start:
-            return latest
-        return None
 
     def _prefetch(self, *, goals: bool = True) -> None:
         """Read the notes tab, the journal and (if `goals`) the goals tab
