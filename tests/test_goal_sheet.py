@@ -89,7 +89,7 @@ class TestGoalSheet:
         b.status = "completed"
         sheet.write([a, b])
 
-        header = sheet._read_header()
+        header = sheet._read_header_and_data()[0]
         assert "status" in header  # added, beside the old column
         row = dict(zip(header, sheets.read_rows_in_sheet(_SPREADSHEET, 1, "A3:Z3")[0]))
         assert (row["status"], row["active"]) == ("completed", "FALSE")

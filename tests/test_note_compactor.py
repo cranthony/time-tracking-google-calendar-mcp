@@ -67,7 +67,7 @@ class Setup:
         self.notes = NotedTimeSheet(self.sheets, "s", _NOTES_TAB, self.hints)
         for at, description in notes:
             self.append_note(at, description)
-        self.journal = CompactionJournal(self.sheets, "s", _JOURNAL_TAB, self.hints)
+        self.journal = CompactionJournal(self.sheets, "s", _JOURNAL_TAB)
         self.calendar = FakeCalendar(events if events is not None else _day())
         self.client = MagicMock()
         self.now = now
@@ -289,8 +289,9 @@ class TestTheCompactionWindow:
 
     def test_a_later_round_reads_its_notes_and_the_previous_note_in_one_request(self):
         # Google Sheets caps read requests per minute, so the notes tab
-        # costs a later round's prepare just its header and one data read:
-        # the hints are confirmed, and the previous note found, within it.
+        # costs a later round's prepare just its header and one data range
+        # (in one request, see TestSheetReadRequests): the hints are
+        # confirmed, and the previous note found, within it.
         setup = Setup([("09:05+1", "email"), ("09:58+1", "done with work")], events=self._events(), now="10:05+1")
         setup.compactor.commit(setup.compactor.dry_run([]).compaction_id)
         setup.append_note("10:20+1", "report")
@@ -1068,12 +1069,13 @@ class TestSheetReadRequests:
         counts = self._round(service, "10:40+1", "10:45+1")
 
         # Once the hints are warm (the hints tab itself is read once per
-        # process). The notes tab costs each compaction call its header and
-        # one read from the hinted row; the goals tab its header and rows;
-        # the rest is the journal.
+        # process), each compaction call reads each tab it uses once: the
+        # notes tab (its header with the rows from the hinted one, which
+        # apply's stamping reads again from the cache), the goals tab, and
+        # the journal, whole.
         assert counts == {
-            "note": 2,
-            "prepare_compaction": 6,
-            "compact_notes dry run": 6,
-            "compact_notes apply": 9,
+            "note": 1,
+            "prepare_compaction": 3,
+            "compact_notes dry run": 3,
+            "compact_notes apply": 3,
         }

@@ -68,6 +68,9 @@ class FakeSheets:
             rows.append(cells)
         return rows
 
+    def read_ranges_in_sheet(self, spreadsheet_id: str, sheet_id: int, ranges: list[str]) -> list[list[list[str]]]:
+        return [self.read_rows_in_sheet(spreadsheet_id, sheet_id, rng) for rng in ranges]
+
     def write_rows_in_sheet(
         self, spreadsheet_id: str, sheet_id: int, rng: str, rows: list[list[str]]
     ) -> None:
@@ -218,13 +221,23 @@ class FakeSheetsService:
         return _Request(execute)
 
     def batchGetByDataFilter(self, *, spreadsheetId, body):
-        (data_filter,) = body["dataFilters"]
-        sheet_id, rng = self._a1(data_filter["gridRange"])
+        filters = body["dataFilters"]
 
         def execute():
-            self.read_requests.append((sheet_id, rng))
-            values = self.sheets.read_rows_in_sheet(spreadsheetId, sheet_id, rng)
-            return {"valueRanges": [{"valueRange": {"values": values}}]}
+            value_ranges = []
+            for data_filter in filters:
+                sheet_id, rng = self._a1(data_filter["gridRange"])
+                value_ranges.append(
+                    {
+                        "dataFilters": [data_filter],
+                        "valueRange": {"values": self.sheets.read_rows_in_sheet(spreadsheetId, sheet_id, rng)},
+                    }
+                )
+            # One request, however many ranges: listed as its ranges.
+            self.read_requests.append(
+                (self._a1(filters[0]["gridRange"])[0], " + ".join(self._a1(f["gridRange"])[1] for f in filters))
+            )
+            return {"valueRanges": value_ranges}
 
         return _Request(execute)
 

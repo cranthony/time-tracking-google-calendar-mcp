@@ -348,27 +348,41 @@ class SheetsClient:
         request is what used to push it over.
 
         Inside `cached_sheet_reads`, a repeat of the same read is served
-        from memory instead -- see there."""
+        from memory instead -- see there. To read more than one range of a
+        tab, `read_ranges_in_sheet` does it in one request."""
+        return self.read_ranges_in_sheet(spreadsheet_id, sheet_id, [range_within_sheet])[0]
+
+    def read_ranges_in_sheet(
+        self, spreadsheet_id: str, sheet_id: int, ranges_within_sheet: list[str]
+    ) -> list[list[list[str]]]:
+        """`read_rows_in_sheet` for each of `ranges_within_sheet` (a tab's
+        header row and some of its data, say), in that order -- in one
+        read request, `values.batchGetByDataFilter` taking any number of
+        data filters. Inside `cached_sheet_reads`, each range is cached on
+        its own, so a later read of any one of them is served from memory,
+        and only the ranges not cached yet are requested."""
         cache = _read_cache.get()
-        key = (spreadsheet_id, sheet_id, range_within_sheet)
-        if cache is not None and key in cache:
-            return [list(row) for row in cache[key]]
-        response = _execute(
-            self._sheets_service.spreadsheets()
-            .values()
-            .batchGetByDataFilter(
-                spreadsheetId=spreadsheet_id,
-                body={
-                    "dataFilters": [{"gridRange": _grid_range(sheet_id, range_within_sheet)}],
-                    "majorDimension": "ROWS",
-                },
+        keys = [(spreadsheet_id, sheet_id, rng) for rng in ranges_within_sheet]
+        found = {key: cache[key] for key in keys if key in cache} if cache is not None else {}
+        missing = list(dict.fromkeys(key for key in keys if key not in found))
+        if missing:
+            grid_ranges = [_grid_range(sheet_id, rng) for _, _, rng in missing]
+            response = _execute(
+                self._sheets_service.spreadsheets()
+                .values()
+                .batchGetByDataFilter(
+                    spreadsheetId=spreadsheet_id,
+                    body={
+                        "dataFilters": [{"gridRange": grid_range} for grid_range in grid_ranges],
+                        "majorDimension": "ROWS",
+                    },
+                )
             )
-        )
-        value_ranges = response.get("valueRanges", [])
-        rows = value_ranges[0].get("valueRange", {}).get("values", []) if value_ranges else []
-        if cache is not None:
-            cache[key] = [list(row) for row in rows]
-        return rows
+            for key, rows in zip(missing, _values_by_filter(response, grid_ranges)):
+                found[key] = rows
+                if cache is not None:
+                    cache[key] = [list(row) for row in rows]
+        return [[list(row) for row in found[key]] for key in keys]
 
     def write_rows_in_sheet(
         self, spreadsheet_id: str, sheet_id: int, range_within_sheet: str, rows: list[list[str]]
@@ -421,6 +435,28 @@ class SheetsClient:
         title = self.get_sheet_title(spreadsheet_id, sheet_id)
         escaped_title = title.replace("'", "''")
         return f"'{escaped_title}'!{range_within_sheet}"
+
+
+def _values_by_filter(response: dict, grid_ranges: list[dict]) -> list[list[list[str]]]:
+    """Each of `grid_ranges`' rows from a `batchGetByDataFilter` response.
+    Each value range comes back with the data filters it matched, so
+    they're matched up by those, falling back to the order they came back
+    in."""
+    value_ranges = response.get("valueRanges", [])
+    by_range: list[list[list[str]] | None] = [None] * len(grid_ranges)
+    unmatched = []
+    for value_range in value_ranges:
+        values = value_range.get("valueRange", {}).get("values", [])
+        echoed = [f.get("gridRange") for f in value_range.get("dataFilters", [])]
+        index = next(
+            (i for i, grid_range in enumerate(grid_ranges) if by_range[i] is None and grid_range in echoed), None
+        )
+        if index is None:
+            unmatched.append(values)
+        else:
+            by_range[index] = values
+    leftovers = iter(unmatched)
+    return [values if values is not None else next(leftovers, []) for values in by_range]
 
 
 _read_cache: ContextVar[dict[tuple[str, int, str], list[list[str]]] | None] = ContextVar(

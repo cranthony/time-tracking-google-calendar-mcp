@@ -265,15 +265,14 @@ class GoalSheet:
 
     def read(self) -> list[Goal]:
         """Every goal row, in sheet order; blank rows are skipped."""
-        header_row = self._read_header()
-        rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
+        header_row, rows = self._read_header_and_data()
         return [Goal.from_row(header_row, row) for row in rows if any(cell.strip() for cell in row)]
 
     def write(self, goals: list[Goal]) -> None:
         """Overwrite the data rows with `goals`, keeping any unknown
         columns' cells, and blanking rows left over from a longer list."""
-        header_row = self._with_columns_for(goals, self._read_header())
-        previous = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE)
+        header_row, previous = self._read_header_and_data()
+        header_row = self._with_columns_for(goals, header_row)
         by_id = {
             Goal.from_row(header_row, row).id: row for row in previous if any(cell.strip() for cell in row)
         }
@@ -296,8 +295,15 @@ class GoalSheet:
         self._sheets_client.write_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE, [header_row])
         return header_row
 
-    def _read_header(self) -> list[str]:
-        rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)
+    def _read_header_and_data(self) -> tuple[list[str], list[list[str]]]:
+        """The header row and the data rows, in one read request."""
+        header, rows = self._sheets_client.read_ranges_in_sheet(
+            self._spreadsheet_id, self._sheet_id, [_HEADER_RANGE, _DATA_RANGE]
+        )
+        return self._checked_header(header), rows
+
+    @staticmethod
+    def _checked_header(rows: list[list[str]]) -> list[str]:
         header_row = [cell.strip() for cell in rows[0]] if rows else []
         missing = [column for column in ("id", "name", "label_id") if column not in header_row]
         if "status" not in header_row and "active" not in header_row:

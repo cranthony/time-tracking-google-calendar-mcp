@@ -27,9 +27,33 @@ def make_sheet(
 def _sheets(rows, header=None):
     """A SheetsClient mock backed by an in-memory header/data range."""
     state = {"A1:C1": [header or _HEADER_ROW], "A2:C": rows}
-    sheets_client = MagicMock()
+    sheets_client = _reading_ranges_one_by_one(MagicMock())
     sheets_client.read_rows_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, rng: state[rng]
     return sheets_client
+
+
+def _reading_ranges_one_by_one(sheets_client):
+    """`sheets_client`, a mock, with `read_ranges_in_sheet` answered by
+    its `read_rows_in_sheet`, range by range."""
+    sheets_client.read_ranges_in_sheet.side_effect = lambda spreadsheet_id, sheet_id, ranges: [
+        sheets_client.read_rows_in_sheet(spreadsheet_id, sheet_id, rng) for rng in ranges
+    ]
+    return sheets_client
+
+
+def _requests(client):
+    """The ranges each read request asked for, for a mock wrapping a
+    FakeSheets -- `read_rows_in_sheet` reads one range per request,
+    `read_ranges_in_sheet` several."""
+    return [
+        [args[2]] if name == "read_rows_in_sheet" else list(args[2])
+        for name, args, _kwargs in client.mock_calls
+        if name in ("read_rows_in_sheet", "read_ranges_in_sheet")
+    ]
+
+
+def _ranges_read(client):
+    return [rng for ranges in _requests(client) for rng in ranges]
 
 
 class TestNotedTimeFromRow:
@@ -178,7 +202,7 @@ class TestNotedTimeSheetRead:
         assert [n.description for n in noted_time_sheet.read(include_compacted=True)] == ["Old", "New"]
 
     def test_raises_when_header_is_missing_expected_columns(self):
-        sheets_client = MagicMock()
+        sheets_client = _reading_ranges_one_by_one(MagicMock())
         sheets_client.read_rows_in_sheet.return_value = [["timestamp", "description"]]
 
         with pytest.raises(ValueError):
@@ -227,7 +251,7 @@ class TestNotedTimeSheetReadWithRowsHints:
         notes = sheet.read_with_rows()
 
         assert [n.row for n in notes] == [4]
-        assert not any(c.args[2] == "A2:C" for c in client.read_rows_in_sheet.call_args_list)
+        assert "A2:C" not in _ranges_read(client)
 
     def test_falls_back_when_the_hinted_row_is_no_longer_compacted(self):
         # The hint claims rows 2-3 are both compacted, but row 3's stamp
@@ -319,7 +343,7 @@ class TestNotedTimeSheetLatestCompacted:
         assert [n.note.description for n in notes] == ["open"]
         assert latest.description == "newest"
         # The header, then one read that confirms both hints.
-        assert [c.args[2] for c in client.read_rows_in_sheet.call_args_list] == ["A1:C1", "A21:C"]
+        assert _requests(client) == [["A1:C1", "A21:C"]]
 
     def test_a_confirmed_read_rewrites_no_hints(self):
         rows = [[_T1, "a", "cmp1"], [_T2, "b", "cmp1"], [_T2, "open"]]
@@ -339,7 +363,7 @@ class TestNotedTimeSheetLatestCompacted:
         client, sheet = self._sheet([[_T2, "a", "cmp1"], [_T1, "b", "cmp1"], [_T2, "c", "cmp1"], [_T1, "open"]], hints)
 
         assert sheet.read_with_latest_compacted()[1].description == "c"
-        assert client.read_rows_in_sheet.call_args_list[-1].args[2] == "A3:C"
+        assert _ranges_read(client)[-1] == "A3:C"
         assert hints.get("notes_latest_compacted_row") == 4
 
     def test_the_latest_compacted_note_is_picked_from_the_rows_read_not_the_hint(self):
@@ -354,7 +378,7 @@ class TestNotedTimeSheetLatestCompacted:
 
         assert sheet.read_with_latest_compacted()[1].description == "later"
         assert hints.get("notes_latest_compacted_row") == 5
-        assert len(client.read_rows_in_sheet.call_args_list) == 2  # header, data
+        assert len(_requests(client)) == 1  # the header and data together
 
     def test_a_hinted_row_that_is_no_longer_compacted_costs_no_extra_read(self):
         hints = FakeRowHints()
@@ -366,7 +390,7 @@ class TestNotedTimeSheetLatestCompacted:
 
         assert latest.description == "b"
         assert [n.note.description for n in notes] == ["no longer", "open"]
-        assert len(client.read_rows_in_sheet.call_args_list) == 2  # header, data
+        assert len(_requests(client)) == 1  # the header and data together
 
     def test_a_read_past_the_compacted_prefix_takes_in_notes_stamped_since(self):
         # Rows 2-3 were compacted when the hints were set; row 5 has been
@@ -485,8 +509,8 @@ class TestNotedTimeSheetAppendHints:
         sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
 
         assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C") == [[_T1]]
-        assert call("sheet-1", _SHEET_ID, "A2:C6") in client.read_rows_in_sheet.call_args_list
-        assert call("sheet-1", _SHEET_ID, "A1:C6") not in client.read_rows_in_sheet.call_args_list
+        assert "A2:C6" in _ranges_read(client)
+        assert "A1:C6" not in _ranges_read(client)
 
     def test_uses_a_confirmed_hint_instead_of_a_full_read(self):
         fake = FakeSheets()
@@ -502,7 +526,7 @@ class TestNotedTimeSheetAppendHints:
         sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
 
         assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A5:C") == [[_T1]]
-        assert not any(c.args[2] == "A2:C" for c in client.read_rows_in_sheet.call_args_list)
+        assert "A2:C" not in _ranges_read(client)
         assert hints.get("notes_next_row") == 6
 
     def test_falls_back_when_the_hinted_row_is_not_actually_blank(self):

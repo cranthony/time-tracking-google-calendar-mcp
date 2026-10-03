@@ -253,7 +253,7 @@ class TestConfirmAndCache:
     def test_a_tab_without_cache_columns_gains_them(self):
         health, store, _, goals = _setup([Goal(name="Cooking", cadence="daily")])
         sheet = store._sheet
-        header = sheet._read_header()
+        header = sheet._read_header_and_data()[0]
         trimmed = [c for c in header if not c.startswith("health")]
         sheet._sheets_client.write_rows_in_sheet(
             sheet.spreadsheet_id, sheet._sheet_id, "A1:Z1", [trimmed + [""] * (len(header) - len(trimmed))]
@@ -261,7 +261,7 @@ class TestConfirmAndCache:
 
         health.confirm_assessments([_assessment(goals["Cooking"], "2026-10-01", 77)])
 
-        assert "health" in sheet._read_header()
+        assert "health" in sheet._read_header_and_data()[0]
         assert store.tree().by_id[goals["Cooking"].id].health == 77
 
 
