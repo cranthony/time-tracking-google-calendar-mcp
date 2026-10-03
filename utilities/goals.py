@@ -107,14 +107,20 @@ class ListedGoal(Goal):
     minutes_7d: int | None = None
     """Read-only: the same, over the 7 days up to GoalList.as_of."""
 
+    minutes_by_statuses: list[StatusMinutes] | None = None
+    """Read-only: minutes_24h and minutes_7d, split by the statuses of the
+    goals each event is given among this one and its sub-goals -- see
+    StatusMinutes. `None` if there's no as_of."""
+
 
 @dataclass(kw_only=True)
 class StatusMinutes:
-    """The time of the events whose goals (with their ancestors) have
-    exactly these statuses, between them: so the time spent on goals of
-    any set of statuses is the sum over the StatusMinutes whose statuses
-    include one of them, each event counted once however many goals it
-    serves."""
+    """The time toward a goal of the events whose goals, among it and its
+    sub-goals, have exactly these statuses between them -- the statuses of
+    the goals the events are given, not of their ancestors. So a goal's
+    time through goals of any set of statuses is the sum over its
+    StatusMinutes whose statuses include one of them, each event counted
+    once however many goals it serves."""
 
     statuses: list[str]
     minutes_24h: int
@@ -138,9 +144,9 @@ class GoalList:
     have never been compacted."""
 
     minutes_by_statuses: list[StatusMinutes] | None = None
-    """The time spent on goals in the 24 hours and 7 days up to as_of,
-    split by the statuses of the goals each event serves -- see
-    StatusMinutes. `None` if there's no as_of."""
+    """The time spent on any goal in the 24 hours and 7 days up to
+    as_of, split by status: the overall goal's minutes_by_statuses.
+    `None` if there's no as_of."""
 
 
 def overall_goal() -> Goal:
@@ -481,6 +487,7 @@ class Goals:
                     stale_days=_stale_days(goal, tree, today),
                     minutes_24h=recent["24h"].get(goal.id, 0) if recent else None,
                     minutes_7d=recent["7d"].get(goal.id, 0) if recent else None,
+                    minutes_by_statuses=by_statuses.get(goal.id, []) if by_statuses is not None else None,
                 )
                 for goal in tree.ordered()
                 # The overall goal whatever's asked for: it's above them all.
@@ -488,28 +495,33 @@ class Goals:
             ],
             label_slots_used=unnamed + sum(1 for goal in tree.goals if _holds_label(goal)),
             as_of=as_of,
-            minutes_by_statuses=by_statuses,
+            minutes_by_statuses=by_statuses.get(OVERALL_ID, []) if by_statuses is not None else None,
         )
 
     def _recent_minutes(
         self, tree: GoalTree, as_of: datetime
-    ) -> tuple[dict[str, dict[str, int]], list[StatusMinutes]]:
+    ) -> tuple[dict[str, dict[str, int]], dict[str, list[StatusMinutes]]]:
         """Minutes per goal in each of utilities/goal_time.py's
-        RECENT_WINDOWS up to `as_of`, and by statuses (see StatusMinutes),
-        from one listing of the calendar."""
+        RECENT_WINDOWS up to `as_of`, and each goal's split by statuses (see
+        StatusMinutes), from one listing of the calendar."""
         # Imported here, since both modules import this one.
         from utilities.goal_calendar import fill_in_from_goals
-        from utilities.goal_time import RECENT_WINDOWS, goal_minutes, status_minutes
+        from utilities.goal_time import RECENT_WINDOWS, goal_minutes, goal_status_minutes
 
         longest = max(RECENT_WINDOWS.values())
         events = fill_in_from_goals(self._calendar_client.list_events(as_of - longest, as_of), tree)
         per_goal = {name: goal_minutes(events, tree, as_of - window, as_of) for name, window in RECENT_WINDOWS.items()}
-        day = status_minutes(events, tree, as_of - RECENT_WINDOWS["24h"], as_of)
-        week = status_minutes(events, tree, as_of - RECENT_WINDOWS["7d"], as_of)
-        by_statuses = [
-            StatusMinutes(statuses=sorted(statuses), minutes_24h=day.get(statuses, 0), minutes_7d=minutes)
-            for statuses, minutes in sorted(week.items(), key=lambda item: sorted(item[0]))
-        ]
+        day = goal_status_minutes(events, tree, as_of - RECENT_WINDOWS["24h"], as_of)
+        week = goal_status_minutes(events, tree, as_of - RECENT_WINDOWS["7d"], as_of)
+        by_statuses = {
+            goal_id: [
+                StatusMinutes(
+                    statuses=sorted(statuses), minutes_24h=day.get(goal_id, {}).get(statuses, 0), minutes_7d=minutes
+                )
+                for statuses, minutes in sorted(split.items(), key=lambda item: sorted(item[0]))
+            ]
+            for goal_id, split in week.items()
+        }
         return per_goal, by_statuses
 
     @staticmethod
