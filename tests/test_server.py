@@ -1,5 +1,6 @@
 import contextlib
 import dataclasses
+import threading
 from datetime import date, datetime, timezone
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
@@ -14,6 +15,7 @@ from starlette.testclient import TestClient
 import server
 from calendar_clients import google_sheets
 from calendar_clients.google_calendar import Event, EventLabelConflictError
+from calendar_clients.write_lock import WRITE_LOCK
 from server import PublicEvent
 from utilities.goal_calendar import GoalCalendar
 from utilities.goal_health import Assessment
@@ -1237,3 +1239,74 @@ class TestSetTimeZone:
             server.set_time_zone("Nowhere")
 
         health.health_calendar.assert_not_called()
+
+
+_READ_ONLY_TOOLS = {
+    "list_events",
+    "get_event",
+    "get_recurrence",
+    "get_goals",
+    "measure_goals",
+    "get_goal_history",
+    "prepare_reflection",
+    "get_compaction_status",
+    "get_notes",
+}
+
+
+@pytest.mark.without_write_lock
+class TestWriteLock:
+    def test_every_tool_but_the_read_only_ones_holds_it(self):
+        # A new tool has to be put on one side or the other: a read-only
+        # one that reaches a write fails (see calendar_clients/
+        # write_lock.py), so only list one here that never writes.
+        tools = {tool.name: tool.fn for tool in server.mcp._tool_manager.list_tools()}
+
+        assert _READ_ONLY_TOOLS <= tools.keys()
+        assert {name for name, fn in tools.items() if not getattr(fn, "writes", False)} == _READ_ONLY_TOOLS
+
+    def test_a_writing_tool_holds_it_for_its_whole_call(self, monkeypatch):
+        held = []
+        sheet = MagicMock()
+        sheet.append.side_effect = lambda noted_time: held.append(WRITE_LOCK.held()) or SheetNote(
+            row=2, note=noted_time
+        )
+        monkeypatch.setattr(server, "get_noted_time_sheet", lambda: sheet)
+
+        server.note(NotedTime(timestamp=datetime(2026, 10, 3, 9, tzinfo=UTC)))
+
+        assert held == [True]
+        assert not WRITE_LOCK.held()
+
+    def test_a_read_only_tool_runs_while_another_thread_holds_it(self, monkeypatch):
+        sheet = MagicMock()
+        sheet.read_with_rows.return_value = []
+        monkeypatch.setattr(server, "get_noted_time_sheet", lambda: sheet)
+        done = threading.Event()
+
+        with WRITE_LOCK:
+            thread = threading.Thread(target=lambda: (server.get_notes(), done.set()))
+            thread.start()
+            assert done.wait(5)
+        thread.join()
+
+    def test_a_built_helper_returns_without_waiting_for_it(self, monkeypatch):
+        sheet = MagicMock()
+        monkeypatch.setattr(server, "_noted_time_sheet", sheet)
+        got = []
+
+        with WRITE_LOCK:
+            thread = threading.Thread(target=lambda: got.append(server.get_noted_time_sheet()))
+            thread.start()
+            thread.join(5)
+
+        assert got == [sheet]
+
+    def test_a_helper_builds_under_it(self, monkeypatch):
+        held = []
+        monkeypatch.setattr(server, "_noted_time_sheet", None)
+        monkeypatch.setattr(server, "build_noted_time_sheet", lambda: held.append(WRITE_LOCK.held()) or MagicMock())
+
+        server.get_noted_time_sheet()
+
+        assert held == [True]

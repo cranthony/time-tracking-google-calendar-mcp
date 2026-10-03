@@ -11,6 +11,7 @@ from pathlib import Path
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_auth import build_service, load_credentials
+from calendar_clients.write_lock import requires_write_lock
 
 
 class SheetsClient:
@@ -47,6 +48,7 @@ class SheetsClient:
         creds = load_credentials(token_path, credentials_path)
         return cls(build_service("sheets", "v4", credentials=creds))
 
+    @requires_write_lock
     def create_spreadsheet(self, title: str) -> str:
         """Create a new, empty spreadsheet titled `title`. Returns the
         new spreadsheet's id. Its one default tab is left exactly as
@@ -59,6 +61,7 @@ class SheetsClient:
         )
         return spreadsheet["spreadsheetId"]
 
+    @requires_write_lock
     def rename_spreadsheet(self, spreadsheet_id: str, title: str) -> None:
         """Rename `spreadsheet_id` itself (its document title, e.g. what
         shows up in Drive and the browser tab) -- not any one tab within
@@ -79,6 +82,7 @@ class SheetsClient:
             )
         )
 
+    @requires_write_lock
     def add_sheet(
         self, spreadsheet_id: str, title: str, *, tab_color: dict[str, float] | None = None
     ) -> int:
@@ -99,6 +103,7 @@ class SheetsClient:
         )
         return response["replies"][0]["addSheet"]["properties"]["sheetId"]
 
+    @requires_write_lock
     def update_sheet_properties(
         self,
         spreadsheet_id: str,
@@ -153,6 +158,7 @@ class SheetsClient:
                 return properties["title"]
         raise ValueError(f"No sheet with sheetId {sheet_id} in spreadsheet {spreadsheet_id}")
 
+    @requires_write_lock
     def create_sheet_metadata(self, spreadsheet_id: str, sheet_id: int, key: str, value: str) -> None:
         """Tag the tab identified by `sheet_id` with developer metadata
         `key`/`value`, PROJECT-scoped (queryable only by this app's own
@@ -200,6 +206,7 @@ class SheetsClient:
             return None
         return matches[0]["developerMetadata"]["location"]["sheetId"]
 
+    @requires_write_lock
     def set_column_width(
         self, spreadsheet_id: str, *, sheet_id: int, column_index: int, pixel_width: int
     ) -> None:
@@ -228,6 +235,7 @@ class SheetsClient:
             )
         )
 
+    @requires_write_lock
     def delete_rows(
         self,
         spreadsheet_id: str,
@@ -311,6 +319,7 @@ class SheetsClient:
         )
         return response.get("values", [])
 
+    @requires_write_lock
     def write_rows(self, spreadsheet_id: str, sheet_range: str, rows: list[list[str]]) -> None:
         """Overwrite the cells starting at `sheet_range`'s top-left corner
         with `rows`. Only writes exactly `len(rows)` rows -- any existing
@@ -381,6 +390,7 @@ class SheetsClient:
                     cache[key] = [list(row) for row in rows]
         return [[list(row) for row in found[key]] for key in keys]
 
+    @requires_write_lock
     def write_rows_in_sheet(
         self, spreadsheet_id: str, sheet_id: int, range_within_sheet: str, rows: list[list[str]]
     ) -> None:

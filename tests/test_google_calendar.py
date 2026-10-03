@@ -12,6 +12,7 @@ from calendar_clients.google_calendar import (
     EventLabel,
     EventLabelConflictError,
 )
+from calendar_clients.write_lock import WriteLockNotHeldError
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
@@ -1408,3 +1409,40 @@ class TestCalendarClientGoalHealthCalls:
 
         assert other.calendar_id == "other-cal"
         assert other._service is service
+
+
+_CALENDAR_WRITES = [
+    "create_calendar",
+    "hide_calendar",
+    "set_time_zone",
+    "upsert_event_resource",
+    "create_event",
+    "update_event",
+    "delete_event",
+    "create_event_label",
+    "update_event_label",
+    "delete_event_label",
+    "replace_event_labels",
+    "set_calendar_metadata",
+    "_patch_calendar",
+]
+
+
+@pytest.mark.without_write_lock
+class TestWritesRequireTheWriteLock:
+    @pytest.mark.parametrize("method", _CALENDAR_WRITES)
+    def test_a_write_refuses_without_it_and_sends_nothing(self, method):
+        service = MagicMock()
+
+        with pytest.raises(WriteLockNotHeldError):
+            getattr(make_client(service), method)()
+
+        assert not service.mock_calls
+
+    def test_a_read_needs_no_lock(self):
+        service = MagicMock()
+        service.events.return_value.get.return_value.execute.return_value = api_event(
+            "abc123", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"
+        )
+
+        assert make_client(service).get_event("abc123").id == "abc123"
