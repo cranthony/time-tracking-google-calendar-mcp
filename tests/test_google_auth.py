@@ -1,4 +1,5 @@
 import contextlib
+import threading
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -88,3 +89,61 @@ class TestLoadCredentials:
             "Could not write refreshed credentials" in record.message
             for record in caplog.records
         )
+
+
+class TestBuildService:
+    def _http(self, monkeypatch) -> google_auth._PerThreadHttp:
+        # Each AuthorizedHttp a stand-in, so nothing touches the network.
+        monkeypatch.setattr(google_auth, "AuthorizedHttp", lambda creds, http: MagicMock(credentials=creds))
+        return google_auth._PerThreadHttp(object())
+
+    def test_builds_the_service_with_a_per_thread_http(self, monkeypatch):
+        build_mock = MagicMock()
+        monkeypatch.setattr(google_auth, "build", build_mock)
+        creds = object()
+
+        assert google_auth.build_service("sheets", "v4", credentials=creds) is build_mock.return_value
+
+        assert build_mock.call_args.args == ("sheets", "v4")
+        http = build_mock.call_args.kwargs["http"]
+        assert isinstance(http, google_auth._PerThreadHttp)
+        assert http._credentials is creds
+
+    def test_reuses_one_connection_within_a_thread(self, monkeypatch):
+        http = self._http(monkeypatch)
+
+        http.request("https://a")
+        http.request("https://b")
+
+        assert len(http._all) == 1
+        assert http._all[0].request.call_count == 2
+
+    def test_gives_each_thread_its_own_connection(self, monkeypatch):
+        http = self._http(monkeypatch)
+        barrier = threading.Barrier(3)
+
+        def call():
+            http.request("https://a")
+            barrier.wait()  # keep every thread alive, so none's is reused
+
+        threads = [threading.Thread(target=call) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len({id(h) for h in http._all}) == 3
+        assert all(h.request.call_count == 1 for h in http._all)
+
+    def test_close_closes_every_threads_connection(self, monkeypatch):
+        http = self._http(monkeypatch)
+        thread = threading.Thread(target=http.request, args=("https://a",))
+        thread.start()
+        thread.join()
+        http.request("https://b")
+        opened = list(http._all)
+
+        http.close()
+
+        assert len(opened) == 2
+        assert all(h.close.called for h in opened)

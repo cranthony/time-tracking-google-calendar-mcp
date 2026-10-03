@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Literal
@@ -280,6 +281,12 @@ class PublicRecurrence:
         )
 
 
+_init_lock = threading.RLock()
+"""Held while a get_* helper below builds its object, so tool calls that
+arrive together (the MCP server runs each on its own thread) don't each
+build one -- building some has side effects, like creating a spreadsheet
+or tab. Reentrant, since the helpers call one another."""
+
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
 _goals: Goals | None = None
@@ -296,9 +303,10 @@ def get_calendar_client() -> CalendarClient:
     (and the OAuth consent flow, on first run) happens once per process
     rather than on every tool call."""
     global _calendar_client
-    if _calendar_client is None:
-        _calendar_client = build_calendar_client()
-    return _calendar_client
+    with _init_lock:
+        if _calendar_client is None:
+            _calendar_client = build_calendar_client()
+        return _calendar_client
 
 
 def get_reallocating_calendar() -> ReallocatingCalendar:
@@ -309,46 +317,51 @@ def get_reallocating_calendar() -> ReallocatingCalendar:
     goal-derived priority as the fallback whenever the event itself
     doesn't set one, and every write derives its label from its goals."""
     global _reallocating_calendar
-    if _reallocating_calendar is None:
-        _reallocating_calendar = ReallocatingCalendar(GoalCalendar(get_calendar_client(), get_goal_store()))
-    return _reallocating_calendar
+    with _init_lock:
+        if _reallocating_calendar is None:
+            _reallocating_calendar = ReallocatingCalendar(GoalCalendar(get_calendar_client(), get_goal_store()))
+        return _reallocating_calendar
 
 
 def get_goal_health() -> GoalHealth:
     """Lazily construct and cache the GoalHealth, the same way the other
     get_* helpers cache theirs."""
     global _goal_health
-    if _goal_health is None:
-        _goal_health = GoalHealth(get_calendar_client(), get_goal_store())
-    return _goal_health
+    with _init_lock:
+        if _goal_health is None:
+            _goal_health = GoalHealth(get_calendar_client(), get_goal_store())
+        return _goal_health
 
 
 def get_reflections() -> Reflections:
     """Lazily construct and cache the Reflections, the same way the other
     get_* helpers cache theirs."""
     global _reflections
-    if _reflections is None:
-        _reflections = Reflections(get_goal_health(), get_goal_store(), get_noted_time_sheet())
-    return _reflections
+    with _init_lock:
+        if _reflections is None:
+            _reflections = Reflections(get_goal_health(), get_goal_store(), get_noted_time_sheet())
+        return _reflections
 
 
 def get_goal_store() -> Goals:
     """Lazily construct and cache the Goals, the same way
     get_calendar_client/get_reallocating_calendar cache theirs."""
     global _goals
-    if _goals is None:
-        # Goals' recent time is counted up to the last compaction.
-        _goals = build_goals(last_compaction=lambda: get_compaction_journal().last_stamped_now())
-    return _goals
+    with _init_lock:
+        if _goals is None:
+            # Goals' recent time is counted up to the last compaction.
+            _goals = build_goals(last_compaction=lambda: get_compaction_journal().last_stamped_now())
+        return _goals
 
 
 def get_compaction_journal() -> CompactionJournal:
     """Lazily construct and cache the CompactionJournal, the same way the
     other get_* helpers cache theirs."""
     global _compaction_journal
-    if _compaction_journal is None:
-        _compaction_journal = build_compaction_journal()
-    return _compaction_journal
+    with _init_lock:
+        if _compaction_journal is None:
+            _compaction_journal = build_compaction_journal()
+        return _compaction_journal
 
 
 def get_recurrences() -> Recurrences:
@@ -356,12 +369,13 @@ def get_recurrences() -> Recurrences:
     get_* helpers cache theirs. Writes go through a GoalCalendar, so each
     series' label follows its goals."""
     global _recurrences
-    if _recurrences is None:
-        client = get_calendar_client()
-        _recurrences = Recurrences(
-            GoalCalendar(client, get_goal_store()), client.list_instances, client.get_time_zone
-        )
-    return _recurrences
+    with _init_lock:
+        if _recurrences is None:
+            client = get_calendar_client()
+            _recurrences = Recurrences(
+                GoalCalendar(client, get_goal_store()), client.list_instances, client.get_time_zone
+            )
+        return _recurrences
 
 
 def _public_recurrences(events: list[Event]) -> list[PublicRecurrence]:
@@ -373,25 +387,27 @@ def get_noted_time_sheet() -> NotedTimeSheet:
     """Lazily construct and cache the NotedTimeSheet, the same way
     get_goal_store caches its Goals."""
     global _noted_time_sheet
-    if _noted_time_sheet is None:
-        _noted_time_sheet = build_noted_time_sheet()
-    return _noted_time_sheet
+    with _init_lock:
+        if _noted_time_sheet is None:
+            _noted_time_sheet = build_noted_time_sheet()
+        return _noted_time_sheet
 
 
 def get_note_compactor() -> NoteCompactor:
     """Lazily construct and cache the NoteCompactor, the same way the
     other get_* helpers cache theirs."""
     global _note_compactor
-    if _note_compactor is None:
-        _note_compactor = NoteCompactor(
-            calendar=get_reallocating_calendar(),
-            # Written through goals, so each event's label follows them.
-            client=GoalCalendar(get_calendar_client(), get_goal_store()),
-            goals=get_goal_store(),
-            notes=get_noted_time_sheet(),
-            journal=get_compaction_journal(),
-        )
-    return _note_compactor
+    with _init_lock:
+        if _note_compactor is None:
+            _note_compactor = NoteCompactor(
+                calendar=get_reallocating_calendar(),
+                # Written through goals, so each event's label follows them.
+                client=GoalCalendar(get_calendar_client(), get_goal_store()),
+                goals=get_goal_store(),
+                notes=get_noted_time_sheet(),
+                journal=get_compaction_journal(),
+            )
+        return _note_compactor
 
 
 def _public_events(events: list[Event]) -> list[PublicEvent]:

@@ -8,10 +8,9 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from calendar_clients.google_auth import load_credentials
+from calendar_clients.google_auth import build_service, load_credentials
 
 _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 """Prefix for the extendedProperties.private keys this app uses to store its
@@ -620,7 +619,7 @@ class CalendarClient:
         """See `load_credentials` for `token_path`/`credentials_path`, and
         `CalendarClient` for `calendar_id`."""
         creds = load_credentials(token_path, credentials_path)
-        service = build("calendar", "v3", credentials=creds)
+        service = build_service("calendar", "v3", credentials=creds)
         return cls(service, calendar_id=calendar_id)
 
     def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:

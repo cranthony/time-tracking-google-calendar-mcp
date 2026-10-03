@@ -167,7 +167,7 @@ class TestBuildGoals:
         monkeypatch.setattr(config, "load_credentials", load_credentials_mock)
         services = {"calendar": MagicMock(), "sheets": MagicMock()}
         build_mock = MagicMock(side_effect=lambda name, _version, credentials: services[name])
-        monkeypatch.setattr(config, "build", build_mock)
+        monkeypatch.setattr(config, "build_service", build_mock)
 
         with patch.object(config, "Goals") as goals_cls:
             result = config.build_goals()
@@ -186,7 +186,7 @@ class TestBuildGoals:
     def test_raises_when_calendar_id_unset(self, monkeypatch):
         monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
         monkeypatch.setattr(config, "load_credentials", MagicMock())
-        monkeypatch.setattr(config, "build", MagicMock())
+        monkeypatch.setattr(config, "build_service", MagicMock())
 
         with pytest.raises(config.ConfigError):
             config.build_goals()
@@ -195,7 +195,7 @@ class TestBuildGoals:
         monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
         monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
         monkeypatch.setattr(
-            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+            config, "build_service", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
         )
 
         with (
@@ -218,7 +218,7 @@ class TestBuildNotedTimeSheet:
         monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
         monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
         monkeypatch.setattr(
-            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+            config, "build_service", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
         )
 
         with (
@@ -239,7 +239,7 @@ class TestBuildNotedTimeSheet:
         monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
         monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
         monkeypatch.setattr(
-            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+            config, "build_service", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
         )
 
         with (
@@ -257,7 +257,7 @@ class TestBuildCompactionJournal:
         monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
         monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
         monkeypatch.setattr(
-            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+            config, "build_service", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
         )
 
         with (
@@ -275,7 +275,7 @@ class TestBuildCompactionJournal:
         monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
         monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
         monkeypatch.setattr(
-            config, "build", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
+            config, "build_service", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
         )
 
         with (

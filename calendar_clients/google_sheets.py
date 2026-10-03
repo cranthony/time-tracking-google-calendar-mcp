@@ -8,10 +8,9 @@ from collections.abc import Iterator
 from contextvars import ContextVar
 from pathlib import Path
 
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from calendar_clients.google_auth import load_credentials
+from calendar_clients.google_auth import build_service, load_credentials
 
 
 class SheetsClient:
@@ -46,7 +45,7 @@ class SheetsClient:
         `config._build_calendar_and_sheets_clients` over calling this
         directly when both clients are needed together."""
         creds = load_credentials(token_path, credentials_path)
-        return cls(build("sheets", "v4", credentials=creds))
+        return cls(build_service("sheets", "v4", credentials=creds))
 
     def create_spreadsheet(self, title: str) -> str:
         """Create a new, empty spreadsheet titled `title`. Returns the

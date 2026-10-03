@@ -6,9 +6,8 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-from googleapiclient.discovery import build
 
-from calendar_clients.google_auth import load_credentials
+from calendar_clients.google_auth import build_service, load_credentials
 from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
@@ -152,9 +151,9 @@ def _build_calendar_and_sheets_clients(
     GOOGLE_CALENDAR_ID has been set to its id."""
     creds = load_credentials(get_token_path(), get_credentials_path())
     calendar_client = CalendarClient(
-        build("calendar", "v3", credentials=creds), calendar_id or get_calendar_id()
+        build_service("calendar", "v3", credentials=creds), calendar_id or get_calendar_id()
     )
-    sheets_client = SheetsClient(build("sheets", "v4", credentials=creds))
+    sheets_client = SheetsClient(build_service("sheets", "v4", credentials=creds))
     return calendar_client, sheets_client
 
 
