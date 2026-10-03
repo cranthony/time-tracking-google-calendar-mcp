@@ -19,12 +19,14 @@ the tool newly reads -- and if one goes down, lower it here.
 """
 
 import contextlib
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
 
 import config
 import server
+from calendar_clients.google_calendar import Event
 from calendar_clients.google_sheets import SheetsClient
 from tests.fake_sheets import FakeSheets, FakeSheetsService
 from tests.test_goal_health import NOW, TODAY, YESTERDAY, FakeCalendar, _event
@@ -81,6 +83,16 @@ class _Server:
         self.calendar.events.append(
             _event(evening.isoformat()[:19], (evening + timedelta(hours=1)).isoformat()[:19], goal_ids=[cooking.id])
         )
+        # Tonight, still to come: an evening event, then the night's sleep
+        # that ends the day -- what reallocation makes room in.
+        tonight = NOW.replace(minute=0, second=0, microsecond=0)
+        self.calendar.events += [
+            Event(id="evening", summary="Evening", start=tonight, end=tonight + timedelta(hours=2), priority=2),
+            Event(
+                id="sleep", summary="Sleep", start=tonight + timedelta(hours=2), end=tonight + timedelta(hours=10),
+                priority=0, is_end_of_day_sleep=True,
+            ),
+        ]
         server.note(NotedTime(timestamp=NOW - timedelta(hours=2), description="cooked"))
         server.record_assessments([self.assessment(80)])
 
@@ -104,6 +116,7 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
     roots = [g.id for g in server.get_goal_store().tree().goals if g.parent_id is None]
     event_id = tools.calendar.events[0].id
     note_id = server.get_notes()[0].id
+    later_evening = replace(server.get_event("evening"), start=NOW + timedelta(minutes=15))
     calls = {
         # Goals, and the journal for the last compaction's time (how far
         # get_goals' goal time goes).
@@ -124,6 +137,10 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         "list_events": lambda: server.list_events(NOW - timedelta(days=2), NOW),
         "get_event": lambda: server.get_event(event_id),
         "delete_event": lambda: server.delete_event(event_id),
+        "create_event": lambda: server.create_event(
+            server.PublicEvent(summary="Walk", start=NOW + timedelta(minutes=30), end=NOW + timedelta(hours=1))
+        ),
+        "update_event": lambda: server.update_event(later_evening),
         # Goals, and the notes the day held.
         "prepare_reflection": lambda: server.prepare_reflection(YESTERDAY),
         # Notes, and the journal (the last compaction; any open one).
