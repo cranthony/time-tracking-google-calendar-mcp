@@ -1,33 +1,46 @@
-"""The two-lane view of a compaction: a day's notes on one line, its events
-on a parallel one, aligned by time, so it's easy to see which note moved
-which event edge and which notes just describe what was going on.
+"""The timeline of a compaction: a day's notes and its events in time
+order, so it's easy to see which note moved which event edge and which
+notes just describe what was going on.
 
 `Timeline` is plain data -- what a client (or, eventually, the Time
-Tracker) needs to draw the two lanes itself -- plus `text`, a fixed-width
-rendering of the same thing for clients that can only show text. Both are
+Tracker) needs to draw it itself -- plus `text`, a fixed-width rendering
+of the same thing for clients that can only show text. Both are
 built here from what the planner (utilities/note_compaction.py) or
 `NoteCompactor.prepare` already worked out; nothing here decides anything.
 
-The text rendering, one row per moment something happens:
+The text rendering is one narrow column (`_WIDTH`, for a phone) -- each
+moment's notes, then the event edges at it:
 
-     TIME  NOTES                                EVENTS
-    18:15  ● Leaving for salsa early ─────────── ┌ Salsa prep · new
-    18:30                                        ├ Google Salsa class · on schedule
-    19:30                                        ├ Dinner · on schedule
-    20:10  ● Done with dinner ────────────────── └ Dinner ends · 10m late (planned 20:00)
+    17:00 ┌ Work
+    18:15 ● Leaving for salsa early to prep
+         →├ Salsa prep · new
+    18:30 ├ Google Salsa class
+    19:00 ● Learned the cross-body lead
+            ↳ Google Salsa class
+    19:30 ├ Dinner
+    20:10 ● Done with dinner
+         →└ Dinner ends · +10m (was 20:00)
+         →├ Reading · +10m (was 20:00)
+    20:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+    21:00 └ Reading ends
 
-A note joined to an event by `───` sets that event edge; a note with no
-rule had its text added to the event it falls within (`↳`), and `○` marks
-a note that wasn't added anywhere. An event's goals follow its title: `◆`
-for one it already serves, `◇` for one it's being given (or, before
-anything is decided, one suggested for it). A last line totals each
-goal's time. `✓` marks the latest note an earlier compaction already
-used, shown as context, and a `┄┄ last compaction` line marks when that
-compaction ran -- what came before it is already on the calendar.
+`→` marks an edge the note just above it set (a note that set an edge at
+another time -- "leaving in 15" -- says which, under it); `↳` names the
+event a note's text was added to, and `○` marks a note that wasn't added
+anywhere. A past event with no tag happened as planned; `+`/`−` is how
+late or early an edge was, `⇢`/`⇠` how far a whole event moved. An
+event's goals go on the line after its start: `◆` for one it already
+serves, `◇` for one it's being given (or, before anything is decided,
+one suggested for it), and each goal's total time follows the events.
+`✓` marks the latest note an earlier compaction already used, shown as
+context, and a `┄┄ last compaction` line marks when that compaction ran
+-- what came before it is already on the calendar. Long lines wrap,
+indented under their text.
 """
 
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Literal
@@ -46,11 +59,21 @@ TimelineStatus = Literal["planned", "on_schedule", "adjusted", "reflowed", "new"
   adjusted one split in two.
 - `cancelled` / `merged`: removed (`merged` into `merged_into`)."""
 
-_NOTE_WIDTH = 36
-_LEGEND = (
-    "── note sets that event edge   ↳ note added to that event   "
-    "○ note not added to any event   ✓ note already compacted"
-)
+_WIDTH = 40
+"""How wide `text` aims to be -- narrow enough for a phone. Lines wrap to
+it, with the continuation indented under the line's text; only a single
+word longer than that runs past it."""
+
+_GUTTER = 6
+"""The time column: `HH:MM` and the column a `→` goes in."""
+
+_LEGEND = [
+    "→ note above set this edge",
+    "↳ note added to that event",
+    "○ note not added   ✓ compacted",
+    "◆ goal   ◇ goal being added",
+    "+/− late/early   ⇢/⇠ moved",
+]
 
 
 @dataclass(kw_only=True)
@@ -112,8 +135,8 @@ class Timeline:
     decided -- no note has been placed anywhere yet."""
 
     text: str = ""
-    """`notes` and `events` as two fixed-width lanes -- see the module
-    docstring. Show it in a monospace block if you can't draw the lanes."""
+    """`notes` and `events` as one narrow fixed-width column -- see the
+    module docstring. Show it in a monospace block."""
 
 
 def build_timeline(
@@ -150,7 +173,7 @@ def render(timeline: Timeline) -> str:
         | {e.planned_start for e in removed}
     )
 
-    lines = [f"{'TIME':>5}  {'NOTES':<{_NOTE_WIDTH}}  EVENTS"]
+    lines: list[str] = []
     # Marker lines, each drawn just before the first moment after it --
     # except that the last compaction goes before a moment it shares,
     # since everything at that moment came after it. `now` before the
@@ -166,61 +189,86 @@ def render(timeline: Timeline) -> str:
     markers.sort()
 
     def marker_line(at: datetime, label: str) -> str:
-        return f"{hm(at):>5}  {'┄' * _NOTE_WIDTH}  ┄┄ {label}"
+        return f"{hm(at)} ┄┄ {label} ".ljust(_WIDTH, "┄")
 
     for moment in moments:
         while markers and (markers[0][0] < moment or (markers[0][0] == moment and markers[0][1] == 0)):
             at, _, label = markers.pop(0)
             lines.append(marker_line(at, label))
-        edges = _edge_lines(moment, live, removed, hm)
-        active = any(e.start < moment < e.end for e in live)
         notes_here = [n for n in timeline.notes if n.time == moment]
-        rows: list[tuple[str, bool, str]] = []
-        for i, note in enumerate(notes_here):
-            if i < len(edges):
-                right = edges[i]
-            elif note.annotates:
-                right = f"│   ↳ added to {note.annotates}"
-            else:
-                right = "│" if active else ""
-            rows.append((_note_text(note, timeline.decided), bool(note.anchors) and i < len(edges), right))
-        for edge in edges[len(notes_here) :]:
-            rows.append(("", False, edge))
-        for i, (left, anchored, right) in enumerate(rows):
+        here = {n.id for n in notes_here}
+        rows: list[tuple[bool, str, int]] = []  # (set by a note above, text, continuation indent)
+        for note in notes_here:
+            rows.append((False, _note_text(note, timeline.decided), 2))
+            if note.annotates:
+                rows.append((False, f"  ↳ {note.annotates}", 4))
+            for edge in _edges_set_elsewhere(note, live, hm):
+                rows.append((False, f"  → {edge}", 4))
+        for anchored, edge in _edge_lines(moment, live, removed, here, hm):
+            rows.append((anchored, edge, 2))
+        for i, (anchored, text, indent) in enumerate(rows):
             time = hm(moment) if i == 0 else ""
-            if anchored:
-                left = f"{left} ".ljust(_NOTE_WIDTH, "─") + "─"
-            else:
-                left = left.ljust(_NOTE_WIDTH) + " "
-            lines.append(f"{time:>5}  {left} {right}".rstrip())
+            lines.extend(_wrap(f"{time:>5}{'→' if anchored else ' '}", text, indent))
     for at, _, label in markers:
         lines.append(marker_line(at, label))
     if goal_time := _goal_time(live):
         lines.append("")
-        lines.append(f"Goal time: {goal_time}")
+        lines.append("Goal time:")
+        lines.extend(f"{duration:>7}  {goal}" for goal, duration in goal_time)
     if timeline.decided:
         lines.append("")
-        lines.append(_LEGEND)
+        lines.extend(_LEGEND)
     return "\n".join(lines)
 
 
-def _edge_lines(moment, live, removed, hm) -> list[str]:
+def _wrap(prefix: str, text: str, indent: int) -> list[str]:
+    """`prefix` (the gutter) then `text`, wrapped to `_WIDTH`, its
+    continuation lines indented `indent` past the gutter."""
+    wrapped = textwrap.wrap(
+        text,
+        width=_WIDTH - _GUTTER,
+        subsequent_indent=" " * indent,
+        break_long_words=False,
+        break_on_hyphens=False,
+    ) or [""]
+    return [f"{prefix if i == 0 else ' ' * _GUTTER}{line}".rstrip() for i, line in enumerate(wrapped)]
+
+
+def _edges_set_elsewhere(note: TimelineNote, live: list[TimelineEvent], hm) -> list[str]:
+    """The edges `note` set at some other time -- "leaving 15 minutes
+    early" -- which aren't drawn just below it, so it says where."""
+    edges = []
+    for event in live:
+        if event.start_note == note.id and event.start != note.time:
+            edges.append(f"start of {event.summary} ({hm(event.start)})")
+        if event.end_note == note.id and event.end != note.time:
+            edges.append(f"end of {event.summary} ({hm(event.end)})")
+    return edges
+
+
+def _edge_lines(moment, live, removed, here: set[str], hm) -> list[tuple[bool, str]]:
+    """The event edges at `moment`, each with whether a note at `moment`
+    (drawn just above) set it. An event's goals follow its start, on
+    their own line."""
     ending = [e for e in live if e.end == moment]
     starting = [e for e in live if e.start == moment]
-    lines: list[str] = []
+    lines: list[tuple[bool, str]] = []
     for event in ending:
         tag = _end_tag(event, hm)
-        if tag or not starting:
-            lines.append(f"└ {event.summary} ends{tag}")
+        anchored = event.end_note in here
+        if tag or anchored or not starting:
+            lines.append((anchored, f"└ {event.summary} ends{tag}"))
     for event in starting:
         joint = "├" if ending else "┌"
-        lines.append(f"{joint} {event.summary}{_start_tag(event, hm)}{_goal_tag(event)}")
+        lines.append((event.start_note in here, f"{joint} {event.summary}{_start_tag(event, hm)}"))
+        if goals := _goal_tag(event):
+            lines.append((False, f"    {goals}"))
     for event in removed:
         if event.planned_start != moment:
             continue
         what = f"merged into {event.merged_into}" if event.status == "merged" else "cancelled"
         lines.append(
-            f"✕ {event.summary} · {what} (was {hm(event.planned_start)}–{hm(event.planned_end)})"
+            (False, f"✕ {event.summary} · {what} (was {hm(event.planned_start)}–{hm(event.planned_end)})")
         )
     return lines
 
@@ -228,22 +276,15 @@ def _edge_lines(moment, live, removed, hm) -> list[str]:
 def _start_tag(event: TimelineEvent, hm) -> str:
     if event.status == "new":
         return " · new"
-    if event.status == "on_schedule":
-        return " · on schedule"
     if event.status not in ("adjusted", "reflowed") or event.planned_start is None:
         return ""
     start_shift = event.start - event.planned_start
     end_shift = event.end - event.planned_end
     if start_shift and start_shift == end_shift:
-        return (
-            f" · moved {_duration(start_shift)} {'later' if start_shift > timedelta(0) else 'earlier'}"
-            f" (planned {hm(event.planned_start)}–{hm(event.planned_end)})"
-        )
+        arrow = "⇢" if start_shift > timedelta(0) else "⇠"
+        return f" · {arrow}{_duration(start_shift)} (was {hm(event.planned_start)}–{hm(event.planned_end)})"
     if start_shift:
-        return (
-            f" · starts {_duration(start_shift)} {'late' if start_shift > timedelta(0) else 'early'}"
-            f" (planned {hm(event.planned_start)})"
-        )
+        return f" · {_shift(start_shift)} (was {hm(event.planned_start)})"
     return ""
 
 
@@ -254,27 +295,28 @@ def _end_tag(event: TimelineEvent, hm) -> str:
     end_shift = event.end - event.planned_end
     if not end_shift or start_shift == end_shift:
         return ""
-    return (
-        f" · {_duration(end_shift)} {'late' if end_shift > timedelta(0) else 'early'}"
-        f" (planned {hm(event.planned_end)})"
-    )
+    return f" · {_shift(end_shift)} (was {hm(event.planned_end)})"
+
+
+def _shift(delta: timedelta) -> str:
+    return f"{'+' if delta > timedelta(0) else '−'}{_duration(delta)}"
 
 
 def _goal_tag(event: TimelineEvent) -> str:
     marks = [f"◆ {g}" for g in event.goals if g not in event.new_goals]
     marks += [f"◇ {g}" for g in event.new_goals]
-    return f"  {' '.join(marks)}" if marks else ""
+    return " ".join(marks)
 
 
-def _goal_time(live: list[TimelineEvent]) -> str:
+def _goal_time(live: list[TimelineEvent]) -> list[tuple[str, str]]:
     """Each goal's total time across `live` events, longest first."""
     totals: dict[str, timedelta] = {}
     for event in live:
         for goal in dict.fromkeys(event.goals + event.new_goals):
             totals[goal] = totals.get(goal, timedelta()) + (event.end - event.start)
-    return " · ".join(
-        f"{goal} {_duration(total)}" for goal, total in sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
-    )
+    return [
+        (goal, _duration(total)) for goal, total in sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
 
 
 def _note_text(note: TimelineNote, decided: bool) -> str:
@@ -282,9 +324,6 @@ def _note_text(note: TimelineNote, decided: bool) -> str:
     marker = "✓" if note.compacted else "●" if placed and not note.ignored else "○"
     text = (note.text or "").strip() or "(no description)"
     suffix = " (compacted)" if note.compacted else ""
-    room = (_NOTE_WIDTH - 4 if note.anchors else _NOTE_WIDTH - 2) - len(suffix)
-    if len(text) > room:
-        text = text[: room - 1] + "…"
     return f"{marker} {text}{suffix}"
 
 
