@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_auth import build_service, load_credentials
+from calendar_clients.write_lock import requires_write_lock
 
 _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 """Prefix for the extendedProperties.private keys this app uses to store its
@@ -525,6 +526,7 @@ class CalendarClient:
         credentials."""
         return CalendarClient(self._service, calendar_id)
 
+    @requires_write_lock
     def create_calendar(
         self, summary: str, description: str | None = None, time_zone: str | None = None
     ) -> str:
@@ -535,6 +537,7 @@ class CalendarClient:
             body["timeZone"] = time_zone
         return self._service.calendars().insert(body=body).execute()["id"]
 
+    @requires_write_lock
     def hide_calendar(self, calendar_id: str) -> bool:
         """Best effort: hide `calendar_id` from the user's calendar list in
         Google Calendar. Returns whether that worked -- this app's
@@ -553,6 +556,7 @@ class CalendarClient:
             self._time_zone = ZoneInfo(calendar.get("timeZone") or "UTC")
         return self._time_zone
 
+    @requires_write_lock
     def set_time_zone(self, time_zone: str) -> ZoneInfo:
         """Set this calendar's time zone (an IANA name, e.g.
         "America/New_York"), returning it. Events keep their moments;
@@ -597,6 +601,7 @@ class CalendarClient:
             if not page_token:
                 return items
 
+    @requires_write_lock
     def upsert_event_resource(self, event_id: str, body: dict) -> dict:
         """Create the event `event_id` from the API dict `body`, or, if one
         with that id already exists, overwrite it with `body` -- so a
@@ -657,6 +662,7 @@ class CalendarClient:
         )
         return Event.from_api(response)
 
+    @requires_write_lock
     def create_event(self, event: Event) -> Event:
         """Create `event`. If `event.id` is set it's sent as the new
         event's id (Calendar accepts a caller-chosen one: 5-1024 characters
@@ -673,6 +679,7 @@ class CalendarClient:
         )
         return Event.from_api(response)
 
+    @requires_write_lock
     def update_event(self, event: Event) -> Event:
         if not event.id:
             raise ValueError("event.id is required to update an event")
@@ -714,6 +721,7 @@ class CalendarClient:
             if not page_token:
                 return events
 
+    @requires_write_lock
     def delete_event(self, event_id: str) -> None:
         self._service.events().delete(
             calendarId=self._calendar_id, eventId=event_id
@@ -726,6 +734,7 @@ class CalendarClient:
         etag, labels = self._get_raw_event_labels()
         return [EventLabel.from_api(label) for label in labels], etag
 
+    @requires_write_lock
     def create_event_label(self, background_color: str, name: str | None = None) -> EventLabel:
         """Define a new event label on this calendar. The API has no way
         to add a single label in place -- creating one means replacing
@@ -737,6 +746,7 @@ class CalendarClient:
         updated = self._patch_event_labels(etag, labels + [new_label.to_api_body()])
         return next(label for label in updated if label.id not in existing_ids)
 
+    @requires_write_lock
     def update_event_label(
         self, label_id: str, *, background_color: str | None = None, name: str | None = None
     ) -> EventLabel:
@@ -761,6 +771,7 @@ class CalendarClient:
         updated = self._patch_event_labels(etag, labels)
         return next(label for label in updated if label.id == label_id)
 
+    @requires_write_lock
     def delete_event_label(self, label_id: str) -> EventLabel:
         """Remove an event label from this calendar. Returns the label as
         it was just before removal. Raises `ValueError` if no label with
@@ -773,6 +784,7 @@ class CalendarClient:
         self._patch_event_labels(etag, remaining)
         return removed
 
+    @requires_write_lock
     def replace_event_labels(self, labels: list[EventLabel], etag: str | None = None) -> list[EventLabel]:
         """Atomically replace this calendar's entire set of custom event
         labels with `labels`: each given label is created (if `id` is
@@ -796,6 +808,7 @@ class CalendarClient:
         calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
         return _parse_calendar_metadata(calendar.get("description")).get(key)
 
+    @requires_write_lock
     def set_calendar_metadata(self, key: str, value: str | None) -> None:
         """Set (or, if `value` is `None`, remove) this app's own `key` on
         the calendar -- see `get_calendar_metadata`. Guarded by the
@@ -821,6 +834,7 @@ class CalendarClient:
             for label in response.get("labelProperties", {}).get("eventLabels", [])
         ]
 
+    @requires_write_lock
     def _patch_calendar(self, etag: str | None, body: dict) -> dict:
         """PATCH this calendar with `body`, guarded by `etag` -- shared by
         every read-modify-write against the Calendars resource

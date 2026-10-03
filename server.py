@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import functools
 import logging
 import os
-import threading
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
-from typing import Literal
+from typing import Literal, ParamSpec, TypeVar
 from zoneinfo import ZoneInfo
 
 from mcp.server.auth.settings import AuthSettings
@@ -16,6 +17,7 @@ from starlette.types import ASGIApp
 
 from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError
 from calendar_clients.google_sheets import cached_sheet_reads
+from calendar_clients.write_lock import WRITE_LOCK
 from config import (
     build_calendar_client,
     build_compaction_journal,
@@ -281,12 +283,9 @@ class PublicRecurrence:
         )
 
 
-_init_lock = threading.RLock()
-"""Held while a get_* helper below builds its object, so tool calls that
-arrive together (the MCP server runs each on its own thread) don't each
-build one -- building some has side effects, like creating a spreadsheet
-or tab. Reentrant, since the helpers call one another."""
-
+# Each get_* helper below builds its object under WRITE_LOCK, the first
+# time only: building some writes to Google (creating a spreadsheet or
+# tab), and two tool calls arriving together mustn't both build one.
 _calendar_client: CalendarClient | None = None
 _reallocating_calendar: ReallocatingCalendar | None = None
 _goals: Goals | None = None
@@ -303,10 +302,11 @@ def get_calendar_client() -> CalendarClient:
     (and the OAuth consent flow, on first run) happens once per process
     rather than on every tool call."""
     global _calendar_client
-    with _init_lock:
-        if _calendar_client is None:
-            _calendar_client = build_calendar_client()
-        return _calendar_client
+    if _calendar_client is None:
+        with WRITE_LOCK:
+            if _calendar_client is None:
+                _calendar_client = build_calendar_client()
+    return _calendar_client
 
 
 def get_reallocating_calendar() -> ReallocatingCalendar:
@@ -317,51 +317,56 @@ def get_reallocating_calendar() -> ReallocatingCalendar:
     goal-derived priority as the fallback whenever the event itself
     doesn't set one, and every write derives its label from its goals."""
     global _reallocating_calendar
-    with _init_lock:
-        if _reallocating_calendar is None:
-            _reallocating_calendar = ReallocatingCalendar(GoalCalendar(get_calendar_client(), get_goal_store()))
-        return _reallocating_calendar
+    if _reallocating_calendar is None:
+        with WRITE_LOCK:
+            if _reallocating_calendar is None:
+                _reallocating_calendar = ReallocatingCalendar(GoalCalendar(get_calendar_client(), get_goal_store()))
+    return _reallocating_calendar
 
 
 def get_goal_health() -> GoalHealth:
     """Lazily construct and cache the GoalHealth, the same way the other
     get_* helpers cache theirs."""
     global _goal_health
-    with _init_lock:
-        if _goal_health is None:
-            _goal_health = GoalHealth(get_calendar_client(), get_goal_store())
-        return _goal_health
+    if _goal_health is None:
+        with WRITE_LOCK:
+            if _goal_health is None:
+                _goal_health = GoalHealth(get_calendar_client(), get_goal_store())
+    return _goal_health
 
 
 def get_reflections() -> Reflections:
     """Lazily construct and cache the Reflections, the same way the other
     get_* helpers cache theirs."""
     global _reflections
-    with _init_lock:
-        if _reflections is None:
-            _reflections = Reflections(get_goal_health(), get_goal_store(), get_noted_time_sheet())
-        return _reflections
+    if _reflections is None:
+        with WRITE_LOCK:
+            if _reflections is None:
+                _reflections = Reflections(get_goal_health(), get_goal_store(), get_noted_time_sheet())
+    return _reflections
 
 
 def get_goal_store() -> Goals:
     """Lazily construct and cache the Goals, the same way
     get_calendar_client/get_reallocating_calendar cache theirs."""
     global _goals
-    with _init_lock:
-        if _goals is None:
-            # Goals' recent time is counted up to the last compaction.
-            _goals = build_goals(last_compaction=lambda: get_compaction_journal().last_stamped_now())
-        return _goals
+    if _goals is None:
+        with WRITE_LOCK:
+            if _goals is None:
+                # Goals' recent time is counted up to the last compaction.
+                _goals = build_goals(last_compaction=lambda: get_compaction_journal().last_stamped_now())
+    return _goals
 
 
 def get_compaction_journal() -> CompactionJournal:
     """Lazily construct and cache the CompactionJournal, the same way the
     other get_* helpers cache theirs."""
     global _compaction_journal
-    with _init_lock:
-        if _compaction_journal is None:
-            _compaction_journal = build_compaction_journal()
-        return _compaction_journal
+    if _compaction_journal is None:
+        with WRITE_LOCK:
+            if _compaction_journal is None:
+                _compaction_journal = build_compaction_journal()
+    return _compaction_journal
 
 
 def get_recurrences() -> Recurrences:
@@ -369,13 +374,14 @@ def get_recurrences() -> Recurrences:
     get_* helpers cache theirs. Writes go through a GoalCalendar, so each
     series' label follows its goals."""
     global _recurrences
-    with _init_lock:
-        if _recurrences is None:
-            client = get_calendar_client()
-            _recurrences = Recurrences(
-                GoalCalendar(client, get_goal_store()), client.list_instances, client.get_time_zone
-            )
-        return _recurrences
+    if _recurrences is None:
+        with WRITE_LOCK:
+            if _recurrences is None:
+                client = get_calendar_client()
+                _recurrences = Recurrences(
+                    GoalCalendar(client, get_goal_store()), client.list_instances, client.get_time_zone
+                )
+    return _recurrences
 
 
 def _public_recurrences(events: list[Event]) -> list[PublicRecurrence]:
@@ -387,27 +393,29 @@ def get_noted_time_sheet() -> NotedTimeSheet:
     """Lazily construct and cache the NotedTimeSheet, the same way
     get_goal_store caches its Goals."""
     global _noted_time_sheet
-    with _init_lock:
-        if _noted_time_sheet is None:
-            _noted_time_sheet = build_noted_time_sheet()
-        return _noted_time_sheet
+    if _noted_time_sheet is None:
+        with WRITE_LOCK:
+            if _noted_time_sheet is None:
+                _noted_time_sheet = build_noted_time_sheet()
+    return _noted_time_sheet
 
 
 def get_note_compactor() -> NoteCompactor:
     """Lazily construct and cache the NoteCompactor, the same way the
     other get_* helpers cache theirs."""
     global _note_compactor
-    with _init_lock:
-        if _note_compactor is None:
-            _note_compactor = NoteCompactor(
-                calendar=get_reallocating_calendar(),
-                # Written through goals, so each event's label follows them.
-                client=GoalCalendar(get_calendar_client(), get_goal_store()),
-                goals=get_goal_store(),
-                notes=get_noted_time_sheet(),
-                journal=get_compaction_journal(),
-            )
-        return _note_compactor
+    if _note_compactor is None:
+        with WRITE_LOCK:
+            if _note_compactor is None:
+                _note_compactor = NoteCompactor(
+                    calendar=get_reallocating_calendar(),
+                    # Written through goals, so each event's label follows them.
+                    client=GoalCalendar(get_calendar_client(), get_goal_store()),
+                    goals=get_goal_store(),
+                    notes=get_noted_time_sheet(),
+                    journal=get_compaction_journal(),
+                )
+    return _note_compactor
 
 
 def _public_events(events: list[Event]) -> list[PublicEvent]:
@@ -440,6 +448,26 @@ def _check_goal_ids(event: PublicEvent, *, existing: bool = False) -> None:
         raise ToolError(str(exc)) from exc
 
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def writes(tool: Callable[P, R]) -> Callable[P, R]:
+    """Mark `tool` as one that may write to Google: it holds WRITE_LOCK
+    for its whole call (see calendar_clients/write_lock.py), so it never
+    interleaves with another tool's writes. A tool without this only
+    reads, and runs alongside anything -- and fails, rather than racing,
+    if it ever reaches a write."""
+
+    @functools.wraps(tool)
+    def locked(*args: P.args, **kwargs: P.kwargs) -> R:
+        with WRITE_LOCK:
+            return tool(*args, **kwargs)
+
+    locked.writes = True
+    return locked
+
+
 @mcp.tool()
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     """List events between min_time and max_time. goal_ids are the goals
@@ -470,6 +498,7 @@ def get_event(id: str) -> PublicEvent:
 
 
 @mcp.tool()
+@writes
 def update_event(event: PublicEvent) -> list[PublicEvent]:
     """Update an existing event, reallocating time from the rest of its
     day as needed to make room for its new position. Set goal_ids to
@@ -500,6 +529,7 @@ def get_recurrence(id: str) -> PublicRecurrence:
 
 
 @mcp.tool()
+@writes
 def update_recurrence(
     recurrence: PublicRecurrence, starting_at_event_id: str | None = None
 ) -> list[PublicRecurrence]:
@@ -523,6 +553,7 @@ def update_recurrence(
 
 
 @mcp.tool()
+@writes
 def split_recurrence(event_id: str) -> list[PublicRecurrence]:
     """Split the recurring series event_id is one of at that event: the
     series ends just before it, and a copy starts at it, so the two can be
@@ -539,6 +570,7 @@ def split_recurrence(event_id: str) -> list[PublicRecurrence]:
 
 
 @mcp.tool()
+@writes
 def create_event(event: PublicEvent) -> list[PublicEvent]:
     """Create a new event, optionally serving goals (goal_ids, primary
     first). Returns the events affected by the creation."""
@@ -553,6 +585,7 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
 
 
 @mcp.tool()
+@writes
 def delete_event(id: str) -> list[PublicEvent]:
     """Delete an event by its ID. Returns the events affected by the deletion."""
     with track("delete_event"), cached_sheet_reads():
@@ -577,6 +610,7 @@ def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
 
 
 @mcp.tool()
+@writes
 def create_goal(goal: Goal) -> GoalList:
     """Create a goal: a name (at most 50 characters, unique among its
     siblings), optionally a parent_id to make it a sub-goal, and any of
@@ -626,6 +660,7 @@ CLEARABLE_FIELDS)."""
 
 
 @mcp.tool()
+@writes
 def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> GoalList:
     """Update a goal by id. Omitted properties keep their current value;
     list one in clear_fields to blank it instead (clearing parent_id
@@ -647,6 +682,7 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
 
 
 @mcp.tool()
+@writes
 def reorder_goals(goal_ids: list[str]) -> GoalList:
     """Put sibling goals (sharing a parent) in this order, among the places
     they already hold: goals are listed parents before children, siblings
@@ -661,6 +697,7 @@ def reorder_goals(goal_ids: list[str]) -> GoalList:
 
 
 @mcp.tool()
+@writes
 def sync_goals_from_sheet() -> GoalList:
     """After hand edits to the Goals tab of the calendar metadata
     spreadsheet, make the calendar's event labels match it: one label per
@@ -690,6 +727,7 @@ def measure_goals(day: date | None = None, goal_ids: list[str] | None = None) ->
 
 
 @mcp.tool()
+@writes
 def record_assessments(assessments: list[Assessment]) -> list[Assessment]:
     """Record assessments (a 0-100 rating, or "skip", of a goal for one
     day) as proposed -- e.g. a rating the user gives in passing, or one
@@ -718,6 +756,7 @@ def get_goal_history(goal_ids: list[str], start: date | None = None, end: date |
 
 
 @mcp.tool()
+@writes
 def rebuild_goal_health_cache() -> GoalList:
     """Recompute every goal's at-a-glance health (health, health_period,
     health_trend in the goals tab) from its confirmed assessments, e.g.
@@ -753,6 +792,7 @@ def prepare_reflection(day: date | None = None) -> ReflectionContext:
 
 
 @mcp.tool()
+@writes
 def record_reflection(
     day: date,
     assessments: list[Assessment],
@@ -800,6 +840,7 @@ def get_compaction_status() -> CompactionStatus:
 
 
 @mcp.tool()
+@writes
 def note(noted_time: NotedTime) -> NoteWithId:
     """Record a new time note -- a timestamp, with an optional
     description of what it marks. Returns the note as recorded, with the
@@ -824,6 +865,7 @@ def get_notes(include_compacted: bool = False) -> list[NoteWithId]:
 
 
 @mcp.tool()
+@writes
 def edit_note(
     note_id: str, timestamp: datetime | None = None, description: str | None = None
 ) -> NoteWithId:
@@ -844,6 +886,7 @@ def edit_note(
 
 
 @mcp.tool()
+@writes
 def delete_note(note_id: str) -> NotedTime:
     """Delete an uncompacted note (by its id, from get_notes or
     prepare_compaction), returning what it was. Other notes' ids are
@@ -857,6 +900,7 @@ def delete_note(note_id: str) -> NotedTime:
 
 
 @mcp.tool()
+@writes
 def prepare_compaction() -> CompactionContext:
     """Step 1 of compacting notes into the calendar. Returns one day's
     worth of uncompacted notes (each with an id and the planned events
@@ -869,6 +913,7 @@ def prepare_compaction() -> CompactionContext:
 
 
 @mcp.tool()
+@writes
 def compact_notes(
     decisions: list[EventDecision] | None = None,
     ignore_notes: list[str] | None = None,
@@ -922,6 +967,7 @@ def compact_notes(
 
 
 @mcp.tool()
+@writes
 def abandon_compaction(compaction_id: str) -> CompactionResult:
     """Give up on a compaction that can't be finished (or that you no
     longer want). Steps it already applied stay applied; its notes stay
@@ -934,6 +980,7 @@ def abandon_compaction(compaction_id: str) -> CompactionResult:
 
 
 @mcp.tool()
+@writes
 def set_time_zone(time_zone: str) -> str:
     """Set the calendar's time zone to an IANA name, e.g.
     "America/New_York" -- the user's own, so that times come back in their

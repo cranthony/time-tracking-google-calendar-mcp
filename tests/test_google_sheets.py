@@ -5,6 +5,7 @@ import pytest
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_sheets import SheetsClient, _execute, cached_sheet_reads
+from calendar_clients.write_lock import WriteLockNotHeldError
 
 
 def make_client(sheets_service: MagicMock) -> SheetsClient:
@@ -714,3 +715,36 @@ class TestWriteRows:
             valueInputOption="RAW",
             body={"values": [["l1", "Design Work", "#8e24aa", "1"]]},
         )
+
+
+_SHEETS_WRITES = [
+    "create_spreadsheet",
+    "rename_spreadsheet",
+    "add_sheet",
+    "update_sheet_properties",
+    "create_sheet_metadata",
+    "set_column_width",
+    "delete_rows",
+    "write_rows",
+    "write_rows_in_sheet",
+]
+
+
+@pytest.mark.without_write_lock
+class TestWritesRequireTheWriteLock:
+    @pytest.mark.parametrize("method", _SHEETS_WRITES)
+    def test_a_write_refuses_without_it_and_sends_nothing(self, method):
+        sheets_service = MagicMock()
+
+        with pytest.raises(WriteLockNotHeldError):
+            getattr(make_client(sheets_service), method)()
+
+        assert not sheets_service.mock_calls
+
+    def test_a_read_needs_no_lock(self):
+        sheets_service = MagicMock()
+        sheets_service.spreadsheets.return_value.values.return_value.get.return_value.execute.return_value = {
+            "values": [["a"]]
+        }
+
+        assert make_client(sheets_service).read_rows("sheet-1", "A1:A1") == [["a"]]
