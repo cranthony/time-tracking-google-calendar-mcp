@@ -3,11 +3,9 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-from tests.fake_row_hints import FakeRowHints
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote, parse_note_id
-from utilities.row_hints import RowHints
 
 _HEADER_ROW = ["timestamp", "description", "compaction_id"]
 _SHEET_ID = 42
@@ -19,9 +17,8 @@ def make_sheet(
     sheets_client=None,
     spreadsheet_id: str = "sheet-1",
     sheet_id: int = _SHEET_ID,
-    hints: RowHints | None = None,
 ) -> NotedTimeSheet:
-    return NotedTimeSheet(sheets_client or MagicMock(), spreadsheet_id, sheet_id, hints or FakeRowHints())
+    return NotedTimeSheet(sheets_client or MagicMock(), spreadsheet_id, sheet_id)
 
 
 def _sheets(rows, header=None):
@@ -145,12 +142,9 @@ class TestNotedTimeSheetEnsure:
         sheets_client.write_rows_in_sheet.assert_not_called()
 
     def test_creates_and_tags_a_new_tab_with_a_header_row_including_compaction_id(self):
-        # Also ensures the shared row-hints tab (utilities/row_hints.py) --
-        # its own tagged tab, created/tagged first, its header written
-        # before the notes tab's own.
         sheets_client = MagicMock()
         sheets_client.find_sheet_id.return_value = None
-        sheets_client.add_sheet.side_effect = [99, 100]
+        sheets_client.add_sheet.return_value = 99
 
         NotedTimeSheet.ensure(sheets_client, "sheet-1")
 
@@ -160,14 +154,11 @@ class TestNotedTimeSheetEnsure:
                 calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE,
                 tab_color=calendar_metadata_sheet._TAB_COLOR,
             ),
-            call("sheet-1", "Row Hints", tab_color=calendar_metadata_sheet._TAB_COLOR),
         ]
         assert sheets_client.create_sheet_metadata.call_args_list == [
             call("sheet-1", 99, "sheet-role", calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE),
-            call("sheet-1", 100, "sheet-role", "row-hints"),
         ]
         assert sheets_client.write_rows_in_sheet.call_args_list == [
-            call("sheet-1", 100, "A1:B1", [["hint", "row"]]),
             call("sheet-1", 99, "A1:C1", [_HEADER_ROW]),
         ]
 
@@ -235,188 +226,37 @@ class TestNotedTimeSheetReadWithRows:
         ]
 
 
-class TestNotedTimeSheetReadWithRowsHints:
-    def test_starts_from_a_confirmed_compacted_through_hint_instead_of_a_full_read(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet(
-            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a", "cmp1"], [_T1, "b", "cmp1"], [_T2, "c"]]
-        )
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 3)
-        hints.set("notes_latest_compacted_row", 3)
-        client = MagicMock(wraps=fake)
-        sheet = NotedTimeSheet(client, "sheet-1", _SHEET_ID, hints)
-
-        notes = sheet.read_with_rows()
-
-        assert [n.row for n in notes] == [4]
-        assert "A2:C" not in _ranges_read(client)
-
-    def test_falls_back_when_the_hinted_row_is_no_longer_compacted(self):
-        # The hint claims rows 2-3 are both compacted, but row 3's stamp
-        # was edited away since -- can't be trusted, so this re-reads
-        # from the top.
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet(
-            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a", "cmp1"], [_T1, "b"], [_T2, "c"]]
-        )
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 3)
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
-
-        notes = sheet.read_with_rows()
-
-        assert [n.row for n in notes] == [3, 4]
-
-    def test_advances_the_hint_only_through_the_longest_compacted_prefix(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet(
-            "sheet-1",
-            _SHEET_ID,
-            "A2:C",
-            [[_T1, "a", "cmp1"], [_T1, "b", "cmp1"], [_T2, "c"], [_T2, "d", "cmp1"]],
-        )
-        hints = FakeRowHints()
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
-
-        sheet.read_with_rows()
-
-        # Row 4 is uncompacted, so the prefix stops there even though row
-        # 5 (past it) happens to be compacted too.
-        assert hints.get("notes_compacted_through_row") == 3
-
-    def test_a_blank_row_counts_towards_the_compacted_prefix(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet(
-            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a", "cmp1"], [], [_T2, "c"]]
-        )
-        hints = FakeRowHints()
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
-
-        sheet.read_with_rows()
-
-        assert hints.get("notes_compacted_through_row") == 3
-
-
-class TestNotedTimeSheetLatestCompacted:
-    def _sheet(self, rows, hints=None):
+class TestNotedTimeSheetReadsTheWholeTab:
+    def _sheet(self, rows):
         fake = FakeSheets()
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
         client = MagicMock(wraps=fake)
-        return client, NotedTimeSheet(client, "sheet-1", _SHEET_ID, hints or FakeRowHints())
+        return client, NotedTimeSheet(client, "sheet-1", _SHEET_ID)
 
-    def test_is_the_compacted_note_with_the_latest_timestamp(self):
-        _client, sheet = self._sheet([[_T2, "later", "cmp1"], [_T1, "earlier", "cmp1"], [_T2, "open"]])
-
-        assert sheet.read_with_latest_compacted()[1].description == "later"
-
-    def test_is_none_when_nothing_is_compacted(self):
-        _client, sheet = self._sheet([[_T1, "open"], []])
-
-        assert sheet.read_with_latest_compacted()[1] is None
-
-    def test_a_full_read_hints_the_latest_compacted_row(self):
-        hints = FakeRowHints()
-        _client, sheet = self._sheet([[_T2, "later", "cmp1"], [_T1, "earlier", "cmp1"], [_T2, "open"]], hints)
-
-        sheet.read_with_rows()
-
-        assert hints.get("notes_latest_compacted_row") == 2
-
-    def test_reads_from_the_earlier_hinted_row_in_one_request_with_the_uncompacted_notes(self):
-        rows = (
-            [[_T1, f"old {i}", "cmp1"] for i in range(19)]
-            + [[_T2, "newest", "cmp2"], [_T1, "older", "cmp2"], [_T2, "open"]]
-        )
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 22)
-        hints.set("notes_latest_compacted_row", 21)
-        client, sheet = self._sheet(rows, hints)
+    def test_reads_the_header_and_every_row_in_one_request(self):
+        client, sheet = self._sheet([[_T1, "a", "cmp1"], [_T2, "open"]])
 
         notes, latest = sheet.read_with_latest_compacted()
 
         assert [n.note.description for n in notes] == ["open"]
-        assert latest.description == "newest"
-        # The header, then one read that confirms both hints.
-        assert _requests(client) == [["A1:C1", "A21:C"]]
+        assert latest.description == "a"
+        assert _requests(client) == [["A1:C1", "A2:C"]]
 
-    def test_a_confirmed_read_rewrites_no_hints(self):
-        rows = [[_T1, "a", "cmp1"], [_T2, "b", "cmp1"], [_T2, "open"]]
-        hints = MagicMock(wraps=FakeRowHints())
-        hints.set("notes_compacted_through_row", 3)
-        hints.set("notes_latest_compacted_row", 3)
-        hints.set.reset_mock()
-        _client, sheet = self._sheet(rows, hints)
-
-        sheet.read_with_rows()
-
-        hints.set.assert_not_called()
-
-    def test_without_a_latest_compacted_hint_reads_from_the_compacted_through_row(self):
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 3)
-        client, sheet = self._sheet([[_T2, "a", "cmp1"], [_T1, "b", "cmp1"], [_T2, "c", "cmp1"], [_T1, "open"]], hints)
-
-        assert sheet.read_with_latest_compacted()[1].description == "c"
-        assert _ranges_read(client)[-1] == "A3:C"
-        assert hints.get("notes_latest_compacted_row") == 4
-
-    def test_the_latest_compacted_note_is_picked_from_the_rows_read_not_the_hint(self):
-        # The hinted row is still compacted, but a later-stamped note
-        # (row 5) is later still -- and the uncompacted row 4 isn't
-        # mistaken for one.
-        rows = [[_T1, "a", "cmp1"], [_T1, "hinted", "cmp1"], [_T2, "open"], [_T2, "later", "cmp2"]]
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 3)
-        hints.set("notes_latest_compacted_row", 3)
-        client, sheet = self._sheet(rows, hints)
+    def test_the_latest_compacted_note_has_the_latest_timestamp(self):
+        _client, sheet = self._sheet([[_T2, "later", "cmp1"], [_T1, "earlier", "cmp1"], [_T2, "open"]])
 
         assert sheet.read_with_latest_compacted()[1].description == "later"
-        assert hints.get("notes_latest_compacted_row") == 5
-        assert len(_requests(client)) == 1  # the header and data together
 
-    def test_a_hinted_row_that_is_no_longer_compacted_costs_no_extra_read(self):
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 3)
-        hints.set("notes_latest_compacted_row", 2)
-        client, sheet = self._sheet([[_T2, "no longer", ""], [_T1, "b", "cmp1"], [_T1, "open"]], hints)
+    def test_of_two_compacted_notes_at_the_same_time_the_later_row_is_the_latest(self):
+        _client, sheet = self._sheet([[_T1, "first", "cmp1"], [_T1, "second", "cmp1"]])
 
-        notes, latest = sheet.read_with_latest_compacted()
+        assert sheet.read_with_latest_compacted()[1].description == "second"
 
-        assert latest.description == "b"
-        assert [n.note.description for n in notes] == ["no longer", "open"]
-        assert len(_requests(client)) == 1  # the header and data together
+    def test_there_is_no_latest_compacted_note_when_nothing_is_compacted(self):
+        _client, sheet = self._sheet([[_T1, "open"], []])
 
-    def test_a_read_past_the_compacted_prefix_takes_in_notes_stamped_since(self):
-        # Rows 2-3 were compacted when the hints were set; row 5 has been
-        # stamped since, after the uncompacted row 4.
-        rows = [[_T1, "a", "cmp1"], [_T1, "b", "cmp1"], [_T2, "open"], [_T2, "new", "cmp2"]]
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 3)
-        hints.set("notes_latest_compacted_row", 3)
-        _client, sheet = self._sheet(rows, hints)
-
-        sheet.read_with_rows()
-
-        assert hints.get("notes_latest_compacted_row") == 5
-        assert sheet.read_with_latest_compacted()[1].description == "new"
-
-    def test_an_earlier_note_stamped_since_does_not_displace_a_later_one_in_the_prefix(self):
-        # A backfilled note (row 5) compacted after the prefix's latest.
-        rows = [[_T1, "a", "cmp1"], [_T2, "b", "cmp1"], [_T2, "open"], [_T1, "backfilled", "cmp2"]]
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 3)
-        hints.set("notes_latest_compacted_row", 3)
-        _client, sheet = self._sheet(rows, hints)
-
-        sheet.read_with_rows()
-
-        assert hints.get("notes_latest_compacted_row") == 3
+        assert sheet.read_with_latest_compacted()[1] is None
 
 
 class TestNoteIds:
@@ -483,243 +323,119 @@ class TestNotedTimeSheetAppend:
             "sheet-1", _SHEET_ID, "A2:C", [[_T1, "", ""]]
         )
 
-    def test_updates_the_next_row_hint_after_appending(self):
-        sheets_client = _sheets([[_T1, "a"], [_T1, "b"]])
-        hints = FakeRowHints()
+    def test_reads_the_tab_once_in_one_request(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
+        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", [[_T1, "a"], [], [_T1, "c"]])
+        client = MagicMock(wraps=fake)
 
-        make_sheet(sheets_client, hints=hints).append(
+        appended = NotedTimeSheet(client, "sheet-1", _SHEET_ID).append(
             NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc))
         )
 
-        assert hints.get("notes_next_row") == 5
-
-
-class TestNotedTimeSheetAppendHints:
-    def test_confirming_the_first_data_row_does_not_read_the_header_row(self):
-        # Nothing's been appended yet, so there's no row before the hint
-        # to confirm -- reading row 1 would just be the header, not data,
-        # and shouldn't be mistaken for it.
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        hints = FakeRowHints()
-        hints.set("notes_next_row", 2)
-        client = MagicMock(wraps=fake)
-        sheet = NotedTimeSheet(client, "sheet-1", _SHEET_ID, hints)
-
-        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
-
-        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C") == [[_T1]]
-        assert "A2:C6" in _ranges_read(client)
-        assert "A1:C6" not in _ranges_read(client)
-
-    def test_uses_a_confirmed_hint_instead_of_a_full_read(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet(
-            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a"], [_T1, "b"], [_T1, "c"]]
-        )
-        hints = FakeRowHints()
-        hints.set("notes_next_row", 5)
-        client = MagicMock(wraps=fake)
-        sheet = NotedTimeSheet(client, "sheet-1", _SHEET_ID, hints)
-
-        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
-
-        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A5:C") == [[_T1]]
-        assert "A2:C" not in _ranges_read(client)
-        assert hints.get("notes_next_row") == 6
-
-    def test_falls_back_when_the_hinted_row_is_not_actually_blank(self):
-        # The hint says row 3 is next, but rows exist all the way through
-        # row 7 -- can't be trusted, so this recounts from the top.
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet(
-            "sheet-1",
-            _SHEET_ID,
-            "A2:C",
-            [[_T1, "a"], [_T1, "b"], [_T1, "c"], [_T1, "d"], [_T1, "e"], [_T1, "f"]],
-        )
-        hints = FakeRowHints()
-        hints.set("notes_next_row", 3)
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
-
-        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
-
-        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A8:C") == [[_T1]]
-        assert hints.get("notes_next_row") == 9
-
-    def test_falls_back_when_the_hinted_row_overshoots_past_a_gap(self):
-        # Real data ends at row 4, but the hint points at row 15, with
-        # nothing in between -- checking only the rows at and after the
-        # hint would see that as "blank enough" and trust it, silently
-        # wasting rows 5-14 forever instead of catching the drift.
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet(
-            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a"], [_T1, "b"], [_T1, "c"]]
-        )
-        hints = FakeRowHints()
-        hints.set("notes_next_row", 15)
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
-
-        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
-
-        assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A5:C") == [[_T1]]
-        assert hints.get("notes_next_row") == 6
+        # After the last row, even with a blank one before it.
+        assert appended.row == 5
+        assert _requests(client) == [["A1:C1", "A2:C"]]
 
 
 class TestNotedTimeSheetGarbageCollect:
-    def test_does_nothing_under_the_row_budget(self):
+    _OLD = "2025-12-31T09:00:00+00:00"
+
+    def _sheet(self, rows):
         fake = FakeSheets()
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        rows = [[_T1, "a", "cmp1"] for _ in range(10)]
         fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
-        hints = FakeRowHints()
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+        return fake, NotedTimeSheet(fake, "sheet-1", _SHEET_ID)
+
+    def test_does_nothing_under_the_row_budget(self):
+        rows = [[_T1, "a", "cmp1"] for _ in range(50)]
+        fake, sheet = self._sheet(rows)
 
         sheet.garbage_collect()
 
         assert fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C") == rows
-        assert hints.get("notes_next_row") is None
 
     def test_deletes_the_oldest_compacted_rows_once_over_budget(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        # 255 compacted, then one uncompacted -- 256 total, over the
-        # 250-row budget, so it's trimmed to 150.
-        rows = [[_T1, "a", "cmp1"] for _ in range(255)] + [[_T2, "recent"]]
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
-        hints = FakeRowHints()
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+        # 55 compacted, then one uncompacted -- 56 in all, over the 50-row
+        # budget, so it's trimmed to 25.
+        fake, sheet = self._sheet([[_T1, "a", "cmp1"] for _ in range(55)] + [[_T2, "recent"]])
 
         sheet.garbage_collect()
 
         remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
-        assert len(remaining) == 150
+        assert len(remaining) == 25
         assert remaining[-1] == [_T2, "recent"]
-        assert hints.get("notes_next_row") == 152  # 2 + 150
-        assert hints.get("notes_compacted_through_row") == 1  # reset, not recomputed
 
-    def test_resets_the_read_hints_before_deleting_rows(self):
-        # If the delete goes through but the process dies before the hints
-        # are written, a compacted-through hint left at its old row would
-        # skip the uncompacted notes that moved up past it.
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        rows = [[_T1, "a", "cmp1"] for _ in range(255)] + [[_T2, "recent"]]
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
-        hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 256)
-        hints.set("notes_latest_compacted_row", 256)
-        client = MagicMock(wraps=fake)
-        hints_at_delete = {}
-
-        def delete_rows(*args, **kwargs):
-            hints_at_delete.update(hints._values)
-            raise RuntimeError("died")
-
-        client.delete_rows.side_effect = delete_rows
-        sheet = NotedTimeSheet(client, "sheet-1", _SHEET_ID, hints)
-
-        with pytest.raises(RuntimeError):
-            sheet.garbage_collect()
-
-        assert hints_at_delete["notes_compacted_through_row"] == 1
-        assert hints_at_delete["notes_latest_compacted_row"] == 1
-        assert [n.note.description for n in sheet.read_with_rows()] == ["recent"]
-
-    def test_moves_the_latest_compacted_hint_up_with_its_row(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        rows = [[_T1, "a", "cmp1"] for _ in range(254)] + [[_T2, "latest", "cmp1"], [_T2, "recent"]]
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
-        hints = FakeRowHints()
-        hints.set("notes_latest_compacted_row", 256)
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+    def test_always_keeps_the_latest_compacted_note(self):
+        # The latest compacted note is row 4, inside the 31 rows that
+        # would otherwise go -- so only the two rows before it do, and it
+        # and everything after it are kept, for the next compaction's
+        # `previous_note`.
+        rows = (
+            [[self._OLD, "a", "cmp1"], [self._OLD, "b", "cmp1"], [_T2, "latest", "cmp1"]]
+            + [[_T1, f"older {i}", "cmp1"] for i in range(52)]
+            + [[_T2, "open"]]
+        )
+        fake, sheet = self._sheet(rows)
 
         sheet.garbage_collect()
 
-        assert hints.get("notes_latest_compacted_row") == 150  # 256 - 106 deleted
+        remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
+        assert len(remaining) == 54
+        assert remaining[0] == [_T2, "latest", "cmp1"]
         assert sheet.read_with_latest_compacted()[1].description == "latest"
-
-    def test_a_latest_compacted_row_that_was_deleted_leaves_its_hint_reset(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        rows = [[_T2, "deleted", "cmp1"]] + [[_T1, "a", "cmp1"] for _ in range(254)] + [[_T2, "recent"]]
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
-        hints = FakeRowHints()
-        hints.set("notes_latest_compacted_row", 2)
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
-
-        sheet.garbage_collect()
-
-        assert hints.get("notes_latest_compacted_row") == 1
-        assert sheet.read_with_latest_compacted()[1].description == "a"
 
     def test_leaves_the_tab_at_least_1000_rows_long(self):
         # Earlier garbage collection already shrank the tab's grid; without
         # topping it back up, it would eventually run out of rows to append
         # into.
-        fake = FakeSheets()
-        fake.row_counts[_SHEET_ID] = 300
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        rows = [[_T1, "a", "cmp1"] for _ in range(255)] + [[_T2, "recent"]]
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, FakeRowHints())
+        fake, sheet = self._sheet([[_T1, "a", "cmp1"] for _ in range(55)] + [[_T2, "recent"]])
+        fake.row_counts[_SHEET_ID] = 100
 
         sheet.garbage_collect()
 
         assert fake.row_count(_SHEET_ID) == 1000
 
     def test_does_nothing_if_the_oldest_row_is_already_uncompacted(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        rows = [[_T1, "a"]] + [[_T1, "b", "cmp1"] for _ in range(255)]
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
-        hints = FakeRowHints()
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+        fake, sheet = self._sheet([[_T1, "a"]] + [[_T1, "b", "cmp1"] for _ in range(55)])
 
         sheet.garbage_collect()
 
-        assert len(fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")) == 256
-        assert hints.get("notes_next_row") is None
+        assert len(fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")) == 56
 
-    def test_deletes_only_the_confirmed_prefix_when_it_falls_short_of_the_excess(self):
-        # An uncompacted note (index 3) sits inside the confirmation
-        # window -- only the 3 compacted rows before it are safe to
-        # delete, even though the tab is 6 rows over budget.
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        rows = (
-            [[_T1, "a", "cmp1"] for _ in range(3)]
-            + [[_T1, "b"]]
-            + [[_T1, "c", "cmp1"] for _ in range(252)]
+    def test_deletes_only_the_compacted_prefix_when_it_falls_short_of_the_excess(self):
+        # An uncompacted note (row 5) sits within the 31 rows over budget --
+        # only the 3 compacted rows before it are safe to delete.
+        fake, sheet = self._sheet(
+            [[_T1, "a", "cmp1"] for _ in range(3)] + [[_T1, "b"]] + [[_T1, "c", "cmp1"] for _ in range(52)]
         )
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C", rows)
-        hints = FakeRowHints()
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
+
+        sheet.garbage_collect()
+
+        assert len(fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")) == 53
+
+    def test_blank_rows_count_and_are_deleted_with_the_prefix(self):
+        fake, sheet = self._sheet([[], [_T1, "a", "cmp1"]] * 27 + [[_T2, "open"]])
 
         sheet.garbage_collect()
 
         remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
-        assert len(remaining) == 253
-        assert hints.get("notes_next_row") == 255  # 2 + 253
+        assert len(remaining) == 25
+        assert remaining[-1] == [_T2, "open"]
 
-    def test_append_garbage_collects_first(self):
-        fake = FakeSheets()
-        fake.write_rows_in_sheet("sheet-1", _SHEET_ID, "A1:C1", [_HEADER_ROW])
-        fake.write_rows_in_sheet(
-            "sheet-1", _SHEET_ID, "A2:C", [[_T1, "a", "cmp1"] for _ in range(255)]
+    def test_append_garbage_collects_first_from_the_same_read(self):
+        fake, _ = self._sheet([[_T1, "a", "cmp1"] for _ in range(55)])
+        client = MagicMock(wraps=fake)
+
+        appended = NotedTimeSheet(client, "sheet-1", _SHEET_ID).append(
+            NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc))
         )
-        hints = FakeRowHints()
-        sheet = NotedTimeSheet(fake, "sheet-1", _SHEET_ID, hints)
-
-        sheet.append(NotedTime(timestamp=datetime(2026, 1, 1, 9, 0, 0, tzinfo=timezone.utc)))
 
         remaining = fake.read_rows_in_sheet("sheet-1", _SHEET_ID, "A2:C")
-        assert len(remaining) == 151  # trimmed from 255 to 150, + 1 appended
+        assert len(remaining) == 26  # trimmed from 55 to 25, + 1 appended
         assert remaining[-1] == [_T1]
+        assert appended.row == 27
+        assert len(_requests(client)) == 1
 
 
 def _id(timestamp: str, row: int) -> str:

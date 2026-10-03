@@ -784,9 +784,8 @@ class CalendarClient:
         calendar's etag exactly like create/update/delete_event_label, so
         a concurrent change raises `EventLabelConflictError`.
 
-        Used by `utilities/event_label_sheet.py` to sync labels from a
-        Google Sheet, where the sheet is the source of truth for the
-        whole set."""
+        Used by `utilities/goals.py` to sync labels from the goals tab,
+        which is the source of truth for the whole set."""
         updated = self._patch_event_labels(etag, [label.to_api_body() for label in labels])
         return updated
 

@@ -16,9 +16,9 @@ from calendar_clients.google_auth import load_credentials
 
 class SheetsClient:
     """Wraps the Google Sheets API behind a small, mockable interface --
-    the thin layer `utilities/calendar_metadata_sheet.py` and
-    `utilities/event_label_sheet.py` build their higher-level logic on
-    top of, the same way `CalendarClient` is a thin layer under
+    the thin layer `utilities/calendar_metadata_sheet.py` and each tab's
+    own module (e.g. `utilities/goal_sheet.py`) build their higher-level
+    logic on top of, the same way `CalendarClient` is a thin layer under
     `utilities/reallocating_calendar.py`. Knows nothing about event
     labels, time notes, or any other meaning attached to a tab; just
     spreadsheets, tabs, rows, and columns.
@@ -43,8 +43,8 @@ class SheetsClient:
         token (and its combined `SCOPES`) as `CalendarClient`, so both
         must be loaded from the same underlying credentials to avoid
         refreshing/writing `token_path` twice; prefer
-        `config.build_event_label_sheet` over calling this directly when
-        both clients are needed together."""
+        `config._build_calendar_and_sheets_clients` over calling this
+        directly when both clients are needed together."""
         creds = load_credentials(token_path, credentials_path)
         return cls(build("sheets", "v4", credentials=creds))
 
@@ -242,8 +242,7 @@ class SheetsClient:
         1-based, inclusive) from the tab identified by `sheet_id`,
         shifting every row below up to fill the gap. Used to
         garbage-collect old rows from an only-ever-growing, append-only
-        tab (see utilities/row_hints.py and each such tab's own
-        `garbage_collect`).
+        tab (see each such tab's own `garbage_collect`).
 
         Deleting rows shrinks the tab's grid, and a write past the end of
         the grid fails -- so if that leaves the tab with fewer than
@@ -318,8 +317,7 @@ class SheetsClient:
         with `rows`. Only writes exactly `len(rows)` rows -- any existing
         rows beyond that within `sheet_range` are left untouched, so a
         caller replacing a previously-longer set of rows must clear the
-        old range first (not needed by `utilities/event_label_sheet.py`,
-        which always writes back exactly as many rows as it read)."""
+        old range first."""
         _forget_cached_reads(spreadsheet_id)
         _execute(
             self._sheets_service.spreadsheets().values().update(

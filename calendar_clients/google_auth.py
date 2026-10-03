@@ -30,16 +30,17 @@ https://developers.google.com/workspace/calendar/api/auth for the scope
 reference.
 
 drive.file: for calendar_clients/google_sheets.py's SheetsClient to
-create and read/write the spreadsheet utilities/event_label_sheet.py
-uses to sync event labels. Grants access only to files this app creates
+create and read/write the calendar metadata spreadsheet
+(utilities/calendar_metadata_sheet.py) this app keeps goals, notes and
+its compaction journal in. Grants access only to files this app creates
 itself (or that are explicitly opened with it via a picker) -- the same
 can't-touch-what-it-didn't-make model as calendar.app.created above.
 It's the narrowest scope that still works: confirmed against the Sheets
 API reference that it's accepted by spreadsheets.create,
 spreadsheets.values.get, and spreadsheets.values.update alike, so
 SheetsClient never has to call the Drive API directly -- the sheet's id
-is found via CalendarClient.get_calendar_metadata (see EventLabelSheet.
-find_sheet), not by searching Drive.
+is found via CalendarClient.get_calendar_metadata (see
+calendar_metadata_sheet.ensure_spreadsheet), not by searching Drive.
 
 This is deliberate, for both scopes: a compromised or misbehaving
 instance of this app cannot read or touch anything outside what it made
@@ -73,7 +74,7 @@ def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
     from_credentials) -- so both clients must be built from the same
     load_credentials call (or the same cached token_path) rather than
     independently, or Google will treat them as differently-scoped
-    sessions. See config.build_event_label_sheet for the pattern.
+    sessions. See config._build_calendar_and_sheets_clients for the pattern.
 
     Rewriting token_path after a refresh is best-effort: if the path isn't
     writable (e.g. a read-only mount, such as a Render Secret File), the

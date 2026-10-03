@@ -40,7 +40,6 @@ from typing import Any
 from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel, color_for_priority
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
-from utilities.event_label_sheet import EventLabelSheet
 from utilities.goal_measures import DEFAULT_MEASURE, MEASURE_SHAPE_PROBLEM, measure_problems
 from utilities.sleep_days import current_day_from
 from utilities.goal_sheet import GOAL_STATUSES, Goal, GoalSheet
@@ -57,8 +56,6 @@ UUID; goal ids are short)."""
 
 _ID_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 _ID_LENGTH = 6
-
-_MIGRATED_TAB_TITLE = "Event Labels (migrated)"
 
 CLEARABLE_FIELDS = frozenset(
     {"parent_id", "background_color", "priority", "fixed_time", "measure", "target", "deadline", "note"}
@@ -451,24 +448,13 @@ class Goals:
                 return goal_id
 
     def _migrate(self, sheets_client: SheetsClient, spreadsheet_id: str, is_new_spreadsheet: bool) -> GoalSheet:
-        """Create the goals tab from the event labels tab (or, without one,
-        the calendar's named labels): one active, top-level goal per
-        label, keeping its id. The old tab is renamed, not deleted."""
-        labels_tab = calendar_metadata_sheet.find_tab(
-            sheets_client, spreadsheet_id, calendar_metadata_sheet.EVENT_LABELS_SHEET_ROLE
-        )
-        if labels_tab is not None:
-            sources = [
-                (label.id, label.name, label.background_color, label.priority, label.fixed_time, label.note)
-                for label in EventLabelSheet(sheets_client, spreadsheet_id, labels_tab).read()
-            ]
-        else:
-            raw_labels, _etag = self._calendar_client.list_event_labels()
-            sources = [(label.id, label.name, label.background_color, None, None, None) for label in raw_labels]
-
+        """Create the goals tab from the calendar's named event labels: one
+        active, top-level goal per label, keeping its id."""
+        raw_labels, _etag = self._calendar_client.list_event_labels()
         goals: list[Goal] = []
         taken: set[str] = set()
-        for label_id, name, background_color, priority, fixed_time, note in sources:
+        for label in raw_labels:
+            label_id, name = label.id, label.name
             if not name:
                 continue  # Calendar's own default colors, not anyone's label
             unique, n = name[:MAX_NAME_LENGTH], 2
@@ -483,20 +469,14 @@ class Goals:
                     name=unique,
                     status="active",
                     label_id=label_id or str(uuid.uuid5(_LABEL_ID_NAMESPACE, goal_id)),
-                    background_color=background_color,
-                    priority=priority,
-                    fixed_time=fixed_time,
-                    note=note,
+                    background_color=label.background_color,
                     created=self._today(),
                 )
             )
 
-        sheet = GoalSheet.create(
+        return GoalSheet.create(
             sheets_client, spreadsheet_id, goals, reuse_sheet_id=0 if is_new_spreadsheet else None
         )
-        if labels_tab is not None:
-            sheets_client.update_sheet_properties(spreadsheet_id, labels_tab, title=_MIGRATED_TAB_TITLE)
-        return sheet
 
 
 def _check_statuses(statuses: Collection[str] | None) -> tuple[str, ...]:

@@ -19,11 +19,11 @@ class TestCreateSpreadsheet:
         }
         client = make_client(sheets_service)
 
-        spreadsheet_id = client.create_spreadsheet("Event Labels")
+        spreadsheet_id = client.create_spreadsheet("Goals")
 
         assert spreadsheet_id == "sheet-1"
         sheets_service.spreadsheets.return_value.create.assert_called_once_with(
-            body={"properties": {"title": "Event Labels"}}, fields="spreadsheetId"
+            body={"properties": {"title": "Goals"}}, fields="spreadsheetId"
         )
 
 
@@ -175,7 +175,7 @@ class TestUpdateSheetProperties:
         sheets_service = MagicMock()
         client = make_client(sheets_service)
 
-        client.update_sheet_properties("sheet-1", 0, title="Event Labels")
+        client.update_sheet_properties("sheet-1", 0, title="Goals")
 
         sheets_service.spreadsheets.return_value.batchUpdate.assert_called_once_with(
             spreadsheetId="sheet-1",
@@ -183,7 +183,7 @@ class TestUpdateSheetProperties:
                 "requests": [
                     {
                         "updateSheetProperties": {
-                            "properties": {"sheetId": 0, "title": "Event Labels"},
+                            "properties": {"sheetId": 0, "title": "Goals"},
                             "fields": "title",
                         }
                     }
@@ -195,7 +195,7 @@ class TestUpdateSheetProperties:
         sheets_service = MagicMock()
         client = make_client(sheets_service)
 
-        client.update_sheet_properties("sheet-1", 0, title="Event Labels", tab_color={"red": 0.26})
+        client.update_sheet_properties("sheet-1", 0, title="Goals", tab_color={"red": 0.26})
 
         sheets_service.spreadsheets.return_value.batchUpdate.assert_called_once_with(
             spreadsheetId="sheet-1",
@@ -205,7 +205,7 @@ class TestUpdateSheetProperties:
                         "updateSheetProperties": {
                             "properties": {
                                 "sheetId": 0,
-                                "title": "Event Labels",
+                                "title": "Goals",
                                 "tabColor": {"red": 0.26},
                             },
                             "fields": "title,tabColor",
@@ -258,7 +258,7 @@ class TestCreateSheetMetadata:
         sheets_service = MagicMock()
         client = make_client(sheets_service)
 
-        client.create_sheet_metadata("sheet-1", 42, "sheet-role", "event-labels")
+        client.create_sheet_metadata("sheet-1", 42, "sheet-role", "goals")
 
         sheets_service.spreadsheets.return_value.batchUpdate.assert_called_once_with(
             spreadsheetId="sheet-1",
@@ -268,7 +268,7 @@ class TestCreateSheetMetadata:
                         "createDeveloperMetadata": {
                             "developerMetadata": {
                                 "metadataKey": "sheet-role",
-                                "metadataValue": "event-labels",
+                                "metadataValue": "goals",
                                 "location": {"sheetId": 42},
                                 "visibility": "PROJECT",
                             }
@@ -287,14 +287,14 @@ class TestFindSheetId:
         }
         client = make_client(sheets_service)
 
-        sheet_id = client.find_sheet_id("sheet-1", "sheet-role", "event-labels")
+        sheet_id = client.find_sheet_id("sheet-1", "sheet-role", "goals")
 
         assert sheet_id == 42
         sheets_service.spreadsheets.return_value.developerMetadata.return_value.search.assert_called_once_with(
             spreadsheetId="sheet-1",
             body={
                 "dataFilters": [
-                    {"developerMetadataLookup": {"metadataKey": "sheet-role", "metadataValue": "event-labels"}}
+                    {"developerMetadataLookup": {"metadataKey": "sheet-role", "metadataValue": "goals"}}
                 ]
             },
         )
@@ -304,7 +304,7 @@ class TestFindSheetId:
         sheets_service.spreadsheets.return_value.developerMetadata.return_value.search.return_value.execute.return_value = {}
         client = make_client(sheets_service)
 
-        assert client.find_sheet_id("sheet-1", "sheet-role", "event-labels") is None
+        assert client.find_sheet_id("sheet-1", "sheet-role", "goals") is None
 
 
 class TestReadRowsInSheet:
