@@ -59,6 +59,7 @@ numbers and ids.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -78,6 +79,7 @@ from utilities.compaction_journal import (
     JournalCompaction,
     JournalStep,
 )
+from utilities.compaction_marker import CompactionMarker
 from utilities.compaction_timeline import Timeline
 from utilities.note_compaction import (
     CompactionChange,
@@ -91,6 +93,8 @@ from utilities.note_compaction import (
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote
 from utilities.goals import OVERALL_ID, Goals, GoalTree
 from utilities.reallocating_calendar import ReallocatingCalendar
+
+logger = logging.getLogger(__name__)
 
 _CANDIDATE_WINDOW = timedelta(hours=1)
 """How far either side of a note's time a planned event may start or end
@@ -314,11 +318,15 @@ class NoteCompactor:
         journal: CompactionJournal,
         clock: Callable[[], datetime] | None = None,
         goals: Goals | None = None,
+        marker: CompactionMarker | None = None,
     ) -> None:
         """`calendar` reads the day's events (through the same goal-aware
         view reallocation uses); `client` is what the planned changes are
         written through (a GoalCalendar, so each event's label follows
-        its goals). `goals` names, suggests and checks events' goals."""
+        its goals). `goals` names, suggests and checks events' goals.
+        `marker`, if given, is moved to each compaction once it's stamped
+        (see utilities/compaction_marker.py)."""
+        self._marker = marker
         self._calendar = calendar
         self._client = client
         self._goals = goals
@@ -485,10 +493,13 @@ class NoteCompactor:
         self._prefetch()
         journal = self._journal.load(compaction_id)
         if journal.status == STAMPED:
+            # Again, in case moving it failed the first time.
+            last = self._journal.last_stamped_now()
             return CompactionResult(
                 status="already_compacted",
                 compaction_id=compaction_id,
                 changes=journal.changes(),
+                warnings=self._move_marker(last) if last is not None else [],
                 message=f"compaction {compaction_id} was already applied and its notes stamped",
             )
         if journal.status == ABANDONED:
@@ -508,9 +519,22 @@ class NoteCompactor:
             status="applied",
             compaction_id=compaction_id,
             changes=journal.changes(),
-            warnings=journal.warnings,
+            warnings=journal.warnings + self._move_marker(journal.now),
             message=f"applied {len(journal.steps)} change(s) and marked {len(journal.note_ids)} note(s) compacted",
         )
+
+    def _move_marker(self, at: datetime) -> list[str]:
+        """Move the last-compaction marker to `at`, if there's a marker;
+        a warning to report if that failed. Best effort: the compaction
+        itself is done either way, and the next one moves it again."""
+        if self._marker is None:
+            return []
+        try:
+            self._marker.mark(at)
+        except Exception as exc:  # Any failure: the compaction mustn't fail with it.
+            logger.warning("Couldn't move the compaction marker", exc_info=True)
+            return [f"couldn't move the last-compaction marker in Google Calendar ({exc}); the next compaction will"]
+        return []
 
     def edit_note(
         self, note_id: str, *, timestamp: datetime | None = None, description: str | None = None

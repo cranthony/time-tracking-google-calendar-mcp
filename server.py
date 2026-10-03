@@ -37,6 +37,7 @@ from utilities.goals import GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.compaction_journal import CompactionJournal
+from utilities.compaction_marker import CompactionMarker
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
@@ -414,6 +415,8 @@ def get_note_compactor() -> NoteCompactor:
                     goals=get_goal_store(),
                     notes=get_noted_time_sheet(),
                     journal=get_compaction_journal(),
+                    # A red event in Google Calendar, at the last compaction.
+                    marker=CompactionMarker(get_calendar_client()),
                 )
     return _note_compactor
 
@@ -1034,10 +1037,14 @@ def set_time_zone(time_zone: str) -> str:
             zone = get_calendar_client().set_time_zone(time_zone)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
-        # Keep the Goal Health calendar's days the same as the main one's.
+        # Keep the Goal Health and Compactions calendars' days the same as
+        # the main one's.
         health = get_goal_health().health_calendar(create=False)
         if health is not None:
             health.set_time_zone(zone.key)
+        compactions = CompactionMarker(get_calendar_client()).calendar(create=False)
+        if compactions is not None:
+            compactions.set_time_zone(zone.key)
         return zone.key
 
 
