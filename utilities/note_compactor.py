@@ -37,8 +37,18 @@ compaction closed off at "now" (or the night's sleep) can still be
 stretched. Likewise the latest compacted note, if it's within `_LOOKBACK`
 before the compaction window starts, is offered as `previous_note`: what
 the user said just before the window often says what was going on as it
-began. Every past event offered is recorded as on schedule unless
+began. The timeline shows the latest compacted note however long ago it
+was, and when the last compaction ran, as context. Every past event
+offered is recorded as on schedule unless
 the client's decisions say otherwise (see utilities/note_compaction.py).
+
+The events offered run through the day's end-of-day sleep, because an
+event that ran long pushes what follows it later, and the reflow needs
+somewhere for that to go. But compaction is about recording the past,
+so the timeline shown to the user stops at `now`: a later event appears
+in it only if it's near enough to a note to be one of its candidates
+(lunch at noon, for an 11:45 "starting lunch") or -- after a dry run --
+if the plan changes it.
 
 `prepare` also garbage-collects the journal (`CompactionJournal.
 garbage_collect`) before doing anything else -- see there, and
@@ -143,7 +153,12 @@ DECISION_GUIDE = (
     "`previous_note`, if there is one, is the last note an earlier compaction already used, "
     "written within 15 minutes before `compaction_window_start` -- context only (it can't be "
     "used as a start_note/end_note or ignored): e.g. if it said 'starting the report', the report "
-    "was already under way as this window began, and the first note may well be its end. "
+    "was already under way as this window began, and the first note may well be its end. The "
+    "timeline always shows the latest compacted note (✓) and when the last compaction ran, both "
+    "as context. "
+    "COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at "
+    "`now`, except for later events near a note (one may be what a note starts early) and, after "
+    "a dry run, later events the plan changes -- e.g. pushes later after an overrun. "
     "A 'keep' that moves a future event reschedules it: it's pinned there and the rest of the day "
     "reflows around it, in the same plan -- for 'move lunch later and adjust the afternoon' "
     "requests. The day's own end-of-day sleep event works differently: moving its start moves "
@@ -285,6 +300,9 @@ class _Day:
     latest_compacted: NotedTime | None = None
     """The compacted note with the latest timestamp, read with `notes`."""
 
+    last_compaction: datetime | None = None
+    """The last stamped compaction's `now`, if there's been one."""
+
 
 class NoteCompactor:
     def __init__(
@@ -322,15 +340,18 @@ class NoteCompactor:
         names = _goal_names(tree)
         suggested = self._suggestions(day, tree) if tree is not None else {}
         previous_note = self._previous_note(day)
+        candidates = {
+            n.id: _candidates(n.note.timestamp, day.events, day.previous if n.note.timestamp == first else None)
+            for n in day.notes
+        }
+        shown = _shown(day, candidates)
         return CompactionContext(
             notes=[
                 ContextNote(
                     id=n.id,
                     timestamp=n.note.timestamp,
                     description=n.note.description,
-                    candidates=_candidates(
-                        n.note.timestamp, day.events, day.previous if n.note.timestamp == first else None
-                    ),
+                    candidates=candidates[n.id],
                 )
                 for n in day.notes
             ],
@@ -357,13 +378,12 @@ class NoteCompactor:
             compaction_window_start=day.compaction_window_start,
             timeline=planned_timeline(
                 _plan_notes(day),
-                day.events,
+                shown,
                 day.now,
                 names,
                 suggested,
-                previous_note=PlanNote(
-                    id="previous_note", timestamp=previous_note.timestamp, description=previous_note.description
-                ) if previous_note is not None else None,
+                previous_note=_latest_compacted(day),
+                last_compaction=day.last_compaction,
             ),
             goals=[
                 ContextGoal(id=g.id, path=tree.path(g.id)) for g in tree.ordered() if g.active and g.id != OVERALL_ID
@@ -569,6 +589,7 @@ class NoteCompactor:
             remaining=len(sheet_notes) - len(in_day),
             previous=previous,
             latest_compacted=latest_compacted,
+            last_compaction=last_stamped,
         )
 
     def _supersede_planned(self) -> int:
@@ -638,6 +659,8 @@ class NoteCompactor:
             ignore_notes=ignore_notes,
             day_start=day.day_start,
             goal_names=_goal_names(tree),
+            previous_note=_latest_compacted(day),
+            last_compaction=day.last_compaction,
         )
         labelled = [c for c in plan.changes if c.action == "create" and c.after.event_label_id is not None]
         if not labelled:
@@ -708,6 +731,24 @@ def _plan_notes(day: _Day) -> list[PlanNote]:
         PlanNote(id=n.id, timestamp=n.note.timestamp, description=n.note.description)
         for n in day.notes
     ]
+
+
+def _latest_compacted(day: _Day) -> PlanNote | None:
+    """The latest compacted note, for the timeline to show as context."""
+    latest = day.latest_compacted
+    if latest is None:
+        return None
+    return PlanNote(id="previous_note", timestamp=latest.timestamp, description=latest.description)
+
+
+def _shown(day: _Day, candidates: dict[str, list[str]]) -> list[Event]:
+    """The day's events that `prepare`'s timeline shows: those that
+    started before `now`, plus any later one that's a note's candidate --
+    e.g. lunch, planned for noon, that an 11:45 "starting lunch" note may
+    start. The rest of the future is still offered in `events` (see the
+    module docstring); it's just not the notes' business to show."""
+    near = {i for ids in candidates.values() for i in ids}
+    return [e for e in day.events if e.id and (e.start < day.now or e.id in near)]
 
 
 def _candidates(timestamp: datetime, events: list[Event], previous: Event | None = None) -> list[str]:

@@ -130,11 +130,22 @@ class TestPrepare:
         assert "SILENCE MEANS ON SCHEDULE" in context.instructions
         assert "READ EACH NOTE'S TENSE" in context.instructions
 
+    def test_the_timeline_shows_a_future_event_only_when_a_note_is_near_it(self):
+        # "starting lunch" at 11:20 may start the lunch planned for noon.
+        context = Setup([("11:20", "starting lunch")]).compactor.prepare()
+
+        # (The day starts at the note, the first of it.) Sleep is still
+        # ahead and nowhere near a note: offered, but not shown.
+        assert [e.id for e in context.events] == ["e3", "s1"]
+        assert context.notes[0].candidates == ["e3"]
+        assert [e.event_id for e in context.timeline.events] == ["e3"]
+
     def test_offers_the_notes_beside_the_planned_events_as_a_timeline(self):
         context = _standard().compactor.prepare()
 
         assert [n.text for n in context.timeline.notes] == ["email", "report"]
-        assert [e.event_id for e in context.timeline.events] == ["e1", "e2", "e3", "s1"]
+        # Lunch (12:00) and Sleep are still ahead, and no note is near them.
+        assert [e.event_id for e in context.timeline.events] == ["e1", "e2"]
         assert {e.status for e in context.timeline.events} == {"planned"}
         assert "● email" in context.timeline.text
         assert "┌ Email" in context.timeline.text
@@ -284,6 +295,20 @@ class TestTheCompactionWindow:
         self._stamp_a_compaction_at(setup, "10:05+1")
 
         assert setup.compactor.prepare().previous_note is None
+
+    def test_both_timelines_show_the_latest_compacted_note_and_the_last_compaction(self):
+        # However long before the window the note was written.
+        setup = self._setup(note_at="10:20+1")
+        self._compacted_note(setup, "09:45+1", "starting email")
+        self._stamp_a_compaction_at(setup, "10:05+1")
+
+        before = setup.compactor.prepare().timeline
+        after = setup.compactor.dry_run([]).timeline
+
+        for timeline in (before, after):
+            assert timeline.last_compaction == time_at("10:05+1")
+            assert "✓ starting email (compacted)" in timeline.text
+            assert "10:05  ┄" in timeline.text and "┄┄ last compaction" in timeline.text
 
     def test_a_later_round_reads_its_notes_and_the_previous_note_in_one_request(self):
         # Google Sheets caps read requests per minute, so the notes tab

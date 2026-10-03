@@ -267,6 +267,8 @@ def plan_compaction(
     day_start: datetime | None = None,
     options: ReallocationOptions | None = None,
     goal_names: dict[str, str] | None = None,
+    previous_note: PlanNote | None = None,
+    last_compaction: datetime | None = None,
 ) -> CompactionPlan:
     """Plan the calendar changes that `decisions` (what the notes show
     happened, event by event) imply for `day_events`, as of `now`.
@@ -276,7 +278,9 @@ def plan_compaction(
     after it, and any sleep event before it is just the end of the
     previous night, adjustable like anything else. Without it, the first
     sleep event is the day's own. `goal_names` (goal id -> name) labels
-    events' goals in the timeline.
+    events' goals in the timeline. `previous_note` (an already-compacted
+    note) and `last_compaction` (when that compaction ran) are only shown
+    in the timeline, as context.
 
     Raises `CompactionError` (listing everything wrong at once) if the
     decisions are invalid or leave past events overlapping. Never mutates
@@ -347,6 +351,7 @@ def plan_compaction(
     timeline = _timeline(
         ordered, ignored, facts, live, copies, cancels, merged_into, annotated, simulated, now, goal_names or {}
     )
+    timeline = _with_context(timeline, previous_note, last_compaction)
     return CompactionPlan(changes=changes, warnings=warnings, timeline=timeline)
 
 
@@ -899,6 +904,8 @@ def _timeline(
             continue
         fact = decided_by_base.get(original.id)
         final = fact.event if fact else copies[original.id]
+        if fact is None and original.start >= now and EventState.from_event(final) == EventState.from_event(original):
+            continue  # the future, untouched: not the notes' business
         same = (final.start, final.end) == (original.start, original.end)
         if fact is not None:
             status = ("on_schedule" if final.end <= now else "planned") if same else "adjusted"
@@ -966,6 +973,21 @@ def _timeline(
     return build_timeline(notes, events, now)
 
 
+def _with_context(timeline: Timeline, previous_note: PlanNote | None, last_compaction: datetime | None) -> Timeline:
+    """`timeline` with the latest compacted note (marked compacted) and
+    the last compaction's time added."""
+    notes = list(timeline.notes)
+    if previous_note is not None:
+        notes.append(
+            TimelineNote(
+                id=previous_note.id, time=previous_note.timestamp, text=previous_note.description, compacted=True
+            )
+        )
+    return build_timeline(
+        notes, timeline.events, timeline.now, decided=timeline.decided, last_compaction=last_compaction
+    )
+
+
 def planned_timeline(
     notes: list[PlanNote],
     day_events: list[Event],
@@ -974,22 +996,17 @@ def planned_timeline(
     suggested: dict[str, list[str]] | None = None,
     *,
     previous_note: PlanNote | None = None,
+    last_compaction: datetime | None = None,
 ) -> Timeline:
     """The two lanes before anything is decided: the notes beside the
     day's events as planned -- what a model compares to make its
     decisions. `suggested` (event id -> goal ids) marks goals suggested
-    for events that have none. `previous_note`, an already-compacted note
-    from just before them, is shown as context, marked compacted."""
+    for events that have none. `previous_note`, an already-compacted note,
+    and `last_compaction`, when it was compacted, are shown as context."""
     goal_names = goal_names or {}
     suggested = suggested or {}
     timeline_notes = [TimelineNote(id=n.id, time=n.timestamp, text=n.description) for n in notes]
-    if previous_note is not None:
-        timeline_notes.append(
-            TimelineNote(
-                id=previous_note.id, time=previous_note.timestamp, text=previous_note.description, compacted=True
-            )
-        )
-    return build_timeline(
+    timeline = build_timeline(
         timeline_notes,
         [
             TimelineEvent(
@@ -1009,3 +1026,4 @@ def planned_timeline(
         now,
         decided=False,
     )
+    return _with_context(timeline, previous_note, last_compaction)

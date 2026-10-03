@@ -21,8 +21,9 @@ rule had its text added to the event it falls within (`↳`), and `○` marks
 a note that wasn't added anywhere. An event's goals follow its title: `◆`
 for one it already serves, `◇` for one it's being given (or, before
 anything is decided, one suggested for it). A last line totals each
-goal's time. Before anything is decided, `✓` marks a note an earlier
-compaction already used, shown as context.
+goal's time. `✓` marks the latest note an earlier compaction already
+used, shown as context, and a `┄┄ last compaction` line marks when that
+compaction ran -- what came before it is already on the calendar.
 """
 
 from __future__ import annotations
@@ -34,8 +35,9 @@ from typing import Literal
 TimelineStatus = Literal["planned", "on_schedule", "adjusted", "reflowed", "new", "cancelled", "merged"]
 """What compaction did to an event:
 
-- `planned`: not touched (the future, or `prepare_compaction`'s view
-  before anything was decided).
+- `planned`: not touched (an offered future event, or
+  `prepare_compaction`'s view before anything was decided). Future
+  events a dry run leaves untouched aren't shown at all.
 - `on_schedule`: in the past, and recorded exactly as planned.
 - `adjusted`: its times were changed to match the notes (or a direct
   request to move it).
@@ -47,7 +49,7 @@ TimelineStatus = Literal["planned", "on_schedule", "adjusted", "reflowed", "new"
 _NOTE_WIDTH = 36
 _LEGEND = (
     "── note sets that event edge   ↳ note added to that event   "
-    "○ note not added to any event"
+    "○ note not added to any event   ✓ note already compacted"
 )
 
 
@@ -102,6 +104,9 @@ class Timeline:
     notes: list[TimelineNote]
     events: list[TimelineEvent]
     now: datetime | None = None
+    last_compaction: datetime | None = None
+    """When the latest compaction ran (its `now`), if there's been one."""
+
     decided: bool = True
     """False for `prepare_compaction`'s view, before anything's been
     decided -- no note has been placed anywhere yet."""
@@ -117,11 +122,13 @@ def build_timeline(
     now: datetime | None,
     *,
     decided: bool = True,
+    last_compaction: datetime | None = None,
 ) -> Timeline:
     timeline = Timeline(
         notes=sorted(notes, key=lambda n: n.time),
         events=sorted(events, key=lambda e: e.start or e.planned_start),
         now=now,
+        last_compaction=last_compaction,
         decided=decided,
     )
     timeline.text = render(timeline)
@@ -144,11 +151,27 @@ def render(timeline: Timeline) -> str:
     )
 
     lines = [f"{'TIME':>5}  {'NOTES':<{_NOTE_WIDTH}}  EVENTS"]
-    now_shown = timeline.now is None or not moments or timeline.now <= moments[0]
+    # Marker lines, each drawn just before the first moment after it --
+    # except that the last compaction goes before a moment it shares,
+    # since everything at that moment came after it. `now` before the
+    # first moment isn't drawn: nothing it would separate.
+    markers: list[tuple[datetime, int, str]] = []
+    if timeline.last_compaction is not None:
+        label = "last compaction"
+        if timeline.now is not None and timeline.last_compaction.astimezone(tz).date() != timeline.now.astimezone(tz).date():
+            label += timeline.last_compaction.astimezone(tz).strftime(" (%a %d %b)")
+        markers.append((timeline.last_compaction, 0, label))
+    if timeline.now is not None and moments and timeline.now > moments[0]:
+        markers.append((timeline.now, 1, "now"))
+    markers.sort()
+
+    def marker_line(at: datetime, label: str) -> str:
+        return f"{hm(at):>5}  {'┄' * _NOTE_WIDTH}  ┄┄ {label}"
+
     for moment in moments:
-        if not now_shown and timeline.now < moment:
-            lines.append(f"{hm(timeline.now):>5}  {'┄' * _NOTE_WIDTH}  ┄┄ now")
-            now_shown = True
+        while markers and (markers[0][0] < moment or (markers[0][0] == moment and markers[0][1] == 0)):
+            at, _, label = markers.pop(0)
+            lines.append(marker_line(at, label))
         edges = _edge_lines(moment, live, removed, hm)
         active = any(e.start < moment < e.end for e in live)
         notes_here = [n for n in timeline.notes if n.time == moment]
@@ -170,8 +193,8 @@ def render(timeline: Timeline) -> str:
             else:
                 left = left.ljust(_NOTE_WIDTH) + " "
             lines.append(f"{time:>5}  {left} {right}".rstrip())
-    if not now_shown:
-        lines.append(f"{hm(timeline.now):>5}  {'┄' * _NOTE_WIDTH}  ┄┄ now")
+    for at, _, label in markers:
+        lines.append(marker_line(at, label))
     if goal_time := _goal_time(live):
         lines.append("")
         lines.append(f"Goal time: {goal_time}")
