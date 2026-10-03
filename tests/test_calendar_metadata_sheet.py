@@ -59,32 +59,15 @@ class TestEnsureTab:
         sheets_client = MagicMock()
         sheets_client.find_sheet_id.return_value = 42
 
-        sheet_id, created = ensure_tab(sheets_client, "sheet-1", role="event-labels", title="Event Labels")
+        sheet_id, created = ensure_tab(sheets_client, "sheet-1", role="compactions", title="Compactions")
 
         assert (sheet_id, created) == (42, False)
-        sheets_client.find_sheet_id.assert_called_once_with("sheet-1", "sheet-role", "event-labels")
+        sheets_client.find_sheet_id.assert_called_once_with("sheet-1", "sheet-role", "compactions")
         sheets_client.add_sheet.assert_not_called()
         sheets_client.update_sheet_properties.assert_not_called()
         sheets_client.create_sheet_metadata.assert_not_called()
 
-    def test_adopts_reuse_sheet_id_when_given_and_untagged(self):
-        sheets_client = MagicMock()
-        sheets_client.find_sheet_id.return_value = None
-
-        sheet_id, created = ensure_tab(
-            sheets_client, "sheet-1", role="event-labels", title="Event Labels", reuse_sheet_id=0
-        )
-
-        assert (sheet_id, created) == (0, True)
-        sheets_client.update_sheet_properties.assert_called_once_with(
-            "sheet-1", 0, title="Event Labels", tab_color=calendar_metadata_sheet._TAB_COLOR
-        )
-        sheets_client.add_sheet.assert_not_called()
-        sheets_client.create_sheet_metadata.assert_called_once_with(
-            "sheet-1", 0, "sheet-role", "event-labels"
-        )
-
-    def test_adds_a_new_tab_when_untagged_and_nothing_to_reuse(self):
+    def test_adds_a_new_tab_when_untagged(self):
         sheets_client = MagicMock()
         sheets_client.find_sheet_id.return_value = None
         sheets_client.add_sheet.return_value = 99

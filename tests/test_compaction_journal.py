@@ -244,7 +244,7 @@ class TestGarbageCollect:
 
     def test_deletes_old_terminal_blocks_but_preserves_the_last_stamped_and_open_ones(self):
         journal, sheets = _journal()
-        ids = [f"c{i}" for i in range(85)]
+        ids = [f"c{i}" for i in range(17)]
         for compaction_id in ids:
             _start(journal, compaction_id)
             journal.set_status(journal.load(compaction_id), STAMPED)
@@ -253,19 +253,19 @@ class TestGarbageCollect:
 
         journal.garbage_collect()
 
-        # 510 rows is over the 500-row budget, so it's trimmed to 400:
-        # each block is 6 rows, so the oldest 19 blocks (114 rows) are
-        # deleted -- the fewest that get it there.
-        for compaction_id in ids[:19]:
+        # 102 rows is over the 100-row budget, so it's trimmed to 50: each
+        # block is 6 rows, so the oldest 9 blocks (54 rows) are deleted --
+        # the fewest that get it there.
+        for compaction_id in ids[:9]:
             with pytest.raises(CompactionError, match=f"no compaction with id '{compaction_id}'"):
                 journal.load(compaction_id)
-        assert journal.load(ids[19]).id == ids[19]  # stamped, but not needed to delete
+        assert journal.load(ids[9]).id == ids[9]  # stamped, but not needed to delete
         assert journal.load(ids[-2]).id == ids[-2]  # the last *stamped* one -- preserved
         assert journal.load(ids[-1]).status == PLANNED  # still open -- preserved
-        assert len(sheets.read_rows_in_sheet("spreadsheet-1", _SHEET_ID, "A2:H")) == 66 * self._BLOCK_ROWS
+        assert len(sheets.read_rows_in_sheet("spreadsheet-1", _SHEET_ID, "A2:H")) == 8 * self._BLOCK_ROWS
         # The next compaction goes right after what's left.
         _start(journal, "next")
-        assert journal.load("next").row == 2 + 66 * self._BLOCK_ROWS
+        assert journal.load("next").row == 2 + 8 * self._BLOCK_ROWS
 
     def test_leaves_the_tab_at_least_1000_rows_long(self):
         # Earlier garbage collection already shrank the tab's grid; without

@@ -1,7 +1,7 @@
 """Manages the tab a calendar's goals live in, within its shared calendar
 metadata spreadsheet (see utilities/calendar_metadata_sheet.py).
 
-Like utilities/event_label_sheet.py, which it replaces: this module knows
+This module knows
 the tab's shape (header row, which columns hold what, how each value is
 written as a cell) and how to read and write whole rows of it, but
 nothing about what a goal means for the calendar -- its label, the

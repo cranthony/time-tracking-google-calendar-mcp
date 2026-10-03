@@ -6,7 +6,6 @@ import pytest
 from calendar_clients.google_calendar import Event, EventLabel as RawEventLabel, EventLabelConflictError, color_for_priority
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet, goals as goals_module
-from utilities.event_label_sheet import EventLabel as LegacyLabel
 from utilities.goal_sheet import Goal, GoalSheet
 from utilities.goals import Goals, GoalTree
 
@@ -48,17 +47,6 @@ class FakeLabelCalendar:
         return {label.id: (label.name, label.background_color) for label in self.labels if label.name}
 
 
-def _legacy_tab(sheets: FakeSheets, rows: list[list[str]]) -> int:
-    """An already-tagged event labels tab holding `rows`."""
-    sheet_id = 7
-    sheets.create_sheet_metadata("spreadsheet-1", sheet_id, "sheet-role", "event-labels")
-    sheets.titles[sheet_id] = "Event Labels"
-    header = ["id", "name", "background_color", "priority", "fixed_time", "note"]
-    sheets.write_rows_in_sheet("spreadsheet-1", sheet_id, "A1:F1", [header])
-    sheets.write_rows_in_sheet("spreadsheet-1", sheet_id, "A2:F", rows)
-    return sheet_id
-
-
 def _goals(calendar=None, sheets=None) -> tuple[Goals, FakeLabelCalendar, FakeSheets]:
     calendar = calendar if calendar is not None else FakeLabelCalendar([_UNNAMED])
     sheets = sheets if sheets is not None else FakeSheets()
@@ -70,46 +58,39 @@ def _by_name(goals: Goals) -> dict[str, Goal]:
 
 
 class TestMigration:
-    def test_migrates_the_event_labels_tab_into_active_top_level_goals(self):
-        sheets = FakeSheets()
-        legacy = _legacy_tab(
-            sheets,
+    def test_migrates_the_calendars_named_labels_into_active_top_level_goals(self):
+        calendar = FakeLabelCalendar(
             [
-                ["l1", "Cooking", "#111111", "2", "TRUE", "dinners"],
-                ["default-1", "", "#039be5"],  # an unnamed label: not a goal
-                ["l3", "cooking", "#333333"],  # same name, different case
-            ],
-        )
-        calendar = FakeLabelCalendar(
-            [RawEventLabel(id="l1", name="Cooking", background_color="#111111"), _UNNAMED]
-        )
-
-        goals, _, _ = _goals(calendar, sheets)
-
-        migrated = goals.tree().goals
-        assert [(g.name, g.label_id, g.active, g.parent_id) for g in migrated] == [
-            ("Cooking", "l1", True, None),
-            ("cooking (2)", "l3", True, None),
-        ]
-        cooking = migrated[0]
-        assert (cooking.background_color, cooking.priority, cooking.fixed_time, cooking.note) == (
-            "#111111", 2, True, "dinners"
-        )
-        assert cooking.created == _TODAY
-        assert len(cooking.id) == 6
-        assert sheets.titles[legacy] == "Event Labels (migrated)"
-        assert calendar.writes == 0  # migrating changes no labels
-
-    def test_without_an_event_labels_tab_migrates_the_calendars_named_labels(self):
-        calendar = FakeLabelCalendar(
-            [RawEventLabel(id="l1", name="Reading", background_color="#222222"), _UNNAMED]
+                RawEventLabel(id="l1", name="Cooking", background_color="#111111"),
+                _UNNAMED,  # Calendar's own: not a goal
+                RawEventLabel(id="l3", name="cooking", background_color="#333333"),  # same name, different case
+            ]
         )
 
         goals, _, _ = _goals(calendar)
 
-        assert [(g.name, g.label_id, g.background_color) for g in goals.tree().goals] == [
-            ("Reading", "l1", "#222222")
+        migrated = goals.tree().goals
+        assert [(g.name, g.label_id, g.background_color, g.active, g.parent_id) for g in migrated] == [
+            ("Cooking", "l1", "#111111", True, None),
+            ("cooking (2)", "l3", "#333333", True, None),
         ]
+        assert migrated[0].created == _TODAY
+        assert len(migrated[0].id) == 6
+        assert calendar.writes == 0  # migrating changes no labels
+
+    def test_leaves_an_old_event_labels_tab_alone(self):
+        # Goals replaced it; it's left for the user to delete.
+        sheets = FakeSheets()
+        sheets.create_sheet_metadata("spreadsheet-1", 7, "sheet-role", "event-labels")
+        sheets.titles[7] = "Event Labels"
+        sheets.write_rows_in_sheet("spreadsheet-1", 7, "A1:C2", [["id", "name", "background_color"], ["x", "Old", "#000000"]])
+        calendar = FakeLabelCalendar([RawEventLabel(id="l1", name="Reading", background_color="#222222")])
+
+        goals, _, _ = _goals(calendar, sheets)
+
+        assert [g.name for g in goals.tree().goals] == ["Reading"]
+        assert sheets.titles[7] == "Event Labels"
+        assert sheets.read_rows_in_sheet("spreadsheet-1", 7, "A2:C") == [["x", "Old", "#000000"]]
 
     def test_a_new_spreadsheet_uses_its_first_tab(self):
         calendar = FakeLabelCalendar([], spreadsheet_id=None)
@@ -121,8 +102,8 @@ class TestMigration:
 
     def test_migrates_only_once(self):
         sheets = FakeSheets()
-        _legacy_tab(sheets, [["l1", "Cooking", "#111111"]])
-        first, calendar, _ = _goals(sheets=sheets)
+        calendar = FakeLabelCalendar([RawEventLabel(id="l1", name="Cooking", background_color="#111111")])
+        first, _, _ = _goals(calendar, sheets)
 
         second, _, _ = _goals(calendar, sheets)
 

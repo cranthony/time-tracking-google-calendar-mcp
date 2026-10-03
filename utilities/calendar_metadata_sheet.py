@@ -1,8 +1,7 @@
 """The shared Google Sheet -- one per calendar -- that this app's
 calendar-scoped data outside of Calendar's own API lives in: today, a
-calendar's event labels (`utilities/event_label_sheet.py`'s
-`EventLabelSheet`) and its uncompacted time notes, with room for more
-kinds of data later. One spreadsheet, one tab per kind of data.
+calendar's goals, its time notes and its compaction journal, with room
+for more kinds of data later. One spreadsheet, one tab per kind of data.
 
 Each tab is located by developer metadata (`calendar_clients/
 google_sheets.py`'s `SheetsClient.create_sheet_metadata`/`find_sheet_id`)
@@ -49,11 +48,10 @@ see the module docstring."""
 def ensure_spreadsheet(calendar_client: CalendarClient, sheets_client: SheetsClient) -> tuple[str, bool]:
     """This calendar's metadata spreadsheet id, and whether it was just
     created (as opposed to already existing -- whether already under
-    the current key, or adopted from the legacy one). Callers
-    provisioning a tab that needs initial data (e.g.
-    `EventLabelSheet.ensure`) need to know which: an *adopted* legacy
-    spreadsheet's event-labels tab already has real data that must not
-    be overwritten."""
+    the current key, or adopted from the legacy one). A caller creating
+    a tab with initial data (the goals tab, see `utilities/goals.py`)
+    can then put it in a new spreadsheet's default first tab instead of
+    leaving that one unused (see `create_tab`)."""
     spreadsheet_id = calendar_client.get_calendar_metadata(_SPREADSHEET_ID_METADATA_KEY)
     if spreadsheet_id is not None:
         return spreadsheet_id, False
@@ -76,33 +74,16 @@ def ensure_tab(
     *,
     role: str,
     title: str,
-    reuse_sheet_id: int | None = None,
 ) -> tuple[int, bool]:
     """The sheetId of `spreadsheet_id`'s tab tagged `role`, and whether
-    it was just created/adopted (as opposed to already tagged from a
-    previous call).
-
-    If no tab is tagged `role` yet: adopts `reuse_sheet_id` (an
-    already-existing tab -- renamed, colored, and tagged in place) when
-    given, or else adds and tags a brand-new tab titled `title`.
-    `reuse_sheet_id` exists for `EventLabelSheet.ensure` to adopt a
-    fresh spreadsheet's default first tab (sheetId 0, titled "Sheet1")
-    in place, rather than leaving it as an unused, untagged extra tab
-    alongside a second, newly-added one -- and, via `ensure_spreadsheet`'s
-    legacy fallback above, that same sheetId 0 is exactly the tab an
-    adopted pre-existing spreadsheet's real data already lives on.
-    """
+    it was just created (as opposed to already tagged from a previous
+    call). If no tab is tagged `role` yet, adds and tags a brand-new tab
+    titled `title`."""
     sheet_id = sheets_client.find_sheet_id(spreadsheet_id, _SHEET_ROLE_METADATA_KEY, role)
     if sheet_id is not None:
         return sheet_id, False
 
-    if reuse_sheet_id is not None:
-        sheet_id = reuse_sheet_id
-        sheets_client.update_sheet_properties(
-            spreadsheet_id, sheet_id, title=title, tab_color=_TAB_COLOR
-        )
-    else:
-        sheet_id = sheets_client.add_sheet(spreadsheet_id, title, tab_color=_TAB_COLOR)
+    sheet_id = sheets_client.add_sheet(spreadsheet_id, title, tab_color=_TAB_COLOR)
     sheets_client.create_sheet_metadata(spreadsheet_id, sheet_id, _SHEET_ROLE_METADATA_KEY, role)
     return sheet_id, True
 
@@ -122,8 +103,9 @@ def create_tab(
     populate: Callable[[int], None],
     reuse_sheet_id: int | None = None,
 ) -> int:
-    """Create (or, like `ensure_tab`, adopt `reuse_sheet_id`) a tab for
-    `role`, call `populate(sheet_id)` to write its contents, and only then
+    """Create (or adopt `reuse_sheet_id`, an already-existing tab such as
+    a new spreadsheet's default first one, renamed and colored in place)
+    a tab for `role`, call `populate(sheet_id)` to write its contents, and only then
     tag it -- so a failure partway leaves no tagged-but-empty tab for the
     next `find_tab` to mistake for a finished one. For a tab whose first
     contents matter, e.g. the goals tab migrated from event labels (see
@@ -152,11 +134,7 @@ this identifies -- a calendar's uncompacted time notes."""
 GOALS_SHEET_ROLE = "goals"
 GOALS_SHEET_TITLE = "Goals"
 """See `utilities/goal_sheet.py`'s `GoalSheet` for the tab this
-identifies -- a calendar's goals, which replaced its event labels tab."""
-
-EVENT_LABELS_SHEET_ROLE = "event-labels"
-"""The tab goals were migrated from (see `utilities/goals.py`); still
-tagged, but no longer read once a goals tab exists."""
+identifies -- a calendar's goals."""
 
 COMPACTIONS_SHEET_ROLE = "compactions"
 COMPACTIONS_SHEET_TITLE = "Compactions"

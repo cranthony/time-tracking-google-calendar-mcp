@@ -12,7 +12,6 @@ from googleapiclient.errors import HttpError
 from calendar_clients.google_calendar import Event, EventLabel
 from calendar_clients.google_sheets import SheetsClient, cached_sheet_reads
 from tests.event_time_helpers import event_at, time_at
-from tests.fake_row_hints import FakeRowHints
 from tests.fake_sheets import FakeSheets, FakeSheetsService
 from utilities import calendar_metadata_sheet
 from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
@@ -63,8 +62,7 @@ class Setup:
         self.sheets.write_rows_in_sheet(
             "s", _NOTES_TAB, "A1:C1", [["timestamp", "description", "compaction_id"]]
         )
-        self.hints = FakeRowHints()
-        self.notes = NotedTimeSheet(self.sheets, "s", _NOTES_TAB, self.hints)
+        self.notes = NotedTimeSheet(self.sheets, "s", _NOTES_TAB)
         for at, description in notes:
             self.append_note(at, description)
         self.journal = CompactionJournal(self.sheets, "s", _JOURNAL_TAB)
@@ -289,14 +287,13 @@ class TestTheCompactionWindow:
 
     def test_a_later_round_reads_its_notes_and_the_previous_note_in_one_request(self):
         # Google Sheets caps read requests per minute, so the notes tab
-        # costs a later round's prepare just its header and one data range
-        # (in one request, see TestSheetReadRequests): the hints are
-        # confirmed, and the previous note found, within it.
+        # costs a later round's prepare just its header and its rows, in
+        # one request (see TestSheetReadRequests), with the previous note
+        # found among them.
         setup = Setup([("09:05+1", "email"), ("09:58+1", "done with work")], events=self._events(), now="10:05+1")
         setup.compactor.commit(setup.compactor.dry_run([]).compaction_id)
         setup.append_note("10:20+1", "report")
         setup.now = "10:30+1"
-        setup.compactor.prepare()  # takes in the notes stamped since the hints were set
         reads = []
         read = setup.sheets.read_rows_in_sheet
 
@@ -310,7 +307,7 @@ class TestTheCompactionWindow:
         context = setup.compactor.prepare()
 
         assert context.previous_note.description == "done with work"
-        assert reads == ["A1:C1", "A3:C"]
+        assert reads == ["A1:C1", "A2:C"]
 
     def test_a_note_written_before_the_planned_wake_up_starts_the_day_there(self):
         context = self._setup(note_at="06:40+1").compactor.prepare()
@@ -1068,11 +1065,9 @@ class TestSheetReadRequests:
 
         counts = self._round(service, "10:40+1", "10:45+1")
 
-        # Once the hints are warm (the hints tab itself is read once per
-        # process), each compaction call reads each tab it uses once: the
-        # notes tab (its header with the rows from the hinted one, which
-        # apply's stamping reads again from the cache), the goals tab, and
-        # the journal, whole.
+        # Each compaction call reads each tab it uses once, whole: the notes
+        # tab (header and rows together, which apply's stamping reads again
+        # from the cache), the goals tab, and the journal.
         assert counts == {
             "note": 1,
             "prepare_compaction": 3,

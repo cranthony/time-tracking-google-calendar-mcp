@@ -86,10 +86,10 @@ _DATA_RANGE = "A2:H"
 _FIRST_DATA_ROW = 2
 _STATUS_COLUMN = "G"
 
-_MAX_ROWS = 500
+_MAX_ROWS = 100
 """garbage_collect kicks in once this tab has more data rows than this."""
 
-_TRIM_TO_ROWS = _MAX_ROWS - 100
+_TRIM_TO_ROWS = 50
 """What garbage_collect trims this tab's data rows down to once it kicks
 in -- well under `_MAX_ROWS`, not just back to it, so it doesn't kick in
 again on the very next append."""
