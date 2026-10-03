@@ -875,6 +875,27 @@ def abandon_compaction(compaction_id: str) -> CompactionResult:
             raise ToolError(str(exc)) from exc
 
 
+@mcp.tool()
+def set_time_zone(time_zone: str) -> str:
+    """Set the calendar's time zone to an IANA name, e.g.
+    "America/New_York" -- the user's own, so that times come back in their
+    local time and days, weeks and months are dated as they live them.
+    Set it when times come back in a zone that isn't the user's (e.g.
+    UTC, with a "Z"), or when they say they've moved or are travelling.
+    Events keep their moments; only how they're shown changes. Returns
+    the zone set."""
+    with track("set_time_zone"), cached_sheet_reads():
+        try:
+            zone = get_calendar_client().set_time_zone(time_zone)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        # Keep the Goal Health calendar's days the same as the main one's.
+        health = get_goal_health().health_calendar(create=False)
+        if health is not None:
+            health.set_time_zone(zone.key)
+        return zone.key
+
+
 def with_cors(app: ASGIApp) -> ASGIApp:
     """Lets browser-based MCP clients (e.g. the Time Tracker web app) call
     [app] cross-origin: answers their CORS preflights -- before auth, which

@@ -103,6 +103,7 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `prepare_compaction` | `() -> CompactionContext` |
 | `compact_notes` | `(decisions: list[EventDecision] \| None, ignore_notes: list[str] \| None, compaction_id: str \| None, dry_run: bool = True) -> CompactionResult` |
 | `abandon_compaction` | `(compaction_id: str) -> CompactionResult` |
+| `set_time_zone` | `(time_zone: str) -> str` |
 
 `update_event`/`create_event`/`delete_event` all return a `list[PublicEvent]` rather than a single `PublicEvent`, since `update_event`/`create_event` can affect more than the one event acted on (see below). `delete_event` doesn't call the Calendar API's own delete — it patches the event's `status` to `"cancelled"` (via `CalendarClient.update_event`), the same way reallocation cancels an event to make room for another. This matches `Event.status`'s own documented recommendation to cancel rather than delete an instance of a recurring event, and always returns exactly that one event, wrapped in a single-element list for a consistent return type across all three.
 
@@ -220,7 +221,7 @@ The noted-times tab is simpler, since a noted time has no Calendar API counterpa
 
 ## Goal health
 
-A goal with a **cadence** (`daily`, `weekly`, `monthly` or `every_2_months`) is assessed once per period of it: a day, a Sunday–Saturday week, a calendar month, or a pair of months (Jan–Feb, …, Nov–Dec), all counted in the main calendar's own time zone. An **assessment** is a 0–100 rating (or `skip`) with how it was reached (`metric`, `subjective`, `llm` or `rollup`), an optional one-line `explanation`, the measured `metrics`, and a `rationale`. See [`docs/goals-design.md`](docs/goals-design.md) sections 6–8.
+A goal with a **cadence** (`daily`, `weekly`, `monthly` or `every_2_months`) is assessed once per period of it: a day, a Sunday–Saturday week, a calendar month, or a pair of months (Jan–Feb, …, Nov–Dec), all counted in the main calendar's own time zone (set with `set_time_zone`, which also moves the Goal Health calendar's). "Today" is the date you last woke on, so until the night's end-of-day sleep ends it's still yesterday, however late you're up. An **assessment** is a 0–100 rating (or `skip`) with how it was reached (`metric`, `subjective`, `llm` or `rollup`), an optional one-line `explanation`, the measured `metrics`, and a `rationale`. See [`docs/goals-design.md`](docs/goals-design.md) sections 6–8.
 
 - **Where they're stored.** On a second, app-created **Goal Health** calendar (made the first time it's needed, in the main calendar's time zone, and hidden from Google Calendar's list if the app's scope allows; its id is kept on the main calendar). Each assessment is an all-day event spanning its period, with the details in private extended properties. Its id encodes the goal, cadence and period, so recording the same period again overwrites it. `get_goal_history` reads them back per goal, with Calendar's own extended-property filter.
 - **Proposed until a reflection confirms them.** `record_assessments` always writes `proposed` assessments, whatever their `status` says; only a reflection confirms one. Only confirmed ratings count toward a goal's health.

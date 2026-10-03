@@ -19,6 +19,7 @@ in these windows.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date, datetime, time, timedelta, tzinfo
 
 from calendar_clients.google_calendar import Event
@@ -89,6 +90,16 @@ def current_day(events: list[Event], tz: tzinfo, now: datetime) -> date:
     today = now.astimezone(tz).date()
     started = day_start(today, events, tz)
     return today if started is not None and started <= now else today - timedelta(days=1)
+
+
+def current_day_from(list_events: Callable[[datetime, datetime], list[Event]], tz: tzinfo, now: datetime) -> date:
+    """`current_day`, listing the events it needs with `list_events` (e.g.
+    CalendarClient.list_events): what "today" means everywhere days are
+    counted, so it's still yesterday until you wake, however late you're
+    up."""
+    midnight = datetime.combine(now.astimezone(tz).date(), time(), tz)
+    events = list_events(midnight - timedelta(days=1), midnight + timedelta(days=1))
+    return current_day(events, tz, now)
 
 
 def listing_range(span: Period, tz: tzinfo) -> tuple[datetime, datetime]:

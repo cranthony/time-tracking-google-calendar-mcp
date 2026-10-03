@@ -36,7 +36,7 @@ from typing import Any, Literal
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from utilities.goal_calendar import fill_in_from_goals
-from utilities.sleep_days import listing_range, period_window
+from utilities.sleep_days import current_day_from, listing_range, period_window
 from utilities.goal_periods import Period, last_ended, parse_period, period_containing
 from utilities.goal_sheet import GOAL_STATUSES, Cadence, Goal
 from utilities.goals import GoalList, Goals, GoalTree
@@ -123,10 +123,14 @@ class GoalHealth:
         goals: Goals,
         *,
         now: Callable[[], datetime] | None = None,
+        today: Callable[[], date] | None = None,
     ) -> None:
         self._client = calendar_client
         self._goals = goals
         self._now = now or (lambda: datetime.now(calendar_client.get_time_zone()))
+        self._today = today or (
+            lambda: current_day_from(calendar_client.list_events, calendar_client.get_time_zone(), self._now())
+        )
         self._health_client: CalendarClient | None = None
 
     # -- writing ------------------------------------------------------------
@@ -147,13 +151,19 @@ class GoalHealth:
         """Raise ValueError if any of `assessments` couldn't be recorded --
         everything `record_assessments` checks, without writing."""
         tree = self._goals.tree()
-        today = self._now().date()
+        today = self._today()
         for assessment in assessments:
             self._check(assessment, tree, today)
 
     def now(self) -> datetime:
         """Now, in the main calendar's time zone."""
         return self._now()
+
+    def today(self) -> date:
+        """The day you're in: the date you last woke on, so it's still
+        yesterday until you wake, however late you're up -- see
+        utilities/sleep_days.py's `current_day`."""
+        return self._today()
 
     @property
     def calendar_client(self) -> CalendarClient:
@@ -168,7 +178,7 @@ class GoalHealth:
 
     def _write(self, assessments: list[Assessment], *, status: Status) -> list[Assessment]:
         tree = self._goals.tree()
-        today = self._now().date()
+        today = self._today()
         checked = [(a, self._check(a, tree, today)) for a in assessments]
         health = self._health_calendar()
         written = []
@@ -226,7 +236,7 @@ class GoalHealth:
         each goal's own cadence."""
         tree = self._goals.tree()
         tree.check_goal_ids(goal_ids)
-        today = self._now().date()
+        today = self._today() if start is None or end is None else None
         found: list[Assessment] = []
         for goal_id in dict.fromkeys(goal_ids):
             goal = tree.by_id[goal_id]
@@ -272,8 +282,7 @@ class GoalHealth:
         tree = self._goals.tree()
         if goal_ids is not None:
             tree.check_goal_ids(goal_ids)
-        today = self._now().date()
-        span = parse_period(cadence, period) if period else last_ended(cadence, today)
+        span = parse_period(cadence, period) if period else last_ended(cadence, self._today())
         goals = [
             g for g in tree.ordered()
             if g.active and g.cadence == cadence and (g.measure or {}).get("kind") in _MEASURED_KINDS
@@ -318,7 +327,7 @@ class GoalHealth:
 
     def _refresh_cache(self, goal_ids: set[str]) -> None:
         tree = self._goals.tree()
-        today = self._now().date()
+        today = self._today()
         updates: dict[str, tuple[int | None, str | None, str | None]] = {}
         for goal_id in goal_ids:
             goal = tree.by_id.get(goal_id)

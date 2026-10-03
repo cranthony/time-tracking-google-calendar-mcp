@@ -374,6 +374,17 @@ class TestMeasure:
         assert woke.rating == 50  # 35 late, grace 10, zero at 60
         assert woke.explanation == "Woke 07:35; target 07:00 with 10 min grace → 50"
 
+    def test_up_past_midnight_the_last_day_to_end_is_still_the_day_before(self):
+        _, store, calendar, goals = _setup(self._goals())
+        calendar.events = [_event("2026-09-30T23:00", "2026-10-01T07:35", is_end_of_day_sleep=True)]
+        # 1am on the 3rd, before the night's sleep: it's still the 2nd.
+        health = GoalHealth(calendar, store, now=lambda: datetime(2026, 10, 3, 1, tzinfo=TZ))
+
+        (woke,) = health.measure("daily")
+
+        assert health.today() == TODAY
+        assert woke.period == "2026-10-01"
+
     def test_wake_time_averages_a_longer_period(self):
         health, store, calendar, goals = _setup(self._goals())
         wake = goals["Wake 7am"]

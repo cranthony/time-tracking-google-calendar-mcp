@@ -42,6 +42,7 @@ from utilities import calendar_metadata_sheet
 from utilities.event_label_sheet import EventLabelSheet
 from utilities.goal_measures import MEASURE_SHAPE_PROBLEM, measure_problems
 from utilities.goal_periods import last_ended, parse_period, period_containing
+from utilities.sleep_days import current_day_from
 from utilities.goal_sheet import CADENCES, GOAL_STATUSES, Goal, GoalSheet
 
 MAX_LABELS = 200
@@ -209,8 +210,15 @@ class Goals:
         today: Callable[[], date] | None = None,
     ) -> None:
         self._calendar_client = calendar_client
-        # Days are the calendar's own, not this server's.
-        self._today = today or (lambda: datetime.now(calendar_client.get_time_zone()).date())
+        # Days are the calendar's own, not this server's, and run from
+        # waking to waking.
+        self._today = today or (
+            lambda: current_day_from(
+                calendar_client.list_events,
+                calendar_client.get_time_zone(),
+                datetime.now(calendar_client.get_time_zone()),
+            )
+        )
         spreadsheet_id, is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
             calendar_client, sheets_client
         )
