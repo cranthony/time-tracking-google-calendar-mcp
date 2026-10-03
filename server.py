@@ -601,7 +601,17 @@ def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
     Also how many of the calendar's event labels are in use: each active
     goal takes one. Each goal has minutes_24h and minutes_7d: the time
     spent on it and its sub-goals in the 24 hours and 7 days (wall-clock)
-    up to as_of, when notes were last compacted into the calendar."""
+    up to as_of, when notes were last compacted into the calendar.
+    minutes_by_statuses splits the time spent on goals by the statuses of
+    the goals each event serves, so the time on goals of any statuses is
+    the sum of the entries naming any of them, each event counted once.
+
+    The first goal is always the overall goal (id "overall"), listed
+    whatever the statuses: its sub-goals are implied to be every top-level
+    goal, so it's rated like any goal -- by a measure of its own, or the
+    mean of theirs -- but rates everything together, and its minutes are
+    the time spent on any goal. It holds no event label, can't be given to
+    an event, and stays active and top-level."""
     with track("get_goals"), cached_sheet_reads():
         try:
             return get_goal_store().get_goals(statuses)
@@ -672,8 +682,11 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
     label and is assessed; any other status frees its label but keeps its
     history, and making it active again restores the label, and its past
     events' color with it. A new measure replaces the old one whole, and
-    is checked as for create_goal. Returns the resulting proposed, active
-    and inactive goals."""
+    is checked as for create_goal. The overall goal (id "overall") can be
+    given a name, measure, target, deadline or note, but stays active and
+    has no parent; no goal can name it as its parent, since every
+    top-level goal is already under it. Returns the resulting proposed,
+    active and inactive goals."""
     with track("update_goal"), cached_sheet_reads():
         try:
             return get_goal_store().update_goal(goal, clear_fields or ())

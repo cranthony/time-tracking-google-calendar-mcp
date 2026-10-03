@@ -48,7 +48,7 @@ from utilities.goal_health import (
     day_period,
 )
 from utilities.goal_time import goal_minutes
-from utilities.goals import Goals, GoalTree
+from utilities.goals import OVERALL_ID, Goals, GoalTree
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.sleep_days import MissingSleep, NotOver, listing_range, period_window
 
@@ -302,7 +302,9 @@ class Reflections:
             due=due,
             rated=[a for a in confirmed.values() if a.goal_id in tree.by_id],
             waiting=[tree.path(g.id) for g in rated_goals if g.id not in confirmed and g not in ready],
-            unmeasured=[tree.path(g.id) for g in tree.ordered() if g.active and not tree.rated(g.id)],
+            unmeasured=[
+                tree.path(g.id) for g in tree.ordered() if g.active and not tree.rated(g.id) and g.id != OVERALL_ID
+            ],
             goal_time=sorted(
                 (GoalTimeSpent(goal_id=g, path=tree.path(g), minutes=m) for g, m in minutes.items() if g in tree.by_id),
                 key=lambda t: (-t.minutes, t.path),
