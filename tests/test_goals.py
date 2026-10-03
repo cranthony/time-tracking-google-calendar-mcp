@@ -7,7 +7,7 @@ from calendar_clients.google_calendar import Event, EventLabel as RawEventLabel,
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet, goals as goals_module
 from utilities.goal_sheet import Goal, GoalSheet
-from utilities.goals import Goals, GoalTree
+from utilities.goals import OVERALL_ID, Goals, GoalTree
 
 _TODAY = date(2026, 10, 2)
 _PRIORITY_1_COLOR = color_for_priority(1)[1]
@@ -53,6 +53,11 @@ def _goals(calendar=None, sheets=None) -> tuple[Goals, FakeLabelCalendar, FakeSh
     return Goals(calendar, sheets, today=lambda: _TODAY), calendar, sheets
 
 
+def _others(goals):
+    """`goals` but the overall goal, which every tree has."""
+    return [goal for goal in goals if goal.id != OVERALL_ID]
+
+
 def _by_name(goals: Goals) -> dict[str, Goal]:
     return {goal.name: goal for goal in goals.tree().goals}
 
@@ -69,7 +74,7 @@ class TestMigration:
 
         goals, _, _ = _goals(calendar)
 
-        migrated = goals.tree().goals
+        migrated = _others(goals.tree().goals)
         assert [(g.name, g.label_id, g.background_color, g.active, g.parent_id) for g in migrated] == [
             ("Cooking", "l1", "#111111", True, None),
             ("cooking (2)", "l3", "#333333", True, None),
@@ -88,7 +93,7 @@ class TestMigration:
 
         goals, _, _ = _goals(calendar, sheets)
 
-        assert [g.name for g in goals.tree().goals] == ["Reading"]
+        assert [g.name for g in _others(goals.tree().goals)] == ["Reading"]
         assert sheets.titles[7] == "Event Labels"
         assert sheets.read_rows_in_sheet("spreadsheet-1", 7, "A2:C") == [["x", "Old", "#000000"]]
 
@@ -134,7 +139,7 @@ class TestCreateGoal:
         assert cooking.label_id == str(goals_module.uuid.uuid5(goals_module._LABEL_ID_NAMESPACE, cooking.id))
         assert calendar.named() == {cooking.label_id: ("Cooking", _PRIORITY_1_COLOR)}
         assert _UNNAMED in calendar.labels
-        assert [g.name for g in result.goals] == ["Cooking"]
+        assert [g.name for g in _others(result.goals)] == ["Cooking"]
         assert result.label_slots_used == 2  # the goal's, plus the unnamed one
 
     def test_ignores_read_only_fields(self):
@@ -198,7 +203,7 @@ class TestCreateGoal:
         with pytest.raises(ValueError, match=message):
             goals.create_goal(goal)
 
-        assert goals.tree().goals == []
+        assert _others(goals.tree().goals) == []
         assert calendar.writes == 0
 
     def test_refuses_an_invalid_new_measure(self):
@@ -264,7 +269,7 @@ class TestCreateGoal:
         goals.create_goal(Goal(name="Practice", parent_id=parents["Cooking"].id))
         goals.create_goal(Goal(name="Practice", parent_id=parents["Hosting"].id))
 
-        assert len(goals.tree().goals) == 4
+        assert len(_others(goals.tree().goals)) == 4
 
     def test_refuses_past_the_label_budget_before_writing(self, monkeypatch):
         monkeypatch.setattr(goals_module, "MAX_LABELS", 2)
@@ -274,7 +279,7 @@ class TestCreateGoal:
         with pytest.raises(ValueError, match="at most 1 goals can be active"):
             goals.create_goal(Goal(name="Two"))
 
-        assert [g.name for g in goals.tree().goals] == ["One"]
+        assert [g.name for g in _others(goals.tree().goals)] == ["One"]
         # ...but an inactive one still fits.
         goals.create_goal(Goal(name="Two", status="inactive"))
 
@@ -302,7 +307,7 @@ class TestUpdateGoal:
         result = goals.update_goal(Goal(id=cooking.id, status="inactive"))
 
         assert calendar.named() == {}
-        assert [(g.name, g.status) for g in result.goals] == [("Cooking", "inactive")]
+        assert [(g.name, g.status) for g in _others(result.goals)] == [("Cooking", "inactive")]
         assert _by_name(goals)["Cooking"].label_id == cooking.label_id
 
         goals.update_goal(Goal(id=cooking.id, status="active"))
@@ -411,8 +416,9 @@ class TestGetGoals:
         active = goals.get_goals(["active"])
         default = goals.get_goals()
 
-        assert [g.path for g in active.goals] == ["Cooking", "Cooking › Tofu", "Hosting"]
-        assert [g.path for g in default.goals] == ["Cooking", "Cooking › Tofu", "Hosting", "Old"]
+        # The overall goal first, whatever's asked for.
+        assert [g.path for g in active.goals] == ["Overall", "Cooking", "Cooking › Tofu", "Hosting"]
+        assert [g.path for g in default.goals] == ["Overall", "Cooking", "Cooking › Tofu", "Hosting", "Old"]
         assert active.label_slots_used == 4  # three active goals + the unnamed label
         assert active.label_slots_total == 200
 
@@ -421,8 +427,8 @@ class TestGetGoals:
         for status in ("proposed", "active", "inactive", "completed", "archived", "deleted"):
             goals.create_goal(Goal(name=status.title(), status=status))
 
-        assert [g.status for g in goals.get_goals().goals] == ["proposed", "active", "inactive"]
-        assert [g.status for g in goals.get_goals(["completed", "deleted"]).goals] == ["completed", "deleted"]
+        assert [g.status for g in _others(goals.get_goals().goals)] == ["proposed", "active", "inactive"]
+        assert [g.status for g in _others(goals.get_goals(["completed", "deleted"]).goals)] == ["completed", "deleted"]
         # Only the active one holds a label.
         assert [name for name, _color in calendar.named().values()] == ["Active"]
 
@@ -473,12 +479,12 @@ class TestGoalTree:
         ])
 
         assert [g.id for g in tree.chain("a")] == ["a", "b"]
-        assert {g.id for g in tree.ordered()} == {"a", "b"}
+        assert {g.id for g in tree.ordered()} == {OVERALL_ID, "a", "b"}
 
 
 class TestReorderGoals:
     def _names(self, goals):
-        return [goal.name for goal in goals.get_goals().goals]
+        return [goal.name for goal in _others(goals.get_goals().goals)]
 
     def test_orders_siblings_among_the_places_they_hold(self):
         goals, calendar, _ = _goals()
@@ -517,7 +523,8 @@ class TestRated:
         tree = goals.tree()
         by_name = {g.name: g.id for g in tree.goals}
 
-        assert {name for name, goal_id in by_name.items() if tree.rated(goal_id)} == {"Neighbor", "Parents"}
+        # Overall too: rated by its sub-goals, the top-level goals.
+        assert {name for name, goal_id in by_name.items() if tree.rated(goal_id)} == {"Overall", "Neighbor", "Parents"}
         assert tree.measure(by_name["Neighbor"]) == {"kind": "rollup", "agg": "mean"}
         assert tree.measure(by_name["Parents"]) == {"kind": "count", "target": 1}
         assert tree.measure(by_name["Folder"]) is None
@@ -581,3 +588,100 @@ class TestRecentTime:
         assert listing.as_of is None
         assert listing.goals[0].minutes_24h is None and listing.goals[0].minutes_7d is None
         assert calendar.listed == []
+
+    def test_splits_the_time_spent_on_goals_by_their_statuses(self):
+        as_of = datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
+        goals, calendar = self._setup(as_of)
+        goals.create_goal(Goal(name="Work"))
+        goals.create_goal(Goal(name="Paused", status="inactive"))
+        work = _by_name(goals)["Work"]
+        goals.create_goal(Goal(name="Side", parent_id=work.id, status="inactive"))
+        by_name = _by_name(goals)
+
+        def event(hours_before: float, minutes: int, goal_ids):
+            start = as_of - timedelta(hours=hours_before)
+            return Event(id=str(hours_before), start=start, end=start + timedelta(minutes=minutes), goal_ids=goal_ids)
+
+        calendar.events = [
+            event(2, 60, [work.id]),  # active
+            event(4, 30, [by_name["Paused"].id]),  # inactive
+            event(6, 20, [by_name["Side"].id]),  # inactive, under an active goal: both
+            event(30, 45, [work.id, by_name["Paused"].id]),  # both, once; 7 days only
+            event(8, 15, []),  # no goal: not counted
+        ]
+
+        listing = goals.get_goals()
+
+        assert [(m.statuses, m.minutes_24h, m.minutes_7d) for m in listing.minutes_by_statuses] == [
+            (["active"], 60, 60),
+            (["active", "inactive"], 20, 65),
+            (["inactive"], 30, 30),
+        ]
+        overall = next(g for g in listing.goals if g.id == OVERALL_ID)
+        # Every goal's time, each event once.
+        assert (overall.minutes_24h, overall.minutes_7d) == (110, 155)
+
+
+class TestOverall:
+    def test_every_tree_has_it_first_holding_no_label(self):
+        goals, calendar, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+
+        listing = goals.get_goals()
+
+        overall = listing.goals[0]
+        assert (overall.id, overall.name, overall.path, overall.status) == (OVERALL_ID, "Overall", "Overall", "active")
+        assert overall.label_id is None
+        assert [name for name, _color in calendar.named().values()] == ["Cooking"]
+        assert listing.label_slots_used == 2  # Cooking's, and Calendar's unnamed one
+        # Listed whatever statuses are asked for.
+        assert [g.id for g in goals.get_goals(["deleted"]).goals] == [OVERALL_ID]
+
+    def test_is_rated_from_the_top_level_goals_or_its_own_measure(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking", measure={"kind": "subjective", "prompt": "?"}))
+        goals.create_goal(Goal(name="Idle"))
+        cooking = _by_name(goals)["Cooking"]
+        goals.create_goal(Goal(name="Tofu", parent_id=cooking.id))
+        tree = goals.tree()
+
+        assert [g.name for g in tree.children(OVERALL_ID)] == ["Cooking", "Idle"]
+        assert [g.name for g in tree.rated_children(OVERALL_ID)] == ["Cooking"]
+        assert tree.measure(OVERALL_ID) == {"kind": "rollup", "agg": "mean"}
+        assert tree.under(_by_name(goals)["Tofu"].id, OVERALL_ID)
+
+        goals.update_goal(
+            Goal(id=OVERALL_ID, measure={"kind": "rollup", "agg": "weighted", "weights": {cooking.id: 2}})
+        )
+
+        saved = goals.tree().by_id[OVERALL_ID]
+        assert saved.measure["weights"] == {cooking.id: 2}
+        with pytest.raises(ValueError, match="isn't one of its sub-goals"):
+            goals.update_goal(
+                Goal(id=OVERALL_ID, measure={"kind": "rollup", "agg": "weighted", "weights": {"nope": 2}})
+            )
+
+    @pytest.mark.parametrize(
+        "change, message",
+        [
+            (lambda ids: Goal(id=OVERALL_ID, status="inactive"), "always active"),
+            (lambda ids: Goal(id=OVERALL_ID, parent_id=ids["Cooking"]), "has no parent"),
+            (lambda ids: Goal(id=ids["Cooking"], parent_id=OVERALL_ID), "can't name the overall goal as its parent"),
+        ],
+    )
+    def test_stays_active_and_above_the_rest(self, change, message):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+        ids = {g.name: g.id for g in goals.tree().goals}
+
+        with pytest.raises(ValueError, match=message):
+            goals.update_goal(change(ids))
+
+    def test_cant_be_reordered_or_given_to_an_event(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+
+        with pytest.raises(ValueError, match="can't be reordered"):
+            goals.reorder_goals([OVERALL_ID, _by_name(goals)["Cooking"].id])
+        with pytest.raises(ValueError, match="can't be given to an event"):
+            goals.tree().check_goal_ids([OVERALL_ID], for_events=True)

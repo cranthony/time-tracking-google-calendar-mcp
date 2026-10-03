@@ -45,7 +45,7 @@ from calendar_clients.google_calendar import CalendarClient, Event
 from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_periods import Period, period_containing
 from utilities.goal_sheet import GOAL_STATUSES, Goal
-from utilities.goals import GoalList, Goals, GoalTree
+from utilities.goals import OVERALL_ID, GoalList, Goals, GoalTree
 from utilities.sleep_days import current_day_from, day_start, listing_range, period_window
 
 HEALTH_CALENDAR_METADATA_KEY = "goal-health-calendar"
@@ -499,9 +499,10 @@ def _served(events: list[Event], goal: Goal, measure: dict[str, Any], tree: Goal
     measure's include_sub_goals false, not the descendants."""
     chosen = set(measure.get("goal_ids") or [goal.id])
     if measure.get("include_sub_goals", True):
-        wanted = {g.id for g in tree.goals if chosen & {a.id for a in tree.chain(g.id)}}
+        wanted = {g.id for g in tree.goals if any(tree.under(g.id, c) for c in chosen)}
     else:
-        wanted = chosen
+        # The overall goal has no events of its own: its sub-goals' are.
+        wanted = chosen | ({c.id for c in tree.children(OVERALL_ID)} if OVERALL_ID in chosen else set())
     return [e for e in events if set(e.goal_ids or ()) & wanted]
 
 

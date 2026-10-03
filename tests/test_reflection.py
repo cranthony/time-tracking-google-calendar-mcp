@@ -6,7 +6,7 @@ from tests.fake_sheets import FakeSheets
 from tests.test_goal_health import NOW, TODAY, TZ, YESTERDAY, FakeCalendar, _event
 from utilities.goal_health import Assessment, GoalHealth
 from utilities.goal_sheet import Goal
-from utilities.goals import Goals
+from utilities.goals import OVERALL_ID, Goals
 from utilities.noted_time_sheet import NotedTime
 from utilities.reflection import Reflections, reflection_event_id
 
@@ -106,7 +106,9 @@ class TestChoices:
 
 
 def _reflect(reflections, goals, day):
+    """Rate every goal for `day`: Wake, then the overall goal above it."""
     reflections.record(day, [_rating(goals["Wake"], day, "skip", method="metric")], dry_run=False)
+    reflections.record(day, [_rating(goals["Overall"], day, "skip", method="rollup")], dry_run=False)
 
 
 class TestPrepare:
@@ -142,7 +144,8 @@ class TestPrepare:
         assert due["Feel"].ask is None
         assert [(r.day, r.rating) for r in due["Feel"].recent] == [(date(2026, 9, 30), 60)]
         assert context.unmeasured == ["Folder"]
-        assert context.waiting == []
+        # Rated once every top-level goal is.
+        assert context.waiting == ["Overall"]
 
     def test_a_subjective_goal_due_to_be_asked_has_its_prompt(self):
         reflections, *_ = _setup([_feel("Feel")])
@@ -167,7 +170,7 @@ class TestPrepare:
         first = reflections.prepare(YESTERDAY)
 
         assert [d.path for d in first.due] == ["Neighbor › Parents", "Neighbor › Cousins"]
-        assert first.waiting == ["Neighbor"]
+        assert first.waiting == ["Overall", "Neighbor"]
         assert first.due[0].proposed.rating == 100
         reflections.record(
             YESTERDAY, [first.due[0].proposed, _rating(cousins, YESTERDAY, 50)], dry_run=False
@@ -181,8 +184,13 @@ class TestPrepare:
         assert neighbor.proposed.explanation == "Mean of 2 sub-goals (100, 50) → 75"
         assert neighbor.measure == {"kind": "rollup", "agg": "mean"}
         assert {a.goal_id for a in second.rated} == {parents.id, cousins.id}
-        assert second.waiting == []
+        assert second.waiting == ["Overall"]
         assert not second.already_reflected
+        reflections.record(YESTERDAY, [neighbor.proposed], dry_run=False)
+
+        (overall,) = reflections.prepare(YESTERDAY).due
+        assert overall.goal_id == OVERALL_ID
+        assert overall.proposed.explanation == "Mean of 1 sub-goal (75) → 75"
 
     def test_an_llm_goal_sees_its_sub_goals_ratings(self):
         reflections, health, _, _, goals = _setup(
@@ -205,7 +213,11 @@ class TestPrepare:
 
         context = reflections.prepare(YESTERDAY)
 
-        assert [(t.path, t.minutes) for t in context.goal_time] == [("Cooking", 90), ("Cooking › Tofu", 60)]
+        assert [(t.path, t.minutes) for t in context.goal_time] == [
+            ("Cooking", 90),
+            ("Overall", 90),  # Time toward any goal, each event once.
+            ("Cooking › Tofu", 60),
+        ]
 
     def test_digests_the_days_events_and_notes(self):
         reflections, _, _, calendar, goals = _setup(
@@ -330,6 +342,11 @@ class TestRecord:
             intentions=["rest"],
             dry_run=False,
         )
+        assert not result.complete
+        assert "Ready to rate now: Overall" in result.message
+        result = reflections.record(
+            YESTERDAY, [_rating(goals["Overall"], YESTERDAY, 50, method="rollup")], dry_run=False
+        )
 
         assert result.status == "recorded"
         assert result.complete
@@ -354,8 +371,12 @@ class TestRecord:
         assert event["summary"].endswith("(in progress)")
 
         second = reflections.record(YESTERDAY, [_rating(home, YESTERDAY, 60, method="rollup")], dry_run=False)
+        assert not second.complete
+        third = reflections.record(
+            YESTERDAY, [_rating(goals["Overall"], YESTERDAY, 60, method="rollup")], dry_run=False
+        )
 
-        assert second.complete
+        assert third.complete
         assert calendar.health_events[reflection_event_id(YESTERDAY)]["description"] == "tired"
         assert reflections.prepare(YESTERDAY).already_reflected
 

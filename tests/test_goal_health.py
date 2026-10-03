@@ -9,7 +9,7 @@ from tests.fake_sheets import FakeSheets
 from tests.test_goals import FakeLabelCalendar, _UNNAMED
 from utilities.goal_health import Assessment, GoalHealth, assessment_event_id, band
 from utilities.goal_sheet import Goal
-from utilities.goals import Goals
+from utilities.goals import OVERALL_ID, Goals
 
 TZ = ZoneInfo("America/New_York")
 TODAY = date(2026, 10, 2)  # A Friday.
@@ -590,3 +590,30 @@ class TestMeasure:
         proposals = health.measure(date(2026, 9, 6))
 
         assert [(a.day, a.rating) for a in proposals] == [(date(2026, 9, 6), 0)]
+
+
+class TestOverall:
+    def test_a_duration_measure_counts_every_goals_events_once(self):
+        health, store, calendar, goals = _setup([Goal(name="Cooking"), Goal(name="Reading")])
+        cooking, reading = goals["Cooking"], goals["Reading"]
+        tofu = _child(store, "Tofu", cooking)
+        store.update_goal(Goal(id=OVERALL_ID, measure={"kind": "duration", "target_min": 240}))
+        calendar.events = [
+            _event("2026-10-01T12:00", "2026-10-01T13:00", [tofu.id]),  # 60, a sub-goal's
+            _event("2026-10-01T18:00", "2026-10-01T19:00", [cooking.id, reading.id]),  # 60, once
+            _event("2026-10-01T20:00", "2026-10-01T21:00"),  # no goal
+        ]
+
+        (rated,) = health.measure(goal_ids=[OVERALL_ID])
+
+        assert (rated.rating, rated.metrics["minutes"]) == (50, 120)
+
+    def test_rolls_up_the_top_level_goals(self):
+        health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL), Goal(name="Reading", measure=_FEEL)])
+        health.confirm_assessments(
+            [_assessment(goals["Cooking"], YESTERDAY, 80), _assessment(goals["Reading"], YESTERDAY, 40)]
+        )
+
+        (rated,) = health.measure(goal_ids=[OVERALL_ID])
+
+        assert rated.explanation == "Mean of 2 sub-goals (80, 40) → 60"
