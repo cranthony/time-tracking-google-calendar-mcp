@@ -210,7 +210,6 @@ _GOAL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "background_color": str,
     "priority": int,
     "fixed_time": _parse_bool,
-    "cadence": str,
     "measure": json.loads,
     "target": str,
     "deadline": date.fromisoformat,

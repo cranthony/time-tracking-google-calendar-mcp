@@ -29,10 +29,11 @@ from oauth_proxy import oauth_proxy_handlers
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_health import Assessment, GoalHealth
 from utilities.reflection import ReflectionContext, ReflectionResult, Reflections
-from utilities.goal_sheet import Cadence, Goal, GoalStatus
+from utilities.goal_sheet import Goal, GoalStatus
 from utilities.goals import GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
+from utilities.compaction_journal import CompactionJournal
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
@@ -285,6 +286,7 @@ _goals: Goals | None = None
 _goal_health: GoalHealth | None = None
 _reflections: Reflections | None = None
 _noted_time_sheet: NotedTimeSheet | None = None
+_compaction_journal: CompactionJournal | None = None
 _note_compactor: NoteCompactor | None = None
 _recurrences: Recurrences | None = None
 
@@ -335,8 +337,18 @@ def get_goal_store() -> Goals:
     get_calendar_client/get_reallocating_calendar cache theirs."""
     global _goals
     if _goals is None:
-        _goals = build_goals()
+        # Goals' recent time is counted up to the last compaction.
+        _goals = build_goals(last_compaction=lambda: get_compaction_journal().last_stamped_now())
     return _goals
+
+
+def get_compaction_journal() -> CompactionJournal:
+    """Lazily construct and cache the CompactionJournal, the same way the
+    other get_* helpers cache theirs."""
+    global _compaction_journal
+    if _compaction_journal is None:
+        _compaction_journal = build_compaction_journal()
+    return _compaction_journal
 
 
 def get_recurrences() -> Recurrences:
@@ -377,7 +389,7 @@ def get_note_compactor() -> NoteCompactor:
             client=GoalCalendar(get_calendar_client(), get_goal_store()),
             goals=get_goal_store(),
             notes=get_noted_time_sheet(),
-            journal=build_compaction_journal(),
+            journal=get_compaction_journal(),
         )
     return _note_compactor
 
@@ -538,7 +550,9 @@ def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
     proposed, active and inactive -- not completed, archived or deleted
     ones), parents before their children, each with its path from the top.
     Also how many of the calendar's event labels are in use: each active
-    goal takes one."""
+    goal takes one. Each goal has minutes_24h and minutes_7d: the time
+    spent on it and its sub-goals in the 24 hours and 7 days (wall-clock)
+    up to as_of, when notes were last compacted into the calendar."""
     with track("get_goals"), cached_sheet_reads():
         try:
             return get_goal_store().get_goals(statuses)
@@ -558,21 +572,31 @@ def create_goal(goal: Goal) -> GoalList:
     own. id, label_id and created are assigned. Returns the resulting
     proposed, active and inactive goals.
 
-    A goal with a cadence can have a measure: how each period's health
-    (0-100) is rated. Targets are per period of its cadence. One of:
-    {"kind": "duration", "target_min": 600} (minutes of its events),
-    {"kind": "count", "target": 1, "noun": "dinners"} (number of events),
-    {"kind": "wake_time", "target": "07:00", "grace_min": 10,
-    "zero_at_min": 60} (full marks within the grace, none at zero_at_min
-    late), {"kind": "subjective", "prompt": "How did it go?"} (rated in a
-    reflection), {"kind": "llm", "rubric": "..."} (you propose a rating
-    against the rubric in a reflection), or {"kind": "rollup", "agg":
-    "min"} (min or mean of its sub-goals' ratings). Only the fields shown
-    are allowed; noun, grace_min, zero_at_min, prompt and agg are
-    optional. A duration or count measure looks at the events of the goal
-    and its sub-goals, or, given "goal_ids": [...], at those of these goals
-    and their sub-goals instead; with "include_sub_goals": false, at just
-    the goals' own events, not their sub-goals'."""
+    Every active goal is reflected on daily, and its measure says how its
+    health (0-100) is rated each day; one without a measure is rated as
+    the mean of its sub-goals', if it has any rated ones. One of:
+    {"kind": "duration", "target_min": 600, "interval_days": 7} (minutes
+    of its events over the last interval_days, default 1),
+    {"kind": "count", "target": 1, "noun": "visits", "interval_days": 60,
+    "zero_at_days": 90} (number of its events over the interval: 100
+    while the target's met; past it, falling to 0 by zero_at_days since
+    the interval's start -- without zero_at_days, a shortfall is rated in
+    proportion, as for duration), {"kind": "wake_time", "target": "07:00",
+    "grace_min": 10, "zero_at_min": 60} (full marks within the grace, none
+    at zero_at_min late), {"kind": "subjective", "prompt": "How did it
+    go?", "interval_days": 7} (asked in a reflection once interval_days,
+    default 1, have passed since it was last answered; carried over from
+    the day before in between), {"kind": "llm", "rubric": "..."} (you
+    propose a rating against the rubric in a reflection; it may refer to
+    the immediate sub-goals' ratings), or {"kind": "rollup", "agg":
+    "mean"} (from the immediate sub-goals' ratings that day: "mean";
+    "weighted" with "weights": {sub-goal id: weight}, a sub-goal not
+    listed weighing 0; or "percentile" with "percentile": 0-100, 0 being
+    the lowest and 100 the highest). Only the fields shown are allowed. A
+    duration or count measure looks at the events of the goal and its
+    sub-goals, or, given "goal_ids": [...], at those of these goals and
+    their sub-goals instead; with "include_sub_goals": false, at just the
+    goals' own events, not their sub-goals'."""
     with track("create_goal"), cached_sheet_reads():
         try:
             return get_goal_store().create_goal(goal)
@@ -580,9 +604,7 @@ def create_goal(goal: Goal) -> GoalList:
             raise ToolError(str(exc)) from exc
 
 
-GoalField = Literal[
-    "parent_id", "background_color", "priority", "fixed_time", "cadence", "measure", "target", "deadline", "note"
-]
+GoalField = Literal["parent_id", "background_color", "priority", "fixed_time", "measure", "target", "deadline", "note"]
 """Every Goal field update_goal can clear (see utilities/goals.py's
 CLEARABLE_FIELDS)."""
 
@@ -637,19 +659,16 @@ def sync_goals_from_sheet() -> GoalList:
 
 
 @mcp.tool()
-def measure_goals(
-    cadence: Cadence, period: str | None = None, goal_ids: list[str] | None = None
-) -> list[Assessment]:
-    """Proposed assessments for the active goals with this cadence whose
-    measure the calendar can answer (duration, count, wake_time, rollup),
-    for one period: e.g. "2026-09-30" (daily), "week-2026-09-27" (weekly,
-    Sunday to Saturday), "2026-09" (monthly), "2026-09..10" (every two
-    months). The default is the most recent period that has fully ended.
-    Each has an explanation of how its 0-100 rating was reached. Writes
-    nothing; ratings are only confirmed in a reflection."""
+def measure_goals(day: date | None = None, goal_ids: list[str] | None = None) -> list[Assessment]:
+    """Proposed ratings of one day (from waking on it to waking the next;
+    by default the last one that's over) for the goals whose measure the
+    calendar can answer: duration, count, wake_time, and rollups whose
+    sub-goals are all rated that day. Each has an explanation of how its
+    0-100 rating was reached. Writes nothing; ratings are only confirmed
+    in a reflection."""
     with track("measure_goals"), cached_sheet_reads():
         try:
-            return get_goal_health().measure(cadence, period, goal_ids)
+            return get_goal_health().measure(day, goal_ids)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
@@ -657,11 +676,12 @@ def measure_goals(
 @mcp.tool()
 def record_assessments(assessments: list[Assessment]) -> list[Assessment]:
     """Record assessments (a 0-100 rating, or "skip", of a goal for one
-    period of its cadence) as proposed -- e.g. a rating the user gives in
-    passing, or one measure_goals proposed. Recording a goal's period
-    again replaces it. They're only confirmed, and only count toward a
-    goal's health, once a reflection confirms them. Returns them as
-    recorded."""
+    day) as proposed -- e.g. a rating the user gives in passing, or one
+    measure_goals proposed. Recording a goal's day again replaces it. A
+    subjective rating given this way (method "subjective") restarts its
+    interval: it isn't asked again until interval_days have passed. They're
+    only confirmed, and only count toward a goal's health, once a
+    reflection confirms them. Returns them as recorded."""
     with track("record_assessments"), cached_sheet_reads():
         try:
             return get_goal_health().record_assessments(assessments)
@@ -670,18 +690,13 @@ def record_assessments(assessments: list[Assessment]) -> list[Assessment]:
 
 
 @mcp.tool()
-def get_goal_history(
-    goal_ids: list[str],
-    cadence: Cadence | None = None,
-    start: date | None = None,
-    end: date | None = None,
-) -> list[Assessment]:
-    """Assessments of these goals between start and end (both inclusive),
-    proposed and confirmed, by goal then period. By default, the last 12
-    periods of each goal's cadence."""
+def get_goal_history(goal_ids: list[str], start: date | None = None, end: date | None = None) -> list[Assessment]:
+    """Daily assessments of these goals from start to end (both
+    inclusive), proposed and confirmed, by goal then day. By default, the
+    last 12 days and today."""
     with track("get_goal_history"), cached_sheet_reads():
         try:
-            return get_goal_health().history(goal_ids, cadence, start, end)
+            return get_goal_health().history(goal_ids, start, end)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
@@ -699,46 +714,73 @@ def rebuild_goal_health_cache() -> GoalList:
 
 
 @mcp.tool()
-def prepare_reflection(cadence: Cadence, period: str | None = None) -> ReflectionContext:
-    """Start a reflection: everything needed to confirm the health ratings
-    due for one period of a cadence. Days run from waking to waking, bounded
-    by the end-of-day sleep events, and so do weeks and months: a period
-    whose bounding sleeps aren't in the calendar can't be reflected on (the error
-    says which days need one), and the choices below flag them. With no period named, returns only choices -- the most
-    recent completed periods without a reflection -- to ask the user about;
-    then call this again with the period picked. Otherwise returns the
-    goals to rate (with recent ratings,
-    and a proposed rating with its explanation where one was recorded or
-    could be measured), shorter-cadence goals to review, minutes per goal,
-    the period's events and notes (daily and weekly), the last reflection's
-    intentions, and instructions for the conversation. Read-only."""
+def prepare_reflection(day: date | None = None) -> ReflectionContext:
+    """Start (or continue) the daily reflection: rating each goal for one
+    day. Days run from waking to waking, bounded by the end-of-day sleep
+    events: a day whose bounding sleeps aren't in the calendar can't be
+    reflected on (the error says which days need one), and the choices
+    below flag them. With no day named, returns only choices -- the most
+    recent completed days not fully reflected on -- to ask the user about;
+    then call this again with the day picked. Otherwise returns the goals
+    ready to rate now (due): ratings flow up from sub-goals to parents, so
+    only goals whose sub-goals are all rated already, each with recent
+    ratings, its sub-goals' ratings, and a proposed rating with its
+    explanation where one was recorded, measured, rolled up or carried
+    over -- plus the goals waiting on them, minutes per goal, the day's
+    events and notes, the last reflection's intentions, and instructions
+    for the conversation. Read-only."""
     with track("prepare_reflection"), cached_sheet_reads():
         try:
-            return get_reflections().prepare(cadence, period)
+            return get_reflections().prepare(day)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
 
 @mcp.tool()
 def record_reflection(
-    cadence: Cadence,
-    period: str,
+    day: date,
     assessments: list[Assessment],
     journal: str | None = None,
     intentions: list[str] | None = None,
     dry_run: bool = True,
 ) -> ReflectionResult:
-    """Finish a reflection: confirm its ratings (each for this cadence and
-    period), and record an optional journal and up to 3 intentions for the
-    next period. With dry_run (the default) nothing is written: it returns
-    a preview to show the user. With dry_run=False, once they agree, the
-    ratings are confirmed -- the only way a rating counts toward a goal's
-    health -- and the reflection is recorded; doing it again replaces it."""
+    """Confirm one level of a day's reflection: ratings (each of this day)
+    for goals whose sub-goals are all rated already -- a goal is refused
+    until they are -- and optionally a journal and up to 3 intentions for
+    tomorrow (left out, any recorded earlier are kept). With dry_run (the
+    default) nothing is written: it returns a preview to show the user.
+    With dry_run=False, once they agree, the ratings are confirmed at once
+    -- the only way a rating counts toward a goal's health -- and the
+    reflection is recorded; rating a goal again replaces its rating. The
+    result says whether every goal is now rated, and which are ready
+    next."""
     with track("record_reflection"), cached_sheet_reads():
         try:
-            return get_reflections().record(cadence, period, assessments, journal, intentions, dry_run=dry_run)
+            return get_reflections().record(day, assessments, journal, intentions, dry_run=dry_run)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
+
+
+@dataclass(kw_only=True)
+class CompactionStatus:
+    last_compaction: datetime | None = None
+    """When notes were last compacted into the calendar: it's settled
+    fact up to then. `None` if they never have been."""
+
+    latest_compacted_note: NotedTime | None = None
+    """The compacted note with the latest timestamp, if any."""
+
+
+@mcp.tool()
+def get_compaction_status() -> CompactionStatus:
+    """When notes were last compacted into the calendar, and the latest
+    note compacted. Read-only."""
+    with track("get_compaction_status"), cached_sheet_reads():
+        _notes, latest = get_noted_time_sheet().read_with_latest_compacted()
+        return CompactionStatus(
+            last_compaction=get_compaction_journal().last_stamped_now(),
+            latest_compacted_note=latest,
+        )
 
 
 @mcp.tool()

@@ -8,13 +8,14 @@ from calendar_clients.google_calendar import Event
 from tests.fake_sheets import FakeSheets
 from tests.test_goals import FakeLabelCalendar, _UNNAMED
 from utilities.goal_health import Assessment, GoalHealth, assessment_event_id, band
-from utilities.goal_periods import last_ended, parse_period, period_containing
 from utilities.goal_sheet import Goal
 from utilities.goals import Goals
 
 TZ = ZoneInfo("America/New_York")
 TODAY = date(2026, 10, 2)  # A Friday.
 NOW = datetime.combine(TODAY, time(21), TZ)
+YESTERDAY = TODAY - timedelta(days=1)
+"""The last day that's over: from waking on it at 7am to waking today."""
 
 
 class FakeCalendar(FakeLabelCalendar):
@@ -26,13 +27,14 @@ class FakeCalendar(FakeLabelCalendar):
         super().__init__([_UNNAMED])
         self.events = list(events)
         # A night's end-of-day sleep, 23:00-07:00, on every date with none
-        # in `events` -- so periods have the sleeps that bound them (see
+        # in `events` -- so days have the sleeps that bound them (see
         # utilities/sleep_days.py). False for none.
         self.nightly_sleep = True
         self.health_events: dict[str, dict] = {}
         self.created: list[tuple] = []
         self.hidden: list[str] = []
         self.calendar_id = "main"
+        self.listed: list[tuple[datetime, datetime]] = []
 
     def get_time_zone(self):
         return TZ
@@ -50,6 +52,7 @@ class FakeCalendar(FakeLabelCalendar):
         return self
 
     def list_events(self, time_min, time_max):
+        self.listed.append((time_min, time_max))
         events = list(self.events)
         if self.nightly_sleep:
             slept = {e.end.astimezone(TZ).date() for e in events if e.is_end_of_day_sleep}
@@ -88,6 +91,11 @@ def _setup(goals=(), events=()):
     return GoalHealth(calendar, store, now=lambda: NOW), store, calendar, by_name
 
 
+def _child(store: Goals, name: str, parent: Goal, **fields) -> Goal:
+    store.create_goal(Goal(name=name, parent_id=parent.id, **fields))
+    return next(g for g in store.tree().goals if g.name == name)
+
+
 def _event(start: str, end: str, goal_ids=None, **fields) -> Event:
     return Event(
         id=f"e-{start}",
@@ -99,21 +107,23 @@ def _event(start: str, end: str, goal_ids=None, **fields) -> Event:
     )
 
 
-def _assessment(goal: Goal, period: str, rating=80, **fields) -> Assessment:
-    return Assessment(goal_id=goal.id, cadence=goal.cadence, period=period, rating=rating, method="subjective", **fields)
+def _assessment(goal: Goal, day: date | str, rating=80, **fields) -> Assessment:
+    day = date.fromisoformat(day) if isinstance(day, str) else day
+    return Assessment(goal_id=goal.id, day=day, rating=rating, method=fields.pop("method", "subjective"), **fields)
+
+
+_FEEL = {"kind": "subjective", "prompt": "How was it?"}
 
 
 class TestEventIds:
-    def test_encode_goal_cadence_and_period_reversibly(self):
-        event_id = assessment_event_id("g7k2qp", "daily", "2026-09-30")
+    def test_encode_goal_and_day_reversibly_as_daily(self):
+        event_id = assessment_event_id("g7k2qp", date(2026, 9, 30))
 
+        # The same id it had when goals had cadences, so history is kept.
         assert event_id == "csrmmcjhe1u68ob9dhsnochg68r2qc1p5kpj0"
         assert set(event_id) <= set("0123456789abcdefghijklmnopqrstuv")
         padded = event_id.upper() + "=" * (-len(event_id) % 8)
         assert base64.b32hexdecode(padded).decode() == "g7k2qp|daily|2026-09-30"
-
-    def test_differ_by_cadence_even_for_the_same_period_name(self):
-        assert assessment_event_id("g", "daily", "x") != assessment_event_id("g", "weekly", "x")
 
 
 class TestBand:
@@ -124,12 +134,13 @@ class TestBand:
 
 class TestRecordAssessments:
     def test_records_as_proposed_on_a_hidden_calendar_in_the_main_ones_time_zone(self):
-        health, _, calendar, goals = _setup([Goal(name="Cooking", cadence="daily")])
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
         cooking = goals["Cooking"]
 
         (recorded,) = health.record_assessments([_assessment(cooking, "2026-10-01", status="confirmed")])
 
         assert recorded.status == "proposed"
+        assert recorded.day == date(2026, 10, 1)
         assert recorded.assessed == NOW
         assert calendar.created == [("Goal Health", "America/New_York")]
         assert calendar.hidden == ["health-calendar"]
@@ -138,16 +149,19 @@ class TestRecordAssessments:
         assert item["summary"] == "🟢 Cooking · 2026-10-01 · 80 (proposed)"
         assert (item["start"], item["end"]) == ({"date": "2026-10-01"}, {"date": "2026-10-02"})
         assert item["transparency"] == "transparent"
+        properties = item["extendedProperties"]["private"]
+        assert properties["cascading-time-tracker-cadence"] == "daily"
+        assert properties["cascading-time-tracker-period"] == "2026-10-01"
 
-    def test_recording_a_period_again_replaces_it(self):
-        health, _, calendar, goals = _setup([Goal(name="Cooking", cadence="weekly")])
+    def test_recording_a_day_again_replaces_it(self):
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
         cooking = goals["Cooking"]
 
-        health.record_assessments([_assessment(cooking, "week-2026-09-20", rating=50)])
-        health.record_assessments([_assessment(cooking, "week-2026-09-20", rating="skip", rationale="sick")])
+        health.record_assessments([_assessment(cooking, "2026-09-30", rating=50)])
+        health.record_assessments([_assessment(cooking, "2026-09-30", rating="skip", rationale="sick")])
 
         (item,) = calendar.health_events.values()
-        assert item["summary"] == "⚪ Cooking · week-2026-09-20 · skipped (proposed)"
+        assert item["summary"] == "⚪ Cooking · 2026-09-30 · skipped (proposed)"
         assert item["description"] == "sick"
         assert calendar.created == [("Goal Health", "America/New_York")]  # created once
 
@@ -155,16 +169,14 @@ class TestRecordAssessments:
         "change, message",
         [
             ({"goal_id": "nope"}, "isn't a goal"),
-            ({"cadence": "weekly"}, "is assessed daily, not weekly"),
-            ({"period": "2026-10"}, "isn't a period for the daily cadence"),
-            ({"period": "2026-10-03"}, "hasn't started yet"),
+            ({"day": date(2026, 10, 3)}, "hasn't started yet"),
             ({"rating": 101}, "0 to 100"),
             ({"rationale": "x" * 8001}, "longer than 8000 bytes"),
             ({"explanation": "x" * 1025}, "longer than 1024"),
         ],
     )
     def test_refuses_invalid_assessments_and_writes_none_of_the_batch(self, change, message):
-        health, _, calendar, goals = _setup([Goal(name="Cooking", cadence="daily")])
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
         good = _assessment(goals["Cooking"], "2026-10-01")
         bad = Assessment(**{**_assessment(goals["Cooking"], "2026-09-30").__dict__, **change})
 
@@ -173,40 +185,58 @@ class TestRecordAssessments:
 
         assert calendar.health_events == {}
 
-    def test_a_goal_without_a_cadence_isnt_assessed(self):
+    def test_a_goal_with_nothing_to_rate_it_by_isnt_rated(self):
         health, _, _, goals = _setup([Goal(name="Cooking")])
 
-        with pytest.raises(ValueError, match="has no cadence"):
-            health.record_assessments(
-                [Assessment(goal_id=goals["Cooking"].id, cadence="daily", period="2026-10-01", rating=5, method="llm")]
-            )
+        with pytest.raises(ValueError, match="isn't rated"):
+            health.record_assessments([_assessment(goals["Cooking"], "2026-10-01", method="llm")])
+
+    def test_a_goal_without_a_measure_is_rated_by_its_sub_goals(self):
+        health, store, _, goals = _setup([Goal(name="Home")])
+        _child(store, "Cook", goals["Home"], measure=_FEEL)
+
+        (recorded,) = health.record_assessments([_assessment(goals["Home"], "2026-10-01", method="rollup")])
+
+        assert recorded.rating == 80
 
 
 class TestHistory:
-    def test_lists_a_goals_assessments_by_period_defaulting_to_its_last_12_periods(self):
-        health, _, _, goals = _setup([Goal(name="Cooking", cadence="weekly"), Goal(name="Reading", cadence="weekly")])
+    def test_lists_a_goals_assessments_by_day_defaulting_to_the_last_12_days(self):
+        health, _, _, goals = _setup([Goal(name="Cooking", measure=_FEEL), Goal(name="Reading", measure=_FEEL)])
         cooking, reading = goals["Cooking"], goals["Reading"]
-        week = last_ended("weekly", TODAY)
-        old = week
-        for _ in range(12):
-            old = old.previous()  # 13 weeks back: outside the default range
+        old = TODAY - timedelta(days=13)  # outside the default range
         health.record_assessments(
             [
-                _assessment(cooking, week.id, 90),
-                _assessment(cooking, week.previous().id, 60),
-                _assessment(cooking, old.id, 10),
-                _assessment(reading, week.id, 30),
+                _assessment(cooking, YESTERDAY, 90),
+                _assessment(cooking, YESTERDAY - timedelta(days=1), 60),
+                _assessment(cooking, old, 10),
+                _assessment(reading, YESTERDAY, 30),
             ]
         )
 
         history = health.history([cooking.id])
 
-        assert [(a.period, a.rating) for a in history] == [(week.previous().id, 60), (week.id, 90)]
-        everything = health.history([cooking.id], start=old.start)
+        assert [(a.day, a.rating) for a in history] == [(YESTERDAY - timedelta(days=1), 60), (YESTERDAY, 90)]
+        everything = health.history([cooking.id], start=old)
         assert [a.rating for a in everything] == [10, 60, 90]
 
+    def test_ignores_assessments_at_cadences_goals_no_longer_have(self):
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
+        health.record_assessments([_assessment(goals["Cooking"], YESTERDAY, 90)])
+        (item,) = calendar.health_events.values()
+        calendar.health_events["weekly"] = {
+            **item,
+            "extendedProperties": {"private": {
+                **item["extendedProperties"]["private"],
+                "cascading-time-tracker-cadence": "weekly",
+                "cascading-time-tracker-period": "week-2026-09-27",
+            }},
+        }
+
+        assert [a.rating for a in health.history([goals["Cooking"].id])] == [90]
+
     def test_is_empty_before_anything_is_recorded_without_creating_the_calendar(self):
-        health, _, calendar, goals = _setup([Goal(name="Cooking", cadence="daily")])
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
 
         assert health.history([goals["Cooking"].id]) == []
         assert calendar.created == []
@@ -214,7 +244,7 @@ class TestHistory:
 
 class TestConfirmAndCache:
     def test_confirming_updates_the_goals_health_and_a_skip_doesnt_replace_it(self):
-        health, store, _, goals = _setup([Goal(name="Cooking", cadence="daily")])
+        health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
         cooking = goals["Cooking"]
 
         health.confirm_assessments(
@@ -227,11 +257,19 @@ class TestConfirmAndCache:
 
         listed = next(g for g in store.get_goals().goals if g.id == cooking.id)
         assert (listed.health, listed.health_period) == (85, "2026-10-01")
-        assert listed.health_trend == "-,-,-,-,-,40,85,-"
-        assert listed.stale_periods == 0
+        assert listed.health_trend == "-,-,-,-,-,40,85,-"  # the 8 days up to yesterday
+        assert listed.stale_days == 0
+
+    def test_the_trend_runs_to_today_once_today_is_rated(self):
+        health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
+        cooking = goals["Cooking"]
+
+        health.confirm_assessments([_assessment(cooking, "2026-10-01", 50), _assessment(cooking, TODAY, 60)])
+
+        assert store.tree().by_id[cooking.id].health_trend == "-,-,-,-,-,-,50,60"
 
     def test_proposed_ratings_dont_count(self):
-        health, store, _, goals = _setup([Goal(name="Cooking", cadence="daily")])
+        health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
         cooking = goals["Cooking"]
 
         health.record_assessments([_assessment(cooking, "2026-10-01", 85)])
@@ -239,19 +277,20 @@ class TestConfirmAndCache:
 
         listed = next(g for g in store.get_goals().goals if g.id == cooking.id)
         assert listed.health is None
-        assert listed.stale_periods == 0  # created today: none of its days has ended yet
+        assert listed.stale_days == 0  # created today: none of its days has ended yet
 
-    def test_stale_periods_count_ended_periods_since_the_last_assessed_one(self):
-        health, store, _, goals = _setup([Goal(name="Cooking", cadence="daily")])
+    def test_stale_days_count_ended_days_since_the_last_rated_one(self):
+        health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL), Goal(name="Folder")])
         cooking = goals["Cooking"]
 
         health.confirm_assessments([_assessment(cooking, "2026-09-28", 70)])
 
-        listed = next(g for g in store.get_goals().goals if g.id == cooking.id)
-        assert listed.stale_periods == 3  # 29th, 30th and 1st have ended unassessed
+        listed = {g.name: g for g in store.get_goals().goals}
+        assert listed["Cooking"].stale_days == 3  # 29th, 30th and 1st have ended unrated
+        assert listed["Folder"].stale_days is None  # nothing to rate it by
 
     def test_a_tab_without_cache_columns_gains_them(self):
-        health, store, _, goals = _setup([Goal(name="Cooking", cadence="daily")])
+        health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
         sheet = store._sheet
         header = sheet._read_header_and_data()[0]
         trimmed = [c for c in header if not c.startswith("health")]
@@ -265,177 +304,289 @@ class TestConfirmAndCache:
         assert store.tree().by_id[goals["Cooking"].id].health == 77
 
 
-class TestMeasure:
-    def _goals(self):
-        return [
-            Goal(name="Cooking", cadence="weekly", measure={"kind": "duration", "target_min": 300}),
-            Goal(name="Hosting", cadence="weekly", measure={"kind": "count", "target": 1, "noun": "dinners"}),
-            Goal(name="Wake 7am", cadence="daily", measure={"kind": "wake_time", "target": "07:00", "grace_min": 10, "zero_at_min": 60}),
-            Goal(name="Feel", cadence="weekly", measure={"kind": "subjective", "prompt": "How was it?"}),
+class TestMeasureDurationAndCount:
+    def test_duration_counts_minutes_of_the_goal_and_its_sub_goals_within_the_day(self):
+        health, store, calendar, goals = _setup([Goal(name="Cooking", measure={"kind": "duration", "target_min": 300})])
+        cooking = goals["Cooking"]
+        tofu = _child(store, "Tofu", cooking)
+        calendar.events = [
+            _event("2026-10-01T12:00", "2026-10-01T14:00", [cooking.id]),  # 120
+            _event("2026-10-01T18:00", "2026-10-01T19:10", [tofu.id]),  # 70, via its sub-goal
+            _event("2026-10-02T06:30", "2026-10-02T07:30", [cooking.id]),  # 30 inside the day, which ends at 7am
+            _event("2026-10-01T06:00", "2026-10-01T07:00", [cooking.id]),  # before it started
+            _event("2026-10-01T15:00", "2026-10-01T16:00", ["other"]),  # not this goal
+            _event("2026-10-01T16:00", "2026-10-01T17:00", [cooking.id], status="cancelled"),
         ]
 
-    def test_duration_counts_minutes_of_the_goal_and_its_sub_goals_within_the_period(self):
-        health, store, calendar, goals = _setup(self._goals())
-        store.create_goal(Goal(name="Tofu", parent_id=goals["Cooking"].id))
-        tofu = next(g for g in store.tree().goals if g.name == "Tofu")
+        (cooked,) = health.measure()
+
+        assert cooked.day == YESTERDAY
+        assert (cooked.rating, cooked.method, cooked.status) == (73, "metric", "proposed")
+        assert cooked.explanation == "3h 40m of 5h in the day → 73"
+        assert cooked.metrics == {"minutes": 220, "target_min": 300, "interval_days": 1}
+
+    def test_duration_over_an_interval_of_days(self):
+        health, _, calendar, goals = _setup(
+            [Goal(name="Cooking", measure={"kind": "duration", "target_min": 300, "interval_days": 7})]
+        )
         cooking = goals["Cooking"]
         calendar.events = [
-            _event("2026-09-21T18:00", "2026-09-21T20:00", [cooking.id]),  # 120
-            _event("2026-09-23T18:00", "2026-09-23T19:10", [tofu.id]),  # 70, via its sub-goal
-            _event("2026-09-27T06:30", "2026-09-27T07:30", [cooking.id]),  # 30 inside the week, which ends at 7am
-            _event("2026-09-24T18:00", "2026-09-24T19:00", ["other"]),  # not this goal
-            _event("2026-09-25T18:00", "2026-09-25T19:00", [cooking.id], status="cancelled"),
+            _event("2026-09-26T12:00", "2026-09-26T14:00", [cooking.id]),  # 120: within 7 days of 7am on the 2nd
+            _event("2026-09-24T12:00", "2026-09-24T14:00", [cooking.id]),  # too long ago
         ]
 
-        proposals = {a.goal_id: a for a in health.measure("weekly")}
+        (cooked,) = health.measure()
 
-        cooked = proposals[cooking.id]
-        assert cooked.period == "week-2026-09-20"
-        assert (cooked.rating, cooked.method, cooked.status) == (73, "metric", "proposed")
-        assert cooked.explanation == "3h 40m of 5h target → 73"
-        assert cooked.metrics == {"minutes": 220, "target_min": 300}
-        assert "Feel" not in {store.tree().by_id[i].name for i in proposals}  # subjective: not measured
+        assert (cooked.rating, cooked.explanation) == (40, "2h of 5h in the last 7 days → 40")
+
+    def test_count_and_an_events_label_standing_in_for_its_goal(self):
+        health, _, calendar, goals = _setup([Goal(name="Hosting", measure={"kind": "count", "target": 1, "noun": "dinners"})])
+        hosting = goals["Hosting"]
+        # Written before goals: only a label.
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T21:00", event_label_id=hosting.label_id)]
+
+        (hosted,) = health.measure()
+
+        assert (hosted.rating, hosted.explanation) == (100, "1 of 1 dinners in the day → 100")
+
+    def _visits(self, *visited: str):
+        """"Visit parents every 2 months": healthy within 60 days of a
+        visit, falling to 0 by 90."""
+        health, _, calendar, goals = _setup(
+            [Goal(name="Parents", measure={
+                "kind": "count", "target": 1, "noun": "visits", "interval_days": 60, "zero_at_days": 90,
+            })]
+        )
+        parents = goals["Parents"]
+        calendar.events = [_event(f"{day}T10:00", f"{day}T16:00", [parents.id]) for day in visited]
+        (rated,) = health.measure()
+        return rated
+
+    def test_a_count_over_an_interval_is_healthy_while_its_met(self):
+        rated = self._visits("2026-08-10")
+
+        assert (rated.rating, rated.explanation) == (100, "1 of 1 visits in the last 60 days → 100")
+
+    def test_a_count_declines_once_its_interval_lapses_reaching_0_at_zero_at_days(self):
+        # The day ends at 7am on Oct 2; a visit ending at 4pm 75 days and
+        # 15 hours before that lapsed 15 days 15 hours ago, of 30.
+        rated = self._visits("2026-07-18")
+
+        assert rated.rating == 48
+        assert rated.explanation == "0 of 1 visits in the last 60 days; met until 15.6 days ago, 0 once 30 days pass → 48"
+        assert rated.metrics["lapsed_days"] == 15.6
+
+    def test_a_count_not_met_since_zero_at_days_is_0(self):
+        assert self._visits("2026-06-01").rating == 0
+        assert self._visits().explanation == "0 of 1 visits in the last 60 days; not met in the last 90 days → 0"
+
+    def test_a_count_reads_back_as_far_as_zero_at_days(self):
+        health, _, calendar, goals = _setup(
+            [Goal(name="Parents", measure={"kind": "count", "target": 1, "interval_days": 60, "zero_at_days": 90})]
+        )
+
+        health.measure()
+
+        assert min(start for start, _ in calendar.listed) <= datetime(2026, 7, 4, 7, tzinfo=TZ)
+
+    def test_a_duration_declines_from_when_its_window_last_held_enough(self):
+        # 2h a day: the 24 hours before a moment held the whole run until
+        # 2pm on Oct 1, 17 hours before the day ended at 7am, of the 2 days
+        # it has to fall to 0.
+        health, _, calendar, goals = _setup(
+            [Goal(name="Run", measure={"kind": "duration", "target_min": 120, "zero_at_days": 3})]
+        )
+        run = goals["Run"]
+        calendar.events = [_event("2026-09-30T14:00", "2026-09-30T16:00", [run.id])]
+
+        (rated,) = health.measure()
+
+        assert rated.metrics["minutes"] == 0
+        assert rated.rating == round(100 * (1 - 17 / 48))
+        assert rated.metrics["lapsed_days"] == 0.7
 
     def test_a_measure_can_look_at_other_goals_events_instead(self):
-        health, store, calendar, goals = _setup(self._goals())
+        health, store, calendar, goals = _setup(
+            [Goal(name="Cooking", measure={"kind": "duration", "target_min": 300}), Goal(name="Hosting")]
+        )
         cooking, hosting = goals["Cooking"], goals["Hosting"]
-        store.create_goal(Goal(name="Brunch", parent_id=hosting.id))
-        brunch = next(g for g in store.tree().goals if g.name == "Brunch")
+        brunch = _child(store, "Brunch", hosting)
         store.update_goal(
             Goal(id=cooking.id, measure={"kind": "duration", "target_min": 300, "goal_ids": [hosting.id]})
         )
         calendar.events = [
-            _event("2026-09-21T18:00", "2026-09-21T20:00", [cooking.id]),  # its own: not counted
-            _event("2026-09-23T18:00", "2026-09-23T19:00", [hosting.id]),  # 60
-            _event("2026-09-24T10:00", "2026-09-24T11:30", [brunch.id]),  # 90, Hosting's sub-goal
+            _event("2026-10-01T08:00", "2026-10-01T10:00", [cooking.id]),  # its own: not counted
+            _event("2026-10-01T18:00", "2026-10-01T19:00", [hosting.id]),  # 60
+            _event("2026-10-01T11:00", "2026-10-01T12:30", [brunch.id]),  # 90, Hosting's sub-goal
         ]
 
-        (cooked,) = health.measure("weekly", goal_ids=[cooking.id])
+        (cooked,) = health.measure(goal_ids=[cooking.id])
 
-        assert cooked.metrics == {"minutes": 150, "target_min": 300}
+        assert cooked.metrics["minutes"] == 150
 
     def test_a_measure_can_leave_out_sub_goals_events(self):
-        health, store, calendar, goals = _setup(self._goals())
+        health, store, calendar, goals = _setup([Goal(name="Cooking")])
         cooking = goals["Cooking"]
-        store.create_goal(Goal(name="Tofu", parent_id=cooking.id))
-        tofu = next(g for g in store.tree().goals if g.name == "Tofu")
+        tofu = _child(store, "Tofu", cooking)
         store.update_goal(
             Goal(id=cooking.id, measure={"kind": "duration", "target_min": 300, "include_sub_goals": False})
         )
         calendar.events = [
-            _event("2026-09-21T18:00", "2026-09-21T20:00", [cooking.id]),  # 120
-            _event("2026-09-23T18:00", "2026-09-23T19:10", [tofu.id]),  # its sub-goal: left out
+            _event("2026-10-01T12:00", "2026-10-01T14:00", [cooking.id]),  # 120
+            _event("2026-10-01T18:00", "2026-10-01T19:10", [tofu.id]),  # its sub-goal: left out
         ]
 
-        (cooked,) = health.measure("weekly", goal_ids=[cooking.id])
+        (cooked,) = health.measure(goal_ids=[cooking.id])
 
-        assert cooked.metrics == {"minutes": 120, "target_min": 300}
+        assert cooked.metrics["minutes"] == 120
 
-    def test_a_sub_goal_can_look_at_its_parents_events(self):
-        health, store, calendar, goals = _setup(self._goals())
-        cooking = goals["Cooking"]
-        store.create_goal(
-            Goal(
-                name="Tofu",
-                parent_id=cooking.id,
-                cadence="weekly",
-                measure={"kind": "count", "target": 4, "goal_ids": [cooking.id]},
-            )
-        )
-        tofu = next(g for g in store.tree().goals if g.name == "Tofu")
-        calendar.events = [
-            _event("2026-09-21T18:00", "2026-09-21T20:00", [cooking.id]),
-            _event("2026-09-23T18:00", "2026-09-23T19:00", [tofu.id]),
-        ]
 
-        (counted,) = health.measure("weekly", goal_ids=[tofu.id])
+class TestMeasureWakeTime:
+    def _goal(self):
+        return Goal(name="Wake 7am", measure={"kind": "wake_time", "target": "07:00", "grace_min": 10, "zero_at_min": 60})
 
-        assert counted.metrics == {"count": 2, "target": 4}
+    def test_scores_minutes_late_past_the_grace(self):
+        health, _, calendar, _ = _setup([self._goal()])
+        calendar.events = [_event("2026-09-30T23:00", "2026-10-01T07:35", is_end_of_day_sleep=True)]
 
-    def test_count_and_an_events_label_standing_in_for_its_goal(self):
-        health, store, calendar, goals = _setup(self._goals())
-        hosting = goals["Hosting"]
-        # Written before goals: only a label.
-        calendar.events = [_event("2026-09-26T18:00", "2026-09-26T21:00", event_label_id=hosting.label_id)]
+        (woke,) = health.measure()
 
-        (hosted,) = health.measure("weekly", goal_ids=[hosting.id])
-
-        assert (hosted.rating, hosted.explanation) == (100, "1 of 1 dinners → 100")
-
-    def test_wake_time_scores_minutes_late_past_the_grace(self):
-        health, _, calendar, goals = _setup(self._goals())
-        calendar.events = [
-            _event("2026-09-30T23:00", "2026-10-01T07:35", is_end_of_day_sleep=True),
-        ]
-
-        (woke,) = health.measure("daily")
-
-        assert woke.period == "2026-10-01"
+        assert woke.day == YESTERDAY
         assert woke.rating == 50  # 35 late, grace 10, zero at 60
         assert woke.explanation == "Woke 07:35; target 07:00 with 10 min grace → 50"
 
     def test_up_past_midnight_the_last_day_to_end_is_still_the_day_before(self):
-        _, store, calendar, goals = _setup(self._goals())
+        _, store, calendar, _ = _setup([self._goal()])
         calendar.events = [_event("2026-09-30T23:00", "2026-10-01T07:35", is_end_of_day_sleep=True)]
         # 1am on the 3rd, before the night's sleep: it's still the 2nd.
         health = GoalHealth(calendar, store, now=lambda: datetime(2026, 10, 3, 1, tzinfo=TZ))
 
-        (woke,) = health.measure("daily")
+        (woke,) = health.measure()
 
         assert health.today() == TODAY
-        assert woke.period == "2026-10-01"
+        assert woke.day == YESTERDAY
 
-    def test_wake_time_averages_a_longer_period(self):
-        health, store, calendar, goals = _setup(self._goals())
-        wake = goals["Wake 7am"]
-        store.update_goal(Goal(id=wake.id, cadence="weekly"))
-        calendar.nightly_sleep = False
-        calendar.events = [
-            _event("2026-09-19T23:00", "2026-09-20T06:50", is_end_of_day_sleep=True),  # 100, starts the week
-            _event("2026-09-20T23:00", "2026-09-21T07:05", is_end_of_day_sleep=True),  # 100
-            _event("2026-09-21T23:00", "2026-09-22T08:00", is_end_of_day_sleep=True),  # 0
-            _event("2026-09-26T23:00", "2026-09-27T07:00", is_end_of_day_sleep=True),  # ends the week
-        ]
+    def test_a_day_that_isnt_over_cant_be_measured(self):
+        health, *_ = _setup([self._goal()])
 
-        proposals = {a.goal_id: a for a in health.measure("weekly")}
+        with pytest.raises(ValueError, match="isn't over yet"):
+            health.measure(TODAY)
 
-        assert proposals[wake.id].rating == 67
-        assert proposals[wake.id].explanation.startswith("Mean of 3 wake-ups")
 
-    def test_rollup_takes_its_sub_goals_confirmed_ratings(self):
-        health, store, _, goals = _setup([Goal(name="Home", cadence="weekly", measure={"kind": "rollup", "agg": "min"})])
+class TestMeasureRollup:
+    def _tree(self, measure=None):
+        health, store, _, goals = _setup([Goal(name="Home", measure=measure)])
         home = goals["Home"]
-        store.create_goal(Goal(name="Cook", parent_id=home.id, cadence="daily"))
-        store.create_goal(Goal(name="Clean", parent_id=home.id, cadence="weekly"))
-        tree = store.tree()
-        cook = next(g for g in tree.goals if g.name == "Cook")
-        clean = next(g for g in tree.goals if g.name == "Clean")
+        children = [_child(store, name, home, measure=_FEEL) for name in ("Cook", "Clean", "Shop")]
+        return health, store, home, children
+
+    def test_waits_until_every_sub_goal_is_confirmed(self):
+        health, _, home, (cook, clean, shop) = self._tree()
+        health.confirm_assessments([_assessment(cook, YESTERDAY, 80), _assessment(clean, YESTERDAY, 60)])
+        health.record_assessments([_assessment(shop, YESTERDAY, 10)])  # proposed: not yet
+
+        assert health.measure(goal_ids=[home.id]) == []
+
+    def test_a_goal_without_a_measure_takes_the_mean_of_its_sub_goals_that_day(self):
+        health, _, home, (cook, clean, shop) = self._tree()
         health.confirm_assessments(
             [
-                _assessment(cook, "2026-09-21", 80),
-                _assessment(cook, "2026-09-22", 60),  # mean 70
-                _assessment(clean, "week-2026-09-20", 90),
+                _assessment(cook, YESTERDAY, 80),
+                _assessment(clean, YESTERDAY, 60),
+                _assessment(shop, YESTERDAY, "skip"),  # left out
+                _assessment(cook, YESTERDAY - timedelta(days=1), 0),  # another day
             ]
         )
-        health.record_assessments([_assessment(clean, "week-2026-09-27", 10)])  # proposed: ignored
 
-        (rolled,) = health.measure("weekly", "week-2026-09-20")
+        (rolled,) = health.measure(goal_ids=[home.id])
 
         assert (rolled.rating, rolled.method) == (70, "rollup")
-        assert rolled.explanation == "Min of 2 sub-goals (70, 90) → 70"
+        assert rolled.explanation == "Mean of 2 sub-goals (80, 60) → 70"
 
-    def test_only_active_goals_with_that_cadence(self):
-        health, store, _, goals = _setup(self._goals())
+    def test_weighted_weighs_sub_goals_not_listed_at_0(self):
+        health, store, home, (cook, clean, shop) = self._tree()
+        store.update_goal(Goal(id=home.id, measure={"kind": "rollup", "agg": "weighted", "weights": {cook.id: 3, clean.id: 1}}))
+        health.confirm_assessments(
+            [_assessment(cook, YESTERDAY, 80), _assessment(clean, YESTERDAY, 40), _assessment(shop, YESTERDAY, 0)]
+        )
+
+        (rolled,) = health.measure(goal_ids=[home.id])
+
+        assert rolled.rating == 70
+        assert rolled.explanation == "Weighted mean of 2 sub-goals (80×3, 40×1) → 70"
+
+    def test_weighted_with_nothing_weighed_is_skipped(self):
+        health, store, home, (cook, clean, shop) = self._tree()
+        store.update_goal(Goal(id=home.id, measure={"kind": "rollup", "agg": "weighted", "weights": {cook.id: 1}}))
+        health.confirm_assessments(
+            [_assessment(cook, YESTERDAY, "skip"), _assessment(clean, YESTERDAY, 40), _assessment(shop, YESTERDAY, 0)]
+        )
+
+        (rolled,) = health.measure(goal_ids=[home.id])
+
+        assert rolled.rating == "skip"
+
+    def test_weights_must_name_its_sub_goals(self):
+        _, store, home, (cook, *_) = self._tree()
+
+        with pytest.raises(ValueError, match="isn't one of its sub-goals"):
+            store.update_goal(Goal(id=home.id, measure={"kind": "rollup", "agg": "weighted", "weights": {home.id: 1}}))
+
+    @pytest.mark.parametrize("percentile, rating, word", [(0, 20, "Lowest"), (100, 90, "Highest"), (50, 60, "50th percentile"), (75, 75, "75th percentile")])
+    def test_percentile(self, percentile, rating, word):
+        health, store, home, (cook, clean, shop) = self._tree()
+        store.update_goal(Goal(id=home.id, measure={"kind": "rollup", "agg": "percentile", "percentile": percentile}))
+        health.confirm_assessments(
+            [_assessment(cook, YESTERDAY, 90), _assessment(clean, YESTERDAY, 20), _assessment(shop, YESTERDAY, 60)]
+        )
+
+        (rolled,) = health.measure(goal_ids=[home.id])
+
+        assert rolled.rating == rating
+        assert rolled.explanation == f"{word} of 3 sub-goals (90, 20, 60) → {rating}"
+
+    def test_a_min_rollup_from_before_percentiles_is_the_lowest(self):
+        health, store, home, (cook, clean, shop) = self._tree()
+        sheet_goals = store.tree().goals
+        next(g for g in sheet_goals if g.id == home.id).measure = {"kind": "rollup", "agg": "min"}
+        store._sheet.write(sheet_goals)
+        health.confirm_assessments(
+            [_assessment(cook, YESTERDAY, 90), _assessment(clean, YESTERDAY, 20), _assessment(shop, YESTERDAY, 60)]
+        )
+
+        (rolled,) = health.measure(goal_ids=[home.id])
+
+        assert rolled.rating == 20
+
+    def test_only_active_sub_goals_count(self):
+        health, store, home, (cook, clean, shop) = self._tree()
+        store.update_goal(Goal(id=shop.id, status="inactive"))
+        health.confirm_assessments([_assessment(cook, YESTERDAY, 80), _assessment(clean, YESTERDAY, 60)])
+
+        (rolled,) = health.measure(goal_ids=[home.id])
+
+        assert rolled.rating == 70
+
+
+class TestMeasure:
+    def test_only_active_goals_the_calendar_can_answer(self):
+        health, store, _, goals = _setup(
+            [
+                Goal(name="Cooking", measure={"kind": "duration", "target_min": 300}),
+                Goal(name="Reading", measure={"kind": "duration", "target_min": 30}),
+                Goal(name="Feel", measure=_FEEL),
+                Goal(name="Judged", measure={"kind": "llm", "rubric": "?"}),
+            ]
+        )
         store.update_goal(Goal(id=goals["Cooking"].id, status="inactive"))
 
-        measured = {a.goal_id for a in health.measure("weekly")}
+        measured = {a.goal_id for a in health.measure()}
 
-        assert goals["Cooking"].id not in measured
-        assert goals["Wake 7am"].id not in measured
+        assert measured == {goals["Reading"].id}
 
-    def test_measures_a_given_period(self):
-        health, _, _, goals = _setup(self._goals())
+    def test_measures_a_given_day(self):
+        health, _, _, goals = _setup([Goal(name="Cooking", measure={"kind": "duration", "target_min": 300})])
 
-        proposals = health.measure("weekly", "week-2026-09-06", goal_ids=[goals["Cooking"].id])
+        proposals = health.measure(date(2026, 9, 6))
 
-        assert [(a.period, a.rating) for a in proposals] == [("week-2026-09-06", 0)]
+        assert [(a.day, a.rating) for a in proposals] == [(date(2026, 9, 6), 0)]

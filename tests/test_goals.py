@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from dataclasses import replace
 
 import pytest
 
-from calendar_clients.google_calendar import EventLabel as RawEventLabel, EventLabelConflictError, color_for_priority
+from calendar_clients.google_calendar import Event, EventLabel as RawEventLabel, EventLabelConflictError, color_for_priority
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet, goals as goals_module
 from utilities.event_label_sheet import EventLabel as LegacyLabel
@@ -204,7 +204,6 @@ class TestCreateGoal:
             (Goal(), "needs a name"),
             (Goal(name="x" * 51), "longer than 50"),
             (Goal(name="Cooking", parent_id="nope"), "parent 'nope' isn't a goal"),
-            (Goal(name="Cooking", cadence="hourly"), "cadence must be one of"),
             (Goal(name="Cooking", measure={"target": 3}), 'must be an object with a "kind"'),
             (
                 Goal(name="Cooking", measure={"kind": "duration", "target_mins": 300}),
@@ -255,7 +254,7 @@ class TestCreateGoal:
         saved[0].measure = {"kind": "rollup", "agg": "max"}  # A hand edit to the sheet.
         goals._sheet.write(saved)
 
-        with pytest.raises(ValueError, match="goal '.+'s measure \"agg\" must be one of min, mean"):
+        with pytest.raises(ValueError, match="goal '.+'s measure \"agg\" must be one of mean, weighted, percentile"):
             goals.sync()
 
     def test_a_measures_goal_ids_must_be_goals(self):
@@ -342,13 +341,13 @@ class TestUpdateGoal:
         goals, _, _ = _goals()
         goals.create_goal(Goal(name="Cooking"))
         parent = _by_name(goals)["Cooking"]
-        goals.create_goal(Goal(name="Tofu", parent_id=parent.id, cadence="weekly", note="soon"))
+        goals.create_goal(Goal(name="Tofu", parent_id=parent.id, target="weekly", note="soon"))
         tofu = _by_name(goals)["Tofu"]
 
-        goals.update_goal(Goal(id=tofu.id), ["parent_id", "cadence", "note"])
+        goals.update_goal(Goal(id=tofu.id), ["parent_id", "target", "note"])
 
         tofu = _by_name(goals)["Tofu"]
-        assert (tofu.parent_id, tofu.cadence, tofu.note) == (None, None, None)
+        assert (tofu.parent_id, tofu.target, tofu.note) == (None, None, None)
 
     def test_read_only_fields_are_left_alone(self):
         goals, _, _ = _goals()
@@ -524,3 +523,80 @@ class TestReorderGoals:
 
         with pytest.raises(ValueError, match=message):
             goals.reorder_goals([by_name[name].id for name in which])
+
+
+class TestRated:
+    def test_a_goal_is_rated_with_a_measure_or_rated_sub_goals(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Neighbor"))
+        neighbor = _by_name(goals)["Neighbor"]
+        goals.create_goal(Goal(name="Parents", parent_id=neighbor.id, measure={"kind": "count", "target": 1}))
+        goals.create_goal(Goal(name="Folder"))
+        goals.create_goal(Goal(name="Paused", status="inactive", measure={"kind": "count", "target": 1}))
+        tree = goals.tree()
+        by_name = {g.name: g.id for g in tree.goals}
+
+        assert {name for name, goal_id in by_name.items() if tree.rated(goal_id)} == {"Neighbor", "Parents"}
+        assert tree.measure(by_name["Neighbor"]) == {"kind": "rollup", "agg": "mean"}
+        assert tree.measure(by_name["Parents"]) == {"kind": "count", "target": 1}
+        assert tree.measure(by_name["Folder"]) is None
+        assert [g.name for g in tree.rated_children(by_name["Neighbor"])] == ["Parents"]
+
+
+class _EventCalendar(FakeLabelCalendar):
+    def __init__(self, labels=()):
+        super().__init__(labels)
+        self.events: list[Event] = []
+        self.listed: list[tuple[datetime, datetime]] = []
+
+    def list_events(self, time_min, time_max):
+        self.listed.append((time_min, time_max))
+        return [e for e in self.events if e.end > time_min and e.start < time_max]
+
+
+class TestRecentTime:
+    def _setup(self, last_compaction):
+        calendar = _EventCalendar([_UNNAMED])
+        goals = Goals(calendar, FakeSheets(), today=lambda: _TODAY, last_compaction=lambda: last_compaction)
+        return goals, calendar
+
+    def test_counts_each_goals_minutes_with_its_sub_goals_up_to_the_last_compaction(self):
+        as_of = datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
+        goals, calendar = self._setup(as_of)
+        goals.create_goal(Goal(name="Neighbor"))
+        neighbor = _by_name(goals)["Neighbor"]
+        goals.create_goal(Goal(name="Cousins", parent_id=neighbor.id))
+        goals.create_goal(Goal(name="Other"))
+        cousins = _by_name(goals)["Cousins"]
+
+        def event(hours_before: float, minutes: int, goal_ids, **fields):
+            start = as_of - timedelta(hours=hours_before)
+            return Event(id=str(hours_before), start=start, end=start + timedelta(minutes=minutes), goal_ids=goal_ids, **fields)
+
+        calendar.events = [
+            event(2, 60, [cousins.id]),  # 60 in both windows, for Cousins and Neighbor
+            event(25, 120, [neighbor.id]),  # 60 of it in the last 24 hours
+            event(24 * 5, 30, [cousins.id]),  # 7 days only
+            event(24 * 8, 30, [cousins.id]),  # too long ago
+            event(1, 30, [cousins.id], status="cancelled"),
+            event(-1, 30, [cousins.id]),  # after the last compaction: not yet fact
+        ]
+
+        listing = goals.get_goals()
+
+        listed = {g.name: g for g in listing.goals}
+        assert listing.as_of == as_of
+        assert (listed["Cousins"].minutes_24h, listed["Cousins"].minutes_7d) == (60, 90)
+        assert (listed["Neighbor"].minutes_24h, listed["Neighbor"].minutes_7d) == (120, 210)
+        assert (listed["Other"].minutes_24h, listed["Other"].minutes_7d) == (0, 0)
+        assert calendar.listed[-1] == (as_of - timedelta(days=7), as_of)
+
+    def test_without_a_compaction_theres_nothing_to_count_up_to(self):
+        goals, calendar = self._setup(None)
+        goals.create_goal(Goal(name="Cooking"))
+
+        listing = goals.get_goals()
+
+        assert listing.as_of is None
+        assert listing.goals[0].minutes_24h is None and listing.goals[0].minutes_7d is None
+        assert calendar.listed == []

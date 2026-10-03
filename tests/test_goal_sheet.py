@@ -22,7 +22,6 @@ def _full_goal() -> Goal:
         background_color="#123456",
         priority=2,
         fixed_time=True,
-        cadence="weekly",
         measure={"kind": "duration", "target_min": 300},
         target="300 min/week",
         deadline=date(2026, 12, 31),

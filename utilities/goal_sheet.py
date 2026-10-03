@@ -24,9 +24,6 @@ from typing import Any, Literal
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
 
-Cadence = Literal["daily", "weekly", "monthly", "every_2_months"]
-CADENCES: tuple[str, ...] = ("daily", "weekly", "monthly", "every_2_months")
-
 GoalStatus = Literal["proposed", "active", "inactive", "completed", "archived", "deleted"]
 GOAL_STATUSES: tuple[str, ...] = ("proposed", "active", "inactive", "completed", "archived", "deleted")
 """Where a goal stands:
@@ -79,13 +76,11 @@ class Goal:
     fixed_time: bool | None = None
     """Inherited by events (and sub-goals) that don't set their own."""
 
-    cadence: Cadence | None = None
-    """How often its health is assessed; `None` if it never is."""
-
     measure: dict[str, Any] | None = None
-    """How its health is assessed: {"kind": ..., ...}, with the fields its
-    kind takes -- see utilities/goal_measures.py, and docs/goals-design.md
-    section 7."""
+    """How its health is rated in each day's reflection: {"kind": ...,
+    ...}, with the fields its kind takes -- see utilities/goal_measures.py.
+    Every active goal is reflected on daily; one without a measure is
+    rated by the mean of its sub-goals' ratings, if it has any."""
 
     target: str | None = None
     """Free-text target, e.g. "300 min/week"."""
@@ -103,15 +98,16 @@ class Goal:
     """Read-only: when it was created."""
 
     health: int | None = None
-    """Read-only cache: its latest confirmed rating (0-100) at its cadence
-    -- see utilities/goal_health.py, which keeps these three up to date."""
+    """Read-only cache: its latest confirmed daily rating (0-100) -- see
+    utilities/goal_health.py, which keeps these three up to date."""
 
     health_period: str | None = None
-    """Read-only cache: the period `health` (or a skip) covers."""
+    """Read-only cache: the day `health` (or a skip) covers, e.g.
+    "2026-09-30"."""
 
     health_trend: str | None = None
-    """Read-only cache: its last 8 confirmed ratings at its cadence, oldest
-    first and comma-separated, "-" for a period with none."""
+    """Read-only cache: its last 8 days' confirmed ratings, oldest first
+    and comma-separated, "-" for a day with none."""
 
     @property
     def active(self) -> bool:
@@ -145,7 +141,6 @@ class Goal:
             background_color=text("background_color"),
             priority=int(priority) if priority is not None else None,
             fixed_time=boolean("fixed_time"),
-            cadence=text("cadence"),
             measure=json.loads(measure) if measure is not None else None,
             target=text("target"),
             deadline=day("deadline"),
@@ -192,7 +187,6 @@ HEADER_ROW = [
     "background_color",
     "priority",
     "fixed_time",
-    "cadence",
     "measure",
     "target",
     "deadline",
