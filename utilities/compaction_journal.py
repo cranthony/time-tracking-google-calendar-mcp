@@ -140,6 +140,12 @@ class CompactionJournal:
         every read of it falls within this."""
         return TabRange(self._spreadsheet_id, self._sheet_id, "A1:H")
 
+    def prefetch(self, ranges: list[TabRange]) -> None:
+        """`SheetsClient.prefetch`, through this tab's client: for a
+        caller reading several tabs of this spreadsheet in one step (see
+        server.py's `_prefetch`)."""
+        self._sheets_client.prefetch(ranges)
+
     @staticmethod
     def ensure(sheets_client: SheetsClient, spreadsheet_id: str) -> "CompactionJournal":
         """The calendar's compactions tab within `spreadsheet_id`,

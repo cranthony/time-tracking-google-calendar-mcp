@@ -233,6 +233,9 @@ class Reflections:
     # -- preparing --------------------------------------------------------------
 
     def prepare(self, day: date | None = None) -> ReflectionContext:
+        # The goals and the day's notes, in one read request (see
+        # `SheetsClient.prefetch`).
+        self._goals.prefetch([self._goals.whole_tab, self._notes.whole_tab])
         tree = self._goals.tree()
         if day is None:
             return self._choices(tree)

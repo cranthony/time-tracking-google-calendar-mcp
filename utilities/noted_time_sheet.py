@@ -195,7 +195,7 @@ class NotedTimeSheet:
     def prefetch(self, ranges: list[TabRange]) -> None:
         """`SheetsClient.prefetch`, through this tab's client: for a
         caller reading several tabs of this spreadsheet in one step (see
-        utilities/note_compactor.py)."""
+        utilities/note_compactor.py, and server.py's `_prefetch`)."""
         self._sheets_client.prefetch(ranges)
 
     @staticmethod

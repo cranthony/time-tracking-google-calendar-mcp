@@ -452,6 +452,18 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
+def _prefetch(*tabs) -> None:
+    """Read each of `tabs` -- objects for tabs of the calendar's metadata
+    spreadsheet, with a `whole_tab` and a `prefetch` (`Goals`,
+    `NotedTimeSheet`, `CompactionJournal`) -- whole, in one read request,
+    so the rest of this tool call's reads of them come from its
+    `cached_sheet_reads` (see `SheetsClient.prefetch`). For a tool that
+    reads more than one tab: Google Sheets caps read requests at 60 a
+    minute, and each tab read on its own would cost one. Pinned by
+    tests/test_sheet_read_requests.py."""
+    tabs[0].prefetch([tab.whole_tab for tab in tabs])
+
+
 def writes(tool: Callable[P, R]) -> Callable[P, R]:
     """Mark `tool` as one that may write to Google: it holds WRITE_LOCK
     for its whole call (see calendar_clients/write_lock.py), so it never
@@ -603,6 +615,7 @@ def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
     spent on it and its sub-goals in the 24 hours and 7 days (wall-clock)
     up to as_of, when notes were last compacted into the calendar."""
     with track("get_goals"), cached_sheet_reads():
+        _prefetch(get_goal_store(), get_compaction_journal())
         try:
             return get_goal_store().get_goals(statuses)
         except (ValueError, EventLabelConflictError) as exc:
@@ -648,6 +661,7 @@ def create_goal(goal: Goal) -> GoalList:
     their sub-goals instead; with "include_sub_goals": false, at just the
     goals' own events, not their sub-goals'."""
     with track("create_goal"), cached_sheet_reads():
+        _prefetch(get_goal_store(), get_compaction_journal())
         try:
             return get_goal_store().create_goal(goal)
         except (ValueError, EventLabelConflictError) as exc:
@@ -675,6 +689,7 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
     is checked as for create_goal. Returns the resulting proposed, active
     and inactive goals."""
     with track("update_goal"), cached_sheet_reads():
+        _prefetch(get_goal_store(), get_compaction_journal())
         try:
             return get_goal_store().update_goal(goal, clear_fields or ())
         except (ValueError, EventLabelConflictError) as exc:
@@ -690,6 +705,7 @@ def reorder_goals(goal_ids: list[str]) -> GoalList:
     goals) to order them all. Returns the resulting proposed, active and
     inactive goals."""
     with track("reorder_goals"), cached_sheet_reads():
+        _prefetch(get_goal_store(), get_compaction_journal())
         try:
             return get_goal_store().reorder_goals(goal_ids)
         except (ValueError, EventLabelConflictError) as exc:
@@ -705,6 +721,7 @@ def sync_goals_from_sheet() -> GoalList:
     other label removed. Returns the resulting proposed, active and
     inactive goals."""
     with track("sync_goals_from_sheet"), cached_sheet_reads():
+        _prefetch(get_goal_store(), get_compaction_journal())
         try:
             return get_goal_store().sync()
         except (ValueError, EventLabelConflictError) as exc:
@@ -762,6 +779,7 @@ def rebuild_goal_health_cache() -> GoalList:
     health_trend in the goals tab) from its confirmed assessments, e.g.
     after hand edits. Returns every goal, whatever its status."""
     with track("rebuild_goal_health_cache"), cached_sheet_reads():
+        _prefetch(get_goal_store(), get_compaction_journal())
         try:
             return get_goal_health().rebuild_cache()
         except ValueError as exc:
@@ -832,6 +850,7 @@ def get_compaction_status() -> CompactionStatus:
     """When notes were last compacted into the calendar, and the latest
     note compacted. Read-only."""
     with track("get_compaction_status"), cached_sheet_reads():
+        _prefetch(get_noted_time_sheet(), get_compaction_journal())
         _notes, latest = get_noted_time_sheet().read_with_latest_compacted()
         return CompactionStatus(
             last_compaction=get_compaction_journal().last_stamped_now(),

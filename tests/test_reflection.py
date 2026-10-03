@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
+from calendar_clients.google_sheets import TabRange
 from tests.fake_sheets import FakeSheets
 from tests.test_goal_health import NOW, TODAY, TZ, YESTERDAY, FakeCalendar, _event
 from utilities.goal_health import Assessment, GoalHealth
@@ -14,6 +15,9 @@ from utilities.reflection import Reflections, reflection_event_id
 
 
 class FakeNotes:
+    whole_tab = TabRange("spreadsheet-1", 99, "A1:C")
+    """Prefetched along with the goals; FakeSheets has no cache to fill."""
+
     def __init__(self, notes=()):
         self.notes = list(notes)
 
