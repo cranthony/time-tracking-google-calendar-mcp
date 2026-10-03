@@ -305,10 +305,10 @@ class TestCancelCreateAndMerge:
             goal_names={"work": "Time Tracker", "writing": "Writing"},
         )
 
-        lines = plan.timeline.text.splitlines()
-        assert any("Email · on schedule  ◆ Time Tracker" in line for line in lines)
-        assert any("Report · on schedule  ◆ Time Tracker ◇ Writing" in line for line in lines)
-        assert "Goal time: Time Tracker 2h00m · Writing 1h00m" in lines
+        text = plan.timeline.text
+        assert "┌ Email\n          ◆ Time Tracker\n" in text
+        assert "├ Report\n          ◆ Time Tracker ◇ Writing\n" in text
+        assert "Goal time:\n  2h00m  Time Tracker\n  1h00m  Writing\n" in text
 
     def test_create_needs_both_edges(self):
         with pytest.raises(CompactionError, match="needs both a start and an end"):
@@ -703,19 +703,38 @@ class TestTimeline:
         assert notes["n2"].annotates == "Google Salsa class"
         assert notes["n3"].anchors == ["end of Dinner", "start of Reading"]
 
-    def test_renders_the_two_lanes_side_by_side(self):
-        lines = self._salsa().timeline.text.splitlines()
+    def test_renders_notes_and_events_in_one_narrow_column(self):
+        text = self._salsa().timeline.text
 
-        def row(prefix):
-            return next(line for line in lines if line.startswith(prefix))
+        assert text.startswith(
+            "17:00 ┌ Work\n"
+            "18:15 ● Leaving for salsa early to prep\n"
+            "     →├ Salsa prep · new\n"
+            "18:30 ├ Google Salsa class\n"
+            "19:00 ● Learned the cross-body lead\n"
+            "        ↳ Google Salsa class\n"
+            "19:30 ├ Dinner\n"
+            "20:10 ● Done with dinner\n"
+            "     →└ Dinner ends · +10m (was 20:00)\n"
+            "     →├ Reading · +10m (was 20:00)\n"
+            "20:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+            "21:00 └ Reading ends\n"
+        )
+        assert max(len(line) for line in text.splitlines()) <= 40
 
-        assert "Leaving for salsa early to prep" in row("18:15") and "─ ├ Salsa prep · new" in row("18:15")
-        assert row("18:30").endswith("├ Google Salsa class · on schedule")
-        assert "● Learned the cross-body lead" in row("19:00")
-        assert row("19:00").endswith("│   ↳ added to Google Salsa class")
-        assert "─ └ Dinner ends · 10m late (planned 20:00)" in row("20:10")
-        assert any("├ Reading · starts 10m late (planned 20:00)" in line for line in lines)
-        assert "┄┄ now" in row("20:30")
+    def test_wraps_a_long_note_under_its_text(self):
+        plan = _plan([_note(1, "09:10", "finally got through the whole inbox after a long detour")], [])
+
+        assert (
+            "09:10 ● finally got through the whole\n"
+            "        inbox after a long detour\n"
+        ) in plan.timeline.text
+
+    def test_says_where_a_note_set_an_edge_at_another_time(self):
+        # "Leaving 15 minutes early": the note isn't at the edge it set.
+        plan = _plan([_note(1, "09:30", "leaving in 15")], [_keep("e1", end_note="n1", end=time_at("09:45"))])
+
+        assert "09:30 ● leaving in 15\n        → end of Email (09:45)\n" in plan.timeline.text
 
     def test_marks_the_last_compaction_before_what_came_at_the_same_moment(self):
         plan = _plan([_note(1, "09:10", "email")], [], last_compaction=time_at("09:00"))
@@ -743,8 +762,8 @@ class TestTimeline:
         )
 
         text = plan.timeline.text
-        assert "✕ Report · cancelled (was 10:00–11:00)" in text
-        assert "┌ Lunch · moved 30m later (planned 12:00–13:00)" in text
+        assert "✕ Report · cancelled (was\n        10:00–11:00)" in text
+        assert "┌ Lunch · ⇢30m (was 12:00–13:00)" in text
 
     def test_marks_notes_that_were_not_added_anywhere(self):
         plan = _plan([_note(1, "11:10", "wandered"), _note(2, "09:20", "skip me")], [], ignore_notes=["n2"])

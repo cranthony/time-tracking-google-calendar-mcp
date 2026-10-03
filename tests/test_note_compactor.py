@@ -318,7 +318,7 @@ class TestTheCompactionWindow:
         for timeline in (before, after):
             assert timeline.last_compaction == time_at("10:05+1")
             assert "✓ starting email (compacted)" in timeline.text
-            assert "10:05  ┄" in timeline.text and "┄┄ last compaction" in timeline.text
+            assert "10:05 ┄┄ last compaction ┄" in timeline.text
 
     def test_a_later_round_reads_its_notes_and_the_previous_note_in_one_request(self):
         # Google Sheets caps read requests per minute, so the notes tab
@@ -389,8 +389,8 @@ class TestDryRun:
         email = next(e for e in result.timeline.events if e.event_id == "e1")
         assert email.status == "adjusted"
         assert (email.start_note, email.end_note) == (setup.note_id(2), setup.note_id(3))
-        assert "two lanes" in result.message
-        assert "└ Email ends · 20m late (planned 10:00)" in result.timeline.text
+        assert "timeline" in result.message
+        assert "└ Email ends · +20m (was 10:00)" in result.timeline.text
 
     def test_with_no_decisions_every_past_event_is_recorded_on_schedule(self):
         setup = _standard()
@@ -1001,7 +1001,8 @@ class TestGoals:
         assert by_id["e2"].goal_names == ["Time Tracker"]
         assert [g.path for g in context.goals] == ["Time Tracker", "Inbox zero"]  # active ones
         text = context.timeline.text
-        assert "Email  ◇ Inbox zero" in text and "Report  ◆ Time Tracker" in text
+        assert "┌ Email\n          ◇ Inbox zero" in text
+        assert "├ Report\n          ◆ Time Tracker" in text
 
     def test_future_events_get_no_suggestions(self):
         events = _day()

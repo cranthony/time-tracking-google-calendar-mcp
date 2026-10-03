@@ -10,12 +10,12 @@ to fill a gap unless a decision says so.
 
 Reading free-form text is *not* this module's job -- the MCP client (a
 model) does that, compares the notes to the plan (see
-utilities/compaction_timeline.py for the two-lane view it's given), and
+utilities/compaction_timeline.py for the timeline it's given), and
 hands back one `EventDecision` per event the notes show happened
 differently. This module is the deterministic half: a pure function,
 `plan_compaction`, with no API access, that validates those decisions and
 works out exactly which events to update, create, and cancel -- and the
-resulting two-lane `Timeline` to show the user -- so everything risky is
+resulting `Timeline` to show the user -- so everything risky is
 testable and the plan is previewable before anything is written.
 
 ## Decisions (`EventDecision`)
@@ -998,7 +998,7 @@ def planned_timeline(
     previous_note: PlanNote | None = None,
     last_compaction: datetime | None = None,
 ) -> Timeline:
-    """The two lanes before anything is decided: the notes beside the
+    """The timeline before anything is decided: the notes beside the
     day's events as planned -- what a model compares to make its
     decisions. `suggested` (event id -> goal ids) marks goals suggested
     for events that have none. `previous_note`, an already-compacted note,

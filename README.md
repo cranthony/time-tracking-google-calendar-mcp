@@ -43,7 +43,7 @@ pip install -r requirements-dev.txt
 - [`utilities/goals.py`](utilities/goals.py) — `Goals`, the application-level policy that ties a `CalendarClient` to *its* goals tab: creating and updating goals, keeping the calendar's event labels in sync with the active ones, and migrating a calendar's event labels into goals the first time. `GoalTree` answers the read-only questions (a goal's path, what it inherits, which label an event gets). See [Goals](#goals) below.
 - [`utilities/noted_time_sheet.py`](utilities/noted_time_sheet.py) — a thin, per-tab API mirroring `goal_sheet.py`: `NotedTimeSheet.ensure` (the noted-times tab of a given calendar metadata spreadsheet, via `calendar_metadata_sheet.ensure_tab`) and, bound to one already-known tab, `read`/`read_with_rows`/`append`/`mark_compacted`/`garbage_collect` its rows as this module's own `NotedTime` dataclass (`timestamp`/`description`/`compaction_id`). Compacting a note stamps its `compaction_id` rather than deleting it; a note's row, together with its timestamp, forms its id, stable unless `garbage_collect` shifts it (see [Compacting notes](#compacting-notes) below). Unlike a goal, a noted time has no Calendar API counterpart to reconcile with, so there's no `Goals`-equivalent layer above this one. See [Calendar metadata sheets](#calendar-metadata-sheets) below.
 - [`utilities/note_compaction.py`](utilities/note_compaction.py) — `plan_compaction`, a pure function (no API access) that turns a day's notes, plus a model's decisions about which events they show happened differently, into the calendar changes that realign the day to them. See [Compacting notes](#compacting-notes) below.
-- [`utilities/compaction_timeline.py`](utilities/compaction_timeline.py) — `Timeline`, the two-lane view of a compaction (the day's notes beside its events, aligned by time), as data and as fixed-width text.
+- [`utilities/compaction_timeline.py`](utilities/compaction_timeline.py) — `Timeline`, the view of a compaction (the day's notes and its events in time order), as data and as narrow fixed-width text.
 - [`utilities/compaction_journal.py`](utilities/compaction_journal.py) — `CompactionJournal`, the write-ahead journal tab that records each approved compaction and its progress, so a failed one can be resumed exactly.
 - [`utilities/compaction_marker.py`](utilities/compaction_marker.py) — `CompactionMarker`, the bright red, 5-minute event in Google Calendar that ends at the last compaction. See [Compacting notes](#compacting-notes) below.
 - [`utilities/note_compactor.py`](utilities/note_compactor.py) — `NoteCompactor`, which ties the notes tab, the calendar, the planner and the journal together behind the `prepare_compaction`/`compact_notes`/`abandon_compaction` tools.
@@ -171,20 +171,24 @@ Notes that don't set an edge have their text added to the description of the eve
 
 **Moving bedtime** (the day's own end-of-day sleep event) works differently, since nothing in the day comes after it for the rest to reflow into: it moves where the day ends. A later bedtime just leaves the evening free; an earlier one shortens whatever runs past it to end there and cancels what starts after it (or can't be shortened that far), and a fixed-time event in the way is an error. Its end — your wake-up time — is the start of the *next* day, which compacting this one never adjusts: moving only its start changes only the bedtime, and if its end does move, the plan carries a warning to check the next morning's events (and move them with `update_event` if they now overlap).
 
-**The timeline** (`utilities/compaction_timeline.py`) is the notes on one line and the events on a parallel one, aligned by time, so you can see which note moved which event and which notes just describe what was going on. It's plain data — each note with the edges it set or the event it was added to, each event with its planned and resulting times and a status (`on_schedule`, `adjusted`, `reflowed`, `new`, `cancelled`, `merged`, `planned`) — for a client that can draw it, plus `text`, a fixed-width rendering for one that can't:
+**The timeline** (`utilities/compaction_timeline.py`) is the notes and events in time order, so you can see which note moved which event and which notes just describe what was going on. It's plain data — each note with the edges it set or the event it was added to, each event with its planned and resulting times and a status (`on_schedule`, `adjusted`, `reflowed`, `new`, `cancelled`, `merged`, `planned`) — for a client that can draw it, plus `text`, a fixed-width rendering for one that can't — one column, 40 characters wide so it reads on a phone, each moment's notes followed by the event edges at it:
 
 ```
- TIME  NOTES                                 EVENTS
-17:00                                        ┌ Work · on schedule
-18:15  ● Leaving for salsa class early t… ── ├ Salsa prep · new
-18:30                                        ├ Google Salsa class · on schedule
-19:00  ● Learned the cross-body lead         │   ↳ added to Google Salsa class
-19:30                                        ├ Dinner
-20:10  ● Done with dinner ────────────────── └ Dinner ends · 10m late (planned 20:00)
-                                             ├ Reading · starts 10m late (planned 20:00)
-20:30  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  ┄┄ now
-21:00                                        └ Reading ends
+17:00 ┌ Work
+18:15 ● Leaving for salsa early to prep
+     →├ Salsa prep · new
+18:30 ├ Google Salsa class
+19:00 ● Learned the cross-body lead
+        ↳ Google Salsa class
+19:30 ├ Dinner
+20:10 ● Done with dinner
+     →└ Dinner ends · +10m (was 20:00)
+     →├ Reading · +10m (was 20:00)
+20:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+21:00 └ Reading ends
 ```
+
+`→` marks an edge the note just above it set, and `↳` the event a note's text was added to. A past event with no tag happened as planned; `+`/`−` is how late or early an edge was, and `⇢`/`⇠` how far a whole event moved. Each event's goals go on the line under it, each goal's total time follows the events, and a short legend ends it. Long lines wrap, indented under their text.
 
 **Safety.** Before anything is applied, the whole approved plan — the decisions, and every step with its before-state — is written to the **Compactions** tab (see [Calendar metadata sheets](#calendar-metadata-sheets)). Committing first checks the notes and calendar still match what was previewed, then applies each step and checks it off; a failure partway leaves the journal at exactly that point, and calling `compact_notes` with the same `compaction_id` again finishes only what's left. Created events get deterministic ids (Calendar accepts a caller-chosen id), so a retried create can't duplicate. The notes are stamped compacted only after everything applied, so nothing is lost if it dies. While a compaction is unfinished a new one is refused until it's resumed or `abandon_compaction`ed (steps already applied stay applied).
 

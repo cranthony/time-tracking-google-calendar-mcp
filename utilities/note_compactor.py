@@ -175,11 +175,9 @@ DECISION_GUIDE = (
     "clears them). Ask about a goal only when genuinely torn between two. In the timeline, ◆ marks "
     "a goal an event already serves and ◇ one it's being given (or, before deciding, one "
     "suggested); a correction from the user is just a new dry run. "
-    "After every dry run, show the user the result's `timeline` as two parallel lanes -- notes on "
-    "the left, events on the right, aligned by time, with each anchoring note joined to the event "
-    "edge it sets -- drawing it as a visual if you can render one, otherwise showing "
-    "`timeline.text` verbatim in a code block, and list the warnings, asking whether to apply it "
-    "or what to change. " + _APPROVAL_RULE
+    "After every dry run, show the user the result's `timeline.text` verbatim in a code block "
+    "(it's laid out narrow enough for a phone, so don't reformat or widen it), and list the "
+    "warnings, asking whether to apply it or what to change. " + _APPROVAL_RULE
 )
 
 
@@ -456,7 +454,7 @@ class NoteCompactor:
             timeline=plan.timeline,
             message=(
                 f"{len(plan.changes)} calendar change(s) planned for {len(day.notes)} note(s); "
-                "nothing has been changed yet. Show the user `timeline` as two lanes (see the "
+                "nothing has been changed yet. Show the user `timeline.text` in a code block (see the "
                 "instructions from prepare_compaction) and the warnings. "
                 + _APPROVAL_RULE
                 + f" Once they approve, apply it with compaction_id={compaction_id!r} and "

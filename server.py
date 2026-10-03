@@ -974,7 +974,7 @@ def compact_notes(
     are added to the event they fall within, except those in
     `ignore_notes`. dry_run=True (the default) changes nothing: you get the
     proposed changes, a compaction_id, and a `timeline` of the notes beside
-    the resulting events -- show that to the user as two parallel lanes.
+    the resulting events -- show its `text` to the user in a code block.
     If past events would overlap, the call fails naming them: decide which
     gives way (asking the user if the notes don't say) and call again.
 
