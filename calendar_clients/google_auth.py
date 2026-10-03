@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google_auth_httplib2 import AuthorizedHttp
 from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import build_http
 
 from utilities.memory_diagnostics import track
 
@@ -105,3 +109,46 @@ def load_credentials(token_path: Path, credentials_path: Path) -> Credentials:
                 )
 
         return creds
+
+
+class _PerThreadHttp:
+    """An http object for `googleapiclient.discovery.build` that gives each
+    thread its own connection. The MCP server runs every (sync) tool on a
+    worker thread, so tool calls that arrive together really do run at
+    once -- and an httplib2.Http, which a service otherwise holds just one
+    of, isn't thread-safe: two threads sharing its TLS socket fail with
+    `SSLError: WRONG_VERSION_NUMBER`, or crash the process outright with a
+    segfault. googleapiclient only ever calls `request` and `close` on it.
+
+    The credentials are still shared, so a refresh on one thread is seen
+    by the rest."""
+
+    def __init__(self, credentials: Credentials):
+        self._credentials = credentials
+        self._local = threading.local()
+        self._lock = threading.Lock()
+        self._all: list[AuthorizedHttp] = []
+
+    def _http(self) -> AuthorizedHttp:
+        http = getattr(self._local, "http", None)
+        if http is None:
+            http = self._local.http = AuthorizedHttp(self._credentials, http=build_http())
+            with self._lock:
+                self._all.append(http)
+        return http
+
+    def request(self, *args, **kwargs):
+        return self._http().request(*args, **kwargs)
+
+    def close(self) -> None:
+        with self._lock:
+            for http in self._all:
+                http.close()
+            self._all.clear()
+
+
+def build_service(service_name: str, version: str, *, credentials: Credentials):
+    """`googleapiclient.discovery.build(service_name, version)` authorized
+    with `credentials`, safe to call from several threads at once -- see
+    `_PerThreadHttp`."""
+    return build(service_name, version, http=_PerThreadHttp(credentials))
