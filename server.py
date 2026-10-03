@@ -656,10 +656,14 @@ def create_goal(goal: Goal) -> GoalList:
     "zero_at_days": 90} (number of its events over the interval: 100
     while the target's met; past it, falling to 0 by zero_at_days since
     the interval's start -- without zero_at_days, a shortfall is rated in
-    proportion, as for duration), {"kind": "wake_time", "target": "07:00",
-    "grace_min": 10, "zero_at_min": 60} (full marks within the grace, none
-    at zero_at_min late), {"kind": "subjective", "prompt": "How did it
-    go?", "interval_days": 7} (asked in a reflection once interval_days,
+    proportion, as for duration), {"kind": "time_constraint", "edge":
+    "start", "target": "09:30", "when": "by", "grace_min": 10,
+    "zero_at_min": 60} (when the day's first event of the goal starts --
+    or, with edge "end", its last ends -- against the target: full marks
+    by it, plus the grace, none at zero_at_min late; when "after", the
+    other way round; a day without any is skipped), {"kind":
+    "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
+    in a reflection once interval_days,
     default 1, have passed since it was last answered; carried over from
     the day before in between), {"kind": "llm", "rubric": "..."} (you
     propose a rating against the rubric in a reflection; it may refer to
@@ -668,10 +672,12 @@ def create_goal(goal: Goal) -> GoalList:
     "weighted" with "weights": {sub-goal id: weight}, a sub-goal not
     listed weighing 0; or "percentile" with "percentile": 0-100, 0 being
     the lowest and 100 the highest). Only the fields shown are allowed. A
-    duration or count measure looks at the events of the goal and its
-    sub-goals, or, given "goal_ids": [...], at those of these goals and
-    their sub-goals instead; with "include_sub_goals": false, at just the
-    goals' own events, not their sub-goals'."""
+    duration, count or time_constraint measure looks at the events of the
+    goal and its sub-goals, or, given "events_of": "<goal id>", at those of
+    that goal and its sub-goals instead, as though it were that goal (e.g.
+    a "work 40 hours a week" sub-goal measuring its parent's events,
+    without tagging any event with it); with "include_sub_goals": false,
+    at just that goal's own events, not its sub-goals'."""
     with track("create_goal"), cached_sheet_reads():
         _prefetch(get_goal_store(), get_compaction_journal())
         try:
@@ -747,7 +753,7 @@ def sync_goals_from_sheet() -> GoalList:
 def measure_goals(day: date | None = None, goal_ids: list[str] | None = None) -> list[Assessment]:
     """Proposed ratings of one day (from waking on it to waking the next;
     by default the last one that's over) for the goals whose measure the
-    calendar can answer: duration, count, wake_time, and rollups whose
+    calendar can answer: duration, count, time_constraint, and rollups whose
     sub-goals are all rated that day. Each has an explanation of how its
     0-100 rating was reached. Writes nothing; ratings are only confirmed
     in a reflection."""

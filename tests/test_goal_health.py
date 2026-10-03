@@ -405,24 +405,69 @@ class TestMeasureDurationAndCount:
         assert rated.rating == round(100 * (1 - 17 / 48))
         assert rated.metrics["lapsed_days"] == 0.7
 
-    def test_a_measure_can_look_at_other_goals_events_instead(self):
-        health, store, calendar, goals = _setup(
-            [Goal(name="Cooking", measure={"kind": "duration", "target_min": 300}), Goal(name="Hosting")]
-        )
-        cooking, hosting = goals["Cooking"], goals["Hosting"]
-        brunch = _child(store, "Brunch", hosting)
-        store.update_goal(
-            Goal(id=cooking.id, measure={"kind": "duration", "target_min": 300, "goal_ids": [hosting.id]})
+    def test_a_measure_can_look_at_another_goals_events_as_though_it_were_that_goal(self):
+        # "Work 40 hours a week", under "Fulfil my work commitment",
+        # measuring its parent's events: none is given the sub-goal.
+        health, store, calendar, goals = _setup([Goal(name="Work")])
+        work = goals["Work"]
+        meetings = _child(store, "Meetings", work)
+        hours = _child(
+            store,
+            "40 hours a week",
+            work,
+            measure={"kind": "duration", "target_min": 2400, "interval_days": 7, "events_of": work.id},
         )
         calendar.events = [
-            _event("2026-10-01T08:00", "2026-10-01T10:00", [cooking.id]),  # its own: not counted
-            _event("2026-10-01T18:00", "2026-10-01T19:00", [hosting.id]),  # 60
-            _event("2026-10-01T11:00", "2026-10-01T12:30", [brunch.id]),  # 90, Hosting's sub-goal
+            _event("2026-10-01T09:00", "2026-10-01T12:00", [work.id]),  # 180
+            _event("2026-10-01T13:00", "2026-10-01T14:00", [meetings.id]),  # 60, Work's sub-goal
+            _event("2026-09-30T09:00", "2026-09-30T17:00", [work.id]),  # 480
         ]
+
+        (rated,) = health.measure(goal_ids=[hours.id])
+
+        assert rated.metrics["minutes"] == 720
+        assert rated.explanation == "12h of 40h in the last 7 days → 30"
+
+    def test_events_of_can_leave_out_that_goals_sub_goals(self):
+        health, store, calendar, goals = _setup([Goal(name="Work")])
+        work = goals["Work"]
+        meetings = _child(store, "Meetings", work)
+        hours = _child(
+            store,
+            "Desk time",
+            work,
+            measure={"kind": "duration", "target_min": 300, "events_of": work.id, "include_sub_goals": False},
+        )
+        calendar.events = [
+            _event("2026-10-01T09:00", "2026-10-01T12:00", [work.id]),  # 180
+            _event("2026-10-01T13:00", "2026-10-01T14:00", [meetings.id]),  # left out
+        ]
+
+        (rated,) = health.measure(goal_ids=[hours.id])
+
+        assert rated.metrics["minutes"] == 180
+
+    def test_events_of_must_be_a_goal(self):
+        _, store, _, goals = _setup([Goal(name="Work")])
+
+        with pytest.raises(ValueError, match="\"events_of\" names 'nope', which isn't a goal"):
+            store.update_goal(
+                Goal(id=goals["Work"].id, measure={"kind": "duration", "target_min": 60, "events_of": "nope"})
+            )
+
+    def test_a_measure_from_before_events_of_still_counts_its_goal_ids(self):
+        health, store, calendar, goals = _setup([Goal(name="Cooking"), Goal(name="Hosting")])
+        cooking, hosting = goals["Cooking"], goals["Hosting"]
+        saved = store.tree().goals
+        next(g for g in saved if g.id == cooking.id).measure = {
+            "kind": "duration", "target_min": 300, "goal_ids": [hosting.id],
+        }
+        store._sheet.write(saved)
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T19:00", [hosting.id])]
 
         (cooked,) = health.measure(goal_ids=[cooking.id])
 
-        assert cooked.metrics["minutes"] == 150
+        assert cooked.metrics["minutes"] == 60
 
     def test_a_measure_can_leave_out_sub_goals_events(self):
         health, store, calendar, goals = _setup([Goal(name="Cooking")])
@@ -441,33 +486,84 @@ class TestMeasureDurationAndCount:
         assert cooked.metrics["minutes"] == 120
 
 
-class TestMeasureWakeTime:
-    def _goal(self):
-        return Goal(name="Wake 7am", measure={"kind": "wake_time", "target": "07:00", "grace_min": 10, "zero_at_min": 60})
+class TestMeasureTimeConstraint:
+    def _setup(self, **measure):
+        health, store, calendar, goals = _setup([Goal(name="Work")])
+        work = goals["Work"]
+        constraint = _child(
+            store,
+            "Constraint",
+            work,
+            measure={"kind": "time_constraint", "events_of": work.id, "grace_min": 10, "zero_at_min": 60, **measure},
+        )
+        return health, calendar, work, constraint
 
-    def test_scores_minutes_late_past_the_grace(self):
-        health, _, calendar, _ = _setup([self._goal()])
-        calendar.events = [_event("2026-09-30T23:00", "2026-10-01T07:35", is_end_of_day_sleep=True)]
+    def test_rates_the_first_events_start_by_a_time_falling_off_past_the_grace(self):
+        health, calendar, work, constraint = self._setup(edge="start", target="09:30")
+        calendar.events = [
+            _event("2026-10-01T10:05", "2026-10-01T12:00", [work.id]),  # 35 late
+            _event("2026-10-01T13:00", "2026-10-01T17:00", [work.id]),
+            _event("2026-10-01T06:00", "2026-10-01T06:30", [work.id]),  # before the day started, at 7
+        ]
 
-        (woke,) = health.measure()
+        (rated,) = health.measure(goal_ids=[constraint.id])
 
-        assert woke.day == YESTERDAY
-        assert woke.rating == 50  # 35 late, grace 10, zero at 60
-        assert woke.explanation == "Woke 07:35; target 07:00 with 10 min grace → 50"
+        assert rated.day == YESTERDAY
+        assert rated.rating == 50  # 35 late, grace 10, zero at 60
+        assert rated.explanation == "Started 10:05; by 09:30 with 10 min grace → 50"
+        assert rated.metrics == {"edge": "start", "target": "09:30", "when": "by", "at": "10:05"}
+
+    def test_rates_the_last_events_end(self):
+        health, calendar, work, constraint = self._setup(edge="end", target="17:30")
+        calendar.events = [
+            _event("2026-10-01T09:30", "2026-10-01T12:00", [work.id]),
+            _event("2026-10-01T13:00", "2026-10-01T17:35", [work.id]),  # within the grace
+        ]
+
+        (rated,) = health.measure(goal_ids=[constraint.id])
+
+        assert (rated.rating, rated.explanation) == (100, "Ended 17:35; by 17:30 with 10 min grace → 100")
+
+    def test_after_rates_being_too_early(self):
+        health, calendar, work, constraint = self._setup(edge="start", target="08:00", when="after")
+        calendar.events = [_event("2026-10-01T07:20", "2026-10-01T09:00", [work.id])]  # 40 early
+
+        (rated,) = health.measure(goal_ids=[constraint.id])
+
+        assert (rated.rating, rated.explanation) == (40, "Started 07:20; not before 08:00 with 10 min grace → 40")
+
+    def test_a_day_without_such_events_is_skipped(self):
+        health, _, _, constraint = self._setup(edge="start", target="09:30")
+
+        (rated,) = health.measure(goal_ids=[constraint.id])
+
+        assert (rated.rating, rated.explanation) == ("skip", "No events of Work that day → skip")
+
+    def test_without_events_of_it_reads_its_own_goals_events(self):
+        # "Up by 07:00": the "get up" event, given the goal itself.
+        health, store, calendar, goals = _setup(
+            [Goal(name="Get up", measure={"kind": "time_constraint", "edge": "start", "target": "07:00"})]
+        )
+        calendar.events = [_event("2026-10-01T07:20", "2026-10-01T07:40", [goals["Get up"].id])]
+
+        (rated,) = health.measure()
+
+        assert rated.explanation == "Started 07:20; by 07:00 with 0 min grace → 67"
 
     def test_up_past_midnight_the_last_day_to_end_is_still_the_day_before(self):
-        _, store, calendar, _ = _setup([self._goal()])
-        calendar.events = [_event("2026-09-30T23:00", "2026-10-01T07:35", is_end_of_day_sleep=True)]
+        _, store, calendar, goals = _setup(
+            [Goal(name="Get up", measure={"kind": "time_constraint", "edge": "start", "target": "07:00"})]
+        )
         # 1am on the 3rd, before the night's sleep: it's still the 2nd.
         health = GoalHealth(calendar, store, now=lambda: datetime(2026, 10, 3, 1, tzinfo=TZ))
 
-        (woke,) = health.measure()
+        (rated,) = health.measure()
 
         assert health.today() == TODAY
-        assert woke.day == YESTERDAY
+        assert rated.day == YESTERDAY
 
     def test_a_day_that_isnt_over_cant_be_measured(self):
-        health, *_ = _setup([self._goal()])
+        health, *_ = self._setup(edge="start", target="09:30")
 
         with pytest.raises(ValueError, match="isn't over yet"):
             health.measure(TODAY)

@@ -26,7 +26,8 @@ only confirmed ratings feed a goal's at-a-glance health: the `health`/
 
 **Measuring.** `measure` proposes a rating for each goal whose measure
 the calendar can answer -- `duration` (minutes of its events over its
-interval), `count` (how many), `wake_time` (when the day's sleep ended)
+interval), `count` (how many), `time_constraint` (when the day's events
+start or end)
 and `rollup` (its immediate sub-goals' confirmed ratings that day) --
 each with a one-line `explanation` of how the number was reached. It
 never writes anything. See utilities/goal_measures.py for the specs.
@@ -46,7 +47,7 @@ from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_periods import Period, period_containing
 from utilities.goal_sheet import GOAL_STATUSES, Goal
 from utilities.goals import OVERALL_ID, GoalList, Goals, GoalTree
-from utilities.sleep_days import current_day_from, day_start, listing_range, period_window
+from utilities.sleep_days import current_day_from, listing_range, period_window
 
 HEALTH_CALENDAR_METADATA_KEY = "goal-health-calendar"
 HEALTH_CALENDAR_SUMMARY = "Goal Health"
@@ -76,7 +77,10 @@ Rating = int | Literal["skip"]
 Method = Literal["metric", "subjective", "llm", "rollup"]
 Status = Literal["proposed", "confirmed"]
 
-MEASURED_KINDS = frozenset({"duration", "count", "wake_time", "rollup"})
+MEASURED_KINDS = frozenset({"duration", "count", "time_constraint", "rollup"})
+
+_EVENT_KINDS = frozenset({"duration", "count", "time_constraint"})
+"""The measure kinds read from the calendar's events."""
 """The measure kinds `measure` can rate from the calendar."""
 
 
@@ -289,7 +293,7 @@ class GoalHealth:
     def measure(self, day: date | None = None, goal_ids: list[str] | None = None) -> list[Assessment]:
         """Proposed assessments of `day` (default: the last one that's
         over) for the rated goals whose measure the calendar can answer:
-        duration, count, wake_time, and rollups whose rated sub-goals all
+        duration, count, time_constraint, and rollups whose rated sub-goals all
         have a confirmed rating that day. Writes nothing. Raises
         utilities/sleep_days.py's NotOver or MissingSleep (both ValueErrors)
         if the day isn't over, or the sleeps that bound it aren't in the
@@ -321,7 +325,7 @@ class GoalHealth:
         tz = self._client.get_time_zone()
         window: tuple[datetime, datetime] | None = None
         events: list[Event] = []
-        if any(m.get("kind") in ("duration", "count", "wake_time") for m in measures):
+        if any(m.get("kind") in _EVENT_KINDS for m in measures):
             # With the sleeps that bound the day, which runs from waking to
             # waking -- see utilities/sleep_days.py -- and as far back as
             # the longest look back.
@@ -494,10 +498,15 @@ def _look_back(measure: dict[str, Any]) -> timedelta:
 
 
 def _served(events: list[Event], goal: Goal, measure: dict[str, Any], tree: GoalTree) -> list[Event]:
-    """`events` serving `goal` or any of its descendants -- or, if its
-    measure names goal_ids, any of those or their descendants. With its
-    measure's include_sub_goals false, not the descendants."""
-    chosen = set(measure.get("goal_ids") or [goal.id])
+    """`events` given `goal` or any of its descendants -- or, if its
+    measure names another goal in events_of, that one or its descendants
+    (as though it were that goal). With its measure's include_sub_goals
+    false, not the descendants. (A measure from before events_of may name
+    several goals in goal_ids instead.)"""
+    if isinstance(measure.get("events_of"), str):
+        chosen = {measure["events_of"]}
+    else:
+        chosen = set(measure.get("goal_ids") or [goal.id])
     if measure.get("include_sub_goals", True):
         wanted = {g.id for g in tree.goals if any(tree.under(g.id, c) for c in chosen)}
     else:
@@ -613,31 +622,44 @@ def _measure_count(goal, measure, day, window, events, tree) -> Measured | None:
     return _over_interval(goal, measure, window, events, tree, kind="count")
 
 
-def _measure_wake_time(goal, measure, day, window, events, tree) -> Measured | None:
+def _measure_time_constraint(goal, measure, day, window, events, tree) -> Measured | None:
+    """When the day's events of the goal (see `_served`) started, or
+    ended, against the target -- see utilities/goal_measures.py."""
     try:
         target = time.fromisoformat(measure.get("target", ""))
     except (TypeError, ValueError):
         return None
+    edge = measure.get("edge")
+    if edge not in ("start", "end"):
+        return None
+    by = measure.get("when", "by") == "by"
     grace = measure.get("grace_min", 0)
     zero_at = max(measure.get("zero_at_min", 60), grace + 1)
-    tz = window[0].tzinfo
-    wake = day_start(day, events, tz)
-    if wake is None:
-        return None
-    wake = wake.astimezone(tz)
-    late = (wake - datetime.combine(day, target, tz)).total_seconds() / 60
-    rating = 100 if late <= grace else 0 if late >= zero_at else round(100 * (zero_at - late) / (zero_at - grace))
+    start, end = window
+    tz = start.tzinfo
+    days = [e for e in _served(events, goal, measure, tree) if e.start < end and e.end > start]
+    noun = "Started" if edge == "start" else "Ended"
+    goal_name = tree.by_id[measure["events_of"]].name if measure.get("events_of") in tree.by_id else goal.name
+    metrics: dict[str, Any] = {"edge": edge, "target": f"{target:%H:%M}", "when": "by" if by else "after"}
+    if not days:
+        return "skip", f"No events of {goal_name} that day → skip", metrics
+    at = (min(e.start for e in days) if edge == "start" else max(e.end for e in days)).astimezone(tz)
+    goal_time = datetime.combine(day, target, tz)
+    # Minutes on the wrong side of the target: late, if it's to be by it.
+    off = ((at - goal_time) if by else (goal_time - at)).total_seconds() / 60
+    rating = 100 if off <= grace else 0 if off >= zero_at else round(100 * (zero_at - off) / (zero_at - grace))
+    metrics["at"] = f"{at:%H:%M}"
     return (
         rating,
-        f"Woke {wake:%H:%M}; target {target:%H:%M} with {grace} min grace → {rating}",
-        {"wake": f"{wake:%H:%M}", "target": f"{target:%H:%M}"},
+        f"{noun} {at:%H:%M}; {'by' if by else 'not before'} {target:%H:%M} with {grace:g} min grace → {rating}",
+        metrics,
     )
 
 
 _MEASURES: dict[str, Callable[..., Measured | None]] = {
     "duration": _measure_duration,
     "count": _measure_count,
-    "wake_time": _measure_wake_time,
+    "time_constraint": _measure_time_constraint,
 }
 
 

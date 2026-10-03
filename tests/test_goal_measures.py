@@ -14,13 +14,13 @@ from utilities.goal_measures import MEASURE_KINDS, MEASURE_SHAPE_PROBLEM, measur
         {"kind": "count", "target": 2, "noun": "dinners"},
         {"kind": "count", "target": 1, "noun": "visits", "interval_days": 60, "zero_at_days": 90},
         {"kind": "count", "target": 1, "zero_at_days": 3},
-        {"kind": "count", "target": 2, "goal_ids": ["g1", "g2"]},
-        {"kind": "duration", "target_min": 60, "goal_ids": ["g1"]},
+        {"kind": "count", "target": 2, "events_of": "g1"},
+        {"kind": "duration", "target_min": 2400, "interval_days": 7, "events_of": "g1"},
         {"kind": "duration", "target_min": 60, "include_sub_goals": False},
-        {"kind": "count", "target": 1, "goal_ids": ["g1"], "include_sub_goals": True},
-        {"kind": "wake_time", "target": "07:00"},
-        {"kind": "wake_time", "target": "23:59", "grace_min": 10, "zero_at_min": 60},
-        {"kind": "wake_time", "target": "06:30", "grace_min": 0},
+        {"kind": "count", "target": 1, "events_of": "g1", "include_sub_goals": True},
+        {"kind": "time_constraint", "edge": "start", "target": "07:00"},
+        {"kind": "time_constraint", "edge": "end", "target": "17:30", "when": "by", "grace_min": 10, "zero_at_min": 60},
+        {"kind": "time_constraint", "edge": "start", "target": "08:00", "when": "after", "events_of": "g1"},
         {"kind": "subjective", "prompt": "How did it turn out?"},
         {"kind": "subjective", "prompt": "How are we doing?", "interval_days": 7},
         {"kind": "llm", "rubric": "Were the conversations meaningful?"},
@@ -45,7 +45,7 @@ def test_accepts_every_kinds_valid_specs(measure):
         ({"kind": "duration"}, 'needs "target_min"'),
         (
             {"kind": "duration", "target_mins": 600},
-            'has no field "target_mins"; a duration measure takes "goal_ids", "include_sub_goals", '
+            'has no field "target_mins"; a duration measure takes "events_of", "include_sub_goals", '
             '"interval_days", "target_min", "zero_at_days"',
         ),
         ({"kind": "duration", "target_min": 0}, '"target_min" must be a number above 0'),
@@ -58,18 +58,28 @@ def test_accepts_every_kinds_valid_specs(measure):
         ),
         ({"kind": "count", "target": 1, "zero_at_days": 1}, '"zero_at_days" must be a number above "interval_days" (1)'),
         ({"kind": "count", "target": -1}, '"target" must be a number above 0'),
-        ({"kind": "count", "target": 1, "goal_ids": []}, '"goal_ids" must be a list of goal ids'),
-        ({"kind": "duration", "target_min": 1, "goal_ids": "g1"}, '"goal_ids" must be a list of goal ids'),
-        ({"kind": "wake_time", "target": "07:00", "goal_ids": ["g1"]}, 'has no field "goal_ids"'),
-        ({"kind": "wake_time", "target": "07:00", "interval_days": 7}, 'has no field "interval_days"'),
+        ({"kind": "count", "target": 1, "events_of": ""}, '"events_of" must be a goal id'),
+        ({"kind": "duration", "target_min": 1, "events_of": ["g1"]}, '"events_of" must be a goal id'),
+        ({"kind": "duration", "target_min": 1, "goal_ids": ["g1"]}, 'has no field "goal_ids"'),
+        ({"kind": "wake_time", "target": "07:00"}, "kind must be one of"),
+        (
+            {"kind": "time_constraint", "edge": "start", "target": "07:00", "interval_days": 7},
+            'has no field "interval_days"',
+        ),
+        ({"kind": "time_constraint", "target": "07:00"}, 'needs "edge"'),
+        ({"kind": "time_constraint", "edge": "middle", "target": "07:00"}, '"edge" must be one of start, end'),
+        ({"kind": "time_constraint", "edge": "end", "target": "07:00", "when": "near"}, '"when" must be one of by, after'),
         ({"kind": "count", "target": 1, "include_sub_goals": "no"}, '"include_sub_goals" must be true or false'),
         ({"kind": "count", "target": 1, "noun": " "}, '"noun" must be non-empty text'),
-        ({"kind": "wake_time"}, 'needs "target"'),
-        ({"kind": "wake_time", "target": "7:00"}, '"target" must be a time like "07:00"'),
-        ({"kind": "wake_time", "target": "24:00"}, '"target" must be a time like "07:00"'),
-        ({"kind": "wake_time", "target": "07:00", "grace_min": -5}, '"grace_min" must be a number, 0 or more'),
+        ({"kind": "time_constraint", "edge": "start"}, 'needs "target"'),
+        ({"kind": "time_constraint", "edge": "start", "target": "7:00"}, '"target" must be a time like "07:00"'),
+        ({"kind": "time_constraint", "edge": "start", "target": "24:00"}, '"target" must be a time like "07:00"'),
         (
-            {"kind": "wake_time", "target": "07:00", "grace_min": 10, "zero_at_min": 10},
+            {"kind": "time_constraint", "edge": "start", "target": "07:00", "grace_min": -5},
+            '"grace_min" must be a number, 0 or more',
+        ),
+        (
+            {"kind": "time_constraint", "edge": "start", "target": "07:00", "grace_min": 10, "zero_at_min": 10},
             '"zero_at_min" must be a number above "grace_min" (10)',
         ),
         ({"kind": "subjective"}, 'needs "prompt"'),
@@ -104,11 +114,13 @@ def test_weights_must_name_sub_goals_when_theyre_known():
 
 
 def test_lists_every_problem_at_once():
-    problems = measure_problems({"kind": "wake_time", "grace_min": -1, "zero": 5})
+    problems = measure_problems({"kind": "time_constraint", "grace_min": -1, "zero": 5})
 
     assert problems == [
+        'needs "edge"',
         'needs "target"',
-        'has no field "zero"; a wake_time measure takes "grace_min", "target", "zero_at_min"',
+        'has no field "zero"; a time_constraint measure takes "edge", "events_of", "grace_min", '
+        '"include_sub_goals", "target", "when", "zero_at_min"',
         '"grace_min" must be a number, 0 or more',
     ]
 

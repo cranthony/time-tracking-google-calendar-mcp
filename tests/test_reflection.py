@@ -61,7 +61,7 @@ def _feel(name, interval_days=None, parent=None):
 
 
 _COOKING = Goal(name="Cooking", measure={"kind": "duration", "target_min": 120})
-_WAKE = Goal(name="Wake", measure={"kind": "wake_time", "target": "07:00"})
+_WAKE = Goal(name="Wake", measure={"kind": "time_constraint", "edge": "start", "target": "07:00"})
 
 
 class TestChoices:
@@ -134,7 +134,10 @@ class TestPrepare:
         reflections, health, store, calendar, goals = _setup([_COOKING, _feel("Feel"), _WAKE, Goal(name="Folder")])
         cooking, feel = goals["Cooking"], goals["Feel"]
         store.create_goal(Goal(name="Paused", status="inactive", measure={"kind": "subjective", "prompt": "?"}))
-        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T19:00", [cooking.id])]
+        calendar.events = [
+            _event("2026-10-01T18:00", "2026-10-01T19:00", [cooking.id]),
+            _event("2026-10-01T06:55", "2026-10-01T07:20", [goals["Wake"].id]),  # up by 7
+        ]
         health.confirm_assessments([_rating(feel, YESTERDAY - timedelta(days=1), 60)])
         health.record_assessments([_rating(feel, YESTERDAY, 75, rationale="said in passing")])
 

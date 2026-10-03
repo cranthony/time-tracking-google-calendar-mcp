@@ -8,13 +8,15 @@ than leaving the goal silently unmeasured.
 | kind         | fields                                                    |
 | ------------ | --------------------------------------------------------- |
 | `duration`   | `target_min` (> 0): minutes per interval; optional        |
-|              | `interval_days`, `zero_at_days`, `goal_ids` and           |
-|              | `include_sub_goals`                                       |
+|              | `interval_days` and `zero_at_days`                        |
 | `count`      | `target` (> 0): events per interval; optional `noun`,     |
-|              | `interval_days`, `zero_at_days`, `goal_ids` and           |
-|              | `include_sub_goals`                                       |
-| `wake_time`  | `target` ("HH:MM"); optional `grace_min` (>= 0, default   |
-|              | 0) and `zero_at_min` (> grace, default 60)                |
+|              | `interval_days` and `zero_at_days`                        |
+| `time_       | `edge` ("start" or "end") and `target` ("HH:MM"): when    |
+| constraint`  | the day's first event starts, or its last ends; optional  |
+|              | `when` ("by", the default, or "after"), `grace_min`       |
+|              | (>= 0, default 0) and `zero_at_min` (> grace, default 60) |
+| (all three)  | optional `events_of` and `include_sub_goals`: whose       |
+|              | events they look at                                       |
 | `subjective` | `prompt`: the question asked in a reflection; optional    |
 |              | `interval_days`: how often it's asked (default every day) |
 | `llm`        | `rubric`: what the model rates the day against, which may |
@@ -34,11 +36,25 @@ falling linearly from 100 when it lapsed to 0 once `zero_at_days` (>
 interval, so a 60-day visit goal with `zero_at_days` 90 is at 50 after 75
 days without a visit.
 
-A duration or count measure looks at the events serving its own goal or
-any of its sub-goals -- or, given `goal_ids`, those serving any of these
-goals or their sub-goals instead (utilities/goals.py checks they're
-goals). With `include_sub_goals` false, only those goals' own events
-count, not their sub-goals'.
+**Whose events.** A duration, count or time constraint measure looks at
+the events given its own goal or any of its sub-goals -- or, with
+`events_of`, another goal's (and its sub-goals') instead, as though it
+were that goal: "work 40 hours a week" can be a sub-goal of "Fulfil my
+work commitment" that measures its parent's events, without tagging any
+event with it. (utilities/goals.py checks `events_of` names a goal.) With
+`include_sub_goals` false, only that goal's own events count, not its
+sub-goals'. A measure saved before `events_of` may name several goals in
+`goal_ids` instead; it's still measured that way, but can't be saved again
+with it.
+
+**Time constraints** rate when the day's events of a goal start or end:
+with `edge` "start", the first one's start; with "end", the last one's
+end. "Up by 07:00" is `{"edge": "start", "target": "07:00"}` measuring a
+"get up" goal's events; "in by 09:30" and "out by 17:30" measure work's.
+With `when` "by" (the default) it's 100 at or before the target, plus
+`grace_min`, falling linearly to 0 at `zero_at_min` minutes late; with
+"after", the same the other way round, for "not before". A day with no
+such events is proposed as "skip".
 
 **Subjective.** Its `prompt` is asked in the first daily reflection after
 `interval_days` have passed since it was last answered -- in a reflection,
@@ -58,16 +74,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
+_EVENT_SOURCE = frozenset({"events_of", "include_sub_goals"})
+"""The fields saying whose events a measure looks at."""
+
 MEASURE_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
-    "duration": (
-        frozenset({"target_min"}),
-        frozenset({"interval_days", "zero_at_days", "goal_ids", "include_sub_goals"}),
-    ),
-    "count": (
-        frozenset({"target"}),
-        frozenset({"noun", "interval_days", "zero_at_days", "goal_ids", "include_sub_goals"}),
-    ),
-    "wake_time": (frozenset({"target"}), frozenset({"grace_min", "zero_at_min"})),
+    "duration": (frozenset({"target_min"}), frozenset({"interval_days", "zero_at_days"}) | _EVENT_SOURCE),
+    "count": (frozenset({"target"}), frozenset({"noun", "interval_days", "zero_at_days"}) | _EVENT_SOURCE),
+    "time_constraint": (frozenset({"edge", "target"}), frozenset({"when", "grace_min", "zero_at_min"}) | _EVENT_SOURCE),
     "subjective": (frozenset({"prompt"}), frozenset({"interval_days"})),
     "llm": (frozenset({"rubric"}), frozenset()),
     "rollup": (frozenset(), frozenset({"agg", "weights", "percentile"})),
@@ -75,6 +88,9 @@ MEASURE_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
 """Each kind's (required, optional) fields, besides `kind` itself."""
 
 ROLLUP_AGGREGATES = ("mean", "weighted", "percentile")
+
+EDGES = ("start", "end")
+WHENS = ("by", "after")
 
 DEFAULT_MEASURE: dict[str, Any] = {"kind": "rollup", "agg": "mean"}
 """How a goal with no measure, but sub-goals to rate, is rated."""
@@ -110,12 +126,8 @@ def measure_problems(measure: Any, *, sub_goal_ids: set[str] | None = None) -> l
         if name in measure and not (isinstance(measure[name], str) and measure[name].strip()):
             problems.append(f'"{name}" must be non-empty text')
 
-    if "goal_ids" in measure and not (
-        isinstance(measure["goal_ids"], list)
-        and measure["goal_ids"]
-        and all(isinstance(goal_id, str) and goal_id for goal_id in measure["goal_ids"])
-    ):
-        problems.append('"goal_ids" must be a list of goal ids, not empty')
+    if "events_of" in measure and not (isinstance(measure["events_of"], str) and measure["events_of"]):
+        problems.append('"events_of" must be a goal id')
     if "include_sub_goals" in measure and not isinstance(measure["include_sub_goals"], bool):
         problems.append('"include_sub_goals" must be true or false')
     if kind in ("duration", "count", "subjective"):
@@ -129,7 +141,11 @@ def measure_problems(measure: Any, *, sub_goal_ids: set[str] | None = None) -> l
             problems.append(f'"zero_at_days" must be a number above "interval_days" ({interval:g})')
         if kind == "count":
             text("noun")
-    elif kind == "wake_time":
+    elif kind == "time_constraint":
+        if "edge" in measure and measure["edge"] not in EDGES:
+            problems.append(f'"edge" must be one of {", ".join(EDGES)}')
+        if "when" in measure and measure["when"] not in WHENS:
+            problems.append(f'"when" must be one of {", ".join(WHENS)}')
         if "target" in measure and not (isinstance(measure["target"], str) and _HH_MM.fullmatch(measure["target"])):
             problems.append('"target" must be a time like "07:00"')
         grace = measure.get("grace_min", 0)
