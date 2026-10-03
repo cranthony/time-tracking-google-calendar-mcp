@@ -1,14 +1,20 @@
+import contextlib
 from dataclasses import replace
-from datetime import timedelta
+from datetime import timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
+
+import config
+import server
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import Event, EventLabel
+from calendar_clients.google_sheets import SheetsClient, cached_sheet_reads
 from tests.event_time_helpers import event_at, time_at
 from tests.fake_row_hints import FakeRowHints
-from tests.fake_sheets import FakeSheets
+from tests.fake_sheets import FakeSheets, FakeSheetsService
+from utilities import calendar_metadata_sheet
 from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
 from utilities import note_compactor
 from utilities.note_compaction import (
@@ -124,6 +130,7 @@ class TestPrepare:
         assert context.remaining_note_count == 0
         assert context.open_compaction is None
         assert "SILENCE MEANS ON SCHEDULE" in context.instructions
+        assert "READ EACH NOTE'S TENSE" in context.instructions
 
     def test_offers_the_notes_beside_the_planned_events_as_a_timeline(self):
         context = _standard().compactor.prepare()
@@ -253,6 +260,56 @@ class TestTheCompactionWindow:
         context = setup.compactor.prepare()
 
         assert [e.id for e in context.events] == ["w2", "s1"]
+
+    def _compacted_note(self, setup, at, description):
+        setup.append_note(at, description)
+        last = max(n.row for n in setup.notes.read_with_rows(include_compacted=True))
+        setup.notes.mark_compacted([setup.note_id(last)], "prev")
+
+    def test_the_last_compacted_note_just_before_the_window_is_offered_as_context(self):
+        setup = self._setup(note_at="10:20+1")
+        self._compacted_note(setup, "09:30+1", "earlier")
+        self._compacted_note(setup, "09:55+1", "starting email")
+        self._stamp_a_compaction_at(setup, "10:05+1")
+
+        context = setup.compactor.prepare()
+
+        assert context.previous_note.description == "starting email"
+        assert context.previous_note.timestamp == time_at("09:55+1")
+        # Context only: it's not one of this round's notes.
+        assert [n.id for n in context.notes] == [setup.note_id(2)]
+        assert "✓ starting email (compacted)" in context.timeline.text
+
+    def test_a_compacted_note_longer_before_the_window_is_not_offered(self):
+        setup = self._setup(note_at="10:20+1")
+        self._compacted_note(setup, "09:45+1", "starting email")
+        self._stamp_a_compaction_at(setup, "10:05+1")
+
+        assert setup.compactor.prepare().previous_note is None
+
+    def test_a_later_round_reads_its_notes_and_the_previous_note_in_one_request(self):
+        # Google Sheets caps read requests per minute, so the notes tab
+        # costs a later round's prepare just its header and one data read:
+        # the hints are confirmed, and the previous note found, within it.
+        setup = Setup([("09:05+1", "email"), ("09:58+1", "done with work")], events=self._events(), now="10:05+1")
+        setup.compactor.commit(setup.compactor.dry_run([]).compaction_id)
+        setup.append_note("10:20+1", "report")
+        setup.now = "10:30+1"
+        setup.compactor.prepare()  # takes in the notes stamped since the hints were set
+        reads = []
+        read = setup.sheets.read_rows_in_sheet
+
+        def counting(spreadsheet_id, sheet_id, rng):
+            if sheet_id == _NOTES_TAB:
+                reads.append(rng)
+            return read(spreadsheet_id, sheet_id, rng)
+
+        setup.sheets.read_rows_in_sheet = counting
+
+        context = setup.compactor.prepare()
+
+        assert context.previous_note.description == "done with work"
+        assert reads == ["A1:C1", "A3:C"]
 
     def test_a_note_written_before_the_planned_wake_up_starts_the_day_there(self):
         context = self._setup(note_at="06:40+1").compactor.prepare()
@@ -921,3 +978,102 @@ class TestGoals:
 
         patches = [c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e1"]
         assert any(p.goal_ids == ["mail"] for p in patches)
+
+
+class _ProductionCalendar(FakeCalendar):
+    """The CalendarClient calls the server's compaction makes, for
+    `TestSheetReadRequests` -- the calendar isn't what's being counted."""
+
+    def __init__(self, events, spreadsheet_id):
+        super().__init__(events)
+        self.metadata = {calendar_metadata_sheet._SPREADSHEET_ID_METADATA_KEY: spreadsheet_id}
+
+    def get_calendar_metadata(self, key):
+        return self.metadata.get(key)
+
+    def set_calendar_metadata(self, key, value):
+        self.metadata[key] = value
+
+    def get_time_zone(self):
+        return timezone.utc
+
+    def list_event_labels(self):
+        return [], "etag"
+
+    def update_event(self, event):
+        return event
+
+    def create_event(self, event):
+        return event
+
+
+class TestSheetReadRequests:
+    """Google Sheets throttles read requests to 60 a minute per user, and
+    a compaction step that runs out waits for the quota to roll over (see
+    calendar_clients/google_sheets.py's `_execute`) -- so every read
+    request a compaction makes counts. These pin how many a typical
+    round makes, running the production code end to end: the MCP tools
+    in server.py, each in its own `cached_sheet_reads` as they are there,
+    over the objects server.py's get_* helpers build with config.py's
+    builders, all on the real `SheetsClient` -- with only Google itself
+    faked, the Sheets service by `FakeSheetsService` (and memory
+    diagnostics left out). If a count goes up,
+    find a way not to (a hint, or folding the read into one already
+    made); if one goes down, lower it here."""
+
+    _SPREADSHEET = "spreadsheet-1"
+
+    def _server(self, monkeypatch):
+        service = FakeSheetsService(FakeSheets())
+        sheets_client = SheetsClient(service)
+        calendar = _ProductionCalendar(TestTheCompactionWindow()._events(), self._SPREADSHEET)
+        # Where the builders would load credentials and build the Google
+        # API clients.
+        monkeypatch.setattr(config, "_build_calendar_and_sheets_clients", lambda calendar_id=None: (calendar, sheets_client))
+        monkeypatch.setattr(server, "build_calendar_client", lambda: calendar)
+        # Memory diagnostics never touch Sheets, and take seconds.
+        monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
+        for cached in ("_calendar_client", "_reallocating_calendar", "_goals", "_noted_time_sheet", "_note_compactor"):
+            monkeypatch.setattr(server, cached, None)
+        self.now = "09:10+1"
+        # The one seam: the compactor's clock, so the rounds fall on the
+        # test calendar's day.
+        server.get_note_compactor()._clock = lambda: time_at(self.now)
+        return service
+
+    def _round(self, service, note_at, now):
+        """One round of MCP tool calls: note, prepare_compaction,
+        compact_notes (dry run), compact_notes (apply). Returns each
+        call's read requests."""
+        self.now = now
+        counts = {}
+
+        def call(name, tool):
+            before = len(service.read_requests)
+            result = tool()
+            counts[name] = len(service.read_requests) - before
+            return result
+
+        call("note", lambda: server.note(NotedTime(timestamp=time_at(note_at), description="note")))
+        call("prepare_compaction", server.prepare_compaction)
+        plan = call("compact_notes dry run", lambda: server.compact_notes(decisions=[]))
+        call("compact_notes apply", lambda: server.compact_notes(compaction_id=plan.compaction_id, dry_run=False))
+        return counts
+
+    def test_a_typical_round_of_compaction_makes_no_more_read_requests_than_this(self, monkeypatch):
+        service = self._server(monkeypatch)
+        for note_at, now in [("09:05+1", "09:10+1"), ("09:50+1", "09:55+1"), ("10:20+1", "10:25+1")]:
+            self._round(service, note_at, now)
+
+        counts = self._round(service, "10:40+1", "10:45+1")
+
+        # Once the hints are warm (the hints tab itself is read once per
+        # process). The notes tab costs each compaction call its header and
+        # one read from the hinted row; the goals tab its header and rows;
+        # the rest is the journal.
+        assert counts == {
+            "note": 2,
+            "prepare_compaction": 6,
+            "compact_notes dry run": 6,
+            "compact_notes apply": 9,
+        }
