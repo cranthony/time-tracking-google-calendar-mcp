@@ -1402,6 +1402,38 @@ class TestCalendarClientGoalHealthCalls:
 
         assert make_client(service).hide_calendar("cal") is False
 
+    def test_colors_a_calendar_in_the_users_list(self):
+        service = MagicMock()
+
+        assert make_client(service).color_calendar("cal", "#d50000") is True
+        service.calendarList.return_value.patch.assert_called_once_with(
+            calendarId="cal",
+            colorRgbFormat=True,
+            body={"backgroundColor": "#d50000", "foregroundColor": "#ffffff"},
+        )
+
+    def test_coloring_a_calendar_is_best_effort(self):
+        service = MagicMock()
+        service.calendarList.return_value.patch.return_value.execute.side_effect = HttpError(
+            MagicMock(status=403), b"insufficient scope"
+        )
+
+        assert make_client(service).color_calendar("cal", "#d50000") is False
+
+    def test_lists_every_event_on_a_calendar_across_pages(self):
+        service = MagicMock()
+        service.events.return_value.list.return_value.execute.side_effect = [
+            {"items": [{"id": "1"}], "nextPageToken": "p2"},
+            {"items": [{"id": "2"}]},
+        ]
+
+        items = make_client(service).list_all_event_resources()
+
+        assert [i["id"] for i in items] == ["1", "2"]
+        calls = service.events.return_value.list.call_args_list
+        assert "timeMin" not in calls[0].kwargs
+        assert calls[1].kwargs["pageToken"] == "p2"
+
     def test_for_calendar_shares_the_service(self):
         service = MagicMock()
 
@@ -1414,6 +1446,7 @@ class TestCalendarClientGoalHealthCalls:
 _CALENDAR_WRITES = [
     "create_calendar",
     "hide_calendar",
+    "color_calendar",
     "set_time_zone",
     "upsert_event_resource",
     "create_event",

@@ -548,6 +548,40 @@ class CalendarClient:
         except HttpError:
             return False
 
+    @requires_write_lock
+    def color_calendar(self, calendar_id: str, background_color: str) -> bool:
+        """Best effort: show `calendar_id` in `background_color` ("#rrggbb")
+        in the user's calendar list in Google Calendar, with white text.
+        Returns whether that worked, as for `hide_calendar`."""
+        try:
+            self._service.calendarList().patch(
+                calendarId=calendar_id,
+                colorRgbFormat=True,
+                body={"backgroundColor": background_color, "foregroundColor": "#ffffff"},
+            ).execute()
+            return True
+        except HttpError:
+            return False
+
+    def list_all_event_resources(self) -> list[dict]:
+        """Every event on this calendar, whenever it is, as the API's own
+        dicts -- a recurring series as one -- following `nextPageToken`.
+        For a calendar that holds only a few (see utilities/
+        compaction_marker.py), not the main one."""
+        items: list[dict] = []
+        page_token: str | None = None
+        while True:
+            kwargs = {"pageToken": page_token} if page_token else {}
+            response = (
+                self._service.events()
+                .list(calendarId=self._calendar_id, maxResults=_LIST_PAGE_SIZE, **kwargs)
+                .execute()
+            )
+            items.extend(response.get("items", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                return items
+
     def get_time_zone(self) -> ZoneInfo:
         """This calendar's own time zone (fetched once, then remembered) --
         what its days, weeks and months are counted in."""
