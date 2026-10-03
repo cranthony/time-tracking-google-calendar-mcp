@@ -339,6 +339,10 @@ class Goals:
         `GoalSheet.whole_tab`."""
         return self._sheet.whole_tab
 
+    def prefetch(self, ranges: list[TabRange]) -> None:
+        """`GoalSheet.prefetch`."""
+        self._sheet.prefetch(ranges)
+
     def tree(self) -> GoalTree:
         """The goals as they are in the sheet now -- read-only, never
         touches the calendar."""

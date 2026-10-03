@@ -382,14 +382,14 @@ class NoteCompactor:
             return latest
         return None
 
-    def _prefetch(self) -> None:
-        """Read the notes tab, the journal and the goals tab -- all a step
-        reads of the spreadsheet -- in one request, so every later read
-        of them in the same tool call is served from the cache (see
-        `SheetsClient.prefetch`): Google Sheets caps read requests at 60 a
-        minute."""
+    def _prefetch(self, *, goals: bool = True) -> None:
+        """Read the notes tab, the journal and (if `goals`) the goals tab
+        -- all a step reads of the spreadsheet -- in one request, so every
+        later read of them in the same tool call is served from the cache
+        (see `SheetsClient.prefetch`): Google Sheets caps read requests at
+        60 a minute."""
         tabs = [self._notes.whole_tab, self._journal.whole_tab]
-        if self._goals is not None:
+        if goals and self._goals is not None:
             tabs.append(self._goals.whole_tab)
         self._notes.prefetch(tabs)
 
@@ -496,10 +496,12 @@ class NoteCompactor:
         self, note_id: str, *, timestamp: datetime | None = None, description: str | None = None
     ) -> SheetNote:
         """See the module-level `edit_note`."""
+        self._prefetch(goals=False)
         return edit_note(self._notes, self._journal, note_id, timestamp=timestamp, description=description)
 
     def delete_note(self, note_id: str) -> NotedTime:
         """See the module-level `delete_note`."""
+        self._prefetch(goals=False)
         return delete_note(self._notes, self._journal, note_id)
 
     def abandon(self, compaction_id: str) -> CompactionResult:
