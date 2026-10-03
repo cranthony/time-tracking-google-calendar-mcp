@@ -1065,12 +1065,13 @@ class TestSheetReadRequests:
 
         counts = self._round(service, "10:40+1", "10:45+1")
 
-        # Each compaction call reads each tab it uses once, whole: the notes
-        # tab (header and rows together, which apply's stamping reads again
-        # from the cache), the goals tab, and the journal.
+        # Each compaction call reads the notes tab, the journal and the
+        # goals tab whole, together in one request (NoteCompactor's
+        # prefetch); every later read of them in the call falls within
+        # that, so it's served from the cache.
         assert counts == {
             "note": 1,
-            "prepare_compaction": 3,
-            "compact_notes dry run": 3,
-            "compact_notes apply": 3,
+            "prepare_compaction": 1,
+            "compact_notes dry run": 1,
+            "compact_notes apply": 1,
         }

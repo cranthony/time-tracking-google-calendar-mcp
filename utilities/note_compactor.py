@@ -309,6 +309,7 @@ class NoteCompactor:
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     def prepare(self) -> CompactionContext:
+        self._prefetch()
         self._journal.garbage_collect()
         now = self._clock()
         open_ids = self._journal.open_compactions()
@@ -381,6 +382,17 @@ class NoteCompactor:
             return latest
         return None
 
+    def _prefetch(self) -> None:
+        """Read the notes tab, the journal and the goals tab -- all a step
+        reads of the spreadsheet -- in one request, so every later read
+        of them in the same tool call is served from the cache (see
+        `SheetsClient.prefetch`): Google Sheets caps read requests at 60 a
+        minute."""
+        tabs = [self._notes.whole_tab, self._journal.whole_tab]
+        if self._goals is not None:
+            tabs.append(self._goals.whole_tab)
+        self._notes.prefetch(tabs)
+
     def _suggestions(self, day: _Day, tree: GoalTree) -> dict[str, list[str]]:
         """Goals to suggest for the day's past events that serve none: those
         the latest earlier event with the same title served, within
@@ -404,6 +416,7 @@ class NoteCompactor:
     def dry_run(
         self, decisions: list[EventDecision], ignore_notes: list[str] | None = None
     ) -> CompactionResult:
+        self._prefetch()
         self._require_no_open_compaction()
         day = self._day(self._clock())
         if day is None:
@@ -449,6 +462,7 @@ class NoteCompactor:
         )
 
     def commit(self, compaction_id: str) -> CompactionResult:
+        self._prefetch()
         journal = self._journal.load(compaction_id)
         if journal.status == STAMPED:
             return CompactionResult(

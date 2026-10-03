@@ -63,7 +63,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from calendar_clients.google_sheets import SheetsClient
+from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 from utilities.note_compaction import (
     CompactionChange,
@@ -133,6 +133,12 @@ class CompactionJournal:
         self._sheets_client = sheets_client
         self._spreadsheet_id = spreadsheet_id
         self._sheet_id = sheet_id
+
+    @property
+    def whole_tab(self) -> TabRange:
+        """This whole tab, header and all, for `SheetsClient.prefetch`:
+        every read of it falls within this."""
+        return TabRange(self._spreadsheet_id, self._sheet_id, "A1:H")
 
     @staticmethod
     def ensure(sheets_client: SheetsClient, spreadsheet_id: str) -> "CompactionJournal":

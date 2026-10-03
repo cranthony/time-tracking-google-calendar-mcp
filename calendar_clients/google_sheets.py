@@ -6,6 +6,7 @@ import re
 import time
 from collections.abc import Iterator
 from contextvars import ContextVar
+from dataclasses import dataclass
 from pathlib import Path
 
 from googleapiclient.errors import HttpError
@@ -365,30 +366,52 @@ class SheetsClient:
         header row and some of its data, say), in that order -- in one
         read request, `values.batchGetByDataFilter` taking any number of
         data filters. Inside `cached_sheet_reads`, each range is cached on
-        its own, so a later read of any one of them is served from memory,
-        and only the ranges not cached yet are requested."""
-        cache = _read_cache.get()
-        keys = [(spreadsheet_id, sheet_id, rng) for rng in ranges_within_sheet]
-        found = {key: cache[key] for key in keys if key in cache} if cache is not None else {}
-        missing = list(dict.fromkeys(key for key in keys if key not in found))
+        its own, and any range that falls within one already cached is
+        served from memory (see `_cached_rows`), so only the rest are
+        requested."""
+        ranges = [TabRange(spreadsheet_id, sheet_id, rng) for rng in ranges_within_sheet]
+        found = {tab_range: _cached_rows(tab_range) for tab_range in ranges}
+        missing = list(dict.fromkeys(r for r, rows in found.items() if rows is None))
         if missing:
-            grid_ranges = [_grid_range(sheet_id, rng) for _, _, rng in missing]
-            response = _execute(
-                self._sheets_service.spreadsheets()
-                .values()
-                .batchGetByDataFilter(
-                    spreadsheetId=spreadsheet_id,
-                    body={
-                        "dataFilters": [{"gridRange": grid_range} for grid_range in grid_ranges],
-                        "majorDimension": "ROWS",
-                    },
-                )
+            found.update(self._fetch(spreadsheet_id, missing))
+        return [[list(row) for row in found[tab_range]] for tab_range in ranges]
+
+    def prefetch(self, ranges: list["TabRange"]) -> None:
+        """Inside `cached_sheet_reads`, read every one of `ranges` not
+        already cached -- across tabs, in one read request per
+        spreadsheet -- so later reads that fall within them are served
+        from memory. For a step that will read several tabs: Google
+        Sheets caps read requests at 60 a minute, so reading each tab
+        whole up front costs one request instead of one per tab. Does
+        nothing outside `cached_sheet_reads`, where nothing would keep
+        what it read."""
+        if _read_cache.get() is None:
+            return
+        missing = list(dict.fromkeys(r for r in ranges if _cached_rows(r) is None))
+        for spreadsheet_id in dict.fromkeys(r.spreadsheet_id for r in missing):
+            self._fetch(spreadsheet_id, [r for r in missing if r.spreadsheet_id == spreadsheet_id])
+
+    def _fetch(self, spreadsheet_id: str, ranges: list["TabRange"]) -> dict["TabRange", list[list[str]]]:
+        """`ranges` (all in `spreadsheet_id`), in one request, cached
+        inside `cached_sheet_reads`."""
+        grid_ranges = [_grid_range(r.sheet_id, r.range) for r in ranges]
+        response = _execute(
+            self._sheets_service.spreadsheets()
+            .values()
+            .batchGetByDataFilter(
+                spreadsheetId=spreadsheet_id,
+                body={
+                    "dataFilters": [{"gridRange": grid_range} for grid_range in grid_ranges],
+                    "majorDimension": "ROWS",
+                },
             )
-            for key, rows in zip(missing, _values_by_filter(response, grid_ranges)):
-                found[key] = rows
-                if cache is not None:
-                    cache[key] = [list(row) for row in rows]
-        return [[list(row) for row in found[key]] for key in keys]
+        )
+        fetched = dict(zip(ranges, _values_by_filter(response, grid_ranges)))
+        cache = _read_cache.get()
+        if cache is not None:
+            for tab_range, rows in fetched.items():
+                cache[tab_range] = [list(row) for row in rows]
+        return fetched
 
     @requires_write_lock
     def write_rows_in_sheet(
@@ -466,16 +489,74 @@ def _values_by_filter(response: dict, grid_ranges: list[dict]) -> list[list[list
     return [values if values is not None else next(leftovers, []) for values in by_range]
 
 
-_read_cache: ContextVar[dict[tuple[str, int, str], list[list[str]]] | None] = ContextVar(
-    "_read_cache", default=None
-)
+@dataclass(frozen=True)
+class TabRange:
+    """A range of one tab: `range` (e.g. "A1:C", without a sheet name)
+    within the tab `sheet_id` of `spreadsheet_id`."""
+
+    spreadsheet_id: str
+    sheet_id: int
+    range: str
+
+
+_read_cache: ContextVar[dict[TabRange, list[list[str]]] | None] = ContextVar("_read_cache", default=None)
+
+
+def _cached_rows(wanted: TabRange) -> list[list[str]] | None:
+    """`wanted`'s rows from the cache, or `None` if it isn't cached: read
+    exactly, or cut out of a cached range of the same tab that wholly
+    contains it -- exactly as the API would return it, trailing empty
+    cells and rows dropped, and blank rows in the middle as `[]`."""
+    cache = _read_cache.get()
+    if cache is None:
+        return None
+    if wanted in cache:
+        return cache[wanted]
+    inner = _grid_range(wanted.sheet_id, wanted.range)
+    for cached, rows in cache.items():
+        if (cached.spreadsheet_id, cached.sheet_id) != (wanted.spreadsheet_id, wanted.sheet_id):
+            continue
+        outer = _grid_range(cached.sheet_id, cached.range)
+        if _contains(outer, inner):
+            return _within(rows, outer, inner)
+    return None
+
+
+def _contains(outer: dict, inner: dict) -> bool:
+    if not (
+        outer["startColumnIndex"] <= inner["startColumnIndex"]
+        and inner["endColumnIndex"] <= outer["endColumnIndex"]
+        and outer["startRowIndex"] <= inner["startRowIndex"]
+    ):
+        return False
+    if "endRowIndex" not in outer:
+        return True
+    return "endRowIndex" in inner and inner["endRowIndex"] <= outer["endRowIndex"]
+
+
+def _within(rows: list[list[str]], outer: dict, inner: dict) -> list[list[str]]:
+    """The part of `rows` (read for `outer`) that `inner` covers."""
+    first = inner["startRowIndex"] - outer["startRowIndex"]
+    last = inner["endRowIndex"] - outer["startRowIndex"] if "endRowIndex" in inner else None
+    left = inner["startColumnIndex"] - outer["startColumnIndex"]
+    right = inner["endColumnIndex"] - outer["startColumnIndex"]
+    result = []
+    for row in rows[first:last]:
+        cells = list(row[left:right])
+        while cells and cells[-1] == "":
+            cells.pop()
+        result.append(cells)
+    while result and not result[-1]:
+        result.pop()
+    return result
 
 
 @contextlib.contextmanager
 def cached_sheet_reads() -> Iterator[None]:
     """Within this block, a `read_rows_in_sheet` repeating an earlier one
-    (same spreadsheet, tab, and range) is answered from memory instead of
-    spending another read request -- on any `SheetsClient`, since several
+    (same spreadsheet and tab, and a range within the one read before) is
+    answered from memory instead of spending another read request -- on
+    any `SheetsClient`, since several
     can be open on the same spreadsheet (see `config.py`) and share tabs.
     Any write or row deletion through any of them forgets what was cached
     for that tab first, so a read always sees this process's own writes.
@@ -502,7 +583,7 @@ def _forget_cached_reads(spreadsheet_id: str, sheet_id: int | None = None) -> No
     cache = _read_cache.get()
     if cache is None:
         return
-    for key in [k for k in cache if k[0] == spreadsheet_id and sheet_id in (None, k[1])]:
+    for key in [k for k in cache if k.spreadsheet_id == spreadsheet_id and sheet_id in (None, k.sheet_id)]:
         del cache[key]
 
 

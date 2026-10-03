@@ -56,10 +56,15 @@ class FakeSheets:
     def read_rows_in_sheet(self, spreadsheet_id: str, sheet_id: int, rng: str) -> list[list[str]]:
         first_col, first_row, last_col, last_row = self._parse(rng)
         tab = self._tab(sheet_id)
-        populated = [r for (r, c) in tab if r >= first_row and first_col <= c <= last_col]
+        # Like the API, a cell holding "" counts as empty.
+        populated = [
+            r
+            for (r, c), v in tab.items()
+            if v != "" and first_row <= r <= (last_row or r) and first_col <= c <= last_col
+        ]
         if not populated:
             return []
-        end_row = min(max(populated), last_row) if last_row else max(populated)
+        end_row = max(populated)
         rows = []
         for row in range(first_row, end_row + 1):
             cells = [tab.get((row, col), "") for col in range(first_col, last_col + 1)]
@@ -67,6 +72,10 @@ class FakeSheets:
                 cells.pop()
             rows.append(cells)
         return rows
+
+    def prefetch(self, ranges) -> None:
+        """Nothing to do: this has no read cache to fill (see
+        `SheetsClient.prefetch`)."""
 
     def read_ranges_in_sheet(self, spreadsheet_id: str, sheet_id: int, ranges: list[str]) -> list[list[list[str]]]:
         return [self.read_rows_in_sheet(spreadsheet_id, sheet_id, rng) for rng in ranges]
@@ -233,10 +242,14 @@ class FakeSheetsService:
                         "valueRange": {"values": self.sheets.read_rows_in_sheet(spreadsheetId, sheet_id, rng)},
                     }
                 )
-            # One request, however many ranges: listed as its ranges.
-            self.read_requests.append(
-                (self._a1(filters[0]["gridRange"])[0], " + ".join(self._a1(f["gridRange"])[1] for f in filters))
-            )
+            # One request, however many ranges: listed as its tab and
+            # ranges, or -- across tabs -- as None and "tab:range"s.
+            located = [self._a1(f["gridRange"]) for f in filters]
+            tabs = {sheet_id for sheet_id, _ in located}
+            if len(tabs) == 1:
+                self.read_requests.append((located[0][0], " + ".join(rng for _, rng in located)))
+            else:
+                self.read_requests.append((None, " + ".join(f"{sheet_id}:{rng}" for sheet_id, rng in located)))
             return {"valueRanges": value_ranges}
 
         return _Request(execute)
