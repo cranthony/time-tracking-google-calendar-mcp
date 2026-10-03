@@ -2,6 +2,7 @@ import contextlib
 import dataclasses
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
+from zoneinfo import ZoneInfo
 
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
@@ -1167,3 +1168,32 @@ class TestPublicRecurrence:
 
         with pytest.raises(ToolError, match="exactly one RRULE"):
             server.update_recurrence(server.PublicRecurrence(id="s1", rules=["RRULE:FREQ=DAILY"] * 2))
+
+
+class TestSetTimeZone:
+    def test_sets_both_calendars_time_zones(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.set_time_zone.return_value = ZoneInfo("America/New_York")
+        health = _fake_goal_health(monkeypatch)
+
+        assert server.set_time_zone("America/New_York") == "America/New_York"
+
+        client.set_time_zone.assert_called_once_with("America/New_York")
+        health.health_calendar.assert_called_once_with(create=False)
+        health.health_calendar.return_value.set_time_zone.assert_called_once_with("America/New_York")
+
+    def test_without_a_goal_health_calendar_sets_only_the_main_one(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.set_time_zone.return_value = ZoneInfo("America/New_York")
+        _fake_goal_health(monkeypatch).health_calendar.return_value = None
+
+        assert server.set_time_zone("America/New_York") == "America/New_York"
+
+    def test_reports_a_bad_name_as_a_tool_error(self, monkeypatch):
+        _fake_client(monkeypatch).set_time_zone.side_effect = ValueError("'Nowhere' isn't a time zone")
+        health = _fake_goal_health(monkeypatch)
+
+        with pytest.raises(ToolError, match="isn't a time zone"):
+            server.set_time_zone("Nowhere")
+
+        health.health_calendar.assert_not_called()

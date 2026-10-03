@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -553,6 +553,20 @@ class CalendarClient:
             calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
             self._time_zone = ZoneInfo(calendar.get("timeZone") or "UTC")
         return self._time_zone
+
+    def set_time_zone(self, time_zone: str) -> ZoneInfo:
+        """Set this calendar's time zone (an IANA name, e.g.
+        "America/New_York"), returning it. Events keep their moments;
+        Google returns their times in this zone from now on, and days,
+        weeks and months are counted in it (see `get_time_zone`). Raises
+        ValueError for a name that isn't a known zone."""
+        try:
+            zone = ZoneInfo(time_zone)
+        except (ValueError, ZoneInfoNotFoundError) as exc:
+            raise ValueError(f"{time_zone!r} isn't a time zone; use an IANA name like 'America/New_York'") from exc
+        self._patch_calendar(None, {"timeZone": zone.key})
+        self._time_zone = zone
+        return zone
 
     def list_event_resources(
         self, time_min: datetime, time_max: datetime, *, private_property: str | None = None
