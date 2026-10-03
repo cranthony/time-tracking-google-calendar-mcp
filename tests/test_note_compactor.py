@@ -282,7 +282,7 @@ class TestTheCompactionWindow:
         last = max(n.row for n in setup.notes.read_with_rows(include_compacted=True))
         setup.notes.mark_compacted([setup.note_id(last)], "prev")
 
-    def test_the_last_compacted_note_just_before_the_window_is_offered_as_context(self):
+    def test_the_last_compacted_note_is_offered_as_context(self):
         setup = self._setup(note_at="10:20+1")
         self._compacted_note(setup, "09:30+1", "earlier")
         self._compacted_note(setup, "09:55+1", "starting email")
@@ -296,12 +296,15 @@ class TestTheCompactionWindow:
         assert [n.id for n in context.notes] == [setup.note_id(2)]
         assert "✓ starting email (compacted)" in context.timeline.text
 
-    def test_a_compacted_note_longer_before_the_window_is_not_offered(self):
+    def test_the_last_compacted_note_is_offered_however_long_before_the_window(self):
         setup = self._setup(note_at="10:20+1")
-        self._compacted_note(setup, "09:45+1", "starting email")
+        self._compacted_note(setup, "07:30+1", "starting email")
         self._stamp_a_compaction_at(setup, "10:05+1")
 
-        assert setup.compactor.prepare().previous_note is None
+        context = setup.compactor.prepare()
+
+        assert context.previous_note.description == "starting email"
+        assert context.previous_note.timestamp == time_at("07:30+1")
 
     def test_both_timelines_show_the_latest_compacted_note_and_the_last_compaction(self):
         # However long before the window the note was written.
