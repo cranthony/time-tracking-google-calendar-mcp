@@ -605,18 +605,27 @@ class TestRecentTime:
         calendar.events = [
             event(2, 60, [work.id]),  # active
             event(4, 30, [by_name["Paused"].id]),  # inactive
-            event(6, 20, [by_name["Side"].id]),  # inactive, under an active goal: both
+            event(6, 20, [by_name["Side"].id]),  # inactive: its parent being active doesn't matter
             event(30, 45, [work.id, by_name["Paused"].id]),  # both, once; 7 days only
             event(8, 15, []),  # no goal: not counted
         ]
 
         listing = goals.get_goals()
 
-        assert [(m.statuses, m.minutes_24h, m.minutes_7d) for m in listing.minutes_by_statuses] == [
+        def split(statuses):
+            return [(m.statuses, m.minutes_24h, m.minutes_7d) for m in statuses]
+
+        assert split(listing.minutes_by_statuses) == [
             (["active"], 60, 60),
-            (["active", "inactive"], 20, 65),
-            (["inactive"], 30, 30),
+            (["active", "inactive"], 0, 45),
+            (["inactive"], 50, 50),
         ]
+        listed = {g.name: g for g in listing.goals}
+        # Work's own time: its inactive sub-goal's counts as inactive, and
+        # the event it shares with Paused counts only as its own.
+        assert split(listed["Work"].minutes_by_statuses) == [(["active"], 60, 105), (["inactive"], 20, 20)]
+        assert split(listed["Paused"].minutes_by_statuses) == [(["inactive"], 30, 75)]
+        assert listed["Overall"].minutes_by_statuses == listing.minutes_by_statuses
         overall = next(g for g in listing.goals if g.id == OVERALL_ID)
         # Every goal's time, each event once.
         assert (overall.minutes_24h, overall.minutes_7d) == (110, 155)

@@ -38,23 +38,34 @@ def goal_minutes(events: list[Event], tree: GoalTree, start: datetime, end: date
     return {goal_id: round(total) for goal_id, total in minutes.items() if round(total) > 0}
 
 
-def status_minutes(
+def goal_status_minutes(
     events: list[Event], tree: GoalTree, start: datetime, end: datetime
-) -> dict[frozenset[str], int]:
-    """Minutes of `events` between `start` and `end` that serve any goal,
-    by the statuses of the goals each serves (with their ancestors, not
-    the overall goal): adding up those whose statuses include any of a set
-    gives the time spent on goals with those statuses, each event once."""
-    minutes: dict[frozenset[str], float] = {}
+) -> dict[str, dict[frozenset[str], int]]:
+    """`goal_minutes`, split by status: for each goal, the minutes of
+    `events` between `start` and `end` serving it or its sub-goals, by the
+    statuses of the goals each event is given among them -- not those
+    goals' ancestors. So an event given only an inactive sub-goal of an
+    active goal counts toward the active goal as inactive time. Adding up
+    a goal's entries whose statuses include any of a set gives the time
+    spent on it through goals with those statuses, each event once."""
+    minutes: dict[str, dict[frozenset[str], float]] = {}
     for event in events:
         if event.status == "cancelled":
             continue
         overlap = (min(event.end, end) - max(event.start, start)).total_seconds() / 60
         if overlap <= 0:
             continue
-        statuses = frozenset(
-            g.status for goal_id in event.goal_ids or () for g in tree.chain(goal_id) if g.id != OVERALL_ID
-        )
-        if statuses:
-            minutes[statuses] = minutes.get(statuses, 0) + overlap
-    return {statuses: round(total) for statuses, total in minutes.items() if round(total) > 0}
+        given = [g for g in event.goal_ids or () if g in tree.by_id and g != OVERALL_ID]
+        if not given:
+            continue
+        holders = {a.id for g in given for a in tree.chain(g)}
+        if OVERALL_ID in tree.by_id:
+            holders.add(OVERALL_ID)
+        for holder in holders:
+            statuses = frozenset(tree.by_id[g].status for g in given if tree.under(g, holder))
+            split = minutes.setdefault(holder, {})
+            split[statuses] = split.get(statuses, 0) + overlap
+    return {
+        goal_id: {statuses: round(total) for statuses, total in split.items() if round(total) > 0}
+        for goal_id, split in minutes.items()
+    }
