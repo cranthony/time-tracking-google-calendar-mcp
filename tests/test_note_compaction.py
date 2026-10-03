@@ -686,8 +686,15 @@ class TestTimeline:
             "Google Salsa class": "on_schedule",
             "Dinner": "adjusted",
             "Reading": "adjusted",
-            "Sleep": "planned",
-        }
+        }  # Sleep is ahead and untouched, so not shown
+
+    def test_shows_a_future_event_only_once_the_plan_moves_it(self):
+        plan = _plan([], [_keep("dinner", end=time_at("20:30"))], _evening(), now="19:55")
+
+        statuses = {e.event_id: e.status for e in plan.timeline.events}
+        assert statuses["read"] == "reflowed"  # pushed later by dinner running long
+        assert "s1" not in statuses  # still ahead, and untouched
+        assert "s1" not in _by_event(plan)
 
     def test_reports_what_each_note_did(self):
         notes = {n.id: n for n in self._salsa().timeline.notes}
@@ -709,6 +716,25 @@ class TestTimeline:
         assert "─ └ Dinner ends · 10m late (planned 20:00)" in row("20:10")
         assert any("├ Reading · starts 10m late (planned 20:00)" in line for line in lines)
         assert "┄┄ now" in row("20:30")
+
+    def test_marks_the_last_compaction_before_what_came_at_the_same_moment(self):
+        plan = _plan([_note(1, "09:10", "email")], [], last_compaction=time_at("09:00"))
+        lines = plan.timeline.text.splitlines()
+
+        marker = next(i for i, line in enumerate(lines) if "┄┄ last compaction" in line)
+        assert lines[marker].startswith("09:00")
+        assert "┌ Email" in lines[marker + 1]
+
+    def test_dates_a_last_compaction_on_an_earlier_day(self):
+        plan = _plan(
+            [_note(1, "09:10+1", "email")],
+            [],
+            [event_at("09:00+1-10:00+1", id="e1", summary="Email", priority=2)],
+            now="11:30+1",
+            last_compaction=time_at("21:00"),
+        )
+
+        assert "┄┄ last compaction (Thu 01 Jan)" in plan.timeline.text
 
     def test_shows_cancelled_and_moved_events(self):
         plan = _plan(
