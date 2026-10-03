@@ -145,24 +145,77 @@ def _column_letters(number: int) -> str:
 
 class FakeSheetsService:
     """A stand-in for the Google Sheets API *service* that a real
-    `SheetsClient` wraps, backed by a `FakeSheets` -- for tests that need
-    the real client's behavior (its per-tool-call read cache, see
-    `cached_sheet_reads`) and want to count the requests that would
-    actually reach Google. Supports just the sheetId-addressed reads and
-    writes (`values.batchGetByDataFilter`/`batchUpdateByDataFilter`) that
-    `SheetsClient.read_rows_in_sheet`/`write_rows_in_sheet` send.
+    `SheetsClient` wraps, backed by a `FakeSheets` -- for tests that run
+    the production client end to end (its per-tool-call read cache, see
+    `cached_sheet_reads`, included) and count the requests that would
+    actually reach Google. Supports the requests `SheetsClient` sends for
+    reading and writing rows by sheetId (`values.batchGetByDataFilter`/
+    `batchUpdateByDataFilter`), finding and tagging tabs
+    (`developerMetadata.search`, and `batchUpdate`'s `addSheet`,
+    `createDeveloperMetadata`, `updateSheetProperties`), sizing columns
+    and deleting rows.
 
-    `read_requests` lists each read's tab and A1 range, in order."""
+    `read_requests` lists each read request, in order: a row read as its
+    tab and A1 range, a tab lookup as `(None, "developerMetadata.search")`."""
 
     def __init__(self, sheets: FakeSheets) -> None:
         self.sheets = sheets
-        self.read_requests: list[tuple[int, str]] = []
+        self.read_requests: list[tuple[int | None, str]] = []
 
     def spreadsheets(self):
         return self
 
     def values(self):
         return self
+
+    def developerMetadata(self):
+        return self
+
+    def search(self, *, spreadsheetId, body):
+        (data_filter,) = body["dataFilters"]
+        lookup = data_filter["developerMetadataLookup"]
+
+        def execute():
+            self.read_requests.append((None, "developerMetadata.search"))
+            sheet_id = self.sheets.find_sheet_id(spreadsheetId, lookup["metadataKey"], lookup["metadataValue"])
+            if sheet_id is None:
+                return {}
+            return {"matchedDeveloperMetadata": [{"developerMetadata": {"location": {"sheetId": sheet_id}}}]}
+
+        return _Request(execute)
+
+    def batchUpdate(self, *, spreadsheetId, body, **_kwargs):
+        def execute():
+            replies = []
+            for request in body["requests"]:
+                (kind, detail), = request.items()
+                if kind == "addSheet":
+                    sheet_id = self.sheets.add_sheet(spreadsheetId, detail["properties"]["title"])
+                    replies.append({"addSheet": {"properties": {"sheetId": sheet_id}}})
+                    continue
+                if kind == "createDeveloperMetadata":
+                    metadata = detail["developerMetadata"]
+                    self.sheets.create_sheet_metadata(
+                        spreadsheetId, metadata["location"]["sheetId"], metadata["metadataKey"], metadata["metadataValue"]
+                    )
+                elif kind == "updateSheetProperties":
+                    properties = detail["properties"]
+                    self.sheets.update_sheet_properties(spreadsheetId, properties["sheetId"], title=properties.get("title"))
+                elif kind == "deleteDimension":
+                    grid = detail["range"]
+                    self.sheets.delete_rows(
+                        spreadsheetId, grid["sheetId"], start_row=grid["startIndex"] + 1, end_row=grid["endIndex"]
+                    )
+                elif kind != "updateDimensionProperties":
+                    raise NotImplementedError(f"FakeSheetsService doesn't support {kind!r}")
+                replies.append({})
+            sheets = [
+                {"properties": {"sheetId": sheet_id, "gridProperties": {"rowCount": self.sheets.row_count(sheet_id)}}}
+                for sheet_id in {*self.sheets.cells, *self.sheets.titles}
+            ]
+            return {"replies": replies, "updatedSpreadsheet": {"sheets": sheets}}
+
+        return _Request(execute)
 
     def batchGetByDataFilter(self, *, spreadsheetId, body):
         (data_filter,) = body["dataFilters"]
