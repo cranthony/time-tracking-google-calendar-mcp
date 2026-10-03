@@ -21,7 +21,8 @@ rule had its text added to the event it falls within (`↳`), and `○` marks
 a note that wasn't added anywhere. An event's goals follow its title: `◆`
 for one it already serves, `◇` for one it's being given (or, before
 anything is decided, one suggested for it). A last line totals each
-goal's time.
+goal's time. Before anything is decided, `✓` marks a note an earlier
+compaction already used, shown as context.
 """
 
 from __future__ import annotations
@@ -62,6 +63,8 @@ class TimelineNote:
     """The title of the event this note's text was added to, if any."""
 
     ignored: bool = False
+    compacted: bool = False
+    """An earlier compaction's note, shown only as context (`✓`)."""
 
 
 @dataclass(kw_only=True)
@@ -253,12 +256,13 @@ def _goal_time(live: list[TimelineEvent]) -> str:
 
 def _note_text(note: TimelineNote, decided: bool) -> str:
     placed = bool(note.anchors or note.annotates) or not decided
-    marker = "●" if placed and not note.ignored else "○"
+    marker = "✓" if note.compacted else "●" if placed and not note.ignored else "○"
     text = (note.text or "").strip() or "(no description)"
-    room = _NOTE_WIDTH - 4 if note.anchors else _NOTE_WIDTH - 2
+    suffix = " (compacted)" if note.compacted else ""
+    room = (_NOTE_WIDTH - 4 if note.anchors else _NOTE_WIDTH - 2) - len(suffix)
     if len(text) > room:
         text = text[: room - 1] + "…"
-    return f"{marker} {text}"
+    return f"{marker} {text}{suffix}"
 
 
 def _duration(delta: timedelta) -> str:

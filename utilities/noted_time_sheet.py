@@ -60,6 +60,9 @@ _SHEET_ROLE = calendar_metadata_sheet.TIME_NOTES_SHEET_ROLE
 
 _NEXT_ROW_HINT = "notes_next_row"
 _COMPACTED_THROUGH_HINT = "notes_compacted_through_row"
+_LATEST_COMPACTED_HINT = "notes_latest_compacted_row"
+"""The row of the compacted note with the latest timestamp -- see
+`read_with_latest_compacted`."""
 _CONFIRM_ROWS = 5
 """How many rows a hint's confirmation check reads -- enough to notice a
 handful of rows added or edited without it, cheap enough that a stale
@@ -223,54 +226,81 @@ class NotedTimeSheet:
         """The data rows (everything after the header row) of this tab,
         in sheet order, each with its row number. Only uncompacted notes
         unless `include_compacted`. Rows with nothing in them are
-        skipped (their row numbers still count).
+        skipped (their row numbers still count). See `_read` for how
+        little of the tab this reads."""
+        return self._read(include_compacted=include_compacted)[0]
+
+    def read_with_latest_compacted(self) -> tuple[list[SheetNote], NotedTime | None]:
+        """`read_with_rows()`'s uncompacted notes, together with the
+        compacted note with the latest timestamp (`None` if there's none)
+        -- from the same read request."""
+        notes, latest = self._read(include_compacted=False)
+        return notes, latest.note if latest is not None else None
+
+    def _read(self, *, include_compacted: bool) -> tuple[list[SheetNote], SheetNote | None]:
+        """The notes `read_with_rows` returns, and the latest compacted
+        note.
 
         Unless `include_compacted`, starts from a hinted row instead of
-        the top of the tab when one is confirmed still good (see
-        `_uncompacted_start_row`) -- everything before it is known
-        already compacted, so skipping it can't hide an uncompacted note.
-        Either way, refreshes the hint from what this call reads: rows
-        confirmed blank or compacted extend it forward for next time."""
+        the top of the tab: the earlier of `_COMPACTED_THROUGH_HINT`
+        (everything before it is known already compacted, so skipping it
+        can't hide an uncompacted note) and `_LATEST_COMPACTED_HINT`, so
+        that one read takes in the latest compacted note too. Both hinted
+        rows are within that read, so they're confirmed from it -- each
+        must still hold a compacted note (compaction only ever adds a
+        `compaction_id`, never removes one, so a row seen compacted stays
+        that way unless a user edits it by hand, which this catches) --
+        and if either isn't, or a hint is missing, this reads the whole
+        tab instead. Either way, refreshes the hints from what it read:
+        rows confirmed blank or compacted extend the compacted prefix
+        forward, and the latest compacted note read is the latest there
+        is (the hinted one was among them)."""
         header_row = self._read_header()
-        start_row = _FIRST_DATA_ROW if include_compacted else self._uncompacted_start_row(header_row)
-        rows = self._sheets_client.read_rows_in_sheet(
-            self._spreadsheet_id, self._sheet_id, f"A{start_row}:{_LAST_COLUMN}"
+        compacted_through = self._hints.get(_COMPACTED_THROUGH_HINT)
+        latest_row = self._hints.get(_LATEST_COMPACTED_HINT)
+        hinted = (
+            not include_compacted
+            and compacted_through is not None
+            and compacted_through >= _FIRST_DATA_ROW
+            and latest_row is not None
+            and latest_row >= _FIRST_DATA_ROW
         )
+        start_row = min(compacted_through, latest_row) if hinted else _FIRST_DATA_ROW
+        rows = self._read_from(start_row)
+        if hinted and not all(
+            _is_compacted(header_row, rows, row - start_row) for row in (compacted_through, latest_row)
+        ):
+            start_row = _FIRST_DATA_ROW
+            rows = self._read_from(start_row)
         result = []
-        compacted_through = start_row - 1
+        prefix_end = start_row - 1
         still_confirming = True
+        latest: SheetNote | None = None
         for offset, row in enumerate(rows):
             row_number = start_row + offset
             blank = not any(cell.strip() for cell in row)
             note = None if blank else NotedTime.from_row(header_row, row)
             if not blank and (include_compacted or note.compaction_id is None):
                 result.append(SheetNote(row=row_number, note=note))
+            if note is not None and note.compaction_id is not None and (
+                latest is None or note.timestamp >= latest.note.timestamp
+            ):
+                latest = SheetNote(row=row_number, note=note)
             if still_confirming and (blank or (note is not None and note.compaction_id is not None)):
-                compacted_through = row_number
+                prefix_end = row_number
             else:
                 still_confirming = False
-        if compacted_through >= start_row:
-            self._hints.set(_COMPACTED_THROUGH_HINT, compacted_through)
-        return result
+        # Only written when changed: every hint write is a write request.
+        if prefix_end >= start_row and prefix_end != compacted_through:
+            self._hints.set(_COMPACTED_THROUGH_HINT, prefix_end)
+        if latest is not None and latest.row != latest_row:
+            self._hints.set(_LATEST_COMPACTED_HINT, latest.row)
+        return result, latest
 
-    def _uncompacted_start_row(self, header_row: list[str]) -> int:
-        """Where `read_with_rows` can safely start reading for uncompacted
-        notes: right after `_COMPACTED_THROUGH_HINT`, if that hint is
-        confirmed still accurate, or the top of the tab otherwise.
-        Confirming it only re-reads *that one row* -- compaction only
-        ever adds a `compaction_id`, never removes one, so once a row is
-        seen compacted it stays compacted unless a user edits it by
-        hand, which this catches."""
-        hinted = self._hints.get(_COMPACTED_THROUGH_HINT)
-        if hinted is None or hinted < _FIRST_DATA_ROW:
-            return _FIRST_DATA_ROW
-        check = self._sheets_client.read_rows_in_sheet(
-            self._spreadsheet_id, self._sheet_id, f"A{hinted}:{_LAST_COLUMN}{hinted}"
+    def _read_from(self, start_row: int) -> list[list[str]]:
+        return self._sheets_client.read_rows_in_sheet(
+            self._spreadsheet_id, self._sheet_id, f"A{start_row}:{_LAST_COLUMN}"
         )
-        compaction_id_index = header_row.index("compaction_id")
-        if check and len(check[0]) > compaction_id_index and check[0][compaction_id_index].strip():
-            return hinted + 1
-        return _FIRST_DATA_ROW
 
     def read(self, *, include_compacted: bool = False) -> list[NotedTime]:
         """Every note, sorted by timestamp -- notes are appended in
@@ -404,6 +434,19 @@ class NotedTimeSheet:
             deletable += 1
         if deletable == 0:
             return
+        # Reset the read hints *before* deleting: rows shift up under
+        # them, and a hint left at its old row could land on a compacted
+        # note that passes its check -- for the compacted-through hint,
+        # hiding uncompacted notes that moved up past it. Reset first, a
+        # failure partway through only costs a full read. (The next-row
+        # hint needs no such care: its own check catches a row that's no
+        # longer the end.) Deleting only ever confirmed compacted-or-blank
+        # rows, so the reset is always safe -- just possibly conservative
+        # if the compacted prefix ran longer than `excess`.
+        latest_compacted = self._hints.get(_LATEST_COMPACTED_HINT)
+        self._hints.set(_COMPACTED_THROUGH_HINT, _FIRST_DATA_ROW - 1)
+        if latest_compacted is not None:
+            self._hints.set(_LATEST_COMPACTED_HINT, _FIRST_DATA_ROW - 1)
         self._sheets_client.delete_rows(
             self._spreadsheet_id,
             self._sheet_id,
@@ -412,10 +455,9 @@ class NotedTimeSheet:
             keep_at_least=calendar_metadata_sheet.MIN_TAB_ROWS,
         )
         self._hints.set(_NEXT_ROW_HINT, next_row - deletable)
-        # Deleting only ever confirmed compacted-or-blank rows, so a full
-        # reset is always safe -- just possibly conservative if the
-        # compacted prefix actually ran longer than `excess`.
-        self._hints.set(_COMPACTED_THROUGH_HINT, _FIRST_DATA_ROW - 1)
+        if latest_compacted is not None and latest_compacted >= _FIRST_DATA_ROW + deletable:
+            # It was below the deleted rows, so it just moved up with the rest.
+            self._hints.set(_LATEST_COMPACTED_HINT, latest_compacted - deletable)
 
     def _next_row(self) -> int:
         """The row this tab's next new note should go in: a hinted row,
@@ -495,6 +537,13 @@ class NotedTimeSheet:
                 f"Missing expected header columns at {_HEADER_RANGE}: {expected - set(header_row)}"
             )
         return header_row
+
+
+def _is_compacted(header_row: list[str], rows: list[list[str]], offset: int) -> bool:
+    """Whether `rows[offset]` holds a compacted note."""
+    if not 0 <= offset < len(rows) or not any(cell.strip() for cell in rows[offset]):
+        return False
+    return NotedTime.from_row(header_row, rows[offset]).compaction_id is not None
 
 
 def _contiguous_runs(sorted_rows: list[int]) -> list[tuple[int, int]]:

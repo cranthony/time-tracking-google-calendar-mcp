@@ -972,15 +972,25 @@ def planned_timeline(
     now: datetime,
     goal_names: dict[str, str] | None = None,
     suggested: dict[str, list[str]] | None = None,
+    *,
+    previous_note: PlanNote | None = None,
 ) -> Timeline:
     """The two lanes before anything is decided: the notes beside the
     day's events as planned -- what a model compares to make its
     decisions. `suggested` (event id -> goal ids) marks goals suggested
-    for events that have none."""
+    for events that have none. `previous_note`, an already-compacted note
+    from just before them, is shown as context, marked compacted."""
     goal_names = goal_names or {}
     suggested = suggested or {}
+    timeline_notes = [TimelineNote(id=n.id, time=n.timestamp, text=n.description) for n in notes]
+    if previous_note is not None:
+        timeline_notes.append(
+            TimelineNote(
+                id=previous_note.id, time=previous_note.timestamp, text=previous_note.description, compacted=True
+            )
+        )
     return build_timeline(
-        [TimelineNote(id=n.id, time=n.timestamp, text=n.description) for n in notes],
+        timeline_notes,
         [
             TimelineEvent(
                 summary=e.summary or e.id,

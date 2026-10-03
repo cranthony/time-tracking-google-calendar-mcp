@@ -124,6 +124,7 @@ class TestPrepare:
         assert context.remaining_note_count == 0
         assert context.open_compaction is None
         assert "SILENCE MEANS ON SCHEDULE" in context.instructions
+        assert "READ EACH NOTE'S TENSE" in context.instructions
 
     def test_offers_the_notes_beside_the_planned_events_as_a_timeline(self):
         context = _standard().compactor.prepare()
@@ -253,6 +254,56 @@ class TestTheCompactionWindow:
         context = setup.compactor.prepare()
 
         assert [e.id for e in context.events] == ["w2", "s1"]
+
+    def _compacted_note(self, setup, at, description):
+        setup.append_note(at, description)
+        last = max(n.row for n in setup.notes.read_with_rows(include_compacted=True))
+        setup.notes.mark_compacted([setup.note_id(last)], "prev")
+
+    def test_the_last_compacted_note_just_before_the_window_is_offered_as_context(self):
+        setup = self._setup(note_at="10:20+1")
+        self._compacted_note(setup, "09:30+1", "earlier")
+        self._compacted_note(setup, "09:55+1", "starting email")
+        self._stamp_a_compaction_at(setup, "10:05+1")
+
+        context = setup.compactor.prepare()
+
+        assert context.previous_note.description == "starting email"
+        assert context.previous_note.timestamp == time_at("09:55+1")
+        # Context only: it's not one of this round's notes.
+        assert [n.id for n in context.notes] == [setup.note_id(2)]
+        assert "✓ starting email (compacted)" in context.timeline.text
+
+    def test_a_compacted_note_longer_before_the_window_is_not_offered(self):
+        setup = self._setup(note_at="10:20+1")
+        self._compacted_note(setup, "09:45+1", "starting email")
+        self._stamp_a_compaction_at(setup, "10:05+1")
+
+        assert setup.compactor.prepare().previous_note is None
+
+    def test_a_later_round_reads_its_notes_and_the_previous_note_in_one_request(self):
+        # Google Sheets caps read requests per minute, so the notes tab
+        # costs a later round's prepare just its header and one data read:
+        # the hints are confirmed, and the previous note found, within it.
+        setup = Setup([("09:05+1", "email"), ("09:58+1", "done with work")], events=self._events(), now="10:05+1")
+        setup.compactor.commit(setup.compactor.dry_run([]).compaction_id)
+        setup.append_note("10:20+1", "report")
+        setup.now = "10:30+1"
+        setup.compactor.prepare()  # takes in the notes stamped since the hints were set
+        reads = []
+        read = setup.sheets.read_rows_in_sheet
+
+        def counting(spreadsheet_id, sheet_id, rng):
+            if sheet_id == _NOTES_TAB:
+                reads.append(rng)
+            return read(spreadsheet_id, sheet_id, rng)
+
+        setup.sheets.read_rows_in_sheet = counting
+
+        context = setup.compactor.prepare()
+
+        assert context.previous_note.description == "done with work"
+        assert reads == ["A1:C1", "A3:C"]
 
     def test_a_note_written_before_the_planned_wake_up_starts_the_day_there(self):
         context = self._setup(note_at="06:40+1").compactor.prepare()
