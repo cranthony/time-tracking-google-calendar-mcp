@@ -242,34 +242,34 @@ class NotedTimeSheet:
         note.
 
         Unless `include_compacted`, starts from a hinted row instead of
-        the top of the tab: the earlier of `_COMPACTED_THROUGH_HINT`
-        (everything before it is known already compacted, so skipping it
-        can't hide an uncompacted note) and `_LATEST_COMPACTED_HINT`, so
-        that one read takes in the latest compacted note too. Both hinted
-        rows are within that read, so they're confirmed from it -- each
-        must still hold a compacted note (compaction only ever adds a
-        `compaction_id`, never removes one, so a row seen compacted stays
-        that way unless a user edits it by hand, which this catches) --
-        and if either isn't, or a hint is missing, this reads the whole
-        tab instead. Either way, refreshes the hints from what it read:
-        rows confirmed blank or compacted extend the compacted prefix
-        forward, and the latest compacted note read is the latest there
-        is (the hinted one was among them)."""
+        the top of the tab: `_COMPACTED_THROUGH_HINT` (everything before
+        it is known already compacted, so skipping it can't hide an
+        uncompacted note), or `_LATEST_COMPACTED_HINT` if that's earlier,
+        so that the one read takes in the latest compacted note too. The
+        compacted-through row is within that read, so it's confirmed from
+        it -- it must still hold a compacted note (compaction only ever
+        adds a `compaction_id`, never removes one, so a row seen compacted
+        stays that way unless a user edits it by hand, which this
+        catches) -- and if it doesn't, this reads the whole tab instead.
+        The latest-compacted hint isn't trusted at all: the latest
+        compacted note is whichever compacted row read has the latest
+        timestamp, and the hint only moves the start of the read back so
+        the one it last found is among them. Either way, refreshes the
+        hints from what it read: rows confirmed blank or compacted extend
+        the compacted prefix forward, and the latest-compacted hint points
+        at the latest compacted note read."""
         header_row = self._read_header()
         compacted_through = self._hints.get(_COMPACTED_THROUGH_HINT)
         latest_row = self._hints.get(_LATEST_COMPACTED_HINT)
-        hinted = (
-            not include_compacted
-            and compacted_through is not None
-            and compacted_through >= _FIRST_DATA_ROW
-            and latest_row is not None
-            and latest_row >= _FIRST_DATA_ROW
-        )
-        start_row = min(compacted_through, latest_row) if hinted else _FIRST_DATA_ROW
+        hinted = not include_compacted and compacted_through is not None and compacted_through >= _FIRST_DATA_ROW
+        if not hinted:
+            start_row = _FIRST_DATA_ROW
+        elif latest_row is not None and _FIRST_DATA_ROW <= latest_row < compacted_through:
+            start_row = latest_row
+        else:
+            start_row = compacted_through
         rows = self._read_from(start_row)
-        if hinted and not all(
-            _is_compacted(header_row, rows, row - start_row) for row in (compacted_through, latest_row)
-        ):
+        if hinted and not _is_compacted(header_row, rows, compacted_through - start_row):
             start_row = _FIRST_DATA_ROW
             rows = self._read_from(start_row)
         result = []

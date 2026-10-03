@@ -333,23 +333,40 @@ class TestNotedTimeSheetLatestCompacted:
 
         hints.set.assert_not_called()
 
-    def test_without_a_latest_compacted_hint_reads_the_whole_tab(self):
+    def test_without_a_latest_compacted_hint_reads_from_the_compacted_through_row(self):
         hints = FakeRowHints()
         hints.set("notes_compacted_through_row", 3)
-        client, sheet = self._sheet([[_T2, "latest", "cmp1"], [_T1, "older", "cmp1"], [_T1, "open"]], hints)
+        client, sheet = self._sheet([[_T2, "a", "cmp1"], [_T1, "b", "cmp1"], [_T2, "c", "cmp1"], [_T1, "open"]], hints)
 
-        assert sheet.read_with_latest_compacted()[1].description == "latest"
-        assert client.read_rows_in_sheet.call_args_list[-1].args[2] == "A2:C"
-        assert hints.get("notes_latest_compacted_row") == 2
+        assert sheet.read_with_latest_compacted()[1].description == "c"
+        assert client.read_rows_in_sheet.call_args_list[-1].args[2] == "A3:C"
+        assert hints.get("notes_latest_compacted_row") == 4
 
-    def test_falls_back_to_a_full_read_when_the_hinted_row_is_not_compacted(self):
+    def test_the_latest_compacted_note_is_picked_from_the_rows_read_not_the_hint(self):
+        # The hinted row is still compacted, but a later-stamped note
+        # (row 5) is later still -- and the uncompacted row 4 isn't
+        # mistaken for one.
+        rows = [[_T1, "a", "cmp1"], [_T1, "hinted", "cmp1"], [_T2, "open"], [_T2, "later", "cmp2"]]
         hints = FakeRowHints()
-        hints.set("notes_compacted_through_row", 2)
+        hints.set("notes_compacted_through_row", 3)
         hints.set("notes_latest_compacted_row", 3)
-        _client, sheet = self._sheet([[_T2, "latest", "cmp1"], [_T1, "open"]], hints)
+        client, sheet = self._sheet(rows, hints)
 
-        assert sheet.read_with_latest_compacted()[1].description == "latest"
-        assert hints.get("notes_latest_compacted_row") == 2
+        assert sheet.read_with_latest_compacted()[1].description == "later"
+        assert hints.get("notes_latest_compacted_row") == 5
+        assert len(client.read_rows_in_sheet.call_args_list) == 2  # header, data
+
+    def test_a_hinted_row_that_is_no_longer_compacted_costs_no_extra_read(self):
+        hints = FakeRowHints()
+        hints.set("notes_compacted_through_row", 3)
+        hints.set("notes_latest_compacted_row", 2)
+        client, sheet = self._sheet([[_T2, "no longer", ""], [_T1, "b", "cmp1"], [_T1, "open"]], hints)
+
+        notes, latest = sheet.read_with_latest_compacted()
+
+        assert latest.description == "b"
+        assert [n.note.description for n in notes] == ["no longer", "open"]
+        assert len(client.read_rows_in_sheet.call_args_list) == 2  # header, data
 
     def test_a_read_past_the_compacted_prefix_takes_in_notes_stamped_since(self):
         # Rows 2-3 were compacted when the hints were set; row 5 has been

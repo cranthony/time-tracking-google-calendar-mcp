@@ -133,3 +133,67 @@ class FakeSheets:
 
     def create_spreadsheet(self, title: str) -> str:
         return "new-spreadsheet"
+
+
+def _column_letters(number: int) -> str:
+    letters = ""
+    while number:
+        number, remainder = divmod(number - 1, 26)
+        letters = chr(ord("A") + remainder) + letters
+    return letters
+
+
+class FakeSheetsService:
+    """A stand-in for the Google Sheets API *service* that a real
+    `SheetsClient` wraps, backed by a `FakeSheets` -- for tests that need
+    the real client's behavior (its per-tool-call read cache, see
+    `cached_sheet_reads`) and want to count the requests that would
+    actually reach Google. Supports just the sheetId-addressed reads and
+    writes (`values.batchGetByDataFilter`/`batchUpdateByDataFilter`) that
+    `SheetsClient.read_rows_in_sheet`/`write_rows_in_sheet` send.
+
+    `read_requests` lists each read's tab and A1 range, in order."""
+
+    def __init__(self, sheets: FakeSheets) -> None:
+        self.sheets = sheets
+        self.read_requests: list[tuple[int, str]] = []
+
+    def spreadsheets(self):
+        return self
+
+    def values(self):
+        return self
+
+    def batchGetByDataFilter(self, *, spreadsheetId, body):
+        (data_filter,) = body["dataFilters"]
+        sheet_id, rng = self._a1(data_filter["gridRange"])
+
+        def execute():
+            self.read_requests.append((sheet_id, rng))
+            values = self.sheets.read_rows_in_sheet(spreadsheetId, sheet_id, rng)
+            return {"valueRanges": [{"valueRange": {"values": values}}]}
+
+        return _Request(execute)
+
+    def batchUpdateByDataFilter(self, *, spreadsheetId, body):
+        (data,) = body["data"]
+        sheet_id, rng = self._a1(data["dataFilter"]["gridRange"])
+
+        def execute():
+            self.sheets.write_rows_in_sheet(spreadsheetId, sheet_id, rng, data["values"])
+            return {"totalUpdatedCells": sum(len(row) for row in data["values"])}
+
+        return _Request(execute)
+
+    @staticmethod
+    def _a1(grid_range: dict) -> tuple[int, str]:
+        first = f"{_column_letters(grid_range['startColumnIndex'] + 1)}{grid_range['startRowIndex'] + 1}"
+        last = _column_letters(grid_range["endColumnIndex"]) + (
+            str(grid_range["endRowIndex"]) if "endRowIndex" in grid_range else ""
+        )
+        return grid_range["sheetId"], f"{first}:{last}"
+
+
+class _Request:
+    def __init__(self, execute) -> None:
+        self.execute = execute
