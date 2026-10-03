@@ -4,7 +4,8 @@ import httplib2
 import pytest
 from googleapiclient.errors import HttpError
 
-from calendar_clients.google_sheets import SheetsClient, _execute, cached_sheet_reads
+from calendar_clients.google_sheets import SheetsClient, TabRange, _execute, cached_sheet_reads
+from tests.fake_sheets import FakeSheets, FakeSheetsService
 from calendar_clients.write_lock import WriteLockNotHeldError
 
 
@@ -517,6 +518,102 @@ class TestReadRangesInSheet:
         assert (header_again, data_again) == ([["header"]], [["a"]])
         assert read.call_count == 2
         assert len(read.call_args.kwargs["body"]["dataFilters"]) == 1
+
+
+class TestReadsWithinACachedRange:
+    """Inside `cached_sheet_reads`, a range that falls within one already
+    read from the same tab is cut out of it -- exactly as the API would
+    return it -- instead of costing another read request."""
+
+    def _client(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("s", 1, "A1:D1", [["h1", "h2", "h3", "h4"]])
+        fake.write_rows_in_sheet("s", 1, "A2:D5", [["a", "", "c"], [], ["x", "y"], ["", "", "", "z"]])
+        fake.write_rows_in_sheet("s", 2, "A1:B1", [["other", "tab"]])
+        service = FakeSheetsService(fake)
+        return SheetsClient(service), service, fake
+
+    @pytest.mark.parametrize(
+        "rng",
+        ["A1:D1", "A2:D", "A3:D4", "B2:C", "A2:B3", "D2:D", "A4:D9", "C1:C1", "A6:D"],
+    )
+    def test_matches_what_the_api_would_return(self, rng):
+        client, service, fake = self._client()
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("s", 1, "A1:D")
+            within = client.read_rows_in_sheet("s", 1, rng)
+
+        assert within == fake.read_rows_in_sheet("s", 1, rng)
+        assert len(service.read_requests) == 1
+
+    def test_a_range_reaching_outside_what_was_read_is_requested(self):
+        client, service, _ = self._client()
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("s", 1, "A2:B")
+            client.read_rows_in_sheet("s", 1, "A2:C")  # a column more
+            client.read_rows_in_sheet("s", 1, "A1:B")  # a row higher
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("s", 1, "A1:D3")
+            client.read_rows_in_sheet("s", 1, "A1:D")  # open-ended, past a bounded one
+
+        assert len(service.read_requests) == 5
+
+    def test_another_tabs_range_is_never_used(self):
+        client, service, _ = self._client()
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("s", 1, "A1:D")
+            assert client.read_rows_in_sheet("s", 2, "A1:B1") == [["other", "tab"]]
+
+        assert len(service.read_requests) == 2
+
+    def test_a_write_to_the_tab_forgets_the_range_it_was_within(self):
+        client, service, _ = self._client()
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("s", 1, "A1:D")
+            client.write_rows_in_sheet("s", 1, "A3:A3", [["new"]])
+            assert client.read_rows_in_sheet("s", 1, "A3:A3") == [["new"]]
+
+        assert len(service.read_requests) == 2
+
+
+class TestPrefetch:
+    def _client(self):
+        fake = FakeSheets()
+        fake.write_rows_in_sheet("s", 1, "A1:B2", [["h"], ["one"]])
+        fake.write_rows_in_sheet("s", 2, "A1:B2", [["h"], ["two"]])
+        service = FakeSheetsService(fake)
+        return SheetsClient(service), service
+
+    def test_reads_several_tabs_in_one_request_for_later_reads_within_them(self):
+        client, service = self._client()
+
+        with cached_sheet_reads():
+            client.prefetch([TabRange("s", 1, "A1:B"), TabRange("s", 2, "A1:B")])
+            one = client.read_ranges_in_sheet("s", 1, ["A1:B1", "A2:B"])
+            two = client.read_rows_in_sheet("s", 2, "A2:B")
+
+        assert (one, two) == ([[["h"]], [["one"]]], [["two"]])
+        assert len(service.read_requests) == 1
+
+    def test_skips_what_is_already_cached(self):
+        client, service = self._client()
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("s", 1, "A1:B")
+            client.prefetch([TabRange("s", 1, "A2:B"), TabRange("s", 2, "A1:B")])
+
+        assert service.read_requests[-1] == (2, "A1:B")
+
+    def test_does_nothing_outside_cached_sheet_reads(self):
+        client, service = self._client()
+
+        client.prefetch([TabRange("s", 1, "A1:B")])
+
+        assert service.read_requests == []
 
 
 class TestCachedSheetReads:

@@ -21,7 +21,7 @@ from dataclasses import dataclass, fields
 from datetime import date
 from typing import Any, Literal
 
-from calendar_clients.google_sheets import SheetsClient
+from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 
 GoalStatus = Literal["proposed", "active", "inactive", "completed", "archived", "deleted"]
@@ -212,6 +212,12 @@ class GoalSheet:
     @property
     def spreadsheet_id(self) -> str:
         return self._spreadsheet_id
+
+    @property
+    def whole_tab(self) -> TabRange:
+        """This whole tab, header and all, for `SheetsClient.prefetch`:
+        every read of it falls within this."""
+        return TabRange(self._spreadsheet_id, self._sheet_id, "A1:Z")
 
     @staticmethod
     def find(sheets_client: SheetsClient, spreadsheet_id: str) -> "GoalSheet | None":

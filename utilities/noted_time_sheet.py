@@ -49,7 +49,7 @@ from __future__ import annotations
 from dataclasses import dataclass, fields, replace
 from datetime import datetime
 
-from calendar_clients.google_sheets import SheetsClient
+from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 
 DEFAULT_SHEET_TITLE = calendar_metadata_sheet.TIME_NOTES_SHEET_TITLE
@@ -185,6 +185,18 @@ class NotedTimeSheet:
     @property
     def spreadsheet_id(self) -> str:
         return self._spreadsheet_id
+
+    @property
+    def whole_tab(self) -> TabRange:
+        """This whole tab, header and all, for `SheetsClient.prefetch`:
+        every read of it falls within this."""
+        return TabRange(self._spreadsheet_id, self._sheet_id, f"A1:{_LAST_COLUMN}")
+
+    def prefetch(self, ranges: list[TabRange]) -> None:
+        """`SheetsClient.prefetch`, through this tab's client: for a
+        caller reading several tabs of this spreadsheet in one step (see
+        utilities/note_compactor.py)."""
+        self._sheets_client.prefetch(ranges)
 
     @staticmethod
     def ensure(sheets_client: SheetsClient, spreadsheet_id: str) -> "NotedTimeSheet":

@@ -38,7 +38,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel, color_for_priority
-from calendar_clients.google_sheets import SheetsClient
+from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 from utilities.goal_measures import DEFAULT_MEASURE, MEASURE_SHAPE_PROBLEM, measure_problems
 from utilities.sleep_days import current_day_from
@@ -274,6 +274,12 @@ class Goals:
     @property
     def spreadsheet_id(self) -> str:
         return self._sheet.spreadsheet_id
+
+    @property
+    def whole_tab(self) -> TabRange:
+        """The goals tab, for `SheetsClient.prefetch` -- see
+        `GoalSheet.whole_tab`."""
+        return self._sheet.whole_tab
 
     def tree(self) -> GoalTree:
         """The goals as they are in the sheet now -- read-only, never
