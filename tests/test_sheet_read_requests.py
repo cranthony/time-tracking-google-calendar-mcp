@@ -32,6 +32,7 @@ from tests.fake_sheets import FakeSheets, FakeSheetsService
 from tests.test_goal_health import NOW, TODAY, YESTERDAY, FakeCalendar, _event
 from utilities.goal_health import Assessment
 from utilities.goal_sheet import Goal
+from utilities.goals import OVERALL_ID
 from utilities.noted_time_sheet import NotedTime
 
 
@@ -113,7 +114,11 @@ def tools(monkeypatch):
 
 
 def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
-    roots = [g.id for g in server.get_goal_store().tree().goals if g.parent_id is None]
+    # Cooking's siblings (the overall goal stays first, so isn't among them).
+    siblings = [
+        g.id for g in server.get_goal_store().tree().goals
+        if g.parent_id == tools.cooking.parent_id and g.id != OVERALL_ID
+    ]
     event_id = tools.calendar.events[0].id
     note_id = server.get_notes()[0].id
     later_evening = replace(server.get_event("evening"), start=NOW + timedelta(minutes=15))
@@ -123,7 +128,7 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         "get_goals": lambda: server.get_goals(),
         "create_goal": lambda: server.create_goal(Goal(name="Writing")),
         "update_goal": lambda: server.update_goal(Goal(id=tools.cooking.id, note="dinners")),
-        "reorder_goals": lambda: server.reorder_goals(roots[::-1]),
+        "reorder_goals": lambda: server.reorder_goals(siblings[::-1]),
         "sync_goals_from_sheet": lambda: server.sync_goals_from_sheet(),
         "rebuild_goal_health_cache": lambda: server.rebuild_goal_health_cache(),
         # Goals only.
