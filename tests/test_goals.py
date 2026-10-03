@@ -212,7 +212,9 @@ class TestCreateGoal:
         wake = _by_name(goals)["Wake"]
 
         with pytest.raises(ValueError, match='"target" must be a time like "07:00"'):
-            goals.update_goal(Goal(id=wake.id, measure={"kind": "wake_time", "target": "7am"}))
+            goals.update_goal(
+                Goal(id=wake.id, measure={"kind": "time_constraint", "edge": "start", "target": "7am"})
+            )
 
         assert _by_name(goals)["Wake"].measure is None
 
@@ -243,15 +245,13 @@ class TestCreateGoal:
         with pytest.raises(ValueError, match="goal '.+'s measure \"agg\" must be one of mean, weighted, percentile"):
             goals.sync()
 
-    def test_a_measures_goal_ids_must_be_goals(self):
+    def test_a_measures_events_of_must_be_a_goal(self):
         goals, _, _ = _goals()
         goals.create_goal(Goal(name="Cooking"))
         cooking = _by_name(goals)["Cooking"]
 
         with pytest.raises(ValueError, match="names 'nope', which isn't a goal"):
-            goals.update_goal(
-                Goal(id=cooking.id, measure={"kind": "count", "target": 1, "goal_ids": [cooking.id, "nope"]})
-            )
+            goals.update_goal(Goal(id=cooking.id, measure={"kind": "count", "target": 1, "events_of": "nope"}))
 
     def test_sibling_names_must_differ(self):
         goals, _, _ = _goals()

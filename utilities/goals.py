@@ -648,10 +648,10 @@ def _validate(goals: list[Goal], check_measures: Collection[str] | None = None) 
             found = measure_problems(goal.measure, sub_goal_ids={c.id for c in tree.children(goal.id)})
             if check_measures is not None and goal.id not in check_measures:
                 found = [p for p in found if p == MEASURE_SHAPE_PROBLEM]
-            elif isinstance(goal.measure, dict) and isinstance(goal.measure.get("goal_ids"), list):
-                unknown = [g for g in goal.measure["goal_ids"] if isinstance(g, str) and g not in tree.by_id]
-                if unknown:
-                    found.append(f"\"goal_ids\" names {unknown[0]!r}, which isn't a goal")
+            elif isinstance(goal.measure, dict) and isinstance(goal.measure.get("events_of"), str):
+                source = goal.measure["events_of"]
+                if source not in tree.by_id:
+                    found.append(f"\"events_of\" names {source!r}, which isn't a goal")
             problems.extend(f"{label}'s measure {problem}" for problem in found)
     if problems:
         raise ValueError("; ".join(problems))
