@@ -34,16 +34,16 @@ import secrets
 import uuid
 from collections.abc import Callable, Collection
 from dataclasses import astuple, dataclass, fields, replace
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from typing import Any
 
 from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel, color_for_priority
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
 from utilities.event_label_sheet import EventLabelSheet
-from utilities.goal_measures import MEASURE_SHAPE_PROBLEM, measure_problems
-from utilities.goal_periods import last_ended, parse_period, period_containing
+from utilities.goal_measures import DEFAULT_MEASURE, MEASURE_SHAPE_PROBLEM, measure_problems
 from utilities.sleep_days import current_day_from
-from utilities.goal_sheet import CADENCES, GOAL_STATUSES, Goal, GoalSheet
+from utilities.goal_sheet import GOAL_STATUSES, Goal, GoalSheet
 
 MAX_LABELS = 200
 """The most event labels a calendar can have (named or not)."""
@@ -61,7 +61,7 @@ _ID_LENGTH = 6
 _MIGRATED_TAB_TITLE = "Event Labels (migrated)"
 
 CLEARABLE_FIELDS = frozenset(
-    {"parent_id", "background_color", "priority", "fixed_time", "cadence", "measure", "target", "deadline", "note"}
+    {"parent_id", "background_color", "priority", "fixed_time", "measure", "target", "deadline", "note"}
 )
 """Goal fields `update_goal` can blank. Not `name`/`status` (always
 needed) nor the read-only `id`/`label_id`/`created`."""
@@ -76,8 +76,9 @@ _READ_ONLY_FIELDS = frozenset({"id", "label_id", "created", "health", "health_pe
 @dataclass(kw_only=True)
 class ListedGoal(Goal):
     """A goal as tools return it: plus its `path` from the top of the
-    tree, e.g. "Cooking › Vegetarian › Tofu tikka", and how many of its
-    periods have ended with no confirmed assessment since its last one."""
+    tree, e.g. "Cooking › Vegetarian › Tofu tikka", how many days have
+    ended with no confirmed rating since its last one, and how much time
+    went toward it recently."""
 
     path: str | None = None
 
@@ -85,10 +86,18 @@ class ListedGoal(Goal):
     """Read-only: the color its label is shown in -- its own
     background_color, or the one it inherits (see GoalTree.color)."""
 
-    stale_periods: int | None = None
-    """Fully ended periods of its cadence since `health_period` (or since
-    it was created, if it's never been assessed); `None` unless it's
-    active and has a cadence."""
+    stale_days: int | None = None
+    """Fully ended days since `health_period` (or since it was created, if
+    it's never been rated); `None` unless the daily reflection rates it
+    (see GoalTree.rated)."""
+
+    minutes_24h: int | None = None
+    """Read-only: minutes of events serving it or any of its sub-goals in
+    the 24 hours (of wall-clock time) up to GoalList.as_of; `None` if
+    there's no as_of."""
+
+    minutes_7d: int | None = None
+    """Read-only: the same, over the 7 days up to GoalList.as_of."""
 
 
 @dataclass(kw_only=True)
@@ -100,6 +109,12 @@ class GoalList:
     """Labels on the calendar once synced: active goals plus unnamed ones."""
 
     label_slots_total: int = MAX_LABELS
+
+    as_of: datetime | None = None
+    """When notes were last compacted into the calendar (see utilities/
+    note_compactor.py): the calendar is settled fact up to then, so each
+    goal's minutes_24h/minutes_7d are counted up to it. `None` if notes
+    have never been compacted."""
 
 
 class GoalTree:
@@ -173,6 +188,34 @@ class GoalTree:
             problems.append(f"{goal_id!r} isn't a goal" + (f"; did you mean {hint}?" if hint else ""))
         raise ValueError("; ".join(problems) + " (get_goals lists them)")
 
+    def children(self, goal_id: str) -> list[Goal]:
+        """The goal's immediate sub-goals, in sheet order."""
+        return [g for g in self.goals if g.parent_id == goal_id and g.id != goal_id]
+
+    def rated(self, goal_id: str) -> bool:
+        """Whether the daily reflection rates the goal: it's active, and has
+        a measure or active sub-goals that are rated themselves."""
+        return self._rated(goal_id, set())
+
+    def _rated(self, goal_id: str, seen: set[str]) -> bool:
+        goal = self.by_id.get(goal_id)
+        if goal is None or not goal.active or goal_id in seen:
+            return False
+        seen.add(goal_id)
+        return goal.measure is not None or any(self._rated(c.id, seen) for c in self.children(goal_id))
+
+    def rated_children(self, goal_id: str) -> list[Goal]:
+        """The goal's immediate sub-goals the daily reflection rates."""
+        return [g for g in self.children(goal_id) if self.rated(g.id)]
+
+    def measure(self, goal_id: str) -> dict[str, Any] | None:
+        """How the goal is rated: its own measure, or, without one, the
+        mean of its rated sub-goals (DEFAULT_MEASURE); `None` if it isn't
+        rated."""
+        if not self.rated(goal_id):
+            return None
+        return self.by_id[goal_id].measure or dict(DEFAULT_MEASURE)
+
     def ordered(self) -> list[Goal]:
         """Parents before children (depth-first), siblings in sheet order;
         goals under a missing parent come last, as roots."""
@@ -208,8 +251,13 @@ class Goals:
         sheets_client: SheetsClient,
         *,
         today: Callable[[], date] | None = None,
+        last_compaction: Callable[[], datetime | None] | None = None,
     ) -> None:
+        """`last_compaction` says when notes were last compacted into the
+        calendar (see GoalList.as_of); without it, goals' recent time
+        isn't counted."""
         self._calendar_client = calendar_client
+        self._last_compaction = last_compaction
         # Days are the calendar's own, not this server's, and run from
         # waking to waking.
         self._today = today or (
@@ -365,19 +413,35 @@ class Goals:
     def _listing(self, tree: GoalTree, raw_labels: list[RawEventLabel], statuses: Collection[str]) -> GoalList:
         unnamed = sum(1 for label in raw_labels if not label.name)
         today = self._today()
+        as_of = self._last_compaction() if self._last_compaction else None
+        recent = self._recent_minutes(tree, as_of) if as_of is not None else None
         return GoalList(
             goals=[
                 ListedGoal(
                     **{f.name: getattr(goal, f.name) for f in fields(Goal)},
                     path=tree.path(goal.id),
                     effective_color=tree.color(goal),
-                    stale_periods=_stale_periods(goal, today),
+                    stale_days=_stale_days(goal, tree, today),
+                    minutes_24h=recent["24h"].get(goal.id, 0) if recent else None,
+                    minutes_7d=recent["7d"].get(goal.id, 0) if recent else None,
                 )
                 for goal in tree.ordered()
                 if goal.status in statuses
             ],
             label_slots_used=unnamed + sum(1 for goal in tree.goals if goal.active),
+            as_of=as_of,
         )
+
+    def _recent_minutes(self, tree: GoalTree, as_of: datetime) -> dict[str, dict[str, int]]:
+        """Minutes per goal in each of utilities/goal_time.py's
+        RECENT_WINDOWS up to `as_of`, from one listing of the calendar."""
+        # Imported here, since both modules import this one.
+        from utilities.goal_calendar import fill_in_from_goals
+        from utilities.goal_time import RECENT_WINDOWS, goal_minutes
+
+        longest = max(RECENT_WINDOWS.values())
+        events = fill_in_from_goals(self._calendar_client.list_events(as_of - longest, as_of), tree)
+        return {name: goal_minutes(events, tree, as_of - window, as_of) for name, window in RECENT_WINDOWS.items()}
 
     @staticmethod
     def _new_id(tree: GoalTree) -> str:
@@ -444,26 +508,21 @@ def _check_statuses(statuses: Collection[str] | None) -> tuple[str, ...]:
     return tuple(statuses)
 
 
-def _stale_periods(goal: Goal, today: date) -> int | None:
-    """See ListedGoal.stale_periods."""
-    if goal.cadence not in CADENCES or not goal.active:
+def _stale_days(goal: Goal, tree: GoalTree, today: date) -> int | None:
+    """See ListedGoal.stale_days. `today` hasn't ended, so isn't counted."""
+    if not tree.rated(goal.id):
         return None
     try:
-        latest = parse_period(goal.cadence, goal.health_period) if goal.health_period else None
+        latest = date.fromisoformat(goal.health_period) if goal.health_period else None
     except ValueError:
-        latest = None  # Assessed at a cadence it no longer has.
+        latest = None  # Rated over a week or month, before goals were rated daily.
     if latest is not None:
-        period = latest.next()
+        first = latest + timedelta(days=1)
     elif goal.created is not None:
-        period = period_containing(goal.cadence, goal.created)
+        first = goal.created
     else:
         return None
-    last = last_ended(goal.cadence, today)
-    count = 0
-    while period.start <= last.start and count < 1000:
-        count += 1
-        period = period.next()
-    return count
+    return max(0, (today - first).days)
 
 
 def _validate(goals: list[Goal], check_measures: Collection[str] | None = None) -> None:
@@ -502,10 +561,8 @@ def _validate(goals: list[Goal], check_measures: Collection[str] | None = None) 
                 problems.append(f"{label}'s parent {goal.parent_id!r} isn't a goal")
             elif goal.id and goal.id in [g.id for g in tree.chain(goal.parent_id)]:
                 problems.append(f"{label} can't be its own ancestor")
-        if goal.cadence is not None and goal.cadence not in CADENCES:
-            problems.append(f"{label}'s cadence must be one of {', '.join(CADENCES)}")
         if goal.measure is not None:
-            found = measure_problems(goal.measure)
+            found = measure_problems(goal.measure, sub_goal_ids={c.id for c in tree.children(goal.id)})
             if check_measures is not None and goal.id not in check_measures:
                 found = [p for p in found if p == MEASURE_SHAPE_PROBLEM]
             elif isinstance(goal.measure, dict) and isinstance(goal.measure.get("goal_ids"), list):

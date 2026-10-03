@@ -1,6 +1,6 @@
 import contextlib
 import dataclasses
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -568,9 +568,9 @@ class TestUpdateGoal:
         store = _fake_goals(monkeypatch)
         goal = Goal(id="g1")
 
-        server.update_goal(goal, clear_fields=["parent_id", "cadence"])
+        server.update_goal(goal, clear_fields=["parent_id", "measure"])
 
-        store.update_goal.assert_called_once_with(goal, ["parent_id", "cadence"])
+        store.update_goal.assert_called_once_with(goal, ["parent_id", "measure"])
 
     @pytest.mark.parametrize("error", [ValueError("'g9' isn't a goal"), EventLabelConflictError("stale etag")])
     def test_wraps_errors_as_tool_errors(self, monkeypatch, error):
@@ -610,12 +610,12 @@ class TestGoalHealthTools:
         health = _fake_goal_health(monkeypatch)
         health.measure.return_value = []
 
-        assert server.measure_goals("weekly", "week-2026-09-20", ["g1"]) == []
-        health.measure.assert_called_once_with("weekly", "week-2026-09-20", ["g1"])
+        assert server.measure_goals(date(2026, 9, 20), ["g1"]) == []
+        health.measure.assert_called_once_with(date(2026, 9, 20), ["g1"])
 
     def test_record_assessments_delegates(self, monkeypatch):
         health = _fake_goal_health(monkeypatch)
-        assessment = Assessment(goal_id="g1", cadence="daily", period="2026-10-01", rating=80, method="subjective")
+        assessment = Assessment(goal_id="g1", day=date(2026, 10, 1), rating=80, method="subjective")
         health.record_assessments.return_value = [assessment]
 
         assert server.record_assessments([assessment]) == [assessment]
@@ -627,9 +627,9 @@ class TestGoalHealthTools:
         health = _fake_goal_health(monkeypatch)
         health.history.return_value = []
 
-        server.get_goal_history(["g1"], "daily", date(2026, 9, 1), date(2026, 9, 30))
+        server.get_goal_history(["g1"], date(2026, 9, 1), date(2026, 9, 30))
 
-        health.history.assert_called_once_with(["g1"], "daily", date(2026, 9, 1), date(2026, 9, 30))
+        health.history.assert_called_once_with(["g1"], date(2026, 9, 1), date(2026, 9, 30))
 
     def test_rebuild_goal_health_cache_delegates(self, monkeypatch):
         health = _fake_goal_health(monkeypatch)
@@ -641,7 +641,7 @@ class TestGoalHealthTools:
     @pytest.mark.parametrize(
         "tool, method, args",
         [
-            ("measure_goals", "measure", ("daily",)),
+            ("measure_goals", "measure", ()),
             ("record_assessments", "record_assessments", ([],)),
             ("get_goal_history", "history", (["g1"],)),
             ("rebuild_goal_health_cache", "rebuild_cache", ()),
@@ -667,24 +667,24 @@ class TestReflectionTools:
     def test_prepare_reflection_delegates(self, monkeypatch):
         reflections = self._fake(monkeypatch)
 
-        server.prepare_reflection("weekly", "week-2026-09-20")
+        server.prepare_reflection(date(2026, 9, 20))
 
-        reflections.prepare.assert_called_once_with("weekly", "week-2026-09-20")
+        reflections.prepare.assert_called_once_with(date(2026, 9, 20))
 
     def test_record_reflection_previews_by_default(self, monkeypatch):
         reflections = self._fake(monkeypatch)
 
-        server.record_reflection("weekly", "week-2026-09-20", [], journal="j", intentions=["i"])
+        server.record_reflection(date(2026, 9, 20), [], journal="j", intentions=["i"])
 
         reflections.record.assert_called_once_with(
-            "weekly", "week-2026-09-20", [], "j", ["i"], dry_run=True
+            date(2026, 9, 20), [], "j", ["i"], dry_run=True
         )
 
     @pytest.mark.parametrize(
         "tool, method, args",
         [
-            ("prepare_reflection", "prepare", ("weekly",)),
-            ("record_reflection", "record", ("weekly", "week-2026-09-20", [])),
+            ("prepare_reflection", "prepare", ()),
+            ("record_reflection", "record", (date(2026, 9, 20), [])),
         ],
     )
     def test_wrap_value_errors_and_are_tracked(self, monkeypatch, tool, method, args):
@@ -912,6 +912,7 @@ class TestAbandonCompaction:
 class TestGetNoteCompactor:
     def test_caches_across_calls(self, monkeypatch):
         monkeypatch.setattr(server, "_note_compactor", None)
+        monkeypatch.setattr(server, "_compaction_journal", None)
         monkeypatch.setattr(server, "get_reallocating_calendar", lambda: MagicMock())
         monkeypatch.setattr(server, "get_calendar_client", lambda: MagicMock())
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: MagicMock())
@@ -965,9 +966,9 @@ class TestGetGoalStore:
     def test_caches_across_calls(self, monkeypatch):
         built = []
 
-        def fake_build():
+        def fake_build(**kwargs):
             goals = MagicMock()
-            built.append(goals)
+            built.append(kwargs)
             return goals
 
         monkeypatch.setattr(server, "_goals", None)
@@ -978,6 +979,45 @@ class TestGetGoalStore:
 
         assert first is second
         assert len(built) == 1
+
+    def test_counts_recent_time_up_to_the_last_compaction(self, monkeypatch):
+        built = []
+        journal = MagicMock()
+        journal.last_stamped_now.return_value = datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
+        monkeypatch.setattr(server, "_goals", None)
+        monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
+        monkeypatch.setattr(server, "build_goals", lambda **kwargs: built.append(kwargs) or MagicMock())
+
+        server.get_goal_store()
+
+        assert built[0]["last_compaction"]() == datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
+
+
+class TestGetCompactionStatus:
+    def test_reports_the_last_compaction_and_latest_compacted_note(self, monkeypatch):
+        journal = MagicMock()
+        journal.last_stamped_now.return_value = datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
+        notes = MagicMock()
+        latest = NotedTime(timestamp=datetime(2026, 10, 2, 20, tzinfo=timezone.utc), description="Done", compaction_id="c1")
+        notes.read_with_latest_compacted.return_value = ([], latest)
+        monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
+        monkeypatch.setattr(server, "get_noted_time_sheet", lambda: notes)
+
+        status = server.get_compaction_status()
+
+        assert status == server.CompactionStatus(
+            last_compaction=datetime(2026, 10, 2, 21, tzinfo=timezone.utc), latest_compacted_note=latest
+        )
+
+    def test_is_empty_before_any_compaction(self, monkeypatch):
+        journal = MagicMock()
+        journal.last_stamped_now.return_value = None
+        notes = MagicMock()
+        notes.read_with_latest_compacted.return_value = ([], None)
+        monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
+        monkeypatch.setattr(server, "get_noted_time_sheet", lambda: notes)
+
+        assert server.get_compaction_status() == server.CompactionStatus()
 
 
 class TestGetNotedTimeSheet:

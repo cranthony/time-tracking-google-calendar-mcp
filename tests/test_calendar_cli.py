@@ -769,9 +769,9 @@ class TestMainGoals:
         goals = _fake_goals(monkeypatch)
         goals.update_goal.return_value = _goal_list()
 
-        self._run(monkeypatch, "update_goal", "g1", "status=inactive", "--clear", "cadence")
+        self._run(monkeypatch, "update_goal", "g1", "status=inactive", "--clear", "measure")
 
-        goals.update_goal.assert_called_once_with(Goal(id="g1", status="inactive"), ["cadence"])
+        goals.update_goal.assert_called_once_with(Goal(id="g1", status="inactive"), ["measure"])
 
     def test_update_goal_needs_something_to_do(self, monkeypatch):
         _fake_goals(monkeypatch)

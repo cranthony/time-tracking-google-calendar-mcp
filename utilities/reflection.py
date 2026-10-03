@@ -1,21 +1,32 @@
-"""Reflections: a conversation, run by the MCP client, that confirms the
-health assessments due for one period of one cadence -- a day, a
-Sunday-Saturday week, a month or two months -- and may record a short
-journal and a few intentions. See docs/goals-design.md section 11.
+"""Reflections: a conversation, run by the MCP client, that confirms each
+goal's rating of one day -- from waking on it to waking the next (see
+utilities/sleep_days.py) -- and may record a short journal and a few
+intentions. Every rated goal (see utilities/goals.py's GoalTree.rated) is
+reflected on daily; there are no other cadences.
 
-`prepare_reflection` gathers what the conversation needs (read-only);
-`record_reflection` previews, then commits. Committing is the only way an
-assessment becomes `confirmed` (utilities/goal_health.py's
-`confirm_assessments`), and it writes a reflection event beside the
-assessments on the Goal Health calendar: an all-day event spanning the
-period, its description the journal, its private extended properties the
-cadence, period and intentions. Its id encodes the cadence and period, so
-recording a period's reflection again replaces it.
+**Bottom up.** A rating only ever flows up the tree, from sub-goals to
+their parents: a rollup is computed from its immediate sub-goals'
+ratings, and an llm rubric may refer to them. So a day is rated a level
+at a time: `prepare` offers only the goals whose rated sub-goals all have
+a confirmed rating that day -- first the goals without any -- and `record`
+confirms them. Calling `prepare` again then offers their parents, until
+every rated goal has one. Each `record` confirms its ratings on the Goal
+Health calendar straight away, so a reflection cut short (a crash, a
+closed conversation) picks up where it left off: nothing confirmed is
+asked again.
 
-A reflection at a cadence *rates* only the active goals with that
-cadence; a longer one also *reviews* the shorter-cadence goals' confirmed
-ratings within its period, without rating them again (each goal is
-assessed at exactly one cadence).
+`record` also writes a reflection event beside the assessments: an
+all-day event on the day, its description the journal, its private
+extended properties the day, the intentions and whether every rated goal
+has been rated ("complete"). Its id encodes the day, so recording again
+replaces it, keeping the journal and intentions unless new ones are
+given. Committing is the only way an assessment becomes `confirmed`
+(utilities/goal_health.py's `confirm_assessments`).
+
+**Subjective goals** are asked their prompt only once their
+`interval_days` have passed since it was last answered (in a reflection,
+or given in passing with `record_assessments`); on the days between, the
+previous day's rating is proposed again, marked as carried over.
 """
 
 from __future__ import annotations
@@ -29,77 +40,102 @@ from typing import Any, Literal
 from calendar_clients.google_calendar import Event
 from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_health import (
+    CADENCE,
     MAX_RATIONALE_BYTES,
     Assessment,
     GoalHealth,
     band,
+    day_period,
 )
-from utilities.goal_periods import Period, parse_period, period_containing
-from utilities.sleep_days import MissingSleep, NotOver, listing_range, period_window
-from utilities.goal_sheet import CADENCES, Cadence, Goal
+from utilities.goal_time import goal_minutes
 from utilities.goals import Goals, GoalTree
 from utilities.noted_time_sheet import NotedTimeSheet
+from utilities.sleep_days import MissingSleep, NotOver, listing_range, period_window
 
 _PREFIX = "cascading-time-tracker-"
 
 MAX_INTENTIONS = 3
 
-_LOOKBACK_PERIODS = 12
-"""How far back `prepare_reflection` looks for a period still to reflect on."""
+_LOOKBACK_DAYS = 12
+"""How far back `prepare_reflection` looks for a day still to reflect on."""
 
 _CHOICES = 3
-"""How many completed, unreflected periods a reflection offers, newest
-first, when none is named."""
-
-_UNIT = {"daily": "day", "weekly": "week", "monthly": "month", "every_2_months": "2-month period"}
+"""How many completed, unreflected days a reflection offers, newest first,
+when none is named."""
 
 _RECENT_RATINGS = 6
-
-_DIGESTED_CADENCES = frozenset({"daily", "weekly"})
-"""Cadences short enough for the context to list the period's events and
-notes; longer ones rely on the minutes per goal."""
 
 
 @dataclass(kw_only=True)
 class PastRating:
-    period: str
+    day: date
     rating: int | Literal["skip"]
 
 
 @dataclass(kw_only=True)
-class DueGoal:
-    """A goal the reflection rates."""
+class SubGoalRating:
+    """An immediate sub-goal's confirmed rating of the day."""
 
     goal_id: str
     path: str
-    measure: dict[str, Any] | None = None
+    rating: int | Literal["skip"]
+    explanation: str | None = None
+
+
+@dataclass(kw_only=True)
+class DueGoal:
+    """A goal ready to rate: its rated sub-goals, if any, all have been."""
+
+    goal_id: str
+    path: str
+    measure: dict[str, Any]
+    """How it's rated: its own measure, or, without one, the mean of its
+    sub-goals'."""
+
     target: str | None = None
     deadline: date | None = None
     note: str | None = None
+    ask: str | None = None
+    """For a subjective goal due to be asked: its prompt. Ask it."""
+
     recent: list[PastRating] = field(default_factory=list)
-    """Its last confirmed ratings at this cadence before this period."""
+    """Its last confirmed ratings before this day."""
+
+    sub_goals: list[SubGoalRating] = field(default_factory=list)
+    """Its rated sub-goals' ratings of this day (for a rollup, or an llm
+    rubric that refers to them)."""
 
     proposed: Assessment | None = None
-    """What to start from: a rating recorded earlier for this period, or
-    one measured from the calendar (with its explanation); `None` for a
-    goal to ask about (subjective) or judge (llm)."""
+    """What to start from: a rating recorded earlier for this day, one
+    measured from the calendar or rolled up from its sub-goals (with its
+    explanation), or a subjective one carried over from the day before;
+    `None` for a goal to ask about (`ask`) or judge (llm)."""
 
 
 @dataclass(kw_only=True)
-class ReviewedGoal:
-    """A shorter-cadence goal, for a look at its trend; not rated again."""
+class DayChoice:
+    """A day a reflection could be for, offered when none was named."""
 
-    goal_id: str
-    path: str
-    cadence: Cadence
-    ratings: list[PastRating] = field(default_factory=list)
-    """Its confirmed ratings within the period."""
+    day: date
+    starts: datetime | None
+    """When it started: when you woke on it (see utilities/sleep_days.py)
+    -- `None` if that sleep isn't in the calendar."""
 
-    mean: int | None = None
+    ends: datetime | None
+    """When it ended: when you woke the next day -- `None` if that sleep
+    isn't in the calendar."""
+
+    missing_sleep: list[date] = field(default_factory=list)
+    """The days whose end-of-day sleep it needs but isn't in the calendar:
+    until they are, it can't be reflected on."""
+
+    already_reflected: bool
+    started: bool = False
+    """Some of its goals are rated already, but not all."""
 
 
 @dataclass(kw_only=True)
-class GoalTime:
+class GoalTimeSpent:
     goal_id: str
     path: str
     minutes: int
@@ -107,75 +143,61 @@ class GoalTime:
 
 
 @dataclass(kw_only=True)
-class PeriodChoice:
-    """A period a reflection could be for, offered when none was named."""
-
-    period: str
-    first_day: date
-    last_day: date
-    starts: datetime | None
-    """When it started: when you woke on its first day (see utilities/
-    sleep_days.py) -- `None` if that sleep isn't in the calendar."""
-
-    ends: datetime | None
-    """When it ended: when you woke the day after its last -- `None` if
-    that sleep isn't in the calendar."""
-
-    missing_sleep: list[date] = field(default_factory=list)
-    """The days whose end-of-day sleep it needs but isn't in the calendar: until
-    they are, it can't be reflected on."""
-
-    already_reflected: bool
-
-
-@dataclass(kw_only=True)
 class ReflectionContext:
-    cadence: Cadence
-    period: str | None
-    """`None` when no period was named: see `choices`."""
+    day: date | None
+    """`None` when no day was named: see `choices`."""
 
-    first_day: date | None = None
-    last_day: date | None = None
     starts: datetime | None = None
-    """When the period started: when you woke on its first day."""
+    """When the day started: when you woke on it."""
 
     ends: datetime | None = None
-    """When it ended -- when you woke the day after its last -- or now, if
-    it's still going on. Its events, notes and minutes per goal are those
-    between the two."""
+    """When it ended: when you woke the next day. Its events, notes and
+    minutes per goal are those between the two."""
 
     already_reflected: bool = False
-    """A reflection has already been recorded for this period; recording
-    again replaces it."""
+    """Every rated goal has been rated for this day already; rating one
+    again replaces its rating."""
 
-    choices: list[PeriodChoice] = field(default_factory=list)
-    """When no period was named: the periods to ask about -- the most
-    recent completed ones without a reflection, or, if every one has one,
-    the last completed one -- and nothing else is filled in."""
+    choices: list[DayChoice] = field(default_factory=list)
+    """When no day was named: the days to ask about -- the most recent
+    completed ones not fully reflected on, or, if every one has been, the
+    last completed one -- and nothing else is filled in."""
 
     older_unreflected: int = 0
-    """Unreflected days before `choices`, within the last 12 (and since
-    the first daily goal), not offered."""
+    """Days not reflected on before `choices`, within the last 12 (and
+    since the first goal was created), not offered."""
 
     journal: str | None = None
     """The journal recorded with it, if so."""
 
     due: list[DueGoal] = field(default_factory=list)
-    reviewed: list[ReviewedGoal] = field(default_factory=list)
-    goal_time: list[GoalTime] = field(default_factory=list)
+    """The goals to rate now: not rated yet, and with every rated sub-goal
+    rated already. Goals without rated sub-goals come first."""
+
+    rated: list[Assessment] = field(default_factory=list)
+    """The goals already confirmed for this day."""
+
+    waiting: list[str] = field(default_factory=list)
+    """Paths of goals to rate once their sub-goals in `due` are rated:
+    call prepare_reflection again then."""
+
+    unmeasured: list[str] = field(default_factory=list)
+    """Paths of active goals that aren't rated: they have no measure and
+    no rated sub-goals."""
+
+    goal_time: list[GoalTimeSpent] = field(default_factory=list)
     events_digest: str | None = None
-    """The period's events, day by day, with their goals (daily and weekly
-    reflections only)."""
+    """The day's events, with their goals."""
 
     notes_digest: str | None = None
-    """The period's compacted notes (daily and weekly reflections only)."""
+    """The day's compacted notes."""
 
     previous_intentions: list[str] = field(default_factory=list)
-    """From the previous reflection at this cadence."""
+    """From the previous day's reflection."""
 
     uncompacted_notes: int = 0
-    """Notes up to the period's end that haven't been compacted: until
-    they are, the calendar (and so the measured ratings) may be off."""
+    """Notes up to the day's end that haven't been compacted: until they
+    are, the calendar (and so the measured ratings) may be off."""
 
     instructions: str = ""
 
@@ -183,20 +205,22 @@ class ReflectionContext:
 @dataclass(kw_only=True)
 class ReflectionResult:
     status: Literal["preview", "recorded"]
-    cadence: Cadence
-    period: str
+    day: date
     preview: str
     """One line per rating, and the journal and intentions."""
 
     assessments: list[Assessment] = field(default_factory=list)
     not_rated: list[str] = field(default_factory=list)
-    """Paths of goals due but not rated (they stay unassessed)."""
+    """Paths of goals ready to rate but not rated in this call."""
+
+    complete: bool = False
+    """Every rated goal has a confirmed rating of the day (once recorded)."""
 
     message: str = ""
 
 
-def reflection_event_id(cadence: str, period: str) -> str:
-    encoded = base64.b32hexencode(f"reflection|{cadence}|{period}".encode()).decode()
+def reflection_event_id(day: date) -> str:
+    encoded = base64.b32hexencode(f"reflection|{CADENCE}|{day.isoformat()}".encode()).decode()
     return encoded.rstrip("=").lower()
 
 
@@ -208,142 +232,169 @@ class Reflections:
 
     # -- preparing --------------------------------------------------------------
 
-    def prepare(self, cadence: Cadence, period: str | None = None) -> ReflectionContext:
-        _check_cadence(cadence)
+    def prepare(self, day: date | None = None) -> ReflectionContext:
         tree = self._goals.tree()
-        if period is None:
-            return self._choices(cadence, tree)
-        span = parse_period(cadence, period)
-        if span.start > self._health.today():
-            raise ValueError(f"{span.id} hasn't started yet")
-        reflected = self._reflection(cadence, span)
-        previous = self._reflection(cadence, span.previous())
+        if day is None:
+            return self._choices(tree)
+        if day > self._health.today():
+            raise ValueError(f"{day} hasn't started yet")
+        events = self._events(day, tree)
+        tz = self._health.now().tzinfo
+        start, end = period_window(day_period(day), events, tz, self._health.now())
+        reflected = self._reflection(day)
+        previous = self._reflection(day - timedelta(days=1))
 
-        rated = [g for g in tree.ordered() if g.active and g.cadence == cadence]
-        recorded = {
-            a.goal_id: a
-            for a in self._health.history([g.id for g in rated], cadence, span.start, span.end - timedelta(days=1))
-            if a.period == span.id
-        } if rated else {}
-        measured = {a.goal_id: a for a in self._health.measure(cadence, span.id)} if rated else {}
+        rated_goals = [g for g in tree.ordered() if tree.rated(g.id)]
+        week = self._health.read(day - timedelta(days=7), day + timedelta(days=1))
+        that_day = {a.goal_id: a for a in week if a.day == day}
+        confirmed = {goal_id: a for goal_id, a in that_day.items() if a.status == "confirmed"}
+        ready = [
+            g for g in rated_goals
+            if g.id not in confirmed and all(c.id in confirmed for c in tree.rated_children(g.id))
+        ]
+        # Goals without rated sub-goals first, as the conversation goes.
+        ready.sort(key=lambda g: bool(tree.rated_children(g.id)))
+        measured = dict(zip((g.id for g in ready), self._health.propose(day, ready, tree, confirmed)))
+
         due = []
-        for goal in rated:
-            before = [
-                a for a in self._health.history(
-                    [goal.id], cadence, _periods_back(span, _RECENT_RATINGS).start, span.start - timedelta(days=1)
-                )
-                if a.status == "confirmed"
-            ]
+        for goal in ready:
+            measure = tree.measure(goal.id)
+            recorded = that_day.get(goal.id)
+            proposed, ask = recorded, None
+            if proposed is None and measure["kind"] == "subjective":
+                proposed = self._carried_over(goal.id, measure, day, week)
+                if proposed is None:
+                    ask = measure.get("prompt") or f"How did {goal.name!r} go?"
             due.append(
                 DueGoal(
                     goal_id=goal.id,
                     path=tree.path(goal.id),
-                    measure=goal.measure,
+                    measure=measure,
                     target=goal.target,
                     deadline=goal.deadline,
                     note=goal.note,
-                    recent=[PastRating(period=a.period, rating=a.rating) for a in before[-_RECENT_RATINGS:]],
-                    proposed=recorded.get(goal.id) or measured.get(goal.id),
+                    ask=ask,
+                    recent=[
+                        PastRating(day=a.day, rating=a.rating)
+                        for a in week if a.goal_id == goal.id and a.day < day and a.status == "confirmed"
+                    ][-_RECENT_RATINGS:],
+                    sub_goals=[
+                        SubGoalRating(
+                            goal_id=c.id,
+                            path=tree.path(c.id),
+                            rating=confirmed[c.id].rating,
+                            explanation=confirmed[c.id].explanation,
+                        )
+                        for c in tree.rated_children(goal.id)
+                    ],
+                    proposed=proposed or measured.get(goal.id),
                 )
             )
 
-        shorter = CADENCES[: CADENCES.index(cadence)]
-        reviewed = []
-        for goal in tree.ordered():
-            if not (goal.active and goal.cadence in shorter):
-                continue
-            ratings = [
-                a for a in self._health.history([goal.id], goal.cadence, span.start, span.end - timedelta(days=1))
-                if a.status == "confirmed" and span.contains(parse_period(a.cadence, a.period).start)
-            ]
-            numbers = [a.rating for a in ratings if isinstance(a.rating, int)]
-            reviewed.append(
-                ReviewedGoal(
-                    goal_id=goal.id,
-                    path=tree.path(goal.id),
-                    cadence=goal.cadence,
-                    ratings=[PastRating(period=a.period, rating=a.rating) for a in ratings],
-                    mean=round(sum(numbers) / len(numbers)) if numbers else None,
-                )
-            )
-
-        events = self._events(span, tree)
         notes = self._notes.read(include_compacted=True) if self._notes else []
-        tz = self._health.now().tzinfo
-        start, end = period_window(span, events, tz, self._health.now())
-        digested = cadence in _DIGESTED_CADENCES
+        minutes = goal_minutes(events, tree, start, end)
         return ReflectionContext(
-            cadence=cadence,
-            period=span.id,
-            first_day=span.start,
-            last_day=span.end - timedelta(days=1),
+            day=day,
             starts=start,
             ends=end,
-            already_reflected=reflected is not None,
+            already_reflected=not ready,
             journal=(reflected or {}).get("description") or None,
             due=due,
-            reviewed=reviewed,
-            goal_time=_goal_time(events, tree, start, end),
-            events_digest=_events_digest(events, tree, start, end, tz) if digested else None,
-            notes_digest=_notes_digest(notes, start, end, tz) if digested and self._notes else None,
+            rated=[a for a in confirmed.values() if a.goal_id in tree.by_id],
+            waiting=[tree.path(g.id) for g in rated_goals if g.id not in confirmed and g not in ready],
+            unmeasured=[tree.path(g.id) for g in tree.ordered() if g.active and not tree.rated(g.id)],
+            goal_time=sorted(
+                (GoalTimeSpent(goal_id=g, path=tree.path(g), minutes=m) for g, m in minutes.items() if g in tree.by_id),
+                key=lambda t: (-t.minutes, t.path),
+            ),
+            events_digest=_events_digest(events, tree, start, end, tz),
+            notes_digest=_notes_digest(notes, start, end, tz) if self._notes else None,
             previous_intentions=_intentions(previous),
             uncompacted_notes=sum(1 for n in notes if n.compaction_id is None and n.timestamp < end),
-            instructions=_instructions(cadence, span),
+            instructions=_instructions(day),
         )
 
-    def _choices(self, cadence: Cadence, tree: GoalTree) -> ReflectionContext:
-        """The periods a reflection could be for, when none was named: the
-        most recent completed ones without a reflection (see `_CHOICES`), or
-        the last completed one, if they all have one. The period you're in
+    def _carried_over(
+        self, goal_id: str, measure: dict[str, Any], day: date, week: list[Assessment]
+    ) -> Assessment | None:
+        """A subjective goal's rating carried over to `day` from the day
+        before, if it was answered within its interval -- else `None`: ask
+        it."""
+        interval = measure.get("interval_days", 1)
+        first = day - timedelta(days=interval) + timedelta(days=1)
+        if first > day:
+            return None
+        history = (
+            [a for a in week if a.goal_id == goal_id]
+            if first >= day - timedelta(days=7)
+            else self._health.read(first - timedelta(days=1), day + timedelta(days=1), goal_id=goal_id)
+        )
+        answered = [a for a in history if first <= a.day <= day and a.method == "subjective" and not a.carried]
+        if not answered:
+            return None
+        before = [a for a in history if a.day < day and a.status == "confirmed" and a.day >= first - timedelta(days=1)]
+        source = before[-1] if before else answered[-1]
+        asked = answered[-1].day
+        next_asked = asked + timedelta(days=interval)
+        return Assessment(
+            goal_id=goal_id,
+            day=day,
+            rating=source.rating,
+            method="subjective",
+            explanation=f"Carried over from {source.day} (last asked {asked}; asked again {next_asked})",
+            metrics={"carried_from": source.day.isoformat(), "asked": asked.isoformat()},
+        )
+
+    def _choices(self, tree: GoalTree) -> ReflectionContext:
+        """The days a reflection could be for, when none was named: the
+        most recent completed ones not fully reflected on (see `_CHOICES`),
+        or the last completed one, if they all have been. The day you're in
         isn't offered: it isn't over."""
         now = self._health.now()
         tz = now.tzinfo
-        current = period_containing(cadence, self._health.today())
-        completed = current.previous()
-        first = _periods_back(completed, _LOOKBACK_PERIODS - 1).start
-        created = [g.created for g in tree.goals if g.cadence == cadence and g.created and g.status != "deleted"]
-        first = max(first, period_containing(cadence, min(created)).start) if created else completed.start
-        reflected = {r["period"] for r in self._reflections(cadence, first, completed.end)}
+        completed = self._health.today() - timedelta(days=1)
+        first = completed - timedelta(days=_LOOKBACK_DAYS - 1)
+        created = [g.created for g in tree.goals if g.created and g.status != "deleted"]
+        first = max(first, min(created)) if created else completed
+        reflections = {r["day"]: r for r in self._reflections(first, completed + timedelta(days=1))}
         unreflected = []
-        span = completed
-        while span.start >= first:
-            if span.id not in reflected:
-                unreflected.append(span)
-            span = span.previous()
+        day = completed
+        while day >= first:
+            if not _complete(reflections.get(day)):
+                unreflected.append(day)
+            day -= timedelta(days=1)
         offered = unreflected[:_CHOICES] or [completed]
 
-        def choice(span: Period) -> PeriodChoice:
-            listed = self._health.calendar_client.list_events(*listing_range(span, tz))
+        def choice(day: date) -> DayChoice:
+            listed = self._health.calendar_client.list_events(*listing_range(day_period(day), tz))
             try:
-                start, end = period_window(span, [e for e in listed if e.status != "cancelled"], tz, now)
+                start, end = period_window(day_period(day), [e for e in listed if e.status != "cancelled"], tz, now)
                 missing = []
             except MissingSleep as exc:
                 start = end = None
                 missing = exc.days
-            except NotOver:  # Not offered: only periods before the current one are.
-                raise AssertionError(f"{span.id} was offered before it ended") from None
-            return PeriodChoice(
-                period=span.id,
-                first_day=span.start,
-                last_day=span.end - timedelta(days=1),
+            except NotOver:  # Not offered: only days before the current one are.
+                raise AssertionError(f"{day} was offered before it ended") from None
+            return DayChoice(
+                day=day,
                 starts=start,
                 ends=end,
                 missing_sleep=missing,
-                already_reflected=span.id in reflected,
+                already_reflected=_complete(reflections.get(day)),
+                started=day in reflections and not _complete(reflections[day]),
             )
 
         return ReflectionContext(
-            cadence=cadence,
-            period=None,
-            choices=[choice(span) for span in offered],
+            day=None,
+            choices=[choice(day) for day in offered],
             older_unreflected=max(0, len(unreflected) - _CHOICES),
             instructions=(
-                f"No period was named. Ask which {_UNIT[cadence]} to reflect on, offering these choices: "
-                f"completed {_UNIT[cadence]}s without a reflection, newest first -- or, if every recent one "
-                "has one, the last completed one, which recording again replaces. Mention older_unreflected "
-                "if it isn't 0: any period can be named. A choice with missing_sleep can't be reflected on "
-                "until the calendar has those days' end-of-day sleep: say so. Then call prepare_reflection again "
-                "with the period picked."
+                "No day was named. Ask which day to reflect on, offering these choices: completed days not "
+                "fully reflected on, newest first (one that's `started` picks up where it left off) -- or, if "
+                "every recent one has been, the last completed one, which rating again replaces. Mention "
+                "older_unreflected if it isn't 0: any day can be named. A choice with missing_sleep can't be "
+                "reflected on until the calendar has those days' end-of-day sleep: say so. Then call "
+                "prepare_reflection again with the day picked."
             ),
         )
 
@@ -351,101 +402,127 @@ class Reflections:
 
     def record(
         self,
-        cadence: Cadence,
-        period: str,
+        day: date,
         assessments: list[Assessment],
         journal: str | None = None,
         intentions: list[str] | None = None,
         *,
         dry_run: bool = True,
     ) -> ReflectionResult:
-        _check_cadence(cadence)
-        span = parse_period(cadence, period)
-        if span.start > self._health.now().date():
-            raise ValueError(f"{span.id} hasn't started yet")
-        # Only a period that's over, whose bounding sleeps are in the calendar.
-        listed = self._health.calendar_client.list_events(*listing_range(span, self._health.now().tzinfo))
-        period_window(
-            span, [e for e in listed if e.status != "cancelled"], self._health.now().tzinfo, self._health.now()
-        )
+        if day > self._health.now().date():
+            raise ValueError(f"{day} hasn't started yet")
+        # Only a day that's over, whose bounding sleeps are in the calendar.
+        tz = self._health.now().tzinfo
+        listed = self._health.calendar_client.list_events(*listing_range(day_period(day), tz))
+        period_window(day_period(day), [e for e in listed if e.status != "cancelled"], tz, self._health.now())
+        tree = self._goals.tree()
+        confirmed = {a.goal_id for a in self._health.read(day, day + timedelta(days=1)) if a.status == "confirmed"}
         problems = []
         seen = set()
         for a in assessments:
-            if (a.cadence, a.period) != (cadence, span.id):
-                problems.append(f"{a.goal_id}: this reflection rates {cadence} {span.id}, not {a.cadence} {a.period}")
+            if a.day != day:
+                problems.append(f"{a.goal_id}: this reflection rates {day}, not {a.day}")
             if a.goal_id in seen:
                 problems.append(f"{a.goal_id} is rated more than once")
             seen.add(a.goal_id)
+            unrated = [c for c in tree.rated_children(a.goal_id) if c.id not in confirmed]
+            if unrated:
+                names = ", ".join(tree.path(c.id) for c in unrated)
+                problems.append(
+                    f"{tree.path(a.goal_id)} can't be rated until its sub-goals are ({names}): ratings flow up "
+                    "from sub-goals, so record theirs first, then call prepare_reflection again"
+                )
         if journal and len(journal.encode()) > MAX_RATIONALE_BYTES:
             problems.append(f"the journal is longer than {MAX_RATIONALE_BYTES} bytes (Calendar would cut it short)")
-        intentions = [i.strip() for i in intentions or [] if i.strip()]
-        if len(intentions) > MAX_INTENTIONS:
+        intentions = [i.strip() for i in intentions or [] if i.strip()] if intentions is not None else None
+        if intentions and len(intentions) > MAX_INTENTIONS:
             problems.append(f"at most {MAX_INTENTIONS} intentions")
-        elif len(json.dumps(intentions)) > 1024:
+        elif intentions and len(json.dumps(intentions)) > 1024:
             problems.append("the intentions are too long together (1024 characters as JSON)")
         if problems:
             raise ValueError("; ".join(problems))
         self._health.check(assessments)
 
-        tree = self._goals.tree()
-        due = [g for g in tree.ordered() if g.active and g.cadence == cadence]
-        not_rated = [tree.path(g.id) for g in due if g.id not in seen]
-        preview = _preview(assessments, tree, journal, intentions, not_rated)
+        rated_goals = [g for g in tree.ordered() if tree.rated(g.id)]
+        ready = [
+            g for g in rated_goals
+            if g.id not in confirmed and all(c.id in confirmed for c in tree.rated_children(g.id))
+        ]
+        not_rated = [tree.path(g.id) for g in ready if g.id not in seen]
+        complete = all(g.id in confirmed or g.id in seen for g in rated_goals)
+        preview = _preview(assessments, tree, journal, intentions or [], not_rated)
         if dry_run:
             return ReflectionResult(
                 status="preview",
-                cadence=cadence,
-                period=span.id,
+                day=day,
                 preview=preview,
                 assessments=assessments,
                 not_rated=not_rated,
+                complete=complete,
                 message=(
                     "Nothing has been recorded yet. Show the user the preview; once they agree, call "
-                    "record_reflection again with the same arguments and dry_run=False. Goals not rated "
-                    "stay unassessed for this period (rate them \"skip\" to say so on purpose)."
+                    "record_reflection again with the same arguments and dry_run=False."
                 ),
             )
-        confirmed = self._health.confirm_assessments(assessments)
-        self._write_reflection(span, journal, intentions, len(confirmed))
+        written = self._health.confirm_assessments(assessments)
+        self._write_reflection(day, journal, intentions, complete)
+        now_confirmed = confirmed | seen
+        next_ready = [
+            tree.path(g.id) for g in rated_goals
+            if g.id not in now_confirmed and all(c.id in now_confirmed for c in tree.rated_children(g.id))
+        ]
+        if complete:
+            message = f"Recorded {len(written)} rating(s): every goal is rated for {day}."
+        elif next_ready:
+            message = (
+                f"Recorded {len(written)} rating(s). Ready to rate now: {', '.join(next_ready)}. Call "
+                "prepare_reflection again for them."
+            )
+        else:
+            message = f"Recorded {len(written)} rating(s). Still to rate: {', '.join(not_rated)}."
         return ReflectionResult(
             status="recorded",
-            cadence=cadence,
-            period=span.id,
+            day=day,
             preview=preview,
-            assessments=confirmed,
+            assessments=written,
             not_rated=not_rated,
-            message=f"Recorded the {cadence} reflection for {span.id}: {len(confirmed)} rating(s) confirmed.",
+            complete=complete,
+            message=message,
         )
 
-    def _write_reflection(self, span: Period, journal: str | None, intentions: list[str], rated: int) -> None:
+    def _write_reflection(self, day: date, journal: str | None, intentions: list[str] | None, complete: bool) -> None:
+        """Upsert the day's reflection event, keeping its journal and
+        intentions unless new ones are given."""
+        existing = self._reflection(day) or {}
         calendar = self._health.health_calendar()
         properties = {
             "kind": "reflection",
-            "cadence": span.cadence,
-            "period": span.id,
-            "intentions": json.dumps(intentions),
-            "rated": str(rated),
+            "cadence": CADENCE,
+            "period": day.isoformat(),
+            "intentions": json.dumps(intentions) if intentions is not None else existing.get("intentions", "[]"),
+            "complete": "true" if complete else "false",
             "reflected": self._health.now().isoformat(),
-            "schema": "1",
+            "schema": "2",
         }
+        description = journal if journal is not None else existing.get("description") or ""
         body = {
-            "summary": f"📝 {span.cadence.replace('_', ' ')} reflection · {span.id}",
-            "description": journal or "",
-            "start": {"date": span.start.isoformat()},
-            "end": {"date": span.end.isoformat()},
+            "summary": f"📝 Reflection · {day.isoformat()}" + ("" if complete else " (in progress)"),
+            "description": description,
+            "start": {"date": day.isoformat()},
+            "end": {"date": (day + timedelta(days=1)).isoformat()},
             "transparency": "transparent",
             "extendedProperties": {"private": {f"{_PREFIX}{k}": v for k, v in properties.items()}},
         }
-        response = calendar.upsert_event_resource(reflection_event_id(span.cadence, span.id), body)
+        response = calendar.upsert_event_resource(reflection_event_id(day), body)
         if len(response.get("description", "")) < len(body["description"]):
             raise ValueError(f"Calendar shortened the journal; keep it under {MAX_RATIONALE_BYTES} bytes")
 
     # -- reading ------------------------------------------------------------------
 
-    def _reflections(self, cadence: str, first: date, end: date) -> list[dict]:
-        """The reflection events at `cadence` overlapping `first`..`end`
-        (exclusive), as dicts with their properties unprefixed plus the
-        description."""
+    def _reflections(self, first: date, end: date) -> list[dict]:
+        """The daily reflection events from `first` up to `end`
+        (exclusive), as dicts with their properties unprefixed, plus the
+        description and their `day`."""
         calendar = self._health.health_calendar(create=False)
         if calendar is None:
             return []
@@ -463,32 +540,32 @@ class Reflections:
                 key.removeprefix(_PREFIX): value
                 for key, value in item.get("extendedProperties", {}).get("private", {}).items()
             }
-            if properties.get("cadence") == cadence:
-                found.append({**properties, "description": item.get("description")})
+            if properties.get("cadence") != CADENCE:
+                continue
+            try:
+                day = date.fromisoformat(properties.get("period", ""))
+            except ValueError:
+                continue
+            found.append({**properties, "description": item.get("description"), "day": day})
         return found
 
-    def _reflection(self, cadence: str, span: Period) -> dict | None:
-        return next((r for r in self._reflections(cadence, span.start, span.end) if r.get("period") == span.id), None)
+    def _reflection(self, day: date) -> dict | None:
+        return next((r for r in self._reflections(day, day + timedelta(days=1)) if r["day"] == day), None)
 
-    def _events(self, span: Period, tree: GoalTree) -> list[Event]:
-        """The events around `span`, with the sleeps that bound it -- see
+    def _events(self, day: date, tree: GoalTree) -> list[Event]:
+        """The events around `day`, with the sleeps that bound it -- see
         utilities/sleep_days.py."""
-        listed = self._health.calendar_client.list_events(*listing_range(span, self._health.now().tzinfo))
+        listed = self._health.calendar_client.list_events(*listing_range(day_period(day), self._health.now().tzinfo))
         return [e for e in fill_in_from_goals(listed, tree) if e.status != "cancelled"]
 
 
 # -- helpers --------------------------------------------------------------------
 
 
-def _check_cadence(cadence: str) -> None:
-    if cadence not in CADENCES:
-        raise ValueError(f"Unknown cadence {cadence!r}; cadences are {', '.join(CADENCES)}")
-
-
-def _periods_back(period: Period, count: int) -> Period:
-    for _ in range(count):
-        period = period.previous()
-    return period
+def _complete(reflection: dict | None) -> bool:
+    """A reflection event recorded with every rated goal rated (or from
+    before reflections went a level at a time, when one always was)."""
+    return reflection is not None and reflection.get("complete") != "false"
 
 
 def _intentions(reflection: dict | None) -> list[str]:
@@ -500,38 +577,15 @@ def _intentions(reflection: dict | None) -> list[str]:
         return []
 
 
-def _goal_time(events: list[Event], tree: GoalTree, start: datetime, end: datetime) -> list[GoalTime]:
-    minutes: dict[str, float] = {}
-    for event in events:
-        overlap = (min(event.end, end) - max(event.start, start)).total_seconds() / 60
-        if overlap <= 0:
-            continue
-        served = set()
-        for goal_id in event.goal_ids or ():
-            served.update(g.id for g in tree.chain(goal_id))
-        for goal_id in served:
-            minutes[goal_id] = minutes.get(goal_id, 0) + overlap
-    times = [
-        GoalTime(goal_id=goal_id, path=tree.path(goal_id), minutes=round(total))
-        for goal_id, total in minutes.items()
-        if goal_id in tree.by_id and round(total) > 0
-    ]
-    return sorted(times, key=lambda t: (-t.minutes, t.path))
-
-
 def _events_digest(events: list[Event], tree: GoalTree, start: datetime, end: datetime, tz) -> str:
     lines = []
-    day = None
     for event in sorted(events, key=lambda e: e.start):
         if event.end <= start or event.start >= end:
             continue
         local = event.start.astimezone(tz)
-        if local.date() != day:
-            day = local.date()
-            lines.append(f"{local:%a %m-%d}")
         goals = ", ".join(tree.by_id[g].name for g in event.goal_ids or () if g in tree.by_id)
         lines.append(
-            f"  {local:%H:%M}-{event.end.astimezone(tz):%H:%M} {event.summary or '(no title)'}"
+            f"{local:%a %H:%M}-{event.end.astimezone(tz):%H:%M} {event.summary or '(no title)'}"
             + (f" [{goals}]" if goals else "")
         )
     return "\n".join(lines) or "(no events)"
@@ -539,7 +593,7 @@ def _events_digest(events: list[Event], tree: GoalTree, start: datetime, end: da
 
 def _notes_digest(notes, start: datetime, end: datetime, tz) -> str:
     lines = [
-        f"{n.timestamp.astimezone(tz):%a %m-%d %H:%M} {n.description}"
+        f"{n.timestamp.astimezone(tz):%a %H:%M} {n.description}"
         for n in sorted(notes, key=lambda n: n.timestamp)
         if start <= n.timestamp < end and n.description
     ]
@@ -556,7 +610,7 @@ def _preview(
         why = " — ".join(part for part in (a.explanation, a.rationale) if part)
         lines.append(f"{band(a.rating)} {name}: {rating}" + (f" — {why}" if why else ""))
     for path in not_rated:
-        lines.append(f"· {path}: not rated")
+        lines.append(f"· {path}: not rated yet")
     if journal:
         lines.append(f"Journal: {journal}")
     for intention in intentions:
@@ -564,34 +618,32 @@ def _preview(
     return "\n".join(lines) or "(nothing to record)"
 
 
-def _instructions(cadence: str, span: Period) -> str:
-    longer = cadence != "daily"
-    steps = [
-        f"This is the {cadence.replace('_', ' ')} reflection for {span.id}. Ratings are 0-100 "
-        "(0-39 red, 40-69 yellow, 70-100 green), or \"skip\".",
-        "If uncompacted_notes > 0, say the calendar may not reflect them yet, and offer to compact "
-        "notes first.",
-        "1. Open with the goals in `due` that have a `proposed` rating: one line each with its band, "
-        "rating and explanation. Ask for agreement in bulk; change only what the user objects to, "
-        "recording their reason as the rationale.",
-        "2. For each due goal without a proposal whose measure is subjective, ask its prompt, one goal "
-        "at a time, for a 0-100 number. Accept \"skip\"; turn words like \"pretty good\" into a number "
-        "and confirm it.",
-        "3. For each due goal with an llm measure, propose a rating with a one-sentence rationale "
-        "grounded in events_digest, notes_digest and goal_time, and ask for confirmation.",
-    ]
-    if longer:
-        steps.append(
-            "4. Summarize `reviewed` (shorter-cadence goals' ratings in this period) in a line or two, "
-            "without rating them."
-        )
-    steps += [
-        "5. If there are previous_intentions, ask whether they happened.",
-        f"6. Ask, optionally, for a short journal entry and up to {MAX_INTENTIONS} intentions for the "
-        "next period.",
-        "7. Call record_reflection with the ratings (method: metric, rollup, subjective or llm; keep a "
-        "measured rating's explanation), journal and intentions. It previews first; show the preview, "
-        "and only once the user agrees call it again with dry_run=False. Only then are the ratings "
-        "confirmed. Keep it brief: a daily reflection should take a couple of minutes.",
-    ]
-    return "\n".join(steps)
+def _instructions(day: date) -> str:
+    return "\n".join(
+        [
+            f"This is the daily reflection for {day}. Ratings are 0-100 (0-39 red, 40-69 yellow, 70-100 "
+            "green), or \"skip\".",
+            "If uncompacted_notes > 0, say the calendar may not reflect them yet, and offer to compact "
+            "notes first.",
+            "Ratings flow up from sub-goals to their parents, so the day is rated a level at a time: `due` "
+            "holds only the goals ready now, and `waiting` the ones to rate once those are.",
+            "1. Open with the due goals that have a `proposed` rating (measured, rolled up from sub-goals, "
+            "or carried over): one line each with its band, rating and explanation. Ask for agreement in "
+            "bulk; change only what the user objects to, recording their reason as the rationale.",
+            "2. For each due goal with `ask`, ask it, one goal at a time, for a 0-100 number. Accept "
+            "\"skip\"; turn words like \"pretty good\" into a number and confirm it.",
+            "3. For each due goal with an llm measure, propose a rating with a one-sentence rationale "
+            "grounded in its rubric, its sub_goals' ratings, events_digest, notes_digest and goal_time, and "
+            "ask for confirmation.",
+            "4. Call record_reflection with this level's ratings (method: metric, rollup, subjective or "
+            "llm; keep a proposed rating's explanation and metrics). Once the user has agreed to the "
+            "ratings shown, call it with dry_run=False: it confirms them straight away, so an interrupted "
+            "reflection resumes where it stopped.",
+            "5. If `waiting` isn't empty, call prepare_reflection again for this day and repeat from 1 "
+            "for the next level.",
+            "6. Once every goal is rated: if there are previous_intentions, ask whether they happened. "
+            f"Ask, optionally, for a short journal entry and up to {MAX_INTENTIONS} intentions for "
+            "tomorrow, and record them with record_reflection (assessments may be empty). Keep it brief: "
+            "a daily reflection should take a couple of minutes.",
+        ]
+    )

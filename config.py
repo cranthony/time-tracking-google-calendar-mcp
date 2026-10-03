@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -156,14 +158,16 @@ def _build_calendar_and_sheets_clients(
     return calendar_client, sheets_client
 
 
-def build_goals(calendar_id: str | None = None) -> Goals:
+def build_goals(
+    calendar_id: str | None = None, *, last_compaction: Callable[[], datetime | None] | None = None
+) -> Goals:
     """Construct a Goals from environment configuration (and a local .env
     file, if present). See `_build_calendar_and_sheets_clients` for
     `calendar_id`. Constructing this ensures the calendar has a goals tab,
     migrating its event labels into one if it didn't already -- see
-    `Goals.__init__`."""
+    `Goals.__init__`, which also says what `last_compaction` is for."""
     calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
-    return Goals(calendar_client, sheets_client)
+    return Goals(calendar_client, sheets_client, last_compaction=last_compaction)
 
 
 def build_noted_time_sheet(calendar_id: str | None = None) -> NotedTimeSheet:
