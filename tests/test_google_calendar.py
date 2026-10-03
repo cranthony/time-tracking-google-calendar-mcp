@@ -1361,6 +1361,29 @@ class TestCalendarClientGoalHealthCalls:
         assert client.get_time_zone() == ZoneInfo("Europe/Paris")
         service.calendars.return_value.get.assert_called_once()
 
+    def test_sets_the_time_zone_and_remembers_it(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.return_value = {"timeZone": "UTC"}
+        client = make_client(service)
+        assert client.get_time_zone() == ZoneInfo("UTC")
+
+        assert client.set_time_zone("America/New_York") == ZoneInfo("America/New_York")
+
+        service.calendars.return_value.patch.assert_called_once_with(
+            calendarId=TEST_CALENDAR_ID, body={"timeZone": "America/New_York"}
+        )
+        assert client.get_time_zone() == ZoneInfo("America/New_York")
+        service.calendars.return_value.get.assert_called_once()
+
+    @pytest.mark.parametrize("name", ["Mars/Olympus_Mons", "america/new_york", "", "../etc/passwd"])
+    def test_refuses_a_name_that_isnt_a_time_zone(self, name):
+        service = MagicMock()
+
+        with pytest.raises(ValueError, match="isn't a time zone"):
+            make_client(service).set_time_zone(name)
+
+        service.calendars.return_value.patch.assert_not_called()
+
     def test_creates_a_calendar_in_a_time_zone(self):
         service = MagicMock()
         service.calendars.return_value.insert.return_value.execute.return_value = {"id": "new-cal"}

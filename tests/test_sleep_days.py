@@ -5,7 +5,7 @@ import pytest
 
 from calendar_clients.google_calendar import Event
 from utilities.goal_periods import parse_period
-from utilities.sleep_days import MissingSleep, NotOver, current_day, day_start, period_window
+from utilities.sleep_days import MissingSleep, NotOver, current_day, current_day_from, day_start, period_window
 
 TZ = ZoneInfo("America/New_York")
 
@@ -38,6 +38,19 @@ def test_the_current_day_goes_on_past_midnight_until_waking():
     assert current_day(events, TZ, _at(2, 6)) == date(2026, 10, 1)  # Still asleep.
     assert current_day(events, TZ, _at(2, 8)) == date(2026, 10, 2)
     assert current_day([], TZ, _at(2, 8)) == date(2026, 10, 1)  # No waking logged yet.
+
+
+def test_the_current_day_can_list_the_sleeps_it_needs():
+    listed = []
+
+    def list_events(time_min, time_max):
+        listed.append((time_min, time_max))
+        return [_sleep(_at(1, 23, 30), _at(2, 7))]
+
+    # 01:00 UTC on the 3rd is still 21:00 on the 2nd in New York.
+    late = datetime(2026, 10, 3, 1, tzinfo=ZoneInfo("UTC"))
+    assert current_day_from(list_events, TZ, late) == date(2026, 10, 2)
+    assert listed == [(_at(1, 0), _at(3, 0))]
 
 
 def test_a_periods_window_runs_waking_to_waking():

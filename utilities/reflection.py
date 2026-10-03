@@ -35,7 +35,7 @@ from utilities.goal_health import (
     band,
 )
 from utilities.goal_periods import Period, parse_period, period_containing
-from utilities.sleep_days import MissingSleep, NotOver, current_day, listing_range, period_window
+from utilities.sleep_days import MissingSleep, NotOver, listing_range, period_window
 from utilities.goal_sheet import CADENCES, Cadence, Goal
 from utilities.goals import Goals, GoalTree
 from utilities.noted_time_sheet import NotedTimeSheet
@@ -211,11 +211,10 @@ class Reflections:
     def prepare(self, cadence: Cadence, period: str | None = None) -> ReflectionContext:
         _check_cadence(cadence)
         tree = self._goals.tree()
-        today = self._health.now().date()
         if period is None:
             return self._choices(cadence, tree)
         span = parse_period(cadence, period)
-        if span.start > today:
+        if span.start > self._health.today():
             raise ValueError(f"{span.id} hasn't started yet")
         reflected = self._reflection(cadence, span)
         previous = self._reflection(cadence, span.previous())
@@ -299,12 +298,7 @@ class Reflections:
         isn't offered: it isn't over."""
         now = self._health.now()
         tz = now.tzinfo
-        today = now.date()
-        around_now = self._health.calendar_client.list_events(
-            datetime.combine(today, time(), tz) - timedelta(days=1),
-            datetime.combine(today, time(), tz) + timedelta(days=1),
-        )
-        current = period_containing(cadence, current_day(around_now, tz, now))
+        current = period_containing(cadence, self._health.today())
         completed = current.previous()
         first = _periods_back(completed, _LOOKBACK_PERIODS - 1).start
         created = [g.created for g in tree.goals if g.cadence == cadence and g.created and g.status != "deleted"]
