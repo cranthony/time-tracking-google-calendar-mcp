@@ -464,6 +464,60 @@ def _read_counting_service(values_by_call):
     return sheets_service, values.batchGetByDataFilter
 
 
+class TestReadRangesInSheet:
+    def _service(self, value_ranges):
+        sheets_service = MagicMock()
+        values = sheets_service.spreadsheets.return_value.values.return_value
+        values.batchGetByDataFilter.return_value.execute.return_value = {"valueRanges": value_ranges}
+        return sheets_service, values.batchGetByDataFilter
+
+    def test_reads_every_range_in_one_request(self):
+        sheets_service, read = self._service(
+            [{"valueRange": {"values": [["header"]]}}, {"valueRange": {"values": [["a"], ["b"]]}}]
+        )
+
+        result = make_client(sheets_service).read_ranges_in_sheet("sheet-1", 42, ["A1:C1", "A2:C"])
+
+        assert result == [[["header"]], [["a"], ["b"]]]
+        read.assert_called_once()
+        assert [f["gridRange"]["startRowIndex"] for f in read.call_args.kwargs["body"]["dataFilters"]] == [0, 1]
+
+    def test_matches_each_range_by_the_filters_it_came_back_with(self):
+        header = {"sheetId": 42, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": 3, "endRowIndex": 1}
+        data = {"sheetId": 42, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": 3}
+        sheets_service, _ = self._service(
+            [
+                {"dataFilters": [{"gridRange": data}], "valueRange": {"values": [["a"]]}},
+                {"dataFilters": [{"gridRange": header}], "valueRange": {"values": [["header"]]}},
+            ]
+        )
+
+        result = make_client(sheets_service).read_ranges_in_sheet("sheet-1", 42, ["A1:C1", "A2:C"])
+
+        assert result == [[["header"]], [["a"]]]
+
+    def test_a_range_with_nothing_in_it_is_empty(self):
+        sheets_service, _ = self._service([{"valueRange": {}}, {"valueRange": {"values": [["a"]]}}])
+
+        assert make_client(sheets_service).read_ranges_in_sheet("sheet-1", 42, ["A1:C1", "A2:C"]) == [[], [["a"]]]
+
+    def test_caches_each_range_and_requests_only_the_ones_not_cached(self):
+        sheets_service, read = self._service([{"valueRange": {"values": [["header"]]}}])
+        client = make_client(sheets_service)
+
+        with cached_sheet_reads():
+            client.read_rows_in_sheet("sheet-1", 42, "A1:C1")
+            read.return_value.execute.return_value = {"valueRanges": [{"valueRange": {"values": [["a"]]}}]}
+            both = client.read_ranges_in_sheet("sheet-1", 42, ["A1:C1", "A2:C"])
+            header_again = client.read_rows_in_sheet("sheet-1", 42, "A1:C1")
+            data_again = client.read_rows_in_sheet("sheet-1", 42, "A2:C")
+
+        assert both == [[["header"]], [["a"]]]
+        assert (header_again, data_again) == ([["header"]], [["a"]])
+        assert read.call_count == 2
+        assert len(read.call_args.kwargs["body"]["dataFilters"]) == 1
+
+
 class TestCachedSheetReads:
     def test_repeated_reads_in_a_scope_are_served_from_memory(self):
         sheets_service, read = _read_counting_service([[["a"]]])

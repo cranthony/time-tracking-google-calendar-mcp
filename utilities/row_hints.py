@@ -1,15 +1,17 @@
 """Row-seek hints for this app's growing, append-only Sheet-backed logs
-(the noted-times tab and the compaction journal): a small, fixed-size
-tab, one row per named hint, that lets a caller skip straight to roughly
-the right place instead of reading a whole tab's worth of rows just to
-find where new data starts or ends.
+(today, the noted-times tab): a small, fixed-size tab, one row per named
+hint, that lets a caller skip straight to roughly the right place instead
+of reading a whole tab's worth of rows just to find where new data starts
+or ends.
 
-Google Sheets throttles how many rows can be read per minute, and both
-of those tabs only ever grow (rows are never deleted -- see
-utilities/noted_time_sheet.py and utilities/compaction_journal.py), so a
-read that scales with their whole history gets more expensive forever.
-A hint turns that into a read that scales with how much changed since
-the hint was last set instead.
+That tab only grows (save for garbage collection -- see
+utilities/noted_time_sheet.py), so a read that scales with its whole
+history gets more expensive forever. A hint turns that into a read that
+scales with how much changed since the hint was last set instead. A hint
+is only worth it when confirming it costs no extra read request, though:
+Google Sheets throttles read requests to 60 a minute, so the compaction
+journal (utilities/compaction_journal.py), which every compaction step
+reads whole anyway, uses none.
 
 A hint is never trusted blindly, though: the user can edit either tab
 directly (insert a row, clear a cell), which would make a stale hint

@@ -228,20 +228,20 @@ class NotedTimeSheet:
         unless `include_compacted`. Rows with nothing in them are
         skipped (their row numbers still count). See `_read` for how
         little of the tab this reads."""
-        return self._read(include_compacted=include_compacted)[0]
+        return self._read(include_compacted=include_compacted).notes
 
     def read_with_latest_compacted(self) -> tuple[list[SheetNote], NotedTime | None]:
         """`read_with_rows()`'s uncompacted notes, together with the
         compacted note with the latest timestamp (`None` if there's none)
         -- from the same read request."""
-        notes, latest = self._read(include_compacted=False)
-        return notes, latest.note if latest is not None else None
+        read = self._read(include_compacted=False)
+        return read.notes, read.latest_compacted.note if read.latest_compacted is not None else None
 
-    def _read(self, *, include_compacted: bool) -> tuple[list[SheetNote], SheetNote | None]:
+    def _read(self, *, include_compacted: bool, hinted: bool | None = None) -> "_Read":
         """The notes `read_with_rows` returns, and the latest compacted
-        note.
+        note, read together with the header row in one request.
 
-        Unless `include_compacted`, starts from a hinted row instead of
+        If `hinted` (by default, unless `include_compacted`), starts from a hinted row instead of
         the top of the tab: `_COMPACTED_THROUGH_HINT` (everything before
         it is known already compacted, so skipping it can't hide an
         uncompacted note), or `_LATEST_COMPACTED_HINT` if that's earlier,
@@ -258,17 +258,18 @@ class NotedTimeSheet:
         hints from what it read: rows confirmed blank or compacted extend
         the compacted prefix forward, and the latest-compacted hint points
         at the latest compacted note read."""
-        header_row = self._read_header()
         compacted_through = self._hints.get(_COMPACTED_THROUGH_HINT)
         latest_row = self._hints.get(_LATEST_COMPACTED_HINT)
-        hinted = not include_compacted and compacted_through is not None and compacted_through >= _FIRST_DATA_ROW
+        hinted = (not include_compacted if hinted is None else hinted) and (
+            compacted_through is not None and compacted_through >= _FIRST_DATA_ROW
+        )
         if not hinted:
             start_row = _FIRST_DATA_ROW
         elif latest_row is not None and _FIRST_DATA_ROW <= latest_row < compacted_through:
             start_row = latest_row
         else:
             start_row = compacted_through
-        rows = self._read_from(start_row)
+        header_row, rows = self._read_header_and(f"A{start_row}:{_LAST_COLUMN}")
         if hinted and not _is_compacted(header_row, rows, compacted_through - start_row):
             start_row = _FIRST_DATA_ROW
             rows = self._read_from(start_row)
@@ -295,7 +296,7 @@ class NotedTimeSheet:
             self._hints.set(_COMPACTED_THROUGH_HINT, prefix_end)
         if latest is not None and latest.row != latest_row:
             self._hints.set(_LATEST_COMPACTED_HINT, latest.row)
-        return result, latest
+        return _Read(notes=result, latest_compacted=latest, header_row=header_row, start_row=start_row)
 
     def _read_from(self, start_row: int) -> list[list[str]]:
         return self._sheets_client.read_rows_in_sheet(
@@ -331,8 +332,7 @@ class NotedTimeSheet:
         stamp on one of them. Garbage-collects first (see
         `garbage_collect`)."""
         self.garbage_collect()
-        header_row = self._read_header()
-        next_row = self._next_row()
+        next_row, header_row = self._next_row_and_header()
         self._sheets_client.write_rows_in_sheet(
             self._spreadsheet_id,
             self._sheet_id,
@@ -415,8 +415,7 @@ class NotedTimeSheet:
         an uncompacted backlog alone can leave this over budget, since
         there's nothing safe to delete for it. See the module docstring
         for what this means for a note's row number and id."""
-        header_row = self._read_header()
-        next_row = self._next_row()
+        next_row, header_row = self._next_row_and_header()
         data_rows = next_row - _FIRST_DATA_ROW
         if data_rows <= _MAX_ROWS:
             return
@@ -459,8 +458,9 @@ class NotedTimeSheet:
             # It was below the deleted rows, so it just moved up with the rest.
             self._hints.set(_LATEST_COMPACTED_HINT, latest_compacted - deletable)
 
-    def _next_row(self) -> int:
-        """The row this tab's next new note should go in: a hinted row,
+    def _next_row_and_header(self) -> tuple[int, list[str]]:
+        """The row this tab's next new note should go in, and the header
+        row, read with it in one request: a hinted row,
         if confirmed still correct, or a full count of the existing rows
         otherwise. Confirming it checks two things: a few rows at and
         after it are blank (a crash between a previous append's write and
@@ -476,25 +476,17 @@ class NotedTimeSheet:
         if hinted is not None and hinted >= _FIRST_DATA_ROW:
             if hinted == _FIRST_DATA_ROW:
                 before_confirmed = True
-                after = self._sheets_client.read_rows_in_sheet(
-                    self._spreadsheet_id,
-                    self._sheet_id,
-                    f"A{hinted}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}",
-                )
+                header_row, after = self._read_header_and(f"A{hinted}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}")
             else:
-                check = self._sheets_client.read_rows_in_sheet(
-                    self._spreadsheet_id,
-                    self._sheet_id,
-                    f"A{hinted - 1}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}",
+                header_row, check = self._read_header_and(
+                    f"A{hinted - 1}:{_LAST_COLUMN}{hinted + _CONFIRM_ROWS - 1}"
                 )
                 before, after = (check[0], check[1:]) if check else ([], [])
                 before_confirmed = any(cell.strip() for cell in before)
             if before_confirmed and not any(any(cell.strip() for cell in row) for row in after):
-                return hinted
-        existing = self._sheets_client.read_rows_in_sheet(
-            self._spreadsheet_id, self._sheet_id, _DATA_RANGE
-        )
-        return _FIRST_DATA_ROW + len(existing)
+                return hinted, header_row
+        header_row, existing = self._read_header_and(_DATA_RANGE)
+        return _FIRST_DATA_ROW + len(existing), header_row
 
     def mark_compacted(self, note_ids: list[str], compaction_id: str) -> None:
         """Stamp `compaction_id` onto the notes `note_ids` (see
@@ -506,7 +498,15 @@ class NotedTimeSheet:
         if not note_ids:
             return
         wanted = [parse_note_id(note_id) for note_id in note_ids]
-        current = {n.row: n.note for n in self.read_with_rows(include_compacted=True)}
+        # Read the way the uncompacted notes were just read (a compaction
+        # checks its notes right before stamping them), so this is usually
+        # that same read again -- served from the cache inside
+        # `cached_sheet_reads` -- and the whole tab only if some row is
+        # before where that read starts.
+        read = self._read(include_compacted=True, hinted=True)
+        if any(row < read.start_row for _, row in wanted):
+            read = self._read(include_compacted=True)
+        current = {n.row: n.note for n in read.notes}
         for (timestamp, row), note_id in zip(wanted, note_ids):
             note = current.get(row)
             if note is None or note.timestamp != timestamp:
@@ -518,8 +518,7 @@ class NotedTimeSheet:
                 raise ValueError(
                     f"note {note_id!r} was already compacted by {note.compaction_id!r}"
                 )
-        header_row = self._read_header()
-        column = chr(ord("A") + header_row.index("compaction_id"))
+        column = chr(ord("A") + read.header_row.index("compaction_id"))
         for first, last in _contiguous_runs(sorted({row for _, row in wanted})):
             self._sheets_client.write_rows_in_sheet(
                 self._spreadsheet_id,
@@ -529,7 +528,20 @@ class NotedTimeSheet:
             )
 
     def _read_header(self) -> list[str]:
-        rows = self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)
+        return self._checked_header(
+            self._sheets_client.read_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE)
+        )
+
+    def _read_header_and(self, range_within_sheet: str) -> tuple[list[str], list[list[str]]]:
+        """The header row and `range_within_sheet`'s rows, in one read
+        request."""
+        header, rows = self._sheets_client.read_ranges_in_sheet(
+            self._spreadsheet_id, self._sheet_id, [_HEADER_RANGE, range_within_sheet]
+        )
+        return self._checked_header(header), rows
+
+    @staticmethod
+    def _checked_header(rows: list[list[str]]) -> list[str]:
         header_row = rows[0] if rows else []
         expected = {f.name for f in fields(NotedTime)}
         if not expected <= set(header_row):
@@ -537,6 +549,15 @@ class NotedTimeSheet:
                 f"Missing expected header columns at {_HEADER_RANGE}: {expected - set(header_row)}"
             )
         return header_row
+
+
+@dataclass(kw_only=True)
+class _Read:
+    notes: list[SheetNote]
+    latest_compacted: SheetNote | None
+    header_row: list[str]
+    start_row: int
+    """Where the read started: every row before it is compacted."""
 
 
 def _is_compacted(header_row: list[str], rows: list[list[str]], offset: int) -> bool:
