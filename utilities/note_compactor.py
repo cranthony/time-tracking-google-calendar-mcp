@@ -79,7 +79,7 @@ from utilities.note_compaction import (
     planned_timeline,
 )
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote
-from utilities.goals import Goals, GoalTree
+from utilities.goals import OVERALL_ID, Goals, GoalTree
 from utilities.reallocating_calendar import ReallocatingCalendar
 
 _CANDIDATE_WINDOW = timedelta(hours=1)
@@ -366,7 +366,7 @@ class NoteCompactor:
                 ) if previous_note is not None else None,
             ),
             goals=[
-                ContextGoal(id=g.id, path=tree.path(g.id)) for g in tree.ordered() if g.active
+                ContextGoal(id=g.id, path=tree.path(g.id)) for g in tree.ordered() if g.active and g.id != OVERALL_ID
             ] if tree is not None else None,
             previous_note=PreviousNote(
                 timestamp=previous_note.timestamp, description=previous_note.description

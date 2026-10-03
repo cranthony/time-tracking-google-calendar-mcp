@@ -63,6 +63,17 @@ CLEARABLE_FIELDS = frozenset(
 """Goal fields `update_goal` can blank. Not `name`/`status` (always
 needed) nor the read-only `id`/`label_id`/`created`."""
 
+OVERALL_ID = "overall"
+"""The overall goal's id: one goal every calendar has, whose sub-goals are
+implied to be all the top-level goals -- so it's rated, from them or by a
+measure of its own, like any other goal, but rates everything together.
+It holds no event label, can't be given to an event, and is always active
+and top-level. It's in the goals tab once anything is written to it; until
+then GoalTree supplies it. (Generated goal ids are 6 characters, so none
+can be this.)"""
+
+OVERALL_NAME = "Overall"
+
 DEFAULT_STATUSES: tuple[str, ...] = ("proposed", "active", "inactive")
 """The goals listed unless others are asked for: those still in play.
 Completed, archived and deleted ones are listed only on request."""
@@ -98,6 +109,19 @@ class ListedGoal(Goal):
 
 
 @dataclass(kw_only=True)
+class StatusMinutes:
+    """The time of the events whose goals (with their ancestors) have
+    exactly these statuses, between them: so the time spent on goals of
+    any set of statuses is the sum over the StatusMinutes whose statuses
+    include one of them, each event counted once however many goals it
+    serves."""
+
+    statuses: list[str]
+    minutes_24h: int
+    minutes_7d: int
+
+
+@dataclass(kw_only=True)
 class GoalList:
     goals: list[ListedGoal]
     """Parents before their children, siblings in sheet order."""
@@ -113,11 +137,24 @@ class GoalList:
     goal's minutes_24h/minutes_7d are counted up to it. `None` if notes
     have never been compacted."""
 
+    minutes_by_statuses: list[StatusMinutes] | None = None
+    """The time spent on goals in the 24 hours and 7 days up to as_of,
+    split by the statuses of the goals each event serves -- see
+    StatusMinutes. `None` if there's no as_of."""
+
+
+def overall_goal() -> Goal:
+    """The overall goal, as it is before anything's written to it."""
+    return Goal(id=OVERALL_ID, name=OVERALL_NAME, status="active")
+
 
 class GoalTree:
-    """Read-only lookups over one snapshot of the goals."""
+    """Read-only lookups over one snapshot of the goals, the overall goal
+    among them (see OVERALL_ID), supplied if the sheet hasn't got it yet."""
 
     def __init__(self, goals: list[Goal]) -> None:
+        if not any(goal.id == OVERALL_ID for goal in goals):
+            goals = [overall_goal()] + list(goals)
         self.goals = goals
         self.by_id = {goal.id: goal for goal in goals if goal.id}
         self._by_label = {goal.label_id: goal for goal in goals if goal.label_id}
@@ -166,6 +203,10 @@ class GoalTree:
         a deleted goal is refused too -- no event can be given one -- unless
         it's in `already`, the goals the event has now."""
         unknown = [goal_id for goal_id in goal_ids if goal_id not in self.by_id]
+        if for_events and OVERALL_ID in goal_ids:
+            raise ValueError(
+                "The overall goal can't be given to an event: every goal's events already count toward it"
+            )
         deleted = [
             g for g in goal_ids
             if for_events and g in self.by_id and self.by_id[g].status == "deleted" and g not in already
@@ -186,8 +227,18 @@ class GoalTree:
         raise ValueError("; ".join(problems) + " (get_goals lists them)")
 
     def children(self, goal_id: str) -> list[Goal]:
-        """The goal's immediate sub-goals, in sheet order."""
+        """The goal's immediate sub-goals, in sheet order: for the overall
+        goal, the top-level goals."""
+        if goal_id == OVERALL_ID:
+            return [g for g in self.goals if g.parent_id is None and g.id != OVERALL_ID]
         return [g for g in self.goals if g.parent_id == goal_id and g.id != goal_id]
+
+    def under(self, goal_id: str, ancestor_id: str) -> bool:
+        """Whether `goal_id` is `ancestor_id` or one of its descendants;
+        every goal is under the overall goal."""
+        if ancestor_id == OVERALL_ID:
+            return goal_id in self.by_id
+        return any(g.id == ancestor_id for g in self.chain(goal_id))
 
     def rated(self, goal_id: str) -> bool:
         """Whether the daily reflection rates the goal: it's active, and has
@@ -231,7 +282,8 @@ class GoalTree:
             for child in children.get(goal.id, []):
                 visit(child)
 
-        for root in children.get(None, []):
+        # The overall goal first: it's above the rest.
+        for root in sorted(children.get(None, []), key=lambda g: g.id != OVERALL_ID):
             visit(root)
         for goal in self.goals:  # anything only reachable through a cycle
             visit(goal)
@@ -348,6 +400,8 @@ class Goals:
         parents = {tree.by_id[goal_id].parent_id for goal_id in goal_ids}
         if len(parents) > 1:
             raise ValueError("Only sibling goals, which share a parent, can be reordered together")
+        if OVERALL_ID in goal_ids:
+            raise ValueError("The overall goal stays above the others; it can't be reordered")
         goals = [replace(g) for g in tree.goals]
         places = [i for i, goal in enumerate(goals) if goal.id in set(goal_ids)]
         by_id = {goal.id: goal for goal in goals}
@@ -383,7 +437,7 @@ class Goals:
         _validate(goals, check_measures)
         tree = GoalTree(goals)
         raw_labels, etag = self._calendar_client.list_event_labels()
-        if not tree.goals and any(label.name for label in raw_labels):
+        if not any(g.id != OVERALL_ID for g in tree.goals) and any(label.name for label in raw_labels):
             # An empty goals tab next to named labels is almost certainly a
             # broken sheet, not a request to delete every label.
             raise ValueError(
@@ -405,10 +459,10 @@ class Goals:
         desired = [
             RawEventLabel(id=goal.label_id, name=goal.name, background_color=tree.color(goal))
             for goal in tree.ordered()
-            if goal.active
+            if _holds_label(goal)
         ] + [label for label in raw_labels if not label.name]
         if len(desired) > MAX_LABELS:
-            unnamed = len(desired) - sum(1 for goal in tree.goals if goal.active)
+            unnamed = len(desired) - sum(1 for goal in tree.goals if _holds_label(goal))
             raise ValueError(
                 f"That would need {len(desired)} event labels, but a calendar holds {MAX_LABELS} "
                 f"({unnamed} are Calendar's own unnamed ones), so at most {MAX_LABELS - unnamed} goals "
@@ -421,7 +475,7 @@ class Goals:
         unnamed = sum(1 for label in raw_labels if not label.name)
         today = self._today()
         as_of = self._last_compaction() if self._last_compaction else None
-        recent = self._recent_minutes(tree, as_of) if as_of is not None else None
+        recent, by_statuses = self._recent_minutes(tree, as_of) if as_of is not None else (None, None)
         return GoalList(
             goals=[
                 ListedGoal(
@@ -433,22 +487,34 @@ class Goals:
                     minutes_7d=recent["7d"].get(goal.id, 0) if recent else None,
                 )
                 for goal in tree.ordered()
-                if goal.status in statuses
+                # The overall goal whatever's asked for: it's above them all.
+                if goal.status in statuses or goal.id == OVERALL_ID
             ],
-            label_slots_used=unnamed + sum(1 for goal in tree.goals if goal.active),
+            label_slots_used=unnamed + sum(1 for goal in tree.goals if _holds_label(goal)),
             as_of=as_of,
+            minutes_by_statuses=by_statuses,
         )
 
-    def _recent_minutes(self, tree: GoalTree, as_of: datetime) -> dict[str, dict[str, int]]:
+    def _recent_minutes(
+        self, tree: GoalTree, as_of: datetime
+    ) -> tuple[dict[str, dict[str, int]], list[StatusMinutes]]:
         """Minutes per goal in each of utilities/goal_time.py's
-        RECENT_WINDOWS up to `as_of`, from one listing of the calendar."""
+        RECENT_WINDOWS up to `as_of`, and by statuses (see StatusMinutes),
+        from one listing of the calendar."""
         # Imported here, since both modules import this one.
         from utilities.goal_calendar import fill_in_from_goals
-        from utilities.goal_time import RECENT_WINDOWS, goal_minutes
+        from utilities.goal_time import RECENT_WINDOWS, goal_minutes, status_minutes
 
         longest = max(RECENT_WINDOWS.values())
         events = fill_in_from_goals(self._calendar_client.list_events(as_of - longest, as_of), tree)
-        return {name: goal_minutes(events, tree, as_of - window, as_of) for name, window in RECENT_WINDOWS.items()}
+        per_goal = {name: goal_minutes(events, tree, as_of - window, as_of) for name, window in RECENT_WINDOWS.items()}
+        day = status_minutes(events, tree, as_of - RECENT_WINDOWS["24h"], as_of)
+        week = status_minutes(events, tree, as_of - RECENT_WINDOWS["7d"], as_of)
+        by_statuses = [
+            StatusMinutes(statuses=sorted(statuses), minutes_24h=day.get(statuses, 0), minutes_7d=minutes)
+            for statuses, minutes in sorted(week.items(), key=lambda item: sorted(item[0]))
+        ]
+        return per_goal, by_statuses
 
     @staticmethod
     def _new_id(tree: GoalTree) -> str:
@@ -487,6 +553,12 @@ class Goals:
         return GoalSheet.create(
             sheets_client, spreadsheet_id, goals, reuse_sheet_id=0 if is_new_spreadsheet else None
         )
+
+
+def _holds_label(goal: Goal) -> bool:
+    """Whether the goal takes one of the calendar's event labels: it's
+    active, and isn't the overall goal."""
+    return goal.active and goal.id != OVERALL_ID
 
 
 def _check_statuses(statuses: Collection[str] | None) -> tuple[str, ...]:
@@ -544,9 +616,18 @@ def _validate(goals: list[Goal], check_measures: Collection[str] | None = None) 
             siblings[key] = goal.id
         if goal.status not in GOAL_STATUSES:
             problems.append(f"{label}'s status must be one of {', '.join(GOAL_STATUSES)}")
-        if not goal.label_id:
+        if goal.id == OVERALL_ID:
+            if goal.status != "active":
+                problems.append("the overall goal is always active")
+            if goal.parent_id is not None:
+                problems.append("the overall goal is above every other, so it has no parent")
+        elif not goal.label_id:
             problems.append(f"{label} has no label_id")
-        if goal.parent_id is not None:
+        if goal.parent_id == OVERALL_ID:
+            problems.append(
+                f"{label} can't name the overall goal as its parent: every top-level goal is already under it"
+            )
+        elif goal.parent_id is not None and goal.id != OVERALL_ID:
             if goal.parent_id not in tree.by_id:
                 problems.append(f"{label}'s parent {goal.parent_id!r} isn't a goal")
             elif goal.id and goal.id in [g.id for g in tree.chain(goal.parent_id)]:
