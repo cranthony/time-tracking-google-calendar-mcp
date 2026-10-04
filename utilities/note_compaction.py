@@ -60,7 +60,9 @@ them.
 Moving the day's own end-of-day sleep event is the exception: it moves
 where the day ends instead of being placed within it, since nothing in
 the day comes after it to reflow into. Its end starts the next day, which
-is never adjusted -- only warned about. See `_end_day_at`.
+is never adjusted -- only warned about, unless the next day is being
+compacted with it (`next_day_follows`). See `_end_day_at`. Cancelling it
+-- a night without sleep -- makes the day run on to the next one's end.
 """
 
 from __future__ import annotations
@@ -269,6 +271,7 @@ def plan_compaction(
     goal_names: dict[str, str] | None = None,
     previous_note: PlanNote | None = None,
     last_compaction: datetime | None = None,
+    next_day_follows: bool = False,
 ) -> CompactionPlan:
     """Plan the calendar changes that `decisions` (what the notes show
     happened, event by event) imply for `day_events`, as of `now`.
@@ -277,7 +280,11 @@ def plan_compaction(
     event (the one moving which moves bedtime) is the first that starts
     after it, and any sleep event before it is just the end of the
     previous night, adjustable like anything else. Without it, the first
-    sleep event is the day's own. `goal_names` (goal id -> name) labels
+    sleep event is the day's own. One a decision cancels isn't: a night
+    without sleep, the day runs on to the next one. `next_day_follows`:
+    the next day is being compacted too, after this one, so moving this
+    day's wake-up time needs no warning -- that day starts from it.
+    `goal_names` (goal id -> name) labels
     events' goals in the timeline. `previous_note` (an already-compacted
     note) and `last_compaction` (when that compaction ran) are only shown
     in the timeline, as context.
@@ -304,7 +311,10 @@ def plan_compaction(
     events_by_id = {e.id: e for e in live}
     copies = {e.id: replace(e) for e in live}
     sleeps = [e for e in live if e.is_end_of_day_sleep]
-    closing = next((e for e in sleeps if day_start is None or e.start > day_start), None)
+    sleepless = {d.event_id for d in decisions if d.action == "cancel"}
+    closing = next(
+        (e for e in sleeps if (day_start is None or e.start > day_start) and e.id not in sleepless), None
+    )
 
     resolved = _resolve(decisions, notes, notes_by_id, events_by_id, closing, now, problems)
     if problems:
@@ -344,7 +354,7 @@ def plan_compaction(
     if problems:
         raise CompactionError("\n".join(problems))
 
-    simulated = _simulate(facts, copies, cancels, options, warnings)
+    simulated = _simulate(facts, copies, cancels, options, warnings, next_day_follows)
     changes = _changes(facts, events_by_id, copies, cancels, simulated)
     if not changes:
         warnings.append("nothing on the calendar needs to change")
@@ -652,6 +662,7 @@ def _end_day_at(
     explicit_cancel: dict[str, str],
     day_end_reasons: dict[str, str],
     warnings: list[str],
+    next_day_follows: bool = False,
 ) -> list[Event]:
     """Move the day's end to where `fact` puts its end-of-day sleep event,
     and return `working` with it there.
@@ -672,7 +683,8 @@ def _end_day_at(
     - the sleep's end -- the start of the next day -- is moved as asked,
       but nothing in the next day is adjusted for it: compacting one day
       never changes the next. That gets a warning instead, since the
-      next day's first events may now overlap it.
+      next day's first events may now overlap it -- unless the next day
+      is being compacted too (`next_day_follows`), starting from it.
     """
     sleep = fact.event
     bedtime = fact.start
@@ -701,7 +713,7 @@ def _end_day_at(
         # else: the unsaved remainder of a split event -- just never created.
     if problems:
         raise CompactionError("\n".join(problems))
-    if fact.end != fact.base.end:
+    if fact.end != fact.base.end and not next_day_follows:
         warnings.append(
             f"{sleep.summary!r} now ends at {fact.end.isoformat()} instead of "
             f"{fact.base.end.isoformat()}. Compaction doesn't adjust the next day for that -- "
@@ -728,6 +740,7 @@ def _simulate(
     cancels: dict[str, str],
     options: ReallocationOptions,
     warnings: list[str],
+    next_day_follows: bool = False,
 ) -> _Simulated:
     """Place every decided fact into the day, reflowing the rest around
     it, in memory. `copies` is updated in place to where each existing
@@ -745,7 +758,7 @@ def _simulate(
     day_end_reasons: dict[str, str] = {}
     for fact in decided:
         if fact.moves_day_end:
-            working = _end_day_at(fact, working, cancels, day_end_reasons, warnings)
+            working = _end_day_at(fact, working, cancels, day_end_reasons, warnings, next_day_follows)
     for fact in decided:
         if fact.moves_day_end:
             continue
