@@ -366,13 +366,13 @@ class TestRecord:
 
         assert result.status == "preview"
         assert result.summary.splitlines() == [
-            "**Thu Oct 1 · Overall 50~ 🟡** (1 answer to go)",
+            "**Thu Oct 1 · Overall ~50 🟡** (1 answer to go)",
             "",
             "**Priority 0**",
             "🟡 **Cooking 50**: 1h of 2h in the day → 50",
             "",
             "**Priority 2**",
-            "🟢 **Neighbor 100~**: Cousins ? · Parents 100",
+            "🟢 **Neighbor ~100**: Cousins ? · Parents 100",
             "🔴 **Tidy 0**: 0 of 1 events in the day → 0",
         ]
         assert [(q.path, q.prompt) for q in result.questions] == [("Neighbor › Cousins", "How was cousins?")]
@@ -407,7 +407,7 @@ class TestRecord:
         preview = reflections.record(YESTERDAY, [life], [goals["Life"].id])
         recorded = reflections.record(YESTERDAY, [life], dry_run=False)
 
-        assert "🟡 **Life 60~**: Busy but fine" in preview.summary
+        assert "🟡 **Life ~60**: Busy but fine" in preview.summary
         assert preview.summary.splitlines()[0].endswith("(1 answer to go)")
         assert preview.overall_provisional
         assert "🟡 **Life 60**: Busy but fine" in recorded.summary

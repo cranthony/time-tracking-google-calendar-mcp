@@ -688,7 +688,7 @@ def _summary(day: date, tree: GoalTree, evaluation: _Evaluation) -> tuple[list[S
             if a is None:
                 parts.append((-1, order[child.id], f"{name(child)} ?"))
             elif isinstance(a.rating, int):
-                parts.append((a.rating, order[child.id], f"{name(child)} {a.rating}{'' if r.final else '~'}"))
+                parts.append((a.rating, order[child.id], f"{name(child)} {'' if r.final else '~'}{a.rating}"))
         return " · ".join(text for _, _, text in sorted(parts)[:_DETAILS]) or None
 
     lines = []
@@ -714,7 +714,7 @@ def _summary(day: date, tree: GoalTree, evaluation: _Evaluation) -> tuple[list[S
             text = f"⚪ **{goal.name}** skipped"
         else:
             arrow = (f" ↑{change}" if change > 0 else f" ↓{-change}") if change and abs(change) >= _TREND else ""
-            text = f"{band(rating)} **{goal.name} {rating}{'~' if state == 'provisional' else ''}**{arrow}"
+            text = f"{band(rating)} **{goal.name} {'~' if state == 'provisional' else ''}{rating}**{arrow}"
         if why and rating is not None:
             text += f": {why}"
         lines.append(
@@ -739,7 +739,7 @@ def _summary(day: date, tree: GoalTree, evaluation: _Evaluation) -> tuple[list[S
     if rating is None:
         head += " — waiting on your answers**"
     else:
-        head += f" {rating}{'' if overall.final else '~'} {band(rating)}**"
+        head += f" {'' if overall.final else '~'}{rating} {band(rating)}**"
     if waiting:
         head += f" ({waiting} answer{'s' if waiting != 1 else ''} to go)"
     text = [head]
