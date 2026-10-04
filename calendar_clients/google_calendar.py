@@ -150,8 +150,10 @@ class Event:
 
     status: str | None = None
     """One of "confirmed", "tentative", or "cancelled". A cancelled event
-    isn't removed from a calendar's results — it's returned with this
-    status. An instance of a recurring event should never be deleted --
+    is left out of `list_events` unless it's asked for them
+    (`show_deleted`); it's then returned with this status, usually keeping
+    its summary, times and label -- but an instance a series edit took
+    away comes back as just "CANCELLED", with neither. An instance of a recurring event should never be deleted --
     set its status to "cancelled" instead.
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#status
     for more information."""
@@ -276,8 +278,11 @@ class Event:
                 "goal_ids": str.split,
             },
         )
-        start = _parse_datetime(data["start"])
-        end = _parse_datetime(data["end"])
+        # A cancelled instance of a recurring series may come back with
+        # only its original start: it's then taken to be zero-length there.
+        start_data = data.get("start") or data["originalStartTime"]
+        start = _parse_datetime(start_data)
+        end = _parse_datetime(data["end"]) if "end" in data else start
         if app_properties.get("is_fixed_duration") or app_properties.get("is_fixed_time"):
             # A fixed-duration (or fixed-time -- see is_fixed_time) event
             # may never be shrunk, so its min_duration is its own full
@@ -294,7 +299,7 @@ class Event:
             status=data.get("status"),
             recurring_event_id=data.get("recurringEventId"),
             recurrence=data.get("recurrence"),
-            time_zone=data["start"].get("timeZone"),
+            time_zone=start_data.get("timeZone"),
             original_start=_parse_datetime(data["originalStartTime"]) if "originalStartTime" in data else None,
             event_label_id=data.get("eventLabelId"),
             **app_properties,
@@ -699,15 +704,19 @@ class CalendarClient:
         service = build_service("calendar", "v3", credentials=creds)
         return cls(service, calendar_id=calendar_id)
 
-    def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:
+    def list_events(self, time_min: datetime, time_max: datetime, *, show_deleted: bool = False) -> list[Event]:
         """Every event between `time_min` and `time_max`, following
         `nextPageToken` until the last page -- Calendar returns at most
         `_LIST_PAGE_SIZE` events per page (250 if asked for nothing), so a
-        week or more of events can span several."""
+        week or more of events can span several. With `show_deleted`,
+        cancelled events too (Calendar leaves them out otherwise) -- but
+        not one that's kept no start at all."""
         events: list[Event] = []
         page_token: str | None = None
         while True:
             page_kwargs = {"pageToken": page_token} if page_token else {}
+            if show_deleted:
+                page_kwargs["showDeleted"] = True
             response = (
                 self._service.events()
                 .list(
@@ -721,7 +730,11 @@ class CalendarClient:
                 )
                 .execute()
             )
-            events.extend(Event.from_api(item) for item in response.get("items", []))
+            events.extend(
+                Event.from_api(item)
+                for item in response.get("items", [])
+                if "start" in item or "originalStartTime" in item
+            )
             page_token = response.get("nextPageToken")
             if not page_token:
                 return events

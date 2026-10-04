@@ -693,7 +693,14 @@ def create_goal(goal: Goal) -> CreatedGoal:
     one overlapping it at all is in: full marks for the closest event in
     it, plus the grace, none at zero_at_min out; a day without any is
     rated 0 -- e.g. lunch, measuring an "Eat well" goal's events with
-    events_of), {"kind": "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
+    events_of), {"kind": "follow_through", "penalty": 25, "recovery":
+    25, "look_back_days": 30} (a running score that carries over from day
+    to day: from 100 look_back_days ago, each day loses penalty per event
+    of the goal that was cancelled -- pushed off by reallocation, or
+    cancelled in a compaction or by hand -- and regains recovery if any
+    was kept, within 0-100; a cancelled event overlapped by a kept one of
+    the goal, such as one merged into another, isn't counted -- e.g. "Do
+    what I say I will"), {"kind": "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
     in a reflection once interval_days,
     default 1, have passed since it was last answered; carried over from
     the day before in between), {"kind": "llm", "rubric": "..."} (you
@@ -703,7 +710,7 @@ def create_goal(goal: Goal) -> CreatedGoal:
     "weighted" with "weights": {sub-goal id: weight}, a sub-goal not
     listed weighing 0; or "percentile" with "percentile": 0-100, 0 being
     the lowest and 100 the highest). Only the fields shown are allowed. A
-    duration, count, time_constraint or time_window measure looks at the events of the
+    duration, count, time_constraint, time_window or follow_through measure looks at the events of the
     goal and its sub-goals, or, given "events_of": "<goal id>", at those of
     that goal and its sub-goals instead, as though it were that goal (e.g.
     a "work 40 hours a week" sub-goal measuring its parent's events,
@@ -790,7 +797,8 @@ def sync_goals_from_sheet() -> GoalList:
 def measure_goals(day: date | None = None, goal_ids: list[str] | None = None) -> list[Assessment]:
     """Proposed ratings of one day (from waking on it to waking the next;
     by default the last one that's over) for the goals whose measure the
-    calendar can answer: duration, count, time_constraint, and rollups whose
+    calendar can answer: duration, count, time_constraint, time_window,
+    follow_through, and rollups whose
     sub-goals are all rated that day. Each has an explanation of how its
     0-100 rating was reached. Writes nothing; ratings are only confirmed
     in a reflection."""

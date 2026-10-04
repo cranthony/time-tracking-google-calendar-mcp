@@ -18,7 +18,11 @@ than leaving the goal silently unmeasured.
 | `time_       | `from` and `to` ("HH:MM", `from` before `to`): a window   |
 | window`      | one of the day's events should fall in; optional          |
 |              | `grace_min` and `zero_at_min`, as for a time constraint   |
-| (all four)   | optional `events_of` and `include_sub_goals`: whose       |
+| `follow_     | optional `penalty` (> 0, default 25): points lost per     |
+| through`     | cancelled event; `recovery` (> 0, default 25): points     |
+|              | regained per day with a kept one; `look_back_days` (a     |
+|              | whole number >= 1, default 30)                            |
+| (all five)   | optional `events_of` and `include_sub_goals`: whose       |
 |              | events they look at                                       |
 | `subjective` | `prompt`: the question asked in a reflection; optional    |
 |              | `interval_days`: how often it's asked (default every day) |
@@ -41,8 +45,8 @@ falling linearly from 100 when it lapsed to 0 once `zero_at_days` (>
 interval, so a 60-day visit goal with `zero_at_days` 90 is at 50 after 75
 days without a visit.
 
-**Whose events.** A duration, count, time constraint or time window
-measure looks at the events given its own goal or any of its sub-goals -- or, with
+**Whose events.** A duration, count, time constraint, time window or
+follow-through measure looks at the events given its own goal or any of its sub-goals -- or, with
 `events_of`, another goal's (and its sub-goals') instead, as though it
 were that goal: "work 40 hours a week" can be a sub-goal of "Fulfil my
 work commitment" that measures its parent's events, without tagging any
@@ -69,6 +73,22 @@ and one from 14:00 to 14:30 is 30 minutes out. The day is rated by its
 closest event: 100 up to `grace_min` minutes out, falling linearly to 0
 at `zero_at_min`. A day with no such events is rated 0: it's the event
 that's wanted.
+
+**Follow through** rates keeping your word: a goal's events being
+cancelled -- pushed off the calendar by reallocation, or cancelled by a
+compaction (it didn't happen) or by hand -- rather than kept. Its rating
+is a running score that carries over from day to day: it starts at 100
+`look_back_days` days before the end of the day being rated, and each
+day, oldest first, loses `penalty` for each of that day's events of the
+goal that was cancelled and regains `recovery` if any was kept (not
+cancelled), staying within 0-100. So one cancellation drops it (100 →
+75), it stays down through days with none of the goal's events, and it
+climbs back only on days that have one that happened. An event counts on
+the day it was to start; the days before the one being rated are the 24
+hours before it, and the 24 before those, and so on. A cancelled event
+overlapped by a kept event of the same goal (one merged into another by
+a compaction, say) isn't counted: it was replaced, not dropped. A
+cancellation more than `look_back_days` ago is forgotten.
 
 **Subjective.** Its `prompt` is asked in the first daily reflection after
 `interval_days` have passed since it was last answered -- in a reflection,
@@ -116,6 +136,7 @@ MEASURE_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
             frozenset({"edge", "target"}), frozenset({"when", "grace_min", "zero_at_min"}) | _EVENT_SOURCE
         ),
         "time_window": (frozenset({"from", "to"}), frozenset({"grace_min", "zero_at_min"}) | _EVENT_SOURCE),
+        "follow_through": (frozenset(), frozenset({"penalty", "recovery", "look_back_days"}) | _EVENT_SOURCE),
         "subjective": (frozenset({"prompt"}), frozenset({"interval_days"})),
         "llm": (frozenset({"rubric"}), frozenset()),
         "rollup": (frozenset(), frozenset({"agg", "weights", "percentile"})),
@@ -198,6 +219,15 @@ def measure_problems(measure: Any, *, sub_goal_ids: set[str] | None = None) -> l
             problems.append('"grace_min" must be a number, 0 or more')
         elif "zero_at_min" in measure and not (_is_number(measure["zero_at_min"]) and measure["zero_at_min"] > grace):
             problems.append(f'"zero_at_min" must be a number above "grace_min" ({grace:g})')
+    elif kind == "follow_through":
+        positive("penalty")
+        positive("recovery")
+        if "look_back_days" in measure and not (
+            isinstance(measure["look_back_days"], int)
+            and not isinstance(measure["look_back_days"], bool)
+            and measure["look_back_days"] >= 1
+        ):
+            problems.append('"look_back_days" must be a whole number, 1 or more')
     elif kind == "subjective":
         text("prompt")
     elif kind == "llm":

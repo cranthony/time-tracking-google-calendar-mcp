@@ -640,6 +640,29 @@ class TestCalendarClientListEvents:
         assert (first["eventId"], first["showDeleted"], first["timeMax"]) == ("s", True, "2026-01-19T00:00:00+00:00")
         assert instances.call_args_list[1].kwargs["pageToken"] == "page-2"
 
+    def test_list_events_with_show_deleted_includes_cancelled_events(self):
+        service = MagicMock()
+        service.events.return_value.list.return_value.execute.return_value = {
+            "items": [
+                {**api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"), "status": "cancelled"},
+                # A cancelled instance kept only its original start; one kept nothing to place it by.
+                {
+                    "id": "2", "status": "cancelled", "recurringEventId": "s",
+                    "originalStartTime": {"dateTime": "2026-01-01T11:00:00+00:00"},
+                },
+                {"id": "3", "status": "cancelled"},
+            ]
+        }
+        client = make_client(service)
+
+        events = client.list_events(
+            datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC), show_deleted=True
+        )
+
+        assert [(e.id, e.status) for e in events] == [("1", "cancelled"), ("2", "cancelled")]
+        assert events[1].start == events[1].end == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
+        assert service.events.return_value.list.call_args.kwargs["showDeleted"] is True
+
     def test_list_events_returns_empty_list_when_no_items(self):
         service = MagicMock()
         service.events.return_value.list.return_value.execute.return_value = {}

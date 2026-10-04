@@ -33,7 +33,9 @@ metrics are kept: they're still what was measured.
 the calendar can answer -- `duration` (minutes of its events over its
 interval), `count` (how many), `time_constraint` (when the day's events
 start or end), `time_window` (whether one of them falls in a window of
-the day) and `rollup` (its immediate sub-goals' confirmed ratings that day),
+the day), `follow_through` (a running score its cancelled events lower
+and its kept ones restore) and `rollup` (its immediate sub-goals'
+confirmed ratings that day),
 or "skip" for any goal, whatever its kind, whose measure's `only_if`
 names a goal with no events that day -- each with a one-line
 `explanation` of how the number was reached. It
@@ -44,6 +46,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
@@ -88,9 +91,9 @@ HISTORY_DAYS = 12
 _CACHE_HISTORY = timedelta(days=3 * 366)
 """How far back the health cache looks for a goal's latest rating."""
 
-MEASURED_KINDS = frozenset({"duration", "count", "time_constraint", "time_window", "rollup"})
+MEASURED_KINDS = frozenset({"duration", "count", "time_constraint", "time_window", "follow_through", "rollup"})
 
-_EVENT_KINDS = frozenset({"duration", "count", "time_constraint", "time_window"})
+_EVENT_KINDS = frozenset({"duration", "count", "time_constraint", "time_window", "follow_through"})
 """The measure kinds read from the calendar's events."""
 
 
@@ -286,8 +289,8 @@ class GoalHealth:
     def measure(self, day: date | None = None, goal_ids: list[str] | None = None) -> list[Assessment]:
         """Proposed assessments of `day` (default: the last one that's
         over) for the rated goals whose measure the calendar can answer:
-        duration, count, time_constraint, time_window, rollups whose rated
-        sub-goals all have a confirmed rating that day, and any whose
+        duration, count, time_constraint, time_window, follow_through,
+        rollups whose rated sub-goals all have a confirmed rating that day, and any whose
         `only_if` isn't met (a skip). Writes nothing. Raises
         utilities/sleep_days.py's NotOver or MissingSleep (both ValueErrors)
         if the day isn't over, or the sleeps that bound it aren't in the
@@ -319,14 +322,21 @@ class GoalHealth:
         tz = self._client.get_time_zone()
         window: tuple[datetime, datetime] | None = None
         events: list[Event] = []
+        cancelled: list[Event] = []
         if any(m.get("kind") in _EVENT_KINDS or isinstance(m.get("only_if"), dict) for m in measures):
             # With the sleeps that bound the day, which runs from waking to
             # waking -- see utilities/sleep_days.py -- and as far back as
             # the longest look back.
             first, last = listing_range(span, tz)
-            first = min([first] + [first - _look_back(m) for m in measures if m.get("kind") in ("duration", "count")])
-            listed = self._client.list_events(first, last)
-            events = [e for e in fill_in_from_goals(listed, tree) if e.status != "cancelled"]
+            first = min([first] + [first - _look_back(m) for m in measures if m.get("kind") in _LOOKS_BACK])
+            if any(m.get("kind") == "follow_through" for m in measures):
+                listed = self._client.list_events(first, last, show_deleted=True)
+                listed = self._with_series_goals(listed)
+            else:
+                listed = self._client.list_events(first, last)
+            filled = fill_in_from_goals(listed, tree)
+            events = [e for e in filled if e.status != "cancelled"]
+            cancelled = [e for e in filled if e.status == "cancelled"]
             window = period_window(span, events, tz, self._now())
         proposals: list[Assessment | None] = []
         for goal, measure in zip(goals, measures):
@@ -337,6 +347,8 @@ class GoalHealth:
                 continue
             if kind == "rollup":
                 measured = _rollup(goal, measure, tree, confirmed)
+            elif kind == "follow_through" and window is not None:
+                measured = _follow_through(goal, measure, window, events, cancelled, tree)
             elif kind in _MEASURES and window is not None:
                 measured = _MEASURES[kind](goal, measure, day, window, events, tree)
             else:
@@ -356,6 +368,30 @@ class GoalHealth:
                 )
             )
         return proposals
+
+    def _with_series_goals(self, events: list[Event]) -> list[Event]:
+        """`events`, but with each cancelled instance of a recurring series
+        that's kept no goals given its series' (and its label, if it's kept
+        none) -- and, if it's kept no end either, its series' length."""
+        series: dict[str, Event | None] = {}
+        filled = []
+        for event in events:
+            if event.status == "cancelled" and event.recurring_event_id and not event.goal_ids:
+                if event.recurring_event_id not in series:
+                    try:
+                        series[event.recurring_event_id] = self._client.get_event(event.recurring_event_id)
+                    except Exception:  # Gone, say: then it can't be told whose it was.
+                        series[event.recurring_event_id] = None
+                master = series[event.recurring_event_id]
+                if master is not None:
+                    event = replace(
+                        event,
+                        goal_ids=master.goal_ids,
+                        event_label_id=event.event_label_id or master.event_label_id,
+                        end=event.end if event.end > event.start else event.start + (master.end - master.start),
+                    )
+            filled.append(event)
+        return filled
 
     # -- the health cache ----------------------------------------------------
 
@@ -473,8 +509,15 @@ _METHODS: dict[str | None, Method] = {"rollup": "rollup", "subjective": "subject
 """Each kind's assessment method, but for the metric ones."""
 
 
+_LOOKS_BACK = frozenset({"duration", "count", "follow_through"})
+"""The measure kinds that look at days before the one being rated."""
+
+
 def _look_back(measure: dict[str, Any]) -> timedelta:
-    """How far before a day's end a duration or count measure looks."""
+    """How far before a day's end a duration, count or follow-through
+    measure looks."""
+    if measure.get("kind") == "follow_through":
+        return timedelta(days=measure.get("look_back_days", FOLLOW_THROUGH_LOOK_BACK_DAYS))
     return timedelta(days=max(measure.get("interval_days", 1), measure.get("zero_at_days", 0)))
 
 
@@ -671,6 +714,56 @@ def _measure_time_window(goal, measure, day, window, events, tree) -> Measured |
         side = "after" if closest.start >= window_end else "before"
         where = f"{round(off)} min {side} {span} with {grace:g} min grace"
     return rating, f"{at}; {where} → {rating}", metrics
+
+
+FOLLOW_THROUGH_PENALTY = 25
+FOLLOW_THROUGH_RECOVERY = 25
+FOLLOW_THROUGH_LOOK_BACK_DAYS = 30
+
+
+def _follow_through(
+    goal: Goal, measure: dict[str, Any], window: tuple[datetime, datetime], events: list[Event],
+    cancelled: list[Event], tree: GoalTree,
+) -> Measured:
+    """A running score that the goal's cancelled events (see `_served`)
+    lower and its kept ones restore, day by day over the look back -- see
+    utilities/goal_measures.py."""
+    penalty = measure.get("penalty", FOLLOW_THROUGH_PENALTY)
+    recovery = measure.get("recovery", FOLLOW_THROUGH_RECOVERY)
+    look_back_days = measure.get("look_back_days", FOLLOW_THROUGH_LOOK_BACK_DAYS)
+    kept = _served(events, goal, measure, tree)
+    dropped = [e for e in _served(cancelled, goal, measure, tree) if not any(_overlap(k, e) for k in kept)]
+    start, end = window
+    # The day being rated, and the 24-hour days before it, oldest first.
+    days = [(start - timedelta(days=back), start - timedelta(days=back - 1)) for back in range(look_back_days - 1, 0, -1)]
+    days.append((start, end))
+    score = before = 100.0
+    lost = gained = 0
+    for day_start, day_end in days:
+        before = score
+        lost = sum(1 for e in dropped if day_start <= e.start < day_end)
+        gained = sum(1 for e in kept if day_start <= e.start < day_end)
+        score = max(0.0, min(100.0, score - penalty * lost + (recovery if gained else 0)))
+    rating, was = round(score), round(before)
+    said = ", ".join(
+        part for part in (
+            f"{lost} cancelled (−{penalty * lost:g})" if lost else "",
+            f"{gained} kept (+{recovery:g})" if gained else "",
+        ) if part
+    ) or "Nothing cancelled or kept"
+    metrics = {
+        "cancelled": lost, "kept": gained, "before": was, "penalty": penalty, "recovery": recovery,
+        "look_back_days": look_back_days,
+    }
+    return rating, f"{said} that day, from {was} → {rating}", metrics
+
+
+def _overlap(kept: Event, dropped: Event) -> bool:
+    """Whether `kept` covers any of `dropped`'s time -- its start, if it
+    has no length."""
+    if dropped.end > dropped.start:
+        return kept.start < dropped.end and kept.end > dropped.start
+    return kept.start <= dropped.start < kept.end
 
 
 _MEASURES: dict[str, Callable[..., Measured | None]] = {
