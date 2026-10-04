@@ -397,6 +397,12 @@ python migrate_goal_health.py
 python migrate_goal_health.py --apply
 ```
 
+[`probe_cancelled_events.py`](probe_cancelled_events.py) checks what Google Calendar returns for your cancelled events, which the `follow_through` measure depends on: it lists the configured calendar's last `--days` (default 14) days with and without `showDeleted`, and prints, for each cancelled event, which fields it kept (start, end, `goal_ids`, label, ...). It only reads. `--raw` prints each one's JSON too:
+
+```bash
+python probe_cancelled_events.py --days 30
+```
+
 [`calendar_cli.py`](calendar_cli.py) is a dev tool for calling the calendar directly from a terminal, without going through an MCP host — useful for poking around or debugging. It's not named `calendar.py`: that would shadow Python's stdlib `calendar` module, which `google-auth`/`httplib2` (both used by `calendar_clients/google_calendar.py`) import internally. Its one extra dependency, `pytimeparse`, lives in `requirements-dev.txt`, not `requirements.txt` — install the dev dependencies (see [Setup](#setup)) to use it.
 
 ```bash
