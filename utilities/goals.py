@@ -94,6 +94,13 @@ class ListedGoal(Goal):
     """Read-only: the color its label is shown in -- its own
     background_color, or the one it inherits (see GoalTree.color)."""
 
+    effective_priority: int | None = None
+    """Read-only: the priority its events take -- its own priority, or
+    its nearest ancestor's; `None` if none of them has one."""
+
+    effective_fixed_time: bool | None = None
+    """Read-only: the same for fixed_time."""
+
     stale_days: int | None = None
     """Fully ended days since `health_period`; `None` if it's never been
     rated, or the daily reflection doesn't rate it (see GoalTree.rated)."""
@@ -496,6 +503,8 @@ class Goals:
                     **{f.name: getattr(goal, f.name) for f in fields(Goal)},
                     path=tree.path(goal.id),
                     effective_color=tree.color(goal),
+                    effective_priority=tree.priority(goal.id),
+                    effective_fixed_time=tree.fixed_time(goal.id),
                     stale_days=_stale_days(goal, tree, today),
                     minutes_24h=recent["24h"].get(goal.id, 0) if recent else None,
                     minutes_7d=recent["7d"].get(goal.id, 0) if recent else None,
