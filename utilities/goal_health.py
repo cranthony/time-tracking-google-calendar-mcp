@@ -25,9 +25,9 @@ only confirmed ratings feed a goal's at-a-glance health: the `health`/
 included) ends in "→ <rating>". A rating written with an
 explanation ending in a different one was changed from what was proposed
 -- in a reflection, say -- so the explanation no longer explains it: it's
-replaced by the rationale, the reason for the change, or "Changed from
-<rating>" without one. The metrics are kept: they're still what was
-measured.
+dropped, leaving the rationale (the reason for the change) to say why,
+or replaced by "Changed from <rating>" if there's no rationale. The
+metrics are kept: they're still what was measured.
 
 **Measuring.** `measure` proposes a rating for each goal whose measure
 the calendar can answer -- `duration` (minutes of its events over its
@@ -201,7 +201,7 @@ class GoalHealth:
                     merged[assessment.goal_id] = Assessment(
                         **{
                             **assessment.__dict__,
-                            "explanation": _explanation(assessment),
+                            "explanation": explanation_of(assessment),
                             "status": status,
                             "assessed": self._now(),
                         }
@@ -408,14 +408,15 @@ _PROPOSED = re.compile(r"→ (\d+|skip)$")
 """The rating at the end of an explanation `measure` gave."""
 
 
-def _explanation(assessment: Assessment) -> str | None:
-    """`assessment`'s explanation -- unless it ends in a rating other than
-    the one given, which was changed from it: then the rationale (the
-    reason for the change), or "Changed from <rating>"."""
+def explanation_of(assessment: Assessment) -> str | None:
+    """`assessment`'s explanation as recorded -- unless it ends in a
+    rating other than the one given, which was changed from it: then none,
+    since the rationale (the reason for the change) says why, or "Changed
+    from <rating>" if there's no rationale."""
     proposed = _PROPOSED.search(assessment.explanation or "")
     if proposed is None or proposed.group(1) == str(assessment.rating):
         return assessment.explanation
-    return assessment.rationale or f"Changed from {proposed.group(1)}"
+    return None if assessment.rationale else f"Changed from {proposed.group(1)}"
 
 
 def _health_of(confirmed: list[Assessment], today: date) -> tuple[int | None, str | None, str | None]:

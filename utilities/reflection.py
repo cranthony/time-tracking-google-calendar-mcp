@@ -51,6 +51,7 @@ from utilities.goal_health import (
     HealthDay,
     band,
     day_period,
+    explanation_of,
 )
 from utilities.goal_time import goal_minutes
 from utilities.goals import OVERALL_ID, Goals, GoalTree
@@ -563,7 +564,7 @@ def _preview(
     for a in assessments:
         name = tree.path(a.goal_id) if a.goal_id in tree.by_id else a.goal_id
         rating = "skipped" if a.rating == "skip" else str(a.rating)
-        why = " — ".join(part for part in (a.explanation, a.rationale) if part)
+        why = " — ".join(part for part in (explanation_of(a), a.rationale) if part)
         lines.append(f"{band(a.rating)} {name}: {rating}" + (f" — {why}" if why else ""))
     for path in not_rated:
         lines.append(f"· {path}: not rated yet")
