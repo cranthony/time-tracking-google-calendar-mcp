@@ -102,7 +102,8 @@ class Recurrences:
 
     def update(self, changes: Event, starting_at: str | None = None) -> list[Event]:
         """Write whichever of `changes`' editable fields are set (see
-        `_EDITABLE`) to the series `changes.id` is, or is one of -- or,
+        `_EDITABLE`), and clear those in `changes.cleared`, on the series
+        `changes.id` is, or is one of -- or,
         given `starting_at` (one of its events), first split the series
         there, and edit only the part from that event on. Returns the
         edited series, then the earlier part if it was split.
@@ -123,7 +124,9 @@ class Recurrences:
             if self.series(starting_at).id != series.id:
                 raise ValueError(f"Event {starting_at} isn't one of series {series.id}'s events")
             earlier, target = self.split(starting_at)
-        patch = Event(id=target.id, **{name: getattr(changes, name) for name in _EDITABLE})
+        patch = Event(
+            id=target.id, cleared=changes.cleared, **{name: getattr(changes, name) for name in _EDITABLE}
+        )
         if target.id != series.id:
             if patch.start is not None:
                 patch.start = target.start + (patch.start - series.start)

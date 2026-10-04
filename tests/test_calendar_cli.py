@@ -172,7 +172,9 @@ class TestUpdatableAttributeParsers:
         # event's goals, not the event, and is never sent to the API
         # either. A series' recurrence/time_zone are edited
         # through the recurrence tools (utilities/recurrences.py), and
-        # original_start, like recurring_event_id, is Google's.
+        # original_start, like recurring_event_id, is Google's. cleared
+        # names fields to remove rather than a value to set; it's set
+        # through the MCP tools' clear_fields.
         event_attributes = {f.name for f in dataclasses.fields(Event)} - {
             "id",
             "recurring_event_id",
@@ -181,6 +183,7 @@ class TestUpdatableAttributeParsers:
             "recurrence",
             "time_zone",
             "original_start",
+            "cleared",
         }
 
         assert set(calendar_cli._UPDATABLE_ATTRIBUTE_PARSERS) == event_attributes
