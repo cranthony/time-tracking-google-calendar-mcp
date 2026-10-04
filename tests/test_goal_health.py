@@ -36,6 +36,8 @@ class FakeCalendar(FakeLabelCalendar):
         self.hidden: list[str] = []
         self.calendar_id = "main"
         self.listed: list[tuple[datetime, datetime]] = []
+        # Recurring series' master events, by id, for get_event.
+        self.series: dict[str, Event] = {}
 
     def get_time_zone(self):
         return TZ
@@ -52,9 +54,10 @@ class FakeCalendar(FakeLabelCalendar):
         assert calendar_id == "health-calendar"
         return self
 
-    def list_events(self, time_min, time_max):
+    def list_events(self, time_min, time_max, *, show_deleted=False):
         self.listed.append((time_min, time_max))
-        events = list(self.events)
+        # Like the API: cancelled events only if asked for.
+        events = [e for e in self.events if show_deleted or e.status != "cancelled"]
         if self.nightly_sleep:
             slept = {e.end.astimezone(TZ).date() for e in events if e.is_end_of_day_sleep}
             day = time_min.astimezone(TZ).date()
@@ -67,6 +70,9 @@ class FakeCalendar(FakeLabelCalendar):
                     )
                 day += timedelta(days=1)
         return [e for e in events if e.end > time_min and e.start < time_max]
+
+    def get_event(self, event_id):
+        return self.series[event_id]
 
     def list_event_resources(self, time_min, time_max, *, private_property=None):
         key, _, value = (private_property or "=").partition("=")
@@ -106,7 +112,7 @@ def _child(store: Goals, name: str, parent: Goal, **fields) -> Goal:
 
 def _event(start: str, end: str, goal_ids=None, **fields) -> Event:
     return Event(
-        id=f"e-{start}",
+        id=fields.pop("id", f"e-{start}"),
         summary="x",
         start=datetime.fromisoformat(start).replace(tzinfo=TZ),
         end=datetime.fromisoformat(end).replace(tzinfo=TZ),
@@ -671,6 +677,103 @@ class TestMeasureTimeWindow:
         (rated,) = health.measure()
 
         assert (rated.rating, rated.explanation) == (0, "No events of Eat well that day → 0")
+
+
+_FOLLOW = {"kind": "follow_through"}
+
+
+class TestMeasureFollowThrough:
+    """Yesterday runs from 7am on 2026-10-01 to 7am on the 2nd; the days
+    before it are the 24 hours before that, and so on."""
+
+    def test_a_cancelled_event_lowers_the_rating(self):
+        health, _, calendar, goals = _setup([Goal(name="Word", measure=_FOLLOW)])
+        word = goals["Word"].id
+        calendar.events = [_event("2026-10-01T10:00", "2026-10-01T11:00", [word], status="cancelled")]
+
+        (rated,) = health.measure()
+
+        assert (rated.rating, rated.method) == (75, "metric")
+        assert rated.explanation == "1 cancelled (−25) that day, from 100 → 75"
+        assert rated.metrics == {
+            "cancelled": 1, "kept": 0, "before": 100, "penalty": 25, "recovery": 25, "look_back_days": 30,
+        }
+
+    def test_a_lowered_rating_carries_over_days_without_events(self):
+        health, _, calendar, goals = _setup([Goal(name="Word", measure={**_FOLLOW, "penalty": 40})])
+        word = goals["Word"].id
+        calendar.events = [_event("2026-09-29T10:00", "2026-09-29T11:00", [word], status="cancelled")]
+
+        (rated,) = health.measure()
+
+        assert rated.rating == 60
+        assert rated.explanation == "Nothing cancelled or kept that day, from 60 → 60"
+
+    def test_days_with_kept_events_recover_it_once_a_day(self):
+        health, _, calendar, goals = _setup([Goal(name="Word", measure=_FOLLOW)])
+        word = goals["Word"].id
+        calendar.events = [
+            _event("2026-09-28T10:00", "2026-09-28T11:00", [word], status="cancelled"),
+            _event("2026-09-28T12:00", "2026-09-28T13:00", [word], status="cancelled"),  # 50
+            _event("2026-09-30T10:00", "2026-09-30T11:00", [word]),  # 75
+            _event("2026-10-01T10:00", "2026-10-01T11:00", [word]),
+            _event("2026-10-01T12:00", "2026-10-01T13:00", [word]),  # 100: once for the day
+        ]
+
+        (rated,) = health.measure()
+
+        assert rated.rating == 100
+        assert rated.explanation == "2 kept (+25) that day, from 75 → 100"
+
+    def test_cancelled_and_kept_on_the_same_day(self):
+        health, _, calendar, goals = _setup([Goal(name="Word", measure={**_FOLLOW, "recovery": 10})])
+        word = goals["Word"].id
+        calendar.events = [
+            _event("2026-10-01T10:00", "2026-10-01T11:00", [word], status="cancelled"),
+            _event("2026-10-01T12:00", "2026-10-01T13:00", [word]),
+        ]
+
+        (rated,) = health.measure()
+
+        assert rated.rating == 85
+        assert rated.explanation == "1 cancelled (−25), 1 kept (+10) that day, from 100 → 85"
+
+    def test_only_the_goals_events_count_and_a_replaced_one_is_excused(self):
+        health, store, calendar, goals = _setup([Goal(name="Word", measure=_FOLLOW), Goal(name="Other")])
+        word = goals["Word"]
+        promise = _child(store, "Promise", word)
+        calendar.events = [
+            _event("2026-10-01T09:00", "2026-10-01T10:00", [promise.id], status="cancelled"),  # a sub-goal's
+            _event("2026-10-01T11:00", "2026-10-01T12:00", [goals["Other"].id], status="cancelled"),
+            # Merged into the event after it, which covers its time.
+            _event("2026-10-01T14:00", "2026-10-01T15:00", [word.id], status="cancelled", id="merged"),
+            _event("2026-10-01T14:30", "2026-10-01T16:00", [word.id]),
+        ]
+
+        (rated,) = health.measure()
+
+        assert (rated.metrics["cancelled"], rated.metrics["kept"], rated.rating) == (1, 1, 100)
+
+    def test_a_cancellation_before_the_look_back_is_forgotten(self):
+        health, _, calendar, goals = _setup([Goal(name="Word", measure={**_FOLLOW, "look_back_days": 3})])
+        word = goals["Word"].id
+        calendar.events = [_event("2026-09-28T10:00", "2026-09-28T11:00", [word], status="cancelled")]
+
+        (rated,) = health.measure()
+
+        assert rated.rating == 100
+
+    def test_a_cancelled_instance_without_goals_is_its_series(self):
+        health, _, calendar, goals = _setup([Goal(name="Word", measure=_FOLLOW)])
+        word = goals["Word"].id
+        calendar.series["series"] = _event("2026-08-01T10:00", "2026-08-01T11:00", [word], id="series")
+        calendar.events = [
+            _event("2026-10-01T10:00", "2026-10-01T10:00", status="cancelled", recurring_event_id="series"),
+        ]
+
+        (rated,) = health.measure()
+
+        assert (rated.metrics["cancelled"], rated.rating) == (1, 75)
 
 
 class TestMeasureOnlyIf:
