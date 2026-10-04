@@ -1,5 +1,5 @@
 from dataclasses import fields, replace
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -7,7 +7,7 @@ import pytest
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import Event
-from utilities.recurrences import Recurrences, check_rules, describe_rules, split_series_id
+from utilities.recurrences import NthWeekday, Recurrences, Repeat, describe_rules, split_series_id
 
 NY = ZoneInfo("America/New_York")
 
@@ -151,21 +151,89 @@ class TestUpdate:
 
         assert calendar.writes == []
 
-    @pytest.mark.parametrize(
-        "rules, message",
-        [
-            ([], "needs a rule"),
-            (["FREQ=WEEKLY"], "must start with RRULE:"),
-            (["RRULE:FREQ=WEEKLY", "RRULE:FREQ=DAILY"], "exactly one RRULE"),
-            (["RRULE:BYDAY=MO"], "needs a FREQ"),
-        ],
-    )
-    def test_refuses_bad_rules_without_writing(self, rules, message):
+    def test_writes_a_repeat_as_rules_in_the_series_time_zone(self):
         calendar = FakeCalendar(_weekly())
 
-        with pytest.raises(ValueError, match=message):
-            _recurrences(calendar).update(Event(id="series1", recurrence=rules))
+        _recurrences(calendar).update(
+            Event(id="series1"), repeat=Repeat(every="week", weekdays=["mon", "wed"], until=date(2026, 12, 31))
+        )
 
+        # Through the end of Dec 31 in New York, which is Jan 1 in UTC.
+        assert calendar.events["series1"].recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20270101T045959Z"]
+
+    def test_this_and_following_writes_the_repeat_to_the_later_part(self):
+        calendar = FakeCalendar(_weekly(), _instance(19))
+
+        later, earlier = _recurrences(calendar).update(
+            Event(id="series1"), starting_at="series1_20261019", repeat=Repeat(every="week", weekdays=["tue"])
+        )
+
+        assert later.recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=TU"]
+        assert earlier.recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z"]
+
+    def test_refuses_a_bad_repeat_without_writing(self):
+        calendar = FakeCalendar(_weekly(), _instance(19))
+
+        with pytest.raises(ValueError, match="count or until"):
+            _recurrences(calendar).update(
+                Event(id="series1"),
+                starting_at="series1_20261019",
+                repeat=Repeat(every="week", count=3, until=date(2026, 12, 31)),
+            )
+
+        assert calendar.writes == []
+
+
+class TestDelete:
+    def test_cancels_the_whole_series_through_one_of_its_events(self):
+        calendar = FakeCalendar(_weekly(), _instance(12))
+
+        assert _recurrences(calendar).delete("series1_20261012") is None
+
+        assert calendar.writes == [("update", Event(id="series1", status="cancelled"))]
+
+    def test_this_and_following_ends_the_series_before_the_event(self):
+        calendar = FakeCalendar(_weekly(), _instance(19))
+
+        left = _recurrences(calendar).delete("series1", starting_at="series1_20261019")
+
+        assert left.recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z"]
+        assert left.status is None
+        assert [kind for kind, _ in calendar.writes] == ["update"]  # No copy is made.
+
+    def test_this_and_following_replaces_a_count_and_keeps_other_rules(self):
+        series = replace(
+            _weekly(),
+            recurrence=["RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10", "EXDATE;TZID=America/New_York:20261012T090000"],
+        )
+        calendar = FakeCalendar(series, _instance(19))
+
+        left = _recurrences(calendar).delete("series1", starting_at="series1_20261019")
+
+        assert left.recurrence == [
+            "RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z",
+            "EXDATE;TZID=America/New_York:20261012T090000",
+        ]
+
+    def test_this_and_following_ends_a_moved_event_where_the_series_put_it(self):
+        calendar = FakeCalendar(_weekly(), _instance(19, moved_to=_at(18, 15)))
+
+        left = _recurrences(calendar).delete("series1", starting_at="series1_20261019")
+
+        assert left.recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z"]
+
+    def test_this_and_following_from_the_first_event_cancels_the_series(self):
+        calendar = FakeCalendar(_weekly(), _instance(5))
+
+        assert _recurrences(calendar).delete("series1", starting_at="series1_20261005") is None
+        assert calendar.events["series1"].status == "cancelled"
+
+    def test_this_and_following_refuses_an_event_from_another_series(self):
+        other = Event(id="other_x", start=_at(6), end=_at(6, 10), recurring_event_id="other")
+        calendar = FakeCalendar(_weekly(), replace(_weekly(), id="other"), other)
+
+        with pytest.raises(ValueError, match="isn't one of series series1's events"):
+            _recurrences(calendar).delete("series1", starting_at="other_x")
         assert calendar.writes == []
 
 
@@ -246,6 +314,9 @@ def test_split_series_ids_are_valid_calendar_ids():
         (["RRULE:FREQ=MONTHLY;BYMONTHDAY=15"], "Every month on day 15"),
         (["RRULE:FREQ=WEEKLY;UNTIL=20261231T235959Z"], "Every week, until Dec 31, 2026"),
         (["RRULE:FREQ=WEEKLY", "EXDATE:20261012T130000Z"], "Every week, with exceptions"),
+        (["RRULE:FREQ=MONTHLY;BYMONTHDAY=1,-1"], "Every month on day 1 and the last day"),
+        (["RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=4TH"], "Every year on the fourth Thu in Nov"),
+        (["RRULE:FREQ=WEEKLY", "RDATE:20261021T180000Z"], "Every week, plus 1 added date"),
         (["RRULE:FREQ=HOURLY"], "RRULE:FREQ=HOURLY"),
     ],
 )
@@ -253,5 +324,90 @@ def test_describes_rules_in_words(rules, phrase):
     assert describe_rules(rules, NY) == phrase
 
 
-def test_check_rules_accepts_rule_lines():
-    check_rules(["RRULE:FREQ=WEEKLY;BYDAY=MO", "EXDATE;TZID=America/New_York:20261109T090000", "RDATE:20261201T140000Z"])
+class TestRepeat:
+    @pytest.mark.parametrize(
+        "repeat, rules",
+        [
+            (Repeat(every="day"), ["RRULE:FREQ=DAILY"]),
+            (
+                Repeat(every="week", interval=2, weekdays=["tue", "thu"], week_starts_on="sun"),
+                ["RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=TU,TH;WKST=SU"],
+            ),
+            (Repeat(every="month", month_days=[1, -1], count=12), ["RRULE:FREQ=MONTHLY;BYMONTHDAY=1,-1;COUNT=12"]),
+            (
+                Repeat(every="month", nth_weekdays=[NthWeekday(nth=-1, weekday="fri")]),
+                ["RRULE:FREQ=MONTHLY;BYDAY=-1FR"],
+            ),
+            (
+                Repeat(every="year", months=[11], nth_weekdays=[NthWeekday(nth=4, weekday="thu")]),
+                ["RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=4TH"],
+            ),
+            (
+                # As a split leaves it: a second before the split event.
+                Repeat(every="week", until=_at(19) - timedelta(seconds=1)),
+                ["RRULE:FREQ=WEEKLY;UNTIL=20261019T125959Z"],
+            ),
+            (
+                Repeat(every="week", skipped=[_at(12), _at(19)], added=[_at(21, 14)]),
+                [
+                    "RRULE:FREQ=WEEKLY",
+                    "EXDATE;TZID=America/New_York:20261012T090000,20261019T090000",
+                    "RDATE;TZID=America/New_York:20261021T140000",
+                ],
+            ),
+        ],
+    )
+    def test_round_trips_through_rules(self, repeat, rules):
+        assert repeat.to_rules(NY) == rules
+        assert Repeat.from_rules(rules, NY) == repeat
+
+    def test_an_until_date_is_the_end_of_that_day_in_the_series_zone(self):
+        (rule,) = Repeat(every="day", until=date(2026, 12, 31)).to_rules(NY)
+
+        assert rule == "RRULE:FREQ=DAILY;UNTIL=20270101T045959Z"
+
+    def test_reads_times_given_in_utc_or_another_zone_in_the_series_zone(self):
+        repeat = Repeat.from_rules(
+            ["RRULE:FREQ=WEEKLY;UNTIL=20261231", "EXDATE:20261012T130000Z", "RDATE;TZID=Europe/London:20261021T190000"],
+            NY,
+        )
+
+        assert repeat.until == date(2026, 12, 31)
+        assert repeat.skipped == [_at(12)]
+        assert repeat.added == [_at(21, 14)]
+        assert repeat.skipped[0].tzinfo == NY
+
+    @pytest.mark.parametrize(
+        "rules",
+        [
+            ["RRULE:FREQ=HOURLY"],
+            ["RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"],
+            ["RRULE:FREQ=WEEKLY", "EXRULE:FREQ=MONTHLY"],
+            ["RRULE:FREQ=WEEKLY", "RRULE:FREQ=DAILY"],
+            ["RRULE:FREQ=YEARLY;BYDAY=20MO"],
+            ["RRULE:FREQ=WEEKLY", "EXDATE;VALUE=DATE:20261012"],
+            ["RRULE:BYDAY=MO"],
+        ],
+    )
+    def test_reads_rules_it_cant_say_as_none(self, rules):
+        assert Repeat.from_rules(rules, NY) is None
+
+    @pytest.mark.parametrize(
+        "repeat, message",
+        [
+            (Repeat(every="fortnight"), "every must be one of"),
+            (Repeat(every="week", interval=0), "interval must be at least 1"),
+            (Repeat(every="week", count=3, until=date(2026, 12, 31)), "count or until"),
+            (Repeat(every="week", count=0), "count must be at least 1"),
+            (Repeat(every="week", weekdays=["monday"]), "not 'monday'"),
+            (Repeat(every="month", nth_weekdays=[NthWeekday(nth=6, weekday="mon")]), "nth must be 1 to 5"),
+            (Repeat(every="week", nth_weekdays=[NthWeekday(nth=1, weekday="mon")]), 'not "week"'),
+            (Repeat(every="year", nth_weekdays=[NthWeekday(nth=4, weekday="thu")]), "need months"),
+            (Repeat(every="month", month_days=[0]), "not 0"),
+            (Repeat(every="week", month_days=[1]), 'not for every "week"'),
+            (Repeat(every="year", months=[13]), "not 13"),
+        ],
+    )
+    def test_refuses_what_it_cant_write(self, repeat, message):
+        with pytest.raises(ValueError, match=message):
+            repeat.to_rules(NY)

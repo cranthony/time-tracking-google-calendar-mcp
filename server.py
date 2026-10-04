@@ -5,7 +5,7 @@ import logging
 import os
 from collections.abc import Callable, Collection
 from dataclasses import dataclass, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, ParamSpec, TypeVar
 from zoneinfo import ZoneInfo
 
@@ -42,7 +42,7 @@ from utilities.note_compactor import CompactionContext, CompactionResult, NoteCo
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
-from utilities.recurrences import Recurrences, describe_rules
+from utilities.recurrences import Recurrences, Repeat, describe_rules
 from workos_auth import WorkOSTokenVerifier
 
 # Without this, INFO-level logs (utilities/memory_diagnostics.py's, e.g.)
@@ -214,13 +214,15 @@ class PublicRecurrence:
     recurrences.py. id is the series' own id, which is every one of its
     events' recurring_event_id. start/end are when its first event starts
     and ends; time_zone keeps its events at the same wall-clock time
-    across daylight saving changes. rules are its RFC 5545 rule lines,
-    e.g. ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261231T000000Z"], with
-    exactly one RRULE; schedule says them in words. The other fields are
-    as for PublicEvent, and apply to every event in the series except
-    where one was edited on its own -- until the series is next edited,
-    which resets them (see update_recurrence). goals_from_label is as for
-    PublicEvent.
+    across daylight saving changes. repeat says which days its events
+    fall on and when it ends (see Repeat), and schedule says that in
+    words. A series made elsewhere may repeat in ways repeat can't say
+    (e.g. "the last weekday of the month"): its repeat is then null and
+    its schedule shows its raw RFC 5545 rules; leave repeat out when
+    updating it to keep them. The other fields are as for PublicEvent,
+    and apply to every event in the series except where one was edited
+    on its own -- until the series is next edited, which resets them
+    (see update_recurrence). goals_from_label is as for PublicEvent.
 
     schedule, goal_names, event_label_id and effective_priority are
     read-only: update_recurrence ignores them, as it does time_zone."""
@@ -230,7 +232,7 @@ class PublicRecurrence:
     start: datetime | None = None
     end: datetime | None = None
     time_zone: str | None = None
-    rules: list[str] | None = None
+    repeat: Repeat | None = None
     schedule: str | None = None
     description: str | None = None
     location: str | None = None
@@ -248,13 +250,15 @@ class PublicRecurrence:
     def from_event(cls, event: Event, tree: GoalTree) -> "PublicRecurrence":
         public = PublicEvent.from_event(event, tree)
         zone = ZoneInfo(event.time_zone) if event.time_zone else None
+        # A series always has a time zone; UTC is only for one that somehow doesn't.
+        repeat = Repeat.from_rules(event.recurrence, zone or timezone.utc)
         return cls(
             id=event.id,
             summary=event.summary,
             start=event.start.astimezone(zone) if zone and event.start else event.start,
             end=event.end.astimezone(zone) if zone and event.end else event.end,
             time_zone=event.time_zone,
-            rules=event.recurrence,
+            repeat=repeat,
             schedule=describe_rules(event.recurrence, zone),
             description=event.description,
             location=event.location,
@@ -283,7 +287,6 @@ class PublicRecurrence:
             is_fixed_time=self.is_fixed_time,
             priority=self.priority,
             goal_ids=None if self.goals_from_label else self.goal_ids,
-            recurrence=self.rules,
             cleared=frozenset(clear_fields),
         )
 
@@ -588,12 +591,14 @@ def update_recurrence(
     the ones after it only ("this and following"): the series is split
     there (see split_recurrence) and only the later part is edited.
     start/end are its first event's, as get_recurrence gave them; when
-    it's split, the later part moves by as much as they changed. rules
-    replace its rules whole. Series aren't reallocated. Returns the edited
-    series, then the earlier part if it was split.
+    it's split, the later part moves by as much as they changed. repeat,
+    if given, replaces how it repeats whole (including count/until and
+    skipped/added), so send every part of it you want kept. Series aren't
+    reallocated. Returns the edited series, then the earlier part if it
+    was split.
 
     Events edited on their own don't keep those edits (found with
-    probe_series_edits.py): any edit resets every field but their times
+    probes/series_edits.py): any edit resets every field but their times
     to the series' -- even fields it leaves out, so an event's own
     priority, goal_ids or description are lost to a goals-only edit --
     and an edit to start/end moves them back onto the series' times too.
@@ -602,7 +607,9 @@ def update_recurrence(
     with track("update_recurrence"), cached_sheet_reads():
         _check_goal_ids(recurrence, existing=True)
         try:
-            updated = get_recurrences().update(recurrence.to_event(clear_fields or ()), starting_at_event_id)
+            updated = get_recurrences().update(
+                recurrence.to_event(clear_fields or ()), starting_at_event_id, recurrence.repeat
+            )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
         return _public_recurrences(updated)
@@ -627,6 +634,39 @@ def split_recurrence(event_id: str) -> list[PublicRecurrence]:
 
 @tool
 @writes
+def delete_recurrence(id: str, starting_at_event_id: str | None = None) -> list[PublicRecurrence]:
+    """Delete a recurring series (id is its id, or any of its events'):
+    every one of its events, past ones and any edited on their own
+    included. Or, with starting_at_event_id, delete that event and the
+    ones after it only ("this and following"): the series is ended just
+    before it, and the events before it are kept as they are. To delete
+    one event of a series, use delete_event with that event's id instead.
+    Returns what's left of the series: nothing if it was deleted whole
+    (or from its first event on), else the series, now ending before the
+    event.
+
+    The two leave different things behind. Deleting a series whole
+    cancels each of its events, as delete_event does one: they stay on
+    the calendar as cancelled events, hidden from the user and from
+    list_events, and each counts against its goals' follow_through
+    measures as a cancellation -- past events too, whose time is then no
+    longer counted as spent. Deleting this and following leaves no
+    cancelled events: the series' events from that one on are gone (one
+    edited on its own goes by where the series first put it, even if
+    moved earlier), so follow_through doesn't count them at all. To stop
+    a series that's already begun -- one that won't happen any more,
+    rather than one that shouldn't have been -- delete from its next
+    event on."""
+    with track("delete_recurrence"), cached_sheet_reads():
+        try:
+            left = get_recurrences().delete(id, starting_at_event_id)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return _public_recurrences([left] if left else [])
+
+
+@tool
+@writes
 def create_event(event: PublicEvent) -> list[PublicEvent]:
     """Create a new event, optionally serving goals (goal_ids, primary
     first). Returns the events affected by the creation."""
@@ -643,7 +683,10 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
 @tool
 @writes
 def delete_event(id: str) -> list[PublicEvent]:
-    """Delete an event by its ID. Returns the events affected by the deletion."""
+    """Delete an event by its ID. Given one event of a recurring series,
+    deletes only that event; to delete the whole series, or an event and
+    the ones after it, use delete_recurrence. Returns the events affected
+    by the deletion."""
     with track("delete_event"), cached_sheet_reads():
         cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
         return _public_events([cancelled])
@@ -719,8 +762,10 @@ def create_goal(goal: Goal) -> CreatedGoal:
     of the goal that was cancelled -- pushed off by reallocation, or
     cancelled in a compaction or by hand -- and regains recovery if any
     was kept, within 0-100; a cancelled event overlapped by a kept one of
-    the goal, such as one merged into another, isn't counted -- e.g. "Do
-    what I say I will"), {"kind": "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
+    the goal, such as one merged into another, isn't counted; deleting a
+    recurring series whole cancels each of its events, and counts, while
+    deleting this and following doesn't (see delete_recurrence) -- e.g.
+    "Do what I say I will"), {"kind": "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
     in a reflection once interval_days,
     default 1, have passed since it was last answered; carried over from
     the day before in between), {"kind": "llm", "rubric": "..."} (you

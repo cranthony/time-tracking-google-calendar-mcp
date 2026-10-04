@@ -15,7 +15,7 @@ Pass --pause to stop after removing the label and after re-adding it, so
 you can look at the events in the Google Calendar UI too.
 
 Usage:
-    python probe_label_lifecycle.py [--pause] [--keep]
+    python -m probes.label_lifecycle [--pause] [--keep]
 """
 
 from __future__ import annotations

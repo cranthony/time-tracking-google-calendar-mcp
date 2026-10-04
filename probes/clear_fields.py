@@ -28,7 +28,7 @@ Each check prints PASS or FAIL. It then deletes the calendar again --
 nothing else in your account is touched.
 
 Usage:
-    python probe_clear_fields.py [--keep]
+    python -m probes.clear_fields [--keep]
 
 Found (2026-10-04): every check passed.
 
