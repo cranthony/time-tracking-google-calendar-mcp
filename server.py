@@ -213,8 +213,10 @@ class PublicRecurrence:
     across daylight saving changes. rules are its RFC 5545 rule lines,
     e.g. ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261231T000000Z"], with
     exactly one RRULE; schedule says them in words. The other fields are
-    as for PublicEvent, and apply to every event in the series that
-    hasn't been edited on its own. goals_from_label is as for PublicEvent.
+    as for PublicEvent, and apply to every event in the series except
+    where one was edited on its own -- until the series is next edited,
+    which resets them (see update_recurrence). goals_from_label is as for
+    PublicEvent.
 
     schedule, goal_names, event_label_id and effective_priority are
     read-only: update_recurrence ignores them, as it does time_zone."""
@@ -566,14 +568,21 @@ def update_recurrence(
 ) -> list[PublicRecurrence]:
     """Edit a recurring series (recurrence.id is its id, or any of its
     events'): every field given is set, those left out are kept. Applies
-    to all its events, except any edited on their own -- or, with
-    starting_at_event_id, to that event and the ones after it only ("this
-    and following"): the series is split there (see split_recurrence) and
-    only the later part is edited. start/end are its first event's, as
-    get_recurrence gave them; when it's split, the later part moves by as
-    much as they changed. rules replace its rules whole. Series aren't
-    reallocated. Returns the edited series, then the earlier part if it
-    was split."""
+    to all its events -- or, with starting_at_event_id, to that event and
+    the ones after it only ("this and following"): the series is split
+    there (see split_recurrence) and only the later part is edited.
+    start/end are its first event's, as get_recurrence gave them; when
+    it's split, the later part moves by as much as they changed. rules
+    replace its rules whole. Series aren't reallocated. Returns the edited
+    series, then the earlier part if it was split.
+
+    Events edited on their own don't keep those edits (found with
+    probe_series_edits.py): any edit resets every field but their times
+    to the series' -- even fields it leaves out, so an event's own
+    priority, goal_ids or description are lost to a goals-only edit --
+    and an edit to start/end moves them back onto the series' times too.
+    Leave start/end out to keep each event's own time. A field left out
+    is kept on the series itself, priority and goal_ids included."""
     with track("update_recurrence"), cached_sheet_reads():
         _check_goal_ids(recurrence, existing=True)
         try:
