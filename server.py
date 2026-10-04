@@ -844,20 +844,17 @@ def rebuild_goal_health_cache() -> GoalList:
 
 @tool
 def prepare_reflection(day: date | None = None) -> ReflectionContext:
-    """Start (or continue) the daily reflection: rating each goal for one
+    """Start (or continue) the daily reflection: rating every goal for one
     day. Days run from waking to waking, bounded by the end-of-day sleep
     events: a day whose bounding sleeps aren't in the calendar can't be
     reflected on (the error says which days need one), and the choices
     below flag them. With no day named, returns only choices -- the most
     recent completed days not fully reflected on -- to ask the user about;
-    then call this again with the day picked. Otherwise returns the goals
-    ready to rate now (due): ratings flow up from sub-goals to parents, so
-    only goals whose sub-goals are all rated already, each with recent
-    ratings, its sub-goals' ratings, and a proposed rating with its
-    explanation where one was recorded, measured, rolled up or carried
-    over -- plus the goals waiting on them, minutes per goal, the day's
-    events and notes, the last reflection's intentions, and instructions
-    for the conversation. Read-only."""
+    then call this again with the day picked. Otherwise returns the
+    questions: the goals that need judgement -- llm goals to rate, and
+    subjective goals whose prompt is due -- since everything the calendar
+    can rate is filled in automatically; plus minutes per goal, the day's
+    events and notes, and instructions for the conversation. Read-only."""
     with track("prepare_reflection"), cached_sheet_reads():
         try:
             return get_reflections().prepare(day)
@@ -870,23 +867,22 @@ def prepare_reflection(day: date | None = None) -> ReflectionContext:
 def record_reflection(
     day: date,
     assessments: list[Assessment],
-    journal: str | None = None,
-    intentions: list[str] | None = None,
+    proposed: list[str] | None = None,
     dry_run: bool = True,
 ) -> ReflectionResult:
-    """Confirm one level of a day's reflection: ratings (each of this day)
-    for goals whose sub-goals are all rated already -- a goal is refused
-    until they are -- and optionally a journal and up to 3 intentions for
-    tomorrow (left out, any recorded earlier are kept). With dry_run (the
-    default) nothing is written: it returns a preview to show the user.
-    With dry_run=False, once they agree, the ratings are confirmed at once
-    -- the only way a rating counts toward a goal's health -- and the
-    reflection is recorded; rating a goal again replaces its rating. The
-    result says whether every goal is now rated, and which are ready
-    next."""
+    """Rate a day: `assessments` (each of this day) answer the questions
+    prepare_reflection asked -- or change any goal's rating -- and every
+    other rating the calendar can give is filled in automatically, rolling
+    up to the overall goal. With dry_run (the default) nothing is written:
+    it returns the summary to show, in which goals still waiting on
+    answers (and any rating listed in `proposed`, an llm rating to check
+    with the user) are provisional. With dry_run=False, every final rating
+    is confirmed at once -- the only way a rating counts toward a goal's
+    health -- and the summary is final, unless questions are still
+    unanswered. Rating a goal again replaces its rating."""
     with track("record_reflection"), cached_sheet_reads():
         try:
-            return get_reflections().record(day, assessments, journal, intentions, dry_run=dry_run)
+            return get_reflections().record(day, assessments, proposed, dry_run=dry_run)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
