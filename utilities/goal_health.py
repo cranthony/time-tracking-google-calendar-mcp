@@ -329,8 +329,8 @@ class GoalHealth:
         proposals: list[Assessment | None] = []
         for goal, measure in zip(goals, measures):
             kind = measure.get("kind")
-            condition = measure.get("only_if")
-            if isinstance(condition, dict) and window is not None and not _met(goal, condition, window, events, tree):
+            condition = _only_if(measure)
+            if condition is not None and window is not None and not _met(goal, condition, window, events, tree):
                 proposals.append(_unmet(goal, condition, day, kind, tree))
                 continue
             if kind == "rollup":
@@ -446,6 +446,18 @@ def _measurable(measure: dict[str, Any]) -> bool:
     """Whether `measure` can propose anything from the calendar: on some
     days, at least, for one with an `only_if`."""
     return measure.get("kind") in MEASURED_KINDS or isinstance(measure.get("only_if"), dict)
+
+
+def _only_if(measure: dict[str, Any]) -> dict[str, Any] | None:
+    """The measure's `only_if`, if it has one; without its own
+    `events_of`, it looks at the measure's events -- its `events_of` and
+    `include_sub_goals` -- see utilities/goal_measures.py."""
+    condition = measure.get("only_if")
+    if not isinstance(condition, dict):
+        return None
+    if "events_of" in condition:
+        return condition
+    return {**{k: measure[k] for k in ("events_of", "include_sub_goals") if k in measure}, **condition}
 
 
 def _met(
@@ -620,7 +632,7 @@ def _measure_time_constraint(goal, measure, day, window, events, tree) -> Measur
     goal_name = tree.by_id[measure["events_of"]].name if measure.get("events_of") in tree.by_id else goal.name
     metrics: dict[str, Any] = {"edge": edge, "target": f"{target:%H:%M}", "when": "by" if by else "after"}
     if not days:
-        return "skip", f"No events of {goal_name} that day → skip", metrics
+        return 0, f"No events of {goal_name} that day → 0", metrics
     at = (min(e.start for e in days) if edge == "start" else max(e.end for e in days)).astimezone(tz)
     goal_time = datetime.combine(day, target, tz)
     # Minutes on the wrong side of the target: late, if it's to be by it.

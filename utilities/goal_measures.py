@@ -57,7 +57,8 @@ end. "Up by 07:00" is `{"edge": "start", "target": "07:00"}` measuring a
 With `when` "by" (the default) it's 100 at or before the target, plus
 `grace_min`, falling linearly to 0 at `zero_at_min` minutes late; with
 "after", the same the other way round, for "not before". A day with no
-such events is proposed as "skip".
+such events is rated 0; give it an `only_if` (below) to skip such days
+instead.
 
 **Time windows** rate whether one of the day's events of a goal falls in
 a window: "lunch between 11:30 and 13:30" is `{"from": "11:30", "to":
@@ -66,8 +67,8 @@ well" counts as lunch if it's in the window. Each event is as far outside the
 window as its closest edge: one that overlaps it at all is 0 minutes out,
 and one from 14:00 to 14:30 is 30 minutes out. The day is rated by its
 closest event: 100 up to `grace_min` minutes out, falling linearly to 0
-at `zero_at_min`. Unlike a time constraint, a day with no such events is
-rated 0: it's the event that's wanted.
+at `zero_at_min`. A day with no such events is rated 0: it's the event
+that's wanted.
 
 **Subjective.** Its `prompt` is asked in the first daily reflection after
 `interval_days` have passed since it was last answered -- in a reflection,
@@ -83,7 +84,10 @@ but sub-goals to rate is rated as a "mean" rollup.
 
 **Only if.** Any measure can take `only_if`: `{"events_of": "<goal id>",
 "include_sub_goals": true}`, both optional and meaning what they do
-above, so `{}` is the measure's own goal and its sub-goals. The measure
+above. Without `events_of`, it looks at the same events the measure does
+-- the measure's own `events_of` and `include_sub_goals`, if it has them
+-- so `{}` on a time constraint skips the days it has nothing to rate,
+and on a subjective measure means the goal itself and its sub-goals. The measure
 is rated only on days with at least one such event; on any other day the
 goal is proposed as "skip" -- its prompt isn't asked, nor its rubric
 judged -- with "only_if" in its metrics, so it can be told apart from a
