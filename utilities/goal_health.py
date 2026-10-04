@@ -371,17 +371,12 @@ class GoalHealth:
 
     def _with_series_goals(self, events: list[Event]) -> list[Event]:
         """`events`, but with each cancelled instance of a recurring series
-        that's kept neither goals nor a label given its series' -- and, if
-        it's kept no end either, its series' length."""
+        that's kept no goals given its series' (and its label, if it's kept
+        none) -- and, if it's kept no end either, its series' length."""
         series: dict[str, Event | None] = {}
         filled = []
         for event in events:
-            if (
-                event.status == "cancelled"
-                and event.recurring_event_id
-                and not event.goal_ids
-                and not event.event_label_id
-            ):
+            if event.status == "cancelled" and event.recurring_event_id and not event.goal_ids:
                 if event.recurring_event_id not in series:
                     try:
                         series[event.recurring_event_id] = self._client.get_event(event.recurring_event_id)
@@ -392,7 +387,7 @@ class GoalHealth:
                     event = replace(
                         event,
                         goal_ids=master.goal_ids,
-                        event_label_id=master.event_label_id,
+                        event_label_id=event.event_label_id or master.event_label_id,
                         end=event.end if event.end > event.start else event.start + (master.end - master.start),
                     )
             filled.append(event)

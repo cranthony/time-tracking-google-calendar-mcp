@@ -25,11 +25,16 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from calendar_clients.google_auth import load_credentials
+from calendar_clients.google_calendar import _APP_EXTENDED_PROPERTY_KEY_PREFIX
 from config import get_calendar_id, get_credentials_path, get_token_path
 
 _FIELDS = ("summary", "start", "end", "originalStartTime", "recurringEventId", "eventLabelId")
+
+_GOAL_IDS = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}goal_ids"
+"""The private extended property an event's goal ids are kept in."""
 
 
 def main() -> None:
@@ -51,9 +56,10 @@ def main() -> None:
     print(f"Without showDeleted: {len(plain)} events, {len(plain_cancelled)} cancelled")
     print(f"With showDeleted:    {len(deleted)} events, {len(cancelled)} cancelled\n")
 
+    series: dict[str, dict | None] = {}
     for event in cancelled:
         private = event.get("extendedProperties", {}).get("private", {})
-        kept = [f for f in _FIELDS if f in event] + (["goal_ids"] if "goal_ids" in private else [])
+        kept = [f for f in _FIELDS if f in event] + (["goal_ids"] if _GOAL_IDS in private else [])
         missing = [f for f in ("summary", "start", "end", "goal_ids") if f not in kept]
         when = (event.get("start") or event.get("originalStartTime") or {}).get("dateTime", "?")
         listed = "also listed without showDeleted" if any(e.get("id") == event.get("id") for e in plain) else ""
@@ -61,13 +67,26 @@ def main() -> None:
         print(f"    kept: {', '.join(kept) or 'nothing but its id'}")
         if missing:
             print(f"    missing: {', '.join(missing)}")
-        if private.get("goal_ids"):
-            print(f"    goal_ids: {private['goal_ids']}")
+        if private.get(_GOAL_IDS):
+            print(f"    goal_ids: {private[_GOAL_IDS]}")
+        elif series_id := event.get("recurringEventId"):
+            if series_id not in series:
+                series[series_id] = _get(service, calendar_id, series_id)
+            master = series[series_id]
+            master_goals = (master or {}).get("extendedProperties", {}).get("private", {}).get(_GOAL_IDS)
+            print(f"    its series' goal_ids: {master_goals or '(none)'}" if master else "    its series is gone")
         if args.raw:
             print("    " + json.dumps(event, indent=2).replace("\n", "\n    "))
 
     if not cancelled:
         print("No cancelled events in that range: try a longer --days, or cancel a test event first.")
+
+
+def _get(service, calendar_id: str, event_id: str) -> dict | None:
+    try:
+        return service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    except HttpError:
+        return None
 
 
 def _list(service, calendar_id: str, start: datetime, end: datetime, *, show_deleted: bool) -> list[dict]:

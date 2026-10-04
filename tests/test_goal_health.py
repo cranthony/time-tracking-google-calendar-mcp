@@ -113,7 +113,7 @@ def _child(store: Goals, name: str, parent: Goal, **fields) -> Goal:
 def _event(start: str, end: str, goal_ids=None, **fields) -> Event:
     return Event(
         id=fields.pop("id", f"e-{start}"),
-        summary="x",
+        summary=fields.pop("summary", "x"),
         start=datetime.fromisoformat(start).replace(tzinfo=TZ),
         end=datetime.fromisoformat(end).replace(tzinfo=TZ),
         goal_ids=goal_ids,
@@ -774,6 +774,33 @@ class TestMeasureFollowThrough:
         (rated,) = health.measure()
 
         assert (rated.metrics["cancelled"], rated.rating) == (1, 75)
+
+    def test_a_cancelled_instance_with_a_label_but_no_goals_takes_its_series_goals(self):
+        health, store, calendar, goals = _setup([Goal(name="Word", measure=_FOLLOW), Goal(name="Other")])
+        word = goals["Word"].id
+        calendar.series["series"] = _event("2026-08-01T10:00", "2026-08-01T11:00", [word], id="series")
+        calendar.events = [
+            _event(
+                "2026-10-01T10:00", "2026-10-01T11:00", status="cancelled", recurring_event_id="series",
+                event_label_id=goals["Other"].label_id,
+            ),
+        ]
+
+        (rated,) = health.measure()
+
+        assert (rated.metrics["cancelled"], rated.rating) == (1, 75)
+
+    def test_a_placeholder_for_an_edited_series_isnt_counted(self):
+        """What Calendar lists for an instance a series edit took away:
+        "CANCELLED", with no goals, label or series."""
+        health, _, calendar, goals = _setup([Goal(name="Word", measure=_FOLLOW)])
+        calendar.events = [
+            _event("2026-10-01T10:00", "2026-10-01T11:00", status="cancelled", summary="CANCELLED"),
+        ]
+
+        (rated,) = health.measure()
+
+        assert rated.rating == 100
 
 
 class TestMeasureOnlyIf:
