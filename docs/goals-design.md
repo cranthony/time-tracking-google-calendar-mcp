@@ -43,7 +43,6 @@ Each goal has:
 - a **status**: `proposed` (suggested, not taken on yet), `active` (being worked on), `inactive` (paused), `completed` (achieved), `archived` (no longer relevant) or `deleted` (shouldn't have existed). Only active goals take up a calendar label slot (§5) and are assessed; goals of every other status keep their history and can be made active again at any time. The app lists proposed, active and inactive goals by default, with a filter for the rest. No event can be given a deleted goal, though events that already have one keep it;
 - an optional **cadence**: `daily`, `weekly`, `monthly` or `every_2_months`. This is how often its health is assessed, and the period its at-a-glance health refers to. A goal is assessed at **exactly one** cadence;
 - an optional **measure**: how its health is assessed (objective metric, subjective rating, LLM judgement, or a rollup of its sub-goals; see §7);
-- an optional **target** and **deadline** for goals that finish ("ship v1 by 2026-12-31");
 - the **priority** and **fixed_time** defaults that event labels carry today, inherited by sub-goals that don't set their own.
 
 **Assessment.** One health rating of one goal for one period of its cadence, e.g. "Wake up at 7am, daily, 2026-09-30: 92/100, woke 07:05". Stored as an event on a dedicated calendar (§6).
@@ -81,8 +80,6 @@ A new tab, tagged with `sheet-role = goals` and found the same way as the existi
 | `fixed_time` | `TRUE`/`FALSE` | Optional; inherited the same way |
 | `cadence` | `daily`/`weekly`/`monthly`/`every_2_months` | Optional. Blank means the goal is never assessed; it's only an organizing node for its sub-goals. A goal with a `rollup` measure (§7) still needs a cadence. Changing it later is allowed: old assessments keep the cadence they were recorded at |
 | `measure` | JSON | Optional; the measure spec in §7. Kept small (< 1 kB) |
-| `target` | string | Optional free-text target ("300 min/week", "v1 shipped") |
-| `deadline` | date | Optional |
 | `created` | date | Set on creation; anchors the first period that gets assessed |
 | `note` | string | Short free text, like a label note today |
 | `health` | cache | Latest confirmed rating at the goal's cadence (§8) |

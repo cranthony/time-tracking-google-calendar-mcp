@@ -10,7 +10,9 @@ job, one layer up. See docs/goals-design.md section 3.
 
 Columns are read by header name, so a column added later (or one a user
 adds by hand) never shifts the others, and unknown columns' cells are
-kept as they were on every write.
+kept as they were on every write -- except a column this app used to
+write and no longer does (`_RETIRED_COLUMNS`), which the next write
+removes.
 """
 
 from __future__ import annotations
@@ -41,8 +43,14 @@ Every status but `active` frees the goal's label and keeps its history."""
 
 _HEADER_RANGE = "A1:Z1"
 _DATA_RANGE = "A2:Z"
+_WHOLE_RANGE = "A1:Z"
 """Wide enough for every column below plus some a user (or a later
 version) adds; columns are matched by header, not position."""
+
+_RETIRED_COLUMNS = frozenset({"target", "deadline", "active"})
+"""Columns earlier versions wrote -- a free-text target and a deadline,
+which nothing used, and the TRUE/FALSE `active` that `status` replaced --
+removed from the tab the next time it's written."""
 
 _NARROW_COLUMNS = ("id", "label_id")
 _NARROW_PIXEL_WIDTH = 60
@@ -81,11 +89,6 @@ class Goal:
     ...}, with the fields its kind takes -- see utilities/goal_measures.py.
     Every active goal is reflected on daily; one without a measure is
     rated by the mean of its sub-goals' ratings, if it has any."""
-
-    target: str | None = None
-    """Free-text target, e.g. "300 min/week"."""
-
-    deadline: date | None = None
 
     note: str | None = None
     """Short free text, e.g. what it's for."""
@@ -130,9 +133,6 @@ class Goal:
 
         priority, measure, health = text("priority"), text("measure"), text("health")
         status = (text("status") or "").lower() or None
-        if status is None and boolean("active") is not None:
-            # A tab from before statuses: just TRUE/FALSE.
-            status = "active" if boolean("active") else "inactive"
         return cls(
             id=text("id"),
             parent_id=text("parent_id"),
@@ -142,8 +142,6 @@ class Goal:
             priority=int(priority) if priority is not None else None,
             fixed_time=boolean("fixed_time"),
             measure=json.loads(measure) if measure is not None else None,
-            target=text("target"),
-            deadline=day("deadline"),
             note=text("note"),
             label_id=text("label_id"),
             created=day("created"),
@@ -158,9 +156,6 @@ class Goal:
         for i, header in enumerate(header_row):
             if header in field_names:
                 row.append(_cell(getattr(self, header)))
-            elif header == "active":
-                # Kept in step on a tab from before statuses.
-                row.append(_cell(self.active) if self.status is not None else "")
             else:
                 row.append(original_row[i] if original_row is not None and i < len(original_row) else "")
         return row
@@ -178,6 +173,24 @@ def _cell(value: Any) -> str:
     return str(value)
 
 
+def _without_retired_columns(header_row: list[str], rows: list[list[str]]) -> tuple[list[str], list[list[str]]]:
+    """`header_row` and `rows` without any `_RETIRED_COLUMNS`."""
+    keep = [i for i, header in enumerate(header_row) if header not in _RETIRED_COLUMNS]
+    if len(keep) == len(header_row):
+        return header_row, rows
+    return [header_row[i] for i in keep], [[row[i] if i < len(row) else "" for i in keep] for row in rows]
+
+
+def _with_columns_for(goals: list[Goal], header_row: list[str]) -> list[str]:
+    """`header_row`, plus a column for any field one of `goals` has a
+    value for but the tab has no column for yet (e.g. the health cache on
+    a tab made before it existed)."""
+    return header_row + [
+        name for name in HEADER_ROW
+        if name not in header_row and any(getattr(goal, name) is not None for goal in goals)
+    ]
+
+
 HEADER_ROW = [
     "id",
     "parent_id",
@@ -188,8 +201,6 @@ HEADER_ROW = [
     "priority",
     "fixed_time",
     "measure",
-    "target",
-    "deadline",
     "created",
     "note",
     "health",
@@ -217,7 +228,7 @@ class GoalSheet:
     def whole_tab(self) -> TabRange:
         """This whole tab, header and all, for `SheetsClient.prefetch`:
         every read of it falls within this."""
-        return TabRange(self._spreadsheet_id, self._sheet_id, "A1:Z")
+        return TabRange(self._spreadsheet_id, self._sheet_id, _WHOLE_RANGE)
 
     def prefetch(self, ranges: list[TabRange]) -> None:
         """`SheetsClient.prefetch`, through this tab's client: for a
@@ -277,29 +288,25 @@ class GoalSheet:
     def write(self, goals: list[Goal]) -> None:
         """Overwrite the data rows with `goals`, keeping any unknown
         columns' cells, and blanking rows left over from a longer list."""
-        header_row, previous = self._read_header_and_data()
-        header_row = self._with_columns_for(goals, header_row)
+        original_header, previous = self._read_header_and_data()
+        header_row, previous = _without_retired_columns(original_header, previous)
+        header_row = _with_columns_for(goals, header_row)
         by_id = {
             Goal.from_row(header_row, row).id: row for row in previous if any(cell.strip() for cell in row)
         }
         rows = [goal.to_row(header_row, by_id.get(goal.id)) for goal in goals]
         # Blank out whatever's left below (including rows a user blanked).
         rows += [[""] * len(header_row)] * max(0, len(previous) - len(goals))
-        self._sheets_client.write_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE, rows)
-
-    def _with_columns_for(self, goals: list[Goal], header_row: list[str]) -> list[str]:
-        """`header_row`, plus a column for any field one of `goals` has a
-        value for but the tab has no column for yet (e.g. the health cache
-        on a tab made before it existed), added to the tab itself."""
-        missing = [
-            name for name in HEADER_ROW
-            if name not in header_row and any(getattr(goal, name) is not None for goal in goals)
-        ]
-        if not missing:
-            return header_row
-        header_row = header_row + missing
-        self._sheets_client.write_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _HEADER_RANGE, [header_row])
-        return header_row
+        if header_row == original_header:
+            self._sheets_client.write_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _DATA_RANGE, rows)
+            return
+        # Columns were added, or retired ones removed (shifting the ones
+        # after them left): write the header with the rows, in one request,
+        # so the two can't end up out of step, blanking any cells vacated
+        # at the end.
+        width = max(len(original_header), len(header_row))
+        rows = [row + [""] * (width - len(row)) for row in [header_row, *rows]]
+        self._sheets_client.write_rows_in_sheet(self._spreadsheet_id, self._sheet_id, _WHOLE_RANGE, rows)
 
     def _read_header_and_data(self) -> tuple[list[str], list[list[str]]]:
         """The header row and the data rows, in one read request."""
@@ -311,9 +318,7 @@ class GoalSheet:
     @staticmethod
     def _checked_header(rows: list[list[str]]) -> list[str]:
         header_row = [cell.strip() for cell in rows[0]] if rows else []
-        missing = [column for column in ("id", "name", "label_id") if column not in header_row]
-        if "status" not in header_row and "active" not in header_row:
-            missing.append("status")
+        missing = [column for column in ("id", "name", "status", "label_id") if column not in header_row]
         if missing:
             raise ValueError(f"The goals tab's header row ({_HEADER_RANGE}) is missing columns: {missing}")
         return header_row
