@@ -418,6 +418,23 @@ class TestRecord:
         assert not result.complete
         assert calendar.health_events == {}
 
+    def test_a_changed_ratings_preview_gives_its_reason_once(self):
+        reflections, _, _, _, goals = _setup([_COOKING, _feel("Feel")])
+        cooking = goals["Cooking"]
+        changed = _rating(
+            cooking, YESTERDAY, 80, method="metric", explanation="1h of 2h in the day → 50", rationale="Cooked for guests"
+        )
+        unchanged = _rating(
+            goals["Feel"], YESTERDAY, 50, method="metric", explanation="1h of 2h in the day → 50", rationale="Tired"
+        )
+
+        result = reflections.record(YESTERDAY, [changed, unchanged])
+
+        assert result.preview.splitlines()[:2] == [
+            "🟢 Cooking: 80 — Cooked for guests",
+            "🟡 Feel: 50 — 1h of 2h in the day → 50 — Tired",
+        ]
+
     def test_committing_confirms_the_ratings_and_records_the_reflection(self):
         reflections, _, store, calendar, goals = _setup([_COOKING, _feel("Feel")])
         cooking, feel = goals["Cooking"], goals["Feel"]

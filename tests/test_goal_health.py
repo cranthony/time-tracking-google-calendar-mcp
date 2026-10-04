@@ -222,21 +222,22 @@ class TestRecordAssessments:
 
 class TestChangedRatings:
     """A rating changed from the one proposed loses the explanation of the
-    one proposed."""
+    one proposed: its rationale says why instead."""
 
     @pytest.mark.parametrize(
         "rating, explanation, rationale, kept",
         [
             (33, "Mean of 3 sub-goals (0, 0, 100) → 33", None, "Mean of 3 sub-goals (0, 0, 100) → 33"),
-            (90, "Mean of 3 sub-goals (0, 0, 100) → 33", "Lots of app work", "Lots of app work"),
+            (90, "Mean of 3 sub-goals (0, 0, 100) → 33", "Lots of app work", None),
             (90, "Mean of 3 sub-goals (0, 0, 100) → 33", None, "Changed from 33"),
-            ("skip", "1h of 2h in the day → 50", "Sick", "Sick"),
+            ("skip", "1h of 2h in the day → 50", "Sick", None),
+            (50, "1h of 2h in the day → 50", "Felt longer", "1h of 2h in the day → 50"),
             (50, "No events of Piano that day → skip", None, "Changed from skip"),
             (60, "Carried over from 2026-09-29", None, "Carried over from 2026-09-29"),
             (60, None, "Felt fine", None),
         ],
     )
-    def test_its_explanation_is_replaced_by_the_reason(self, rating, explanation, rationale, kept):
+    def test_its_explanation_gives_way_to_the_reason(self, rating, explanation, rationale, kept):
         health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
         cooking = goals["Cooking"]
         metrics = {"minutes": 60}
@@ -249,6 +250,7 @@ class TestChangedRatings:
         assert recorded.metrics == metrics
         (stored,) = health.read(date(2026, 10, 1), date(2026, 10, 2))
         assert stored.explanation == kept
+        assert stored.rationale == rationale
 
 
 class TestHistory:
