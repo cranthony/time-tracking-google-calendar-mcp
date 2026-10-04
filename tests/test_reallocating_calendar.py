@@ -308,13 +308,50 @@ class TestReallocatingCalendarUpdateEvent:
                 ReallocationOptions(),
             )
 
-    def test_requires_start_or_end(self):
+    def test_without_start_or_end_patches_it_alone(self):
         client = make_client(MagicMock())
+        client.list_events = MagicMock()
+        client.get_event = MagicMock()
+        client.update_event = MagicMock(side_effect=lambda event: event)
+        renamed = Event(id="abc123", summary="Renamed")
 
-        with pytest.raises(ValueError):
-            ReallocatingCalendar(client).update_event(
-                Event(id="abc123", summary="No times"), ReallocationOptions()
-            )
+        result = ReallocatingCalendar(client).update_event(renamed, ReallocationOptions())
+
+        assert result == [renamed]
+        client.list_events.assert_not_called()
+        client.get_event.assert_not_called()
+
+    def test_at_the_same_times_patches_it_alone_even_on_a_day_that_overlaps(self, monkeypatch):
+        client = make_client(MagicMock())
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        current = Event(id="abc123", start=start, end=start + timedelta(hours=1))
+        overlapping = Event(id="other", start=start + timedelta(minutes=30), end=start + timedelta(hours=2))
+        client.list_events = MagicMock(return_value=[current, overlapping])
+        monkeypatch.setattr(reallocating_calendar, "reallocate_for_new_event", MagicMock())
+        client.update_event = MagicMock(side_effect=lambda event: event)
+        renamed = Event(id="abc123", summary="Renamed", start=current.start, end=current.end)
+
+        result = ReallocatingCalendar(client).update_event(renamed, ReallocationOptions())
+
+        assert result == [renamed]
+        reallocating_calendar.reallocate_for_new_event.assert_not_called()
+
+    def test_with_only_its_current_start_or_end_patches_it_alone(self, monkeypatch):
+        client = make_client(MagicMock())
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        current = Event(id="abc123", start=start, end=start + timedelta(hours=1))
+        client.list_events = MagicMock(return_value=[current])
+        client.get_event = MagicMock(return_value=current)
+        monkeypatch.setattr(reallocating_calendar, "reallocate_for_new_event", MagicMock())
+        client.update_event = MagicMock(side_effect=lambda event: event)
+        calendar = ReallocatingCalendar(client)
+
+        calendar.update_event(Event(id="abc123", summary="A", start=current.start), ReallocationOptions())
+        calendar.update_event(Event(id="abc123", summary="B", end=current.end), ReallocationOptions())
+
+        reallocating_calendar.reallocate_for_new_event.assert_not_called()
+        assert [e.summary for (e,), _ in client.update_event.call_args_list] == ["A", "B"]
+        client.list_events.assert_called_once()  # Not for the end alone: get_event answers that.
 
     def test_fills_in_missing_end_from_list_day_events(self, monkeypatch):
         client = make_client(MagicMock())
@@ -417,11 +454,12 @@ class TestReallocatingCalendarUpdateEvent:
             id="a1", start=start + timedelta(hours=2), end=start + timedelta(hours=3), priority=1
         )
         client.list_events = MagicMock(return_value=[prior_position, anchor])
-        updated = Event(id="moved", summary="Moved", start=start, end=end)
+        later = timedelta(minutes=15)
+        updated = Event(id="moved", summary="Moved", start=start + later, end=end + later)
         client.update_event = MagicMock(return_value=updated)
         client.create_event = MagicMock()
 
-        moved_event = Event(id="moved", summary="Moved", start=start, end=end, priority=1)
+        moved_event = Event(id="moved", summary="Moved", start=start + later, end=end + later, priority=1)
         result = ReallocatingCalendar(client).update_event(moved_event, ReallocationOptions())
 
         assert result == [updated]
