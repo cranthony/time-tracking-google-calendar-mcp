@@ -621,16 +621,26 @@ def split_recurrence(event_id: str) -> list[PublicRecurrence]:
 def delete_recurrence(id: str, starting_at_event_id: str | None = None) -> list[PublicRecurrence]:
     """Delete a recurring series (id is its id, or any of its events'):
     every one of its events, past ones and any edited on their own
-    included -- each is then cancelled, as delete_event leaves one. Or,
-    with starting_at_event_id, delete that event and the ones after it
-    only ("this and following"): the series is ended just before it, so
-    those events are gone rather than cancelled (an event edited on its
-    own goes by where the series first put it), and the events before it
-    are kept as they are. To stop a series that's already begun without
-    losing its past events, delete from its next event on. To delete one event of a
-    series, use delete_event with that event's id instead. Returns what's
-    left of the series: nothing if it was deleted whole (or from its
-    first event on), else the series, now ending before the event."""
+    included. Or, with starting_at_event_id, delete that event and the
+    ones after it only ("this and following"): the series is ended just
+    before it, and the events before it are kept as they are. To delete
+    one event of a series, use delete_event with that event's id instead.
+    Returns what's left of the series: nothing if it was deleted whole
+    (or from its first event on), else the series, now ending before the
+    event.
+
+    The two leave different things behind. Deleting a series whole
+    cancels each of its events, as delete_event does one: they stay on
+    the calendar as cancelled events, hidden from the user and from
+    list_events, and each counts against its goals' follow_through
+    measures as a cancellation -- past events too, whose time is then no
+    longer counted as spent. Deleting this and following leaves no
+    cancelled events: the series' events from that one on are gone (one
+    edited on its own goes by where the series first put it, even if
+    moved earlier), so follow_through doesn't count them at all. To stop
+    a series that's already begun -- one that won't happen any more,
+    rather than one that shouldn't have been -- delete from its next
+    event on."""
     with track("delete_recurrence"), cached_sheet_reads():
         try:
             left = get_recurrences().delete(id, starting_at_event_id)
@@ -736,8 +746,10 @@ def create_goal(goal: Goal) -> CreatedGoal:
     of the goal that was cancelled -- pushed off by reallocation, or
     cancelled in a compaction or by hand -- and regains recovery if any
     was kept, within 0-100; a cancelled event overlapped by a kept one of
-    the goal, such as one merged into another, isn't counted -- e.g. "Do
-    what I say I will"), {"kind": "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
+    the goal, such as one merged into another, isn't counted; deleting a
+    recurring series whole cancels each of its events, and counts, while
+    deleting this and following doesn't (see delete_recurrence) -- e.g.
+    "Do what I say I will"), {"kind": "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
     in a reflection once interval_days,
     default 1, have passed since it was last answered; carried over from
     the day before in between), {"kind": "llm", "rubric": "..."} (you
