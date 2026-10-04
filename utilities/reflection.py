@@ -1,42 +1,57 @@
-"""Reflections: a conversation, run by the MCP client, that confirms each
-goal's rating of one day -- from waking on it to waking the next (see
-utilities/sleep_days.py) -- and may record a short journal and a few
-intentions. Every rated goal (see utilities/goals.py's GoalTree.rated) is
-reflected on daily; there are no other cadences.
+"""Reflections: a conversation, run by the MCP client, that rates every
+goal for one day -- from waking on it to waking the next (see
+utilities/sleep_days.py). Every rated goal (see utilities/goals.py's
+GoalTree.rated) is reflected on daily; there are no other cadences.
+
+**Filled in automatically.** Everything the calendar can answer is
+rated without asking: measured goals (utilities/goal_health.py), skips
+for want of an event an `only_if` needs, subjective ratings carried over
+between askings, and rollups of sub-goals. Only two kinds of goal need
+judgement -- the **questions**: an llm goal, which the model rates
+against its rubric (asking the user only when the day's events and
+notes don't say), and a subjective goal whose prompt is due. They're all
+asked at once.
 
 **Bottom up.** A rating only ever flows up the tree, from sub-goals to
-their parents: a rollup is computed from its immediate sub-goals'
-ratings, and an llm rubric may refer to them. So a day is rated a level
-at a time: `prepare` offers only the goals whose rated sub-goals all have
-a confirmed rating that day -- first the goals without any -- and `record`
-confirms them. Calling `prepare` again then offers their parents, until
-every rated goal has one. Each `record` confirms its ratings on the Goal
-Health calendar straight away, so a reflection cut short (a crash, a
-closed conversation) picks up where it left off: nothing confirmed is
+their parents, so a goal above an unanswered question has no final
+rating yet. Until the answers are in, its rating is **provisional**:
+rolled up from the sub-goals that have one (an llm rating the model only
+proposed counts as given), leaving out the unanswered ones. `record`
+with `dry_run` shows that provisional summary; recording the answers
+makes it final, and confirms every final rating on the Goal Health
+calendar in one write. Provisional ratings are never written. A
+reflection cut short picks up where it left off: nothing confirmed is
 asked again.
 
-`record` also records the reflection itself -- the journal, the
-intentions and whether every rated goal has been rated ("complete") --
-in the same Goal Health day event as the day's assessments (see
-utilities/health_days.py), in the same write. Recording again keeps the
-journal and intentions unless new ones are given. Committing is the only way an assessment becomes `confirmed`
-(utilities/goal_health.py's `confirm_assessments`).
+Calendar-derived ratings are worked out afresh each time, so a
+correction to a sub-goal rolls up into its parents; a rating someone
+judged -- a subjective or llm one, or one changed by hand (with a
+rationale, or "Changed from ...") -- is kept as recorded.
+
+**The summary** lists the top-level goals and every goal given its own
+priority, grouped by priority (0 first; a top-level goal without one is
+2) and best rated first within each. Each line folds in the sub-goals
+that don't have a line of their own, naming the lowest of them.
 
 **Subjective goals** are asked their prompt only once their
 `interval_days` have passed since it was last answered (in a reflection,
 or given in passing with `record_assessments`); on the days between, the
-previous day's rating is proposed again, marked as carried over.
+previous day's rating carries over.
 
 **Only if.** A goal whose measure's `only_if` isn't met that day (see
-utilities/goal_measures.py) is proposed as "skip" instead, whatever its
-kind: its prompt isn't asked, nor its rubric judged. Those skips are
-neither answers to a subjective prompt nor carried over, so the interval
-passes over them.
+utilities/goal_measures.py) is skipped instead, whatever its kind: its
+prompt isn't asked, nor its rubric judged. Those skips are neither
+answers to a subjective prompt nor carried over, so the interval passes
+over them.
+
+`record` also notes, in the same Goal Health day event as the day's
+assessments (see utilities/health_days.py), whether every rated goal has
+a final rating ("complete"). Recording is the only way an assessment
+becomes `confirmed` (utilities/goal_health.py's `confirm_assessments`).
 """
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
@@ -44,21 +59,18 @@ from typing import Any, Literal
 from calendar_clients.google_calendar import Event
 from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_health import (
-    MAX_RATIONALE_BYTES,
     Assessment,
     DayReflection,
     GoalHealth,
-    HealthDay,
     band,
     day_period,
     explanation_of,
+    roll_up,
 )
 from utilities.goal_time import goal_minutes
-from utilities.goals import OVERALL_ID, Goals, GoalTree
+from utilities.goals import OVERALL_ID, Goal, Goals, GoalTree
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.sleep_days import MissingSleep, NotOver, listing_range, period_window
-
-MAX_INTENTIONS = 3
 
 _LOOKBACK_DAYS = 12
 """How far back `prepare_reflection` looks for a day still to reflect on."""
@@ -69,6 +81,17 @@ when none is named."""
 
 _RECENT_RATINGS = 6
 
+DEFAULT_PRIORITY = 2
+"""The summary's priority for a top-level goal without one -- as for an
+event (calendar_clients/google_calendar.py's color_for_priority)."""
+
+_DETAILS = 3
+"""How many folded-in sub-goals a summary line names."""
+
+_TREND = 10
+"""How far (in points) a line's rating must move since the day before to
+be marked with an arrow."""
+
 
 @dataclass(kw_only=True)
 class PastRating:
@@ -78,40 +101,63 @@ class PastRating:
 
 @dataclass(kw_only=True)
 class SubGoalRating:
-    """An immediate sub-goal's confirmed rating of the day."""
+    """An immediate sub-goal's rating of the day."""
 
     goal_id: str
     path: str
-    rating: int | Literal["skip"]
+    rating: int | Literal["skip"] | None
+    """`None` while it waits on an answer."""
+
     explanation: str | None = None
+    provisional: bool = False
+    """Not final yet: it waits on answers further down."""
 
 
 @dataclass(kw_only=True)
-class DueGoal:
-    """A goal ready to rate: its rated sub-goals, if any, all have been."""
+class Question:
+    """A goal that needs judgement: an llm goal to rate, or a subjective
+    goal whose prompt is due."""
 
     goal_id: str
     path: str
-    measure: dict[str, Any]
-    """How it's rated: its own measure, or, without one, the mean of its
-    sub-goals'."""
+    kind: Literal["llm", "subjective"]
+    prompt: str | None = None
+    """A subjective goal's question for the user."""
+
+    rubric: str | None = None
+    """What an llm goal is rated against."""
 
     note: str | None = None
-    ask: str | None = None
-    """For a subjective goal due to be asked: its prompt. Ask it."""
-
     recent: list[PastRating] = field(default_factory=list)
     """Its last confirmed ratings before this day."""
 
     sub_goals: list[SubGoalRating] = field(default_factory=list)
-    """Its rated sub-goals' ratings of this day (for a rollup, or an llm
-    rubric that refers to them)."""
+    """Its rated sub-goals' ratings of this day, for a rubric that refers
+    to them."""
 
-    proposed: Assessment | None = None
-    """What to start from: a rating recorded earlier for this day, one
-    measured from the calendar or rolled up from its sub-goals (with its
-    explanation), or a subjective one carried over from the day before;
-    `None` for a goal to ask about (`ask`) or judge (llm)."""
+
+@dataclass(kw_only=True)
+class SummaryLine:
+    """One line of a reflection's summary: a top-level goal, or one with
+    its own priority, folding in the sub-goals without a line of their
+    own."""
+
+    goal_id: str
+    name: str
+    priority: int
+    rating: int | Literal["skip"] | None
+    state: Literal["final", "provisional", "waiting", "unmeasured"]
+    """`provisional`: rated, but it waits on answers further down, which
+    are left out. `waiting`: nothing to rate it by until they're in.
+    `unmeasured`: it has no measure, and no rated sub-goals."""
+
+    change: int | None = None
+    """Since its confirmed rating of the day before."""
+
+    detail: str | None = None
+    """How it was rated, or its lowest-rated folded-in sub-goals."""
+
+    text: str = ""
 
 
 @dataclass(kw_only=True)
@@ -157,8 +203,7 @@ class ReflectionContext:
     minutes per goal are those between the two."""
 
     already_reflected: bool = False
-    """Every rated goal has been rated for this day already; rating one
-    again replaces its rating."""
+    """Every rated goal has a final rating of this day already."""
 
     choices: list[DayChoice] = field(default_factory=list)
     """When no day was named: the days to ask about -- the most recent
@@ -169,19 +214,9 @@ class ReflectionContext:
     """Days not reflected on before `choices`, within the last 12, not
     offered."""
 
-    journal: str | None = None
-    """The journal recorded with it, if so."""
-
-    due: list[DueGoal] = field(default_factory=list)
-    """The goals to rate now: not rated yet, and with every rated sub-goal
-    rated already. Goals without rated sub-goals come first."""
-
-    rated: list[Assessment] = field(default_factory=list)
-    """The goals already confirmed for this day."""
-
-    waiting: list[str] = field(default_factory=list)
-    """Paths of goals to rate once their sub-goals in `due` are rated:
-    call prepare_reflection again then."""
+    questions: list[Question] = field(default_factory=list)
+    """The goals that need judgement; everything else is rated
+    automatically."""
 
     unmeasured: list[str] = field(default_factory=list)
     """Paths of active goals that aren't rated: they have no measure and
@@ -194,9 +229,6 @@ class ReflectionContext:
     notes_digest: str | None = None
     """The day's compacted notes."""
 
-    previous_intentions: list[str] = field(default_factory=list)
-    """From the previous day's reflection."""
-
     uncompacted_notes: int = 0
     """Notes up to the day's end that haven't been compacted: until they
     are, the calendar (and so the measured ratings) may be off."""
@@ -208,17 +240,53 @@ class ReflectionContext:
 class ReflectionResult:
     status: Literal["preview", "recorded"]
     day: date
-    preview: str
-    """One line per rating, and the journal and intentions."""
+    summary: str
+    """The summary to show, as is: see `lines`."""
 
-    assessments: list[Assessment] = field(default_factory=list)
-    not_rated: list[str] = field(default_factory=list)
-    """Paths of goals ready to rate but not rated in this call."""
+    overall: int | Literal["skip"] | None = None
+    overall_provisional: bool = False
+    lines: list[SummaryLine] = field(default_factory=list)
+    questions: list[Question] = field(default_factory=list)
+    """Those still to answer."""
+
+    rated: list[Assessment] = field(default_factory=list)
+    """Every final rating of the day, parents before their sub-goals --
+    for showing them all, if asked."""
+
+    recorded: list[Assessment] = field(default_factory=list)
+    """The ratings written by this call (none in a preview)."""
 
     complete: bool = False
-    """Every rated goal has a confirmed rating of the day (once recorded)."""
+    """Every rated goal has a final rating of the day."""
 
     message: str = ""
+
+
+@dataclass
+class _Rated:
+    assessment: Assessment | None
+    """`None` while it waits on an answer (or can't be rated)."""
+
+    final: bool
+
+
+@dataclass
+class _Evaluation:
+    results: dict[str, _Rated]
+    """Every rated goal's rating of the day, by id."""
+
+    questions: list[Question]
+    existing: dict[str, Assessment]
+    """The day's confirmed ratings before this, by goal."""
+
+    previous: dict[str, Assessment]
+    """The day before's confirmed ratings, by goal."""
+
+    reflection: DayReflection | None
+
+    @property
+    def complete(self) -> bool:
+        return all(r.final for r in self.results.values())
 
 
 class Reflections:
@@ -241,70 +309,15 @@ class Reflections:
         events = self._events(day, tree)
         tz = self._health.now().tzinfo
         start, end = period_window(day_period(day), events, tz, self._health.now())
-        days = self._health.read_days(day - timedelta(days=7), day + timedelta(days=1))
-        reflected = _reflection_of(days.get(day))
-        previous = _reflection_of(days.get(day - timedelta(days=1)))
-
-        rated_goals = [g for g in tree.ordered() if tree.rated(g.id)]
-        week = sorted(
-            (a for d in days.values() for a in d.assessments.values()), key=lambda a: (a.goal_id, a.day)
-        )
-        that_day = {a.goal_id: a for a in week if a.day == day}
-        confirmed = {goal_id: a for goal_id, a in that_day.items() if a.status == "confirmed"}
-        ready = [
-            g for g in rated_goals
-            if g.id not in confirmed and all(c.id in confirmed for c in tree.rated_children(g.id))
-        ]
-        # Goals without rated sub-goals first, as the conversation goes.
-        ready.sort(key=lambda g: bool(tree.rated_children(g.id)))
-        measured = dict(zip((g.id for g in ready), self._health.propose(day, ready, tree, confirmed)))
-
-        due = []
-        for goal in ready:
-            measure = tree.measure(goal.id)
-            recorded = that_day.get(goal.id)
-            # A day without an event its only_if needs is skipped, not asked.
-            unmet = measured[goal.id] if measured[goal.id] is not None and measured[goal.id].unmet else None
-            proposed, ask = recorded or unmet, None
-            if proposed is None and measure["kind"] == "subjective":
-                proposed = self._carried_over(goal.id, measure, day, week)
-                if proposed is None:
-                    ask = measure.get("prompt") or f"How did {goal.name!r} go?"
-            due.append(
-                DueGoal(
-                    goal_id=goal.id,
-                    path=tree.path(goal.id),
-                    measure=measure,
-                    note=goal.note,
-                    ask=ask,
-                    recent=[
-                        PastRating(day=a.day, rating=a.rating)
-                        for a in week if a.goal_id == goal.id and a.day < day and a.status == "confirmed"
-                    ][-_RECENT_RATINGS:],
-                    sub_goals=[
-                        SubGoalRating(
-                            goal_id=c.id,
-                            path=tree.path(c.id),
-                            rating=confirmed[c.id].rating,
-                            explanation=confirmed[c.id].explanation,
-                        )
-                        for c in tree.rated_children(goal.id)
-                    ],
-                    proposed=proposed or measured.get(goal.id),
-                )
-            )
-
+        evaluation = self._evaluate(day, tree, {}, set())
         notes = self._notes.read(include_compacted=True) if self._notes else []
         minutes = goal_minutes(events, tree, start, end)
         return ReflectionContext(
             day=day,
             starts=start,
             ends=end,
-            already_reflected=not ready,
-            journal=reflected.journal if reflected else None,
-            due=due,
-            rated=[a for a in confirmed.values() if a.goal_id in tree.by_id],
-            waiting=[tree.path(g.id) for g in rated_goals if g.id not in confirmed and g not in ready],
+            already_reflected=bool(evaluation.reflection and evaluation.reflection.complete),
+            questions=evaluation.questions,
             unmeasured=[
                 tree.path(g.id) for g in tree.ordered() if g.active and not tree.rated(g.id) and g.id != OVERALL_ID
             ],
@@ -314,10 +327,74 @@ class Reflections:
             ),
             events_digest=_events_digest(events, tree, start, end, tz),
             notes_digest=_notes_digest(notes, start, end, tz) if self._notes else None,
-            previous_intentions=_intentions(previous),
             uncompacted_notes=sum(1 for n in notes if n.compaction_id is None and n.timestamp < end),
             instructions=_instructions(day),
         )
+
+    def _evaluate(
+        self, day: date, tree: GoalTree, given: dict[str, Assessment], proposed: set[str]
+    ) -> _Evaluation:
+        """Every rated goal's rating of `day`: `given` ones (final, unless
+        in `proposed`), judged ones confirmed earlier, and the rest worked
+        out -- see the module docstring."""
+        days = self._health.read_days(day - timedelta(days=7), day + timedelta(days=1))
+        week = sorted((a for d in days.values() for a in d.assessments.values()), key=lambda a: (a.goal_id, a.day))
+        existing = {a.goal_id: a for a in week if a.day == day and a.status == "confirmed"}
+        previous = {
+            a.goal_id: a for a in week if a.day == day - timedelta(days=1) and a.status == "confirmed"
+        }
+        rated = [g for g in tree.ordered() if tree.rated(g.id)]
+        kept = {goal_id: a for goal_id, a in existing.items() if _judged(a) and goal_id in tree.by_id}
+        to_measure = [g for g in rated if g.id not in given and g.id not in kept]
+        measured = dict(zip((g.id for g in to_measure), self._health.propose(day, to_measure, tree, {})))
+
+        results: dict[str, _Rated] = {}
+        # Sub-goals before their parents: `ordered` lists parents first.
+        for goal in reversed(rated):
+            measure = tree.measure(goal.id) or {}
+            kind = measure.get("kind")
+            if goal.id in given:
+                results[goal.id] = _Rated(given[goal.id], final=goal.id not in proposed)
+            elif goal.id in kept:
+                results[goal.id] = _Rated(kept[goal.id], final=True)
+            elif (found := measured[goal.id]) is not None and (found.unmet or kind != "rollup"):
+                results[goal.id] = _Rated(found, final=True)
+            elif kind == "rollup":
+                children = [results[c.id] for c in tree.rated_children(goal.id)]
+                ratings = {r.assessment.goal_id: r.assessment for r in children if r.assessment is not None}
+                rolled = roll_up(goal, tree, ratings, day)
+                results[goal.id] = _Rated(rolled, final=rolled is not None and all(r.final for r in children))
+            elif kind == "subjective":
+                carried = self._carried_over(goal.id, measure, day, week)
+                results[goal.id] = _Rated(carried, final=carried is not None)
+            elif kind == "llm":
+                results[goal.id] = _Rated(None, final=False)
+            else:  # A measure the calendar couldn't answer (a bad spec): left out.
+                results[goal.id] = _Rated(None, final=True)
+
+        questions = []
+        for goal in rated:
+            measure = tree.measure(goal.id) or {}
+            kind = measure.get("kind")
+            if results[goal.id].assessment is not None or kind not in ("llm", "subjective"):
+                continue
+            questions.append(
+                Question(
+                    goal_id=goal.id,
+                    path=tree.path(goal.id),
+                    kind=kind,
+                    prompt=(measure.get("prompt") or f"How did {goal.name!r} go?") if kind == "subjective" else None,
+                    rubric=measure.get("rubric") if kind == "llm" else None,
+                    note=goal.note,
+                    recent=[
+                        PastRating(day=a.day, rating=a.rating)
+                        for a in week if a.goal_id == goal.id and a.day < day and a.status == "confirmed"
+                    ][-_RECENT_RATINGS:],
+                    sub_goals=[_sub_goal_rating(c, tree, results[c.id]) for c in tree.rated_children(goal.id)],
+                )
+            )
+        reflection = days[day].reflection if day in days else None
+        return _Evaluation(results, questions, existing, previous, reflection)
 
     def _carried_over(
         self, goal_id: str, measure: dict[str, Any], day: date, week: list[Assessment]
@@ -412,11 +489,13 @@ class Reflections:
         self,
         day: date,
         assessments: list[Assessment],
-        journal: str | None = None,
-        intentions: list[str] | None = None,
+        proposed: list[str] | None = None,
         *,
         dry_run: bool = True,
     ) -> ReflectionResult:
+        """See the module docstring: `assessments` are the questions'
+        answers (and any rating being changed); with `dry_run`, those in
+        `proposed` count as provisional."""
         if day > self._health.now().date():
             raise ValueError(f"{day} hasn't started yet")
         # Only a day that's over, whose bounding sleeps are in the calendar.
@@ -424,90 +503,73 @@ class Reflections:
         listed = self._health.calendar_client.list_events(*listing_range(day_period(day), tz))
         period_window(day_period(day), [e for e in listed if e.status != "cancelled"], tz, self._health.now())
         tree = self._goals.tree()
-        confirmed = {a.goal_id for a in self._health.read(day, day + timedelta(days=1)) if a.status == "confirmed"}
         problems = []
-        seen = set()
+        given: dict[str, Assessment] = {}
         for a in assessments:
             if a.day != day:
                 problems.append(f"{a.goal_id}: this reflection rates {day}, not {a.day}")
-            if a.goal_id in seen:
+            if a.goal_id in given:
                 problems.append(f"{a.goal_id} is rated more than once")
-            seen.add(a.goal_id)
-            unrated = [c for c in tree.rated_children(a.goal_id) if c.id not in confirmed]
-            if unrated:
-                names = ", ".join(tree.path(c.id) for c in unrated)
-                problems.append(
-                    f"{tree.path(a.goal_id)} can't be rated until its sub-goals are ({names}): ratings flow up "
-                    "from sub-goals, so record theirs first, then call prepare_reflection again"
-                )
-        if journal and len(journal.encode()) > MAX_RATIONALE_BYTES:
-            problems.append(f"the journal is longer than {MAX_RATIONALE_BYTES} bytes (Calendar would cut it short)")
-        intentions = [i.strip() for i in intentions or [] if i.strip()] if intentions is not None else None
-        if intentions and len(intentions) > MAX_INTENTIONS:
-            problems.append(f"at most {MAX_INTENTIONS} intentions")
-        elif intentions and len(json.dumps(intentions)) > 1024:
-            problems.append("the intentions are too long together (1024 characters as JSON)")
+            given[a.goal_id] = a
+        unknown = sorted(set(proposed or ()) - set(given))
+        if unknown:
+            problems.append(f"proposed names goals not rated in this call: {', '.join(unknown)}")
         if problems:
             raise ValueError("; ".join(problems))
         self._health.check(assessments)
 
-        rated_goals = [g for g in tree.ordered() if tree.rated(g.id)]
-        ready = [
-            g for g in rated_goals
-            if g.id not in confirmed and all(c.id in confirmed for c in tree.rated_children(g.id))
-        ]
-        not_rated = [tree.path(g.id) for g in ready if g.id not in seen]
-        complete = all(g.id in confirmed or g.id in seen for g in rated_goals)
-        preview = _preview(assessments, tree, journal, intentions or [], not_rated)
+        evaluation = self._evaluate(day, tree, given, set(proposed or ()) if dry_run else set())
+        lines, summary = _summary(day, tree, evaluation)
+        overall = evaluation.results.get(OVERALL_ID)
+        result = ReflectionResult(
+            status="preview",
+            day=day,
+            summary=summary,
+            overall=overall.assessment.rating if overall and overall.assessment else None,
+            overall_provisional=bool(overall and not overall.final),
+            lines=lines,
+            questions=evaluation.questions,
+            rated=[
+                r.assessment for g in tree.ordered()
+                if (r := evaluation.results.get(g.id)) is not None and r.final and r.assessment is not None
+            ],
+            complete=evaluation.complete,
+        )
         if dry_run:
-            return ReflectionResult(
-                status="preview",
-                day=day,
-                preview=preview,
-                assessments=assessments,
-                not_rated=not_rated,
-                complete=complete,
-                message=(
-                    "Nothing has been recorded yet. Show the user the preview; once they agree, call "
-                    "record_reflection again with the same arguments and dry_run=False."
-                ),
+            result.message = (
+                "Nothing has been recorded yet. Show the summary and ask the questions; record the answers "
+                "with dry_run=False."
             )
+            return result
+
+        to_write = [
+            r.assessment
+            for goal_id, r in evaluation.results.items()
+            if r.final and r.assessment is not None
+            and (goal_id in given or _differs(r.assessment, evaluation.existing.get(goal_id)))
+        ]
         now = self._health.now()
+        complete = evaluation.complete
 
         def reflect(existing: DayReflection | None) -> DayReflection:
-            """The day's reflection, keeping its journal and intentions
-            unless new ones are given."""
+            """The day's reflection, keeping any journal and intentions
+            recorded with it before."""
             return DayReflection(
-                journal=journal if journal is not None else existing.journal if existing else None,
-                intentions=intentions if intentions is not None else existing.intentions if existing else [],
+                journal=existing.journal if existing else None,
+                intentions=existing.intentions if existing else [],
                 complete=complete,
                 reflected=now,
             )
 
-        written = self._health.write_day(day, assessments, status="confirmed", reflect=reflect)
-        now_confirmed = confirmed | seen
-        next_ready = [
-            tree.path(g.id) for g in rated_goals
-            if g.id not in now_confirmed and all(c.id in now_confirmed for c in tree.rated_children(g.id))
-        ]
-        if complete:
-            message = f"Recorded {len(written)} rating(s): every goal is rated for {day}."
-        elif next_ready:
-            message = (
-                f"Recorded {len(written)} rating(s). Ready to rate now: {', '.join(next_ready)}. Call "
-                "prepare_reflection again for them."
-            )
-        else:
-            message = f"Recorded {len(written)} rating(s). Still to rate: {', '.join(not_rated)}."
-        return ReflectionResult(
-            status="recorded",
-            day=day,
-            preview=preview,
-            assessments=written,
-            not_rated=not_rated,
-            complete=complete,
-            message=message,
+        result.recorded = self._health.write_day(day, to_write, status="confirmed", reflect=reflect)
+        result.status = "recorded"
+        waiting = len(evaluation.questions)
+        result.message = (
+            f"Recorded {len(result.recorded)} rating(s): every goal is rated for {day}."
+            if complete
+            else f"Recorded {len(result.recorded)} rating(s); {waiting} question(s) still to answer."
         )
+        return result
 
     # -- reading ------------------------------------------------------------------
 
@@ -521,17 +583,9 @@ class Reflections:
 # -- helpers --------------------------------------------------------------------
 
 
-def _reflection_of(day: HealthDay | None) -> DayReflection | None:
-    return day.reflection if day else None
-
-
 def _complete(reflection: DayReflection | None) -> bool:
     """A reflection recorded with every rated goal rated."""
     return reflection is not None and reflection.complete
-
-
-def _intentions(reflection: DayReflection | None) -> list[str]:
-    return list(reflection.intentions) if reflection else []
 
 
 def _events_digest(events: list[Event], tree: GoalTree, start: datetime, end: datetime, tz) -> str:
@@ -557,52 +611,165 @@ def _notes_digest(notes, start: datetime, end: datetime, tz) -> str:
     return "\n".join(lines) or "(no notes)"
 
 
-def _preview(
-    assessments: list[Assessment], tree: GoalTree, journal: str | None, intentions: list[str], not_rated: list[str]
-) -> str:
+def _sub_goal_rating(goal: Goal, tree: GoalTree, rated: _Rated) -> SubGoalRating:
+    a = rated.assessment
+    return SubGoalRating(
+        goal_id=goal.id,
+        path=tree.path(goal.id),
+        rating=a.rating if a else None,
+        explanation=explanation_of(a) if a else None,
+        provisional=a is not None and not rated.final,
+    )
+
+
+def _judged(assessment: Assessment) -> bool:
+    """Whether someone judged the rating, so it's kept as recorded rather
+    than worked out again: a subjective or llm rating (not carried over,
+    nor skipped for want of an event), or one changed by hand."""
+    if assessment.carried or assessment.unmet:
+        return False
+    return (
+        assessment.method in ("subjective", "llm")
+        or bool(assessment.rationale)
+        or (assessment.explanation or "").startswith("Changed from")
+    )
+
+
+def _differs(assessment: Assessment, recorded: Assessment | None) -> bool:
+    """Whether writing `assessment` would change what's `recorded`."""
+    if recorded is None:
+        return True
+    return (
+        assessment.rating, assessment.method, explanation_of(assessment), assessment.metrics, assessment.rationale
+    ) != (recorded.rating, recorded.method, recorded.explanation, recorded.metrics, recorded.rationale)
+
+
+def _summary(day: date, tree: GoalTree, evaluation: _Evaluation) -> tuple[list[SummaryLine], str]:
+    """The summary's lines, and its text -- see the module docstring."""
+    results = evaluation.results
+    lined = [
+        g for g in tree.ordered()
+        if g.id != OVERALL_ID and g.active and (not g.parent_id or g.priority is not None)
+    ]
+    lined_ids = {g.id for g in lined}
+    order = {g.id: i for i, g in enumerate(tree.ordered())}
+    names: dict[str, int] = {}
+    for g in tree.goals:
+        names[g.name] = names.get(g.name, 0) + 1
+
+    def name(goal: Goal) -> str:
+        """Its name, after its parent's if another goal has it too (say,
+        "Visit")."""
+        parent = tree.by_id.get(goal.parent_id) if goal.parent_id else None
+        return f"{parent.name} › {goal.name}" if names[goal.name] > 1 and parent else goal.name
+
+    def folded(goal_id: str) -> list[Goal]:
+        """The rated goals under `goal_id` without a line of their own,
+        down to those rated by a measure of their own."""
+        found = []
+        for child in tree.rated_children(goal_id):
+            if child.id in lined_ids:
+                continue
+            assessment = results[child.id].assessment
+            if assessment is not None and assessment.method == "rollup":
+                found += folded(child.id)
+            else:
+                found.append(child)
+        return found
+
+    def detail(goal: Goal) -> str | None:
+        assessment = results[goal.id].assessment
+        if assessment is not None and assessment.method != "rollup":
+            return explanation_of(assessment) or assessment.rationale
+        parts = []
+        for child in folded(goal.id):
+            r = results[child.id]
+            a = r.assessment
+            if a is None:
+                parts.append((-1, order[child.id], f"{name(child)} ?"))
+            elif isinstance(a.rating, int):
+                parts.append((a.rating, order[child.id], f"{name(child)} {'' if r.final else '~'}{a.rating}"))
+        return " · ".join(text for _, _, text in sorted(parts)[:_DETAILS]) or None
+
     lines = []
-    for a in assessments:
-        name = tree.path(a.goal_id) if a.goal_id in tree.by_id else a.goal_id
-        rating = "skipped" if a.rating == "skip" else str(a.rating)
-        why = " — ".join(part for part in (explanation_of(a), a.rationale) if part)
-        lines.append(f"{band(a.rating)} {name}: {rating}" + (f" — {why}" if why else ""))
-    for path in not_rated:
-        lines.append(f"· {path}: not rated yet")
-    if journal:
-        lines.append(f"Journal: {journal}")
-    for intention in intentions:
-        lines.append(f"Intention: {intention}")
-    return "\n".join(lines) or "(nothing to record)"
+    for goal in lined:
+        priority = goal.priority if goal.priority is not None else DEFAULT_PRIORITY
+        if not tree.rated(goal.id) or (results[goal.id].assessment is None and results[goal.id].final):
+            lines.append(
+                SummaryLine(
+                    goal_id=goal.id, name=goal.name, priority=priority, rating=None, state="unmeasured",
+                    text=f"⚪ **{goal.name}**: not measured",
+                )
+            )
+            continue
+        r = results[goal.id]
+        rating = r.assessment.rating if r.assessment else None
+        state = "waiting" if rating is None else "final" if r.final else "provisional"
+        before = evaluation.previous.get(goal.id)
+        change = rating - before.rating if isinstance(rating, int) and before and isinstance(before.rating, int) else None
+        why = detail(goal)
+        if rating is None:
+            text = f"⏳ **{goal.name}**: waiting on your answers"
+        elif rating == "skip":
+            text = f"⚪ **{goal.name}** skipped"
+        else:
+            arrow = (f" ↑{change}" if change > 0 else f" ↓{-change}") if change and abs(change) >= _TREND else ""
+            text = f"{band(rating)} **{goal.name} {'~' if state == 'provisional' else ''}{rating}**{arrow}"
+        if why and rating is not None:
+            text += f": {why}"
+        lines.append(
+            SummaryLine(
+                goal_id=goal.id, name=goal.name, priority=priority, rating=rating, state=state, change=change,
+                detail=why, text=text,
+            )
+        )
+
+    def rank(line: SummaryLine) -> tuple:
+        group = 0 if isinstance(line.rating, int) else 1 if line.rating == "skip" else 2 if line.state != "unmeasured" else 3
+        return (line.priority, group, -line.rating if isinstance(line.rating, int) else 0, order[line.goal_id])
+
+    lines.sort(key=rank)
+    overall = results.get(OVERALL_ID)
+    rating = overall.assessment.rating if overall and overall.assessment else None
+    # Unanswered questions, and llm ratings only proposed so far.
+    waiting = len(evaluation.questions) + sum(
+        1 for goal_id, r in results.items() if not r.final and r.assessment is not None and r.assessment.method == "llm"
+    )
+    head = f"**{day:%a %b} {day.day} · Overall"
+    if rating is None:
+        head += " — waiting on your answers**"
+    else:
+        head += f" {'' if overall.final else '~'}{rating} {band(rating)}**"
+    if waiting:
+        head += f" ({waiting} answer{'s' if waiting != 1 else ''} to go)"
+    text = [head]
+    for priority in sorted({line.priority for line in lines}):
+        text += ["", f"**Priority {priority}**"] + [line.text for line in lines if line.priority == priority]
+    return lines, "\n".join(text)
 
 
 def _instructions(day: date) -> str:
     return "\n".join(
         [
             f"This is the daily reflection for {day}. Ratings are 0-100 (0-39 red, 40-69 yellow, 70-100 "
-            "green), or \"skip\".",
+            "green), or \"skip\". Everything the calendar can rate is filled in automatically; `questions` "
+            "holds only the goals that need judgement. Keep it brief.",
             "If uncompacted_notes > 0, say the calendar may not reflect them yet, and offer to compact "
             "notes first.",
-            "Ratings flow up from sub-goals to their parents, so the day is rated a level at a time: `due` "
-            "holds only the goals ready now, and `waiting` the ones to rate once those are.",
-            "1. Open with the due goals that have a `proposed` rating (measured, rolled up from sub-goals, "
-            "or carried over): one line each with its band, rating and explanation. Ask for agreement in "
-            "bulk; change only what the user objects to, recording their reason as the rationale. Put the "
-            "ones proposed as \"skip\" because their measure's only_if wasn't met (metrics has \"only_if\") "
-            "on a single summary line, e.g. \"Not worked on, so skipped: Piano, Spanish\".",
-            "2. For each due goal with `ask`, ask it, one goal at a time, for a 0-100 number. Accept "
-            "\"skip\"; turn words like \"pretty good\" into a number and confirm it.",
-            "3. For each due goal with an llm measure, propose a rating with a one-sentence rationale "
-            "grounded in its rubric, its sub_goals' ratings, events_digest, notes_digest and goal_time, and "
-            "ask for confirmation.",
-            "4. Call record_reflection with this level's ratings (method: metric, rollup, subjective or "
-            "llm; keep a proposed rating's explanation and metrics). Once the user has agreed to the "
-            "ratings shown, call it with dry_run=False: it confirms them straight away, so an interrupted "
-            "reflection resumes where it stopped.",
-            "5. If `waiting` isn't empty, call prepare_reflection again for this day and repeat from 1 "
-            "for the next level.",
-            "6. Once every goal is rated: if there are previous_intentions, ask whether they happened. "
-            f"Ask, optionally, for a short journal entry and up to {MAX_INTENTIONS} intentions for "
-            "tomorrow, and record them with record_reflection (assessments may be empty). Keep it brief: "
-            "a daily reflection should take a couple of minutes.",
+            "1. For each llm question, rate it yourself against its rubric, from its sub_goals, "
+            "events_digest, notes_digest and goal_time, with a one-sentence rationale. Only when they don't "
+            "tell you what the rubric needs, ask the user too: list its goal_id in `proposed`.",
+            "2. Call record_reflection with your llm ratings (method llm), `proposed` and dry_run=True. "
+            "Show its `summary` exactly as given. If there's nothing to ask (no subjective questions, "
+            "nothing proposed), call it with dry_run=False instead, and show that summary.",
+            "3. Below the summary, ask every question at once, as one numbered list, for the user to "
+            "answer together: each proposed llm rating (your rating and why: OK, or theirs?) and each "
+            "subjective question's prompt. Accept \"skip\"; turn words into a 0-100 number.",
+            "4. Call record_reflection with all the answers -- the llm ratings, and the subjective ones "
+            "(method subjective, anything they said as the rationale) -- and dry_run=False. Then show "
+            "only the summary lines whose rating changed from the first summary, as \"Name old → new\", "
+            "and the final Overall.",
+            "5. If the user wants a rating changed, record it the same way with their reason as the "
+            "rationale: its parents roll up again.",
         ]
     )

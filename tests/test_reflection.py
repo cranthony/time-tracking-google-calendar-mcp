@@ -62,42 +62,32 @@ _WAKE = Goal(name="Wake", measure={"kind": "time_constraint", "edge": "start", "
 
 class TestChoices:
     def test_with_no_day_named_it_offers_completed_days_not_fully_reflected_on(self):
-        reflections, _, _, _, goals = _setup([_WAKE])
+        reflections, _, _, _, goals = _setup([_WAKE, _feel("Feel")])
         unreflected = {"09-21", "09-24", "09-25", "09-28"}
         for day in range(1, 31):
             if f"09-{day:02d}" not in unreflected:
                 _reflect(reflections, goals, date(2026, 9, day))
         _reflect(reflections, goals, YESTERDAY)
-        reflections.record(date(2026, 9, 28), [], journal="started, nothing rated", dry_run=False)
+        reflections.record(date(2026, 9, 28), [], dry_run=False)  # started: Feel's still to answer
 
         context = reflections.prepare()
 
         # It's 21:00 on Oct 2, which isn't over: the newest three completed
         # days without a full reflection, each ending at 7am.
         assert context.day is None
-        assert not context.due
-        assert [(c.day, c.ends) for c in context.choices] == [
-            (date(2026, 9, 28), datetime(2026, 9, 29, 7, tzinfo=TZ)),
-            (date(2026, 9, 25), datetime(2026, 9, 26, 7, tzinfo=TZ)),
-            (date(2026, 9, 24), datetime(2026, 9, 25, 7, tzinfo=TZ)),
+        assert not context.questions
+        assert [(c.day, c.ends, c.started) for c in context.choices] == [
+            (date(2026, 9, 28), datetime(2026, 9, 29, 7, tzinfo=TZ), True),
+            (date(2026, 9, 25), datetime(2026, 9, 26, 7, tzinfo=TZ), False),
+            (date(2026, 9, 24), datetime(2026, 9, 25, 7, tzinfo=TZ), False),
         ]
         assert context.older_unreflected == 1
         assert "Ask which day" in context.instructions
 
-    def test_a_day_rated_only_partway_is_offered_as_started(self):
-        reflections, health, _, _, goals = _setup([Goal(name="Home"), _feel("Cook", parent="Home")])
-        for day in range(1, 31):
-            reflections.record(date(2026, 9, day), [], dry_run=False)
-        reflections.record(YESTERDAY, [_rating(goals["Cook"], YESTERDAY)], dry_run=False)  # Home's still to go
-
-        (choice,) = reflections.prepare().choices[:1]
-
-        assert (choice.day, choice.started, choice.already_reflected) == (YESTERDAY, True, False)
-
     def test_when_every_recent_day_is_reflected_it_offers_the_last_one_again(self):
         reflections, _, _, _, goals = _setup([_WAKE])
         for back in range(1, 13):
-            _reflect(reflections, goals, TODAY - timedelta(days=back))
+            reflections.record(TODAY - timedelta(days=back), [], dry_run=False)
 
         context = reflections.prepare()
 
@@ -106,9 +96,12 @@ class TestChoices:
 
 
 def _reflect(reflections, goals, day):
-    """Rate every goal for `day`: Wake, then the overall goal above it."""
-    reflections.record(day, [_rating(goals["Wake"], day, "skip", method="metric")], dry_run=False)
-    reflections.record(day, [_rating(goals["Overall"], day, "skip", method="rollup")], dry_run=False)
+    """Rate every goal for `day`: Feel is the only question."""
+    reflections.record(day, [_rating(goals["Feel"], day, 70)], dry_run=False)
+
+
+def _rated(result) -> dict:
+    return {a.goal_id: a for a in result.rated}
 
 
 class TestPrepare:
@@ -126,85 +119,49 @@ class TestPrepare:
         assert "00:45-08:00" in context.events_digest  # ...and its sleep.
         assert "06:00-07:00" not in context.events_digest
 
-    def test_rates_every_active_goal_proposing_measured_or_recorded_ratings(self):
-        reflections, health, store, calendar, goals = _setup([_COOKING, _feel("Feel"), _WAKE, Goal(name="Folder")])
-        cooking, feel = goals["Cooking"], goals["Feel"]
+    def test_asks_only_what_needs_judgement(self):
+        reflections, health, store, calendar, goals = _setup(
+            [_COOKING, _feel("Feel"), _WAKE, Goal(name="Folder"), Goal(name="Life", measure={"kind": "llm", "rubric": "Balance"})]
+        )
+        feel = goals["Feel"]
         store.create_goal(Goal(name="Paused", status="inactive", measure={"kind": "subjective", "prompt": "?"}))
-        calendar.events = [
-            _event("2026-10-01T18:00", "2026-10-01T19:00", [cooking.id]),
-            _event("2026-10-01T06:55", "2026-10-01T07:20", [goals["Wake"].id]),  # up by 7
-        ]
         health.confirm_assessments([_rating(feel, YESTERDAY - timedelta(days=1), 60)])
-        health.record_assessments([_rating(feel, YESTERDAY, 75, rationale="said in passing")])
 
         context = reflections.prepare(YESTERDAY)
 
-        due = {d.path: d for d in context.due}
-        assert set(due) == {"Cooking", "Feel", "Wake"}  # not the paused one, nor one with nothing to rate it by
-        assert due["Cooking"].proposed.explanation == "1h of 2h in the day → 50"
-        assert due["Wake"].proposed.rating == 100
-        assert due["Feel"].proposed.rating == 75 and due["Feel"].proposed.status == "proposed"
-        assert due["Feel"].ask is None
-        assert [(r.day, r.rating) for r in due["Feel"].recent] == [(date(2026, 9, 30), 60)]
+        assert [(q.path, q.kind, q.prompt, q.rubric) for q in context.questions] == [
+            ("Feel", "subjective", "How was feel?", None),
+            ("Life", "llm", None, "Balance"),
+        ]
+        assert [(r.day, r.rating) for r in context.questions[0].recent] == [(date(2026, 9, 30), 60)]
         assert context.unmeasured == ["Folder"]
-        # Rated once every top-level goal is.
-        assert context.waiting == ["Overall"]
+        assert not context.already_reflected
 
-    def test_a_subjective_goal_due_to_be_asked_has_its_prompt(self):
-        reflections, *_ = _setup([_feel("Feel")])
-
-        (due,) = reflections.prepare(YESTERDAY).due
-
-        assert (due.ask, due.proposed) == ("How was feel?", None)
-
-    def test_goes_up_the_tree_a_level_at_a_time(self):
-        reflections, health, store, calendar, goals = _setup(
+    def test_an_llm_goal_sees_its_sub_goals_ratings_provisional_or_not(self):
+        reflections, _, _, calendar, goals = _setup(
             [
-                Goal(name="Neighbor"),
-                Goal(name="Parents", parent_id="Neighbor", measure={
-                    "kind": "count", "target": 1, "interval_days": 60, "zero_at_days": 120,
-                }),
-                _feel("Cousins", parent="Neighbor"),
+                Goal(name="Life", measure={"kind": "llm", "rubric": "Balance of the parts"}),
+                Goal(name="Cooking", parent_id="Life", measure={"kind": "duration", "target_min": 120}),
+                _feel("Rest", parent="Life"),
             ]
         )
-        parents, cousins = goals["Parents"], goals["Cousins"]
-        calendar.events = [_event("2026-08-15T10:00", "2026-08-15T16:00", [parents.id])]
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T19:00", [goals["Cooking"].id])]
 
-        first = reflections.prepare(YESTERDAY)
+        life = next(q for q in reflections.prepare(YESTERDAY).questions if q.kind == "llm")
 
-        assert [d.path for d in first.due] == ["Neighbor › Parents", "Neighbor › Cousins"]
-        assert first.waiting == ["Overall", "Neighbor"]
-        assert first.due[0].proposed.rating == 100
-        reflections.record(
-            YESTERDAY, [first.due[0].proposed, _rating(cousins, YESTERDAY, 50)], dry_run=False
-        )
+        assert [(s.path, s.rating, s.provisional) for s in life.sub_goals] == [
+            ("Life › Cooking", 50, False),
+            ("Life › Rest", None, False),
+        ]
 
-        second = reflections.prepare(YESTERDAY)
+    def test_a_goal_answered_already_isnt_asked_again(self):
+        reflections, *_, goals = _setup([_feel("Feel")])
+        reflections.record(YESTERDAY, [_rating(goals["Feel"], YESTERDAY, 70)], dry_run=False)
 
-        (neighbor,) = second.due
-        assert neighbor.path == "Neighbor"
-        assert [(s.path, s.rating) for s in neighbor.sub_goals] == [("Neighbor › Parents", 100), ("Neighbor › Cousins", 50)]
-        assert neighbor.proposed.explanation == "Mean of 2 sub-goals (100, 50) → 75"
-        assert neighbor.measure == {"kind": "rollup", "agg": "mean"}
-        assert {a.goal_id for a in second.rated} == {parents.id, cousins.id}
-        assert second.waiting == ["Overall"]
-        assert not second.already_reflected
-        reflections.record(YESTERDAY, [neighbor.proposed], dry_run=False)
+        context = reflections.prepare(YESTERDAY)
 
-        (overall,) = reflections.prepare(YESTERDAY).due
-        assert overall.goal_id == OVERALL_ID
-        assert overall.proposed.explanation == "Mean of 1 sub-goal (75) → 75"
-
-    def test_an_llm_goal_sees_its_sub_goals_ratings(self):
-        reflections, health, _, _, goals = _setup(
-            [Goal(name="Life", measure={"kind": "llm", "rubric": "Balance of the parts"}), _feel("Rest", parent="Life")]
-        )
-        health.confirm_assessments([_rating(goals["Rest"], YESTERDAY, 30)])
-
-        (life,) = reflections.prepare(YESTERDAY).due
-
-        assert life.proposed is None and life.ask is None
-        assert [(s.path, s.rating) for s in life.sub_goals] == [("Life › Rest", 30)]
+        assert context.questions == []
+        assert context.already_reflected
 
     def test_counts_time_per_goal_including_sub_goals(self):
         reflections, _, store, calendar, goals = _setup([_COOKING, Goal(name="Tofu", parent_id="Cooking")])
@@ -239,14 +196,6 @@ class TestPrepare:
         assert "Thu 18:00-20:30 Dinner [Cooking]" in context.events_digest
         assert context.notes_digest == "Thu 18:15 started the curry\nFri 06:30 not compacted yet"
         assert context.uncompacted_notes == 1
-
-    def test_brings_back_the_previous_days_intentions(self):
-        reflections, *_ = _setup([_feel("Feel")])
-        reflections.record(YESTERDAY - timedelta(days=1), [], intentions=["cook twice", " "], dry_run=False)
-
-        context = reflections.prepare(YESTERDAY)
-
-        assert context.previous_intentions == ["cook twice"]
         assert "record_reflection" in context.instructions
 
     def test_refuses_a_day_that_hasnt_started(self):
@@ -268,20 +217,20 @@ class TestSubjectiveIntervals:
             ]
         )
 
-        (due,) = reflections.prepare(date(2026, 9, 30)).due
+        result = reflections.record(date(2026, 9, 30), [])
 
-        assert due.ask is None
-        assert (due.proposed.rating, due.proposed.method) == (65, "subjective")
-        assert due.proposed.metrics == {"carried_from": "2026-09-29", "asked": "2026-09-27"}
-        assert due.proposed.explanation == "Carried over from 2026-09-29 (last asked 2026-09-27; asked again 2026-10-04)"
+        assert result.questions == []
+        carried = _rated(result)[mood.id]
+        assert (carried.rating, carried.method) == (65, "subjective")
+        assert carried.metrics == {"carried_from": "2026-09-29", "asked": "2026-09-27"}
+        assert carried.explanation == "Carried over from 2026-09-29 (last asked 2026-09-27; asked again 2026-10-04)"
 
     def test_its_asked_again_once_its_interval_has_passed(self):
         reflections, health, _, _, goals = _setup([_feel("Mood", interval_days=3)])
-        mood = goals["Mood"]
-        health.confirm_assessments([_rating(mood, date(2026, 9, 28), 60)])
+        health.confirm_assessments([_rating(goals["Mood"], date(2026, 9, 28), 60)])
 
-        assert reflections.prepare(date(2026, 9, 30)).due[0].ask is None
-        assert reflections.prepare(YESTERDAY).due[0].ask == "How was mood?"
+        assert reflections.prepare(date(2026, 9, 30)).questions == []
+        assert [q.prompt for q in reflections.prepare(YESTERDAY).questions] == ["How was mood?"]
 
     def test_a_rating_given_in_passing_restarts_the_interval(self):
         reflections, health, _, _, goals = _setup([_feel("Mood", interval_days=3)])
@@ -289,11 +238,11 @@ class TestSubjectiveIntervals:
         health.confirm_assessments([_rating(mood, date(2026, 9, 20), 60)])
         health.record_assessments([_rating(mood, date(2026, 9, 29), 90)])  # proposed, in passing
 
-        (due,) = reflections.prepare(date(2026, 9, 30)).due
+        result = reflections.record(date(2026, 9, 30), [])
 
-        assert due.ask is None
-        assert due.proposed.rating == 90
-        assert due.proposed.metrics["asked"] == "2026-09-29"
+        assert result.questions == []
+        assert _rated(result)[mood.id].rating == 90
+        assert _rated(result)[mood.id].metrics["asked"] == "2026-09-29"
 
     def test_a_carried_rating_doesnt_restart_the_interval(self):
         reflections, health, _, _, goals = _setup([_feel("Mood", interval_days=2)])
@@ -302,13 +251,13 @@ class TestSubjectiveIntervals:
             [_rating(mood, date(2026, 9, 28), 60), _carried(mood, date(2026, 9, 29), 60, date(2026, 9, 28))]
         )
 
-        assert reflections.prepare(date(2026, 9, 30)).due[0].ask == "How was mood?"
+        assert len(reflections.prepare(date(2026, 9, 30)).questions) == 1
 
     def test_asked_every_day_by_default(self):
         reflections, health, _, _, goals = _setup([_feel("Mood")])
         health.confirm_assessments([_rating(goals["Mood"], date(2026, 9, 30), 60)])
 
-        assert reflections.prepare(YESTERDAY).due[0].ask == "How was mood?"
+        assert len(reflections.prepare(YESTERDAY).questions) == 1
 
 
 class TestOnlyIf:
@@ -326,25 +275,23 @@ class TestOnlyIf:
         store.update_goal(Goal(id=goals["Practice"].id, measure={**measure, "only_if": only_if}))
         return reflections, health, calendar, goals["Piano"], goals["Practice"]
 
-    def test_a_day_without_its_goals_events_is_skipped_without_asking(self):
-        reflections, _, _, piano, _ = self._setup()
+    @pytest.mark.parametrize("kind", ["subjective", "llm"])
+    def test_a_day_without_its_goals_events_is_skipped_without_asking(self, kind):
+        reflections, _, _, piano, practice = self._setup(kind=kind)
 
-        (due,) = reflections.prepare(YESTERDAY).due
+        result = reflections.record(YESTERDAY, [])
 
-        assert due.ask is None
-        assert (due.proposed.rating, due.proposed.method) == ("skip", "subjective")
-        assert due.proposed.explanation == "No events of Piano that day → skip"
-        assert due.proposed.metrics == {"only_if": piano.id}
-        assert due.proposed.unmet
-        assert "single summary line" in reflections.prepare(YESTERDAY).instructions
+        assert result.questions == []
+        skipped = _rated(result)[practice.id]
+        assert (skipped.rating, skipped.method) == ("skip", kind)
+        assert skipped.explanation == "No events of Piano that day → skip"
+        assert skipped.unmet
 
     def test_a_day_with_them_is_asked(self):
         reflections, _, calendar, piano, _ = self._setup()
         calendar.events = [_event("2026-10-01T18:00", "2026-10-01T18:30", [piano.id])]
 
-        (due,) = reflections.prepare(YESTERDAY).due
-
-        assert (due.ask, due.proposed) == ("How did practice go?", None)
+        assert [q.prompt for q in reflections.prepare(YESTERDAY).questions] == ["How did practice go?"]
 
     @pytest.mark.parametrize("include_sub_goals, asked", [(True, True), (False, False)])
     def test_events_of_its_goals_sub_goals_count_unless_left_out(self, include_sub_goals, asked):
@@ -354,16 +301,7 @@ class TestOnlyIf:
         scales = next(g for g in store.tree().goals if g.name == "Scales")
         calendar.events = [_event("2026-10-01T18:00", "2026-10-01T18:30", [scales.id])]
 
-        (due,) = reflections.prepare(YESTERDAY).due
-
-        assert (due.ask is not None) == asked
-
-    def test_an_llm_goal_isnt_judged_on_a_day_without_them(self):
-        reflections, *_ = self._setup(kind="llm")
-
-        (due,) = reflections.prepare(YESTERDAY).due
-
-        assert (due.proposed.rating, due.proposed.method) == ("skip", "llm")
+        assert bool(reflections.prepare(YESTERDAY).questions) == asked
 
     def test_its_interval_passes_over_skipped_days_carrying_the_last_answer(self):
         reflections, health, calendar, piano, practice = self._setup(interval_days=7)
@@ -376,10 +314,11 @@ class TestOnlyIf:
         )
         calendar.events = [_event("2026-09-30T18:00", "2026-09-30T18:30", [piano.id])]
 
-        (due,) = reflections.prepare(date(2026, 9, 30)).due
+        result = reflections.record(date(2026, 9, 30), [])
 
-        assert due.ask is None
-        assert (due.proposed.rating, due.proposed.metrics["carried_from"]) == (60, "2026-09-27")
+        assert result.questions == []
+        carried = _rated(result)[practice.id]
+        assert (carried.rating, carried.metrics["carried_from"]) == (60, "2026-09-27")
 
     def test_a_skipped_day_isnt_an_answer(self):
         reflections, health, calendar, piano, practice = self._setup(interval_days=2)
@@ -388,7 +327,7 @@ class TestOnlyIf:
         )
         calendar.events = [_event("2026-09-29T18:00", "2026-09-29T18:30", [piano.id])]
 
-        assert reflections.prepare(date(2026, 9, 29)).due[0].ask == "How did practice go?"
+        assert len(reflections.prepare(date(2026, 9, 29)).questions) == 1
 
 
 def _unmet(goal, source, day):
@@ -399,129 +338,168 @@ def _carried(goal, day, rating, asked):
     return _rating(goal, day, rating, metrics={"carried_from": (day - timedelta(days=1)).isoformat(), "asked": asked.isoformat()})
 
 
-class TestRecord:
-    def test_a_dry_run_previews_without_writing(self):
-        reflections, _, _, calendar, goals = _setup([_COOKING, _feel("Feel")])
-        cooking = goals["Cooking"]
-        rating = _rating(cooking, YESTERDAY, 50, method="metric", explanation="1h of 2h in the day → 50")
+def _neighbor():
+    """Neighbor (priority 2, top-level) over Parents (measured: visited 6
+    weeks ago, so 100) and Cousins (asked); Cooking (priority 0) measured
+    at 50; Tidy (no priority) at 0."""
+    reflections, health, store, calendar, goals = _setup(
+        [
+            Goal(name="Neighbor", priority=2),
+            Goal(name="Parents", parent_id="Neighbor", measure={"kind": "count", "target": 1, "interval_days": 60}),
+            _feel("Cousins", parent="Neighbor"),
+            Goal(name="Cooking", priority=0, measure={"kind": "duration", "target_min": 120}),
+            Goal(name="Tidy", measure={"kind": "count", "target": 1}),
+        ]
+    )
+    calendar.events = [
+        _event("2026-08-15T10:00", "2026-08-15T16:00", [goals["Parents"].id]),
+        _event("2026-10-01T18:00", "2026-10-01T19:00", [goals["Cooking"].id]),
+    ]
+    return reflections, health, calendar, goals
 
-        result = reflections.record(YESTERDAY, [rating], journal="busy day", intentions=["rest"])
+
+class TestRecord:
+    def test_a_dry_run_fills_in_what_it_can_and_rolls_up_provisionally(self):
+        reflections, _, calendar, goals = _neighbor()
+
+        result = reflections.record(YESTERDAY, [])
 
         assert result.status == "preview"
-        assert result.preview.splitlines() == [
-            "🟡 Cooking: 50 — 1h of 2h in the day → 50",
-            "· Feel: not rated yet",
-            "Journal: busy day",
-            "Intention: rest",
+        assert result.summary.splitlines() == [
+            "**Thu Oct 1 · Overall ~50 🟡** (1 answer to go)",
+            "",
+            "**Priority 0**",
+            "🟡 **Cooking 50**: 1h of 2h in the day → 50",
+            "",
+            "**Priority 2**",
+            "🟢 **Neighbor ~100**: Cousins ? · Parents 100",
+            "🔴 **Tidy 0**: 0 of 1 events in the day → 0",
         ]
-        assert result.not_rated == ["Feel"]
+        assert [(q.path, q.prompt) for q in result.questions] == [("Neighbor › Cousins", "How was cousins?")]
+        assert (result.overall, result.overall_provisional) == (50, True)
         assert not result.complete
         assert calendar.health_events == {}
 
-    def test_a_changed_ratings_preview_gives_its_reason_once(self):
-        reflections, _, _, _, goals = _setup([_COOKING, _feel("Feel")])
-        cooking = goals["Cooking"]
-        changed = _rating(
-            cooking, YESTERDAY, 80, method="metric", explanation="1h of 2h in the day → 50", rationale="Cooked for guests"
-        )
-        unchanged = _rating(
-            goals["Feel"], YESTERDAY, 50, method="metric", explanation="1h of 2h in the day → 50", rationale="Tired"
-        )
+    def test_answers_make_it_final_and_confirm_every_rating_in_one_write(self):
+        reflections, _, calendar, goals = _neighbor()
 
-        result = reflections.record(YESTERDAY, [changed, unchanged])
-
-        assert result.preview.splitlines()[:2] == [
-            "🟢 Cooking: 80 — Cooked for guests",
-            "🟡 Feel: 50 — 1h of 2h in the day → 50 — Tired",
-        ]
-
-    def test_committing_confirms_the_ratings_and_records_the_reflection(self):
-        reflections, _, store, calendar, goals = _setup([_COOKING, _feel("Feel")])
-        cooking, feel = goals["Cooking"], goals["Feel"]
-
-        result = reflections.record(
-            YESTERDAY,
-            [_rating(cooking, YESTERDAY, 50, method="metric"), _rating(feel, YESTERDAY, "skip")],
-            journal="busy day",
-            intentions=["rest"],
-            dry_run=False,
-        )
-        assert not result.complete
-        assert "Ready to rate now: Overall" in result.message
-        result = reflections.record(
-            YESTERDAY, [_rating(goals["Overall"], YESTERDAY, 50, method="rollup")], dry_run=False
-        )
+        result = reflections.record(YESTERDAY, [_rating(goals["Cousins"], YESTERDAY, 40)], dry_run=False)
 
         assert result.status == "recorded"
         assert result.complete
         assert "every goal is rated" in result.message
-        assert {a.status for a in result.assessments} == {"confirmed"}
-        # One event for the day: the reflection, and every rating.
+        assert result.summary.splitlines()[0] == "**Thu Oct 1 · Overall 40 🟡**"
+        assert "🟢 **Neighbor 70**: Cousins 40 · Parents 100" in result.summary
+        assert {a.goal_id for a in result.recorded} == {
+            goals[name].id for name in ("Neighbor", "Parents", "Cousins", "Cooking", "Tidy", "Overall")
+        }
+        assert {a.status for a in result.recorded} == {"confirmed"}
         (event,) = calendar.health_events.values()
         assert event["id"] == day_event_id(YESTERDAY, 1)
-        assert event["summary"] == "📝 Reflection · 2026-10-01 · 🟡 50"
-        assert event["description"] == "busy day\n\n🟡 50 Overall\n🟡 50 Cooking\n⚪ skipped Feel"
-        properties = event["extendedProperties"]["private"]
-        assert properties["cascading-time-tracker-complete"] == "true"
-        assert properties["cascading-time-tracker-journal"] == "busy day"
-        assert properties["cascading-time-tracker-intentions"] == '["rest"]'
-        listed = {g.name: g for g in store.get_goals().goals}
-        assert listed["Cooking"].health == 50  # the cache follows confirmed ratings
+        assert event["summary"] == "📝 Reflection · 2026-10-01 · 🟡 40"
+        assert event["extendedProperties"]["private"]["cascading-time-tracker-complete"] == "true"
+        assert reflections.prepare(YESTERDAY).already_reflected
 
-    def test_a_level_at_a_time_keeping_the_journal_until_a_new_one_is_given(self):
-        reflections, _, _, calendar, goals = _setup([Goal(name="Home"), _feel("Cook", parent="Home")])
-        home, cook = goals["Home"], goals["Cook"]
+    def test_a_proposed_llm_rating_is_provisional_until_recorded(self):
+        reflections, _, _, _, goals = _setup([Goal(name="Life", measure={"kind": "llm", "rubric": "Balance"})])
+        life = _rating(goals["Life"], YESTERDAY, 60, method="llm", rationale="Busy but fine")
 
-        first = reflections.record(YESTERDAY, [_rating(cook, YESTERDAY, 60)], journal="tired", dry_run=False)
+        preview = reflections.record(YESTERDAY, [life], [goals["Life"].id])
+        recorded = reflections.record(YESTERDAY, [life], dry_run=False)
 
-        assert not first.complete
-        assert "Ready to rate now: Home" in first.message
-        event = calendar.health_events[day_event_id(YESTERDAY, 1)]
-        assert event["summary"] == "📝 Reflection · 2026-10-01 (in progress)"
+        assert "🟡 **Life ~60**: Busy but fine" in preview.summary
+        assert preview.summary.splitlines()[0].endswith("(1 answer to go)")
+        assert preview.overall_provisional
+        assert "🟡 **Life 60**: Busy but fine" in recorded.summary
+        assert recorded.complete
 
-        second = reflections.record(YESTERDAY, [_rating(home, YESTERDAY, 60, method="rollup")], dry_run=False)
-        assert not second.complete
-        third = reflections.record(
-            YESTERDAY, [_rating(goals["Overall"], YESTERDAY, 60, method="rollup")], dry_run=False
+    def test_unanswered_questions_leave_the_rest_recorded_and_the_day_in_progress(self):
+        reflections, _, calendar, goals = _neighbor()
+
+        result = reflections.record(YESTERDAY, [], dry_run=False)
+
+        assert not result.complete
+        assert "1 question(s) still to answer" in result.message
+        # Provisional rollups aren't written.
+        assert {a.goal_id for a in result.recorded} == {goals[name].id for name in ("Parents", "Cooking", "Tidy")}
+        assert calendar.health_events[day_event_id(YESTERDAY, 1)]["summary"].endswith("(in progress)")
+        assert [q.path for q in reflections.prepare(YESTERDAY).questions] == ["Neighbor › Cousins"]
+
+    def test_a_changed_rating_is_kept_and_rolls_up_again(self):
+        reflections, _, _, goals = _neighbor()
+        cousins = _rating(goals["Cousins"], YESTERDAY, 40)
+        reflections.record(YESTERDAY, [cousins], dry_run=False)
+        tidy = _rating(
+            goals["Tidy"], YESTERDAY, 80, method="metric", explanation="0 of 1 events in the day → 0", rationale="Did tidy"
         )
 
-        assert third.complete
-        assert calendar.health_events[day_event_id(YESTERDAY, 1)]["description"].startswith("tired\n\n")
-        context = reflections.prepare(YESTERDAY)
-        assert context.already_reflected
-        assert context.journal == "tired"
+        reflections.record(YESTERDAY, [tidy], dry_run=False)
+        again = reflections.record(YESTERDAY, [], dry_run=False)
 
-    def test_refuses_a_goal_before_its_sub_goals(self):
-        reflections, _, _, calendar, goals = _setup([Goal(name="Home"), _feel("Cook", parent="Home")])
+        assert _rated(again)[goals["Tidy"].id].rating == 80  # kept, though measured at 0
+        assert _rated(again)[goals["Cousins"].id].rating == 40  # answered: not asked again
+        assert _rated(again)[OVERALL_ID].explanation == "Mean of 3 sub-goals (70, 50, 80) → 67"
+        assert again.recorded == []  # nothing changed
 
-        with pytest.raises(ValueError, match="Home can't be rated until its sub-goals are \\(Home › Cook\\)"):
-            reflections.record(
-                YESTERDAY,
-                [_rating(goals["Cook"], YESTERDAY, 60), _rating(goals["Home"], YESTERDAY, 60, method="rollup")],
-                dry_run=False,
-            )
+    def test_lines_are_by_priority_then_best_first_with_unmeasured_ones_last(self):
+        reflections, health, store, calendar, goals = _setup(
+            [
+                Goal(name="Home", priority=1),
+                Goal(name="Sweep", parent_id="Home", measure={"kind": "count", "target": 1}),
+                Goal(name="Dust", parent_id="Home", priority=1, measure={"kind": "count", "target": 1}),
+                Goal(name="Promise", priority=1),
+                Goal(name="Read", priority=1, measure={"kind": "duration", "target_min": 60}),
+            ]
+        )
+        calendar.events = [_event("2026-10-01T09:00", "2026-10-01T09:30", [goals["Dust"].id])]
+        health.confirm_assessments([_rating(goals["Read"], YESTERDAY - timedelta(days=1), 80, method="metric")])
 
-        assert calendar.health_events == {}
+        result = reflections.record(YESTERDAY, [])
+
+        assert [(line.name, line.rating, line.state, line.change) for line in result.lines] == [
+            ("Dust", 100, "final", None),
+            ("Home", 50, "final", None),
+            ("Read", 0, "final", -80),
+            ("Promise", None, "unmeasured", None),
+        ]
+        assert "🔴 **Read 0** ↓80: 0m of 1h in the day → 0" in result.summary
+        assert "🟡 **Home 50**: Sweep 0" in result.summary  # Dust has a line of its own
+        assert "⚪ **Promise**: not measured" in result.summary
+
+    def test_a_name_shared_with_another_goal_comes_after_its_parents(self):
+        reflections, _, _, _, goals = _setup(
+            [
+                Goal(name="Family", priority=1),
+                Goal(name="Parents", parent_id="Family"),
+                Goal(name="Visit", parent_id="Parents", measure={"kind": "count", "target": 1}),
+                Goal(name="Cousins", parent_id="Family"),
+                Goal(name="Visit", parent_id="Cousins", measure={"kind": "count", "target": 1}),
+            ]
+        )
+
+        result = reflections.record(YESTERDAY, [])
+
+        assert "🔴 **Family 0**: Parents › Visit 0 · Cousins › Visit 0" in result.summary
 
     @pytest.mark.parametrize(
-        "kwargs, message",
+        "assessments, proposed, message",
         [
-            ({"assessments": "wrong day"}, "rates 2026-10-01, not 2026-09-30"),
-            ({"assessments": "twice"}, "rated more than once"),
-            ({"intentions": ["a", "b", "c", "d"]}, "at most 3 intentions"),
-            ({"journal": "x" * 8001}, "journal is longer than 8000 bytes"),
+            ("wrong day", None, "rates 2026-10-01, not 2026-09-30"),
+            ("twice", None, "rated more than once"),
+            ("none", ["xxxxxx"], "proposed names goals not rated in this call: xxxxxx"),
         ],
     )
-    def test_refuses_what_it_cant_record_and_writes_nothing(self, kwargs, message):
+    def test_refuses_what_it_cant_record_and_writes_nothing(self, assessments, proposed, message):
         reflections, _, _, calendar, goals = _setup([_COOKING])
         cooking = goals["Cooking"]
         assessments = {
             "wrong day": [_rating(cooking, date(2026, 9, 30))],
             "twice": [_rating(cooking, YESTERDAY), _rating(cooking, YESTERDAY)],
-        }.get(kwargs.pop("assessments", None), [])
+            "none": [],
+        }[assessments]
 
         with pytest.raises(ValueError, match=message):
-            reflections.record(YESTERDAY, assessments, dry_run=False, **kwargs)
+            reflections.record(YESTERDAY, assessments, proposed, dry_run=False)
 
         assert calendar.health_events == {}
 

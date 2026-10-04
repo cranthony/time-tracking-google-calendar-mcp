@@ -694,11 +694,31 @@ _MEASURES: dict[str, Callable[..., Measured | None]] = {
 }
 
 
-def _rollup(goal: Goal, measure: dict[str, Any], tree: GoalTree, confirmed: dict[str, Assessment]) -> Measured | None:
+def roll_up(goal: Goal, tree: GoalTree, ratings: dict[str, Assessment], day: date) -> Assessment | None:
+    """The goal's rollup of `day` from those of its rated sub-goals that
+    have a rating in `ratings` -- leaving out any without one, for a
+    provisional rollup (see utilities/reflection.py) -- or `None` if none
+    of them has."""
+    measure = tree.measure(goal.id) or {}
+    measured = _rollup(goal, measure, tree, ratings, partial=True)
+    if measured is None:
+        return None
+    rating, explanation, metrics = measured
+    return Assessment(
+        goal_id=goal.id, day=day, rating=rating, method="rollup", explanation=explanation, metrics=metrics
+    )
+
+
+def _rollup(
+    goal: Goal, measure: dict[str, Any], tree: GoalTree, confirmed: dict[str, Assessment], *, partial: bool = False
+) -> Measured | None:
     """The goal's rating from its rated sub-goals' confirmed ratings that
-    day, or `None` while any of them has none yet. "skip" if they were all
+    day, or `None` while any of them has none yet (or, if `partial`, while
+    all of them have none, leaving out the rest). "skip" if they were all
     skipped (or weigh nothing)."""
     children = tree.rated_children(goal.id)
+    if partial:
+        children = [c for c in children if c.id in confirmed]
     if not children or any(c.id not in confirmed for c in children):
         return None
     ratings = {c.id: confirmed[c.id].rating for c in children if isinstance(confirmed[c.id].rating, int)}

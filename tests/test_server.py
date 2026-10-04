@@ -676,11 +676,9 @@ class TestReflectionTools:
     def test_record_reflection_previews_by_default(self, monkeypatch):
         reflections = self._fake(monkeypatch)
 
-        server.record_reflection(date(2026, 9, 20), [], journal="j", intentions=["i"])
+        server.record_reflection(date(2026, 9, 20), [], proposed=["abc123"])
 
-        reflections.record.assert_called_once_with(
-            date(2026, 9, 20), [], "j", ["i"], dry_run=True
-        )
+        reflections.record.assert_called_once_with(date(2026, 9, 20), [], ["abc123"], dry_run=True)
 
     @pytest.mark.parametrize(
         "tool, method, args",
