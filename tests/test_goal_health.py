@@ -617,6 +617,48 @@ class TestMeasureTimeWindow:
         assert (rated.rating, rated.explanation) == (0, "No events of Eat well that day → 0")
 
 
+class TestMeasureOnlyIf:
+    def _setup(self, measure, **only_if):
+        health, store, calendar, goals = _setup([Goal(name="Piano")])
+        piano = goals["Piano"]
+        gated = _child(store, "Gated", piano, measure={**measure, "only_if": only_if})
+        return health, calendar, piano, gated
+
+    def test_a_day_without_its_goals_events_is_skipped_whatever_the_kind(self):
+        health, _, _, gated = self._setup({"kind": "duration", "target_min": 30})
+
+        (rated,) = health.measure(goal_ids=[gated.id])
+
+        assert (rated.rating, rated.method) == ("skip", "metric")
+        assert rated.explanation == "No events of Gated that day → skip"
+        assert rated.metrics == {"only_if": gated.id}
+        assert rated.unmet
+
+    def test_on_a_day_with_them_its_measured_as_usual(self):
+        health, calendar, _, gated = self._setup({"kind": "duration", "target_min": 30})
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T18:15", [gated.id])]
+
+        (rated,) = health.measure(goal_ids=[gated.id])
+
+        assert rated.rating == 50
+
+    def test_events_of_names_another_goal(self):
+        health, store, calendar, goals = _setup([Goal(name="Piano")])
+        piano = goals["Piano"]
+        practice = _child(
+            store, "Practice", piano,
+            measure={"kind": "subjective", "prompt": "How did it go?", "only_if": {"events_of": piano.id}},
+        )
+
+        (skipped,) = health.measure(goal_ids=[practice.id])
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T18:15", [piano.id])]
+
+        assert (skipped.rating, skipped.method, skipped.explanation) == (
+            "skip", "subjective", "No events of Piano that day → skip"
+        )
+        assert health.measure(goal_ids=[practice.id]) == []  # to be asked
+
+
 class TestMeasureRollup:
     def _tree(self, measure=None):
         health, store, _, goals = _setup([Goal(name="Home", measure=measure)])

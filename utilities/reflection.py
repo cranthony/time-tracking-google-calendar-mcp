@@ -27,6 +27,12 @@ given. Committing is the only way an assessment becomes `confirmed`
 `interval_days` have passed since it was last answered (in a reflection,
 or given in passing with `record_assessments`); on the days between, the
 previous day's rating is proposed again, marked as carried over.
+
+**Only if.** A goal whose measure's `only_if` isn't met that day (see
+utilities/goal_measures.py) is proposed as "skip" instead, whatever its
+kind: its prompt isn't asked, nor its rubric judged. Those skips are
+neither answers to a subjective prompt nor carried over, so the interval
+passes over them.
 """
 
 from __future__ import annotations
@@ -261,7 +267,9 @@ class Reflections:
         for goal in ready:
             measure = tree.measure(goal.id)
             recorded = that_day.get(goal.id)
-            proposed, ask = recorded, None
+            # A day without an event its only_if needs is skipped, not asked.
+            unmet = measured[goal.id] if measured[goal.id] is not None and measured[goal.id].unmet else None
+            proposed, ask = recorded or unmet, None
             if proposed is None and measure["kind"] == "subjective":
                 proposed = self._carried_over(goal.id, measure, day, week)
                 if proposed is None:
@@ -330,6 +338,8 @@ class Reflections:
             if first >= day - timedelta(days=7)
             else self._health.read(first - timedelta(days=1), day + timedelta(days=1), goal_id=goal_id)
         )
+        # Skips for want of an event its only_if needs don't count.
+        history = [a for a in history if not a.unmet]
         answered = [a for a in history if first <= a.day <= day and a.method == "subjective" and not a.carried]
         if not answered:
             return None
@@ -630,7 +640,9 @@ def _instructions(day: date) -> str:
             "holds only the goals ready now, and `waiting` the ones to rate once those are.",
             "1. Open with the due goals that have a `proposed` rating (measured, rolled up from sub-goals, "
             "or carried over): one line each with its band, rating and explanation. Ask for agreement in "
-            "bulk; change only what the user objects to, recording their reason as the rationale.",
+            "bulk; change only what the user objects to, recording their reason as the rationale. Put the "
+            "ones proposed as \"skip\" because their measure's only_if wasn't met (metrics has \"only_if\") "
+            "on a single summary line, e.g. \"Not worked on, so skipped: Piano, Spanish\".",
             "2. For each due goal with `ask`, ask it, one goal at a time, for a 0-100 number. Accept "
             "\"skip\"; turn words like \"pretty good\" into a number and confirm it.",
             "3. For each due goal with an llm measure, propose a rating with a one-sentence rationale "

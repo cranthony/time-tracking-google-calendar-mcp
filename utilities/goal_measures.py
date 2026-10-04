@@ -27,6 +27,8 @@ than leaving the goal silently unmeasured.
 | `rollup`     | optional `agg`: "mean" (the default), "weighted" (with    |
 |              | `weights`) or "percentile" (with `percentile`) of the     |
 |              | immediate sub-goals' ratings                              |
+| (any kind)   | optional `only_if`: rated only on days with an event of   |
+|              | a goal                                                    |
 
 **Intervals.** A duration or count measure looks back over the
 `interval_days` (default 1) days of wall-clock time before the end of the
@@ -78,6 +80,16 @@ same day, which is why a reflection rates sub-goals before their parents.
 missing from it, weighs 0. `percentile` is 0-100: 0 is the lowest
 sub-goal's rating, 100 the highest, 50 the median. A goal with no measure
 but sub-goals to rate is rated as a "mean" rollup.
+
+**Only if.** Any measure can take `only_if`: `{"events_of": "<goal id>",
+"include_sub_goals": true}`, both optional and meaning what they do
+above, so `{}` is the measure's own goal and its sub-goals. The measure
+is rated only on days with at least one such event; on any other day the
+goal is proposed as "skip" -- its prompt isn't asked, nor its rubric
+judged -- with "only_if" in its metrics, so it can be told apart from a
+skip someone chose. "How did practice go?" can be asked only on days of
+piano practice. A subjective measure's interval passes over those days:
+they don't count as answers, nor are they carried over.
 """
 
 from __future__ import annotations
@@ -88,14 +100,22 @@ from typing import Any
 _EVENT_SOURCE = frozenset({"events_of", "include_sub_goals"})
 """The fields saying whose events a measure looks at."""
 
+_ANY_KIND = frozenset({"only_if"})
+"""The fields every kind of measure takes."""
+
 MEASURE_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
-    "duration": (frozenset({"target_min"}), frozenset({"interval_days", "zero_at_days"}) | _EVENT_SOURCE),
-    "count": (frozenset({"target"}), frozenset({"noun", "interval_days", "zero_at_days"}) | _EVENT_SOURCE),
-    "time_constraint": (frozenset({"edge", "target"}), frozenset({"when", "grace_min", "zero_at_min"}) | _EVENT_SOURCE),
-    "time_window": (frozenset({"from", "to"}), frozenset({"grace_min", "zero_at_min"}) | _EVENT_SOURCE),
-    "subjective": (frozenset({"prompt"}), frozenset({"interval_days"})),
-    "llm": (frozenset({"rubric"}), frozenset()),
-    "rollup": (frozenset(), frozenset({"agg", "weights", "percentile"})),
+    kind: (required, optional | _ANY_KIND)
+    for kind, (required, optional) in {
+        "duration": (frozenset({"target_min"}), frozenset({"interval_days", "zero_at_days"}) | _EVENT_SOURCE),
+        "count": (frozenset({"target"}), frozenset({"noun", "interval_days", "zero_at_days"}) | _EVENT_SOURCE),
+        "time_constraint": (
+            frozenset({"edge", "target"}), frozenset({"when", "grace_min", "zero_at_min"}) | _EVENT_SOURCE
+        ),
+        "time_window": (frozenset({"from", "to"}), frozenset({"grace_min", "zero_at_min"}) | _EVENT_SOURCE),
+        "subjective": (frozenset({"prompt"}), frozenset({"interval_days"})),
+        "llm": (frozenset({"rubric"}), frozenset()),
+        "rollup": (frozenset(), frozenset({"agg", "weights", "percentile"})),
+    }.items()
 }
 """Each kind's (required, optional) fields, besides `kind` itself."""
 
@@ -138,10 +158,15 @@ def measure_problems(measure: Any, *, sub_goal_ids: set[str] | None = None) -> l
         if name in measure and not (isinstance(measure[name], str) and measure[name].strip()):
             problems.append(f'"{name}" must be non-empty text')
 
-    if "events_of" in measure and not (isinstance(measure["events_of"], str) and measure["events_of"]):
-        problems.append('"events_of" must be a goal id')
-    if "include_sub_goals" in measure and not isinstance(measure["include_sub_goals"], bool):
-        problems.append('"include_sub_goals" must be true or false')
+    problems += _event_source_problems(measure)
+    if "only_if" in measure:
+        condition = measure["only_if"]
+        if not isinstance(condition, dict):
+            problems.append('"only_if" must be an object, with optional "events_of" and "include_sub_goals"')
+        else:
+            for name in sorted(condition.keys() - _EVENT_SOURCE):
+                problems.append(f'"only_if" has no field "{name}"; it takes "events_of", "include_sub_goals"')
+            problems += [f'"only_if" {p}' for p in _event_source_problems(condition)]
     if kind in ("duration", "count", "subjective"):
         positive("interval_days")
     if kind in ("duration", "count"):
@@ -175,6 +200,17 @@ def measure_problems(measure: Any, *, sub_goal_ids: set[str] | None = None) -> l
         text("rubric")
     elif kind == "rollup":
         problems += _rollup_problems(measure, sub_goal_ids)
+    return problems
+
+
+def _event_source_problems(fields: dict[str, Any]) -> list[str]:
+    """What's wrong with `events_of` and `include_sub_goals`, in a measure
+    or its `only_if`."""
+    problems = []
+    if "events_of" in fields and not (isinstance(fields["events_of"], str) and fields["events_of"]):
+        problems.append('"events_of" must be a goal id')
+    if "include_sub_goals" in fields and not isinstance(fields["include_sub_goals"], bool):
+        problems.append('"include_sub_goals" must be true or false')
     return problems
 
 

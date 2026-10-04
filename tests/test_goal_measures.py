@@ -23,6 +23,10 @@ from utilities.goal_measures import MEASURE_KINDS, MEASURE_SHAPE_PROBLEM, measur
         {"kind": "time_constraint", "edge": "start", "target": "08:00", "when": "after", "events_of": "g1"},
         {"kind": "time_window", "from": "11:30", "to": "13:30"},
         {"kind": "time_window", "from": "11:30", "to": "13:30", "grace_min": 15, "zero_at_min": 90, "events_of": "g1"},
+        {"kind": "subjective", "prompt": "How did practice go?", "only_if": {"events_of": "g1"}},
+        {"kind": "llm", "rubric": "Focused?", "only_if": {}},
+        {"kind": "duration", "target_min": 30, "only_if": {"events_of": "g1", "include_sub_goals": False}},
+        {"kind": "rollup", "only_if": {"include_sub_goals": True}},
         {"kind": "subjective", "prompt": "How did it turn out?"},
         {"kind": "subjective", "prompt": "How are we doing?", "interval_days": 7},
         {"kind": "llm", "rubric": "Were the conversations meaningful?"},
@@ -48,7 +52,7 @@ def test_accepts_every_kinds_valid_specs(measure):
         (
             {"kind": "duration", "target_mins": 600},
             'has no field "target_mins"; a duration measure takes "events_of", "include_sub_goals", '
-            '"interval_days", "target_min", "zero_at_days"',
+            '"interval_days", "only_if", "target_min", "zero_at_days"',
         ),
         ({"kind": "duration", "target_min": 0}, '"target_min" must be a number above 0'),
         ({"kind": "duration", "target_min": "600"}, '"target_min" must be a number above 0'),
@@ -93,6 +97,13 @@ def test_accepts_every_kinds_valid_specs(measure):
             {"kind": "time_window", "from": "11:30", "to": "13:30", "grace_min": 30, "zero_at_min": 20},
             '"zero_at_min" must be a number above "grace_min" (30)',
         ),
+        ({"kind": "subjective", "prompt": "?", "only_if": "g1"}, '"only_if" must be an object'),
+        ({"kind": "subjective", "prompt": "?", "only_if": {"events_of": ""}}, '"only_if" "events_of" must be a goal id'),
+        (
+            {"kind": "subjective", "prompt": "?", "only_if": {"include_sub_goals": "yes"}},
+            '"only_if" "include_sub_goals" must be true or false',
+        ),
+        ({"kind": "subjective", "prompt": "?", "only_if": {"min_minutes": 15}}, '"only_if" has no field "min_minutes"'),
         ({"kind": "subjective"}, 'needs "prompt"'),
         ({"kind": "subjective", "prompt": ""}, '"prompt" must be non-empty text'),
         ({"kind": "subjective", "prompt": "?", "interval_days": -1}, '"interval_days" must be a number above 0'),
@@ -131,7 +142,7 @@ def test_lists_every_problem_at_once():
         'needs "edge"',
         'needs "target"',
         'has no field "zero"; a time_constraint measure takes "edge", "events_of", "grace_min", '
-        '"include_sub_goals", "target", "when", "zero_at_min"',
+        '"include_sub_goals", "only_if", "target", "when", "zero_at_min"',
         '"grace_min" must be a number, 0 or more',
     ]
 

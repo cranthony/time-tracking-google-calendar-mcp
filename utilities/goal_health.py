@@ -25,8 +25,10 @@ only confirmed ratings feed a goal's at-a-glance health: the `health`/
 the calendar can answer -- `duration` (minutes of its events over its
 interval), `count` (how many), `time_constraint` (when the day's events
 start or end), `time_window` (whether one of them falls in a window of
-the day) and `rollup` (its immediate sub-goals' confirmed ratings that day) --
-each with a one-line `explanation` of how the number was reached. It
+the day) and `rollup` (its immediate sub-goals' confirmed ratings that day),
+or "skip" for any goal, whatever its kind, whose measure's `only_if`
+names a goal with no events that day -- each with a one-line
+`explanation` of how the number was reached. It
 never writes anything. See utilities/goal_measures.py for the specs.
 """
 
@@ -117,6 +119,12 @@ class Assessment:
     def carried(self) -> bool:
         """A subjective rating carried over, rather than given."""
         return bool(self.metrics and self.metrics.get("carried_from"))
+
+    @property
+    def unmet(self) -> bool:
+        """A skip of a day without an event its measure's `only_if`
+        needs."""
+        return self.rating == "skip" and bool(self.metrics and self.metrics.get("only_if"))
 
 
 def band(rating: Rating | None) -> str:
@@ -291,8 +299,9 @@ class GoalHealth:
     def measure(self, day: date | None = None, goal_ids: list[str] | None = None) -> list[Assessment]:
         """Proposed assessments of `day` (default: the last one that's
         over) for the rated goals whose measure the calendar can answer:
-        duration, count, time_constraint, time_window, and rollups whose rated sub-goals all
-        have a confirmed rating that day. Writes nothing. Raises
+        duration, count, time_constraint, time_window, rollups whose rated
+        sub-goals all have a confirmed rating that day, and any whose
+        `only_if` isn't met (a skip). Writes nothing. Raises
         utilities/sleep_days.py's NotOver or MissingSleep (both ValueErrors)
         if the day isn't over, or the sleeps that bound it aren't in the
         calendar."""
@@ -302,7 +311,7 @@ class GoalHealth:
         day = day or self._today() - timedelta(days=1)
         goals = [
             g for g in tree.ordered()
-            if (tree.measure(g.id) or {}).get("kind") in MEASURED_KINDS and (goal_ids is None or g.id in goal_ids)
+            if _measurable(tree.measure(g.id) or {}) and (goal_ids is None or g.id in goal_ids)
         ]
         confirmed = {
             a.goal_id: a
@@ -323,7 +332,7 @@ class GoalHealth:
         tz = self._client.get_time_zone()
         window: tuple[datetime, datetime] | None = None
         events: list[Event] = []
-        if any(m.get("kind") in _EVENT_KINDS for m in measures):
+        if any(m.get("kind") in _EVENT_KINDS or isinstance(m.get("only_if"), dict) for m in measures):
             # With the sleeps that bound the day, which runs from waking to
             # waking -- see utilities/sleep_days.py -- and as far back as
             # the longest look back.
@@ -335,6 +344,10 @@ class GoalHealth:
         proposals: list[Assessment | None] = []
         for goal, measure in zip(goals, measures):
             kind = measure.get("kind")
+            condition = measure.get("only_if")
+            if isinstance(condition, dict) and window is not None and not _met(goal, condition, window, events, tree):
+                proposals.append(_unmet(goal, condition, day, kind, tree))
+                continue
             if kind == "rollup":
                 measured = _rollup(goal, measure, tree, confirmed)
             elif kind in _MEASURES and window is not None:
@@ -487,6 +500,38 @@ def _health_of(confirmed: list[Assessment], today: date) -> tuple[int | None, st
 # -- measures ----------------------------------------------------------------
 
 Measured = tuple[Rating, str, dict[str, Any]]
+
+
+def _measurable(measure: dict[str, Any]) -> bool:
+    """Whether `measure` can propose anything from the calendar: on some
+    days, at least, for one with an `only_if`."""
+    return measure.get("kind") in MEASURED_KINDS or isinstance(measure.get("only_if"), dict)
+
+
+def _met(
+    goal: Goal, condition: dict[str, Any], window: tuple[datetime, datetime], events: list[Event], tree: GoalTree
+) -> bool:
+    """Whether the day (`window`) has an event of the goal a measure's
+    `only_if` names -- see utilities/goal_measures.py."""
+    start, end = window
+    return any(e.start < end and e.end > start for e in _served(events, goal, condition, tree))
+
+
+def _unmet(goal: Goal, condition: dict[str, Any], day: date, kind: str | None, tree: GoalTree) -> Assessment:
+    """The skip proposed for a day without an event its `only_if` needs."""
+    source = condition["events_of"] if condition.get("events_of") in tree.by_id else goal.id
+    return Assessment(
+        goal_id=goal.id,
+        day=day,
+        rating="skip",
+        method=_METHODS.get(kind, "metric"),
+        explanation=f"No events of {tree.by_id[source].name} that day → skip",
+        metrics={"only_if": source},
+    )
+
+
+_METHODS: dict[str | None, Method] = {"rollup": "rollup", "subjective": "subjective", "llm": "llm"}
+"""Each kind's assessment method, but for the metric ones."""
 
 
 def _look_back(measure: dict[str, Any]) -> timedelta:

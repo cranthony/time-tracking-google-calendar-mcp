@@ -705,7 +705,13 @@ def create_goal(goal: Goal) -> GoalList:
     that goal and its sub-goals instead, as though it were that goal (e.g.
     a "work 40 hours a week" sub-goal measuring its parent's events,
     without tagging any event with it); with "include_sub_goals": false,
-    at just that goal's own events, not its sub-goals'."""
+    at just that goal's own events, not its sub-goals'. Any measure can
+    also take "only_if": {"events_of": "<goal id>", "include_sub_goals":
+    true} (both optional, meaning the same; {} is the goal itself and its
+    sub-goals): it's rated only on days with such an event, and skipped on
+    the rest without asking its prompt -- e.g. "How did practice go?" only
+    on days of practice. A subjective measure's interval passes over those
+    skipped days."""
     with track("create_goal"), cached_sheet_reads():
         _prefetch(get_goal_store(), get_compaction_journal())
         try:
