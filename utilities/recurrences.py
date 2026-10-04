@@ -5,7 +5,11 @@ after it can be edited apart from those before.
 Google Calendar keeps a recurring series as one *master* event, whose
 `recurrence` holds its RFC 5545 rules ("RRULE:FREQ=WEEKLY;BYDAY=MO"), and
 whose instances each carry the master's id as their `recurring_event_id`.
-Editing the master edits every instance that hasn't been edited on its own.
+Editing the master edits every instance -- including one edited on its
+own (an exception), whose fields other than its times are all reset to
+the master's, even those the edit doesn't set; an edit to the master's
+start/end resets the exception's times too. Found with
+probe_series_edits.py.
 
 Splitting ("this and following events") follows Google's own recipe --
 https://developers.google.com/workspace/calendar/api/guides/recurringevents#modifying_all_following_instances

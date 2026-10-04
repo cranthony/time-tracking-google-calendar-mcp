@@ -169,6 +169,9 @@ class Event:
     """For a recurring series' master event, its rules: RFC 5545 lines such
     as "RRULE:FREQ=WEEKLY;BYDAY=MO,WE", "EXDATE:..." or "RDATE:...". `None`
     for a single event or an instance -- see `utilities/recurrences.py`.
+    The master's other fields are its instances' too: patching the
+    master (`update_event`) resets every instance to them, except for
+    instances' own times when the patch leaves start/end out.
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#recurrence
     for more information."""
 
@@ -757,6 +760,18 @@ class CalendarClient:
 
     @requires_write_lock
     def update_event(self, event: Event) -> Event:
+        """Patch the event `event.id` with `event`'s fields that are set;
+        those left `None` are kept, and extended properties not in the
+        body are kept too (Google merges extendedProperties.private).
+
+        `event.id` may be a recurring series' master: the patch then
+        reaches every instance, including ones edited on their own
+        (exceptions), whose fields other than their times are all reset
+        to the master's -- even fields the patch doesn't set, such as an
+        instance's own priority, goal_ids or description. A patch with
+        `start`/`end` resets the exceptions' times too, moving every
+        instance onto the series' times. Found with
+        probe_series_edits.py."""
         if not event.id:
             raise ValueError("event.id is required to update an event")
         body = event.to_api_body()
