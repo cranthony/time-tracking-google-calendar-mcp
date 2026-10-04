@@ -150,8 +150,10 @@ class Event:
 
     status: str | None = None
     """One of "confirmed", "tentative", or "cancelled". A cancelled event
-    isn't removed from a calendar's results — it's returned with this
-    status. An instance of a recurring event should never be deleted --
+    is left out of `list_events` unless it's asked for them
+    (`show_deleted`); it's then returned with this status, usually keeping
+    its summary, times and label -- but an instance a series edit took
+    away comes back as just "CANCELLED", with neither. An instance of a recurring event should never be deleted --
     set its status to "cancelled" instead.
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#status
     for more information."""
