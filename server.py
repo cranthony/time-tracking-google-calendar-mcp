@@ -1019,11 +1019,12 @@ def compact_notes(
     of the day around it in the same plan. Moving the end-of-day sleep
     event moves where the day ends: an earlier bedtime shortens or cancels
     whatever no longer fits before it, a later one leaves the evening
-    free. Its end (the wake-up time) starts the next day: if that day is
-    being compacted too, a 'keep' moving it is that day's, checked against
-    its morning; if not, compaction never adjusts the next day -- so move
-    only its start to change only the bedtime, and if the wake-up time does
-    change, the plan warns; tell the user.
+    free. Its end (the wake-up time) is the border with the next day: a
+    note ending it moves the border there. If that day is being compacted
+    too, its morning is settled against the night; if not, compaction
+    never adjusts the next day -- so move only its start to change only the
+    bedtime, and if the wake-up time does change, the plan warns; tell the
+    user. Cancelling a night (no sleep) makes its two days one.
 
     Step 3: only after the user has explicitly approved this specific plan,
     having seen it -- never in the same turn as the dry run, and a request
