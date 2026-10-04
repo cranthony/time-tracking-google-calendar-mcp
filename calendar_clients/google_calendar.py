@@ -170,7 +170,7 @@ class Event:
     as "RRULE:FREQ=WEEKLY;BYDAY=MO,WE", "EXDATE:..." or "RDATE:...". `None`
     for a single event or an instance -- see `utilities/recurrences.py`.
     The master's other fields are its instances' too: patching the
-    master (`update_event`) resets every instance to them, but for
+    master (`update_event`) resets every instance to them, except for
     instances' own times when the patch leaves start/end out.
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#recurrence
     for more information."""
