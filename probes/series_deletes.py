@@ -30,7 +30,17 @@ step, so you can look at the series in the Google Calendar UI too.
 Usage:
     python -m probes.series_deletes [--pause] [--keep] [--raw]
 
-Found: not yet run.
+Found (2026-10-04):
+
+- Ending a series early (UNTIL just before an event) removes every
+  instance from that event on outright -- not cancelled, but gone, even
+  with showDeleted. Exceptions go too, by their original start: the one
+  described, the one moved later, and the one moved to before the cut
+  (its original start was after it). Instances before the cut, the one
+  moved an hour among them, are left as they were.
+- Cancelling the master cancels every instance, past ones and exceptions
+  included: with showDeleted all six are listed, cancelled; without it,
+  none is.
 """
 
 from __future__ import annotations

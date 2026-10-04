@@ -11,11 +11,13 @@ the master's, even those the edit doesn't set; an edit to the master's
 start/end resets the exception's times too. Found with
 probes/series_edits.py.
 
-Deleting a series cancels its master, which cancels every instance;
-deleting from one of its events on ("this and following events") ends
-the series just before that event, as splitting does below, but makes
-no copy -- so it too works on any rules, and its later instances,
-exceptions included, are dropped.
+Deleting a series cancels its master, which cancels every instance,
+past ones and exceptions included; deleting from one of its events on
+("this and following events") ends the series just before that event,
+as splitting does below, but makes no copy -- so it too works on any
+rules. Its instances from that event on are then gone, not cancelled,
+exceptions included (by their original start, even one moved to before
+the event). Found with probes/series_deletes.py.
 
 Splitting ("this and following events") follows Google's own recipe --
 https://developers.google.com/workspace/calendar/api/guides/recurringevents#modifying_all_following_instances

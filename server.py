@@ -620,10 +620,14 @@ def split_recurrence(event_id: str) -> list[PublicRecurrence]:
 @writes
 def delete_recurrence(id: str, starting_at_event_id: str | None = None) -> list[PublicRecurrence]:
     """Delete a recurring series (id is its id, or any of its events'):
-    every one of its events, including any edited on their own. Or, with
-    starting_at_event_id, delete that event and the ones after it only
-    ("this and following"): the series is ended just before it, and the
-    events before it are kept as they are. To delete one event of a
+    every one of its events, past ones and any edited on their own
+    included -- each is then cancelled, as delete_event leaves one. Or,
+    with starting_at_event_id, delete that event and the ones after it
+    only ("this and following"): the series is ended just before it, so
+    those events are gone rather than cancelled (an event edited on its
+    own goes by where the series first put it), and the events before it
+    are kept as they are. To stop a series that's already begun without
+    losing its past events, delete from its next event on. To delete one event of a
     series, use delete_event with that event's id instead. Returns what's
     left of the series: nothing if it was deleted whole (or from its
     first event on), else the series, now ending before the event."""
