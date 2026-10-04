@@ -313,7 +313,7 @@ class TestConfirmAndCache:
 
         listed = next(g for g in store.get_goals().goals if g.id == cooking.id)
         assert listed.health is None
-        assert listed.stale_days == 0  # created today: none of its days has ended yet
+        assert listed.stale_days is None  # never confirmed
 
     def test_stale_days_count_ended_days_since_the_last_rated_one(self):
         health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL), Goal(name="Folder")])

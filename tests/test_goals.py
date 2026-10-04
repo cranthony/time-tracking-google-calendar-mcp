@@ -79,7 +79,6 @@ class TestMigration:
             ("Cooking", "l1", "#111111", True, None),
             ("cooking (2)", "l3", "#333333", True, None),
         ]
-        assert migrated[0].created == _TODAY
         assert len(migrated[0].id) == 6
         assert calendar.writes == 0  # migrating changes no labels
 
@@ -135,7 +134,7 @@ class TestCreateGoal:
         result = goals.create_goal(Goal(name="Cooking", priority=1))
 
         cooking = _by_name(goals)["Cooking"]
-        assert len(cooking.id) == 6 and cooking.active is True and cooking.created == _TODAY
+        assert len(cooking.id) == 6 and cooking.active is True
         assert cooking.label_id == str(goals_module.uuid.uuid5(goals_module._LABEL_ID_NAMESPACE, cooking.id))
         assert calendar.named() == {cooking.label_id: ("Cooking", _PRIORITY_1_COLOR)}
         assert _UNNAMED in calendar.labels
@@ -146,10 +145,11 @@ class TestCreateGoal:
     def test_ignores_read_only_fields(self):
         goals, _, _ = _goals()
 
-        goals.create_goal(Goal(id="mine", label_id="mine", created=date(2000, 1, 1), name="Cooking"))
+        goals.create_goal(Goal(id="mine", label_id="mine", health=50, name="Cooking"))
 
         cooking = _by_name(goals)["Cooking"]
-        assert (cooking.id, cooking.label_id, cooking.created) != ("mine", "mine", date(2000, 1, 1))
+        assert cooking.health is None
+        assert cooking.id != "mine" and cooking.label_id != "mine"
 
     def test_a_sub_goal_takes_its_color_from_an_ancestors_priority(self):
         goals, calendar, _ = _goals()
@@ -350,10 +350,10 @@ class TestUpdateGoal:
         goals.create_goal(Goal(name="Cooking"))
         cooking = _by_name(goals)["Cooking"]
 
-        goals.update_goal(Goal(id=cooking.id, label_id="other", created=date(2000, 1, 1), note="hi"))
+        goals.update_goal(Goal(id=cooking.id, label_id="other", health=50, note="hi"))
 
         updated = _by_name(goals)["Cooking"]
-        assert (updated.label_id, updated.created, updated.note) == (cooking.label_id, _TODAY, "hi")
+        assert (updated.label_id, updated.health, updated.note) == (cooking.label_id, None, "hi")
 
     def test_refuses_a_cycle(self):
         goals, _, _ = _goals()

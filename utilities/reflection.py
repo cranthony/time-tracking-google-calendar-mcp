@@ -165,8 +165,8 @@ class ReflectionContext:
     last completed one -- and nothing else is filled in."""
 
     older_unreflected: int = 0
-    """Days not reflected on before `choices`, within the last 12 (and
-    since the first goal was created), not offered."""
+    """Days not reflected on before `choices`, within the last 12, not
+    offered."""
 
     journal: str | None = None
     """The journal recorded with it, if so."""
@@ -360,8 +360,6 @@ class Reflections:
         tz = now.tzinfo
         completed = self._health.today() - timedelta(days=1)
         first = completed - timedelta(days=_LOOKBACK_DAYS - 1)
-        created = [g.created for g in tree.goals if g.created and g.status != "deleted"]
-        first = max(first, min(created)) if created else completed
         reflections = {
             d: r for d, health_day in self._health.read_days(first, completed + timedelta(days=1)).items()
             if (r := health_day.reflection) is not None
