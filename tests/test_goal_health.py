@@ -220,6 +220,37 @@ class TestRecordAssessments:
         assert recorded.rating == 80
 
 
+class TestChangedRatings:
+    """A rating changed from the one proposed loses the explanation of the
+    one proposed."""
+
+    @pytest.mark.parametrize(
+        "rating, explanation, rationale, kept",
+        [
+            (33, "Mean of 3 sub-goals (0, 0, 100) → 33", None, "Mean of 3 sub-goals (0, 0, 100) → 33"),
+            (90, "Mean of 3 sub-goals (0, 0, 100) → 33", "Lots of app work", "Lots of app work"),
+            (90, "Mean of 3 sub-goals (0, 0, 100) → 33", None, "Changed from 33"),
+            ("skip", "1h of 2h in the day → 50", "Sick", "Sick"),
+            (50, "No events of Piano that day → skip", None, "Changed from skip"),
+            (60, "Carried over from 2026-09-29", None, "Carried over from 2026-09-29"),
+            (60, None, "Felt fine", None),
+        ],
+    )
+    def test_its_explanation_is_replaced_by_the_reason(self, rating, explanation, rationale, kept):
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
+        cooking = goals["Cooking"]
+        metrics = {"minutes": 60}
+
+        (recorded,) = health.record_assessments(
+            [_assessment(cooking, "2026-10-01", rating, explanation=explanation, rationale=rationale, metrics=metrics)]
+        )
+
+        assert recorded.explanation == kept
+        assert recorded.metrics == metrics
+        (stored,) = health.read(date(2026, 10, 1), date(2026, 10, 2))
+        assert stored.explanation == kept
+
+
 class TestHistory:
     def test_lists_a_goals_assessments_by_day_defaulting_to_the_last_12_days(self):
         health, _, _, goals = _setup([Goal(name="Cooking", measure=_FEEL), Goal(name="Reading", measure=_FEEL)])
