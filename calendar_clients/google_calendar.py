@@ -659,6 +659,33 @@ class CalendarClient:
                 raise
         return self._service.events().patch(calendarId=self._calendar_id, eventId=event_id, body=body).execute()
 
+    @requires_write_lock
+    def replace_event_resource(self, event_id: str, body: dict) -> dict:
+        """Like `upsert_event_resource`, but an existing event is replaced
+        by `body` in full (an update, not a patch), so no field or
+        extended property it no longer has is left behind -- and, given
+        "status": "confirmed", one deleted before comes back."""
+        try:
+            return self._service.events().insert(calendarId=self._calendar_id, body={**body, "id": event_id}).execute()
+        except HttpError as exc:
+            if exc.resp.status != 409:
+                raise
+        return (
+            self._service.events()
+            .update(calendarId=self._calendar_id, eventId=event_id, body={**body, "id": event_id})
+            .execute()
+        )
+
+    @requires_write_lock
+    def delete_event_resource(self, event_id: str) -> None:
+        """Delete the event `event_id`, if it's there: one already gone (or
+        never made) is fine."""
+        try:
+            self._service.events().delete(calendarId=self._calendar_id, eventId=event_id).execute()
+        except HttpError as exc:
+            if exc.resp.status not in (404, 410):
+                raise
+
     @classmethod
     def from_credentials(
         cls,
