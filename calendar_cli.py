@@ -70,8 +70,7 @@ Usage:
   `status=inactive` (or completed, archived, deleted, proposed) frees the
   goal's label but keeps its history; `status=active` restores it.
   `sync_goals` applies hand edits to the Goals tab to the calendar's
-  labels. `measure` is JSON (e.g. `measure={"kind":"duration"}`) and
-  `deadline` an ISO date. See docs/goals-design.md.
+  labels. `measure` is JSON (e.g. `measure={"kind":"duration"}`). See docs/goals-design.md.
 - `note` records a new uncompacted time note -- `ago` is required, and
   (like `list`'s `from`/`to` above) a pytimeparse duration (e.g. "1h",
   "90m", "0s" for right now) giving how long before *now* this note is
@@ -101,7 +100,7 @@ import dataclasses
 import json
 import sys
 from collections.abc import Callable
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytimeparse
@@ -211,8 +210,6 @@ _GOAL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "priority": int,
     "fixed_time": _parse_bool,
     "measure": json.loads,
-    "target": str,
-    "deadline": date.fromisoformat,
     "note": str,
 }
 """Every utilities.goal_sheet.Goal attribute create_goal/update_goal may

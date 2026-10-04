@@ -63,27 +63,6 @@ class SheetsClient:
         return spreadsheet["spreadsheetId"]
 
     @requires_write_lock
-    def rename_spreadsheet(self, spreadsheet_id: str, title: str) -> None:
-        """Rename `spreadsheet_id` itself (its document title, e.g. what
-        shows up in Drive and the browser tab) -- not any one tab within
-        it; see `update_sheet_properties` for that."""
-        _execute(
-            self._sheets_service.spreadsheets().batchUpdate(
-                spreadsheetId=spreadsheet_id,
-                body={
-                    "requests": [
-                        {
-                            "updateSpreadsheetProperties": {
-                                "properties": {"title": title},
-                                "fields": "title",
-                            }
-                        }
-                    ]
-                },
-            )
-        )
-
-    @requires_write_lock
     def add_sheet(
         self, spreadsheet_id: str, title: str, *, tab_color: dict[str, float] | None = None
     ) -> int:

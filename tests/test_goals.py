@@ -327,13 +327,13 @@ class TestUpdateGoal:
         goals, _, _ = _goals()
         goals.create_goal(Goal(name="Cooking"))
         parent = _by_name(goals)["Cooking"]
-        goals.create_goal(Goal(name="Tofu", parent_id=parent.id, target="weekly", note="soon"))
+        goals.create_goal(Goal(name="Tofu", parent_id=parent.id, priority=2, note="soon"))
         tofu = _by_name(goals)["Tofu"]
 
-        goals.update_goal(Goal(id=tofu.id), ["parent_id", "target", "note"])
+        goals.update_goal(Goal(id=tofu.id), ["parent_id", "priority", "note"])
 
         tofu = _by_name(goals)["Tofu"]
-        assert (tofu.parent_id, tofu.target, tofu.note) == (None, None, None)
+        assert (tofu.parent_id, tofu.priority, tofu.note) == (None, None, None)
 
     def test_read_only_fields_are_left_alone(self):
         goals, _, _ = _goals()

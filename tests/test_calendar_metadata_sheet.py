@@ -1,10 +1,9 @@
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from utilities import calendar_metadata_sheet
 from utilities.calendar_metadata_sheet import ensure_spreadsheet, ensure_tab
 
 _NEW_KEY = "calendar-metadata-spreadsheet-id"
-_LEGACY_KEY = "event-label-sheet-id"
 
 
 class TestEnsureSpreadsheet:
@@ -18,27 +17,7 @@ class TestEnsureSpreadsheet:
         assert (spreadsheet_id, is_new) == ("sheet-1", False)
         calendar_client.get_calendar_metadata.assert_called_once_with(_NEW_KEY)
         sheets_client.create_spreadsheet.assert_not_called()
-        sheets_client.rename_spreadsheet.assert_not_called()
         calendar_client.set_calendar_metadata.assert_not_called()
-
-    def test_adopts_a_legacy_spreadsheet_when_present(self):
-        calendar_client = MagicMock()
-        calendar_client.get_calendar_metadata.side_effect = lambda key: {
-            _NEW_KEY: None,
-            _LEGACY_KEY: "legacy-sheet",
-        }[key]
-        sheets_client = MagicMock()
-
-        spreadsheet_id, is_new = ensure_spreadsheet(calendar_client, sheets_client)
-
-        assert (spreadsheet_id, is_new) == ("legacy-sheet", False)
-        sheets_client.rename_spreadsheet.assert_called_once_with(
-            "legacy-sheet", calendar_metadata_sheet.SPREADSHEET_TITLE
-        )
-        sheets_client.create_spreadsheet.assert_not_called()
-        calendar_client.set_calendar_metadata.assert_has_calls(
-            [call(_NEW_KEY, "legacy-sheet"), call(_LEGACY_KEY, None)]
-        )
 
     def test_creates_a_new_spreadsheet_when_nothing_is_tracked(self):
         calendar_client = MagicMock()
@@ -51,7 +30,6 @@ class TestEnsureSpreadsheet:
         assert (spreadsheet_id, is_new) == ("new-sheet", True)
         sheets_client.create_spreadsheet.assert_called_once_with(calendar_metadata_sheet.SPREADSHEET_TITLE)
         calendar_client.set_calendar_metadata.assert_called_once_with(_NEW_KEY, "new-sheet")
-        sheets_client.rename_spreadsheet.assert_not_called()
 
 
 class TestEnsureTab:

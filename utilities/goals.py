@@ -58,7 +58,7 @@ _ID_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 _ID_LENGTH = 6
 
 CLEARABLE_FIELDS = frozenset(
-    {"parent_id", "background_color", "priority", "fixed_time", "measure", "target", "deadline", "note"}
+    {"parent_id", "background_color", "priority", "fixed_time", "measure", "note"}
 )
 """Goal fields `update_goal` can blank. Not `name`/`status` (always
 needed) nor the read-only `id`/`label_id`/`created`."""
@@ -586,12 +586,8 @@ def _stale_days(goal: Goal, tree: GoalTree, today: date) -> int | None:
     """See ListedGoal.stale_days. `today` hasn't ended, so isn't counted."""
     if not tree.rated(goal.id):
         return None
-    try:
-        latest = date.fromisoformat(goal.health_period) if goal.health_period else None
-    except ValueError:
-        latest = None  # Rated over a week or month, before goals were rated daily.
-    if latest is not None:
-        first = latest + timedelta(days=1)
+    if goal.health_period:
+        first = date.fromisoformat(goal.health_period) + timedelta(days=1)
     elif goal.created is not None:
         first = goal.created
     else:

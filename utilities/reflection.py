@@ -92,8 +92,6 @@ class DueGoal:
     """How it's rated: its own measure, or, without one, the mean of its
     sub-goals'."""
 
-    target: str | None = None
-    deadline: date | None = None
     note: str | None = None
     ask: str | None = None
     """For a subjective goal due to be asked: its prompt. Ask it."""
@@ -273,8 +271,6 @@ class Reflections:
                     goal_id=goal.id,
                     path=tree.path(goal.id),
                     measure=measure,
-                    target=goal.target,
-                    deadline=goal.deadline,
                     note=goal.note,
                     ask=ask,
                     recent=[

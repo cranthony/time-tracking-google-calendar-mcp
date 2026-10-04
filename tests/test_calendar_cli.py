@@ -132,11 +132,6 @@ class TestParseGoalKeyValue:
             {"kind": "duration"},
         )
 
-    def test_parses_deadline_as_a_date(self):
-        from datetime import date
-
-        assert calendar_cli._parse_goal_key_value("deadline=2026-12-31") == ("deadline", date(2026, 12, 31))
-
     def test_raises_on_read_only_attributes(self):
         for key in ("id", "label_id", "created"):
             with pytest.raises(argparse.ArgumentTypeError):

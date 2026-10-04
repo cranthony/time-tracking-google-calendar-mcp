@@ -150,7 +150,7 @@ class TestRecordAssessments:
         assert (item["start"], item["end"]) == ({"date": "2026-10-01"}, {"date": "2026-10-02"})
         assert item["transparency"] == "transparent"
         properties = item["extendedProperties"]["private"]
-        assert properties["cascading-time-tracker-cadence"] == "daily"
+        assert "cascading-time-tracker-cadence" not in properties
         assert properties["cascading-time-tracker-period"] == "2026-10-01"
 
     def test_recording_a_day_again_replaces_it(self):
@@ -219,21 +219,6 @@ class TestHistory:
         assert [(a.day, a.rating) for a in history] == [(YESTERDAY - timedelta(days=1), 60), (YESTERDAY, 90)]
         everything = health.history([cooking.id], start=old)
         assert [a.rating for a in everything] == [10, 60, 90]
-
-    def test_ignores_assessments_at_cadences_goals_no_longer_have(self):
-        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
-        health.record_assessments([_assessment(goals["Cooking"], YESTERDAY, 90)])
-        (item,) = calendar.health_events.values()
-        calendar.health_events["weekly"] = {
-            **item,
-            "extendedProperties": {"private": {
-                **item["extendedProperties"]["private"],
-                "cascading-time-tracker-cadence": "weekly",
-                "cascading-time-tracker-period": "week-2026-09-27",
-            }},
-        }
-
-        assert [a.rating for a in health.history([goals["Cooking"].id])] == [90]
 
     def test_is_empty_before_anything_is_recorded_without_creating_the_calendar(self):
         health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
@@ -454,20 +439,6 @@ class TestMeasureDurationAndCount:
             store.update_goal(
                 Goal(id=goals["Work"].id, measure={"kind": "duration", "target_min": 60, "events_of": "nope"})
             )
-
-    def test_a_measure_from_before_events_of_still_counts_its_goal_ids(self):
-        health, store, calendar, goals = _setup([Goal(name="Cooking"), Goal(name="Hosting")])
-        cooking, hosting = goals["Cooking"], goals["Hosting"]
-        saved = store.tree().goals
-        next(g for g in saved if g.id == cooking.id).measure = {
-            "kind": "duration", "target_min": 300, "goal_ids": [hosting.id],
-        }
-        store._sheet.write(saved)
-        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T19:00", [hosting.id])]
-
-        (cooked,) = health.measure(goal_ids=[cooking.id])
-
-        assert cooked.metrics["minutes"] == 60
 
     def test_a_measure_can_leave_out_sub_goals_events(self):
         health, store, calendar, goals = _setup([Goal(name="Cooking")])

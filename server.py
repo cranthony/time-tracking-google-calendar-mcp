@@ -689,7 +689,7 @@ def create_goal(goal: Goal) -> GoalList:
             raise ToolError(str(exc)) from exc
 
 
-GoalField = Literal["parent_id", "background_color", "priority", "fixed_time", "measure", "target", "deadline", "note"]
+GoalField = Literal["parent_id", "background_color", "priority", "fixed_time", "measure", "note"]
 """Every Goal field update_goal can clear (see utilities/goals.py's
 CLEARABLE_FIELDS)."""
 
@@ -708,7 +708,7 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
     history, and making it active again restores the label, and its past
     events' color with it. A new measure replaces the old one whole, and
     is checked as for create_goal. The overall goal (id "overall") can be
-    given a name, measure, target, deadline or note, but stays active and
+    given a name, measure or note, but stays active and
     has no parent; no goal can name it as its parent, since every
     top-level goal is already under it. Returns the resulting proposed,
     active and inactive goals."""

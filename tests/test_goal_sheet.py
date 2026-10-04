@@ -23,8 +23,6 @@ def _full_goal() -> Goal:
         priority=2,
         fixed_time=True,
         measure={"kind": "duration", "target_min": 300},
-        target="300 min/week",
-        deadline=date(2026, 12, 31),
         note="for hosting",
         label_id="5b0e5b1e-0000-0000-0000-000000000000",
         created=date(2026, 10, 2),
@@ -44,7 +42,7 @@ class TestGoalSheet:
         cells = dict(zip(HEADER_ROW, row))
         assert cells["status"] == "inactive"
         assert cells["measure"] == '{"kind":"duration","target_min":300}'
-        assert cells["deadline"] == "2026-12-31"
+        assert cells["created"] == "2026-10-02"
 
     def test_is_tagged_and_found_again(self):
         sheet, sheets = _sheet()
@@ -76,22 +74,23 @@ class TestGoalSheet:
         assert [g.id for g in sheet.read()] == ["a"]
         assert sheets.cell(1, "A4") == ""
 
-    def test_reads_a_tab_from_before_statuses_and_keeps_its_column_in_step(self):
+    def test_removes_retired_columns_on_write_shifting_the_rest_left(self):
         sheets = FakeSheets()
         sheet = GoalSheet.create(sheets, _SPREADSHEET, [])
-        sheets.write_rows_in_sheet(_SPREADSHEET, 1, "A1:N1", [["id", "name", "active", "label_id"] + [""] * 10])
-        sheets.write_rows_in_sheet(_SPREADSHEET, 1, "A2:D3", [["a", "A", "TRUE", "la"], ["b", "B", "FALSE", "lb"]])
+        header = ["id", "name", "target", "status", "label_id", "deadline", "active", "mine"]
+        sheets.write_rows_in_sheet(_SPREADSHEET, 1, "A1:Z1", [header + [""] * 18])
+        sheets.write_rows_in_sheet(
+            _SPREADSHEET, 1, "A2:H2", [["a", "A", "weekly", "active", "la", "2026-12-31", "TRUE", "kept"]]
+        )
 
-        assert [(g.id, g.status) for g in sheet.read()] == [("a", "active"), ("b", "inactive")]
+        (a,) = sheet.read()
+        sheet.write([a])
 
-        a, b = sheet.read()
-        b.status = "completed"
-        sheet.write([a, b])
-
-        header = sheet._read_header_and_data()[0]
-        assert "status" in header  # added, beside the old column
-        row = dict(zip(header, sheets.read_rows_in_sheet(_SPREADSHEET, 1, "A3:Z3")[0]))
-        assert (row["status"], row["active"]) == ("completed", "FALSE")
+        rows = sheets.read_rows_in_sheet(_SPREADSHEET, 1, "A1:Z2")
+        # Nothing left after them: the cells they shifted from are blank.
+        assert rows[0] == ["id", "name", "status", "label_id", "mine"]
+        assert rows[1] == ["a", "A", "active", "la", "kept"]
+        assert sheet.read() == [a]
 
     def test_refuses_a_header_missing_required_columns(self):
         sheet, sheets = _sheet()
