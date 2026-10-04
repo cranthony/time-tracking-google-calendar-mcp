@@ -43,7 +43,6 @@ never writes anything. See utilities/goal_measures.py for the specs.
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Callable
 from datetime import date, datetime, time, timedelta
 from typing import Any
@@ -62,7 +61,9 @@ from utilities.health_days import (
     Rating,
     Status,
     band,
+    explanation_of,
 )
+from utilities.health_summary import day_summary
 from utilities.sleep_days import current_day_from, listing_range, period_window
 
 __all__ = ["Assessment", "DayReflection", "GoalHealth", "HealthDay", "band", "day_period"]
@@ -189,9 +190,9 @@ class GoalHealth:
         days = sorted({a.day for a in assessments} | set(reflect))
         if not days:
             return []
-        existing = self.read_days(days[0], days[-1] + timedelta(days=1))
+        # From the day before, for the summary's changes since.
+        existing = self.read_days(days[0] - timedelta(days=1), days[-1] + timedelta(days=1))
         order = {g.id: i for i, g in enumerate(tree.ordered())}
-        names = {g.id: tree.path(g.id) for g in tree.goals}
         written = []
         for day in days:
             current = existing.get(day) or HealthDay(day=day)
@@ -209,9 +210,10 @@ class GoalHealth:
                     written.append(merged[assessment.goal_id])
             ordered = dict(sorted(merged.items(), key=lambda item: (order.get(item[0], len(order)), item[0])))
             reflection = reflect[day](current.reflection) if day in reflect else current.reflection
-            self._days.write(
+            before = existing.get(day - timedelta(days=1))
+            existing[day] = self._days.write(
                 HealthDay(day=day, assessments=ordered, reflection=reflection, parts=current.parts),
-                names,
+                day_summary(tree, ordered, before.assessments if before else {}),
                 OVERALL_ID,
             )
         if status == "confirmed":
@@ -402,21 +404,6 @@ class GoalHealth:
 
 def _json(value: Any) -> str:
     return json.dumps(value, separators=(",", ":"), sort_keys=True)
-
-
-_PROPOSED = re.compile(r"→ (\d+|skip)$")
-"""The rating at the end of an explanation `measure` gave."""
-
-
-def explanation_of(assessment: Assessment) -> str | None:
-    """`assessment`'s explanation as recorded -- unless it ends in a
-    rating other than the one given, which was changed from it: then none,
-    since the rationale (the reason for the change) says why, or "Changed
-    from <rating>" if there's no rationale."""
-    proposed = _PROPOSED.search(assessment.explanation or "")
-    if proposed is None or proposed.group(1) == str(assessment.rating):
-        return assessment.explanation
-    return None if assessment.rationale else f"Changed from {proposed.group(1)}"
 
 
 def _health_of(confirmed: list[Assessment], today: date) -> tuple[int | None, str | None, str | None]:

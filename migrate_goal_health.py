@@ -33,6 +33,7 @@ from calendar_clients.write_lock import WRITE_LOCK
 from utilities.goal_health import GoalHealth
 from utilities.goals import OVERALL_ID, GoalTree
 from utilities.health_days import PREFIX, Assessment, DayReflection, HealthDay, HealthDays, decode
+from utilities.health_summary import day_summary
 
 
 @dataclass(kw_only=True)
@@ -100,9 +101,10 @@ def migrate(
         return plan
 
     days = HealthDays(lambda create: calendar)
-    names = {g.id: tree.path(g.id) for g in tree.goals}
     for day, health_day in plan.days.items():
-        written = days.write(health_day, names, OVERALL_ID)
+        before = plan.days.get(day - timedelta(days=1))
+        summary = day_summary(tree, health_day.assessments, before.assessments if before else {})
+        written = days.write(health_day, summary, OVERALL_ID)
         plan.written += written.parts
         read = days.read(day, day + timedelta(days=1), tz).get(day)
         if read is None or read.assessments != health_day.assessments or read.reflection != health_day.reflection:

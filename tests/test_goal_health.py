@@ -131,7 +131,7 @@ class TestBand:
 
 class TestRecordAssessments:
     def test_records_as_proposed_on_a_hidden_calendar_in_the_main_ones_time_zone(self):
-        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL, priority=0)])
         cooking = goals["Cooking"]
 
         (recorded,) = health.record_assessments([_assessment(cooking, "2026-10-01", status="confirmed")])
@@ -145,7 +145,7 @@ class TestRecordAssessments:
         (item,) = calendar.health_events.values()
         assert item["id"] == day_event_id(date(2026, 10, 1), 1)
         assert item["summary"] == "📊 Goal health · 2026-10-01"
-        assert item["description"] == "🟢 80 (proposed) Cooking"
+        assert item["description"] == "Priority 0\n🟢 Cooking ~80"
         assert (item["start"], item["end"]) == ({"date": "2026-10-01"}, {"date": "2026-10-02"})
         assert item["transparency"] == "transparent"
         properties = item["extendedProperties"]["private"]
@@ -153,7 +153,9 @@ class TestRecordAssessments:
         assert f"cascading-time-tracker-a.{cooking.id}" in properties
 
     def test_a_days_assessments_share_one_event_recording_one_again_replacing_it(self):
-        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL), Goal(name="Reading", measure=_FEEL)])
+        health, _, calendar, goals = _setup(
+            [Goal(name="Cooking", measure=_FEEL, priority=1), Goal(name="Reading", measure=_FEEL)]
+        )
         cooking, reading = goals["Cooking"], goals["Reading"]
 
         health.record_assessments([_assessment(cooking, "2026-09-30", rating=50)])
@@ -161,7 +163,8 @@ class TestRecordAssessments:
         health.record_assessments([_assessment(cooking, "2026-09-30", rating="skip", rationale="sick")])
 
         (item,) = calendar.health_events.values()
-        assert item["description"] == "⚪ skipped (proposed) Cooking — sick\n🟢 70 (proposed) Reading"
+        # Only the goals given their own priority are in the description.
+        assert item["description"] == "Priority 1\n⚪ Cooking skipped: sick"
         assert {(a.goal_id, a.rating, a.rationale) for a in health.read(date(2026, 9, 30), date(2026, 10, 1))} == {
             (cooking.id, "skip", "sick"), (reading.id, 70, None)
         }
