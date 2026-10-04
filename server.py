@@ -15,7 +15,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from starlette.middleware.cors import CORSMiddleware
 from starlette.types import ASGIApp
 
-from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError
+from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError, TimeZoneNotSetError
 from calendar_clients.google_sheets import cached_sheet_reads
 from calendar_clients.write_lock import WRITE_LOCK
 from config import (
@@ -483,7 +483,26 @@ def writes(tool: Callable[P, R]) -> Callable[P, R]:
     return locked
 
 
-@mcp.tool()
+def tool(fn: Callable[P, R]) -> Callable[P, R]:
+    """Register `fn` as an MCP tool, like `mcp.tool()`, telling the model
+    how to recover if the calendar has no time zone set (see
+    `CalendarClient.get_time_zone`): set one, then retry."""
+
+    @functools.wraps(fn)
+    def explained(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return fn(*args, **kwargs)
+        except TimeZoneNotSetError as exc:
+            raise ToolError(
+                "The calendar has no time zone set, so its days and times can't be put in the user's local "
+                "time. Call set_time_zone with the user's IANA time zone (e.g. \"America/New_York\"), asking "
+                f"them for it if you don't know it, then call {fn.__name__} again."
+            ) from exc
+
+    return mcp.tool()(explained)
+
+
+@tool
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     """List events between min_time and max_time. goal_ids are the goals
     each event serves, primary first (goal_names gives their names).
@@ -502,7 +521,7 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
         return _public_events([event for event in events if event.status != "cancelled"])
 
 
-@mcp.tool()
+@tool
 def get_event(id: str) -> PublicEvent:
     """Get a single event by its ID. See list_events for its fields."""
     with track("get_event"), cached_sheet_reads():
@@ -512,7 +531,7 @@ def get_event(id: str) -> PublicEvent:
         return _public_events([event])[0]
 
 
-@mcp.tool()
+@tool
 @writes
 def update_event(event: PublicEvent) -> list[PublicEvent]:
     """Update an existing event, reallocating time from the rest of its
@@ -531,7 +550,7 @@ def update_event(event: PublicEvent) -> list[PublicEvent]:
         return _public_events(applied)
 
 
-@mcp.tool()
+@tool
 def get_recurrence(id: str) -> PublicRecurrence:
     """A recurring series, by its id or the id of any of its events (an
     event's recurring_event_id is its series' id). See PublicRecurrence
@@ -543,7 +562,7 @@ def get_recurrence(id: str) -> PublicRecurrence:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def update_recurrence(
     recurrence: PublicRecurrence, starting_at_event_id: str | None = None
@@ -567,7 +586,7 @@ def update_recurrence(
         return _public_recurrences(updated)
 
 
-@mcp.tool()
+@tool
 @writes
 def split_recurrence(event_id: str) -> list[PublicRecurrence]:
     """Split the recurring series event_id is one of at that event: the
@@ -584,7 +603,7 @@ def split_recurrence(event_id: str) -> list[PublicRecurrence]:
         return _public_recurrences([later] + ([earlier] if earlier else []))
 
 
-@mcp.tool()
+@tool
 @writes
 def create_event(event: PublicEvent) -> list[PublicEvent]:
     """Create a new event, optionally serving goals (goal_ids, primary
@@ -599,7 +618,7 @@ def create_event(event: PublicEvent) -> list[PublicEvent]:
         return _public_events(applied)
 
 
-@mcp.tool()
+@tool
 @writes
 def delete_event(id: str) -> list[PublicEvent]:
     """Delete an event by its ID. Returns the events affected by the deletion."""
@@ -608,7 +627,7 @@ def delete_event(id: str) -> list[PublicEvent]:
         return _public_events([cancelled])
 
 
-@mcp.tool()
+@tool
 def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
     """The goal tree: the goals with any of these statuses (by default
     proposed, active and inactive -- not completed, archived or deleted
@@ -637,7 +656,7 @@ def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def create_goal(goal: Goal) -> GoalList:
     """Create a goal: a name (at most 50 characters, unique among its
@@ -694,7 +713,7 @@ GoalField = Literal["parent_id", "background_color", "priority", "fixed_time", "
 CLEARABLE_FIELDS)."""
 
 
-@mcp.tool()
+@tool
 @writes
 def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> GoalList:
     """Update a goal by id. Omitted properties keep their current value;
@@ -720,7 +739,7 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def reorder_goals(goal_ids: list[str]) -> GoalList:
     """Put sibling goals (sharing a parent) in this order, among the places
@@ -736,7 +755,7 @@ def reorder_goals(goal_ids: list[str]) -> GoalList:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def sync_goals_from_sheet() -> GoalList:
     """After hand edits to the Goals tab of the calendar metadata
@@ -752,7 +771,7 @@ def sync_goals_from_sheet() -> GoalList:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 def measure_goals(day: date | None = None, goal_ids: list[str] | None = None) -> list[Assessment]:
     """Proposed ratings of one day (from waking on it to waking the next;
     by default the last one that's over) for the goals whose measure the
@@ -767,7 +786,7 @@ def measure_goals(day: date | None = None, goal_ids: list[str] | None = None) ->
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def record_assessments(assessments: list[Assessment]) -> list[Assessment]:
     """Record assessments (a 0-100 rating, or "skip", of a goal for one
@@ -784,7 +803,7 @@ def record_assessments(assessments: list[Assessment]) -> list[Assessment]:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 def get_goal_history(goal_ids: list[str], start: date | None = None, end: date | None = None) -> list[Assessment]:
     """Daily assessments of these goals from start to end (both
     inclusive), proposed and confirmed, by goal then day. By default, the
@@ -796,7 +815,7 @@ def get_goal_history(goal_ids: list[str], start: date | None = None, end: date |
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def rebuild_goal_health_cache() -> GoalList:
     """Recompute every goal's at-a-glance health (health, health_period,
@@ -810,7 +829,7 @@ def rebuild_goal_health_cache() -> GoalList:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 def prepare_reflection(day: date | None = None) -> ReflectionContext:
     """Start (or continue) the daily reflection: rating each goal for one
     day. Days run from waking to waking, bounded by the end-of-day sleep
@@ -833,7 +852,7 @@ def prepare_reflection(day: date | None = None) -> ReflectionContext:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def record_reflection(
     day: date,
@@ -869,7 +888,7 @@ class CompactionStatus:
     """The compacted note with the latest timestamp, if any."""
 
 
-@mcp.tool()
+@tool
 def get_compaction_status() -> CompactionStatus:
     """When notes were last compacted into the calendar, and the latest
     note compacted. Read-only."""
@@ -882,7 +901,7 @@ def get_compaction_status() -> CompactionStatus:
         )
 
 
-@mcp.tool()
+@tool
 @writes
 def note(noted_time: NotedTime) -> NoteWithId:
     """Record a new time note -- a timestamp, with an optional
@@ -894,7 +913,7 @@ def note(noted_time: NotedTime) -> NoteWithId:
         return get_noted_time_sheet().append(recorded).with_id()
 
 
-@mcp.tool()
+@tool
 def get_notes(include_compacted: bool = False) -> list[NoteWithId]:
     """List the recorded time notes, sorted by timestamp, each with the id
     edit_note/delete_note refer to it by. Only notes that haven't been
@@ -907,7 +926,7 @@ def get_notes(include_compacted: bool = False) -> list[NoteWithId]:
         return [n.with_id() for n in sorted(notes, key=lambda n: n.note.timestamp)]
 
 
-@mcp.tool()
+@tool
 @writes
 def edit_note(
     note_id: str, timestamp: datetime | None = None, description: str | None = None
@@ -928,7 +947,7 @@ def edit_note(
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def delete_note(note_id: str) -> NotedTime:
     """Delete an uncompacted note (by its id, from get_notes or
@@ -942,7 +961,7 @@ def delete_note(note_id: str) -> NotedTime:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def prepare_compaction() -> CompactionContext:
     """Step 1 of compacting notes into the calendar. Returns one day's
@@ -955,7 +974,7 @@ def prepare_compaction() -> CompactionContext:
         return get_note_compactor().prepare()
 
 
-@mcp.tool()
+@tool
 @writes
 def compact_notes(
     decisions: list[EventDecision] | None = None,
@@ -1009,7 +1028,7 @@ def compact_notes(
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def abandon_compaction(compaction_id: str) -> CompactionResult:
     """Give up on a compaction that can't be finished (or that you no
@@ -1022,7 +1041,7 @@ def abandon_compaction(compaction_id: str) -> CompactionResult:
             raise ToolError(str(exc)) from exc
 
 
-@mcp.tool()
+@tool
 @writes
 def set_time_zone(time_zone: str) -> str:
     """Set the calendar's time zone to an IANA name, e.g.

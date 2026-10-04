@@ -14,7 +14,7 @@ from starlette.testclient import TestClient
 
 import server
 from calendar_clients import google_sheets
-from calendar_clients.google_calendar import Event, EventLabelConflictError
+from calendar_clients.google_calendar import Event, EventLabelConflictError, TimeZoneNotSetError
 from calendar_clients.write_lock import WRITE_LOCK
 from server import PublicEvent
 from utilities.goal_calendar import GoalCalendar
@@ -1239,6 +1239,14 @@ class TestSetTimeZone:
             server.set_time_zone("Nowhere")
 
         health.health_calendar.assert_not_called()
+
+    def test_any_tool_without_one_asks_for_it_to_be_set_then_retried(self, monkeypatch):
+        reflections = MagicMock()
+        reflections.prepare.side_effect = TimeZoneNotSetError("no time zone")
+        monkeypatch.setattr(server, "get_reflections", lambda: reflections)
+
+        with pytest.raises(ToolError, match="Call set_time_zone .* then call prepare_reflection again"):
+            server.prepare_reflection(date(2026, 9, 20))
 
 
 _READ_ONLY_TOOLS = {

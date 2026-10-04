@@ -11,6 +11,7 @@ from calendar_clients.google_calendar import (
     Event,
     EventLabel,
     EventLabelConflictError,
+    TimeZoneNotSetError,
 )
 from calendar_clients.write_lock import WriteLockNotHeldError
 
@@ -1361,6 +1362,16 @@ class TestCalendarClientGoalHealthCalls:
         assert client.get_time_zone() == ZoneInfo("Europe/Paris")
         assert client.get_time_zone() == ZoneInfo("Europe/Paris")
         service.calendars.return_value.get.assert_called_once()
+
+    def test_a_calendar_without_a_time_zone_is_refused_until_one_is_set(self):
+        service = MagicMock()
+        service.calendars.return_value.get.return_value.execute.side_effect = [{}, {"timeZone": "Europe/Paris"}]
+        client = make_client(service)
+
+        with pytest.raises(TimeZoneNotSetError):
+            client.get_time_zone()
+        # Not remembered: one set in Google Calendar since is picked up.
+        assert client.get_time_zone() == ZoneInfo("Europe/Paris")
 
     def test_sets_the_time_zone_and_remembers_it(self):
         service = MagicMock()
