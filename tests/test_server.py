@@ -1182,16 +1182,55 @@ class TestPublicRecurrence:
         assert public.start.isoformat() == "2026-10-05T09:00:00-04:00"
         assert public.schedule == "Every week on Mon"
         assert public.goal_names == ["Work"]
-        assert public.to_event().recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO"]
+        assert public.repeat == Repeat(every="week", weekdays=["mon"])
 
-    def test_update_recurrence_reports_bad_rules_as_tool_errors(self, monkeypatch):
+    def test_a_series_repeating_in_ways_repeat_cant_say_shows_its_rules_in_schedule(self):
+        rules = ["RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"]
+        series = Event(
+            id="s1",
+            summary="Payroll",
+            start=datetime(2026, 10, 30, 13, tzinfo=timezone.utc),
+            end=datetime(2026, 10, 30, 14, tzinfo=timezone.utc),
+            time_zone="America/New_York",
+            recurrence=rules,
+        )
+
+        public = server.PublicRecurrence.from_event(series, GoalTree([]))
+
+        assert public.repeat is None
+        assert public.schedule == rules[0]
+
+    def test_update_recurrence_passes_the_repeat_along(self, monkeypatch):
         recurrences = MagicMock()
-        recurrences.update.side_effect = ValueError("A series needs exactly one RRULE line")
+        recurrences.update.return_value = []
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+        monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
+        repeat = Repeat(every="day", count=5)
+
+        server.update_recurrence(server.PublicRecurrence(id="s1", repeat=repeat), "s1_x")
+
+        changes, starting_at, passed = recurrences.update.call_args.args
+        assert (changes.id, changes.recurrence, starting_at, passed) == ("s1", None, "s1_x", repeat)
+
+    def test_update_recurrence_reports_a_bad_repeat_as_a_tool_error(self, monkeypatch):
+        recurrences = MagicMock()
+        recurrences.update.side_effect = ValueError("Give count or until, not both")
         monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
         monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
 
-        with pytest.raises(ToolError, match="exactly one RRULE"):
-            server.update_recurrence(server.PublicRecurrence(id="s1", rules=["RRULE:FREQ=DAILY"] * 2))
+        with pytest.raises(ToolError, match="count or until"):
+            server.update_recurrence(
+                server.PublicRecurrence(id="s1", repeat=Repeat(every="day", count=2, until=date(2026, 12, 31)))
+            )
+
+    def test_reads_an_until_date_as_a_date_and_a_datetime_as_a_datetime(self):
+        model = TypeAdapter(server.PublicRecurrence)
+
+        dated = model.validate_python({"id": "s1", "repeat": {"every": "week", "until": "2026-12-31"}})
+        timed = model.validate_python({"id": "s1", "repeat": {"every": "week", "until": "2026-12-31T00:00:00-05:00"}})
+
+        assert dated.repeat.until == date(2026, 12, 31)
+        assert timed.repeat.until == datetime(2026, 12, 31, 5, tzinfo=timezone.utc)
 
 
 class TestSetTimeZone:
