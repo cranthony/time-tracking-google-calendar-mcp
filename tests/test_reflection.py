@@ -40,11 +40,6 @@ def _setup(goals=(), events=(), notes=()):
         if parent is not None and parent not in {g.id for g in store.tree().goals}:
             goal.parent_id = next(g.id for g in store.tree().goals if g.name == parent)
         store.create_goal(goal)
-    # Created long enough ago to have days to reflect on.
-    tree = store.tree()
-    for goal in tree.goals:
-        goal.created = date(2026, 9, 1)
-    store._sheet.write(tree.goals)
     health = GoalHealth(calendar, store, now=lambda: NOW)
     by_name = {g.name: g for g in store.tree().goals}
     return Reflections(health, store, FakeNotes(notes)), health, store, calendar, by_name

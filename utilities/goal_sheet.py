@@ -47,10 +47,10 @@ _WHOLE_RANGE = "A1:Z"
 """Wide enough for every column below plus some a user (or a later
 version) adds; columns are matched by header, not position."""
 
-_RETIRED_COLUMNS = frozenset({"target", "deadline", "cadence", "active"})
+_RETIRED_COLUMNS = frozenset({"target", "deadline", "cadence", "active", "created"})
 """Columns earlier versions wrote -- a free-text target and a deadline,
-which nothing used, a cadence from before every goal was rated daily, and
-the TRUE/FALSE `active` that `status` replaced --
+which nothing used, a cadence from before every goal was rated daily,
+the TRUE/FALSE `active` that `status` replaced, and a `created` date --
 removed from the tab the next time it's written."""
 
 _NARROW_COLUMNS = ("id", "label_id")
@@ -98,9 +98,6 @@ class Goal:
     """Read-only: the calendar label id reserved for this goal, kept even
     while it's inactive so reactivating restores the same label."""
 
-    created: date | None = None
-    """Read-only: when it was created."""
-
     health: int | None = None
     """Read-only cache: its latest confirmed daily rating (0-100) -- see
     utilities/goal_health.py, which keeps these three up to date."""
@@ -128,10 +125,6 @@ class Goal:
             value = text(name)
             return value.lower() == "true" if value is not None else None
 
-        def day(name: str) -> date | None:
-            value = text(name)
-            return date.fromisoformat(value) if value is not None else None
-
         priority, measure, health = text("priority"), text("measure"), text("health")
         status = (text("status") or "").lower() or None
         return cls(
@@ -145,7 +138,6 @@ class Goal:
             measure=json.loads(measure) if measure is not None else None,
             note=text("note"),
             label_id=text("label_id"),
-            created=day("created"),
             health=int(health) if health is not None else None,
             health_period=text("health_period"),
             health_trend=text("health_trend"),
@@ -202,7 +194,6 @@ HEADER_ROW = [
     "priority",
     "fixed_time",
     "measure",
-    "created",
     "note",
     "health",
     "health_period",

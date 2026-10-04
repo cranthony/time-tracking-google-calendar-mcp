@@ -666,7 +666,7 @@ def create_goal(goal: Goal) -> CreatedGoal:
     takes one of the calendar's event labels, and its events are shown in
     its color (background_color, or derived from priority). priority and
     fixed_time are inherited by sub-goals and events that don't set their
-    own. id, label_id and created are assigned. Returns the resulting
+    own. id and label_id are assigned. Returns the resulting
     proposed, active and inactive goals, and the new goal's id as
     created_id.
 

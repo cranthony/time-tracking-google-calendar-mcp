@@ -61,7 +61,7 @@ CLEARABLE_FIELDS = frozenset(
     {"parent_id", "background_color", "priority", "fixed_time", "measure", "note"}
 )
 """Goal fields `update_goal` can blank. Not `name`/`status` (always
-needed) nor the read-only `id`/`label_id`/`created`."""
+needed) nor the read-only `id`/`label_id`."""
 
 OVERALL_ID = "overall"
 """The overall goal's id: one goal every calendar has, whose sub-goals are
@@ -78,7 +78,7 @@ DEFAULT_STATUSES: tuple[str, ...] = ("proposed", "active", "inactive")
 """The goals listed unless others are asked for: those still in play.
 Completed, archived and deleted ones are listed only on request."""
 
-_READ_ONLY_FIELDS = frozenset({"id", "label_id", "created", "health", "health_period", "health_trend"})
+_READ_ONLY_FIELDS = frozenset({"id", "label_id", "health", "health_period", "health_trend"})
 
 
 @dataclass(kw_only=True)
@@ -95,9 +95,8 @@ class ListedGoal(Goal):
     background_color, or the one it inherits (see GoalTree.color)."""
 
     stale_days: int | None = None
-    """Fully ended days since `health_period` (or since it was created, if
-    it's never been rated); `None` unless the daily reflection rates it
-    (see GoalTree.rated)."""
+    """Fully ended days since `health_period`; `None` if it's never been
+    rated, or the daily reflection doesn't rate it (see GoalTree.rated)."""
 
     minutes_24h: int | None = None
     """Read-only: minutes of events serving it or any of its sub-goals in
@@ -373,7 +372,6 @@ class Goals:
             status=goal.status or "active",
         )
         new.id = self._new_id(tree)
-        new.created = self._today()
         new.label_id = str(uuid.uuid5(_LABEL_ID_NAMESPACE, new.id))
         listing = self._commit(tree.goals + [new], check_measures={new.id})
         return CreatedGoal(**{f.name: getattr(listing, f.name) for f in fields(GoalList)}, created_id=new.id)
@@ -568,7 +566,6 @@ class Goals:
                     status="active",
                     label_id=label_id or str(uuid.uuid5(_LABEL_ID_NAMESPACE, goal_id)),
                     background_color=label.background_color,
-                    created=self._today(),
                 )
             )
 
@@ -594,14 +591,9 @@ def _check_statuses(statuses: Collection[str] | None) -> tuple[str, ...]:
 
 def _stale_days(goal: Goal, tree: GoalTree, today: date) -> int | None:
     """See ListedGoal.stale_days. `today` hasn't ended, so isn't counted."""
-    if not tree.rated(goal.id):
+    if not tree.rated(goal.id) or not goal.health_period:
         return None
-    if goal.health_period:
-        first = date.fromisoformat(goal.health_period) + timedelta(days=1)
-    elif goal.created is not None:
-        first = goal.created
-    else:
-        return None
+    first = date.fromisoformat(goal.health_period) + timedelta(days=1)
     return max(0, (today - first).days)
 
 

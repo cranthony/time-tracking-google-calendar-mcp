@@ -83,7 +83,6 @@ A new tab, tagged with `sheet-role = goals` and found the same way as the existi
 | `fixed_time` | `TRUE`/`FALSE` | Optional; inherited the same way |
 | `cadence` | `daily`/`weekly`/`monthly`/`every_2_months` | Optional. Blank means the goal is never assessed; it's only an organizing node for its sub-goals. A goal with a `rollup` measure (§7) still needs a cadence. Changing it later is allowed: old assessments keep the cadence they were recorded at |
 | `measure` | JSON | Optional; the measure spec in §7. Kept small (< 1 kB) |
-| `created` | date | Set on creation; anchors the first period that gets assessed |
 | `note` | string | Short free text, like a label note today |
 | `health` | cache | Latest confirmed rating at the goal's cadence (§8) |
 | `health_period` | cache | The period that rating covers, e.g. `week-2026-09-20` |
