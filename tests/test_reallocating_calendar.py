@@ -165,11 +165,11 @@ class TestReallocatingCalendarCreateEvent:
         # out of the plan entirely -- not created, not updated.
         assert result == [preceding, new_event]
 
-    def test_never_writes_label_derived_values_onto_the_events_it_touches(self):
-        # Both existing events get their priority/fixed-time-ness only from
-        # their goals. Reallocation honors both -- the fixed-time one stays
-        # put, the prioritized one shrinks -- but only what reallocation
-        # itself changed is sent back, never the goal's values.
+    def test_never_writes_goal_derived_values_onto_the_events_it_touches(self):
+        # Both existing events get their priority only from their goals.
+        # Reallocation honors it -- the less important one shrinks, the
+        # most important one stays put -- but only what reallocation itself
+        # changed is sent back, never the goal's priority.
         day = datetime(2026, 1, 1, tzinfo=UTC)
         prioritized = Event(
             id="p1",
@@ -192,7 +192,7 @@ class TestReallocatingCalendarCreateEvent:
         goals = MagicMock()
         goals.tree.return_value = GoalTree([
             Goal(id="gp", name="Prioritized", status="active", label_id="label-p", priority=3),
-            Goal(id="gf", name="Fixed", status="active", label_id="label-f", priority=0, fixed_time=True),
+            Goal(id="gf", name="Fixed", status="active", label_id="label-f", priority=0),
         ])
 
         new_event = Event(

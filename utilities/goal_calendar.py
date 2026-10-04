@@ -13,11 +13,11 @@ LabelPriorityCalendar:
   no goal_ids, only a label -- it's read as serving the goal that owns
   that label, marked `goals_from_label` so the inference can be told
   apart from goals the event was given, and is never written back as
-  if it were. Its `goal_priority`/`goal_is_fixed_time` are filled in from
-  its primary goal (or that goal's nearest ancestor that sets one), so
-  `Event.effective_priority`/`effective_is_fixed_time` -- all reallocation
-  and compaction read -- fall back to them. The event's own
-  priority/is_fixed_time are never touched.
+  if it were. Its `goal_priority` is filled in from all its goals alike:
+  the highest (lowest-numbered) priority among them, each goal's own or
+  its nearest ancestor's, so `Event.effective_priority` -- what
+  reallocation and compaction read -- falls back to it. The event's own
+  priority is never touched.
 - **On write** (`create_event`/`update_event`), whenever `goal_ids` is
   being written: `event_label_id` is derived from the primary goal.
   Calendar rejects *inserting* an event with a label it doesn't have
@@ -63,8 +63,8 @@ class GoalCalendar:
 
 def fill_in_from_goals(events: list[Event], tree: GoalTree) -> list[Event]:
     """`events`, each with its goal_ids (from its label, for an event
-    written before goals) and goal_priority/goal_is_fixed_time filled in.
-    Never mutates `events` themselves."""
+    written before goals) and goal_priority filled in. Never mutates
+    `events` themselves."""
     return [_fill_in(event, tree) for event in events]
 
 
@@ -81,9 +81,15 @@ def _fill_in(event: Event, tree: GoalTree) -> Event:
     return replace(
         event,
         goal_ids=goal_ids,
-        goal_priority=tree.priority(goal_ids[0]),
-        goal_is_fixed_time=tree.fixed_time(goal_ids[0]),
+        goal_priority=_highest_priority(goal_ids, tree),
     )
+
+
+def _highest_priority(goal_ids: list[str], tree: GoalTree) -> int | None:
+    """The most important (lowest-numbered) priority any of the goals has
+    or inherits, if any does."""
+    priorities = [p for p in (tree.priority(goal_id) for goal_id in goal_ids) if p is not None]
+    return min(priorities, default=None)
 
 
 def with_goal_label(event: Event, tree: GoalTree, *, inserting: bool) -> Event:

@@ -62,8 +62,8 @@ class TestEffectivePriority:
 
 
 class TestEffectiveMinDuration:
-    def test_is_the_full_duration_for_an_event_fixed_time_through_its_goal(self):
-        event = event_at("09:00-10:00", id="abc123", goal_is_fixed_time=True)
+    def test_is_the_full_duration_for_a_fixed_time_event_without_its_own_min_duration(self):
+        event = event_at("09:00-10:00", id="abc123", is_fixed_time=True)
 
         assert _effective_min_duration(event, {}) == timedelta(hours=1)
         # Only reallocation's view of it -- the event itself is untouched.
@@ -589,10 +589,9 @@ class TestFixedTimeRepair:
         assert new_event.end - new_event.start == timedelta(minutes=30)
         assert new_event.start >= preceding.end
 
-    def test_an_event_fixed_time_through_its_goal_is_repaired_without_being_pinned(self):
-        # Same as above, but preceding is fixed-time only through its
-        # goal, with no min_duration of its own.
-        preceding = event_at("09:00-09:30", id="p1", priority=1, goal_is_fixed_time=True)
+    def test_a_fixed_time_event_without_its_own_min_duration_is_repaired_without_being_pinned(self):
+        # Same as above, but preceding has no min_duration of its own.
+        preceding = event_at("09:00-09:30", id="p1", priority=1, is_fixed_time=True)
         anchor = event_at("09:30-10:30", id="a1", priority=1)
         new_event = event_at("09:10-09:40", priority=1)
 
@@ -601,7 +600,6 @@ class TestFixedTimeRepair:
         assert (preceding.start, preceding.end) == (time_at("09:00"), time_at("09:30"))
         assert preceding not in result
         assert new_event.start >= preceding.end
-        assert preceding.is_fixed_time is None
         assert preceding.min_duration is None
 
     def test_repairing_a_fixed_time_event_later_in_the_day_splits_what_was_pushed_into_it(self):

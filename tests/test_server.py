@@ -53,8 +53,8 @@ def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
 
 @pytest.fixture(autouse=True)
 def _no_goals(monkeypatch):
-    """Every event tool fills in goal_names and effective_priority/
-    effective_is_fixed_time from the goals tab -- faked here as having no
+    """Every event tool fills in goal_names and effective_priority from
+    the goals tab -- faked here as having no
     goals at all, so tests that don't care about goals never touch a real
     sheet. Tests that do care use _fake_goals. Seeds the cache rather than
     replacing get_goal_store, so its own caching tests still exercise the
@@ -129,12 +129,11 @@ class TestPublicEvent:
         assert field_names.isdisjoint(server.INTERNAL_EVENT_FIELDS)
         # is_cancelled has no Event equivalent -- it's derived from the
         # hidden status field, not a field PublicEvent passes through.
-        # Likewise the effective_* fields and goal_names, derived from the
+        # Likewise effective_priority and goal_names, derived from the
         # event's goals.
         event_derived_fields = field_names - {
             "is_cancelled",
             "effective_priority",
-            "effective_is_fixed_time",
             "goal_names",
         }
         assert event_derived_fields == {
@@ -168,34 +167,27 @@ class TestPublicEvent:
 
         assert public_event.event_label_id == "label-1"
 
-    def test_from_event_effective_fields_default_to_the_events_own(self):
-        event = _event(id="abc123", priority=1, is_fixed_time=True)
+    def test_from_event_effective_priority_defaults_to_the_events_own(self):
+        event = _event(id="abc123", priority=1)
 
         public_event = PublicEvent.from_event(event)
 
         assert public_event.effective_priority == 1
-        assert public_event.effective_is_fixed_time is True
 
-    def test_from_event_takes_effective_fields_from_the_events_goal(self):
-        event = _event(id="abc123", goal_ids=["g1"], goal_priority=0, goal_is_fixed_time=True)
+    def test_from_event_takes_effective_priority_from_the_events_goals(self):
+        event = _event(id="abc123", goal_ids=["g1"], goal_priority=0)
 
         public_event = PublicEvent.from_event(event)
 
         assert public_event.priority is None
-        assert public_event.is_fixed_time is None
         assert public_event.effective_priority == 0
-        assert public_event.effective_is_fixed_time is True
 
-    def test_to_event_ignores_effective_fields(self):
-        public_event = _public_event(
-            id="abc123", effective_priority=0, effective_is_fixed_time=True
-        )
+    def test_to_event_ignores_effective_priority(self):
+        public_event = _public_event(id="abc123", effective_priority=0)
 
         event = public_event.to_event()
 
         assert event.priority is None
-        assert event.is_fixed_time is None
-        assert event.min_duration is None
 
     def test_to_event_ignores_event_label_id_since_goals_decide_it(self):
         public_event = _public_event(id="abc123", event_label_id="label-1")
@@ -295,11 +287,11 @@ class TestListEvents:
 
         assert [event.id for event in result] == ["abc123"]
 
-    def test_fills_in_goals_and_effective_fields_from_the_event_label(self, monkeypatch):
+    def test_fills_in_goals_and_effective_priority_from_the_event_label(self, monkeypatch):
         # An event written before goals has only a label: it's read as
         # serving the goal that owns it.
         client = _fake_client(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", label_id="label-1", priority=0, fixed_time=True))
+        _fake_goals(monkeypatch, _goal("g1", label_id="label-1", priority=0))
         client.list_events.return_value = [_event(id="abc123", event_label_id="label-1")]
 
         result = server.list_events(
@@ -309,26 +301,20 @@ class TestListEvents:
         assert result[0].goal_ids == ["g1"]
         assert result[0].goal_names == ["Focus"]
         assert result[0].effective_priority == 0
-        assert result[0].effective_is_fixed_time is True
-        # The event's own fields stay unset, so sending it back to
-        # update_event doesn't copy the goal's values onto it.
+        # The event's own priority stays unset, so sending it back to
+        # update_event doesn't copy the goal's onto it.
         assert result[0].priority is None
-        assert result[0].is_fixed_time is None
-        assert result[0].min_duration is None
 
-    def test_events_own_values_win_over_its_goals(self, monkeypatch):
+    def test_events_own_priority_wins_over_its_goals(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", priority=0, fixed_time=True))
-        client.list_events.return_value = [
-            _event(id="abc123", goal_ids=["g1"], priority=3, is_fixed_time=False)
-        ]
+        _fake_goals(monkeypatch, _goal("g1", priority=0))
+        client.list_events.return_value = [_event(id="abc123", goal_ids=["g1"], priority=3)]
 
         result = server.list_events(
             datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
         )
 
         assert result[0].effective_priority == 3
-        assert result[0].effective_is_fixed_time is False
 
 
 class TestGetEvent:
@@ -350,17 +336,15 @@ class TestGetEvent:
         with pytest.raises(ToolError):
             server.get_event("abc123")
 
-    def test_fills_in_effective_fields_from_the_events_goal(self, monkeypatch):
+    def test_fills_in_effective_priority_from_the_events_goal(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", priority=0, fixed_time=True))
+        _fake_goals(monkeypatch, _goal("g1", priority=0))
         client.get_event.return_value = _event(id="abc123", goal_ids=["g1"])
 
         result = server.get_event("abc123")
 
         assert result.effective_priority == 0
-        assert result.effective_is_fixed_time is True
         assert result.priority is None
-        assert result.is_fixed_time is None
 
 
 class TestUpdateEvent:

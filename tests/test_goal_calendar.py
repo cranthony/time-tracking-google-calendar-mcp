@@ -22,7 +22,7 @@ def _tree() -> GoalTree:
     """Hosting (active) > Cooking (inactive) > Tofu (inactive); Reading
     (inactive, top-level)."""
     return GoalTree([
-        Goal(id="host", name="Hosting", status="active", label_id="l-host", priority=1, fixed_time=True),
+        Goal(id="host", name="Hosting", status="active", label_id="l-host", priority=1),
         Goal(id="cook", name="Cooking", status="inactive", label_id="l-cook", parent_id="host"),
         Goal(id="tofu", name="Tofu", status="inactive", label_id="l-tofu", parent_id="cook", priority=3),
         Goal(id="read", name="Reading", status="inactive", label_id="l-read"),
@@ -35,7 +35,7 @@ class TestFillInFromGoals:
 
         assert event.goal_ids == ["cook"]
         assert event.goals_from_label
-        assert (event.goal_priority, event.goal_is_fixed_time) == (1, True)  # from Hosting
+        assert event.goal_priority == 1  # from Hosting
 
     def test_an_events_own_goals_arent_marked_inferred(self):
         (event,) = fill_in_from_goals([_event(goal_ids=["host"], event_label_id="l-cook")], _tree())
@@ -52,15 +52,20 @@ class TestFillInFromGoals:
         private = written.to_api_body().get("extendedProperties", {}).get("private", {})
         assert not any(key.endswith("goal_ids") for key in private)
 
-    def test_inherits_from_the_primary_goal_only(self):
+    def test_inherits_the_highest_priority_of_all_its_goals(self):
         (event,) = fill_in_from_goals([_event(goal_ids=["tofu", "host"])], _tree())
 
-        assert (event.goal_priority, event.goal_is_fixed_time) == (3, True)
+        assert event.goal_priority == 1  # Hosting's, over Tofu's 3
+
+    def test_a_goal_without_a_priority_doesnt_count(self):
+        (event,) = fill_in_from_goals([_event(goal_ids=["read", "tofu"])], _tree())
+
+        assert event.goal_priority == 3
 
     def test_the_events_own_values_still_win(self):
         (event,) = fill_in_from_goals([_event(goal_ids=["host"], priority=2, is_fixed_time=False)], _tree())
 
-        assert (event.effective_priority, event.effective_is_fixed_time) == (2, False)
+        assert event.effective_priority == 2
 
     @pytest.mark.parametrize(
         "event",
@@ -69,7 +74,7 @@ class TestFillInFromGoals:
     def test_leaves_events_without_goals_alone(self, event):
         (filled,) = fill_in_from_goals([event], _tree())
 
-        assert (filled.goal_priority, filled.goal_is_fixed_time) == (None, None)
+        assert filled.goal_priority is None
         assert filled.goal_ids == event.goal_ids
 
     def test_never_mutates_its_input(self):
