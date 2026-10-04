@@ -33,7 +33,7 @@ to stop after each step, so you can look at the series in the Google
 Calendar UI too.
 
 Usage:
-    python probe_series_edits.py [--pause] [--keep] [--raw]
+    python -m probes.series_edits [--pause] [--keep] [--raw]
 
 Found (2026-10-04):
 

@@ -142,7 +142,7 @@ Google Calendar allows at most 200 labels per calendar. The client app already h
 
 ### What happens to events whose label is removed?
 
-Google's documentation doesn't say, so [`probe_label_lifecycle.py`](../probe_label_lifecycle.py) tested it against the real API on a throwaway calendar (run 2026-10-01):
+Google's documentation doesn't say, so [`probes/label_lifecycle.py`](../probes/label_lifecycle.py) tested it against the real API on a throwaway calendar (run 2026-10-01):
 
 | Question | Result |
 | --- | --- |
@@ -491,7 +491,7 @@ You can then reorganize: give migrated goals parents, cadences and measures, add
 
 | Phase | Server (this repo) | Client |
 | --- | --- | --- |
-| 0 (done) | Ran `probe_label_lifecycle.py` (§5). `list_events` pages through results. Fixed the two latent bugs the probe exposed: the stale label id on inserts (§5) and silent description truncation in compaction (§6.2) | – |
+| 0 (done) | Ran `probes/label_lifecycle.py` (§5). `list_events` pages through results. Fixed the two latent bugs the probe exposed: the stale label id on inserts (§5) and silent description truncation in compaction (§6.2) | – |
 | 1 (done): Goals replace labels | `GoalSheet`/`Goals` (replacing `EventLabelSheet`/`EventLabels`), `Event.goal_ids`, `GoalCalendar` (replacing `LabelPriorityCalendar`), the migration, the goal and event tools in §9.2–9.3, removal of the label tools | Goals page (list, toggle, edit), event goal chips |
 | 2 (done): Health storage | The Goal Health calendar, `record_assessments`, `get_goal_history`, cache columns, `measure_goals` (duration/count/wake_time/rollup) | Health dots, sparklines, history chart |
 | 3 (done): Compaction + reflection | `prepare_reflection`/`record_reflection`; goal suggestions and marks in compaction | – (the reflection runs in the MCP client) |

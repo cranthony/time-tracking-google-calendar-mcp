@@ -9,7 +9,18 @@ Editing the master edits every instance -- including one edited on its
 own (an exception), whose fields other than its times are all reset to
 the master's, even those the edit doesn't set; an edit to the master's
 start/end resets the exception's times too. Found with
-probe_series_edits.py.
+probes/series_edits.py.
+
+Deleting a series cancels its master, which cancels every instance,
+past ones and exceptions included: they're left on the calendar as
+cancelled events, hidden unless listed with showDeleted, so each counts
+as a cancellation for the follow_through measure (utilities/
+goal_health.py). Deleting from one of its events on ("this and following
+events") ends the series just before that event, as splitting does
+below, but makes no copy -- so it too works on any rules. Its instances
+from that event on are then gone, not cancelled, exceptions included (by
+their original start, even one moved to before the event), so
+follow_through never sees them. Found with probes/series_deletes.py.
 
 Splitting ("this and following events") follows Google's own recipe --
 https://developers.google.com/workspace/calendar/api/guides/recurringevents#modifying_all_following_instances
@@ -147,6 +158,27 @@ class Recurrences:
         updated = self._calendar.update_event(patch)
         return [updated] + ([earlier] if earlier else [])
 
+    def delete(self, event_id: str, starting_at: str | None = None) -> Event | None:
+        """Delete the series `event_id` is, or is one of -- or, given
+        `starting_at` (one of its events), only that event and the ones
+        after it, by ending the series just before it. Returns what's
+        left of the series, `None` if nothing is (`starting_at` was its
+        first event, or wasn't given)."""
+        series = self.series(event_id)
+        at = None
+        if starting_at is not None:
+            instance = self._calendar.get_event(starting_at)
+            if (instance.recurring_event_id or instance.id) != series.id:
+                raise ValueError(f"Event {starting_at} isn't one of series {series.id}'s events")
+            at = instance.original_start or instance.start
+        if at is None or at <= series.start:
+            self._calendar.update_event(Event(id=series.id, status="cancelled"))
+            return None
+        rules, index, parts = _rrule(series)
+        return self._calendar.update_event(
+            Event(id=series.id, recurrence=_with_rule(rules, index, _ending_before(parts, at)))
+        )
+
     def split(self, event_id: str) -> tuple[Event | None, Event]:
         """Split the series `event_id` is one of at that event: end it just
         before, and start a copy there. Returns the series before the
@@ -161,11 +193,7 @@ class Recurrences:
         at = instance.original_start or instance.start
         if at <= series.start:
             return None, series
-        rules = list(series.recurrence or [])
-        index = next((i for i, rule in enumerate(rules) if rule.startswith("RRULE:")), None)
-        if index is None:
-            raise ValueError(f"Series {series.id} has no RRULE, so it can't be split")
-        parts = _rule_parts(rules[index])
+        rules, index, parts = _rrule(series)
 
         later_parts = dict(parts)
         if "COUNT" in parts:
@@ -176,8 +204,6 @@ class Recurrences:
             if remaining <= 0:
                 raise ValueError(f"Event {event_id} is after the last of series {series.id}")
             later_parts["COUNT"] = str(remaining)
-        earlier_parts = {k: v for k, v in parts.items() if k not in ("COUNT", "UNTIL")}
-        earlier_parts["UNTIL"] = (at - timedelta(seconds=1)).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
         zone = series.time_zone or self._time_zone().key
         start = at.astimezone(ZoneInfo(zone))
@@ -197,7 +223,7 @@ class Recurrences:
                 raise
             created = self._calendar.get_event(later.id)  # Made by an earlier try.
         earlier = self._calendar.update_event(
-            Event(id=series.id, recurrence=_with_rule(rules, index, earlier_parts))
+            Event(id=series.id, recurrence=_with_rule(rules, index, _ending_before(parts, at)))
         )
         return earlier, created
 
@@ -207,6 +233,24 @@ def split_series_id(series_id: str, at: datetime) -> str:
     time, and a valid Calendar event id (a-v and 0-9)."""
     digest = hashlib.sha256(f"{series_id}|{at.astimezone(timezone.utc).isoformat()}".encode()).digest()
     return base64.b32hexencode(digest[:20]).decode().lower()
+
+
+def _rrule(series: Event) -> tuple[list[str], int, dict[str, str]]:
+    """`series`' rule lines, the index of its RRULE among them, and that
+    RRULE's parts. Raises ValueError if it has no RRULE."""
+    rules = list(series.recurrence or [])
+    index = next((i for i, rule in enumerate(rules) if rule.startswith("RRULE:")), None)
+    if index is None:
+        raise ValueError(f"Series {series.id} has no RRULE, so it can't be ended early")
+    return rules, index, _rule_parts(rules[index])
+
+
+def _ending_before(parts: dict[str, str], at: datetime) -> dict[str, str]:
+    """An RRULE's `parts`, ending just before `at` (any COUNT or UNTIL
+    replaced)."""
+    ended = {k: v for k, v in parts.items() if k not in ("COUNT", "UNTIL")}
+    ended["UNTIL"] = (at - timedelta(seconds=1)).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return ended
 
 
 def _rule_parts(rule: str) -> dict[str, str]:

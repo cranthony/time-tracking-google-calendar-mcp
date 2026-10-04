@@ -31,7 +31,7 @@ whatever human-readable description surrounds it."""
 MAX_DESCRIPTION_BYTES = 8192
 """The longest event description Calendar keeps: anything longer is
 silently cut to this length, with no error (found empirically -- see
-probe_label_lifecycle.py and docs/goals-design.md section 6.2). Measured
+probes/label_lifecycle.py and docs/goals-design.md section 6.2). Measured
 there with ASCII, so whether the limit counts characters or bytes is
 unknown; treating it as UTF-8 bytes is the safe reading."""
 
@@ -771,7 +771,7 @@ class CalendarClient:
         instance's own priority, goal_ids or description. A patch with
         `start`/`end` resets the exceptions' times too, moving every
         instance onto the series' times. Found with
-        probe_series_edits.py."""
+        probes/series_edits.py."""
         if not event.id:
             raise ValueError("event.id is required to update an event")
         body = event.to_api_body()
