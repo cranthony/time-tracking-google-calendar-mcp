@@ -21,6 +21,14 @@ assessments; only a reflection confirms one (`confirm_assessments`), and
 only confirmed ratings feed a goal's at-a-glance health: the `health`/
 `health_period`/`health_trend` cache columns of the goals tab.
 
+**Changed ratings.** Every explanation `measure` gives (a rollup's
+included) ends in "→ <rating>". A rating written with an
+explanation ending in a different one was changed from what was proposed
+-- in a reflection, say -- so the explanation no longer explains it: it's
+replaced by the rationale, the reason for the change, or "Changed from
+<rating>" without one. The metrics are kept: they're still what was
+measured.
+
 **Measuring.** `measure` proposes a rating for each goal whose measure
 the calendar can answer -- `duration` (minutes of its events over its
 interval), `count` (how many), `time_constraint` (when the day's events
@@ -35,6 +43,7 @@ never writes anything. See utilities/goal_measures.py for the specs.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from datetime import date, datetime, time, timedelta
 from typing import Any
@@ -190,7 +199,12 @@ class GoalHealth:
             for assessment in assessments:
                 if assessment.day == day:
                     merged[assessment.goal_id] = Assessment(
-                        **{**assessment.__dict__, "status": status, "assessed": self._now()}
+                        **{
+                            **assessment.__dict__,
+                            "explanation": _explanation(assessment),
+                            "status": status,
+                            "assessed": self._now(),
+                        }
                     )
                     written.append(merged[assessment.goal_id])
             ordered = dict(sorted(merged.items(), key=lambda item: (order.get(item[0], len(order)), item[0])))
@@ -388,6 +402,20 @@ class GoalHealth:
 
 def _json(value: Any) -> str:
     return json.dumps(value, separators=(",", ":"), sort_keys=True)
+
+
+_PROPOSED = re.compile(r"→ (\d+|skip)$")
+"""The rating at the end of an explanation `measure` gave."""
+
+
+def _explanation(assessment: Assessment) -> str | None:
+    """`assessment`'s explanation -- unless it ends in a rating other than
+    the one given, which was changed from it: then the rationale (the
+    reason for the change), or "Changed from <rating>"."""
+    proposed = _PROPOSED.search(assessment.explanation or "")
+    if proposed is None or proposed.group(1) == str(assessment.rating):
+        return assessment.explanation
+    return assessment.rationale or f"Changed from {proposed.group(1)}"
 
 
 def _health_of(confirmed: list[Assessment], today: date) -> tuple[int | None, str | None, str | None]:
