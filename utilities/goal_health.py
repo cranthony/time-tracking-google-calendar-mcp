@@ -7,14 +7,14 @@ utilities/goals.py's GoalTree.rated) is rated once a day, in the daily
 reflection (utilities/reflection.py). Days run from waking to waking --
 see utilities/sleep_days.py.
 
-**Storage.** One all-day event per (goal, day) on an app-created calendar
--- not the main one, whose events must never overlap -- with everything
-structured in private extended properties (which Calendar can filter on)
-and the rationale in its description. Its id encodes the goal and day, so
-writing an assessment again overwrites it instead of adding another. The
-calendar's id is kept on the main calendar (`set_calendar_metadata`), and
-it's created the first time it's needed, in the main calendar's time zone
-so the two agree on what a day is.
+**Storage.** Each day's assessments, with its reflection, are kept in one
+all-day event on an app-created calendar -- not the main one, whose
+events must never overlap -- or a few, if they don't fit in one: see
+utilities/health_days.py. Writing an assessment reads its day, changes
+it, and writes the day back, replacing any earlier assessment of the same
+goal. The calendar's id is kept on the main calendar
+(`set_calendar_metadata`), and it's created the first time it's needed,
+in the main calendar's time zone so the two agree on what a day is.
 
 **Confirmation.** `record_assessments` only ever writes `proposed`
 assessments; only a reflection confirms one (`confirm_assessments`), and
@@ -34,36 +34,41 @@ never writes anything. See utilities/goal_measures.py for the specs.
 
 from __future__ import annotations
 
-import base64
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
-from typing import Any, Literal
+from typing import Any
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_periods import Period, period_containing
 from utilities.goal_sheet import GOAL_STATUSES, Goal
 from utilities.goals import OVERALL_ID, GoalList, Goals, GoalTree
+from utilities.health_days import (
+    Assessment,
+    DayReflection,
+    HealthDay,
+    HealthDays,
+    Method,
+    Rating,
+    Status,
+    band,
+)
 from utilities.sleep_days import current_day_from, listing_range, period_window
+
+__all__ = ["Assessment", "DayReflection", "GoalHealth", "HealthDay", "band", "day_period"]
 
 HEALTH_CALENDAR_METADATA_KEY = "goal-health-calendar"
 HEALTH_CALENDAR_SUMMARY = "Goal Health"
 
 CADENCE = "daily"
-"""The one cadence goals are rated at, part of each assessment's event
-id (see `assessment_event_id`)."""
-
-_PREFIX = "cascading-time-tracker-"
-"""The same prefix calendar_clients/google_calendar.py gives this app's
-own extended properties on events."""
+"""The one cadence goals are rated at."""
 
 MAX_RATIONALE_BYTES = 8000
-"""Under Calendar's silent description cut-off (MAX_DESCRIPTION_BYTES)."""
+"""How long a rationale, or a journal, may be."""
 
 _MAX_PROPERTY_CHARS = 1024
-"""Calendar's limit on one extended property's value."""
+"""How long an explanation, or the metrics as JSON, may be."""
 
 TREND_LENGTH = 8
 
@@ -73,75 +78,10 @@ HISTORY_DAYS = 12
 _CACHE_HISTORY = timedelta(days=3 * 366)
 """How far back the health cache looks for a goal's latest rating."""
 
-Rating = int | Literal["skip"]
-Method = Literal["metric", "subjective", "llm", "rollup"]
-Status = Literal["proposed", "confirmed"]
-
 MEASURED_KINDS = frozenset({"duration", "count", "time_constraint", "time_window", "rollup"})
 
 _EVENT_KINDS = frozenset({"duration", "count", "time_constraint", "time_window"})
 """The measure kinds read from the calendar's events."""
-"""The measure kinds `measure` can rate from the calendar."""
-
-
-@dataclass(kw_only=True)
-class Assessment:
-    """One health rating of one goal for one day."""
-
-    goal_id: str
-    day: date
-    """The day rated -- from waking on it to waking the next."""
-
-    rating: int | Literal["skip"]
-    """0-100, or "skip" for a day that was deliberately not rated."""
-
-    method: Method
-    status: Status = "proposed"
-    """Read-only on input: recording always proposes; only a reflection
-    confirms."""
-
-    explanation: str | None = None
-    """One line saying how a measured (or carried-over) rating was
-    reached."""
-
-    metrics: dict[str, Any] | None = None
-    """The measured values behind it. A subjective rating carried over
-    from an earlier day, rather than asked for, has "carried_from": that
-    day."""
-
-    rationale: str | None = None
-    """Anything said about it, by the user or the model."""
-
-    assessed: datetime | None = None
-    """Read-only: when it was last written."""
-
-    @property
-    def carried(self) -> bool:
-        """A subjective rating carried over, rather than given."""
-        return bool(self.metrics and self.metrics.get("carried_from"))
-
-    @property
-    def unmet(self) -> bool:
-        """A skip of a day without an event its measure's `only_if`
-        needs."""
-        return self.rating == "skip" and bool(self.metrics and self.metrics.get("only_if"))
-
-
-def band(rating: Rating | None) -> str:
-    """The rating's color band, as an emoji: 0-39 red, 40-69 yellow,
-    70-100 green."""
-    if not isinstance(rating, int):
-        return "⚪"
-    return "🔴" if rating < 40 else "🟡" if rating < 70 else "🟢"
-
-
-def assessment_event_id(goal_id: str, day: date) -> str:
-    """The deterministic, collision-free event id for one assessment:
-    `goal|daily|day` in lowercase base32hex (Calendar's own event-id
-    alphabet), so it decodes back to all three. ("daily" is kept from when
-    goals had cadences, so assessments written then keep their ids.)"""
-    encoded = base64.b32hexencode(f"{goal_id}|{CADENCE}|{day.isoformat()}".encode()).decode()
-    return encoded.rstrip("=").lower()
 
 
 def day_period(day: date) -> Period:
@@ -166,6 +106,7 @@ class GoalHealth:
             lambda: current_day_from(calendar_client.list_events, calendar_client.get_time_zone(), self._now())
         )
         self._health_client: CalendarClient | None = None
+        self._days = HealthDays(lambda create: self._health_calendar(create=create))
 
     # -- writing ------------------------------------------------------------
 
@@ -177,9 +118,7 @@ class GoalHealth:
     def confirm_assessments(self, assessments: list[Assessment]) -> list[Assessment]:
         """Write `assessments` as confirmed, then refresh those goals'
         health cache. For reflections only."""
-        written = self._write(assessments, status="confirmed")
-        self._refresh_cache({a.goal_id for a in written})
-        return written
+        return self._write(assessments, status="confirmed")
 
     def check(self, assessments: list[Assessment]) -> None:
         """Raise ValueError if any of `assessments` couldn't be recorded --
@@ -205,27 +144,64 @@ class GoalHealth:
         return self._client
 
     def health_calendar(self, *, create: bool = True) -> CalendarClient | None:
-        """The Goal Health calendar, for the reflections kept beside the
-        assessments (see utilities/reflection.py); created if need be,
-        unless `create` is false (then `None` if there isn't one yet)."""
+        """The Goal Health calendar; created if need be, unless `create`
+        is false (then `None` if there isn't one yet)."""
         return self._health_calendar(create=create)
 
-    def _write(self, assessments: list[Assessment], *, status: Status) -> list[Assessment]:
+    def write_day(
+        self,
+        day: date,
+        assessments: list[Assessment],
+        *,
+        status: Status,
+        reflect: Callable[[DayReflection | None], DayReflection] | None = None,
+    ) -> list[Assessment]:
+        """Write `assessments`, all of `day`, as `status`, and -- given
+        `reflect`, which takes the day's reflection so far -- its
+        reflection, in one write; then, if they're confirmed, refresh
+        those goals' health cache. Validates the assessments first. For
+        reflections (utilities/reflection.py)."""
+        if any(a.day != day for a in assessments):
+            raise ValueError(f"every assessment written with the reflection must be of {day}")
+        return self._write(assessments, status=status, reflect={day: reflect} if reflect else {})
+
+    def _write(
+        self,
+        assessments: list[Assessment],
+        *,
+        status: Status,
+        reflect: dict[date, Callable[[DayReflection | None], DayReflection]] | None = None,
+    ) -> list[Assessment]:
         tree = self._goals.tree()
         today = self._today()
-        checked = [(a, self._check(a, tree, today)) for a in assessments]
-        health = self._health_calendar()
+        for assessment in assessments:
+            self._check(assessment, tree, today)
+        reflect = reflect or {}
+        days = sorted({a.day for a in assessments} | set(reflect))
+        if not days:
+            return []
+        existing = self.read_days(days[0], days[-1] + timedelta(days=1))
+        order = {g.id: i for i, g in enumerate(tree.ordered())}
+        names = {g.id: tree.path(g.id) for g in tree.goals}
         written = []
-        for assessment, goal in checked:
-            assessment = Assessment(**{**assessment.__dict__, "status": status, "assessed": self._now()})
-            body = _event_body(assessment, goal)
-            response = health.upsert_event_resource(assessment_event_id(assessment.goal_id, assessment.day), body)
-            if len(response.get("description", "")) < len(body["description"]):
-                raise ValueError(
-                    f"Calendar shortened the rationale for {goal.name!r} ({assessment.day}); "
-                    f"keep it under {MAX_RATIONALE_BYTES} bytes"
-                )
-            written.append(_from_event(response))
+        for day in days:
+            current = existing.get(day) or HealthDay(day=day)
+            merged = dict(current.assessments)
+            for assessment in assessments:
+                if assessment.day == day:
+                    merged[assessment.goal_id] = Assessment(
+                        **{**assessment.__dict__, "status": status, "assessed": self._now()}
+                    )
+                    written.append(merged[assessment.goal_id])
+            ordered = dict(sorted(merged.items(), key=lambda item: (order.get(item[0], len(order)), item[0])))
+            reflection = reflect[day](current.reflection) if day in reflect else current.reflection
+            self._days.write(
+                HealthDay(day=day, assessments=ordered, reflection=reflection, parts=current.parts),
+                names,
+                OVERALL_ID,
+            )
+        if status == "confirmed":
+            self._refresh_cache({a.goal_id for a in written})
         return written
 
     def _check(self, assessment: Assessment, tree: GoalTree, today: date) -> Goal:
@@ -247,7 +223,7 @@ class GoalHealth:
             raise ValueError(f"{label}: the metrics are longer than {_MAX_PROPERTY_CHARS} characters as JSON")
         if len((assessment.rationale or "").encode()) > MAX_RATIONALE_BYTES:
             raise ValueError(
-                f"{label}: the rationale is longer than {MAX_RATIONALE_BYTES} bytes (Calendar would cut it short)"
+                f"{label}: the rationale is longer than {MAX_RATIONALE_BYTES} bytes"
             )
         return goal
 
@@ -268,31 +244,26 @@ class GoalHealth:
         tree.check_goal_ids(goal_ids)
         last = end or self._today()
         first = start or last - timedelta(days=HISTORY_DAYS)
-        found: list[Assessment] = []
-        for goal_id in dict.fromkeys(goal_ids):
-            found += [
-                a for a in self.read(first, last + timedelta(days=1), goal_id=goal_id)
-                if not confirmed_only or a.status == "confirmed"
-            ]
-        return found
+        order = {goal_id: i for i, goal_id in enumerate(dict.fromkeys(goal_ids))}
+        found = [
+            a for a in self.read(first, last + timedelta(days=1))
+            if a.goal_id in order and (not confirmed_only or a.status == "confirmed")
+        ]
+        return sorted(found, key=lambda a: (order[a.goal_id], a.day))
 
     def read(self, first: date, end: date, *, goal_id: str | None = None) -> list[Assessment]:
         """Every goal's (or just `goal_id`'s) assessments of the days from
         `first` up to `end` (exclusive), by goal then day."""
-        health = self._health_calendar(create=False)
-        if health is None:
-            return []
-        tz = self._client.get_time_zone()
-        items = health.list_event_resources(
-            datetime.combine(first, time(), tz),
-            datetime.combine(end, time(), tz),
-            private_property=f"{_PREFIX}goal={goal_id}" if goal_id else None,
-        )
         assessments = [
-            a for a in (_from_event(item) for item in items if item.get("status") != "cancelled")
-            if a is not None and first <= a.day < end
+            a for day in self.read_days(first, end).values() for a in day.assessments.values()
+            if goal_id is None or a.goal_id == goal_id
         ]
         return sorted(assessments, key=lambda a: (a.goal_id, a.day))
+
+    def read_days(self, first: date, end: date) -> dict[date, HealthDay]:
+        """Everything kept about the days from `first` up to `end`
+        (exclusive) -- their assessments and reflections -- by day."""
+        return self._days.read(first, end, self._client.get_time_zone())
 
     # -- measuring ----------------------------------------------------------
 
@@ -381,18 +352,15 @@ class GoalHealth:
     def _refresh_cache(self, goal_ids: set[str]) -> None:
         tree = self._goals.tree()
         today = self._today()
-        updates: dict[str, tuple[int | None, str | None, str | None]] = {}
-        for goal_id in goal_ids:
-            goal = tree.by_id.get(goal_id)
-            if goal is None:
-                continue
-            # Not just since it was created: history can be filled in for
-            # earlier days (e.g. a goal migrated from a label).
-            confirmed = [
-                a for a in self.read(today - _CACHE_HISTORY, today + timedelta(days=1), goal_id=goal_id)
-                if a.status == "confirmed"
-            ]
-            updates[goal_id] = _health_of(confirmed, today)
+        # Not just since it was created: history can be filled in for
+        # earlier days (e.g. a goal migrated from a label).
+        confirmed: dict[str, list[Assessment]] = {}
+        for a in self.read(today - _CACHE_HISTORY, today + timedelta(days=1)):
+            if a.status == "confirmed":
+                confirmed.setdefault(a.goal_id, []).append(a)
+        updates = {
+            goal_id: _health_of(confirmed.get(goal_id, []), today) for goal_id in goal_ids if goal_id in tree.by_id
+        }
         self._goals.set_health(updates)
 
     # -- the Goal Health calendar ---------------------------------------------
@@ -420,63 +388,6 @@ class GoalHealth:
 
 def _json(value: Any) -> str:
     return json.dumps(value, separators=(",", ":"), sort_keys=True)
-
-
-def _event_body(assessment: Assessment, goal: Goal) -> dict:
-    rating = assessment.rating
-    shown = "skipped" if rating == "skip" else str(rating)
-    proposed = " (proposed)" if assessment.status == "proposed" else ""
-    day = assessment.day
-    properties = {
-        "kind": "assessment",
-        "goal": assessment.goal_id,
-        "period": day.isoformat(),
-        "rating": str(rating),
-        "method": assessment.method,
-        "status": assessment.status,
-        "explanation": assessment.explanation,
-        "metrics": _json(assessment.metrics) if assessment.metrics is not None else None,
-        "assessed": assessment.assessed.isoformat() if assessment.assessed else None,
-        "schema": "1",
-    }
-    return {
-        "summary": f"{band(rating)} {goal.name} · {day.isoformat()} · {shown}{proposed}",
-        "description": assessment.rationale or "",
-        "start": {"date": day.isoformat()},
-        "end": {"date": (day + timedelta(days=1)).isoformat()},
-        "transparency": "transparent",
-        "extendedProperties": {
-            "private": {f"{_PREFIX}{key}": value for key, value in properties.items() if value is not None}
-        },
-    }
-
-
-def _from_event(item: dict) -> Assessment | None:
-    properties = item.get("extendedProperties", {}).get("private", {})
-
-    def prop(key: str) -> str | None:
-        return properties.get(f"{_PREFIX}{key}")
-
-    if prop("kind") != "assessment":
-        return None
-    try:
-        day = date.fromisoformat(prop("period") or "")
-    except ValueError:
-        return None
-    rating = prop("rating")
-    metrics = prop("metrics")
-    assessed = prop("assessed")
-    return Assessment(
-        goal_id=prop("goal"),
-        day=day,
-        rating="skip" if rating == "skip" else int(rating),
-        method=prop("method"),
-        status=prop("status") or "proposed",
-        explanation=prop("explanation"),
-        metrics=json.loads(metrics) if metrics else None,
-        rationale=item.get("description") or None,
-        assessed=datetime.fromisoformat(assessed) if assessed else None,
-    )
 
 
 def _health_of(confirmed: list[Assessment], today: date) -> tuple[int | None, str | None, str | None]:

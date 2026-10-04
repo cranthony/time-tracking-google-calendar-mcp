@@ -15,12 +15,11 @@ Health calendar straight away, so a reflection cut short (a crash, a
 closed conversation) picks up where it left off: nothing confirmed is
 asked again.
 
-`record` also writes a reflection event beside the assessments: an
-all-day event on the day, its description the journal, its private
-extended properties the day, the intentions and whether every rated goal
-has been rated ("complete"). Its id encodes the day, so recording again
-replaces it, keeping the journal and intentions unless new ones are
-given. Committing is the only way an assessment becomes `confirmed`
+`record` also records the reflection itself -- the journal, the
+intentions and whether every rated goal has been rated ("complete") --
+in the same Goal Health day event as the day's assessments (see
+utilities/health_days.py), in the same write. Recording again keeps the
+journal and intentions unless new ones are given. Committing is the only way an assessment becomes `confirmed`
 (utilities/goal_health.py's `confirm_assessments`).
 
 **Subjective goals** are asked their prompt only once their
@@ -37,19 +36,19 @@ passes over them.
 
 from __future__ import annotations
 
-import base64
 import json
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
 from calendar_clients.google_calendar import Event
 from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_health import (
-    CADENCE,
     MAX_RATIONALE_BYTES,
     Assessment,
+    DayReflection,
     GoalHealth,
+    HealthDay,
     band,
     day_period,
 )
@@ -57,8 +56,6 @@ from utilities.goal_time import goal_minutes
 from utilities.goals import OVERALL_ID, Goals, GoalTree
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.sleep_days import MissingSleep, NotOver, listing_range, period_window
-
-_PREFIX = "cascading-time-tracker-"
 
 MAX_INTENTIONS = 3
 
@@ -223,11 +220,6 @@ class ReflectionResult:
     message: str = ""
 
 
-def reflection_event_id(day: date) -> str:
-    encoded = base64.b32hexencode(f"reflection|{CADENCE}|{day.isoformat()}".encode()).decode()
-    return encoded.rstrip("=").lower()
-
-
 class Reflections:
     def __init__(self, health: GoalHealth, goals: Goals, notes: NotedTimeSheet | None = None) -> None:
         self._health = health
@@ -248,11 +240,14 @@ class Reflections:
         events = self._events(day, tree)
         tz = self._health.now().tzinfo
         start, end = period_window(day_period(day), events, tz, self._health.now())
-        reflected = self._reflection(day)
-        previous = self._reflection(day - timedelta(days=1))
+        days = self._health.read_days(day - timedelta(days=7), day + timedelta(days=1))
+        reflected = _reflection_of(days.get(day))
+        previous = _reflection_of(days.get(day - timedelta(days=1)))
 
         rated_goals = [g for g in tree.ordered() if tree.rated(g.id)]
-        week = self._health.read(day - timedelta(days=7), day + timedelta(days=1))
+        week = sorted(
+            (a for d in days.values() for a in d.assessments.values()), key=lambda a: (a.goal_id, a.day)
+        )
         that_day = {a.goal_id: a for a in week if a.day == day}
         confirmed = {goal_id: a for goal_id, a in that_day.items() if a.status == "confirmed"}
         ready = [
@@ -305,7 +300,7 @@ class Reflections:
             starts=start,
             ends=end,
             already_reflected=not ready,
-            journal=(reflected or {}).get("description") or None,
+            journal=reflected.journal if reflected else None,
             due=due,
             rated=[a for a in confirmed.values() if a.goal_id in tree.by_id],
             waiting=[tree.path(g.id) for g in rated_goals if g.id not in confirmed and g not in ready],
@@ -367,7 +362,10 @@ class Reflections:
         first = completed - timedelta(days=_LOOKBACK_DAYS - 1)
         created = [g.created for g in tree.goals if g.created and g.status != "deleted"]
         first = max(first, min(created)) if created else completed
-        reflections = {r["day"]: r for r in self._reflections(first, completed + timedelta(days=1))}
+        reflections = {
+            d: r for d, health_day in self._health.read_days(first, completed + timedelta(days=1)).items()
+            if (r := health_day.reflection) is not None
+        }
         unreflected = []
         day = completed
         while day >= first:
@@ -475,8 +473,19 @@ class Reflections:
                     "record_reflection again with the same arguments and dry_run=False."
                 ),
             )
-        written = self._health.confirm_assessments(assessments)
-        self._write_reflection(day, journal, intentions, complete)
+        now = self._health.now()
+
+        def reflect(existing: DayReflection | None) -> DayReflection:
+            """The day's reflection, keeping its journal and intentions
+            unless new ones are given."""
+            return DayReflection(
+                journal=journal if journal is not None else existing.journal if existing else None,
+                intentions=intentions if intentions is not None else existing.intentions if existing else [],
+                complete=complete,
+                reflected=now,
+            )
+
+        written = self._health.write_day(day, assessments, status="confirmed", reflect=reflect)
         now_confirmed = confirmed | seen
         next_ready = [
             tree.path(g.id) for g in rated_goals
@@ -501,67 +510,7 @@ class Reflections:
             message=message,
         )
 
-    def _write_reflection(self, day: date, journal: str | None, intentions: list[str] | None, complete: bool) -> None:
-        """Upsert the day's reflection event, keeping its journal and
-        intentions unless new ones are given."""
-        existing = self._reflection(day) or {}
-        calendar = self._health.health_calendar()
-        properties = {
-            "kind": "reflection",
-            "cadence": CADENCE,
-            "period": day.isoformat(),
-            "intentions": json.dumps(intentions) if intentions is not None else existing.get("intentions", "[]"),
-            "complete": "true" if complete else "false",
-            "reflected": self._health.now().isoformat(),
-            "schema": "2",
-        }
-        description = journal if journal is not None else existing.get("description") or ""
-        body = {
-            "summary": f"📝 Reflection · {day.isoformat()}" + ("" if complete else " (in progress)"),
-            "description": description,
-            "start": {"date": day.isoformat()},
-            "end": {"date": (day + timedelta(days=1)).isoformat()},
-            "transparency": "transparent",
-            "extendedProperties": {"private": {f"{_PREFIX}{k}": v for k, v in properties.items()}},
-        }
-        response = calendar.upsert_event_resource(reflection_event_id(day), body)
-        if len(response.get("description", "")) < len(body["description"]):
-            raise ValueError(f"Calendar shortened the journal; keep it under {MAX_RATIONALE_BYTES} bytes")
-
     # -- reading ------------------------------------------------------------------
-
-    def _reflections(self, first: date, end: date) -> list[dict]:
-        """The daily reflection events from `first` up to `end`
-        (exclusive), as dicts with their properties unprefixed, plus the
-        description and their `day`."""
-        calendar = self._health.health_calendar(create=False)
-        if calendar is None:
-            return []
-        tz = self._health.now().tzinfo
-        items = calendar.list_event_resources(
-            datetime.combine(first, time(), tz),
-            datetime.combine(end, time(), tz),
-            private_property=f"{_PREFIX}kind=reflection",
-        )
-        found = []
-        for item in items:
-            if item.get("status") == "cancelled":
-                continue
-            properties = {
-                key.removeprefix(_PREFIX): value
-                for key, value in item.get("extendedProperties", {}).get("private", {}).items()
-            }
-            if properties.get("cadence") != CADENCE:
-                continue
-            try:
-                day = date.fromisoformat(properties.get("period", ""))
-            except ValueError:
-                continue
-            found.append({**properties, "description": item.get("description"), "day": day})
-        return found
-
-    def _reflection(self, day: date) -> dict | None:
-        return next((r for r in self._reflections(day, day + timedelta(days=1)) if r["day"] == day), None)
 
     def _events(self, day: date, tree: GoalTree) -> list[Event]:
         """The events around `day`, with the sleeps that bound it -- see
@@ -573,19 +522,17 @@ class Reflections:
 # -- helpers --------------------------------------------------------------------
 
 
-def _complete(reflection: dict | None) -> bool:
-    """A reflection event recorded with every rated goal rated (or from
-    before reflections went a level at a time, when one always was)."""
-    return reflection is not None and reflection.get("complete") != "false"
+def _reflection_of(day: HealthDay | None) -> DayReflection | None:
+    return day.reflection if day else None
 
 
-def _intentions(reflection: dict | None) -> list[str]:
-    if not reflection or not reflection.get("intentions"):
-        return []
-    try:
-        return [str(i) for i in json.loads(reflection["intentions"])]
-    except ValueError:
-        return []
+def _complete(reflection: DayReflection | None) -> bool:
+    """A reflection recorded with every rated goal rated."""
+    return reflection is not None and reflection.complete
+
+
+def _intentions(reflection: DayReflection | None) -> list[str]:
+    return list(reflection.intentions) if reflection else []
 
 
 def _events_digest(events: list[Event], tree: GoalTree, start: datetime, end: datetime, tz) -> str:
