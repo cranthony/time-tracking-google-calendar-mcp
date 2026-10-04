@@ -15,7 +15,10 @@ than leaving the goal silently unmeasured.
 | constraint`  | the day's first event starts, or its last ends; optional  |
 |              | `when` ("by", the default, or "after"), `grace_min`       |
 |              | (>= 0, default 0) and `zero_at_min` (> grace, default 60) |
-| (all three)  | optional `events_of` and `include_sub_goals`: whose       |
+| `time_       | `from` and `to` ("HH:MM", `from` before `to`): a window   |
+| window`      | one of the day's events should fall in; optional          |
+|              | `grace_min` and `zero_at_min`, as for a time constraint   |
+| (all four)   | optional `events_of` and `include_sub_goals`: whose       |
 |              | events they look at                                       |
 | `subjective` | `prompt`: the question asked in a reflection; optional    |
 |              | `interval_days`: how often it's asked (default every day) |
@@ -36,8 +39,8 @@ falling linearly from 100 when it lapsed to 0 once `zero_at_days` (>
 interval, so a 60-day visit goal with `zero_at_days` 90 is at 50 after 75
 days without a visit.
 
-**Whose events.** A duration, count or time constraint measure looks at
-the events given its own goal or any of its sub-goals -- or, with
+**Whose events.** A duration, count, time constraint or time window
+measure looks at the events given its own goal or any of its sub-goals -- or, with
 `events_of`, another goal's (and its sub-goals') instead, as though it
 were that goal: "work 40 hours a week" can be a sub-goal of "Fulfil my
 work commitment" that measures its parent's events, without tagging any
@@ -53,6 +56,16 @@ With `when` "by" (the default) it's 100 at or before the target, plus
 `grace_min`, falling linearly to 0 at `zero_at_min` minutes late; with
 "after", the same the other way round, for "not before". A day with no
 such events is proposed as "skip".
+
+**Time windows** rate whether one of the day's events of a goal falls in
+a window: "lunch between 11:30 and 13:30" is `{"from": "11:30", "to":
+"13:30", "events_of": "<Eat well's id>"}`, so any meal tagged "Eat
+well" counts as lunch if it's in the window. Each event is as far outside the
+window as its closest edge: one that overlaps it at all is 0 minutes out,
+and one from 14:00 to 14:30 is 30 minutes out. The day is rated by its
+closest event: 100 up to `grace_min` minutes out, falling linearly to 0
+at `zero_at_min`. Unlike a time constraint, a day with no such events is
+rated 0: it's the event that's wanted.
 
 **Subjective.** Its `prompt` is asked in the first daily reflection after
 `interval_days` have passed since it was last answered -- in a reflection,
@@ -79,6 +92,7 @@ MEASURE_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "duration": (frozenset({"target_min"}), frozenset({"interval_days", "zero_at_days"}) | _EVENT_SOURCE),
     "count": (frozenset({"target"}), frozenset({"noun", "interval_days", "zero_at_days"}) | _EVENT_SOURCE),
     "time_constraint": (frozenset({"edge", "target"}), frozenset({"when", "grace_min", "zero_at_min"}) | _EVENT_SOURCE),
+    "time_window": (frozenset({"from", "to"}), frozenset({"grace_min", "zero_at_min"}) | _EVENT_SOURCE),
     "subjective": (frozenset({"prompt"}), frozenset({"interval_days"})),
     "llm": (frozenset({"rubric"}), frozenset()),
     "rollup": (frozenset(), frozenset({"agg", "weights", "percentile"})),
@@ -139,13 +153,17 @@ def measure_problems(measure: Any, *, sub_goal_ids: set[str] | None = None) -> l
             problems.append(f'"zero_at_days" must be a number above "interval_days" ({interval:g})')
         if kind == "count":
             text("noun")
-    elif kind == "time_constraint":
-        if "edge" in measure and measure["edge"] not in EDGES:
-            problems.append(f'"edge" must be one of {", ".join(EDGES)}')
-        if "when" in measure and measure["when"] not in WHENS:
-            problems.append(f'"when" must be one of {", ".join(WHENS)}')
-        if "target" in measure and not (isinstance(measure["target"], str) and _HH_MM.fullmatch(measure["target"])):
-            problems.append('"target" must be a time like "07:00"')
+    elif kind in ("time_constraint", "time_window"):
+        if kind == "time_constraint":
+            if "edge" in measure and measure["edge"] not in EDGES:
+                problems.append(f'"edge" must be one of {", ".join(EDGES)}')
+            if "when" in measure and measure["when"] not in WHENS:
+                problems.append(f'"when" must be one of {", ".join(WHENS)}')
+        times = ("target",) if kind == "time_constraint" else ("from", "to")
+        malformed = [name for name in times if name in measure and not _is_time(measure[name])]
+        problems += [f'"{name}" must be a time like "07:00"' for name in malformed]
+        if kind == "time_window" and not malformed and {"from", "to"} <= measure.keys() and measure["from"] >= measure["to"]:
+            problems.append('"from" must be before "to"')
         grace = measure.get("grace_min", 0)
         if not (_is_number(grace) and grace >= 0):
             problems.append('"grace_min" must be a number, 0 or more')
@@ -185,6 +203,10 @@ def _rollup_problems(measure: dict[str, Any], sub_goal_ids: set[str] | None) -> 
     elif "percentile" in measure:
         problems.append('"percentile" is only for a percentile rollup')
     return problems
+
+
+def _is_time(value: Any) -> bool:
+    return isinstance(value, str) and _HH_MM.fullmatch(value) is not None
 
 
 def _is_number(value: Any) -> bool:

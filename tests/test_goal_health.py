@@ -540,6 +540,83 @@ class TestMeasureTimeConstraint:
             health.measure(TODAY)
 
 
+class TestMeasureTimeWindow:
+    def _setup(self, **measure):
+        # "Lunch between 11:30 and 13:30", measuring meals tagged "Eat well".
+        health, store, calendar, goals = _setup([Goal(name="Eat well")])
+        eat_well = goals["Eat well"]
+        _child(
+            store,
+            "Lunch on time",
+            eat_well,
+            measure={"kind": "time_window", "from": "11:30", "to": "13:30", "events_of": eat_well.id, **measure},
+        )
+        return health, calendar, eat_well
+
+    def test_an_event_in_the_window_is_full_marks(self):
+        health, calendar, lunch = self._setup()
+        calendar.events = [_event("2026-10-01T12:00", "2026-10-01T12:30", [lunch.id])]
+
+        (rated,) = health.measure()
+
+        assert rated.day == YESTERDAY
+        assert (rated.rating, rated.explanation) == (100, "12:00–12:30; in 11:30–13:30 → 100")
+        assert rated.metrics == {"from": "11:30", "to": "13:30", "at": "12:00–12:30", "off_min": 0}
+
+    def test_an_event_overlapping_the_window_is_in_it(self):
+        health, calendar, lunch = self._setup()
+        calendar.events = [_event("2026-10-01T13:15", "2026-10-01T14:00", [lunch.id])]
+
+        (rated,) = health.measure()
+
+        assert rated.rating == 100
+
+    def test_falls_off_by_the_closest_edge_after_the_window(self):
+        health, calendar, lunch = self._setup(zero_at_min=60)
+        calendar.events = [_event("2026-10-01T14:00", "2026-10-01T14:30", [lunch.id])]  # starts 30 after
+
+        (rated,) = health.measure()
+
+        assert (rated.rating, rated.explanation) == (50, "14:00–14:30; 30 min after 11:30–13:30 with 0 min grace → 50")
+        assert rated.metrics["off_min"] == 30
+
+    def test_falls_off_by_the_closest_edge_before_the_window_past_the_grace(self):
+        health, calendar, lunch = self._setup(grace_min=10, zero_at_min=60)
+        calendar.events = [_event("2026-10-01T10:30", "2026-10-01T11:05", [lunch.id])]  # ends 25 before
+
+        (rated,) = health.measure()
+
+        assert (rated.rating, rated.explanation) == (70, "10:30–11:05; 25 min before 11:30–13:30 with 10 min grace → 70")
+
+    def test_far_outside_the_window_is_zero(self):
+        health, calendar, lunch = self._setup()
+        calendar.events = [_event("2026-10-01T16:00", "2026-10-01T16:30", [lunch.id])]
+
+        (rated,) = health.measure()
+
+        assert rated.rating == 0
+
+    def test_the_closest_of_the_days_events_rates_it(self):
+        # Any meal can count as lunch: whichever is closest to the window.
+        health, calendar, lunch = self._setup()
+        calendar.events = [
+            _event("2026-10-01T08:00", "2026-10-01T08:20", [lunch.id]),
+            _event("2026-10-01T13:00", "2026-10-01T13:20", [lunch.id]),
+            _event("2026-10-01T18:30", "2026-10-01T19:15", [lunch.id]),
+        ]
+
+        (rated,) = health.measure()
+
+        assert (rated.rating, rated.metrics["at"]) == (100, "13:00–13:20")
+
+    def test_a_day_without_such_events_is_zero(self):
+        health, _, _ = self._setup()
+
+        (rated,) = health.measure()
+
+        assert (rated.rating, rated.explanation) == (0, "No events of Eat well that day → 0")
+
+
 class TestMeasureRollup:
     def _tree(self, measure=None):
         health, store, _, goals = _setup([Goal(name="Home", measure=measure)])
