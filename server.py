@@ -983,12 +983,14 @@ def delete_note(note_id: str) -> NotedTime:
 @tool
 @writes
 def prepare_compaction() -> CompactionContext:
-    """Step 1 of compacting notes into the calendar. Returns one day's
-    worth of uncompacted notes (each with an id and the planned events
-    nearest it), that day's planned events, a `timeline` showing the two
-    side by side, and instructions. Compare the notes to the plan, decide
-    which events the notes show happened differently, then call
-    compact_notes with those decisions. Read-only."""
+    """Step 1 of compacting notes into the calendar. Returns every day of
+    uncompacted notes up to now (each note with an id and the planned
+    events nearest it; at most a week -- `remaining_note_count` says how
+    many are left for another round), those days' planned events, a
+    `timeline` showing the two side by side, day by day, and
+    instructions. Compare the notes to the plan, decide which events the
+    notes show happened differently, then call compact_notes with those
+    decisions. Read-only."""
     with track("prepare_compaction"), cached_sheet_reads():
         return get_note_compactor().prepare()
 
@@ -1001,9 +1003,11 @@ def compact_notes(
     compaction_id: str | None = None,
     dry_run: bool = True,
 ) -> CompactionResult:
-    """Steps 2 and 3 of compacting notes: realign the day's events to the
-    notes and turn that into calendar changes. The past becomes fact and
-    the future reflows around it.
+    """Steps 2 and 3 of compacting notes: realign each day's events to
+    its notes and turn that into calendar changes. The past becomes fact
+    and the future reflows around it. Each day is planned on its own,
+    after the day before it, and never moves the next day's start; one
+    list of decisions covers them all.
 
     Step 2: call with `decisions` -- one per event the notes show happened
     differently from the plan (keep with moved edges, cancel, create, or
@@ -1020,16 +1024,19 @@ def compact_notes(
     of the day around it in the same plan. Moving the end-of-day sleep
     event moves where the day ends: an earlier bedtime shortens or cancels
     whatever no longer fits before it, a later one leaves the evening
-    free. Its end (the wake-up time) starts the next day, which compaction
-    never adjusts -- so move only its start to change only the bedtime. If
-    the wake-up time does change, the plan warns; tell the user.
+    free. Its end (the wake-up time) starts the next day: if that day is
+    being compacted too, a 'keep' moving it is that day's, checked against
+    its morning; if not, compaction never adjusts the next day -- so move
+    only its start to change only the bedtime, and if the wake-up time does
+    change, the plan warns; tell the user.
 
     Step 3: only after the user has explicitly approved this specific plan,
     having seen it -- never in the same turn as the dry run, and a request
     to compact made before they saw the plan isn't approval -- call with
     that compaction_id and dry_run=False to apply it. If that fails
     partway, calling it again resumes exactly where it stopped -- the plan
-    is already approved, so that needs no new approval. With a compaction_id and
+    is already approved, so that needs no new approval. Days are applied in
+    order, each one's notes marked compacted once it's done. With a compaction_id and
     dry_run=True you just get that compaction's stored plan back."""
     with track("compact_notes"), cached_sheet_reads():
         compactor = get_note_compactor()
@@ -1052,7 +1059,8 @@ def compact_notes(
 def abandon_compaction(compaction_id: str) -> CompactionResult:
     """Give up on a compaction that can't be finished (or that you no
     longer want). Steps it already applied stay applied; its notes stay
-    uncompacted, so a new compaction can be planned."""
+    uncompacted (except those of days it had already finished), so a new
+    compaction can be planned."""
     with track("abandon_compaction"), cached_sheet_reads():
         try:
             return get_note_compactor().abandon(compaction_id)
