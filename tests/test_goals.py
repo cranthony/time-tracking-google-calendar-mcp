@@ -141,6 +141,7 @@ class TestCreateGoal:
         assert _UNNAMED in calendar.labels
         assert [g.name for g in _others(result.goals)] == ["Cooking"]
         assert result.label_slots_used == 2  # the goal's, plus the unnamed one
+        assert result.created_id == _by_name(goals)["Cooking"].id
 
     def test_ignores_read_only_fields(self):
         goals, _, _ = _goals()

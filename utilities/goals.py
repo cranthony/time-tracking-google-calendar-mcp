@@ -149,6 +149,15 @@ class GoalList:
     `None` if there's no as_of."""
 
 
+@dataclass(kw_only=True)
+class CreatedGoal(GoalList):
+    """What `create_goal` returns: the goals, as a `GoalList`, and which of
+    them it made."""
+
+    created_id: str
+    """The new goal's id."""
+
+
 def overall_goal() -> Goal:
     """The overall goal, as it is before anything's written to it."""
     return Goal(id=OVERALL_ID, name=OVERALL_NAME, status="active")
@@ -354,7 +363,7 @@ class Goals:
         raw_labels, _etag = self._calendar_client.list_event_labels()
         return self._listing(self.tree(), raw_labels, statuses)
 
-    def create_goal(self, goal: Goal) -> GoalList:
+    def create_goal(self, goal: Goal) -> CreatedGoal:
         if not goal.name:
             raise ValueError("A goal needs a name")
         tree = self.tree()
@@ -366,7 +375,8 @@ class Goals:
         new.id = self._new_id(tree)
         new.created = self._today()
         new.label_id = str(uuid.uuid5(_LABEL_ID_NAMESPACE, new.id))
-        return self._commit(tree.goals + [new], check_measures={new.id})
+        listing = self._commit(tree.goals + [new], check_measures={new.id})
+        return CreatedGoal(**{f.name: getattr(listing, f.name) for f in fields(GoalList)}, created_id=new.id)
 
     def update_goal(self, goal: Goal, clear_fields: Collection[str] = ()) -> GoalList:
         """Set whichever of `goal`'s fields aren't `None` (other than the
