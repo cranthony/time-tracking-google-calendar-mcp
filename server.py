@@ -5,7 +5,7 @@ import logging
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, ParamSpec, TypeVar
 from zoneinfo import ZoneInfo
 
@@ -42,7 +42,7 @@ from utilities.note_compactor import CompactionContext, CompactionResult, NoteCo
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
-from utilities.recurrences import Recurrences, describe_rules
+from utilities.recurrences import Recurrences, Repeat, describe_rules
 from workos_auth import WorkOSTokenVerifier
 
 # Without this, INFO-level logs (utilities/memory_diagnostics.py's, e.g.)
@@ -210,13 +210,15 @@ class PublicRecurrence:
     recurrences.py. id is the series' own id, which is every one of its
     events' recurring_event_id. start/end are when its first event starts
     and ends; time_zone keeps its events at the same wall-clock time
-    across daylight saving changes. rules are its RFC 5545 rule lines,
-    e.g. ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261231T000000Z"], with
-    exactly one RRULE; schedule says them in words. The other fields are
-    as for PublicEvent, and apply to every event in the series except
-    where one was edited on its own -- until the series is next edited,
-    which resets them (see update_recurrence). goals_from_label is as for
-    PublicEvent.
+    across daylight saving changes. repeat says which days its events
+    fall on and when it ends (see Repeat), and schedule says that in
+    words. A series made elsewhere may repeat in ways repeat can't say
+    (e.g. "the last weekday of the month"): its repeat is then null and
+    its schedule shows its raw RFC 5545 rules; leave repeat out when
+    updating it to keep them. The other fields are as for PublicEvent,
+    and apply to every event in the series except where one was edited
+    on its own -- until the series is next edited, which resets them
+    (see update_recurrence). goals_from_label is as for PublicEvent.
 
     schedule, goal_names, event_label_id and effective_priority are
     read-only: update_recurrence ignores them, as it does time_zone."""
@@ -226,7 +228,7 @@ class PublicRecurrence:
     start: datetime | None = None
     end: datetime | None = None
     time_zone: str | None = None
-    rules: list[str] | None = None
+    repeat: Repeat | None = None
     schedule: str | None = None
     description: str | None = None
     location: str | None = None
@@ -244,13 +246,15 @@ class PublicRecurrence:
     def from_event(cls, event: Event, tree: GoalTree) -> "PublicRecurrence":
         public = PublicEvent.from_event(event, tree)
         zone = ZoneInfo(event.time_zone) if event.time_zone else None
+        # A series always has a time zone; UTC is only for one that somehow doesn't.
+        repeat = Repeat.from_rules(event.recurrence, zone or timezone.utc)
         return cls(
             id=event.id,
             summary=event.summary,
             start=event.start.astimezone(zone) if zone and event.start else event.start,
             end=event.end.astimezone(zone) if zone and event.end else event.end,
             time_zone=event.time_zone,
-            rules=event.recurrence,
+            repeat=repeat,
             schedule=describe_rules(event.recurrence, zone),
             description=event.description,
             location=event.location,
@@ -278,7 +282,6 @@ class PublicRecurrence:
             is_fixed_time=self.is_fixed_time,
             priority=self.priority,
             goal_ids=None if self.goals_from_label else self.goal_ids,
-            recurrence=self.rules,
         )
 
 
@@ -572,9 +575,11 @@ def update_recurrence(
     the ones after it only ("this and following"): the series is split
     there (see split_recurrence) and only the later part is edited.
     start/end are its first event's, as get_recurrence gave them; when
-    it's split, the later part moves by as much as they changed. rules
-    replace its rules whole. Series aren't reallocated. Returns the edited
-    series, then the earlier part if it was split.
+    it's split, the later part moves by as much as they changed. repeat,
+    if given, replaces how it repeats whole (including count/until and
+    skipped/added), so send every part of it you want kept. Series aren't
+    reallocated. Returns the edited series, then the earlier part if it
+    was split.
 
     Events edited on their own don't keep those edits (found with
     probe_series_edits.py): any edit resets every field but their times
@@ -586,7 +591,9 @@ def update_recurrence(
     with track("update_recurrence"), cached_sheet_reads():
         _check_goal_ids(recurrence, existing=True)
         try:
-            updated = get_recurrences().update(recurrence.to_event(), starting_at_event_id)
+            updated = get_recurrences().update(
+                recurrence.to_event(), starting_at_event_id, recurrence.repeat
+            )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
         return _public_recurrences(updated)
