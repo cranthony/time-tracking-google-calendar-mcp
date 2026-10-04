@@ -714,16 +714,17 @@ class TestMeasureFollowThrough:
         word = goals["Word"].id
         calendar.events = [
             _event("2026-09-28T10:00", "2026-09-28T11:00", [word], status="cancelled"),
-            _event("2026-09-28T12:00", "2026-09-28T13:00", [word], status="cancelled"),  # 50
-            _event("2026-09-30T10:00", "2026-09-30T11:00", [word]),  # 75
+            _event("2026-09-28T12:00", "2026-09-28T13:00", [word], status="cancelled"),
+            _event("2026-09-28T14:00", "2026-09-28T15:00", [word], status="cancelled"),  # 25
+            _event("2026-09-30T10:00", "2026-09-30T11:00", [word]),  # 50
             _event("2026-10-01T10:00", "2026-10-01T11:00", [word]),
-            _event("2026-10-01T12:00", "2026-10-01T13:00", [word]),  # 100: once for the day
+            _event("2026-10-01T12:00", "2026-10-01T13:00", [word]),  # 75, not 100: once for the day
         ]
 
         (rated,) = health.measure()
 
-        assert rated.rating == 100
-        assert rated.explanation == "2 kept (+25) that day, from 75 → 100"
+        assert rated.rating == 75
+        assert rated.explanation == "2 kept (+25) that day, from 50 → 75"
 
     def test_cancelled_and_kept_on_the_same_day(self):
         health, _, calendar, goals = _setup([Goal(name="Word", measure={**_FOLLOW, "recovery": 10})])
