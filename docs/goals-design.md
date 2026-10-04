@@ -82,7 +82,7 @@ A new tab, tagged with `sheet-role = goals` and found the same way as the existi
 | `label_id` | UUID | This goal's **reserved** calendar label id, kept even while the goal is inactive so that reactivating it restores the same id (§5). New goals get `uuid5(GOALS_NAMESPACE, id)`; migrated labels keep their Google-assigned id |
 | `background_color` | hex | Optional; derived from priority when blank, exactly like labels today |
 | `priority` | int | Optional; inherited from the nearest ancestor that sets one |
-| `fixed_time` | `TRUE`/`FALSE` | Optional; inherited the same way |
+| `fixed_time` | `TRUE`/`FALSE` | Optional; inherited the same way. *Since removed: events are marked fixed time themselves.* |
 | `cadence` | `daily`/`weekly`/`monthly`/`every_2_months` | Optional. Blank means the goal is never assessed; it's only an organizing node for its sub-goals. A goal with a `rollup` measure (§7) still needs a cadence. Changing it later is allowed: old assessments keep the cadence they were recorded at |
 | `measure` | JSON | Optional; the measure spec in §7. Kept small (< 1 kB) |
 | `note` | string | Short free text, like a label note today |
@@ -124,7 +124,7 @@ Two consequences:
 - A goal going inactive never stops an event from being written (§5).
 - `PublicEvent.event_label_id` becomes read-only (like `effective_priority`). `PublicEvent.goal_ids` is the writable field.
 
-**Priority and fixed time** are resolved the way labels resolve them today, but along the goal chain: the event's own value; otherwise the primary goal's; otherwise that goal's nearest ancestor that sets one. They're exposed as the same `effective_priority`/`effective_is_fixed_time`, so reallocation doesn't change at all. `Event.label_priority`/`label_is_fixed_time` are renamed `goal_priority`/`goal_is_fixed_time`, and are still internal and never written to the API.
+**Priority** is resolved the way labels resolve it today, but along the goal chain: the event's own value; otherwise the highest (lowest-numbered) priority among all its goals, each goal's being its own or its nearest ancestor's that sets one. The primary goal only decides the label. It's exposed as the same `effective_priority`, so reallocation doesn't change at all. `Event.label_priority` is renamed `goal_priority`, and is still internal and never written to the API. (Goals first carried a fixed time that events inherited the same way; it has since been removed, so whether an event is fixed time is only ever its own `is_fixed_time`.)
 
 **Old events** that have an `eventLabelId` but no goals property (everything written before the migration) are read as `goal_ids = [the goal whose label_id matches]`. That avoids any bulk rewrite of history (§13).
 

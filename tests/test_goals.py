@@ -177,21 +177,21 @@ class TestCreateGoal:
         assert listed["Tofu"].background_color is None  # inherited, not its own
         assert calendar.named()[listed["Tofu"].label_id] == ("Tofu", "#123456")
 
-    def test_a_listed_goal_carries_the_priority_and_fixed_time_it_inherits(self):
+    def test_a_listed_goal_carries_the_priority_it_inherits(self):
         goals, _, _ = _goals()
-        goals.create_goal(Goal(name="Cooking", priority=1, fixed_time=True))
+        goals.create_goal(Goal(name="Cooking", priority=1))
         parent = _by_name(goals)["Cooking"]
         goals.create_goal(Goal(name="Tofu", parent_id=parent.id))
-        goals.create_goal(Goal(name="Curry", parent_id=parent.id, priority=3, fixed_time=False))
+        goals.create_goal(Goal(name="Curry", parent_id=parent.id, priority=3))
         goals.create_goal(Goal(name="Reading"))
 
         listed = {g.name: g for g in goals.get_goals().goals}
 
-        assert (listed["Tofu"].effective_priority, listed["Tofu"].effective_fixed_time) == (1, True)
+        assert listed["Tofu"].effective_priority == 1
         assert listed["Tofu"].priority is None  # inherited, not its own
-        assert (listed["Curry"].effective_priority, listed["Curry"].effective_fixed_time) == (3, False)
-        assert (listed["Cooking"].effective_priority, listed["Cooking"].effective_fixed_time) == (1, True)
-        assert (listed["Reading"].effective_priority, listed["Reading"].effective_fixed_time) == (None, None)
+        assert listed["Curry"].effective_priority == 3
+        assert listed["Cooking"].effective_priority == 1
+        assert listed["Reading"].effective_priority is None
 
     def test_an_inactive_goal_takes_no_label(self):
         goals, calendar, _ = _goals()
@@ -481,16 +481,16 @@ class TestGetGoals:
 class TestGoalTree:
     def _tree(self):
         return GoalTree([
-            Goal(id="a", name="A", status="active", label_id="la", priority=1, fixed_time=True),
+            Goal(id="a", name="A", status="active", label_id="la", priority=1),
             Goal(id="b", name="B", status="inactive", label_id="lb", parent_id="a"),
             Goal(id="c", name="C", status="inactive", label_id="lc", parent_id="b", priority=3),
         ])
 
-    def test_inherits_priority_and_fixed_time_from_the_nearest_ancestor_that_sets_them(self):
+    def test_inherits_priority_from_the_nearest_ancestor_that_sets_one(self):
         tree = self._tree()
 
-        assert (tree.priority("c"), tree.fixed_time("c")) == (3, True)
-        assert (tree.priority("b"), tree.fixed_time("b")) == (1, True)
+        assert tree.priority("c") == 3
+        assert tree.priority("b") == 1
 
     def test_active_label_is_the_nearest_active_goals(self):
         tree = self._tree()

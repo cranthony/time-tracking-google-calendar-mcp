@@ -168,16 +168,15 @@ class TestUpdatableAttributeParsers:
     def test_covers_every_event_attribute_the_api_accepts_except_id(self):
         # id would repoint the patch at a different event; recurring_event_id
         # is assigned by Google and never sent to the API, so setting it here
-        # would silently have no effect. goal_priority/goal_is_fixed_time
-        # belong to the event's goal, not the event, and are never sent
-        # to the API either. A series' recurrence/time_zone are edited
+        # would silently have no effect. goal_priority belongs to the
+        # event's goals, not the event, and is never sent to the API
+        # either. A series' recurrence/time_zone are edited
         # through the recurrence tools (utilities/recurrences.py), and
         # original_start, like recurring_event_id, is Google's.
         event_attributes = {f.name for f in dataclasses.fields(Event)} - {
             "id",
             "recurring_event_id",
             "goal_priority",
-            "goal_is_fixed_time",
             "goals_from_label",
             "recurrence",
             "time_zone",

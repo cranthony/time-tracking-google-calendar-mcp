@@ -39,9 +39,7 @@ min_duration_overrides` (event id → minutes) overrides an event's effective
 
 ## Fixed time
 
-An event with `effective_is_fixed_time` true (its own `is_fixed_time`,
-falling back to its event label's -- see `Event.effective_is_fixed_time`)
-must end up at exactly the `start`/`end` it already has when `day_events`
+An event with `is_fixed_time` true must end up at exactly the `start`/`end` it already has when `day_events`
 is handed in — not just its own duration protected: its duration can't
 shrink either, so its effective `min_duration` is always its own full
 duration, whatever its `min_duration` field says (see
@@ -169,9 +167,9 @@ logger = logging.getLogger(__name__)
 
 class Schedulable(Protocol):
     """The fields of an event that reallocation's algorithm actually reads
-    or writes. Reads only the effective priority/fixed-time-ness, never
-    writes either, so whatever an event inherits from its label is never
-    written back as its own."""
+    or writes. Reads only the effective priority and fixed-time-ness,
+    never writes either, so the priority an event inherits from its goals
+    is never written back as its own."""
 
     id: str | None
     summary: str | None
@@ -179,12 +177,10 @@ class Schedulable(Protocol):
     end: datetime
     status: str | None
     min_duration: timedelta | None
+    is_fixed_time: bool | None
 
     @property
     def effective_priority(self) -> int | None: ...
-
-    @property
-    def effective_is_fixed_time(self) -> bool | None: ...
 
     def clone(self) -> "Schedulable":
         """A copy of the underlying object (not just this `Schedulable`
@@ -216,12 +212,11 @@ def _effective_min_duration(
     """`event.min_duration`, or the override for `event.id` in
     `min_duration_overrides` (minutes) if there is one, or `0` if neither
     is set (see "Minimum duration" above). A fixed-time event's is always
-    its own full duration (see "Fixed time" above) -- needed for one
-    that's fixed-time only through its label, whose own `min_duration`
-    nothing has forced."""
+    its own full duration (see "Fixed time" above), whatever its own
+    `min_duration`."""
     if event.id is not None and event.id in min_duration_overrides:
         return timedelta(minutes=min_duration_overrides[event.id])
-    if event.effective_is_fixed_time:
+    if event.is_fixed_time:
         return _duration(event)
     return event.min_duration or timedelta(0)
 
@@ -586,7 +581,7 @@ def reallocate_for_new_event(
     fixed_time_originals: dict[int, tuple[Schedulable, datetime, datetime]] = {
         id(event): (event, event.start, event.end)
         for event in day_events
-        if event.effective_is_fixed_time
+        if event.is_fixed_time
     }
 
     changed: dict[int, Schedulable] = {}

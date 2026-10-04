@@ -33,10 +33,15 @@ one before it had already been compacted: it starts where that one ended
 (its `now`), against the calendar as that one's plan would leave it
 (`_PlannedCalendar`). A day before the last is wholly past, so its plan
 records it and reflows nothing; only the last day, the one with now in
-it, has a future to reflow. The night between two days is the one event
-they share: the earlier day owns its start (bedtime) and the later one
-its end (the wake-up time) -- see `_decisions_for` -- so no day's plan
-moves the next day's start. In the journal, each day is a compaction of
+it, has a future to reflow. The night between two days is decided once,
+whole, by the earlier day, and its end is the border between them (see
+`_cut`): a note the decisions use to end it -- woke early, or slept in
+-- moves the border to it, taking every note up to it into the earlier
+day, and the later day starts there. After a late wake-up, the later day
+still starts at the planned one, and is compacted even without notes of
+its own, so the morning the night now runs over is settled there: past
+events under it are overlaps to resolve, and later ones reflow after it.
+A cancelled night -- no sleep -- makes the two days one long one. In the journal, each day is a compaction of
 its own, applied and stamped in order, and together they're a *batch*
 under the first day's id (see utilities/compaction_journal.py) -- the
 compaction id the MCP tools use. Notes written after now wait for a
@@ -189,10 +194,16 @@ DECISION_GUIDE = (
     "reflows around it, in the same plan -- for 'move lunch later and adjust the afternoon' "
     "requests. A day's end-of-day sleep event works differently: moving its start moves "
     "bedtime (an earlier one shortens or cancels what runs past it), and its end -- the wake-up "
-    "time -- starts the next day. When the next day is in this round too, its wake-up is that "
-    "day's: a 'keep' moving it is checked against that morning's events (if it now overlaps one, "
-    "move that too), and the bedtime stays the earlier day's. On the last day, compaction never "
-    "adjusts the next day, so move only its start to change only bedtime. "
+    "time -- starts the next day. THE NIGHT IS THE BORDER BETWEEN DAYS: give each night at most "
+    "one decision, whichever day's heading its notes are under. A note that marks waking up "
+    "(early or late) is that night's end_note -- it moves the border to that note, so the notes "
+    "up to it belong to the day before; a note in the night that doesn't end it ('can't sleep') "
+    "is just added to it. If the user slept in, the morning events the night now runs over are "
+    "settled with the next day: a past one it overlaps has to be moved or cancelled (the next day's "
+    "decisions may use the wake-up note as an edge too), and later ones reflow after it. Cancel a "
+    "night only if the user didn't sleep: its two days then become one long day. When the next "
+    "day isn't in this round, compaction never adjusts it, so move only the night's start to "
+    "change only bedtime. "
     "GOALS: each event can serve goals (`goals` lists them; `goal_ids` on an event, primary "
     "first). Tagging events with goals should cost the user almost nothing, so: for every past "
     "event with `suggested_goal_ids`, add a 'keep' {event_id, goal_ids} applying them -- without "
@@ -346,6 +357,22 @@ class _Day:
     """The last stamped compaction's `now`, if there's been one -- for
     the batch's first day only, as context."""
 
+    closing: Event | None = None
+    """The day's own end-of-day sleep event, the night it ends with, if
+    it has one."""
+
+    has_next: bool = False
+    """Whether another day of the batch follows it."""
+
+    night_before: Event | None = None
+    """The night that ended the batch's day before this one, if that day
+    decided it ran later than planned -- into this one's morning: see
+    `NoteCompactor._plan`."""
+
+    earlier_notes: dict[str, datetime] = field(default_factory=dict)
+    """The batch's earlier days' notes (id -> time): this day's decisions
+    may use one as an edge, at its time, without taking the note."""
+
 
 @dataclass(kw_only=True)
 class _Walked:
@@ -464,7 +491,7 @@ class NoteCompactor:
                         goal_names=[names.get(g, g) for g in e.goal_ids] if e.goal_ids is not None else None,
                         suggested_goal_ids=suggested.get(e.id),
                         priority=e.effective_priority,
-                        is_fixed_time=e.effective_is_fixed_time,
+                        is_fixed_time=e.is_fixed_time,
                     )
             timelines.append(
                 (
@@ -546,13 +573,16 @@ class NoteCompactor:
         pending = list(decisions)
         ignoring = list(ignore_notes or [])
 
-        def plan_day(day: _Day, has_next: bool, index: int) -> _Walked:
-            mine, pending[:] = _decisions_for(day, pending, has_next)
-            note_ids = {n.id for n in day.notes}
-            ignored = [i for i in ignoring if not has_next or i in note_ids]
-            ignoring[:] = [i for i in ignoring if i not in ignored]
-            label = _day_label(day) if has_next or index else None
+        def night(event_id: str, index: int) -> EventDecision | None:
+            return next((d for d in pending if d.event_id == event_id), None)
+
+        def plan_day(day: _Day, index: int) -> _Walked:
+            label = _day_label(day) if day.has_next or index else None
             try:
+                mine, pending[:] = _decisions_for(day, pending)
+                note_ids = {n.id for n in day.notes}
+                ignored = [i for i in ignoring if not day.has_next or i in note_ids]
+                ignoring[:] = [i for i in ignoring if i not in ignored]
                 plan = self._plan(day, mine, ignored)
             except CompactionError as exc:
                 raise CompactionError(f"{label}: {exc}" if label else str(exc)) from exc
@@ -560,7 +590,7 @@ class NoteCompactor:
                 plan.warnings = [f"{label}: {w}" for w in plan.warnings]
             return _Walked(day=day, plan=plan, decisions=mine, ignore_notes=ignored)
 
-        walked, remaining = self._walk(self._clock(), plan_day)
+        walked, remaining = self._walk(self._clock(), plan_day, night)
         if not walked:
             return CompactionResult(status="nothing_to_compact", message="there are no uncompacted notes")
         superseded = self._supersede_planned()
@@ -721,7 +751,8 @@ class NoteCompactor:
     def _walk(
         self,
         now: datetime,
-        plan_day: Callable[[_Day, bool, int], _Walked] | None = None,
+        plan_day: Callable[[_Day, int], _Walked] | None = None,
+        night: Callable[[str, int], EventDecision | None] | None = None,
         *,
         max_days: int = _MAX_DAYS,
     ) -> tuple[list[_Walked], int]:
@@ -729,28 +760,90 @@ class NoteCompactor:
         most `max_days` of them -- and how many uncompacted notes are left
         after them. Each day after the first starts where the one before
         it ends, as if that one had been compacted (see the module
-        docstring). `plan_day` (the day, whether another follows it, and
-        which it is, from 0) plans each day as it's reached; the days
-        after it are then read as that plan would leave the calendar."""
+        docstring). `plan_day` (the day, and which it is, from 0) plans
+        each day as it's reached; the days after it are then read as that
+        plan would leave the calendar. `night` (a sleep event's id, and
+        which day it is) is the decision on that day's night, if there's
+        one -- where the day ends depends on it (see `_cut`)."""
         sheet_notes, latest = self._notes.read_with_latest_compacted()
         notes = [n for n in sheet_notes if n.note.timestamp <= now]
+        times = {n.id: n.note.timestamp for n in notes}
         last_stamped = self._journal.last_stamped_now()
         calendar = _PlannedCalendar(self._calendar)
         walked: list[_Walked] = []
-        while notes:
-            day = self._day(
-                now, notes, calendar, last_stamped=last_stamped, latest_compacted=latest, first=not walked
+        window_start: datetime | None = None
+        night_before: Event | None = None
+        earlier: dict[str, datetime] = {}
+        if not notes:
+            return walked, len(sheet_notes)
+        while True:
+            day = self._cut(
+                lambda sleepless, border: self._day(
+                    now,
+                    notes,
+                    calendar,
+                    last_stamped=last_stamped,
+                    latest_compacted=latest,
+                    first=not walked,
+                    window_start=window_start,
+                    sleepless=sleepless,
+                    border=border,
+                ),
+                (lambda event_id: night(event_id, len(walked))) if night else None,
+                times,
             )
             in_day = {n.id for n in day.notes}
             notes = [n for n in notes if n.id not in in_day]
-            has_next = bool(notes) and day.now < now and len(walked) + 1 < max_days
-            walked.append(plan_day(day, has_next, len(walked)) if plan_day else _Walked(day=day))
-            if not has_next:
+            # After a late wake-up, the next day's morning is under the
+            # night now: it's compacted too, notes or not, to settle that.
+            planned_end = day.closing.end if day.closing is not None else day.day_end
+            overslept = day.day_end > planned_end and planned_end < now
+            day.has_next = (bool(notes) or overslept) and day.now < now and len(walked) + 1 < max_days
+            day.night_before = night_before
+            day.earlier_notes = dict(earlier)
+            walked.append(plan_day(day, len(walked)) if plan_day else _Walked(day=day))
+            if not day.has_next:
                 break
             if walked[-1].plan is not None:
                 calendar.apply(walked[-1].plan.changes)
             last_stamped = day.now
+            # After a late wake-up the next day starts at the planned one,
+            # so the events the night now runs over are its to settle.
+            window_start = min(day.day_end, planned_end)
+            night_before = day.closing if overslept else None
+            earlier.update((n.id, n.note.timestamp) for n in day.notes)
         return walked, len(sheet_notes) - sum(len(w.day.notes) for w in walked)
+
+    @staticmethod
+    def _cut(
+        day_for: Callable[[frozenset[str], datetime | None], _Day],
+        night: Callable[[str], EventDecision | None] | None,
+        times: dict[str, datetime],
+    ) -> _Day:
+        """The day `day_for` reads, ended where the decision on its night
+        (`night`) puts it. A day ends with its night's sleep, and the
+        night's end is the border with the next day: a decision that moves
+        it -- the user woke early, or slept in -- moves the border, and
+        with it which notes are this day's. One that cancels it -- a night
+        without sleep -- runs the day on to the next night, as one long
+        day. `times`: the notes' times, for a note that ends the night."""
+        sleepless: frozenset[str] = frozenset()
+        border: datetime | None = None
+        day = day_for(sleepless, border)
+        while night is not None and day.closing is not None:
+            decision = night(day.closing.id)
+            if decision is None:
+                break
+            if decision.action == "cancel" and day.closing.id not in sleepless:
+                sleepless = sleepless | {day.closing.id}
+            elif decision.action == "keep" and border is None and (decision.end or decision.end_note):
+                border = decision.end or times.get(decision.end_note)
+                if border is None:
+                    break  # An unknown note: the plan reports it.
+            else:
+                break
+            day = day_for(sleepless, border)
+        return day
 
     def _day(
         self,
@@ -761,12 +854,19 @@ class NoteCompactor:
         last_stamped: datetime | None,
         latest_compacted: NotedTime | None,
         first: bool,
+        window_start: datetime | None = None,
+        sleepless: frozenset[str] = frozenset(),
+        border: datetime | None = None,
     ) -> _Day:
-        """The day the oldest of `notes` falls in, with its notes. Its
-        compaction window starts no earlier than `last_stamped`. `first`:
-        whether it's the batch's first day, the only one shown the latest
-        compacted note and the last compaction, as context."""
-        oldest = min(n.note.timestamp for n in notes)
+        """The day the oldest of `notes` falls in -- or, with none, the one
+        `window_start` does -- with its notes. Its
+        compaction window starts at `window_start`, if given, or else no
+        earlier than `last_stamped`. `first`: whether it's the batch's
+        first day, the only one shown the latest compacted note and the
+        last compaction, as context. `sleepless`: nights that don't end
+        it, and `border`: where it ends instead of where its night does
+        -- see `_cut`."""
+        oldest = min(n.note.timestamp for n in notes) if notes else window_start
         # The day the oldest note falls in starts when the night before it
         # ends -- or at the note, if it was written before the wake-up time.
         recent = calendar.list_events(oldest - timedelta(hours=24), oldest + timedelta(seconds=1))
@@ -776,16 +876,18 @@ class NoteCompactor:
             default=None,
         )
         day_start = min(opening.end, oldest) if opening is not None else oldest
-        compaction_window_start = (
-            max(day_start, last_stamped) if last_stamped is not None else day_start
-        )
+        if window_start is not None:
+            compaction_window_start = window_start
+        else:
+            compaction_window_start = (
+                max(day_start, last_stamped) if last_stamped is not None else day_start
+            )
+        reach = timedelta(hours=24) * (1 + len(sleepless))
 
         fetched = sorted(
             (
                 e
-                for e in calendar.list_events(
-                    compaction_window_start - _LOOKBACK, day_start + timedelta(hours=24)
-                )
+                for e in calendar.list_events(compaction_window_start - _LOOKBACK, day_start + reach)
                 if e.status != "cancelled"
             ),
             key=lambda e: e.start,
@@ -793,14 +895,24 @@ class NoteCompactor:
         earlier = [e for e in fetched if e.end <= compaction_window_start]
         events = [e for e in fetched if e.end > compaction_window_start]
         closing = next(
-            (i for i, e in enumerate(events) if e.is_end_of_day_sleep and e.start > day_start), None
+            (
+                i
+                for i, e in enumerate(events)
+                if e.is_end_of_day_sleep and e.start > day_start and e.id not in sleepless
+            ),
+            None,
         )
         if closing is not None:
             events = events[: closing + 1]
         previous = max(earlier, key=lambda e: e.end) if earlier else None
         if previous is not None:
             events.insert(0, previous)
-        day_end = events[-1].end if closing is not None else day_start + timedelta(hours=24)
+        if border is not None:
+            day_end = border
+        elif closing is not None:
+            day_end = events[-1].end
+        else:
+            day_end = day_start + reach
         return _Day(
             notes=[n for n in notes if n.note.timestamp <= day_end],
             events=events,
@@ -811,6 +923,7 @@ class NoteCompactor:
             previous=previous,
             latest_compacted=latest_compacted if first else None,
             last_compaction=last_stamped if first else None,
+            closing=events[-1] if closing is not None else None,
         )
 
     def _supersede_planned(self) -> int:
@@ -846,7 +959,12 @@ class NoteCompactor:
         def comparable(changes: list[CompactionChange]) -> list[tuple]:
             return [(c.action, c.event_id, c.before, c.after) for c in changes]
 
-        def plan_day(day: _Day, has_next: bool, index: int) -> _Walked:
+        def night(event_id: str, index: int) -> EventDecision | None:
+            if index >= len(days):
+                return None
+            return next((d for d in days[index].decisions if d.event_id == event_id), None)
+
+        def plan_day(day: _Day, index: int) -> _Walked:
             journal = days[index]
             if {n.id for n in day.notes} != set(journal.note_ids):
                 raise stale
@@ -855,7 +973,7 @@ class NoteCompactor:
                 raise stale
             return _Walked(day=day, plan=plan)
 
-        walked, _remaining = self._walk(days[-1].now, plan_day, max_days=len(days))
+        walked, _remaining = self._walk(days[-1].now, plan_day, night, max_days=len(days))
         if len(walked) != len(days):
             raise stale
 
@@ -882,6 +1000,13 @@ class NoteCompactor:
                         problems.append(f"{d.action} {d.event_id or d.summary!r}: {exc}")
             if problems:
                 raise CompactionError("\n".join(problems))
+        night = day.night_before
+        if night is not None and any(e.id == night.id for e in day.events):
+            # The night the day before decided ran late is placed first, as
+            # decided, so what it now runs into -- this morning -- moves out
+            # from under it. The day's own decisions never name it: it's the
+            # day before's.
+            decisions = [EventDecision(action="keep", event_id=night.id)] + list(decisions)
         plan = plan_compaction(
             _plan_notes(day),
             decisions,
@@ -892,6 +1017,7 @@ class NoteCompactor:
             goal_names=_goal_names(tree),
             previous_note=_latest_compacted(day),
             last_compaction=day.last_compaction,
+            next_day_follows=day.has_next,
         )
         labelled = [c for c in plan.changes if c.action == "create" and c.after.event_label_id is not None]
         if not labelled:
@@ -960,60 +1086,53 @@ def _require_not_being_applied(journal: CompactionJournal, note_id: str) -> None
 
 
 def _decisions_for(
-    day: _Day, decisions: list[EventDecision], has_next: bool
+    day: _Day, decisions: list[EventDecision]
 ) -> tuple[list[EventDecision], list[EventDecision]]:
     """Which of `decisions` are `day`'s, and which are left for the days
-    after it. An event's decision is the day's whose events it's among; a
-    'create' is the day's whose notes it uses, or that it starts in.
-    The last day (`has_next` false) takes whatever's left, unknown ids
-    and all, to report them as any day would.
+    after it. An event's decision is the day's whose events it's among --
+    the night it ends with included, all of it (see `NoteCompactor._cut`):
+    a night is decided once, by the day before it. A 'create' is the
+    day's it starts in. The last day takes whatever's left, unknown ids and all, to report
+    them as any day would.
 
-    The day's own end-of-day sleep event is the one event two days share:
-    the day it ends ends with its start (bedtime), and the next day
-    starts with its end (the wake-up time, offered as that day's
-    `previous`). So a 'keep' that moves its end is split: the end is the
-    next day's to move, against that morning's events, and the rest stays
-    with this day -- a day's plan never moves where the next day starts."""
-    if not has_next:
-        return list(decisions), []
+    A decision may use a note of an earlier day of the batch as an edge
+    -- "finally up" ends the night, and starts the morning -- at that
+    note's time: the note stays the earlier day's."""
+    decisions = [_at_earlier_notes(d, day.earlier_notes) for d in decisions]
+    if not day.has_next:
+        return decisions, []
     event_ids = {e.id for e in day.events if e.id}
-    note_ids = {n.id for n in day.notes}
-    closing = next((e for e in day.events if e.is_end_of_day_sleep and e.start > day.day_start), None)
+    times = {n.id: n.note.timestamp for n in day.notes}
     mine: list[EventDecision] = []
     rest: list[EventDecision] = []
     for decision in decisions:
         if decision.action == "create":
-            anchored = {decision.start_note, decision.end_note} - {None}
-            ours = bool(anchored & note_ids) if anchored else (
-                decision.start is not None and decision.start < day.day_end
-            )
+            start = decision.start or times.get(decision.start_note)
+            end = decision.end or times.get(decision.end_note)
+            ours = start < day.day_end if start is not None else end is not None and end <= day.day_end
             (mine if ours else rest).append(decision)
-        elif decision.event_id not in event_ids:
-            rest.append(decision)
-        elif (
-            closing is not None
-            and decision.event_id == closing.id
-            and decision.action == "keep"
-            and (decision.end is not None or decision.end_note is not None)
-        ):
-            rest.append(
-                EventDecision(action="keep", event_id=decision.event_id, end=decision.end, end_note=decision.end_note)
-            )
-            bedtime = replace(decision, end=None, end_note=None)
-            if any(
-                v is not None
-                for v in (bedtime.start, bedtime.start_note, bedtime.summary, bedtime.annotate, bedtime.goal_ids)
-            ):
-                mine.append(bedtime)
-        else:
+        elif decision.event_id in event_ids:
             mine.append(decision)
+        else:
+            rest.append(decision)
     return mine, rest
+
+
+def _at_earlier_notes(decision: EventDecision, earlier: dict[str, datetime]) -> EventDecision:
+    """`decision`, with any edge set by a note in `earlier` set to that
+    note's time instead -- see `_decisions_for`."""
+    changes = {}
+    if decision.start_note in earlier:
+        changes.update(start=decision.start or earlier[decision.start_note], start_note=None)
+    if decision.end_note in earlier:
+        changes.update(end=decision.end or earlier[decision.end_note], end_note=None)
+    return replace(decision, **changes) if changes else decision
 
 
 def _day_label(day: _Day) -> str:
     """The day's date, in the notes' own time zone, e.g. "Sat 03 Oct" --
     as the timeline heads it (see utilities/compaction_timeline.py)."""
-    tz = day.notes[0].note.timestamp.tzinfo if day.notes else None
+    tz = day.notes[0].note.timestamp.tzinfo if day.notes else day.day_start.tzinfo
     return day.day_start.astimezone(tz).strftime("%a %d %b")
 
 

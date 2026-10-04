@@ -20,7 +20,6 @@ def _full_goal() -> Goal:
         status="inactive",
         background_color="#123456",
         priority=2,
-        fixed_time=True,
         measure={"kind": "duration", "target_min": 300},
         note="for hosting",
         label_id="5b0e5b1e-0000-0000-0000-000000000000",
@@ -40,7 +39,6 @@ class TestGoalSheet:
         cells = dict(zip(HEADER_ROW, row))
         assert cells["status"] == "inactive"
         assert cells["measure"] == '{"kind":"duration","target_min":300}'
-        assert cells["fixed_time"] == "TRUE"
 
     def test_is_tagged_and_found_again(self):
         sheet, sheets = _sheet()
@@ -75,10 +73,13 @@ class TestGoalSheet:
     def test_removes_retired_columns_on_write_shifting_the_rest_left(self):
         sheets = FakeSheets()
         sheet = GoalSheet.create(sheets, _SPREADSHEET, [])
-        header = ["id", "name", "target", "status", "label_id", "deadline", "active", "created", "mine"]
-        sheets.write_rows_in_sheet(_SPREADSHEET, 1, "A1:Z1", [header + [""] * 18])
+        header = ["id", "name", "target", "status", "label_id", "deadline", "active", "created", "fixed_time", "mine"]
+        sheets.write_rows_in_sheet(_SPREADSHEET, 1, "A1:Z1", [header + [""] * 16])
         sheets.write_rows_in_sheet(
-            _SPREADSHEET, 1, "A2:I2", [["a", "A", "weekly", "active", "la", "2026-12-31", "TRUE", "2026-10-02", "kept"]]
+            _SPREADSHEET,
+            1,
+            "A2:J2",
+            [["a", "A", "weekly", "active", "la", "2026-12-31", "TRUE", "2026-10-02", "TRUE", "kept"]],
         )
 
         (a,) = sheet.read()

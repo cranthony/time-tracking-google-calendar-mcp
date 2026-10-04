@@ -85,7 +85,7 @@ else:
     mcp = MCPServer("time-tracking-google-calendar-mcp")
 
 INTERNAL_EVENT_FIELDS = frozenset(
-    {"status", "goal_priority", "goal_is_fixed_time", "recurrence", "time_zone", "original_start"}
+    {"status", "goal_priority", "recurrence", "time_zone", "original_start"}
 )
 """Event fields the agent talking to this server should never see or set,
 at all -- not just left null. A series' recurrence and time_zone are seen
@@ -122,14 +122,14 @@ class PublicEvent:
     them inferred, whatever goal_ids says; to store goals, send goal_ids
     with goals_from_label false (or left out).
 
-    effective_priority/effective_is_fixed_time are read-only: Event's
-    properties of the same name, the values reallocation actually uses,
-    i.e. priority/is_fixed_time falling back to the primary goal's (or
-    its nearest ancestor's) when the event doesn't set one. Kept separate
-    from priority/is_fixed_time so that sending a listed event straight
-    back to update_event never copies its goal's values onto the event
-    itself, which would stop it following later changes to the goal.
-    to_event ignores them.
+    effective_priority is read-only: Event's property of the same name,
+    the priority reallocation actually uses, i.e. priority falling back,
+    when the event doesn't set one, to the highest (lowest-numbered)
+    priority among its goals (each goal's own, or its nearest
+    ancestor's). Kept separate from priority so that sending a listed
+    event straight back to update_event never copies its goals' priority
+    onto the event itself, which would stop it following later changes to
+    the goals. to_event ignores it.
 
     is_end_of_day_sleep/recurring_event_id are read-only too, and
     to_event ignores them as well. is_end_of_day_sleep decides where a
@@ -154,7 +154,6 @@ class PublicEvent:
     event_label_id: str | None = None
     is_cancelled: bool = False
     effective_priority: int | None = None
-    effective_is_fixed_time: bool | None = None
     is_end_of_day_sleep: bool | None = None
     recurring_event_id: str | None = None
 
@@ -183,7 +182,6 @@ class PublicEvent:
             event_label_id=event.event_label_id,
             is_cancelled=event.status == "cancelled",
             effective_priority=event.effective_priority,
-            effective_is_fixed_time=event.effective_is_fixed_time,
             is_end_of_day_sleep=event.is_end_of_day_sleep,
             recurring_event_id=event.recurring_event_id,
         )
@@ -220,7 +218,7 @@ class PublicRecurrence:
     which resets them (see update_recurrence). goals_from_label is as for
     PublicEvent.
 
-    schedule, goal_names, event_label_id and the effective_* fields are
+    schedule, goal_names, event_label_id and effective_priority are
     read-only: update_recurrence ignores them, as it does time_zone."""
 
     id: str | None = None
@@ -241,7 +239,6 @@ class PublicRecurrence:
     goals_from_label: bool = False
     event_label_id: str | None = None
     effective_priority: int | None = None
-    effective_is_fixed_time: bool | None = None
 
     @classmethod
     def from_event(cls, event: Event, tree: GoalTree) -> "PublicRecurrence":
@@ -266,7 +263,6 @@ class PublicRecurrence:
             goals_from_label=event.goals_from_label,
             event_label_id=event.event_label_id,
             effective_priority=event.effective_priority,
-            effective_is_fixed_time=event.effective_is_fixed_time,
         )
 
     def to_event(self) -> Event:
@@ -425,9 +421,8 @@ def get_note_compactor() -> NoteCompactor:
 
 def _public_events(events: list[Event]) -> list[PublicEvent]:
     """`events` as PublicEvents, with goal_ids/goal_names and
-    effective_priority/effective_is_fixed_time filled in from each one's
-    goals -- see PublicEvent. Every event tool's result goes through
-    this."""
+    effective_priority filled in from each one's goals -- see
+    PublicEvent. Every event tool's result goes through this."""
     tree = get_goal_store().tree()
     return [PublicEvent.from_event(event, tree) for event in fill_in_from_goals(events, tree)]
 
@@ -508,14 +503,14 @@ def tool(fn: Callable[P, R]) -> Callable[P, R]:
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     """List events between min_time and max_time. goal_ids are the goals
     each event serves, primary first (goal_names gives their names).
-    effective_priority/effective_is_fixed_time are what reallocation
-    actually uses: the event's own priority/is_fixed_time, falling back
-    to its primary goal's. is_end_of_day_sleep marks the sleep event that
+    effective_priority is what reallocation actually uses: the event's
+    own priority, falling back to the highest priority of its goals.
+    is_end_of_day_sleep marks the sleep event that
     ends a day; recurring_event_id is the id of an instance's recurring
     series (see get_recurrence and update_recurrence to read and edit the
     series as a whole); event_label_id is the calendar label derived from
     its goals.
-    goal_names, the effective_* fields, is_end_of_day_sleep,
+    goal_names, effective_priority, is_end_of_day_sleep,
     recurring_event_id and event_label_id are read-only: update_event and
     create_event ignore them."""
     with track("list_events"), cached_sheet_reads():
@@ -675,9 +670,9 @@ def create_goal(goal: Goal) -> CreatedGoal:
     its other properties. Its status is active unless given (e.g.
     "proposed" for one suggested but not taken on yet); each active goal
     takes one of the calendar's event labels, and its events are shown in
-    its color (background_color, or derived from priority). priority and
-    fixed_time are inherited by sub-goals and events that don't set their
-    own. id and label_id are assigned. Returns the resulting
+    its color (background_color, or derived from priority). priority is
+    inherited by sub-goals and events that don't set their own (an
+    event takes the highest of its goals'). id and label_id are assigned. Returns the resulting
     proposed, active and inactive goals, and the new goal's id as
     created_id.
 
@@ -739,7 +734,7 @@ def create_goal(goal: Goal) -> CreatedGoal:
             raise ToolError(str(exc)) from exc
 
 
-GoalField = Literal["parent_id", "background_color", "priority", "fixed_time", "measure", "note"]
+GoalField = Literal["parent_id", "background_color", "priority", "measure", "note"]
 """Every Goal field update_goal can clear (see utilities/goals.py's
 CLEARABLE_FIELDS)."""
 
@@ -1033,11 +1028,12 @@ def compact_notes(
     of the day around it in the same plan. Moving the end-of-day sleep
     event moves where the day ends: an earlier bedtime shortens or cancels
     whatever no longer fits before it, a later one leaves the evening
-    free. Its end (the wake-up time) starts the next day: if that day is
-    being compacted too, a 'keep' moving it is that day's, checked against
-    its morning; if not, compaction never adjusts the next day -- so move
-    only its start to change only the bedtime, and if the wake-up time does
-    change, the plan warns; tell the user.
+    free. Its end (the wake-up time) is the border with the next day: a
+    note ending it moves the border there. If that day is being compacted
+    too, its morning is settled against the night; if not, compaction
+    never adjusts the next day -- so move only its start to change only the
+    bedtime, and if the wake-up time does change, the plan warns; tell the
+    user. Cancelling a night (no sleep) makes its two days one.
 
     Step 3: only after the user has explicitly approved this specific plan,
     having seen it -- never in the same turn as the dry run, and a request
