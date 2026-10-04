@@ -9,8 +9,10 @@ property per assessment, `a.<goal id>`, holding it as JSON. Calendar
 silently truncates a value over 1024 characters, so a longer one (a long
 rationale, say) continues in `a.<goal id>.1`, `.2` and so on, every 1000
 bytes; the journal the same. The title and description are only for looking at in Google
-Calendar: the overall goal's rating in the title, and a line per goal in
-the description.
+Calendar: the overall goal's rating in the title, and in the first part's
+description the journal and a summary of the goals given their own
+priority (utilities/health_summary.py) -- the rest are only in the
+properties.
 
 **Parts.** Calendar allows an event up to 300 properties of 32 kB (keys
 and values) in all. A day's assessments are packed into its first event,
@@ -29,6 +31,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -135,6 +138,21 @@ def band(rating: Rating | None) -> str:
     return "🔴" if rating < 40 else "🟡" if rating < 70 else "🟢"
 
 
+_PROPOSED = re.compile(r"→ (\d+|skip)$")
+"""The rating at the end of an explanation `measure` gave."""
+
+
+def explanation_of(assessment: Assessment) -> str | None:
+    """`assessment`'s explanation as recorded -- unless it ends in a
+    rating other than the one given, which was changed from it: then none,
+    since the rationale (the reason for the change) says why, or "Changed
+    from <rating>" if there's no rationale."""
+    proposed = _PROPOSED.search(assessment.explanation or "")
+    if proposed is None or proposed.group(1) == str(assessment.rating):
+        return assessment.explanation
+    return None if assessment.rationale else f"Changed from {proposed.group(1)}"
+
+
 def day_event_id(day: date, part: int) -> str:
     """The deterministic event id of the `part`th (from 1) event of `day`:
     `health-day|day|part` in lowercase base32hex, Calendar's own event-id
@@ -164,14 +182,14 @@ class HealthDays:
         )
         return {d: day for d, day in decode(items).items() if first <= d < end}
 
-    def write(self, day: HealthDay, names: dict[str, str], overall_id: str) -> HealthDay:
+    def write(self, day: HealthDay, summary: str, overall_id: str) -> HealthDay:
         """Replace `day`'s events with what it holds now, deleting any
         parts it no longer needs (`day.parts` says how many it had), and
-        return it with its new count. `names` gives the goals' names
-        (paths) for the description. Raises ValueError if Calendar didn't
+        return it with its new count. `summary` is its assessments in
+        brief, for the description. Raises ValueError if Calendar didn't
         keep every property as sent."""
         calendar = self._calendar(True)
-        bodies = encode(day, names, overall_id)
+        bodies = encode(day, summary, overall_id)
         for part, body in enumerate(bodies, 1):
             response = calendar.replace_event_resource(day_event_id(day.day, part), body)
             kept = response.get("extendedProperties", {}).get("private", {})
@@ -187,7 +205,7 @@ class HealthDays:
 # -- encoding --------------------------------------------------------------------
 
 
-def encode(day: HealthDay, names: dict[str, str], overall_id: str) -> list[dict]:
+def encode(day: HealthDay, summary: str, overall_id: str) -> list[dict]:
     """`day` as the bodies of its events, in order -- see the module
     docstring."""
     reflection = _reflection_properties(day.reflection) if day.reflection else []
@@ -210,13 +228,12 @@ def encode(day: HealthDay, names: dict[str, str], overall_id: str) -> list[dict]
     count = len(packed)
     overall = day.assessments.get(overall_id)
     bodies = []
-    for part, (properties, goal_ids) in enumerate(packed, 1):
-        lines = [_line(day.assessments[g], names.get(g, g)) for g in goal_ids]
-        journal = day.reflection.journal if day.reflection and part == 1 else None
+    journal = day.reflection.journal if day.reflection else None
+    for part, (properties, _) in enumerate(packed, 1):
         bodies.append(
             {
                 "summary": _summary(day, overall, part, count),
-                "description": _description(journal, lines),
+                "description": _description(journal, summary) if part == 1 else "",
                 "start": {"date": day.day.isoformat()},
                 "end": {"date": (day.day + timedelta(days=1)).isoformat()},
                 "transparency": "transparent",
@@ -369,14 +386,9 @@ def _summary(day: HealthDay, overall: Assessment | None, part: int, count: int) 
     return title + (f" ({part}/{count})" if count > 1 else "")
 
 
-def _line(assessment: Assessment, name: str) -> str:
-    said = assessment.explanation or assessment.rationale
-    return f"{band(assessment.rating)} {_shown(assessment)} {name}" + (f" — {said}" if said else "")
-
-
-def _description(journal: str | None, lines: list[str]) -> str:
+def _description(journal: str | None, summary: str) -> str:
     """For looking at only, so cut short to fit Calendar's limit."""
-    text = "\n\n".join(p for p in (journal, "\n".join(lines)) if p)
+    text = "\n\n".join(p for p in (journal, summary) if p)
     encoded = text.encode()
     if len(encoded) <= MAX_DESCRIPTION_BYTES:
         return text

@@ -61,10 +61,6 @@ def _day(count, rationale="", reflection=None, parts=0) -> HealthDay:
     return HealthDay(day=DAY, assessments=assessments, reflection=reflection, parts=parts)
 
 
-def _names(day: HealthDay) -> dict[str, str]:
-    return {goal_id: f"Goal {goal_id}" for goal_id in day.assessments}
-
-
 class TestEventIds:
     def test_encode_the_day_and_part_in_calendars_alphabet(self):
         event_id = day_event_id(DAY, 2)
@@ -95,7 +91,7 @@ class TestRoundTrip:
             reflection=reflection,
         )
 
-        days.write(day, {"abc123": "Piano", "overall": "Overall"}, "overall")
+        days.write(day, "A summary", "overall")
 
         (read,) = days.read(DAY, date(2026, 10, 2), TZ).values()
         assert read.assessments == day.assessments
@@ -103,7 +99,7 @@ class TestRoundTrip:
         assert read.parts == 1
 
     def test_no_value_is_over_calendars_limit_counting_any_way(self):
-        encoded = encode(_day(1, rationale="🎹" * 3000), {}, "overall")
+        encoded = encode(_day(1, rationale="🎹" * 3000), "", "overall")
 
         for value in encoded[0]["extendedProperties"]["private"].values():
             assert len(value.encode("utf-16-le")) // 2 <= 1024
@@ -122,7 +118,7 @@ class TestParts:
         day = _day(25, rationale="x" * 3000, reflection=DayReflection(complete=True))
         day.assessments["overall"] = _assessment("overall", 75)
 
-        written = days.write(day, _names(day), "overall")
+        written = days.write(day, "A summary", "overall")
 
         assert written.parts == len(calendar.events) >= 3
         for part in range(1, written.parts + 1):
@@ -137,19 +133,20 @@ class TestParts:
 
     def test_parts_no_longer_needed_are_deleted(self):
         days, calendar = _days()
-        big = days.write(_day(25, rationale="x" * 3000), {}, "overall")
+        big = days.write(_day(25, rationale="x" * 3000), "", "overall")
 
-        small = days.write(_day(2, parts=big.parts), {}, "overall")
+        small = days.write(_day(2, parts=big.parts), "", "overall")
 
         assert small.parts == 1
         assert set(calendar.events) == {day_event_id(DAY, 1)}
         assert calendar.events[day_event_id(DAY, 1)]["summary"] == "📊 Goal health · 2026-10-01"
 
-    def test_the_reflection_and_journal_stay_in_the_first_part(self):
+    def test_the_reflection_journal_and_summary_stay_in_the_first_part(self):
         reflection = DayReflection(journal="tired", complete=False)
-        bodies = encode(_day(25, rationale="x" * 3000, reflection=reflection), {}, "overall")
+        bodies = encode(_day(25, rationale="x" * 3000, reflection=reflection), "A summary", "overall")
 
-        assert bodies[0]["description"].startswith("tired\n\n")
+        assert bodies[0]["description"] == "tired\n\nA summary"
+        assert all(b["description"] == "" for b in bodies[1:])
         assert f"{PREFIX}complete" in bodies[0]["extendedProperties"]["private"]
         assert all(f"{PREFIX}complete" not in b["extendedProperties"]["private"] for b in bodies[1:])
         assert bodies[0]["summary"] == f"📝 Reflection · 2026-10-01 (in progress) (1/{len(bodies)})"
@@ -159,9 +156,7 @@ class TestDescription:
     def test_is_cut_short_to_fit_without_losing_anything(self):
         days, calendar = _days()
         day = _day(200, reflection=DayReflection(journal="j" * 7000, complete=True))
-        names = {goal_id: "A goal with a long name " * 3 for goal_id in day.assessments}
-
-        days.write(day, names, "overall")
+        days.write(day, "A goal with a long name\n" * 200, "overall")
 
         description = calendar.events[day_event_id(DAY, 1)]["description"]
         assert len(description.encode()) <= MAX_DESCRIPTION_BYTES
@@ -177,12 +172,12 @@ class TestChecking:
         calendar.dropping = True
 
         with pytest.raises(ValueError, match="didn't keep 2026-10-01's goal health as written"):
-            days.write(_day(1), {}, "overall")
+            days.write(_day(1), "", "overall")
 
 
 class TestDecode:
     def test_ignores_other_events_and_cancelled_ones(self):
-        (body,) = encode(_day(1), {}, "overall")
+        (body,) = encode(_day(1), "", "overall")
         other = {"start": body["start"], "end": body["end"], "extendedProperties": {"private": {f"{PREFIX}kind": "x"}}}
 
         assert decode([{**body, "status": "cancelled"}, other]) == {}

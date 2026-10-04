@@ -31,7 +31,8 @@ rationale, or "Changed from ...") -- is kept as recorded.
 **The summary** lists the top-level goals and every goal given its own
 priority, grouped by priority (0 first; a top-level goal without one is
 2) and best rated first within each. Each line folds in the sub-goals
-that don't have a line of their own, naming the lowest of them.
+that don't have a line of their own, naming the lowest of them (see
+utilities/health_summary.py).
 
 **Subjective goals** are asked their prompt only once their
 `interval_days` have passed since it was last answered (in a reflection,
@@ -69,6 +70,7 @@ from utilities.goal_health import (
 )
 from utilities.goal_time import goal_minutes
 from utilities.goals import OVERALL_ID, Goal, Goals, GoalTree
+from utilities.health_summary import Rated, SummaryLine, grouped, summary_lines
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.sleep_days import MissingSleep, NotOver, listing_range, period_window
 
@@ -80,17 +82,6 @@ _CHOICES = 3
 when none is named."""
 
 _RECENT_RATINGS = 6
-
-DEFAULT_PRIORITY = 2
-"""The summary's priority for a top-level goal without one -- as for an
-event (calendar_clients/google_calendar.py's color_for_priority)."""
-
-_DETAILS = 3
-"""How many folded-in sub-goals a summary line names."""
-
-_TREND = 10
-"""How far (in points) a line's rating must move since the day before to
-be marked with an arrow."""
 
 
 @dataclass(kw_only=True)
@@ -134,30 +125,6 @@ class Question:
     sub_goals: list[SubGoalRating] = field(default_factory=list)
     """Its rated sub-goals' ratings of this day, for a rubric that refers
     to them."""
-
-
-@dataclass(kw_only=True)
-class SummaryLine:
-    """One line of a reflection's summary: a top-level goal, or one with
-    its own priority, folding in the sub-goals without a line of their
-    own."""
-
-    goal_id: str
-    name: str
-    priority: int
-    rating: int | Literal["skip"] | None
-    state: Literal["final", "provisional", "waiting", "unmeasured"]
-    """`provisional`: rated, but it waits on answers further down, which
-    are left out. `waiting`: nothing to rate it by until they're in.
-    `unmeasured`: it has no measure, and no rated sub-goals."""
-
-    change: int | None = None
-    """Since its confirmed rating of the day before."""
-
-    detail: str | None = None
-    """How it was rated, or its lowest-rated folded-in sub-goals."""
-
-    text: str = ""
 
 
 @dataclass(kw_only=True)
@@ -263,16 +230,8 @@ class ReflectionResult:
 
 
 @dataclass
-class _Rated:
-    assessment: Assessment | None
-    """`None` while it waits on an answer (or can't be rated)."""
-
-    final: bool
-
-
-@dataclass
 class _Evaluation:
-    results: dict[str, _Rated]
+    results: dict[str, Rated]
     """Every rated goal's rating of the day, by id."""
 
     questions: list[Question]
@@ -348,29 +307,29 @@ class Reflections:
         to_measure = [g for g in rated if g.id not in given and g.id not in kept]
         measured = dict(zip((g.id for g in to_measure), self._health.propose(day, to_measure, tree, {})))
 
-        results: dict[str, _Rated] = {}
+        results: dict[str, Rated] = {}
         # Sub-goals before their parents: `ordered` lists parents first.
         for goal in reversed(rated):
             measure = tree.measure(goal.id) or {}
             kind = measure.get("kind")
             if goal.id in given:
-                results[goal.id] = _Rated(given[goal.id], final=goal.id not in proposed)
+                results[goal.id] = Rated(given[goal.id], final=goal.id not in proposed)
             elif goal.id in kept:
-                results[goal.id] = _Rated(kept[goal.id], final=True)
+                results[goal.id] = Rated(kept[goal.id], final=True)
             elif (found := measured[goal.id]) is not None and (found.unmet or kind != "rollup"):
-                results[goal.id] = _Rated(found, final=True)
+                results[goal.id] = Rated(found, final=True)
             elif kind == "rollup":
                 children = [results[c.id] for c in tree.rated_children(goal.id)]
                 ratings = {r.assessment.goal_id: r.assessment for r in children if r.assessment is not None}
                 rolled = roll_up(goal, tree, ratings, day)
-                results[goal.id] = _Rated(rolled, final=rolled is not None and all(r.final for r in children))
+                results[goal.id] = Rated(rolled, final=rolled is not None and all(r.final for r in children))
             elif kind == "subjective":
                 carried = self._carried_over(goal.id, measure, day, week)
-                results[goal.id] = _Rated(carried, final=carried is not None)
+                results[goal.id] = Rated(carried, final=carried is not None)
             elif kind == "llm":
-                results[goal.id] = _Rated(None, final=False)
+                results[goal.id] = Rated(None, final=False)
             else:  # A measure the calendar couldn't answer (a bad spec): left out.
-                results[goal.id] = _Rated(None, final=True)
+                results[goal.id] = Rated(None, final=True)
 
         questions = []
         for goal in rated:
@@ -611,7 +570,7 @@ def _notes_digest(notes, start: datetime, end: datetime, tz) -> str:
     return "\n".join(lines) or "(no notes)"
 
 
-def _sub_goal_rating(goal: Goal, tree: GoalTree, rated: _Rated) -> SubGoalRating:
+def _sub_goal_rating(goal: Goal, tree: GoalTree, rated: Rated) -> SubGoalRating:
     a = rated.assessment
     return SubGoalRating(
         goal_id=goal.id,
@@ -651,84 +610,7 @@ def _summary(day: date, tree: GoalTree, evaluation: _Evaluation) -> tuple[list[S
         g for g in tree.ordered()
         if g.id != OVERALL_ID and g.active and (not g.parent_id or g.priority is not None)
     ]
-    lined_ids = {g.id for g in lined}
-    order = {g.id: i for i, g in enumerate(tree.ordered())}
-    names: dict[str, int] = {}
-    for g in tree.goals:
-        names[g.name] = names.get(g.name, 0) + 1
-
-    def name(goal: Goal) -> str:
-        """Its name, after its parent's if another goal has it too (say,
-        "Visit")."""
-        parent = tree.by_id.get(goal.parent_id) if goal.parent_id else None
-        return f"{parent.name} › {goal.name}" if names[goal.name] > 1 and parent else goal.name
-
-    def folded(goal_id: str) -> list[Goal]:
-        """The rated goals under `goal_id` without a line of their own,
-        down to those rated by a measure of their own."""
-        found = []
-        for child in tree.rated_children(goal_id):
-            if child.id in lined_ids:
-                continue
-            assessment = results[child.id].assessment
-            if assessment is not None and assessment.method == "rollup":
-                found += folded(child.id)
-            else:
-                found.append(child)
-        return found
-
-    def detail(goal: Goal) -> str | None:
-        assessment = results[goal.id].assessment
-        if assessment is not None and assessment.method != "rollup":
-            return explanation_of(assessment) or assessment.rationale
-        parts = []
-        for child in folded(goal.id):
-            r = results[child.id]
-            a = r.assessment
-            if a is None:
-                parts.append((-1, order[child.id], f"{name(child)} ?"))
-            elif isinstance(a.rating, int):
-                parts.append((a.rating, order[child.id], f"{name(child)} {'' if r.final else '~'}{a.rating}"))
-        return " · ".join(text for _, _, text in sorted(parts)[:_DETAILS]) or None
-
-    lines = []
-    for goal in lined:
-        priority = goal.priority if goal.priority is not None else DEFAULT_PRIORITY
-        if not tree.rated(goal.id) or (results[goal.id].assessment is None and results[goal.id].final):
-            lines.append(
-                SummaryLine(
-                    goal_id=goal.id, name=goal.name, priority=priority, rating=None, state="unmeasured",
-                    text=f"⚪ **{goal.name}**: not measured",
-                )
-            )
-            continue
-        r = results[goal.id]
-        rating = r.assessment.rating if r.assessment else None
-        state = "waiting" if rating is None else "final" if r.final else "provisional"
-        before = evaluation.previous.get(goal.id)
-        change = rating - before.rating if isinstance(rating, int) and before and isinstance(before.rating, int) else None
-        why = detail(goal)
-        if rating is None:
-            text = f"⏳ **{goal.name}**: waiting on your answers"
-        elif rating == "skip":
-            text = f"⚪ **{goal.name}** skipped"
-        else:
-            arrow = (f" ↑{change}" if change > 0 else f" ↓{-change}") if change and abs(change) >= _TREND else ""
-            text = f"{band(rating)} **{goal.name} {'~' if state == 'provisional' else ''}{rating}**{arrow}"
-        if why and rating is not None:
-            text += f": {why}"
-        lines.append(
-            SummaryLine(
-                goal_id=goal.id, name=goal.name, priority=priority, rating=rating, state=state, change=change,
-                detail=why, text=text,
-            )
-        )
-
-    def rank(line: SummaryLine) -> tuple:
-        group = 0 if isinstance(line.rating, int) else 1 if line.rating == "skip" else 2 if line.state != "unmeasured" else 3
-        return (line.priority, group, -line.rating if isinstance(line.rating, int) else 0, order[line.goal_id])
-
-    lines.sort(key=rank)
+    lines = summary_lines(tree, results, evaluation.previous, lined)
     overall = results.get(OVERALL_ID)
     rating = overall.assessment.rating if overall and overall.assessment else None
     # Unanswered questions, and llm ratings only proposed so far.
@@ -742,10 +624,7 @@ def _summary(day: date, tree: GoalTree, evaluation: _Evaluation) -> tuple[list[S
         head += f" {'' if overall.final else '~'}{rating} {band(rating)}**"
     if waiting:
         head += f" ({waiting} answer{'s' if waiting != 1 else ''} to go)"
-    text = [head]
-    for priority in sorted({line.priority for line in lines}):
-        text += ["", f"**Priority {priority}**"] + [line.text for line in lines if line.priority == priority]
-    return lines, "\n".join(text)
+    return lines, "\n".join([head] + grouped(lines))
 
 
 def _instructions(day: date) -> str:

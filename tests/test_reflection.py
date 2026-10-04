@@ -369,11 +369,11 @@ class TestRecord:
             "**Thu Oct 1 · Overall ~50 🟡** (1 answer to go)",
             "",
             "**Priority 0**",
-            "🟡 **Cooking 50**: 1h of 2h in the day → 50",
+            "🟡 **Cooking 50**: 1h of 2h in the day",
             "",
             "**Priority 2**",
             "🟢 **Neighbor ~100**: Cousins ? · Parents 100",
-            "🔴 **Tidy 0**: 0 of 1 events in the day → 0",
+            "🔴 **Tidy 0**: 0 of 1 events in the day",
         ]
         assert [(q.path, q.prompt) for q in result.questions] == [("Neighbor › Cousins", "How was cousins?")]
         assert (result.overall, result.overall_provisional) == (50, True)
@@ -462,7 +462,7 @@ class TestRecord:
             ("Read", 0, "final", -80),
             ("Promise", None, "unmeasured", None),
         ]
-        assert "🔴 **Read 0** ↓80: 0m of 1h in the day → 0" in result.summary
+        assert "🔴 **Read 0** ↓80: 0m of 1h in the day\n" in result.summary + "\n"
         assert "🟡 **Home 50**: Sweep 0" in result.summary  # Dust has a line of its own
         assert "⚪ **Promise**: not measured" in result.summary
 

@@ -103,7 +103,7 @@ class TestMigrate:
             day=DAY,
             assessments={"cook01": Assessment(goal_id="cook01", day=DAY, rating=90, method="metric")},
         )
-        HealthDays(lambda create: calendar).write(new, {}, "overall")
+        HealthDays(lambda create: calendar).write(new, "", "overall")
 
         migrate(calendar, _tree(), TZ, apply=True, say=lambda _: None)
 
