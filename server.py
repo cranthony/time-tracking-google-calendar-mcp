@@ -535,9 +535,11 @@ def get_event(id: str) -> PublicEvent:
 @writes
 def update_event(event: PublicEvent) -> list[PublicEvent]:
     """Update an existing event, reallocating time from the rest of its
-    day as needed to make room for its new position. Set goal_ids to
-    change its goals ([] for none). Returns the events affected by the
-    update."""
+    day as needed to make room for its new position. An update that
+    doesn't move it (start and end left out, or unchanged) changes only
+    its other fields: nothing else is touched, even on a day whose events
+    overlap. Set goal_ids to change its goals ([] for none). Returns the
+    events affected by the update."""
     with track("update_event"), cached_sheet_reads():
         _check_goal_ids(event, existing=True)
         updated_event = event.to_event()
