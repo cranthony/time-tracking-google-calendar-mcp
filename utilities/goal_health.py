@@ -24,8 +24,8 @@ only confirmed ratings feed a goal's at-a-glance health: the `health`/
 **Measuring.** `measure` proposes a rating for each goal whose measure
 the calendar can answer -- `duration` (minutes of its events over its
 interval), `count` (how many), `time_constraint` (when the day's events
-start or end)
-and `rollup` (its immediate sub-goals' confirmed ratings that day) --
+start or end), `time_window` (whether one of them falls in a window of
+the day) and `rollup` (its immediate sub-goals' confirmed ratings that day) --
 each with a one-line `explanation` of how the number was reached. It
 never writes anything. See utilities/goal_measures.py for the specs.
 """
@@ -75,9 +75,9 @@ Rating = int | Literal["skip"]
 Method = Literal["metric", "subjective", "llm", "rollup"]
 Status = Literal["proposed", "confirmed"]
 
-MEASURED_KINDS = frozenset({"duration", "count", "time_constraint", "rollup"})
+MEASURED_KINDS = frozenset({"duration", "count", "time_constraint", "time_window", "rollup"})
 
-_EVENT_KINDS = frozenset({"duration", "count", "time_constraint"})
+_EVENT_KINDS = frozenset({"duration", "count", "time_constraint", "time_window"})
 """The measure kinds read from the calendar's events."""
 """The measure kinds `measure` can rate from the calendar."""
 
@@ -291,7 +291,7 @@ class GoalHealth:
     def measure(self, day: date | None = None, goal_ids: list[str] | None = None) -> list[Assessment]:
         """Proposed assessments of `day` (default: the last one that's
         over) for the rated goals whose measure the calendar can answer:
-        duration, count, time_constraint, and rollups whose rated sub-goals all
+        duration, count, time_constraint, time_window, and rollups whose rated sub-goals all
         have a confirmed rating that day. Writes nothing. Raises
         utilities/sleep_days.py's NotOver or MissingSleep (both ValueErrors)
         if the day isn't over, or the sleeps that bound it aren't in the
@@ -649,10 +649,51 @@ def _measure_time_constraint(goal, measure, day, window, events, tree) -> Measur
     )
 
 
+def _measure_time_window(goal, measure, day, window, events, tree) -> Measured | None:
+    """Whether one of the day's events of the goal (see `_served`) fell in
+    a window of the day, each as far outside it as its closest edge -- see
+    utilities/goal_measures.py."""
+    try:
+        opens, closes = time.fromisoformat(measure.get("from", "")), time.fromisoformat(measure.get("to", ""))
+    except (TypeError, ValueError):
+        return None
+    if opens >= closes:
+        return None
+    grace = measure.get("grace_min", 0)
+    zero_at = max(measure.get("zero_at_min", 60), grace + 1)
+    start, end = window
+    tz = start.tzinfo
+    days = [e for e in _served(events, goal, measure, tree) if e.start < end and e.end > start]
+    goal_name = tree.by_id[measure["events_of"]].name if measure.get("events_of") in tree.by_id else goal.name
+    span = f"{opens:%H:%M}–{closes:%H:%M}"
+    metrics: dict[str, Any] = {"from": f"{opens:%H:%M}", "to": f"{closes:%H:%M}"}
+    if not days:
+        return 0, f"No events of {goal_name} that day → 0", metrics
+    window_start, window_end = datetime.combine(day, opens, tz), datetime.combine(day, closes, tz)
+
+    def out(event: Event) -> float:
+        """Minutes from the window to the event's closest edge; 0 if they
+        overlap."""
+        return max(0.0, (event.start - window_end).total_seconds(), (window_start - event.end).total_seconds()) / 60
+
+    closest = min(days, key=lambda e: (out(e), e.start))
+    off = out(closest)
+    rating = 100 if off <= grace else 0 if off >= zero_at else round(100 * (zero_at - off) / (zero_at - grace))
+    at = f"{closest.start.astimezone(tz):%H:%M}–{closest.end.astimezone(tz):%H:%M}"
+    metrics.update(at=at, off_min=round(off))
+    if off == 0:
+        where = f"in {span}"
+    else:
+        side = "after" if closest.start >= window_end else "before"
+        where = f"{round(off)} min {side} {span} with {grace:g} min grace"
+    return rating, f"{at}; {where} → {rating}", metrics
+
+
 _MEASURES: dict[str, Callable[..., Measured | None]] = {
     "duration": _measure_duration,
     "count": _measure_count,
     "time_constraint": _measure_time_constraint,
+    "time_window": _measure_time_window,
 }
 
 

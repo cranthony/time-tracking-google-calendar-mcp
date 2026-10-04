@@ -684,7 +684,13 @@ def create_goal(goal: Goal) -> GoalList:
     or, with edge "end", its last ends -- against the target: full marks
     by it, plus the grace, none at zero_at_min late; when "after", the
     other way round; a day without any is skipped), {"kind":
-    "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
+    "time_window", "from": "11:30", "to": "13:30", "grace_min": 0,
+    "zero_at_min": 60} (whether one of the day's events of the goal falls
+    in the window, each event as far outside it as its closest edge, so
+    one overlapping it at all is in: full marks for the closest event in
+    it, plus the grace, none at zero_at_min out; a day without any is
+    rated 0 -- e.g. lunch, measuring an "Eat well" goal's events with
+    events_of), {"kind": "subjective", "prompt": "How did it go?", "interval_days": 7} (asked
     in a reflection once interval_days,
     default 1, have passed since it was last answered; carried over from
     the day before in between), {"kind": "llm", "rubric": "..."} (you
@@ -694,7 +700,7 @@ def create_goal(goal: Goal) -> GoalList:
     "weighted" with "weights": {sub-goal id: weight}, a sub-goal not
     listed weighing 0; or "percentile" with "percentile": 0-100, 0 being
     the lowest and 100 the highest). Only the fields shown are allowed. A
-    duration, count or time_constraint measure looks at the events of the
+    duration, count, time_constraint or time_window measure looks at the events of the
     goal and its sub-goals, or, given "events_of": "<goal id>", at those of
     that goal and its sub-goals instead, as though it were that goal (e.g.
     a "work 40 hours a week" sub-goal measuring its parent's events,
