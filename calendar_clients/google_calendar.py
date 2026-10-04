@@ -105,6 +105,16 @@ def _event_label_version_kwargs(body: dict) -> dict:
     return {"eventLabelVersion": 1} if "eventLabelId" in body else {}
 
 
+CLEARABLE_EVENT_FIELDS = frozenset(
+    {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority"}
+)
+"""Event fields an update can remove (see `Event.cleared`). Not summary,
+start or end (an event always has them); not goal_ids, whose `[]`
+already means no goals, while removing them would leave the event's
+goals inferred from its label; nor what Google assigns or this app
+derives."""
+
+
 @dataclass(kw_only=True)
 class Event:
     """A calendar event, decoupled from the Google API's raw resource shape.
@@ -253,6 +263,22 @@ class Event:
     `to_api_body`), so writing an event back never turns the inference into
     a stored tag; only goal_ids set with this false are stored."""
 
+    cleared: frozenset[str] = frozenset()
+    """For an update: fields to remove from the event, each one of
+    `CLEARABLE_EVENT_FIELDS` and left `None` here (a `None` field is
+    otherwise kept as it is -- see `CalendarClient.update_event`). Never
+    read from the API."""
+
+    def __post_init__(self) -> None:
+        unknown = self.cleared - CLEARABLE_EVENT_FIELDS
+        if unknown:
+            raise ValueError(
+                f"Can't clear {sorted(unknown)}; clearable fields are {sorted(CLEARABLE_EVENT_FIELDS)}"
+            )
+        both = {name for name in self.cleared if getattr(self, name) is not None}
+        if both:
+            raise ValueError(f"Can't both set and clear {sorted(both)}")
+
     @property
     def effective_priority(self) -> int | None:
         """`priority`, falling back to `goal_priority` when unset."""
@@ -331,7 +357,7 @@ class Event:
         # sent: they're assigned by Google, not something a client sets. Nor is goal_priority:
         # it belongs to the goals, not the event.
 
-        private_properties = _format_properties(
+        private_properties: dict[str, str | None] = _format_properties(
             self,
             {
                 "min_duration": lambda d: str(int(d.total_seconds() / 60)),
@@ -345,6 +371,15 @@ class Event:
         if self.goals_from_label:
             # Inferred, not the event's own: see goals_from_label.
             private_properties.pop(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}goal_ids", None)
+        # A patch removes whatever it sets to null: a top-level field, or a
+        # key of extendedProperties.private (the rest of which it keeps).
+        for name in self.cleared:
+            if name in ("description", "location"):
+                body[name] = None
+            else:
+                private_properties[f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{name}"] = None
+        if "priority" in self.cleared:
+            body["colorId"] = None  # The calendar's default color.
         if private_properties:
             body["extendedProperties"] = {"private": private_properties}
 
@@ -762,7 +797,8 @@ class CalendarClient:
     def update_event(self, event: Event) -> Event:
         """Patch the event `event.id` with `event`'s fields that are set;
         those left `None` are kept, and extended properties not in the
-        body are kept too (Google merges extendedProperties.private).
+        body are kept too (Google merges extendedProperties.private) --
+        except those named in `event.cleared`, which are removed.
 
         `event.id` may be a recurring series' master: the patch then
         reaches every instance, including ones edited on their own

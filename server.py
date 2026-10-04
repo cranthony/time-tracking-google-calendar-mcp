@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import logging
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal, ParamSpec, TypeVar
@@ -85,12 +85,13 @@ else:
     mcp = MCPServer("time-tracking-google-calendar-mcp")
 
 INTERNAL_EVENT_FIELDS = frozenset(
-    {"status", "goal_priority", "recurrence", "time_zone", "original_start"}
+    {"status", "goal_priority", "recurrence", "time_zone", "original_start", "cleared"}
 )
 """Event fields the agent talking to this server should never see or set,
 at all -- not just left null. A series' recurrence and time_zone are seen
-and set through PublicRecurrence instead (see get_recurrence), and
-original_start is only used to split one. Enforced by PublicEvent actually lacking
+and set through PublicRecurrence instead (see get_recurrence),
+original_start is only used to split one, and cleared is set through
+update_event's and update_recurrence's clear_fields. Enforced by PublicEvent actually lacking
 these fields (so they never appear in a tool's schema or result), not by
 convention -- see PublicEvent below. tests/test_server.py's
 TestPublicEvent asserts these are exactly the fields PublicEvent is
@@ -186,7 +187,9 @@ class PublicEvent:
             recurring_event_id=event.recurring_event_id,
         )
 
-    def to_event(self) -> Event:
+    def to_event(self, clear_fields: Collection[str] = ()) -> Event:
+        """`clear_fields`: see Event.cleared. Raises ValueError for one
+        that can't be cleared, or that's also set."""
         return Event(
             id=self.id,
             summary=self.summary,
@@ -201,6 +204,7 @@ class PublicEvent:
             goal_ids=None if self.goals_from_label else self.goal_ids,
             priority=self.priority,
             status="cancelled" if self.is_cancelled else None,
+            cleared=frozenset(clear_fields),
         )
 
 
@@ -269,7 +273,8 @@ class PublicRecurrence:
             effective_priority=event.effective_priority,
         )
 
-    def to_event(self) -> Event:
+    def to_event(self, clear_fields: Collection[str] = ()) -> Event:
+        """`clear_fields`: as for PublicEvent.to_event."""
         return Event(
             id=self.id,
             summary=self.summary,
@@ -282,6 +287,7 @@ class PublicRecurrence:
             is_fixed_time=self.is_fixed_time,
             priority=self.priority,
             goal_ids=None if self.goals_from_label else self.goal_ids,
+            cleared=frozenset(clear_fields),
         )
 
 
@@ -531,21 +537,28 @@ def get_event(id: str) -> PublicEvent:
         return _public_events([event])[0]
 
 
+EventField = Literal["description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority"]
+"""Every event field update_event and update_recurrence can clear (see
+calendar_clients/google_calendar.py's CLEARABLE_EVENT_FIELDS)."""
+
+
 @tool
 @writes
-def update_event(event: PublicEvent) -> list[PublicEvent]:
+def update_event(event: PublicEvent, clear_fields: list[EventField] | None = None) -> list[PublicEvent]:
     """Update an existing event, reallocating time from the rest of its
     day as needed to make room for its new position. An update that
     doesn't move it (start and end left out, or unchanged) changes only
     its other fields: nothing else is touched, even on a day whose events
-    overlap. Set goal_ids to change its goals ([] for none). Returns the
-    events affected by the update."""
+    overlap. Fields left out keep their current value; list one in
+    clear_fields to remove it instead (clearing priority makes the event
+    follow its goals' priority again; clearing min_duration lets it
+    shrink to nothing). Set goal_ids to change its goals ([] for none).
+    Returns the events affected by the update."""
     with track("update_event"), cached_sheet_reads():
         _check_goal_ids(event, existing=True)
-        updated_event = event.to_event()
         try:
             applied = get_reallocating_calendar().update_event(
-                updated_event, ReallocationOptions()
+                event.to_event(clear_fields or ()), ReallocationOptions()
             )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
@@ -567,10 +580,13 @@ def get_recurrence(id: str) -> PublicRecurrence:
 @tool
 @writes
 def update_recurrence(
-    recurrence: PublicRecurrence, starting_at_event_id: str | None = None
+    recurrence: PublicRecurrence,
+    starting_at_event_id: str | None = None,
+    clear_fields: list[EventField] | None = None,
 ) -> list[PublicRecurrence]:
     """Edit a recurring series (recurrence.id is its id, or any of its
-    events'): every field given is set, those left out are kept. Applies
+    events'): every field given is set, those left out are kept, and
+    those in clear_fields are removed (as for update_event). Applies
     to all its events -- or, with starting_at_event_id, to that event and
     the ones after it only ("this and following"): the series is split
     there (see split_recurrence) and only the later part is edited.
@@ -592,7 +608,7 @@ def update_recurrence(
         _check_goal_ids(recurrence, existing=True)
         try:
             updated = get_recurrences().update(
-                recurrence.to_event(), starting_at_event_id, recurrence.repeat
+                recurrence.to_event(clear_fields or ()), starting_at_event_id, recurrence.repeat
             )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc

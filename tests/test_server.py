@@ -1,6 +1,7 @@
 import contextlib
 import dataclasses
 import threading
+import typing
 from datetime import date, datetime, timezone
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
@@ -15,7 +16,12 @@ from starlette.testclient import TestClient
 
 import server
 from calendar_clients import google_sheets
-from calendar_clients.google_calendar import Event, EventLabelConflictError, TimeZoneNotSetError
+from calendar_clients.google_calendar import (
+    CLEARABLE_EVENT_FIELDS,
+    Event,
+    EventLabelConflictError,
+    TimeZoneNotSetError,
+)
 from calendar_clients.write_lock import WRITE_LOCK
 from server import PublicEvent
 from utilities.goal_calendar import GoalCalendar
@@ -414,6 +420,27 @@ class TestUpdateEvent:
 
         with pytest.raises(ToolError):
             server.update_event(_public_event(id="abc123"))
+
+    def test_clears_the_fields_it_names(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
+
+        server.update_event(_public_event(id="abc123", summary="Renamed"), clear_fields=["priority", "location"])
+
+        (call_updated_event, _), _ = reallocating_calendar.update_event.call_args
+        assert call_updated_event.summary == "Renamed"
+        assert call_updated_event.cleared == {"priority", "location"}
+
+    def test_refuses_to_both_set_and_clear_a_field(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+
+        with pytest.raises(ToolError, match=r"Can't both set and clear \['priority'\]"):
+            server.update_event(_public_event(id="abc123", priority=1), clear_fields=["priority"])
+
+        reallocating_calendar.update_event.assert_not_called()
+
+    def test_clearable_fields_match_the_events(self):
+        assert set(typing.get_args(server.EventField)) == CLEARABLE_EVENT_FIELDS
 
 
 class TestCreateEvent:
@@ -1224,6 +1251,27 @@ class TestPublicRecurrence:
             server.update_recurrence(
                 server.PublicRecurrence(id="s1", repeat=Repeat(every="day", count=2, until=date(2026, 12, 31)))
             )
+
+    def test_update_recurrence_clears_the_fields_it_names(self, monkeypatch):
+        recurrences = MagicMock()
+        recurrences.update.return_value = []
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+        monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
+
+        server.update_recurrence(server.PublicRecurrence(id="s1"), "s1_x", clear_fields=["priority"])
+
+        changes, starting_at, _ = recurrences.update.call_args.args
+        assert (changes.cleared, starting_at) == ({"priority"}, "s1_x")
+
+    def test_update_recurrence_refuses_a_bad_clear_before_splitting(self, monkeypatch):
+        recurrences = MagicMock()
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+        monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
+
+        with pytest.raises(ToolError, match="Can't both set and clear"):
+            server.update_recurrence(server.PublicRecurrence(id="s1", priority=1), "s1_x", clear_fields=["priority"])
+
+        recurrences.update.assert_not_called()
 
     def test_reads_an_until_date_as_a_date_and_a_datetime_as_a_datetime(self):
         model = TypeAdapter(server.PublicRecurrence)
