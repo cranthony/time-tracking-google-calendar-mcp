@@ -684,7 +684,7 @@ def _end_day_at(
         if event.end <= bedtime:
             kept.append(event)
             continue
-        if event.effective_is_fixed_time:
+        if event.is_fixed_time:
             problems.append(
                 f"{sleep.summary!r} doesn't fit starting at {bedtime.isoformat()}: fixed-time "
                 f"{event.summary!r} ({event.start.isoformat()} to {event.end.isoformat()}) is in "
@@ -755,7 +755,7 @@ def _simulate(
         # earlier fact -- is set aside and can't be disturbed.
         head = [e for e in working if e.end <= fact.start]
         tail = [e for e in working if e.end > fact.start]
-        pinned = next((e for e in tail if e.effective_is_fixed_time and e.start < fact.end), None)
+        pinned = next((e for e in tail if e.is_fixed_time and e.start < fact.end), None)
         if pinned is not None:
             # Reflowing can never move a fixed-time event out of the way,
             # so say so directly rather than let reallocation fail on it.

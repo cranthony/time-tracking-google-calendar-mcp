@@ -464,7 +464,7 @@ class NoteCompactor:
                         goal_names=[names.get(g, g) for g in e.goal_ids] if e.goal_ids is not None else None,
                         suggested_goal_ids=suggested.get(e.id),
                         priority=e.effective_priority,
-                        is_fixed_time=e.effective_is_fixed_time,
+                        is_fixed_time=e.is_fixed_time,
                     )
             timelines.append(
                 (

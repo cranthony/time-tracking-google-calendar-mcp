@@ -15,9 +15,9 @@ utilities/event_labels.py's `EventLabels` had:
   of the calendar's 200 slots, but keeps its history; making it active
   again re-adds the label under the same id, which Calendar's events
   still point at.
-- Goals form a tree. A goal without its own priority/fixed_time inherits
-  its nearest ancestor's, and events inherit their primary goal's (see
-  utilities/goal_calendar.py).
+- Goals form a tree. A goal without its own priority inherits its
+  nearest ancestor's, and an event without its own takes the highest
+  priority among all its goals (see utilities/goal_calendar.py).
 - The first time a calendar's `Goals` is built, its goals are migrated
   from its event labels tab (or, without one, its named labels): one
   active, top-level goal per label, keeping the label's id, so no event
@@ -58,7 +58,7 @@ _ID_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 _ID_LENGTH = 6
 
 CLEARABLE_FIELDS = frozenset(
-    {"parent_id", "background_color", "priority", "fixed_time", "measure", "note"}
+    {"parent_id", "background_color", "priority", "measure", "note"}
 )
 """Goal fields `update_goal` can blank. Not `name`/`status` (always
 needed) nor the read-only `id`/`label_id`."""
@@ -98,8 +98,6 @@ class ListedGoal(Goal):
     """Read-only: the priority its events take -- its own priority, or
     its nearest ancestor's; `None` if none of them has one."""
 
-    effective_fixed_time: bool | None = None
-    """Read-only: the same for fixed_time."""
 
     stale_days: int | None = None
     """Fully ended days since `health_period`; `None` if it's never been
@@ -195,9 +193,6 @@ class GoalTree:
 
     def priority(self, goal_id: str) -> int | None:
         return next((g.priority for g in self.chain(goal_id) if g.priority is not None), None)
-
-    def fixed_time(self, goal_id: str) -> bool | None:
-        return next((g.fixed_time for g in self.chain(goal_id) if g.fixed_time is not None), None)
 
     def color(self, goal: Goal) -> str:
         """The goal's label color: its own background_color; else its
@@ -504,7 +499,6 @@ class Goals:
                     path=tree.path(goal.id),
                     effective_color=tree.color(goal),
                     effective_priority=tree.priority(goal.id),
-                    effective_fixed_time=tree.fixed_time(goal.id),
                     stale_days=_stale_days(goal, tree, today),
                     minutes_24h=recent["24h"].get(goal.id, 0) if recent else None,
                     minutes_7d=recent["7d"].get(goal.id, 0) if recent else None,

@@ -47,11 +47,12 @@ _WHOLE_RANGE = "A1:Z"
 """Wide enough for every column below plus some a user (or a later
 version) adds; columns are matched by header, not position."""
 
-_RETIRED_COLUMNS = frozenset({"target", "deadline", "cadence", "active", "created"})
+_RETIRED_COLUMNS = frozenset({"target", "deadline", "cadence", "active", "created", "fixed_time"})
 """Columns earlier versions wrote -- a free-text target and a deadline,
 which nothing used, a cadence from before every goal was rated daily,
-the TRUE/FALSE `active` that `status` replaced, and a `created` date --
-removed from the tab the next time it's written."""
+the TRUE/FALSE `active` that `status` replaced, a `created` date, and a
+`fixed_time` events inherited before they were easy to mark fixed time
+themselves -- removed from the tab the next time it's written."""
 
 _NARROW_COLUMNS = ("id", "label_id")
 _NARROW_PIXEL_WIDTH = 60
@@ -80,9 +81,6 @@ class Goal:
     """Hex color for its label; derived from its priority when unset."""
 
     priority: int | None = None
-    """Inherited by events (and sub-goals) that don't set their own."""
-
-    fixed_time: bool | None = None
     """Inherited by events (and sub-goals) that don't set their own."""
 
     measure: dict[str, Any] | None = None
@@ -134,7 +132,6 @@ class Goal:
             status=status,
             background_color=text("background_color"),
             priority=int(priority) if priority is not None else None,
-            fixed_time=boolean("fixed_time"),
             measure=json.loads(measure) if measure is not None else None,
             note=text("note"),
             label_id=text("label_id"),
@@ -192,7 +189,6 @@ HEADER_ROW = [
     "label_id",
     "background_color",
     "priority",
-    "fixed_time",
     "measure",
     "note",
     "health",

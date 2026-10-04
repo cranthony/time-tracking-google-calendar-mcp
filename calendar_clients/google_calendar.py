@@ -234,17 +234,14 @@ class Event:
     means no goals."""
 
     goal_priority: int | None = None
-    """The priority this event inherits from its primary goal (the goal's
-    own, or its nearest ancestor's), if any -- filled in on read by
-    `utilities/goal_calendar.py`, never by `from_api`, and never sent to
+    """The priority this event inherits from its goals -- the highest
+    (lowest-numbered) of each goal's own, or its nearest ancestor's -- if
+    any. Filled in on read by `utilities/goal_calendar.py`, never by
+    `from_api`, and never sent to
     the API (see `to_api_body`). Kept apart from `priority`, which is only
     ever the event's own, so writing an event back never copies its
     goal's priority onto it. Read `effective_priority` for the value that
     actually applies."""
-
-    goal_is_fixed_time: bool | None = None
-    """`goal_priority`'s counterpart for `is_fixed_time`. Read
-    `effective_is_fixed_time` for the value that actually applies."""
 
     goals_from_label: bool = False
     """Whether `goal_ids` were inferred from the event's label, on read, for
@@ -257,12 +254,6 @@ class Event:
     def effective_priority(self) -> int | None:
         """`priority`, falling back to `goal_priority` when unset."""
         return self.priority if self.priority is not None else self.goal_priority
-
-    @property
-    def effective_is_fixed_time(self) -> bool | None:
-        """`is_fixed_time`, falling back to `goal_is_fixed_time` when
-        unset."""
-        return self.is_fixed_time if self.is_fixed_time is not None else self.goal_is_fixed_time
 
     @classmethod
     def from_api(cls, data: dict) -> "Event":
@@ -334,8 +325,8 @@ class Event:
             # should mean "leave the color the same".
             body["colorId"] = _color_id_for_priority(self.priority)
         # recurring_event_id and original_start are deliberately never
-        # sent: they're assigned by Google, not something a client sets. Nor are goal_priority/
-        # goal_is_fixed_time: they belong to the goal, not the event.
+        # sent: they're assigned by Google, not something a client sets. Nor is goal_priority:
+        # it belongs to the goals, not the event.
 
         private_properties = _format_properties(
             self,
