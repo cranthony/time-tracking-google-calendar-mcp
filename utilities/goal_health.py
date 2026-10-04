@@ -14,10 +14,7 @@ and the rationale in its description. Its id encodes the goal and day, so
 writing an assessment again overwrites it instead of adding another. The
 calendar's id is kept on the main calendar (`set_calendar_metadata`), and
 it's created the first time it's needed, in the main calendar's time zone
-so the two agree on what a day is. Each event also records the cadence,
-"daily", which every assessment has had since goals stopped having
-cadences of their own; one recorded at another cadence before then is
-ignored.
+so the two agree on what a day is.
 
 **Confirmation.** `record_assessments` only ever writes `proposed`
 assessments; only a reflection confirms one (`confirm_assessments`), and
@@ -53,7 +50,8 @@ HEALTH_CALENDAR_METADATA_KEY = "goal-health-calendar"
 HEALTH_CALENDAR_SUMMARY = "Goal Health"
 
 CADENCE = "daily"
-"""The one cadence goals are rated at, recorded with each assessment."""
+"""The one cadence goals are rated at, part of each assessment's event
+id (see `assessment_event_id`)."""
 
 _PREFIX = "cascading-time-tracker-"
 """The same prefix calendar_clients/google_calendar.py gives this app's
@@ -419,7 +417,6 @@ def _event_body(assessment: Assessment, goal: Goal) -> dict:
     properties = {
         "kind": "assessment",
         "goal": assessment.goal_id,
-        "cadence": CADENCE,
         "period": day.isoformat(),
         "rating": str(rating),
         "method": assessment.method,
@@ -447,7 +444,7 @@ def _from_event(item: dict) -> Assessment | None:
     def prop(key: str) -> str | None:
         return properties.get(f"{_PREFIX}{key}")
 
-    if prop("kind") != "assessment" or prop("cadence") not in (None, CADENCE):
+    if prop("kind") != "assessment":
         return None
     try:
         day = date.fromisoformat(prop("period") or "")
@@ -501,12 +498,8 @@ def _served(events: list[Event], goal: Goal, measure: dict[str, Any], tree: Goal
     """`events` given `goal` or any of its descendants -- or, if its
     measure names another goal in events_of, that one or its descendants
     (as though it were that goal). With its measure's include_sub_goals
-    false, not the descendants. (A measure from before events_of may name
-    several goals in goal_ids instead.)"""
-    if isinstance(measure.get("events_of"), str):
-        chosen = {measure["events_of"]}
-    else:
-        chosen = set(measure.get("goal_ids") or [goal.id])
+    false, not the descendants."""
+    chosen = {measure["events_of"] if isinstance(measure.get("events_of"), str) else goal.id}
     if measure.get("include_sub_goals", True):
         wanted = {g.id for g in tree.goals if any(tree.under(g.id, c) for c in chosen)}
     else:

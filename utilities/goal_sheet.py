@@ -47,9 +47,10 @@ _WHOLE_RANGE = "A1:Z"
 """Wide enough for every column below plus some a user (or a later
 version) adds; columns are matched by header, not position."""
 
-_RETIRED_COLUMNS = frozenset({"target", "deadline", "active"})
+_RETIRED_COLUMNS = frozenset({"target", "deadline", "cadence", "active"})
 """Columns earlier versions wrote -- a free-text target and a deadline,
-which nothing used, and the TRUE/FALSE `active` that `status` replaced --
+which nothing used, a cadence from before every goal was rated daily, and
+the TRUE/FALSE `active` that `status` replaced --
 removed from the tab the next time it's written."""
 
 _NARROW_COLUMNS = ("id", "label_id")

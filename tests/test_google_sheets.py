@@ -29,28 +29,6 @@ class TestCreateSpreadsheet:
         )
 
 
-class TestRenameSpreadsheet:
-    def test_sends_update_spreadsheet_properties_request(self):
-        sheets_service = MagicMock()
-        client = make_client(sheets_service)
-
-        client.rename_spreadsheet("sheet-1", "Calendar Metadata")
-
-        sheets_service.spreadsheets.return_value.batchUpdate.assert_called_once_with(
-            spreadsheetId="sheet-1",
-            body={
-                "requests": [
-                    {
-                        "updateSpreadsheetProperties": {
-                            "properties": {"title": "Calendar Metadata"},
-                            "fields": "title",
-                        }
-                    }
-                ]
-            },
-        )
-
-
 class TestDeleteRows:
     def test_sends_delete_dimension_request_with_zero_based_half_open_range(self):
         sheets_service = MagicMock()
@@ -816,7 +794,6 @@ class TestWriteRows:
 
 _SHEETS_WRITES = [
     "create_spreadsheet",
-    "rename_spreadsheet",
     "add_sheet",
     "update_sheet_properties",
     "create_sheet_metadata",

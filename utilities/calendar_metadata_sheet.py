@@ -30,14 +30,6 @@ SPREADSHEET_TITLE = "Calendar Metadata"
 
 _SPREADSHEET_ID_METADATA_KEY = "calendar-metadata-spreadsheet-id"
 
-_LEGACY_SPREADSHEET_ID_METADATA_KEY = "event-label-sheet-id"
-"""Pre-dates this module: originally recorded a dedicated, single-tab
-"Event Labels" spreadsheet, back when that was the only kind of data
-this app kept in a Sheet. Still checked as a fallback so an existing
-calendar's spreadsheet is adopted in place -- renamed, its one tab
-tagged -- into the new multi-tab scheme, instead of creating a second,
-redundant spreadsheet. See `ensure_spreadsheet`."""
-
 _SHEET_ROLE_METADATA_KEY = "sheet-role"
 
 _TAB_COLOR = {"red": 0.26, "green": 0.52, "blue": 0.96}
@@ -47,21 +39,13 @@ see the module docstring."""
 
 def ensure_spreadsheet(calendar_client: CalendarClient, sheets_client: SheetsClient) -> tuple[str, bool]:
     """This calendar's metadata spreadsheet id, and whether it was just
-    created (as opposed to already existing -- whether already under
-    the current key, or adopted from the legacy one). A caller creating
+    created (as opposed to already existing). A caller creating
     a tab with initial data (the goals tab, see `utilities/goals.py`)
     can then put it in a new spreadsheet's default first tab instead of
     leaving that one unused (see `create_tab`)."""
     spreadsheet_id = calendar_client.get_calendar_metadata(_SPREADSHEET_ID_METADATA_KEY)
     if spreadsheet_id is not None:
         return spreadsheet_id, False
-
-    legacy_spreadsheet_id = calendar_client.get_calendar_metadata(_LEGACY_SPREADSHEET_ID_METADATA_KEY)
-    if legacy_spreadsheet_id is not None:
-        sheets_client.rename_spreadsheet(legacy_spreadsheet_id, SPREADSHEET_TITLE)
-        calendar_client.set_calendar_metadata(_SPREADSHEET_ID_METADATA_KEY, legacy_spreadsheet_id)
-        calendar_client.set_calendar_metadata(_LEGACY_SPREADSHEET_ID_METADATA_KEY, None)
-        return legacy_spreadsheet_id, False
 
     spreadsheet_id = sheets_client.create_spreadsheet(SPREADSHEET_TITLE)
     calendar_client.set_calendar_metadata(_SPREADSHEET_ID_METADATA_KEY, spreadsheet_id)

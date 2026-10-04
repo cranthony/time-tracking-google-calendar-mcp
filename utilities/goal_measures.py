@@ -43,9 +43,7 @@ were that goal: "work 40 hours a week" can be a sub-goal of "Fulfil my
 work commitment" that measures its parent's events, without tagging any
 event with it. (utilities/goals.py checks `events_of` names a goal.) With
 `include_sub_goals` false, only that goal's own events count, not its
-sub-goals'. A measure saved before `events_of` may name several goals in
-`goal_ids` instead; it's still measured that way, but can't be saved again
-with it.
+sub-goals'.
 
 **Time constraints** rate when the day's events of a goal start or end:
 with `edge` "start", the first one's start; with "end", the last one's
