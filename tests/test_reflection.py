@@ -9,7 +9,8 @@ from utilities.goal_health import Assessment, GoalHealth
 from utilities.goal_sheet import Goal
 from utilities.goals import OVERALL_ID, Goals
 from utilities.noted_time_sheet import NotedTime
-from utilities.reflection import Reflections, reflection_event_id
+from utilities.health_days import day_event_id
+from utilities.reflection import Reflections
 
 # TODAY is Friday 2026-10-02; YESTERDAY, Oct 1, is the last day to end.
 
@@ -443,10 +444,15 @@ class TestRecord:
         assert result.complete
         assert "every goal is rated" in result.message
         assert {a.status for a in result.assessments} == {"confirmed"}
-        reflection = calendar.health_events[reflection_event_id(YESTERDAY)]
-        assert reflection["description"] == "busy day"
-        assert reflection["summary"] == "📝 Reflection · 2026-10-01"
-        assert reflection["extendedProperties"]["private"]["cascading-time-tracker-complete"] == "true"
+        # One event for the day: the reflection, and every rating.
+        (event,) = calendar.health_events.values()
+        assert event["id"] == day_event_id(YESTERDAY, 1)
+        assert event["summary"] == "📝 Reflection · 2026-10-01 · 🟡 50"
+        assert event["description"] == "busy day\n\n🟡 50 Overall\n🟡 50 Cooking\n⚪ skipped Feel"
+        properties = event["extendedProperties"]["private"]
+        assert properties["cascading-time-tracker-complete"] == "true"
+        assert properties["cascading-time-tracker-journal"] == "busy day"
+        assert properties["cascading-time-tracker-intentions"] == '["rest"]'
         listed = {g.name: g for g in store.get_goals().goals}
         assert listed["Cooking"].health == 50  # the cache follows confirmed ratings
 
@@ -458,8 +464,8 @@ class TestRecord:
 
         assert not first.complete
         assert "Ready to rate now: Home" in first.message
-        event = calendar.health_events[reflection_event_id(YESTERDAY)]
-        assert event["summary"].endswith("(in progress)")
+        event = calendar.health_events[day_event_id(YESTERDAY, 1)]
+        assert event["summary"] == "📝 Reflection · 2026-10-01 (in progress)"
 
         second = reflections.record(YESTERDAY, [_rating(home, YESTERDAY, 60, method="rollup")], dry_run=False)
         assert not second.complete
@@ -468,8 +474,10 @@ class TestRecord:
         )
 
         assert third.complete
-        assert calendar.health_events[reflection_event_id(YESTERDAY)]["description"] == "tired"
-        assert reflections.prepare(YESTERDAY).already_reflected
+        assert calendar.health_events[day_event_id(YESTERDAY, 1)]["description"].startswith("tired\n\n")
+        context = reflections.prepare(YESTERDAY)
+        assert context.already_reflected
+        assert context.journal == "tired"
 
     def test_refuses_a_goal_before_its_sub_goals(self):
         reflections, _, _, calendar, goals = _setup([Goal(name="Home"), _feel("Cook", parent="Home")])

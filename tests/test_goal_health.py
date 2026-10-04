@@ -7,7 +7,8 @@ import pytest
 from calendar_clients.google_calendar import Event
 from tests.fake_sheets import FakeSheets
 from tests.test_goals import FakeLabelCalendar, _UNNAMED
-from utilities.goal_health import Assessment, GoalHealth, assessment_event_id, band
+from utilities.goal_health import Assessment, GoalHealth, band
+from utilities.health_days import day_event_id
 from utilities.goal_sheet import Goal
 from utilities.goals import OVERALL_ID, Goals
 
@@ -81,6 +82,13 @@ class FakeCalendar(FakeLabelCalendar):
         self.health_events[event_id] = {**self.health_events.get(event_id, {}), **body, "id": event_id}
         return self.health_events[event_id]
 
+    def replace_event_resource(self, event_id, body):
+        self.health_events[event_id] = {**body, "id": event_id}
+        return self.health_events[event_id]
+
+    def delete_event_resource(self, event_id):
+        self.health_events.pop(event_id, None)
+
 
 def _setup(goals=(), events=()):
     calendar = FakeCalendar(events)
@@ -115,17 +123,6 @@ def _assessment(goal: Goal, day: date | str, rating=80, **fields) -> Assessment:
 _FEEL = {"kind": "subjective", "prompt": "How was it?"}
 
 
-class TestEventIds:
-    def test_encode_goal_and_day_reversibly_as_daily(self):
-        event_id = assessment_event_id("g7k2qp", date(2026, 9, 30))
-
-        # The same id it had when goals had cadences, so history is kept.
-        assert event_id == "csrmmcjhe1u68ob9dhsnochg68r2qc1p5kpj0"
-        assert set(event_id) <= set("0123456789abcdefghijklmnopqrstuv")
-        padded = event_id.upper() + "=" * (-len(event_id) % 8)
-        assert base64.b32hexdecode(padded).decode() == "g7k2qp|daily|2026-09-30"
-
-
 class TestBand:
     @pytest.mark.parametrize("rating, emoji", [(0, "🔴"), (39, "🔴"), (40, "🟡"), (69, "🟡"), (70, "🟢"), ("skip", "⚪")])
     def test_bands(self, rating, emoji):
@@ -146,24 +143,47 @@ class TestRecordAssessments:
         assert calendar.hidden == ["health-calendar"]
         assert calendar.metadata["goal-health-calendar"] == "health-calendar"
         (item,) = calendar.health_events.values()
-        assert item["summary"] == "🟢 Cooking · 2026-10-01 · 80 (proposed)"
+        assert item["id"] == day_event_id(date(2026, 10, 1), 1)
+        assert item["summary"] == "📊 Goal health · 2026-10-01"
+        assert item["description"] == "🟢 80 (proposed) Cooking"
         assert (item["start"], item["end"]) == ({"date": "2026-10-01"}, {"date": "2026-10-02"})
         assert item["transparency"] == "transparent"
         properties = item["extendedProperties"]["private"]
-        assert "cascading-time-tracker-cadence" not in properties
         assert properties["cascading-time-tracker-period"] == "2026-10-01"
+        assert f"cascading-time-tracker-a.{cooking.id}" in properties
 
-    def test_recording_a_day_again_replaces_it(self):
-        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
-        cooking = goals["Cooking"]
+    def test_a_days_assessments_share_one_event_recording_one_again_replacing_it(self):
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL), Goal(name="Reading", measure=_FEEL)])
+        cooking, reading = goals["Cooking"], goals["Reading"]
 
         health.record_assessments([_assessment(cooking, "2026-09-30", rating=50)])
+        health.record_assessments([_assessment(reading, "2026-09-30", rating=70)])
         health.record_assessments([_assessment(cooking, "2026-09-30", rating="skip", rationale="sick")])
 
         (item,) = calendar.health_events.values()
-        assert item["summary"] == "⚪ Cooking · 2026-09-30 · skipped (proposed)"
-        assert item["description"] == "sick"
+        assert item["description"] == "⚪ skipped (proposed) Cooking — sick\n🟢 70 (proposed) Reading"
+        assert {(a.goal_id, a.rating, a.rationale) for a in health.read(date(2026, 9, 30), date(2026, 10, 1))} == {
+            (cooking.id, "skip", "sick"), (reading.id, 70, None)
+        }
         assert calendar.created == [("Goal Health", "America/New_York")]  # created once
+
+    def test_assessments_of_different_days_go_on_their_own_days(self):
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
+        cooking = goals["Cooking"]
+
+        health.record_assessments([_assessment(cooking, "2026-09-30"), _assessment(cooking, "2026-10-01", 40)])
+
+        assert set(calendar.health_events) == {
+            day_event_id(date(2026, 9, 30), 1), day_event_id(date(2026, 10, 1), 1)
+        }
+
+    def test_the_overall_rating_is_in_the_title(self):
+        health, _, calendar, goals = _setup([Goal(name="Cooking", measure=_FEEL)])
+
+        health.record_assessments([_assessment(goals["Overall"], "2026-10-01", 35, method="rollup")])
+
+        (item,) = calendar.health_events.values()
+        assert item["summary"] == "📊 Goal health · 2026-10-01 · 🔴 35 (proposed)"
 
     @pytest.mark.parametrize(
         "change, message",
