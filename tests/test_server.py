@@ -1235,6 +1235,41 @@ class TestPublicRecurrence:
         assert timed.repeat.until == datetime(2026, 12, 31, 5, tzinfo=timezone.utc)
 
 
+class TestDeleteRecurrence:
+    def test_returns_nothing_for_a_series_deleted_whole(self, monkeypatch):
+        recurrences = MagicMock()
+        recurrences.delete.return_value = None
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+
+        assert server.delete_recurrence("s1") == []
+        recurrences.delete.assert_called_once_with("s1", None)
+
+    def test_returns_what_is_left_of_the_series_after_this_and_following(self, monkeypatch):
+        recurrences = MagicMock()
+        recurrences.delete.return_value = Event(
+            id="s1",
+            start=datetime(2026, 10, 5, 13, tzinfo=timezone.utc),
+            end=datetime(2026, 10, 5, 14, tzinfo=timezone.utc),
+            time_zone="America/New_York",
+            recurrence=["RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z"],
+        )
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+        monkeypatch.setattr(server, "get_goal_store", lambda: MagicMock(tree=lambda: GoalTree([])))
+
+        (left,) = server.delete_recurrence("s1", "s1_x")
+
+        recurrences.delete.assert_called_once_with("s1", "s1_x")
+        assert left.schedule == "Every week on Mon, until Oct 19, 2026"
+
+    def test_reports_an_event_from_another_series_as_a_tool_error(self, monkeypatch):
+        recurrences = MagicMock()
+        recurrences.delete.side_effect = ValueError("Event x isn't one of series s1's events")
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+
+        with pytest.raises(ToolError, match="isn't one of series s1's events"):
+            server.delete_recurrence("s1", "x")
+
+
 class TestSetTimeZone:
     def test_sets_both_calendars_time_zones(self, monkeypatch):
         client = _fake_client(monkeypatch)

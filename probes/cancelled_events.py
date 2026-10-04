@@ -15,7 +15,7 @@ each cancelled one, which of the fields follow_through needs it kept. It
 only reads: nothing is written.
 
 Usage:
-    python probe_cancelled_events.py [--days 14] [--raw]
+    python -m probes.cancelled_events [--days 14] [--raw]
 """
 
 from __future__ import annotations

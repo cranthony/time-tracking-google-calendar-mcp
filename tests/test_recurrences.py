@@ -164,6 +164,59 @@ class TestUpdate:
         assert calendar.writes == []
 
 
+class TestDelete:
+    def test_cancels_the_whole_series_through_one_of_its_events(self):
+        calendar = FakeCalendar(_weekly(), _instance(12))
+
+        assert _recurrences(calendar).delete("series1_20261012") is None
+
+        assert calendar.writes == [("update", Event(id="series1", status="cancelled"))]
+
+    def test_this_and_following_ends_the_series_before_the_event(self):
+        calendar = FakeCalendar(_weekly(), _instance(19))
+
+        left = _recurrences(calendar).delete("series1", starting_at="series1_20261019")
+
+        assert left.recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z"]
+        assert left.status is None
+        assert [kind for kind, _ in calendar.writes] == ["update"]  # No copy is made.
+
+    def test_this_and_following_replaces_a_count_and_keeps_other_rules(self):
+        series = replace(
+            _weekly(),
+            recurrence=["RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=10", "EXDATE;TZID=America/New_York:20261012T090000"],
+        )
+        calendar = FakeCalendar(series, _instance(19))
+
+        left = _recurrences(calendar).delete("series1", starting_at="series1_20261019")
+
+        assert left.recurrence == [
+            "RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z",
+            "EXDATE;TZID=America/New_York:20261012T090000",
+        ]
+
+    def test_this_and_following_ends_a_moved_event_where_the_series_put_it(self):
+        calendar = FakeCalendar(_weekly(), _instance(19, moved_to=_at(18, 15)))
+
+        left = _recurrences(calendar).delete("series1", starting_at="series1_20261019")
+
+        assert left.recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z"]
+
+    def test_this_and_following_from_the_first_event_cancels_the_series(self):
+        calendar = FakeCalendar(_weekly(), _instance(5))
+
+        assert _recurrences(calendar).delete("series1", starting_at="series1_20261005") is None
+        assert calendar.events["series1"].status == "cancelled"
+
+    def test_this_and_following_refuses_an_event_from_another_series(self):
+        other = Event(id="other_x", start=_at(6), end=_at(6, 10), recurring_event_id="other")
+        calendar = FakeCalendar(_weekly(), replace(_weekly(), id="other"), other)
+
+        with pytest.raises(ValueError, match="isn't one of series series1's events"):
+            _recurrences(calendar).delete("series1", starting_at="other_x")
+        assert calendar.writes == []
+
+
 class TestSplit:
     def test_ends_the_series_before_the_event_and_starts_a_copy_at_it(self):
         calendar = FakeCalendar(_weekly(), _instance(19))
