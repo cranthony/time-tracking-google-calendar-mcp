@@ -36,12 +36,18 @@ one suggested for it), and each goal's total time follows the events.
 context, and a `┄┄ last compaction` line marks when that compaction ran
 -- what came before it is already on the calendar. Long lines wrap,
 indented under their text.
+
+Several days compacted together (see utilities/note_compactor.py) are
+shown as one timeline, each day under a heading with its date --
+`━━ Sat 03 Oct ━━━…` -- and its own goal time, with the legend once at
+the end (`join_days`). Only the last day, the one that runs up to now,
+draws a `now` line.
 """
 
 from __future__ import annotations
 
 import textwrap
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Literal
 
@@ -158,7 +164,38 @@ def build_timeline(
     return timeline
 
 
-def render(timeline: Timeline) -> str:
+def join_days(days: list[tuple[datetime, Timeline]]) -> Timeline:
+    """Several days' timelines -- each with when that day starts -- as
+    one, each day's under a heading with its date (see the module
+    docstring). One day's is returned as it is."""
+    if len(days) == 1:
+        return days[0][1]
+    timelines = [t for _, t in days]
+    joined = Timeline(
+        notes=[n for t in timelines for n in t.notes],
+        events=[e for t in timelines for e in t.events],
+        now=timelines[-1].now,
+        last_compaction=timelines[0].last_compaction,
+        decided=timelines[0].decided,
+    )
+    lines: list[str] = []
+    for number, (start, timeline) in enumerate(days):
+        if number < len(days) - 1:
+            # An earlier day's `now` is just where it ends: it's past.
+            timeline = replace(timeline, now=None)
+        heading = start.astimezone(_display_tz(timeline)).strftime("━━ %a %d %b ")
+        if lines:
+            lines.append("")
+        lines.append(heading.ljust(_WIDTH, "━"))
+        lines.append(render(timeline, legend=False))
+    if joined.decided:
+        lines.append("")
+        lines.extend(_LEGEND)
+    joined.text = "\n".join(lines)
+    return joined
+
+
+def render(timeline: Timeline, *, legend: bool = True) -> str:
     tz = _display_tz(timeline)
 
     def hm(moment: datetime) -> str:
@@ -215,7 +252,7 @@ def render(timeline: Timeline) -> str:
         lines.append("")
         lines.append("Goal time:")
         lines.extend(f"{duration:>7}  {goal}" for goal, duration in goal_time)
-    if timeline.decided:
+    if timeline.decided and legend:
         lines.append("")
         lines.extend(_LEGEND)
     return "\n".join(lines)

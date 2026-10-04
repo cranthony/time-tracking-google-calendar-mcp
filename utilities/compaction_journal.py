@@ -16,7 +16,8 @@ Layout: one row per fact, all in the same eight columns --
 - `kind == "compaction"` (step 0): the compaction itself. `status` is
   where it is in its life (see below); `detail` is JSON with `now`, the
   ids of the notes it consumes, the ids of notes it was told to ignore,
-  and any planner warnings.
+  and any planner warnings -- and, for the second and later days of a
+  batch, the `batch` (the first day's id) and which `day` of it it is.
 - `kind == "decision"`: one per `EventDecision`, as JSON in `before`
   (`event_id` repeats its event id, if it has one, for reading the tab by
   hand). Rows of the retired `disposition` kind, from before decisions
@@ -27,6 +28,13 @@ Layout: one row per fact, all in the same eight columns --
 
 One row per step (rather than one JSON cell for the whole plan) keeps every
 cell far below Sheets' 50,000-character limit even for a busy day.
+
+A compaction covers one day. Several days compacted together are a
+*batch*: one compaction per day, written in one block, the first day's
+id doubling as the batch's (so a one-day batch is just a compaction), and
+the rest `<batch>d<day>`. Each day's compaction moves through the
+statuses below on its own, in order, so a batch applied partway has its
+earlier days finished and stamped.
 
 A compaction's status moves `planned` -> `applying` -> `applied` ->
 `stamped` (its notes marked compacted -- the terminal state), or to
@@ -118,6 +126,17 @@ class JournalCompaction:
     ignore_notes: list[str] = field(default_factory=list)
     steps: list[JournalStep] = field(default_factory=list)
     row: int = 0
+    batch: str | None = None
+    """The id of the batch's first day, for the second and later days of a
+    batch -- see the module docstring."""
+
+    day: int = 1
+
+    @property
+    def batch_id(self) -> str:
+        """The id of the batch this day belongs to: what the MCP tools
+        call the compaction."""
+        return self.batch or self.id
 
     def changes(self) -> list[CompactionChange]:
         return [
@@ -126,6 +145,18 @@ class JournalCompaction:
             )
             for s in self.steps
         ]
+
+
+@dataclass(kw_only=True)
+class PlannedDay:
+    """One day of a batch, for `CompactionJournal.start_batch`."""
+
+    compaction_id: str
+    now: datetime
+    note_ids: list[str]
+    decisions: list[EventDecision]
+    plan: CompactionPlan
+    ignore_notes: list[str] = field(default_factory=list)
 
 
 class CompactionJournal:
@@ -171,54 +202,63 @@ class CompactionJournal:
         plan: CompactionPlan,
         ignore_notes: list[str] | None = None,
     ) -> None:
-        """Record a new `planned` compaction: the compaction row, one row
+        """Record a new `planned` one-day compaction -- see `start_batch`."""
+        self.start_batch(
+            [
+                PlannedDay(
+                    compaction_id=compaction_id,
+                    now=now,
+                    note_ids=note_ids,
+                    decisions=decisions,
+                    plan=plan,
+                    ignore_notes=ignore_notes or [],
+                )
+            ]
+        )
+
+    def start_batch(self, days: list[PlannedDay]) -> None:
+        """Record a new `planned` batch, a compaction per day (the first
+        day's id is the batch's): for each, the compaction row, one row
         per decision, and one `pending` row per step -- all in one write,
         so a crash can't leave half a plan recorded."""
-        rows: list[list[str]] = [
-            [
-                compaction_id,
-                "0",
-                "compaction",
-                "",
-                "",
-                "",
-                PLANNED,
-                json.dumps(
-                    {
-                        "now": now.isoformat(),
-                        "note_ids": note_ids,
-                        "warnings": plan.warnings,
-                        "ignore_notes": ignore_notes or [],
-                    }
-                ),
-            ]
-        ]
-        for decision in decisions:
-            rows.append(
-                [
-                    compaction_id,
-                    "0",
-                    "decision",
-                    decision.event_id or "",
-                    json.dumps(decision.to_json_dict()),
-                    "",
-                    "",
-                    "",
-                ]
-            )
-        for number, change in enumerate(plan.changes, start=1):
-            rows.append(
-                [
-                    compaction_id,
-                    str(number),
-                    change.action,
-                    change.event_id or "",
-                    json.dumps(change.before.to_json_dict()) if change.before else "",
-                    json.dumps(change.after.to_json_dict()) if change.after else "",
-                    "pending",
-                    change.reason,
-                ]
-            )
+        batch = days[0].compaction_id
+        rows: list[list[str]] = []
+        for number, day in enumerate(days, start=1):
+            detail = {
+                "now": day.now.isoformat(),
+                "note_ids": day.note_ids,
+                "warnings": day.plan.warnings,
+                "ignore_notes": day.ignore_notes,
+            }
+            if number > 1:
+                detail.update(batch=batch, day=number)
+            rows.append([day.compaction_id, "0", "compaction", "", "", "", PLANNED, json.dumps(detail)])
+            for decision in day.decisions:
+                rows.append(
+                    [
+                        day.compaction_id,
+                        "0",
+                        "decision",
+                        decision.event_id or "",
+                        json.dumps(decision.to_json_dict()),
+                        "",
+                        "",
+                        "",
+                    ]
+                )
+            for step, change in enumerate(day.plan.changes, start=1):
+                rows.append(
+                    [
+                        day.compaction_id,
+                        str(step),
+                        change.action,
+                        change.event_id or "",
+                        json.dumps(change.before.to_json_dict()) if change.before else "",
+                        json.dumps(change.after.to_json_dict()) if change.after else "",
+                        "pending",
+                        change.reason,
+                    ]
+                )
         first_row = _FIRST_DATA_ROW + len(self._read_rows())
         self._sheets_client.write_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, f"A{first_row}:H", rows
@@ -298,6 +338,8 @@ class CompactionJournal:
                     decisions=[],
                     ignore_notes=detail.get("ignore_notes", []),
                     row=sheet_row,
+                    batch=detail.get("batch"),
+                    day=detail.get("day", 1),
                 )
             elif kind == "decision":
                 decisions.append(EventDecision.from_json_dict(json.loads(row[4])))
@@ -321,6 +363,17 @@ class CompactionJournal:
         compaction.decisions = decisions
         compaction.steps = sorted(steps, key=lambda s: s.step)
         return compaction
+
+    def load_batch(self, batch_id: str) -> list[JournalCompaction]:
+        """Every day of the batch `batch_id`, in order -- just the one, for
+        a one-day batch. Raises `CompactionError` if there isn't one."""
+        first = self.load(batch_id)
+        later = [
+            row[0]
+            for row in self._read_rows()
+            if row[2] == "compaction" and json.loads(row[7] or "{}").get("batch") == batch_id
+        ]
+        return [first] + sorted((self.load(i) for i in later), key=lambda c: c.day)
 
     def compactions_with_status(self, *statuses: str) -> list[tuple[str, str]]:
         """(id, status) of every compaction currently in one of `statuses`."""

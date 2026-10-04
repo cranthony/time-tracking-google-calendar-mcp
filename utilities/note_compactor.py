@@ -5,43 +5,59 @@
 
 The flow, as the MCP tools expose it:
 
-1. `prepare` -- read-only. Hands the client one day of uncompacted notes
-   (each with a stable id and a shortlist of nearby planned events), that
-   day's planned events, and the two side by side as a `Timeline` (see
-   utilities/compaction_timeline.py). The client compares them and
-   decides, event by event, what the notes show happened differently.
+1. `prepare` -- read-only. Hands the client every day of uncompacted
+   notes up to now (each note with a stable id and a shortlist of nearby
+   planned events), those days' planned events, and the two side by side
+   as a `Timeline` (see utilities/compaction_timeline.py). The client
+   compares them and decides, event by event, what the notes show
+   happened differently.
 2. `dry_run` -- validates the client's decisions and writes the plan to
    the journal as `planned`, returning it (and a compaction id, and the
    resulting timeline) for review. Nothing on the calendar changes.
 3. `commit` -- applies a `planned` compaction after checking the notes and
    calendar still match what was previewed, journaling each step as it
-   goes, and only then stamps the notes as compacted. If it dies partway
-   it can simply be called again: the journal remembers exactly what was
-   approved and how far it got. A compaction that can't be finished can be
-   `abandon`ed.
+   goes, and stamping each day's notes as compacted once that day's steps
+   are done. If it dies partway it can simply be called again: the
+   journal remembers exactly what was approved and how far it got. A
+   compaction that can't be finished can be `abandon`ed.
 
-A day at a time: notes are processed one day per compaction, oldest
-first, so a backlog spanning several days takes one compaction per day.
-The day is the one the oldest uncompacted note falls in: it starts when
-the last end-of-day sleep event that began before that note ends (or at
-the note, if it's earlier -- a note written before the planned wake-up
-time), and runs to the end of the next end-of-day sleep event after that
-(or 24 hours, if there isn't one).
+A day at a time, all at once: one compaction takes on every day of
+uncompacted notes up to now (at most `_MAX_DAYS`, oldest first), but
+plans each day on its own, and the user reviews them together. A day is
+the one the oldest of the notes left falls in: it starts when the last
+end-of-day sleep event that began before that note ends (or at the note,
+if it's earlier -- a note written before the planned wake-up time), and
+runs to the end of the next end-of-day sleep event after that (or 24
+hours, if there isn't one). Each day after the first is planned as if the
+one before it had already been compacted: it starts where that one ended
+(its `now`), against the calendar as that one's plan would leave it
+(`_PlannedCalendar`). A day before the last is wholly past, so its plan
+records it and reflows nothing; only the last day, the one with now in
+it, has a future to reflow. The night between two days is the one event
+they share: the earlier day owns its start (bedtime) and the later one
+its end (the wake-up time) -- see `_decisions_for` -- so no day's plan
+moves the next day's start. In the journal, each day is a compaction of
+its own, applied and stamped in order, and together they're a *batch*
+under the first day's id (see utilities/compaction_journal.py) -- the
+compaction id the MCP tools use. Notes written after now wait for a
+later compaction.
 
 A day can take several compactions, so the events offered -- the
 *compaction window* -- start at the later of the day's start and the last
-*stamped* compaction's `now`: whatever an earlier compaction already
+*stamped* compaction's `now` (or, for a later day of a batch, the day
+before it's): whatever an earlier compaction already
 settled isn't offered again. The one event that ended within `_LOOKBACK`
 before the compaction window starts is offered too, so an event the last
 compaction closed off at "now" (or the night's sleep) can still be
 stretched. The latest compacted note, however long ago it was written,
 is offered as `previous_note`: what the user last said before the window
 often says what was going on as it began. The timeline shows it too, and
-when the last compaction ran, as context. Every past event
+when the last compaction ran, as context -- for the first day; a later
+day has the day before it right above it. Every past event
 offered is recorded as on schedule unless
 the client's decisions say otherwise (see utilities/note_compaction.py).
 
-The events offered run through the day's end-of-day sleep, because an
+The events offered run through each day's end-of-day sleep, because an
 event that ran long pushes what follows it later, and the reflow needs
 somewhere for that to go. But compaction is about recording the past,
 so the timeline shown to the user stops at `now`: a later event appears
@@ -61,7 +77,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
@@ -77,14 +93,16 @@ from utilities.compaction_journal import (
     CompactionJournal,
     JournalCompaction,
     JournalStep,
+    PlannedDay,
 )
 from utilities.compaction_marker import CompactionMarker
-from utilities.compaction_timeline import Timeline
+from utilities.compaction_timeline import Timeline, join_days
 from utilities.note_compaction import (
     CompactionChange,
     CompactionError,
     CompactionPlan,
     EventDecision,
+    EventState,
     PlanNote,
     plan_compaction,
     planned_timeline,
@@ -102,6 +120,10 @@ and still be offered to it as a candidate."""
 _HINT_HISTORY = timedelta(days=28)
 """How far back goals are looked for to suggest for an event."""
 
+_MAX_DAYS = 7
+"""The most days one compaction takes on, oldest first: a longer backlog
+takes more than one, so each plan stays small enough to review."""
+
 _LOOKBACK = timedelta(minutes=15)
 """How long before the compaction window starts an event may have ended
 and still be offered (only the latest one) -- see the module docstring."""
@@ -116,7 +138,9 @@ _APPROVAL_RULE = (
 server can't tell whether the user replied, so this rests on the model."""
 
 DECISION_GUIDE = (
-    "`timeline` shows this day's notes beside its planned events. Compare them and decide, event "
+    "`timeline` shows the notes beside the planned events -- for every day of notes up to now, each "
+    "under a heading with its date (`days` lists them when there's more than one). Each day is "
+    "compacted on its own, but you decide them all in one list. Compare them and decide, event "
     "by event, what the notes show happened differently -- then call compact_notes with those "
     "`decisions`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly "
     "as planned, so only mention the events the notes contradict. Notes are sparse -- the user "
@@ -147,7 +171,7 @@ DECISION_GUIDE = (
     "shortens the next event), and ask the user if the notes don't tell you. "
     "Every note you don't use as a start_note/end_note has its text added to the description of the "
     "event it falls within; list any that shouldn't be in `ignore_notes`. Use only note ids from "
-    "`notes` (only this round's -- notes for later days aren't offered yet, see "
+    "`notes` (only this round's -- a longer backlog than this takes another round, see "
     "`remaining_note_count`) and event ids from `events`. "
     "`events` may start with one that ended just before `compaction_window_start` (usually last "
     "night's sleep); if a note shows it actually ran later -- the user slept in -- move its end "
@@ -163,10 +187,12 @@ DECISION_GUIDE = (
     "a dry run, later events the plan changes -- e.g. pushes later after an overrun. "
     "A 'keep' that moves a future event reschedules it: it's pinned there and the rest of the day "
     "reflows around it, in the same plan -- for 'move lunch later and adjust the afternoon' "
-    "requests. The day's own end-of-day sleep event works differently: moving its start moves "
+    "requests. A day's end-of-day sleep event works differently: moving its start moves "
     "bedtime (an earlier one shortens or cancels what runs past it), and its end -- the wake-up "
-    "time -- starts the next day, which compaction never adjusts, so move only its start to "
-    "change only bedtime. "
+    "time -- starts the next day. When the next day is in this round too, its wake-up is that "
+    "day's: a 'keep' moving it is checked against that morning's events (if it now overlaps one, "
+    "move that too), and the bedtime stays the earlier day's. On the last day, compaction never "
+    "adjusts the next day, so move only its start to change only bedtime. "
     "GOALS: each event can serve goals (`goals` lists them; `goal_ids` on an event, primary "
     "first). Tagging events with goals should cost the user almost nothing, so: for every past "
     "event with `suggested_goal_ids`, add a 'keep' {event_id, goal_ids} applying them -- without "
@@ -224,28 +250,46 @@ class ContextGoal:
 
 
 @dataclass(kw_only=True)
+class ContextDay:
+    """One of several days compacted together."""
+
+    label: str
+    """Its date, as the timeline heads it, e.g. "Sat 03 Oct"."""
+
+    compaction_window_start: datetime
+    day_end: datetime
+    note_ids: list[str]
+
+
+@dataclass(kw_only=True)
 class CompactionContext:
-    """What a client needs to interpret one day of notes -- see
-    `NoteCompactor.prepare`."""
+    """What a client needs to interpret the notes of one or more days --
+    see `NoteCompactor.prepare`."""
 
     notes: list[ContextNote]
     events: list[ContextEvent]
     now: datetime | None = None
-    """The effective 'now' for this day: the actual now, or the end of
-    the day if that's earlier."""
+    """The effective 'now' for the last day: the actual now, or the end
+    of that day if that's earlier."""
 
     day_end: datetime | None = None
+    """Where the last day ends."""
+
     remaining_note_count: int = 0
-    """Uncompacted notes belonging to later days -- compact those in
-    later rounds."""
+    """Uncompacted notes left for a later compaction: those past the
+    most days one takes on (`_MAX_DAYS`), or written after now."""
+
+    days: list[ContextDay] | None = None
+    """When the notes span several days: each day, oldest first. `None`
+    for one."""
 
     open_compaction: str | None = None
     """The id of a compaction that's begun but not finished, if any. It
     must be resumed or abandoned before a new one can start."""
 
     compaction_window_start: datetime | None = None
-    """Where the events offered start: the later of the day's start and
-    the last compaction -- see the module docstring."""
+    """Where the events offered start: the later of the (first) day's
+    start and the last compaction -- see the module docstring."""
 
     timeline: Timeline | None = None
     """`notes` beside `events` as planned -- see
@@ -291,7 +335,6 @@ class _Day:
     compaction_window_start: datetime
     day_end: datetime
     now: datetime
-    remaining: int
     previous: Event | None = None
     """The event that ended just before the compaction window, if one
     was offered."""
@@ -300,7 +343,57 @@ class _Day:
     """The compacted note with the latest timestamp, read with `notes`."""
 
     last_compaction: datetime | None = None
-    """The last stamped compaction's `now`, if there's been one."""
+    """The last stamped compaction's `now`, if there's been one -- for
+    the batch's first day only, as context."""
+
+
+@dataclass(kw_only=True)
+class _Walked:
+    """One day of a batch, as `NoteCompactor._walk` reached it."""
+
+    day: _Day
+    plan: CompactionPlan | None = None
+    decisions: list[EventDecision] = field(default_factory=list)
+    ignore_notes: list[str] = field(default_factory=list)
+
+
+_STATE_FIELDS = (
+    "summary", "start", "end", "description", "location", "status",
+    "is_fixed_time", "priority", "event_label_id", "goal_ids", "min_duration",
+)
+
+
+class _PlannedCalendar:
+    """A calendar's events as the planned changes `apply`d to it would
+    leave them, without writing anything: what each day of a batch is
+    planned against, so it starts from the day before it as planned."""
+
+    def __init__(self, calendar: ReallocatingCalendar) -> None:
+        self._calendar = calendar
+        self._changed: dict[str, Event] = {}
+        self._created: list[Event] = []
+
+    def apply(self, changes: list[CompactionChange]) -> None:
+        for change in changes:
+            if change.action == "create":
+                self._created.append(change.after.to_event(f"planned{len(self._created) + 1}"))
+            elif change.action == "cancel":
+                self._changed[change.event_id] = Event(status="cancelled")
+            else:
+                self._changed[change.event_id] = change.after.to_event()
+
+    def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:
+        events = []
+        for event in self._calendar.list_events(time_min, time_max):
+            changed = self._changed.get(event.id)
+            if changed is not None:
+                event = replace(
+                    event,
+                    **{f: getattr(changed, f) for f in _STATE_FIELDS if getattr(changed, f) is not None},
+                )
+            events.append(event)
+        events += [replace(e) for e in self._created]
+        return [e for e in events if e.end > time_min and e.start < time_max]
 
 
 class NoteCompactor:
@@ -332,24 +425,25 @@ class NoteCompactor:
     def prepare(self) -> CompactionContext:
         self._prefetch()
         self._journal.garbage_collect()
-        now = self._clock()
         open_ids = self._journal.open_compactions()
-        open_id = open_ids[0][0] if open_ids else None
-        day = self._day(now)
-        if day is None:
+        open_id = self._journal.load(open_ids[0][0]).batch_id if open_ids else None
+        walked, remaining = self._walk(self._clock())
+        if not walked:
             return CompactionContext(notes=[], events=[], open_compaction=open_id)
-        first = min(n.note.timestamp for n in day.notes) if day.notes else None
+        days = [w.day for w in walked]
         tree = self._goals.tree() if self._goals else None
         names = _goal_names(tree)
-        suggested = self._suggestions(day, tree) if tree is not None else {}
-        previous_note = day.latest_compacted
-        candidates = {
-            n.id: _candidates(n.note.timestamp, day.events, day.previous if n.note.timestamp == first else None)
-            for n in day.notes
-        }
-        shown = _shown(day, candidates)
-        return CompactionContext(
-            notes=[
+        suggested = self._suggestions(days, tree) if tree is not None else {}
+        notes: list[ContextNote] = []
+        events: dict[str, ContextEvent] = {}
+        timelines: list[tuple[datetime, Timeline]] = []
+        for day in days:
+            first = min(n.note.timestamp for n in day.notes)
+            candidates = {
+                n.id: _candidates(n.note.timestamp, day.events, day.previous if n.note.timestamp == first else None)
+                for n in day.notes
+            }
+            notes += [
                 ContextNote(
                     id=n.id,
                     timestamp=n.note.timestamp,
@@ -357,37 +451,54 @@ class NoteCompactor:
                     candidates=candidates[n.id],
                 )
                 for n in day.notes
-            ],
-            events=[
-                ContextEvent(
-                    id=e.id,
-                    summary=e.summary,
-                    start=e.start,
-                    end=e.end,
-                    description=e.description,
-                    goal_ids=e.goal_ids,
-                    goal_names=[names.get(g, g) for g in e.goal_ids] if e.goal_ids is not None else None,
-                    suggested_goal_ids=suggested.get(e.id),
-                    priority=e.effective_priority,
-                    is_fixed_time=e.effective_is_fixed_time,
+            ]
+            for e in day.events:
+                if e.id and e.id not in events:
+                    events[e.id] = ContextEvent(
+                        id=e.id,
+                        summary=e.summary,
+                        start=e.start,
+                        end=e.end,
+                        description=e.description,
+                        goal_ids=e.goal_ids,
+                        goal_names=[names.get(g, g) for g in e.goal_ids] if e.goal_ids is not None else None,
+                        suggested_goal_ids=suggested.get(e.id),
+                        priority=e.effective_priority,
+                        is_fixed_time=e.effective_is_fixed_time,
+                    )
+            timelines.append(
+                (
+                    day.day_start,
+                    planned_timeline(
+                        _plan_notes(day),
+                        _shown(day, candidates),
+                        day.now,
+                        names,
+                        suggested,
+                        previous_note=_latest_compacted(day),
+                        last_compaction=day.last_compaction,
+                    ),
                 )
-                for e in day.events
-                if e.id
-            ],
-            now=day.now,
-            day_end=day.day_end,
-            remaining_note_count=day.remaining,
+            )
+        previous_note = days[0].latest_compacted
+        return CompactionContext(
+            notes=notes,
+            events=list(events.values()),
+            now=days[-1].now,
+            day_end=days[-1].day_end,
+            remaining_note_count=remaining,
             open_compaction=open_id,
-            compaction_window_start=day.compaction_window_start,
-            timeline=planned_timeline(
-                _plan_notes(day),
-                shown,
-                day.now,
-                names,
-                suggested,
-                previous_note=_latest_compacted(day),
-                last_compaction=day.last_compaction,
-            ),
+            compaction_window_start=days[0].compaction_window_start,
+            days=[
+                ContextDay(
+                    label=_day_label(day),
+                    compaction_window_start=day.compaction_window_start,
+                    day_end=day.day_end,
+                    note_ids=[n.id for n in day.notes],
+                )
+                for day in days
+            ] if len(days) > 1 else None,
+            timeline=join_days(timelines),
             goals=[
                 ContextGoal(id=g.id, path=tree.path(g.id)) for g in tree.ordered() if g.active and g.id != OVERALL_ID
             ] if tree is not None else None,
@@ -407,15 +518,15 @@ class NoteCompactor:
             tabs.append(self._goals.whole_tab)
         self._notes.prefetch(tabs)
 
-    def _suggestions(self, day: _Day, tree: GoalTree) -> dict[str, list[str]]:
-        """Goals to suggest for the day's past events that serve none: those
+    def _suggestions(self, days: list[_Day], tree: GoalTree) -> dict[str, list[str]]:
+        """Goals to suggest for the days' past events that serve none: those
         the latest earlier event with the same title served, within
         _HINT_HISTORY (ignoring goals since deleted). Recurring events need
         nothing extra: an instance's goals come with its series."""
-        bare = [e for e in day.events if e.id and not e.goal_ids and e.end <= day.now and e.summary]
+        bare = [e for day in days for e in day.events if e.id and not e.goal_ids and e.end <= day.now and e.summary]
         if not bare:
             return {}
-        start = day.compaction_window_start
+        start = days[0].compaction_window_start
         history = self._calendar.list_events(start - _HINT_HISTORY, start)
         hints: dict[str, list[str]] = {}
         for event in sorted(history, key=lambda e: e.start):
@@ -432,28 +543,52 @@ class NoteCompactor:
     ) -> CompactionResult:
         self._prefetch()
         self._require_no_open_compaction()
-        day = self._day(self._clock())
-        if day is None:
+        pending = list(decisions)
+        ignoring = list(ignore_notes or [])
+
+        def plan_day(day: _Day, has_next: bool, index: int) -> _Walked:
+            mine, pending[:] = _decisions_for(day, pending, has_next)
+            note_ids = {n.id for n in day.notes}
+            ignored = [i for i in ignoring if not has_next or i in note_ids]
+            ignoring[:] = [i for i in ignoring if i not in ignored]
+            label = _day_label(day) if has_next or index else None
+            try:
+                plan = self._plan(day, mine, ignored)
+            except CompactionError as exc:
+                raise CompactionError(f"{label}: {exc}" if label else str(exc)) from exc
+            if label:
+                plan.warnings = [f"{label}: {w}" for w in plan.warnings]
+            return _Walked(day=day, plan=plan, decisions=mine, ignore_notes=ignored)
+
+        walked, remaining = self._walk(self._clock(), plan_day)
+        if not walked:
             return CompactionResult(status="nothing_to_compact", message="there are no uncompacted notes")
-        plan = self._plan(day, decisions, ignore_notes)
         superseded = self._supersede_planned()
         compaction_id = uuid.uuid4().hex[:12]
-        self._journal.start(
-            compaction_id,
-            now=day.now,
-            note_ids=[n.id for n in day.notes],
-            decisions=decisions,
-            ignore_notes=ignore_notes or [],
-            plan=plan,
+        self._journal.start_batch(
+            [
+                PlannedDay(
+                    compaction_id=_day_id(compaction_id, number),
+                    now=w.day.now,
+                    note_ids=[n.id for n in w.day.notes],
+                    decisions=w.decisions,
+                    ignore_notes=w.ignore_notes,
+                    plan=w.plan,
+                )
+                for number, w in enumerate(walked, start=1)
+            ]
         )
+        changes = [c for w in walked for c in w.plan.changes]
+        note_count = sum(len(w.day.notes) for w in walked)
+        days = f" over {len(walked)} days" if len(walked) > 1 else ""
         return CompactionResult(
             status="planned",
             compaction_id=compaction_id,
-            changes=plan.changes,
-            warnings=plan.warnings,
-            timeline=plan.timeline,
+            changes=changes,
+            warnings=[warning for w in walked for warning in w.plan.warnings],
+            timeline=join_days([(w.day.day_start, w.plan.timeline) for w in walked]),
             message=(
-                f"{len(plan.changes)} calendar change(s) planned for {len(day.notes)} note(s); "
+                f"{len(changes)} calendar change(s) planned for {note_count} note(s){days}; "
                 "nothing has been changed yet. Show the user `timeline.text` in a code block (see the "
                 "instructions from prepare_compaction) and the warnings. "
                 + _APPROVAL_RULE
@@ -461,52 +596,78 @@ class NoteCompactor:
                 "dry_run=False. If they want something different, correct the decisions and call "
                 "compact_notes again (this plan is then replaced)."
                 + (f" (Replaced {superseded} earlier unapplied plan(s).)" if superseded else "")
+                + (
+                    f" {remaining} later note(s) aren't part of it: compact them next."
+                    if remaining
+                    else ""
+                )
             ),
         )
 
     def describe(self, compaction_id: str) -> CompactionResult:
         """The stored plan for `compaction_id`, without doing anything."""
-        journal = self._journal.load(compaction_id)
+        days = self._journal.load_batch(compaction_id)
+        statuses = {d.status for d in days}
+        if statuses == {STAMPED}:
+            status = "already_compacted"
+        elif ABANDONED in statuses:
+            status = "abandoned"
+        else:
+            status = "planned"
+        if len(days) == 1:
+            message = f"compaction {compaction_id} is {days[0].status}"
+        else:
+            message = f"compaction {compaction_id} covers {len(days)} days: " + ", ".join(
+                f"day {d.day} {d.status}" for d in days
+            )
         return CompactionResult(
-            status=_STATUS_FOR_JOURNAL.get(journal.status, "planned"),
+            status=status,
             compaction_id=compaction_id,
-            changes=journal.changes(),
-            warnings=journal.warnings,
-            message=f"compaction {compaction_id} is {journal.status}",
+            changes=[c for d in days for c in d.changes()],
+            warnings=[w for d in days for w in d.warnings],
+            message=message,
         )
 
     def commit(self, compaction_id: str) -> CompactionResult:
+        """Apply the batch `compaction_id` a day at a time: each day's steps,
+        then its notes stamped, before the next day's."""
         self._prefetch()
-        journal = self._journal.load(compaction_id)
-        if journal.status == STAMPED:
+        days = self._journal.load_batch(compaction_id)
+        changes = [c for d in days for c in d.changes()]
+        if all(d.status == STAMPED for d in days):
             # Again, in case moving it failed the first time.
             last = self._journal.last_stamped_now()
             return CompactionResult(
                 status="already_compacted",
                 compaction_id=compaction_id,
-                changes=journal.changes(),
+                changes=changes,
                 warnings=self._move_marker(last) if last is not None else [],
                 message=f"compaction {compaction_id} was already applied and its notes stamped",
             )
-        if journal.status == ABANDONED:
+        if any(d.status == ABANDONED for d in days):
             raise CompactionError(f"compaction {compaction_id} was abandoned; run a new dry run")
-        if journal.status == PLANNED:
+        pending = [d for d in days if d.status != STAMPED]
+        if pending[0].status == PLANNED:
             self._require_no_open_compaction()
-            self._verify_unchanged(journal)
-            self._journal.set_status(journal, APPLYING)
-        for step in journal.steps:
-            if step.status != "done":
-                self._apply_step(journal, step)
-                self._journal.mark_step_done(step)
-        self._journal.set_status(journal, APPLIED)
-        self._notes.mark_compacted(journal.note_ids, journal.id)
-        self._journal.set_status(journal, STAMPED)
+            self._verify_unchanged(pending)
+        for journal in pending:
+            if journal.status == PLANNED:
+                self._journal.set_status(journal, APPLYING)
+            for step in journal.steps:
+                if step.status != "done":
+                    self._apply_step(journal, step)
+                    self._journal.mark_step_done(step)
+            self._journal.set_status(journal, APPLIED)
+            self._notes.mark_compacted(journal.note_ids, journal.id)
+            self._journal.set_status(journal, STAMPED)
+        steps = sum(len(d.steps) for d in days)
+        notes = sum(len(d.note_ids) for d in days)
         return CompactionResult(
             status="applied",
             compaction_id=compaction_id,
-            changes=journal.changes(),
-            warnings=journal.warnings + self._move_marker(journal.now),
-            message=f"applied {len(journal.steps)} change(s) and marked {len(journal.note_ids)} note(s) compacted",
+            changes=changes,
+            warnings=[w for d in days for w in d.warnings] + self._move_marker(days[-1].now),
+            message=f"applied {steps} change(s) and marked {notes} note(s) compacted",
         )
 
     def _move_marker(self, at: datetime) -> list[str]:
@@ -535,34 +696,86 @@ class NoteCompactor:
         return delete_note(self._notes, self._journal, note_id)
 
     def abandon(self, compaction_id: str) -> CompactionResult:
-        journal = self._journal.load(compaction_id)
-        if journal.status == STAMPED:
+        days = self._journal.load_batch(compaction_id)
+        if all(d.status == STAMPED for d in days):
             raise CompactionError(f"compaction {compaction_id} is already complete; there's nothing to abandon")
-        self._journal.set_status(journal, ABANDONED)
+        finished = sum(1 for d in days if d.status == STAMPED)
+        for day in days:
+            if day.status not in (STAMPED, ABANDONED):
+                self._journal.set_status(day, ABANDONED)
         return CompactionResult(
             status="abandoned",
             compaction_id=compaction_id,
             message=(
                 f"compaction {compaction_id} abandoned. Any steps it had already applied stay applied "
                 "(the journal has each one's before-state); its notes are still uncompacted."
+                + (
+                    f" ({finished} of its {len(days)} days had already been applied in full, so those "
+                    "days' notes stay compacted.)"
+                    if finished
+                    else ""
+                )
             ),
         )
 
-    def _day(self, now: datetime) -> _Day | None:
-        sheet_notes, latest_compacted = self._notes.read_with_latest_compacted()
-        if not sheet_notes:
-            return None
-        first = min(n.note.timestamp for n in sheet_notes)
+    def _walk(
+        self,
+        now: datetime,
+        plan_day: Callable[[_Day, bool, int], _Walked] | None = None,
+        *,
+        max_days: int = _MAX_DAYS,
+    ) -> tuple[list[_Walked], int]:
+        """The days of uncompacted notes up to `now`, oldest first -- at
+        most `max_days` of them -- and how many uncompacted notes are left
+        after them. Each day after the first starts where the one before
+        it ends, as if that one had been compacted (see the module
+        docstring). `plan_day` (the day, whether another follows it, and
+        which it is, from 0) plans each day as it's reached; the days
+        after it are then read as that plan would leave the calendar."""
+        sheet_notes, latest = self._notes.read_with_latest_compacted()
+        notes = [n for n in sheet_notes if n.note.timestamp <= now]
+        last_stamped = self._journal.last_stamped_now()
+        calendar = _PlannedCalendar(self._calendar)
+        walked: list[_Walked] = []
+        while notes:
+            day = self._day(
+                now, notes, calendar, last_stamped=last_stamped, latest_compacted=latest, first=not walked
+            )
+            in_day = {n.id for n in day.notes}
+            notes = [n for n in notes if n.id not in in_day]
+            has_next = bool(notes) and day.now < now and len(walked) + 1 < max_days
+            walked.append(plan_day(day, has_next, len(walked)) if plan_day else _Walked(day=day))
+            if not has_next:
+                break
+            if walked[-1].plan is not None:
+                calendar.apply(walked[-1].plan.changes)
+            last_stamped = day.now
+        return walked, len(sheet_notes) - sum(len(w.day.notes) for w in walked)
+
+    def _day(
+        self,
+        now: datetime,
+        notes: list[SheetNote],
+        calendar: _PlannedCalendar,
+        *,
+        last_stamped: datetime | None,
+        latest_compacted: NotedTime | None,
+        first: bool,
+    ) -> _Day:
+        """The day the oldest of `notes` falls in, with its notes. Its
+        compaction window starts no earlier than `last_stamped`. `first`:
+        whether it's the batch's first day, the only one shown the latest
+        compacted note and the last compaction, as context."""
+        oldest = min(n.note.timestamp for n in notes)
         # The day the oldest note falls in starts when the night before it
         # ends -- or at the note, if it was written before the wake-up time.
-        recent = self._calendar.list_events(first - timedelta(hours=24), first + timedelta(seconds=1))
+        recent = calendar.list_events(oldest - timedelta(hours=24), oldest + timedelta(seconds=1))
         opening = max(
-            (e for e in recent if e.is_end_of_day_sleep and e.status != "cancelled" and e.start <= first),
+            (e for e in recent if e.is_end_of_day_sleep and e.status != "cancelled" and e.start <= oldest),
             key=lambda e: e.start,
             default=None,
         )
-        day_start = min(opening.end, first) if opening is not None else first
-        last_stamped = self._journal.last_stamped_now()
+        day_start = min(opening.end, oldest) if opening is not None else oldest
         compaction_window_start = (
             max(day_start, last_stamped) if last_stamped is not None else day_start
         )
@@ -570,7 +783,7 @@ class NoteCompactor:
         fetched = sorted(
             (
                 e
-                for e in self._calendar.list_events(
+                for e in calendar.list_events(
                     compaction_window_start - _LOOKBACK, day_start + timedelta(hours=24)
                 )
                 if e.status != "cancelled"
@@ -588,54 +801,62 @@ class NoteCompactor:
         if previous is not None:
             events.insert(0, previous)
         day_end = events[-1].end if closing is not None else day_start + timedelta(hours=24)
-        in_day = [n for n in sheet_notes if n.note.timestamp <= day_end]
         return _Day(
-            notes=in_day,
+            notes=[n for n in notes if n.note.timestamp <= day_end],
             events=events,
             day_start=day_start,
             compaction_window_start=compaction_window_start,
             day_end=day_end,
             now=min(now, day_end),
-            remaining=len(sheet_notes) - len(in_day),
             previous=previous,
-            latest_compacted=latest_compacted,
-            last_compaction=last_stamped,
+            latest_compacted=latest_compacted if first else None,
+            last_compaction=last_stamped if first else None,
         )
 
     def _supersede_planned(self) -> int:
         """Abandon every earlier plan that was never applied. A new dry run
         replaces them -- it's how a rejected or corrected plan is redone --
         and leaving them `planned` would let a stale one be committed by
-        mistake. Returns how many were replaced."""
-        replaced = self._journal.compactions_with_status(PLANNED)
-        for compaction_id, _status in replaced:
-            self._journal.set_status(self._journal.load(compaction_id), ABANDONED)
-        return len(replaced)
+        mistake. Returns how many were replaced (a batch counting once)."""
+        replaced = [self._journal.load(i) for i, _status in self._journal.compactions_with_status(PLANNED)]
+        for compaction in replaced:
+            self._journal.set_status(compaction, ABANDONED)
+        return len({c.batch_id for c in replaced})
 
     def _require_no_open_compaction(self) -> None:
         open_compactions = self._journal.open_compactions()
         if open_compactions:
             compaction_id, status = open_compactions[0]
+            batch_id = self._journal.load(compaction_id).batch_id
             raise CompactionError(
-                f"compaction {compaction_id} is {status} -- finish it with compact_notes("
-                f"compaction_id={compaction_id!r}, dry_run=False), or abandon it with "
+                f"compaction {batch_id} is {status} -- finish it with compact_notes("
+                f"compaction_id={batch_id!r}, dry_run=False), or abandon it with "
                 "abandon_compaction, before starting another"
             )
 
-    def _verify_unchanged(self, journal: JournalCompaction) -> None:
-        day = self._day(journal.now)
+    def _verify_unchanged(self, days: list[JournalCompaction]) -> None:
+        """Plan `days` -- a batch's days not yet applied -- again, each with
+        its own decisions, and check they come out as they did when they
+        were previewed."""
         stale = CompactionError(
-            f"the notes or calendar changed since compaction {journal.id} was previewed; "
+            f"the notes or calendar changed since compaction {days[0].batch_id} was previewed; "
             "run a new dry run"
         )
-        if day is None or {n.id for n in day.notes} != set(journal.note_ids):
-            raise stale
-        plan = self._plan(day, journal.decisions, journal.ignore_notes)
 
         def comparable(changes: list[CompactionChange]) -> list[tuple]:
             return [(c.action, c.event_id, c.before, c.after) for c in changes]
 
-        if comparable(plan.changes) != comparable(journal.changes()):
+        def plan_day(day: _Day, has_next: bool, index: int) -> _Walked:
+            journal = days[index]
+            if {n.id for n in day.notes} != set(journal.note_ids):
+                raise stale
+            plan = self._plan(day, journal.decisions, journal.ignore_notes)
+            if comparable(plan.changes) != comparable(journal.changes()):
+                raise stale
+            return _Walked(day=day, plan=plan)
+
+        walked, _remaining = self._walk(days[-1].now, plan_day, max_days=len(days))
+        if len(walked) != len(days):
             raise stale
 
     def _plan(
@@ -728,12 +949,78 @@ def _require_not_being_applied(journal: CompactionJournal, note_id: str) -> None
     planned for. (A compaction that's only `planned` needs no guard: its
     commit re-checks the notes and refuses if they changed.)"""
     for compaction_id, status in journal.open_compactions():
-        if note_id in journal.load(compaction_id).note_ids:
+        compaction = journal.load(compaction_id)
+        if note_id in compaction.note_ids:
+            batch_id = compaction.batch_id
             raise CompactionError(
-                f"note {note_id!r} is part of compaction {compaction_id}, which is {status} -- "
-                f"finish it with compact_notes(compaction_id={compaction_id!r}, dry_run=False), or "
+                f"note {note_id!r} is part of compaction {batch_id}, which is {status} -- "
+                f"finish it with compact_notes(compaction_id={batch_id!r}, dry_run=False), or "
                 "abandon it with abandon_compaction, first"
             )
+
+
+def _decisions_for(
+    day: _Day, decisions: list[EventDecision], has_next: bool
+) -> tuple[list[EventDecision], list[EventDecision]]:
+    """Which of `decisions` are `day`'s, and which are left for the days
+    after it. An event's decision is the day's whose events it's among; a
+    'create' is the day's whose notes it uses, or that it starts in.
+    The last day (`has_next` false) takes whatever's left, unknown ids
+    and all, to report them as any day would.
+
+    The day's own end-of-day sleep event is the one event two days share:
+    the day it ends ends with its start (bedtime), and the next day
+    starts with its end (the wake-up time, offered as that day's
+    `previous`). So a 'keep' that moves its end is split: the end is the
+    next day's to move, against that morning's events, and the rest stays
+    with this day -- a day's plan never moves where the next day starts."""
+    if not has_next:
+        return list(decisions), []
+    event_ids = {e.id for e in day.events if e.id}
+    note_ids = {n.id for n in day.notes}
+    closing = next((e for e in day.events if e.is_end_of_day_sleep and e.start > day.day_start), None)
+    mine: list[EventDecision] = []
+    rest: list[EventDecision] = []
+    for decision in decisions:
+        if decision.action == "create":
+            anchored = {decision.start_note, decision.end_note} - {None}
+            ours = bool(anchored & note_ids) if anchored else (
+                decision.start is not None and decision.start < day.day_end
+            )
+            (mine if ours else rest).append(decision)
+        elif decision.event_id not in event_ids:
+            rest.append(decision)
+        elif (
+            closing is not None
+            and decision.event_id == closing.id
+            and decision.action == "keep"
+            and (decision.end is not None or decision.end_note is not None)
+        ):
+            rest.append(
+                EventDecision(action="keep", event_id=decision.event_id, end=decision.end, end_note=decision.end_note)
+            )
+            bedtime = replace(decision, end=None, end_note=None)
+            if any(
+                v is not None
+                for v in (bedtime.start, bedtime.start_note, bedtime.summary, bedtime.annotate, bedtime.goal_ids)
+            ):
+                mine.append(bedtime)
+        else:
+            mine.append(decision)
+    return mine, rest
+
+
+def _day_label(day: _Day) -> str:
+    """The day's date, in the notes' own time zone, e.g. "Sat 03 Oct" --
+    as the timeline heads it (see utilities/compaction_timeline.py)."""
+    tz = day.notes[0].note.timestamp.tzinfo if day.notes else None
+    return day.day_start.astimezone(tz).strftime("%a %d %b")
+
+
+def _day_id(batch_id: str, number: int) -> str:
+    """The compaction id of a batch's `number`th day (from 1): the
+    batch's own id for the first -- see utilities/compaction_journal.py."""
+    return batch_id if number == 1 else f"{batch_id}d{number}"
 
 
 def _plan_notes(day: _Day) -> list[PlanNote]:
@@ -811,8 +1098,3 @@ def _patch_for(step: JournalStep) -> Event:
         patch.min_duration = timedelta(minutes=after.min_duration_minutes)
     return patch
 
-
-_STATUS_FOR_JOURNAL = {STAMPED: "already_compacted", ABANDONED: "abandoned"}
-"""How a stored compaction's journal status reads as a result status;
-anything else (planned, or begun but unfinished) is shown as `planned` --
-the `message` carries its exact state."""
