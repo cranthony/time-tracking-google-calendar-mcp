@@ -556,12 +556,12 @@ class TestMeasureTimeConstraint:
 
         assert (rated.rating, rated.explanation) == (40, "Started 07:20; not before 08:00 with 10 min grace → 40")
 
-    def test_a_day_without_such_events_is_skipped(self):
+    def test_a_day_without_such_events_is_zero(self):
         health, _, _, constraint = self._setup(edge="start", target="09:30")
 
         (rated,) = health.measure(goal_ids=[constraint.id])
 
-        assert (rated.rating, rated.explanation) == ("skip", "No events of Work that day → skip")
+        assert (rated.rating, rated.explanation) == (0, "No events of Work that day → 0")
 
     def test_without_events_of_it_reads_its_own_goals_events(self):
         # "Up by 07:00": the "get up" event, given the goal itself.
@@ -710,6 +710,41 @@ class TestMeasureOnlyIf:
             "skip", "subjective", "No events of Piano that day → skip"
         )
         assert health.measure(goal_ids=[practice.id]) == []  # to be asked
+
+
+    def test_without_events_of_it_looks_at_the_measures_events(self):
+        health, store, calendar, goals = _setup([Goal(name="Eat well")])
+        meals = goals["Eat well"]
+        breakfast = _child(
+            store, "Breakfast", meals,
+            measure={
+                "kind": "time_constraint", "edge": "start", "target": "08:00", "events_of": meals.id, "only_if": {}
+            },
+        )
+
+        (skipped,) = health.measure(goal_ids=[breakfast.id])
+        calendar.events = [_event("2026-10-01T08:00", "2026-10-01T08:30", [meals.id])]
+        (rated,) = health.measure(goal_ids=[breakfast.id])
+
+        assert (skipped.rating, skipped.explanation) == ("skip", "No events of Eat well that day → skip")
+        assert skipped.metrics == {"only_if": meals.id}
+        assert rated.rating == 100
+
+    def test_its_own_events_of_doesnt_take_the_measures_include_sub_goals(self):
+        health, store, calendar, goals = _setup([Goal(name="Piano")])
+        piano = goals["Piano"]
+        scales = _child(store, "Scales", piano)
+        gated = _child(
+            store, "Gated", piano,
+            measure={
+                "kind": "count", "target": 1, "include_sub_goals": False, "only_if": {"events_of": piano.id}
+            },
+        )
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T18:15", [scales.id])]
+
+        (rated,) = health.measure(goal_ids=[gated.id])
+
+        assert rated.rating == 0  # met by Scales, a sub-goal of Piano; Gated itself has no events
 
 
 class TestMeasureRollup:
