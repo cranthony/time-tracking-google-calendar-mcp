@@ -89,7 +89,7 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `create_event` | `(event: PublicEvent) -> list[PublicEvent]` |
 | `delete_event` | `(id) -> list[PublicEvent]` |
 | `get_goals` | `(statuses: list[GoalStatus] \| None) -> GoalList` |
-| `create_goal` | `(goal: Goal) -> GoalList` |
+| `create_goal` | `(goal: Goal) -> CreatedGoal` |
 | `update_goal` | `(goal: Goal, clear_fields: list[GoalField] \| None) -> GoalList` |
 | `sync_goals_from_sheet` | `() -> GoalList` |
 | `measure_goals` | `(day: date \| None, goal_ids: list[str] \| None) -> list[Assessment]` |
@@ -124,7 +124,7 @@ Every event tool's `PublicEvent`s also carry two read-only fields, `effective_pr
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
-`get_goals`/`create_goal`/`update_goal`/`sync_goals_from_sheet` manage this calendar's goals — see [Goals](#goals) below. Each returns a `GoalList`: the goals with the statuses asked for (by default proposed, active and inactive), parents before children, each with its `path` from the top of the tree, plus how many of the calendar's 200 event labels are in use. `update_goal` sets whichever fields are given and blanks those named in `clear_fields`; `id`, `label_id` and `created` are assigned and never change. A goal's `status` is one of `proposed` (suggested, not taken on yet), `active` (being worked on), `inactive` (paused), `completed` (achieved), `archived` (no longer relevant) or `deleted` (shouldn't have existed: no event can be given it, though events that already have it keep it). There's no `delete_goal`: setting `deleted` keeps the goal's history and its events' links to it.
+`get_goals`/`create_goal`/`update_goal`/`sync_goals_from_sheet` manage this calendar's goals — see [Goals](#goals) below. Each returns a `GoalList`: the goals with the statuses asked for (by default proposed, active and inactive), parents before children, each with its `path` from the top of the tree, plus how many of the calendar's 200 event labels are in use; `create_goal`'s also gives the new goal's id, as `created_id`. `update_goal` sets whichever fields are given and blanks those named in `clear_fields`; `id`, `label_id` and `created` are assigned and never change. A goal's `status` is one of `proposed` (suggested, not taken on yet), `active` (being worked on), `inactive` (paused), `completed` (achieved), `archived` (no longer relevant) or `deleted` (shouldn't have existed: no event can be given it, though events that already have it keep it). There's no `delete_goal`: setting `deleted` keeps the goal's history and its events' links to it.
 
 The `note` tool records a new time note (`utilities/noted_time_sheet.py`'s `NotedTime`: a required `timestamp`, and an optional free-text `description` of what it marks) by appending it to this calendar's noted-times tab (via `NotedTimeSheet.append`, which writes only the new row — see [Calendar metadata sheets](#calendar-metadata-sheets) below), returning the note as recorded along with its id (`NoteWithId`: the note's timestamp and sheet row together, e.g. `2026-01-01T09:05:00+00:00#5`). A caller can't set a note's `compaction_id`; only compaction does. `get_notes` lists the notes that haven't been compacted yet, sorted by timestamp and each with its id (or all of them with `include_compacted`).
 

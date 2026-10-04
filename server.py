@@ -33,7 +33,7 @@ from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_health import Assessment, GoalHealth
 from utilities.reflection import ReflectionContext, ReflectionResult, Reflections
 from utilities.goal_sheet import Goal, GoalStatus
-from utilities.goals import GoalList, Goals, GoalTree
+from utilities.goals import CreatedGoal, GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.compaction_journal import CompactionJournal
@@ -658,7 +658,7 @@ def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
 
 @tool
 @writes
-def create_goal(goal: Goal) -> GoalList:
+def create_goal(goal: Goal) -> CreatedGoal:
     """Create a goal: a name (at most 50 characters, unique among its
     siblings), optionally a parent_id to make it a sub-goal, and any of
     its other properties. Its status is active unless given (e.g.
@@ -667,7 +667,8 @@ def create_goal(goal: Goal) -> GoalList:
     its color (background_color, or derived from priority). priority and
     fixed_time are inherited by sub-goals and events that don't set their
     own. id, label_id and created are assigned. Returns the resulting
-    proposed, active and inactive goals.
+    proposed, active and inactive goals, and the new goal's id as
+    created_id.
 
     Every active goal is reflected on daily, and its measure says how its
     health (0-100) is rated each day; one without a measure is rated as
