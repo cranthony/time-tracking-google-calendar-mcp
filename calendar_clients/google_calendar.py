@@ -403,6 +403,13 @@ class EventLabelConflictError(Exception):
     overwriting the other writer's change."""
 
 
+class TimeZoneNotSetError(Exception):
+    """Raised by `CalendarClient.get_time_zone` when the calendar has no
+    time zone of its own, rather than guessing one: its days would be
+    counted, and its times shown, in UTC instead of the user's local
+    time. `set_time_zone` sets one."""
+
+
 @dataclass(kw_only=True)
 class EventLabel:
     """One of a calendar's custom event labels, exactly as Google
@@ -584,10 +591,14 @@ class CalendarClient:
 
     def get_time_zone(self) -> ZoneInfo:
         """This calendar's own time zone (fetched once, then remembered) --
-        what its days, weeks and months are counted in."""
+        what its days, weeks and months are counted in. Raises
+        TimeZoneNotSetError if it has none; that isn't remembered, so one
+        set later (here or in Google Calendar) is picked up."""
         if self._time_zone is None:
             calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
-            self._time_zone = ZoneInfo(calendar.get("timeZone") or "UTC")
+            if not calendar.get("timeZone"):
+                raise TimeZoneNotSetError(f"Calendar {self._calendar_id} has no time zone set")
+            self._time_zone = ZoneInfo(calendar["timeZone"])
         return self._time_zone
 
     @requires_write_lock
