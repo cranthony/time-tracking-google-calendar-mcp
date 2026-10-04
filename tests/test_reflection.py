@@ -315,6 +315,90 @@ class TestSubjectiveIntervals:
         assert reflections.prepare(YESTERDAY).due[0].ask == "How was mood?"
 
 
+class TestOnlyIf:
+    def _setup(self, interval_days=None, kind="subjective", **only_if):
+        measure = (
+            {"kind": "subjective", "prompt": "How did practice go?"} if kind == "subjective"
+            else {"kind": "llm", "rubric": "Was the practice focused?"}
+        )
+        if interval_days:
+            measure["interval_days"] = interval_days
+        reflections, health, store, calendar, goals = _setup(
+            [Goal(name="Piano"), Goal(name="Practice", parent_id="Piano", measure=measure)]
+        )
+        only_if = {"events_of": goals["Piano"].id, **only_if}
+        store.update_goal(Goal(id=goals["Practice"].id, measure={**measure, "only_if": only_if}))
+        return reflections, health, calendar, goals["Piano"], goals["Practice"]
+
+    def test_a_day_without_its_goals_events_is_skipped_without_asking(self):
+        reflections, _, _, piano, _ = self._setup()
+
+        (due,) = reflections.prepare(YESTERDAY).due
+
+        assert due.ask is None
+        assert (due.proposed.rating, due.proposed.method) == ("skip", "subjective")
+        assert due.proposed.explanation == "No events of Piano that day → skip"
+        assert due.proposed.metrics == {"only_if": piano.id}
+        assert due.proposed.unmet
+        assert "single summary line" in reflections.prepare(YESTERDAY).instructions
+
+    def test_a_day_with_them_is_asked(self):
+        reflections, _, calendar, piano, _ = self._setup()
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T18:30", [piano.id])]
+
+        (due,) = reflections.prepare(YESTERDAY).due
+
+        assert (due.ask, due.proposed) == ("How did practice go?", None)
+
+    @pytest.mark.parametrize("include_sub_goals, asked", [(True, True), (False, False)])
+    def test_events_of_its_goals_sub_goals_count_unless_left_out(self, include_sub_goals, asked):
+        reflections, _, calendar, piano, _ = self._setup(include_sub_goals=include_sub_goals)
+        store = reflections._goals
+        store.create_goal(Goal(name="Scales", parent_id=piano.id))
+        scales = next(g for g in store.tree().goals if g.name == "Scales")
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T18:30", [scales.id])]
+
+        (due,) = reflections.prepare(YESTERDAY).due
+
+        assert (due.ask is not None) == asked
+
+    def test_an_llm_goal_isnt_judged_on_a_day_without_them(self):
+        reflections, *_ = self._setup(kind="llm")
+
+        (due,) = reflections.prepare(YESTERDAY).due
+
+        assert (due.proposed.rating, due.proposed.method) == ("skip", "llm")
+
+    def test_its_interval_passes_over_skipped_days_carrying_the_last_answer(self):
+        reflections, health, calendar, piano, practice = self._setup(interval_days=7)
+        health.confirm_assessments(
+            [
+                _rating(practice, date(2026, 9, 27), 60),  # asked
+                _unmet(practice, piano, date(2026, 9, 28)),
+                _unmet(practice, piano, date(2026, 9, 29)),
+            ]
+        )
+        calendar.events = [_event("2026-09-30T18:00", "2026-09-30T18:30", [piano.id])]
+
+        (due,) = reflections.prepare(date(2026, 9, 30)).due
+
+        assert due.ask is None
+        assert (due.proposed.rating, due.proposed.metrics["carried_from"]) == (60, "2026-09-27")
+
+    def test_a_skipped_day_isnt_an_answer(self):
+        reflections, health, calendar, piano, practice = self._setup(interval_days=2)
+        health.confirm_assessments(
+            [_rating(practice, date(2026, 9, 27), 60), _unmet(practice, piano, date(2026, 9, 28))]
+        )
+        calendar.events = [_event("2026-09-29T18:00", "2026-09-29T18:30", [piano.id])]
+
+        assert reflections.prepare(date(2026, 9, 29)).due[0].ask == "How did practice go?"
+
+
+def _unmet(goal, source, day):
+    return _rating(goal, day, "skip", explanation="No events of Piano that day → skip", metrics={"only_if": source.id})
+
+
 def _carried(goal, day, rating, asked):
     return _rating(goal, day, rating, metrics={"carried_from": (day - timedelta(days=1)).isoformat(), "asked": asked.isoformat()})
 

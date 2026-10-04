@@ -253,6 +253,15 @@ class TestCreateGoal:
         with pytest.raises(ValueError, match="names 'nope', which isn't a goal"):
             goals.update_goal(Goal(id=cooking.id, measure={"kind": "count", "target": 1, "events_of": "nope"}))
 
+    def test_a_measures_only_if_events_of_must_be_a_goal(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+        cooking = _by_name(goals)["Cooking"]
+        measure = {"kind": "subjective", "prompt": "?", "only_if": {"events_of": "nope"}}
+
+        with pytest.raises(ValueError, match="\"only_if\" \"events_of\" names 'nope', which isn't a goal"):
+            goals.update_goal(Goal(id=cooking.id, measure=measure))
+
     def test_sibling_names_must_differ(self):
         goals, _, _ = _goals()
         goals.create_goal(Goal(name="Cooking"))
