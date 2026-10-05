@@ -75,3 +75,19 @@ def test_past_events_are_given_the_person_and_facets_and_future_series_are_left(
         ("d", ["p1"], None),
     ]
     assert [e.id for e in by_hand] == ["e"]
+
+
+def test_adjust_sets_the_continuity_window_and_adds_cadences():
+    parts = reliable_parts(
+        TREE.by_id["p1"],
+        {"visit": "visit", "drive": False, "any": False},
+        TREE,
+        {"continuity_days": 1, "cadences": [{"activity": "Dinner", "interval_days": 7}]},
+    )
+
+    assert parts == [
+        {"kind": "continuity", "last_within_days": 1, "next_within_days": 1},
+        {"kind": "follow_through"},
+        {"kind": "count", "target": 1, "interval_days": 21, "zero_at_days": 42, "activity": "visit"},
+        {"kind": "count", "target": 1, "interval_days": 7, "activity": "dinner"},
+    ]
