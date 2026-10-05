@@ -21,6 +21,7 @@ from calendar_clients.write_lock import WRITE_LOCK
 from config import (
     build_calendar_client,
     build_compaction_journal,
+    build_goal_details,
     build_goals,
     build_noted_time_sheet,
     build_traits,
@@ -32,6 +33,7 @@ from config import (
 from oauth_proxy import oauth_proxy_handlers
 from utilities.facets import Facets, facet_problems
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
+from utilities.goal_details import WHAT_MATTERS, GoalDetails, section
 from utilities.goal_health import Assessment, GoalHealth
 from utilities.reflection import ReflectionContext, ReflectionResult, Reflections
 from utilities.goal_sheet import Goal, GoalStatus
@@ -40,12 +42,13 @@ from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.compaction_journal import CompactionJournal
 from utilities.compaction_marker import CompactionMarker
-from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
+from utilities.history_digest import DEFAULT_WINDOW_DAYS, DigestEntry, history_digest
+from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor, WhatMatters
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.recurrences import Recurrences, Repeat, describe_rules
-from utilities.trait_scores import TraitDay, TraitsRating, trait_history
+from utilities.trait_scores import Scope, TraitDay, TraitsRating, trait_history
 from utilities.traits import ListedTrait, Trait, Traits, TraitStatus
 from workos_auth import WorkOSTokenVerifier
 
@@ -322,6 +325,7 @@ _compaction_journal: CompactionJournal | None = None
 _note_compactor: NoteCompactor | None = None
 _recurrences: Recurrences | None = None
 _traits: Traits | None = None
+_goal_details: GoalDetails | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -386,6 +390,17 @@ def get_goal_store() -> Goals:
                     trait_ids=lambda: [t.id for t in get_trait_store().all()],
                 )
     return _goals
+
+
+def get_goal_details() -> GoalDetails:
+    """Lazily construct and cache the GoalDetails (goals' descriptions),
+    the same way the other get_* helpers cache theirs."""
+    global _goal_details
+    if _goal_details is None:
+        with WRITE_LOCK:
+            if _goal_details is None:
+                _goal_details = build_goal_details()
+    return _goal_details
 
 
 def get_trait_store() -> Traits:
@@ -458,6 +473,7 @@ def get_note_compactor() -> NoteCompactor:
                     journal=get_compaction_journal(),
                     # A red event in Google Calendar, at the last compaction.
                     marker=CompactionMarker(get_calendar_client()),
+                    details=get_goal_details(),
                 )
     return _note_compactor
 
@@ -920,6 +936,109 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
 
 
 @tool
+def get_goal_description(goal_id: str) -> str:
+    """A goal's description: Markdown, as long as it needs to be (empty if
+    it has none). A person goal's has a "What matters to them" section --
+    facts, upcoming moments and preferences, each a dated bullet ("-
+    2026-10-05: starts a new job in November") -- which compaction shows
+    and adds to. Read-only."""
+    with track("get_goal_description"), cached_sheet_reads():
+        try:
+            get_goal_store().tree().check_goal_ids([goal_id])
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return get_goal_details().get(goal_id) or ""
+
+
+@tool
+@writes
+def set_goal_description(goal_id: str, description: str) -> str:
+    """Replace a goal's description whole with Markdown (empty to remove
+    it), so read it first with get_goal_description and keep what should
+    stay. On a person goal, keep the "What matters to them" section as a
+    "## What matters to them" heading with one dated bullet per fact,
+    upcoming moment or preference ("- 2026-10-05: ..."), newest last.
+    Returns the description as saved."""
+    with track("set_goal_description"), cached_sheet_reads():
+        try:
+            get_goal_store().tree().check_goal_ids([goal_id])
+            get_goal_details().set(goal_id, description)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return description
+
+
+@dataclass(kw_only=True)
+class GoalDigest:
+    """A goal's history, for judging what's new to it and what matters --
+    see get_goal_digest."""
+
+    goal_id: str
+    path: str
+    window_days: int
+    events_counted: int
+    """Its events in the window (with or for it)."""
+
+    with_facets: int
+    """How many of them have facets."""
+
+    activities: list[DigestEntry]
+    places: list[DigestEntry]
+    text: str
+    """The same, in a few lines."""
+
+    what_matters: str | None = None
+    """Its description's "What matters to them" section, if it has one."""
+
+    events: list[PublicEvent] | None = None
+    """Its events in the window, oldest first, with their facets."""
+
+
+@tool
+def get_goal_digest(goal_id: str, window_days: int = DEFAULT_WINDOW_DAYS, include_events: bool = False) -> GoalDigest:
+    """A goal's history over the last window_days (default 180) up to now:
+    each activity and place its events' facets name, with how many times
+    and the first and last date, most frequent first -- the labels to reuse
+    in facets, and what isn't new to it -- and its description's "What
+    matters to them" section. Its events are its own and its sub-goals',
+    plus any whose facets name it as with or for. With include_events, the
+    events too, oldest first, each with its facets: a person's timeline.
+    Computed from the calendar on request. Read-only."""
+    with track("get_goal_digest"), cached_sheet_reads():
+        tree = get_goal_store().tree()
+        try:
+            tree.check_goal_ids([goal_id])
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        if window_days < 1:
+            raise ToolError("window_days must be at least 1")
+        client = get_calendar_client()
+        tz = client.get_time_zone()
+        now = datetime.now(tz)
+        listed = fill_in_from_goals(client.list_events(now - timedelta(days=window_days), now), tree)
+        kept = [e for e in listed if e.status != "cancelled"]
+        goal = tree.by_id[goal_id]
+        digest = history_digest(goal, tree, kept, now, tz, window_days)
+        events = None
+        if include_events:
+            scope = Scope(goal, tree, kept)
+            mine = {id(e): e for e in scope.with_events + scope.for_events if e.start < now}
+            events = _public_events(sorted(mine.values(), key=lambda e: e.start))
+        return GoalDigest(
+            goal_id=goal_id,
+            path=tree.path(goal_id),
+            window_days=window_days,
+            events_counted=digest.events,
+            with_facets=digest.with_facets,
+            activities=digest.activities,
+            places=digest.places,
+            text=digest.text,
+            what_matters=section(get_goal_details().get(goal_id), WHAT_MATTERS),
+            events=events,
+        )
+
+
+@tool
 @writes
 def reorder_goals(goal_ids: list[str]) -> GoalChanges:
     """Put sibling goals (sharing a parent) in this order, among the places
@@ -1282,7 +1401,9 @@ def prepare_compaction() -> CompactionContext:
     `timeline` showing the two side by side, day by day, and
     instructions. Compare the notes to the plan, decide which events the
     notes show happened differently, then call compact_notes with those
-    decisions. Read-only."""
+    decisions. Past events counting toward a goal rated by traits are
+    marked (traits_goal_ids), to be given facets, and traits_goals gives
+    each such goal's history digest and what matters to them. Read-only."""
     with track("prepare_compaction"), cached_sheet_reads():
         return get_note_compactor().prepare()
 
@@ -1294,6 +1415,7 @@ def compact_notes(
     ignore_notes: list[str] | None = None,
     compaction_id: str | None = None,
     dry_run: bool = True,
+    what_matters: list[WhatMatters] | None = None,
 ) -> CompactionResult:
     """Steps 2 and 3 of compacting notes: realign each day's events to
     its notes and turn that into calendar changes. The past becomes fact
@@ -1306,7 +1428,11 @@ def compact_notes(
     merge; see prepare_compaction's instructions). Any past event you don't
     mention is recorded as on schedule. Notes that don't set an event edge
     are added to the event they fall within, except those in
-    `ignore_notes`. dry_run=True (the default) changes nothing: you get the
+    `ignore_notes`. A 'keep' or 'create' can also record an event's
+    facets -- what happened at it, for its goals' traits -- and
+    `what_matters` adds lines to goals' "What matters to them" sections
+    when the plan is applied (see prepare_compaction's instructions).
+    dry_run=True (the default) changes nothing: you get the
     proposed changes, a compaction_id, and a `timeline` of the notes beside
     the resulting events -- show its `text` to the user in a code block.
     If past events would overlap, the call fails naming them: decide which
@@ -1339,7 +1465,7 @@ def compact_notes(
                     raise CompactionError(
                         "run a dry run first (decisions, dry_run=True) and pass its compaction_id"
                     )
-                return compactor.dry_run(decisions or [], ignore_notes)
+                return compactor.dry_run(decisions or [], ignore_notes, what_matters)
             if dry_run:
                 return compactor.describe(compaction_id)
             return compactor.commit(compaction_id)

@@ -12,6 +12,7 @@ from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
 from utilities.compaction_journal import CompactionJournal
+from utilities.goal_details import GoalDetails
 from utilities.goals import Goals
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.traits import Traits
@@ -172,6 +173,18 @@ def build_goals(
     `trait_ids` are for."""
     calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
     return Goals(calendar_client, sheets_client, last_compaction=last_compaction, trait_ids=trait_ids)
+
+
+def build_goal_details(calendar_id: str | None = None) -> GoalDetails:
+    """Construct a GoalDetails from environment configuration (and a local
+    .env file, if present). See `_build_calendar_and_sheets_clients` for
+    `calendar_id`. Constructing this ensures the calendar has a metadata
+    spreadsheet and a Goal Details tab -- see `GoalDetails.ensure`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return GoalDetails.ensure(sheets_client, spreadsheet_id)
 
 
 def build_traits(calendar_id: str | None = None) -> Traits:
