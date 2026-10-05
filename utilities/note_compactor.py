@@ -222,9 +222,11 @@ DECISION_GUIDE = (
     "from its notes, title and description -- with_goal_ids (goals of the people present; "
     "usually its traits goals), for_goal_ids (people it was done for who weren't there: "
     "preparing a gift or a plan -- then they're not in with_goal_ids), activity and place (short "
-    "labels: REUSE the labels in that goal's `traits_goals` digest when they fit, so they group, and use "
-    "its `cadence_activities` labels EXACTLY for those activities -- its cadences count only events "
-    "labelled so), "
+    "labels: name what the event actually was, judged from it. Prefer that goal's "
+    "`cadence_activities` and the labels in its `traits_goals` digest when one of them truly fits "
+    "-- reuse the exact label, so they group and its cadences count the event (a cadence counts "
+    "only events labelled with its activity) -- but don't force one: when they did something "
+    "different, give it its own label; something new is what Adventurous rewards), "
     "creative (0-3: made something together), new (none, activity, place or both: new to "
     "them, judged against the digest -- an activity or place the digest lists isn't new), effort "
     "(0-3: effort beyond showing up -- prepared, cooked, hosted, traveled), attention (0-3: the "
@@ -303,8 +305,9 @@ class TraitsGoalContext:
 
     cadence_activities: list[str] | None = None
     """The activities its own trait parts count (a visit every 21 days,
-    say): label events of those activities with exactly these, or they
-    won't count."""
+    say): the labels to prefer for an event that's one of them -- a
+    cadence counts only events labelled with its activity -- though an
+    event that was something else gets its own."""
 
 
 @dataclass(kw_only=True)
