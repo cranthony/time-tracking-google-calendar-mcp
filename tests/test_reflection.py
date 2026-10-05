@@ -10,7 +10,10 @@ from utilities.goal_sheet import Goal
 from utilities.goals import OVERALL_ID, Goals
 from utilities.noted_time_sheet import NotedTime
 from utilities.health_days import day_event_id
-from utilities.reflection import Reflections
+from utilities.facets import Facets
+from utilities.goal_details import GoalDetails, WhatMatters
+from utilities.reflection import Reflections, TraitJudgment
+from utilities.traits import Trait
 
 # TODAY is Friday 2026-10-02; YESTERDAY, Oct 1, is the last day to end.
 
@@ -548,3 +551,107 @@ class TestSleepBoundaries:
             reflections.prepare(TODAY)
         with pytest.raises(ValueError, match="isn't over yet"):
             reflections.record(TODAY, [], dry_run=False)
+
+
+class TestTraits:
+    """A goal rated by traits is proposed, its judgments made by the
+    model, and confirmed by the user in bulk."""
+
+    _TRAITS = [
+        Trait(id="thoughtful", name="Thoughtful", status="active",
+              parts=[{"kind": "attention"}, {"kind": "judgment", "rubric": "Did it reflect what matters?"}]),
+        Trait(id="reliable", name="Reliable", status="active", parts=[{"kind": "continuity"}]),
+    ]
+
+    def _setup(self, measure=None):
+        calendar = FakeCalendar()
+        store = Goals(calendar, FakeSheets(), today=lambda: TODAY)
+        store.create_goal(Goal(name="Person", measure=measure or {"kind": "traits", "traits": "all"}))
+        person = next(g for g in store.tree().goals if g.name == "Person")
+        calendar.events = [
+            _event("2026-10-01T18:00", "2026-10-01T20:00", [person.id], facets=Facets(attention=3)),
+        ]
+        health = GoalHealth(calendar, store, now=lambda: NOW, traits=lambda: self._TRAITS)
+        details = GoalDetails.ensure(FakeSheets(), "s")
+        details.set(person.id, "## What matters to them\n\n- 2026-09-01: loves jazz\n")
+        return Reflections(health, store, FakeNotes(), details=details), health, person, details
+
+    def test_prepare_asks_to_confirm_it_with_its_parts_and_judgments_to_make(self):
+        reflections, _, person, _ = self._setup()
+
+        (question,) = reflections.prepare(YESTERDAY).questions
+
+        assert (question.goal_id, question.kind) == (person.id, "traits")
+        # Thoughtful: attention 100 (judgment to make); Reliable: last event
+        # ended within 14 days, nothing planned → 50.
+        assert question.proposed_rating == 75
+        assert question.explanation == "Traits (Thoughtful 100, Reliable 50) → 75"
+        assert [(j.trait_id, j.part, j.rubric) for j in question.judgments] == [
+            ("thoughtful", "judgment", "Did it reflect what matters?")
+        ]
+        assert question.what_matters == "- 2026-09-01: loves jazz"
+        assert question.traits[0].parts[0].event_ids == ["e-2026-10-01T18:00"]
+
+    def test_a_dry_run_with_judgments_is_provisional(self):
+        reflections, _, person, _ = self._setup()
+        judgments = [TraitJudgment(goal_id=person.id, trait_id="thoughtful", score=40)]
+
+        preview = reflections.record(YESTERDAY, [], judgments=judgments)
+
+        (question,) = preview.questions
+        assert question.proposed_rating == 60  # Thoughtful (100 + 40) / 2 = 70; Reliable 50.
+        assert question.judgments == []
+        assert not preview.complete
+        assert "~60" in preview.summary
+
+    def test_recording_confirms_it_keeping_the_judgments_beside_the_parts(self):
+        reflections, health, person, _ = self._setup()
+        judgments = [TraitJudgment(goal_id=person.id, trait_id="thoughtful", score=40)]
+
+        result = reflections.record(YESTERDAY, [], judgments=judgments, dry_run=False)
+
+        assert result.complete
+        (recorded,) = [a for a in health.history([person.id]) if a.day == YESTERDAY]
+        assert (recorded.rating, recorded.status) == (60, "confirmed")
+        assert recorded.metrics["parts"]["thoughtful"] == {"attention": 100, "judgment": 40}
+        # Kept as confirmed: it isn't worked out (or asked) again.
+        assert reflections.prepare(YESTERDAY).questions == []
+
+    def test_without_its_judgments_it_isnt_recorded(self):
+        reflections, health, person, _ = self._setup()
+
+        result = reflections.record(YESTERDAY, [], dry_run=False)
+
+        assert [q.kind for q in result.questions] == ["traits"]
+        assert not [a for a in health.history([person.id]) if a.day == YESTERDAY]
+
+    def test_without_judgment_parts_recording_confirms_it(self):
+        reflections, health, person, _ = self._setup({"kind": "traits", "traits": ["reliable"]})
+
+        assert [q.judgments for q in reflections.prepare(YESTERDAY).questions] == [[]]
+        reflections.record(YESTERDAY, [], dry_run=False)
+
+        assert [a.rating for a in health.history([person.id]) if a.day == YESTERDAY] == [50]
+
+    @pytest.mark.parametrize(
+        "judgment, message",
+        [
+            (dict(trait_id="reliable", part="judgment", score=50), "has no judgment part reliable/judgment"),
+            (dict(trait_id="thoughtful", score=101), "a judgment's score is a whole number from 0 to 100"),
+        ],
+    )
+    def test_refuses_a_judgment_it_cant_use(self, judgment, message):
+        reflections, _, person, _ = self._setup()
+
+        with pytest.raises(ValueError, match=message):
+            reflections.record(YESTERDAY, [], judgments=[TraitJudgment(goal_id=person.id, **judgment)])
+
+    def test_what_matters_is_added_once_recorded(self):
+        reflections, _, person, details = self._setup()
+        additions = [WhatMatters(goal_id=person.id, items=["moving in spring"])]
+
+        reflections.record(YESTERDAY, [], what_matters=additions)
+        assert "moving in spring" not in details.get(person.id)
+
+        reflections.record(YESTERDAY, [], what_matters=additions, dry_run=False)
+        assert details.get(person.id).endswith(f"- {NOW.date()}: moving in spring\n")

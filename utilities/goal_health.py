@@ -326,12 +326,22 @@ class GoalHealth:
         return [p for p in self.propose(day, goals, tree, confirmed) if p is not None]
 
     def propose(
-        self, day: date, goals: list[Goal], tree: GoalTree, confirmed: dict[str, Assessment]
+        self,
+        day: date,
+        goals: list[Goal],
+        tree: GoalTree,
+        confirmed: dict[str, Assessment],
+        *,
+        judgments: dict[str, dict[str, dict[str, int]]] | None = None,
+        breakdowns: dict[str, Any] | None = None,
     ) -> list[Assessment | None]:
         """A proposed rating of `day` for each of `goals` that the calendar
         can answer (see `measure`), `None` for the rest, in order.
         `confirmed` holds that day's confirmed ratings by goal, for
-        rollups."""
+        rollups. A traits measure's judgment parts take their scores from
+        `judgments` (by goal id, then trait id, then part key), and each
+        traits rating, part by part (utilities/trait_scores.py's
+        TraitsRating), is put in `breakdowns`, by goal id, if it's given."""
         measures = [tree.measure(g.id) or {} for g in goals]
         traits = self._traits() if self._traits and any(m.get("kind") == "traits" for m in measures) else []
         window, events, cancelled = self._events_for(day, measures, tree, traits)
@@ -349,7 +359,11 @@ class GoalHealth:
             elif kind == "traits" and window is not None and self._traits is not None:
                 from utilities.trait_scores import score_traits
 
-                scored = score_traits(goal, measure, traits, window, events, cancelled, tree)
+                scored = score_traits(
+                    goal, measure, traits, window, events, cancelled, tree, (judgments or {}).get(goal.id)
+                )
+                if breakdowns is not None:
+                    breakdowns[goal.id] = replace(scored, goal_id=goal.id, day=day)
                 measured = scored.rating, scored.explanation, scored.metrics()
             elif kind in _MEASURES and window is not None:
                 measured = _MEASURES[kind](goal, measure, day, window, events, tree)

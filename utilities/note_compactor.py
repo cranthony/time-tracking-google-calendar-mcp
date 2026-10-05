@@ -90,7 +90,7 @@ from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import Event
 from utilities.facets import Facets, facet_problems
-from utilities.goal_details import WHAT_MATTERS, GoalDetails, add_to_section, section
+from utilities.goal_details import WHAT_MATTERS, GoalDetails, WhatMatters, add_to_section, checked_what_matters, section
 from utilities.history_digest import history_digest
 from utilities.compaction_journal import (
     ABANDONED,
@@ -297,16 +297,6 @@ class TraitsGoalContext:
 
     what_matters: str | None = None
     """Its description's "What matters to them" section, if it has one."""
-
-
-@dataclass(kw_only=True)
-class WhatMatters:
-    """Lines to add to a goal's "What matters to them" section."""
-
-    goal_id: str
-    items: list[str]
-    """One fact, upcoming moment or preference each, in a line; dated when
-    they're added."""
 
 
 @dataclass(kw_only=True)
@@ -850,21 +840,11 @@ class NoteCompactor:
         if self._details is None:
             raise CompactionError("this calendar has no goal descriptions to add what matters to")
         tree = self._goals.tree() if self._goals else None
-        found: dict[str, list[str]] = {}
-        problems = []
-        for addition in additions:
-            if tree is not None and addition.goal_id not in tree.by_id:
-                problems.append(f"what_matters: {addition.goal_id!r} isn't a goal (get_goals lists them)")
-                continue
-            for item in addition.items:
-                text = " ".join(item.split())
-                if not text or len(text) > 300:
-                    problems.append(f"what_matters: each item is one line of at most 300 characters, not {item!r}")
-                elif text not in found.setdefault(addition.goal_id, []):
-                    found[addition.goal_id].append(text)
-        if problems:
-            raise CompactionError("\n".join(problems))
-        return {g: items for g, items in found.items() if items}
+        known = set(tree.by_id) if tree is not None else {a.goal_id for a in additions}
+        try:
+            return checked_what_matters(additions, known)
+        except ValueError as exc:
+            raise CompactionError(str(exc)) from exc
 
     def _move_marker(self, at: datetime) -> list[str]:
         """Move the last-compaction marker to `at`, if there's a marker;

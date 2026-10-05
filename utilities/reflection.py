@@ -59,6 +59,7 @@ from typing import Any, Literal
 
 from calendar_clients.google_calendar import Event
 from utilities.goal_calendar import fill_in_from_goals
+from utilities.goal_details import WHAT_MATTERS, GoalDetails, WhatMatters, add_to_section, checked_what_matters, section
 from utilities.goal_measures import expired_weights
 from utilities.goal_health import (
     Assessment,
@@ -74,6 +75,7 @@ from utilities.goals import OVERALL_ID, Goal, Goals, GoalTree
 from utilities.health_summary import Rated, SummaryLine, grouped, summary_lines
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.sleep_days import MissingSleep, NotOver, listing_range, period_window
+from utilities.trait_scores import TraitScore
 
 _LOOKBACK_DAYS = 12
 """How far back `prepare_reflection` looks for a day still to reflect on."""
@@ -106,13 +108,39 @@ class SubGoalRating:
 
 
 @dataclass(kw_only=True)
+class JudgmentDue:
+    """A traits goal's judgment part, to score 0-100 against its rubric."""
+
+    trait_id: str
+    trait: str
+    """The trait's name."""
+
+    part: str
+    """The part's key within the trait (usually "judgment")."""
+
+    rubric: str | None = None
+
+
+@dataclass(kw_only=True)
+class TraitJudgment:
+    """A score given a traits goal's judgment part, in a reflection."""
+
+    goal_id: str
+    trait_id: str
+    part: str = "judgment"
+    score: int
+    """0-100."""
+
+
+@dataclass(kw_only=True)
 class Question:
-    """A goal that needs judgement: an llm goal to rate, or a subjective
-    goal whose prompt is due."""
+    """A goal that needs judgement: an llm goal to rate, a subjective goal
+    whose prompt is due, or a goal rated by traits, whose proposed rating
+    is to be confirmed (after making its judgments)."""
 
     goal_id: str
     path: str
-    kind: Literal["llm", "subjective"]
+    kind: Literal["llm", "subjective", "traits"]
     prompt: str | None = None
     """A subjective goal's question for the user."""
 
@@ -126,6 +154,23 @@ class Question:
     sub_goals: list[SubGoalRating] = field(default_factory=list)
     """Its rated sub-goals' ratings of this day, for a rubric that refers
     to them."""
+
+    proposed_rating: int | Literal["skip"] | None = None
+    """A traits goal's rating from its traits, with the judgments given so
+    far (those still to make left out)."""
+
+    explanation: str | None = None
+    """How `proposed_rating` was reached, trait by trait."""
+
+    traits: list[TraitScore] = field(default_factory=list)
+    """A traits goal's traits: each one's score and parts, how each part
+    was reached, and the events behind it."""
+
+    judgments: list[JudgmentDue] = field(default_factory=list)
+    """A traits goal's judgment parts still to score."""
+
+    what_matters: str | None = None
+    """A traits goal's "What matters to them" section, for its judgments."""
 
 
 @dataclass(kw_only=True)
@@ -269,10 +314,17 @@ class _Evaluation:
 
 
 class Reflections:
-    def __init__(self, health: GoalHealth, goals: Goals, notes: NotedTimeSheet | None = None) -> None:
+    def __init__(
+        self, health: GoalHealth, goals: Goals, notes: NotedTimeSheet | None = None,
+        details: GoalDetails | None = None,
+    ) -> None:
+        """`details` holds goals' descriptions, whose "What matters to
+        them" sections traits goals' judgments read and a reflection can
+        add to."""
         self._health = health
         self._goals = goals
         self._notes = notes
+        self._details = details
 
     # -- preparing --------------------------------------------------------------
 
@@ -312,11 +364,21 @@ class Reflections:
         )
 
     def _evaluate(
-        self, day: date, tree: GoalTree, given: dict[str, Assessment], proposed: set[str]
+        self,
+        day: date,
+        tree: GoalTree,
+        given: dict[str, Assessment],
+        proposed: set[str],
+        judgments: dict[str, dict[str, dict[str, int]]] | None = None,
+        *,
+        confirm_traits: bool = False,
     ) -> _Evaluation:
         """Every rated goal's rating of `day`: `given` ones (final, unless
         in `proposed`), judged ones confirmed earlier, and the rest worked
-        out -- see the module docstring."""
+        out -- see the module docstring. A traits goal's rating takes its
+        judgment parts from `judgments` (goal id -> trait id -> part key ->
+        score), and is final only if `confirm_traits` and none is still to
+        make."""
         days = self._health.read_days(day - timedelta(days=7), day + timedelta(days=1))
         week = sorted((a for d in days.values() for a in d.assessments.values()), key=lambda a: (a.goal_id, a.day))
         existing = {a.goal_id: a for a in week if a.day == day and a.status == "confirmed"}
@@ -326,7 +388,14 @@ class Reflections:
         rated = [g for g in tree.ordered() if tree.rated(g.id)]
         kept = {goal_id: a for goal_id, a in existing.items() if _judged(a) and goal_id in tree.by_id}
         to_measure = [g for g in rated if g.id not in given and g.id not in kept]
-        measured = dict(zip((g.id for g in to_measure), self._health.propose(day, to_measure, tree, {})))
+        breakdowns: dict[str, Any] = {}
+        measured = dict(
+            zip(
+                (g.id for g in to_measure),
+                self._health.propose(day, to_measure, tree, {}, judgments=judgments, breakdowns=breakdowns),
+            )
+        )
+        _check_judgments(judgments or {}, breakdowns, given, kept)
 
         results: dict[str, Rated] = {}
         # Sub-goals before their parents: `ordered` lists parents first.
@@ -337,6 +406,9 @@ class Reflections:
                 results[goal.id] = Rated(given[goal.id], final=goal.id not in proposed)
             elif goal.id in kept:
                 results[goal.id] = Rated(kept[goal.id], final=True)
+            elif kind == "traits" and goal.id in breakdowns and not measured[goal.id].unmet:
+                due = breakdowns[goal.id].judgments_due
+                results[goal.id] = Rated(measured[goal.id], final=confirm_traits and not due)
             elif (found := measured[goal.id]) is not None and (found.unmet or kind != "rollup"):
                 results[goal.id] = Rated(found, final=True)
             elif kind == "rollup":
@@ -356,6 +428,9 @@ class Reflections:
         for goal in rated:
             measure = tree.measure(goal.id) or {}
             kind = measure.get("kind")
+            if kind == "traits" and goal.id in breakdowns and not results[goal.id].final:
+                questions.append(self._traits_question(goal, tree, breakdowns[goal.id], week, day))
+                continue
             if results[goal.id].assessment is not None or kind not in ("llm", "subjective"):
                 continue
             questions.append(
@@ -375,6 +450,34 @@ class Reflections:
             )
         reflection = days[day].reflection if day in days else None
         return _Evaluation(results, questions, existing, previous, reflection)
+
+    def _traits_question(self, goal: Goal, tree: GoalTree, rated, week: list[Assessment], day: date) -> Question:
+        """A traits goal's question: its proposed rating, part by part, and
+        the judgments still to make."""
+        description = self._details.get(goal.id) if self._details is not None else None
+        return Question(
+            goal_id=goal.id,
+            path=tree.path(goal.id),
+            kind="traits",
+            note=goal.note,
+            recent=[
+                PastRating(day=a.day, rating=a.rating)
+                for a in week if a.goal_id == goal.id and a.day < day and a.status == "confirmed"
+            ][-_RECENT_RATINGS:],
+            proposed_rating=rated.rating,
+            explanation=rated.explanation,
+            traits=rated.traits,
+            judgments=[
+                JudgmentDue(
+                    trait_id=trait_id,
+                    trait=next(t.name for t in rated.traits if t.trait_id == trait_id),
+                    part=part.key,
+                    rubric=part.rubric,
+                )
+                for trait_id, part in rated.judgments_due
+            ],
+            what_matters=section(description, WHAT_MATTERS),
+        )
 
     def _carried_over(
         self, goal_id: str, measure: dict[str, Any], day: date, week: list[Assessment]
@@ -471,11 +574,16 @@ class Reflections:
         assessments: list[Assessment],
         proposed: list[str] | None = None,
         *,
+        judgments: list[TraitJudgment] | None = None,
+        what_matters: list[WhatMatters] | None = None,
         dry_run: bool = True,
     ) -> ReflectionResult:
         """See the module docstring: `assessments` are the questions'
         answers (and any rating being changed); with `dry_run`, those in
-        `proposed` count as provisional."""
+        `proposed` count as provisional, as do traits goals' ratings.
+        `judgments` score traits goals' judgment parts; `what_matters`
+        adds lines to goals' "What matters to them" sections, once it's
+        recorded."""
         if day > self._health.now().date():
             raise ValueError(f"{day} hasn't started yet")
         # Only a day that's over, whose bounding sleeps are in the calendar.
@@ -494,11 +602,21 @@ class Reflections:
         unknown = sorted(set(proposed or ()) - set(given))
         if unknown:
             problems.append(f"proposed names goals not rated in this call: {', '.join(unknown)}")
+        judged: dict[str, dict[str, dict[str, int]]] = {}
+        for j in judgments or ():
+            if not (isinstance(j.score, int) and 0 <= j.score <= 100):
+                problems.append(f"{j.goal_id}: a judgment's score is a whole number from 0 to 100")
+            judged.setdefault(j.goal_id, {}).setdefault(j.trait_id, {})[j.part] = j.score
         if problems:
             raise ValueError("; ".join(problems))
         self._health.check(assessments)
+        additions = checked_what_matters(what_matters or [], set(tree.by_id))
+        if additions and self._details is None:
+            raise ValueError("this calendar has no goal descriptions to add what matters to")
 
-        evaluation = self._evaluate(day, tree, given, set(proposed or ()) if dry_run else set())
+        evaluation = self._evaluate(
+            day, tree, given, set(proposed or ()) if dry_run else set(), judged, confirm_traits=not dry_run
+        )
         lines, summary = _summary(day, tree, evaluation)
         overall = evaluation.results.get(OVERALL_ID)
         result = ReflectionResult(
@@ -542,6 +660,11 @@ class Reflections:
             )
 
         result.recorded = self._health.write_day(day, to_write, status="confirmed", reflect=reflect)
+        for goal_id, items in additions.items():
+            current = self._details.get(goal_id)
+            updated = add_to_section(current, items, now.date())
+            if updated != (current or ""):
+                self._details.set(goal_id, updated)
         result.status = "recorded"
         waiting = len(evaluation.questions)
         result.message = (
@@ -605,14 +728,44 @@ def _sub_goal_rating(goal: Goal, tree: GoalTree, rated: Rated) -> SubGoalRating:
 def _judged(assessment: Assessment) -> bool:
     """Whether someone judged the rating, so it's kept as recorded rather
     than worked out again: a subjective or llm rating (not carried over,
-    nor skipped for want of an event), or one changed by hand."""
+    nor skipped for want of an event), a traits rating (its judgments were
+    made and it was confirmed), or one changed by hand."""
     if assessment.carried or assessment.unmet:
         return False
     return (
         assessment.method in ("subjective", "llm")
+        or isinstance((assessment.metrics or {}).get("traits"), dict)
         or bool(assessment.rationale)
         or (assessment.explanation or "").startswith("Changed from")
     )
+
+
+def _check_judgments(
+    judgments: dict[str, dict[str, dict[str, int]]],
+    breakdowns: dict[str, Any],
+    given: dict[str, Assessment],
+    kept: dict[str, Assessment],
+) -> None:
+    """Raise ValueError for a judgment that isn't one of a traits goal's
+    judgment parts -- unless its goal is rated another way in this call."""
+    problems = []
+    for goal_id, traits in judgments.items():
+        if goal_id in given or goal_id in kept:
+            continue
+        rated = breakdowns.get(goal_id)
+        if rated is None:
+            problems.append(f"judgments: {goal_id!r} isn't a goal rated by traits today")
+            continue
+        parts = {(t.trait_id, p.key) for t in rated.traits for p in t.parts if p.kind == "judgment"}
+        for trait_id, keyed in traits.items():
+            for key in keyed:
+                if (trait_id, key) not in parts:
+                    listed = ", ".join(f"{t}/{k}" for t, k in sorted(parts)) or "none"
+                    problems.append(
+                        f"judgments: {goal_id} has no judgment part {trait_id}/{key} (its judgment parts: {listed})"
+                    )
+    if problems:
+        raise ValueError("; ".join(problems))
 
 
 def _differs(assessment: Assessment, recorded: Assessment | None) -> bool:
@@ -679,16 +832,31 @@ def _instructions(day: date) -> str:
             "1. For each llm question, rate it yourself against its rubric, from its sub_goals, "
             "events_digest, notes_digest and goal_time, with a one-sentence rationale. Only when they don't "
             "tell you what the rubric needs, ask the user too: list its goal_id in `proposed`.",
-            "2. Call record_reflection with your llm ratings (method llm), `proposed` and dry_run=True. "
-            "Show its `summary` exactly as given. If there's nothing to ask (no subjective questions, "
-            "nothing proposed), call it with dry_run=False instead, and show that summary.",
+            "Traits questions (kind traits) are goals rated by traits -- usually people. Their parts are "
+            "computed already (each with how it was reached); make each of their `judgments` yourself, "
+            "0-100 against its rubric, from the parts, what_matters, events_digest and notes_digest -- "
+            "don't ask the user about each trait or person. Pass them as record_reflection's `judgments` "
+            "{goal_id, trait_id, part, score}. A traits rating is only ever proposed until the user "
+            "confirms it, so it stays provisional (~) in a dry run.",
+            "2. Call record_reflection with your llm ratings (method llm), `proposed`, your traits "
+            "`judgments` and dry_run=True. Show its `summary` exactly as given. If there's nothing to ask "
+            "(no subjective or traits questions, nothing proposed), call it with dry_run=False instead, and "
+            "show that summary.",
             "3. Below the summary, ask every question at once, as one numbered list, for the user to "
-            "answer together: each proposed llm rating (your rating and why: OK, or theirs?) and each "
-            "subjective question's prompt. Accept \"skip\"; turn words into a 0-100 number.",
-            "4. Call record_reflection with all the answers -- the llm ratings, and the subjective ones "
-            "(method subjective, anything they said as the rationale) -- and dry_run=False. Then show "
-            "only the summary lines whose rating changed from the first summary, as \"Name old → new\", "
-            "and the final Overall.",
+            "answer together: each proposed llm rating (your rating and why: OK, or theirs?), each "
+            "subjective question's prompt, and the traits ratings in one item -- a line per goal: its "
+            "proposed rating, its traits' scores and, for each judgment, your score and why -- to confirm "
+            "all at once or correct any. Accept \"skip\"; turn words into a 0-100 number.",
+            "4. Call record_reflection with all the answers -- the llm ratings, the subjective ones "
+            "(method subjective, anything they said as the rationale), and the same traits `judgments` "
+            "(with any the user corrected) -- and dry_run=False: that confirms the traits ratings, "
+            "keeping the judgments beside the computed parts. A traits rating the user overrides is an "
+            "assessment like any change (with their reason as the rationale). Then show only the summary "
+            "lines whose rating changed from the first summary, as \"Name old → new\", and the final "
+            "Overall.",
+            "If the day's notes reveal something new worth remembering about a person (a goal rated by "
+            "traits), pass it in record_reflection's `what_matters` {goal_id, items} with dry_run=False: "
+            "it's added, dated, to their \"What matters to them\" section. Don't repeat what's there.",
             "5. If the user wants a rating changed, record it the same way with their reason as the "
             "rationale: its parents roll up again.",
         ]

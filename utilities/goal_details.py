@@ -22,11 +22,48 @@ from __future__ import annotations
 import re
 from datetime import date
 
+from dataclasses import dataclass
+
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 
 WHAT_MATTERS = "What matters to them"
 """The heading of a person goal's section of what matters to them."""
+
+@dataclass(kw_only=True)
+class WhatMatters:
+    """Lines to add to a goal's "What matters to them" section."""
+
+    goal_id: str
+    items: list[str]
+    """One fact, upcoming moment or preference each, in a line; dated when
+    they're added."""
+
+
+MAX_ITEM_CHARS = 300
+"""How long a line of what matters may be."""
+
+
+def checked_what_matters(additions: list["WhatMatters"], goal_ids: set[str]) -> dict[str, list[str]]:
+    """`additions`' lines, normalized and deduplicated, by goal id; a
+    ValueError naming any goal that isn't one of `goal_ids`, or a line that
+    isn't one."""
+    found: dict[str, list[str]] = {}
+    problems = []
+    for addition in additions:
+        if addition.goal_id not in goal_ids:
+            problems.append(f"what_matters: {addition.goal_id!r} isn't a goal (get_goals lists them)")
+            continue
+        for item in addition.items:
+            text = " ".join(item.split())
+            if not text or len(text) > MAX_ITEM_CHARS:
+                problems.append(f"what_matters: each item is one line of at most {MAX_ITEM_CHARS} characters, not {item!r}")
+            elif text not in found.setdefault(addition.goal_id, []):
+                found[addition.goal_id].append(text)
+    if problems:
+        raise ValueError("; ".join(problems))
+    return {g: items for g, items in found.items() if items}
+
 
 MAX_CELL_CHARS = 50_000
 """Sheets' limit on one cell."""

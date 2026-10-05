@@ -35,7 +35,7 @@ from utilities.facets import Facets, facet_problems
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_details import WHAT_MATTERS, GoalDetails, section
 from utilities.goal_health import Assessment, GoalHealth
-from utilities.reflection import ReflectionContext, ReflectionResult, Reflections
+from utilities.reflection import ReflectionContext, ReflectionResult, Reflections, TraitJudgment
 from utilities.goal_sheet import Goal, GoalStatus
 from utilities.goals import CreatedGoal, GoalChanges, GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
@@ -43,7 +43,8 @@ from utilities.note_compaction import CompactionError, EventDecision
 from utilities.compaction_journal import CompactionJournal
 from utilities.compaction_marker import CompactionMarker
 from utilities.history_digest import DEFAULT_WINDOW_DAYS, DigestEntry, history_digest
-from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor, WhatMatters
+from utilities.goal_details import WhatMatters
+from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
@@ -373,7 +374,9 @@ def get_reflections() -> Reflections:
     if _reflections is None:
         with WRITE_LOCK:
             if _reflections is None:
-                _reflections = Reflections(get_goal_health(), get_goal_store(), get_noted_time_sheet())
+                _reflections = Reflections(
+                    get_goal_health(), get_goal_store(), get_noted_time_sheet(), details=get_goal_details()
+                )
     return _reflections
 
 
@@ -1272,10 +1275,12 @@ def prepare_reflection(day: date | None = None) -> ReflectionContext:
     below flag them. With no day named, returns only choices -- the most
     recent completed days not fully reflected on -- to ask the user about;
     then call this again with the day picked. Otherwise returns the
-    questions: the goals that need judgement -- llm goals to rate, and
-    subjective goals whose prompt is due -- since everything the calendar
-    can rate is filled in automatically; plus minutes per goal, the day's
-    events and notes, and instructions for the conversation. Read-only."""
+    questions: the goals that need judgement -- llm goals to rate,
+    subjective goals whose prompt is due, and goals rated by traits, each
+    with its proposed rating, its traits' computed parts and the judgments
+    to make -- since everything the calendar can rate is filled in
+    automatically; plus minutes per goal, the day's events and notes, and
+    instructions for the conversation. Read-only."""
     with track("prepare_reflection"), cached_sheet_reads():
         try:
             return get_reflections().prepare(day)
@@ -1290,6 +1295,8 @@ def record_reflection(
     assessments: list[Assessment],
     proposed: list[str] | None = None,
     dry_run: bool = True,
+    judgments: list[TraitJudgment] | None = None,
+    what_matters: list[WhatMatters] | None = None,
 ) -> ReflectionResult:
     """Rate a day: `assessments` (each of this day) answer the questions
     prepare_reflection asked -- or change any goal's rating -- and every
@@ -1300,10 +1307,18 @@ def record_reflection(
     with the user) are provisional. With dry_run=False, every final rating
     is confirmed at once -- the only way a rating counts toward a goal's
     health -- and the summary is final, unless questions are still
-    unanswered. Rating a goal again replaces its rating."""
+    unanswered. Rating a goal again replaces its rating. `judgments` score
+    goals rated by traits' judgment parts ({goal_id, trait_id, part,
+    score 0-100}, as prepare_reflection lists them); their ratings are
+    provisional in a dry run, and confirmed with dry_run=False once every
+    judgment is made, the judgments kept in their metrics beside the
+    computed parts. `what_matters` ({goal_id, items}) adds dated lines to
+    goals' "What matters to them" sections, with dry_run=False."""
     with track("record_reflection"), cached_sheet_reads():
         try:
-            return get_reflections().record(day, assessments, proposed, dry_run=dry_run)
+            return get_reflections().record(
+                day, assessments, proposed, judgments=judgments, what_matters=what_matters, dry_run=dry_run
+            )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
