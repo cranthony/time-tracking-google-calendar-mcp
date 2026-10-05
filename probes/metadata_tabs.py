@@ -173,6 +173,20 @@ def _probe_facts(calendar: CalendarClient) -> None:
     read = calendar.get_event(created.id)
     _check("clearing removes them", read.facts is None and read.judgments is None)
 
+    # A recurring series' instance refuses nulls for properties it doesn't
+    # have, which facts' unused chunks are.
+    series = calendar.create_event(Event(
+        summary="Probe series", start=start, end=start + timedelta(hours=1), time_zone="UTC",
+        recurrence=["RRULE:FREQ=DAILY;COUNT=3"],
+    ))
+    instance = calendar.list_instances(series.id, start + timedelta(days=3))[1]
+    calendar.update_event(Event(id=instance.id, facts=long_facts))
+    _check("an instance takes long facts", calendar.get_event(instance.id).facts == long_facts)
+    calendar.update_event(Event(id=instance.id, facts=Facts(with_ids=["p1"])))
+    _check("and shorter ones", calendar.get_event(instance.id).facts == Facts(with_ids=["p1"]))
+    calendar.update_event(Event(id=instance.id, cleared=frozenset({"facts", "judgments", "priority"})))
+    _check("and clearing them, and what it never had", calendar.get_event(instance.id).facts is None)
+
 
 if __name__ == "__main__":
     main()
