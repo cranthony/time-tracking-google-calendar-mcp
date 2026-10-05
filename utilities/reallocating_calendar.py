@@ -48,11 +48,19 @@ class ReallocatingCalendar:
         need to decide where a day starts themselves."""
         return self._client.list_events(time_min, time_max)
 
-    def list_day_events(self, start: datetime, ignore_id: str | None = None) -> list[Event]:
+    def list_day_events(
+        self, start: datetime, end: datetime | None = None, ignore_id: str | None = None
+    ) -> list[Event]:
         """The events reallocation should treat as `start`'s "day": everything
         from `start` through roughly 24 hours later, truncated after the
-        first `is_end_of_day_sleep` event found (if any) -- see
-        utilities/reallocation.py's "The day".
+        first `is_end_of_day_sleep` event (if any) that ends after `end`
+        (default `start`) -- see utilities/reallocation.py's "The day".
+
+        `end`: where the event being placed ends. A sleep that ends by
+        then is the night before, still overlapping `start` (e.g. the
+        last seconds of a logged sleep running just past noon) -- not the
+        night that ends this day. Cutting the day off there would leave
+        reallocation nothing ending after the new event.
 
         `ignore_id`: an event id to skip when deciding where the day ends
         -- but still included in the returned list otherwise. For
@@ -62,15 +70,24 @@ class ReallocatingCalendar:
         position would cut off the rest of the day before `update_event`
         gets a chance to exclude it itself.
         """
-        return _truncate_at_sleep(self._client.list_events(start, start + timedelta(hours=24)), ignore_id)
+        return _truncate_at_sleep(
+            self._client.list_events(start, start + timedelta(hours=24)), end or start, ignore_id
+        )
 
-    def create_event(self, new_event: Event, options: ReallocationOptions) -> list[Event]:
+    def create_event(
+        self, new_event: Event, options: ReallocationOptions, reallocate: bool = True
+    ) -> list[Event]:
         """Create `new_event`, reallocating time from `list_day_events
-        (new_event.start)` as needed to make room for it (see
+        (new_event.start, new_event.end)` as needed to make room for it (see
         utilities/reallocation.py). Returns every `Event` created or
         updated as a result -- `new_event` itself, plus whatever else
         reallocation touched (shrunk, moved, split, or cancelled) to make
         room -- each as the API's own response to creating/patching it.
+
+        `reallocate` false: create it only if that touches nothing else
+        and leaves it where it was asked for; otherwise raise
+        `ReallocationNeeded`, naming what would have changed, before
+        anything is written.
         """
         if new_event.start is None or new_event.end is None:
             raise ValueError("new_event.start and new_event.end are required to create an event")
@@ -82,10 +99,12 @@ class ReallocatingCalendar:
             raise ValueError(
                 f"Event label {new_event.event_label_id!r} doesn't exist on this calendar"
             )
-        day_events = self.list_day_events(new_event.start)
-        return self._apply_reallocation(day_events, new_event, options)
+        day_events = self.list_day_events(new_event.start, new_event.end)
+        return self._apply_reallocation(day_events, new_event, options, reallocate)
 
-    def update_event(self, updated_event: Event, options: ReallocationOptions) -> list[Event]:
+    def update_event(
+        self, updated_event: Event, options: ReallocationOptions, reallocate: bool = True
+    ) -> list[Event]:
         """Update `updated_event` (must already have an `id`) at its new
         `start`/`end`, reallocating time from the rest of its day as
         needed to make room -- the same as `create_event`, but for
@@ -116,6 +135,10 @@ class ReallocatingCalendar:
         one given value put it on a different day than its prior
         position). At most one of the two ever needs its own `get_event`
         call, since both being missing is an unmoved update.
+
+        `reallocate` false: as for `create_event` -- move it only if that
+        touches nothing else; otherwise raise `ReallocationNeeded` before
+        anything is written. An unmoved update is applied either way.
         """
         if updated_event.id is None:
             raise ValueError("updated_event.id is required to update an event with reallocation")
@@ -129,7 +152,9 @@ class ReallocatingCalendar:
             if updated_event.end == current.end:
                 return [self._client.update_event(updated_event)]
 
-        day_events = self.list_day_events(updated_event.start, ignore_id=updated_event.id)
+        day_events = self.list_day_events(
+            updated_event.start, updated_event.end, ignore_id=updated_event.id
+        )
 
         if current is None:
             # Its current position, if it starts where it's asked to: the
@@ -144,12 +169,24 @@ class ReallocatingCalendar:
             return [self._client.update_event(updated_event)]
 
         day_events = [event for event in day_events if event.id != updated_event.id]
-        return self._apply_reallocation(day_events, updated_event, options)
+        return self._apply_reallocation(day_events, updated_event, options, reallocate)
 
     def _apply_reallocation(
-        self, day_events: list[Event], event: Event, options: ReallocationOptions
+        self,
+        day_events: list[Event],
+        event: Event,
+        options: ReallocationOptions,
+        reallocate: bool = True,
     ) -> list[Event]:
+        before = {id(e): (e.start, e.end) for e in [*day_events, event]}
         plan = reallocate_for_new_event(day_events, event, options)
+        if not reallocate:
+            disturbed = [
+                planned for planned in plan
+                if planned is not event or (event.start, event.end) != before[id(event)]
+            ]
+            if disturbed:
+                raise ReallocationNeeded(event, before[id(event)], disturbed, before)
         plan = self._without_stale_labels(plan, event)
         return [
             self._client.create_event(planned)
@@ -181,11 +218,50 @@ class ReallocatingCalendar:
         return {label.id for label in labels if label.id is not None}
 
 
-def _truncate_at_sleep(events: list[Event], ignore_id: str | None = None) -> list[Event]:
+class ReallocationNeeded(ValueError):
+    """An event asked to be placed without reallocation doesn't fit as
+    is: placing it would change other events (or itself). The message
+    names each change, and is meant to be shown as is."""
+
+    def __init__(
+        self,
+        event: Event,
+        requested: tuple[datetime, datetime],
+        disturbed: list[Event],
+        before: dict[int, tuple[datetime, datetime]],
+    ):
+        changes = "; ".join(_describe_change(e, before.get(id(e))) for e in disturbed)
+        super().__init__(
+            f"{event.summary or event.id!r} ({requested[0].isoformat()} to {requested[1].isoformat()}) "
+            f"doesn't fit without changing other events, and reallocate is false. It would: {changes}. "
+            "Move it into free time, or set reallocate true to make these changes."
+        )
+        self.event = event
+        self.disturbed = disturbed
+
+
+def _describe_change(event: Event, was: tuple[datetime, datetime] | None) -> str:
+    """One of `ReallocationNeeded`'s changes: `event` as planned, `was`
+    its span before (`None` for a split's new continuation)."""
+    name = repr(event.summary or event.id)
+    now = f"{event.start.isoformat()} until {event.end.isoformat()}"
+    if was is None:
+        return f"split {name}, continuing it {now}"
+    if event.status == "cancelled":
+        return f"cancel {name} ({was[0].isoformat()} until {was[1].isoformat()})"
+    return f"change {name} from {was[0].isoformat()} until {was[1].isoformat()} to {now}"
+
+
+def _truncate_at_sleep(events: list[Event], end: datetime, ignore_id: str | None = None) -> list[Event]:
     """`events`, cut off after the first `is_end_of_day_sleep` event other
-    than `ignore_id` -- see `ReallocatingCalendar.list_day_events`."""
+    than `ignore_id` that ends after `end` -- see
+    `ReallocatingCalendar.list_day_events`."""
     sleep_index = next(
-        (i for i, event in enumerate(events) if event.is_end_of_day_sleep and event.id != ignore_id),
+        (
+            i
+            for i, event in enumerate(events)
+            if event.is_end_of_day_sleep and event.id != ignore_id and event.end > end
+        ),
         None,
     )
     return events[: sleep_index + 1] if sleep_index is not None else events
