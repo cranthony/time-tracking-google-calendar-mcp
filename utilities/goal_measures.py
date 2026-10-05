@@ -98,7 +98,12 @@ and on the days between, the previous day's rating carries over.
 **Rollups** read the ratings their immediate sub-goals were given that
 same day, which is why a reflection rates sub-goals before their parents.
 `weights` maps sub-goal ids to weights (>= 0); a sub-goal added since, or
-missing from it, weighs 0. `percentile` is 0-100: 0 is the lowest
+missing from it, weighs 0. A weight can instead be temporary:
+`{"weight": 0, "until": "2026-10-12", "then": 1}` weighs `weight` on days
+before `until` and `then` from it on -- to set a sub-goal aside for a
+while, with a date to look at it again (see `weight_on`). Once `until` has
+come, the reflection mentions it (`expired_weights`) until it's extended or
+replaced by a plain number. `percentile` is 0-100: 0 is the lowest
 sub-goal's rating, 100 the highest, 50 the median. A goal with no measure
 but sub-goals to rate is rated as a "mean" rollup.
 
@@ -119,6 +124,7 @@ they don't count as answers, nor are they carried over.
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any
 
 _EVENT_SOURCE = frozenset({"events_of", "include_sub_goals"})
@@ -258,9 +264,12 @@ def _rollup_problems(measure: dict[str, Any], sub_goal_ids: set[str] | None) -> 
         if not (
             isinstance(weights, dict)
             and weights
-            and all(isinstance(goal_id, str) and _is_number(w) and w >= 0 for goal_id, w in weights.items())
+            and all(isinstance(goal_id, str) and _is_weight(w) for goal_id, w in weights.items())
         ):
-            problems.append('a weighted rollup needs "weights": {sub-goal id: a number, 0 or more}')
+            problems.append(
+                'a weighted rollup needs "weights": {sub-goal id: a number, 0 or more, or a temporary '
+                'weight like {"weight": 0, "until": "2026-10-12", "then": 1}}'
+            )
         elif sub_goal_ids is not None and set(weights) - sub_goal_ids:
             stray = sorted(set(weights) - sub_goal_ids)[0]
             problems.append(f'"weights" names {stray!r}, which isn\'t one of its sub-goals')
@@ -281,3 +290,56 @@ def _is_time(value: Any) -> bool:
 
 def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _is_date(value: Any) -> bool:
+    """Whether `value` is an ISO date, "YYYY-MM-DD"."""
+    if not (isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value)):
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+TEMPORARY_WEIGHT_FIELDS = frozenset({"weight", "until", "then"})
+
+
+def _is_weight(entry: Any) -> bool:
+    """Whether `entry` is a rollup weight: a number, 0 or more, or a
+    temporary one (see `weight_on`)."""
+    if isinstance(entry, dict):
+        return (
+            entry.keys() == TEMPORARY_WEIGHT_FIELDS
+            and _is_number(entry["weight"])
+            and entry["weight"] >= 0
+            and _is_number(entry["then"])
+            and entry["then"] >= 0
+            and _is_date(entry["until"])
+        )
+    return _is_number(entry) and entry >= 0
+
+
+def weight_on(entry: Any, day: date) -> float:
+    """What a (valid) rollup weight weighs on `day`: a plain number always;
+    a temporary one, `{"weight": w, "until": "YYYY-MM-DD", "then": t}`, w
+    on days before `until` and t from it on."""
+    if isinstance(entry, dict):
+        return entry["then"] if day >= date.fromisoformat(entry["until"]) else entry["weight"]
+    return entry
+
+
+def expired_weights(measure: dict[str, Any] | None, day: date) -> dict[str, dict[str, Any]]:
+    """The temporary weights in a weighted rollup whose `until` has come by
+    `day`, by sub-goal id: they now weigh their `then`, and are still
+    written as temporary until someone extends them or replaces them with a
+    plain number."""
+    weights = (measure or {}).get("weights") if (measure or {}).get("agg") == "weighted" else None
+    if not isinstance(weights, dict):
+        return {}
+    return {
+        goal_id: entry
+        for goal_id, entry in weights.items()
+        if _is_weight(entry) and isinstance(entry, dict) and day >= date.fromisoformat(entry["until"])
+    }

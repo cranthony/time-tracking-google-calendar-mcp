@@ -1,6 +1,8 @@
+from datetime import date
+
 import pytest
 
-from utilities.goal_measures import MEASURE_KINDS, MEASURE_SHAPE_PROBLEM, measure_problems
+from utilities.goal_measures import MEASURE_KINDS, MEASURE_SHAPE_PROBLEM, expired_weights, measure_problems, weight_on
 
 
 @pytest.mark.parametrize(
@@ -35,6 +37,7 @@ from utilities.goal_measures import MEASURE_KINDS, MEASURE_SHAPE_PROBLEM, measur
         {"kind": "rollup"},
         {"kind": "rollup", "agg": "mean"},
         {"kind": "rollup", "agg": "weighted", "weights": {"g1": 2, "g2": 0.5}},
+        {"kind": "rollup", "agg": "weighted", "weights": {"g1": 2, "g2": {"weight": 0, "until": "2026-11-05", "then": 1}}},
         {"kind": "rollup", "agg": "percentile", "percentile": 0},
         {"kind": "rollup", "agg": "percentile", "percentile": 100},
         {"kind": "rollup", "agg": "percentile", "percentile": 37.5},
@@ -120,6 +123,17 @@ def test_accepts_every_kinds_valid_specs(measure):
         ({"kind": "rollup", "agg": "weighted"}, 'a weighted rollup needs "weights"'),
         ({"kind": "rollup", "agg": "weighted", "weights": {"g1": -1}}, 'a weighted rollup needs "weights"'),
         ({"kind": "rollup", "weights": {"g1": 1}}, '"weights" is only for a weighted rollup'),
+        *[
+            ({"kind": "rollup", "agg": "weighted", "weights": {"g1": temporary}}, 'a weighted rollup needs "weights"')
+            for temporary in [
+                {"weight": 0, "until": "2026-11-05"},  # no "then"
+                {"weight": 0, "until": "2026-11-31", "then": 1},  # no such day
+                {"weight": 0, "until": "Nov 5", "then": 1},
+                {"weight": -1, "until": "2026-11-05", "then": 1},
+                {"weight": 0, "until": "2026-11-05", "then": "1"},
+                {"weight": 0, "until": "2026-11-05", "then": 1, "note": "x"},
+            ]
+        ],
         ({"kind": "rollup", "agg": "percentile"}, 'a percentile rollup needs "percentile"'),
         ({"kind": "rollup", "agg": "percentile", "percentile": 101}, 'a percentile rollup needs "percentile"'),
         ({"kind": "rollup", "percentile": 50}, '"percentile" is only for a percentile rollup'),
@@ -158,3 +172,27 @@ def test_covers_the_kinds_goal_health_measures():
 
     assert set(_MEASURES) <= set(MEASURE_KINDS)
     assert MEASURED_KINDS <= set(MEASURE_KINDS)
+
+
+TEMPORARY = {"weight": 0, "until": "2026-11-05", "then": 1.5}
+
+
+@pytest.mark.parametrize(
+    "entry, day, weighs",
+    [(2, date(2026, 11, 5), 2), (TEMPORARY, date(2026, 11, 4), 0), (TEMPORARY, date(2026, 11, 5), 1.5)],
+)
+def test_a_temporary_weight_weighs_then_from_its_date_on(entry, day, weighs):
+    assert weight_on(entry, day) == weighs
+
+
+def test_expired_weights_are_the_temporary_ones_whose_date_has_come():
+    measure = {
+        "kind": "rollup",
+        "agg": "weighted",
+        "weights": {"g1": 2, "g2": TEMPORARY, "g3": {**TEMPORARY, "until": "2026-12-01"}},
+    }
+
+    assert expired_weights(measure, date(2026, 11, 4)) == {}
+    assert expired_weights(measure, date(2026, 11, 5)) == {"g2": TEMPORARY}
+    assert expired_weights({"kind": "rollup"}, date(2026, 11, 5)) == {}
+    assert expired_weights(None, date(2026, 11, 5)) == {}

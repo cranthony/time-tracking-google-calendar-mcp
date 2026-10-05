@@ -198,6 +198,22 @@ class TestPrepare:
         assert context.uncompacted_notes == 1
         assert "record_reflection" in context.instructions
 
+    def test_lists_temporary_weights_whose_date_has_come(self):
+        reflections, _, store, _, goals = _setup([_feel("Feel"), _feel("Rest")])
+        feel, rest = goals["Feel"], goals["Rest"]
+        weights = {
+            feel.id: 1,
+            rest.id: {"weight": 0, "until": YESTERDAY.isoformat(), "then": 1},
+        }
+        store.update_goal(Goal(id=OVERALL_ID, measure={"kind": "rollup", "agg": "weighted", "weights": weights}))
+
+        (expired,) = reflections.prepare(YESTERDAY).expired_weights
+        weights[rest.id]["until"] = TODAY.isoformat()
+        store.update_goal(Goal(id=OVERALL_ID, measure={"kind": "rollup", "agg": "weighted", "weights": weights}))
+
+        assert (expired.goal_path, expired.sub_goal_path, expired.weight, expired.then) == ("Overall", "Rest", 0, 1)
+        assert reflections.prepare(YESTERDAY).expired_weights == []
+
     def test_refuses_a_day_that_hasnt_started(self):
         reflections, *_ = _setup([_feel("Feel")])
 

@@ -787,7 +787,11 @@ def create_goal(goal: Goal) -> CreatedGoal:
     the immediate sub-goals' ratings), or {"kind": "rollup", "agg":
     "mean"} (from the immediate sub-goals' ratings that day: "mean";
     "weighted" with "weights": {sub-goal id: weight}, a sub-goal not
-    listed weighing 0; or "percentile" with "percentile": 0-100, 0 being
+    listed weighing 0, and a weight either a number or a temporary one,
+    {"weight": 0, "until": "2026-11-05", "then": 1}, weighing "weight"
+    on days before "until" and "then" from it on -- to set a sub-goal
+    aside for a while (the daily reflection mentions it once its date
+    has come, until it's extended or replaced by a plain number); or "percentile" with "percentile": 0-100, 0 being
     the lowest and 100 the highest). Only the fields shown are allowed. A
     duration, count, time_constraint, time_window or follow_through measure looks at the events of the
     goal and its sub-goals, or, given "events_of": "<goal id>", at those of
