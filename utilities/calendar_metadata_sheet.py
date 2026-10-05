@@ -144,3 +144,13 @@ ACTION_GROUPS_SHEET_ROLE = "action-groups"
 ACTION_GROUPS_SHEET_TITLE = "Action Groups"
 """See `utilities/action_groups.py` for the tab this identifies -- the
 groups that roll actions up."""
+
+PEOPLE_SHEET_ROLE = "people"
+PEOPLE_SHEET_TITLE = "People"
+"""See `utilities/people.py`'s `People` for the tab this identifies -- who
+the user spends time with."""
+
+CIRCLES_SHEET_ROLE = "circles"
+CIRCLES_SHEET_TITLE = "Circles"
+"""See `utilities/people.py` for the tab this identifies -- the groups
+people belong to."""

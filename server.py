@@ -25,6 +25,7 @@ from config import (
     build_goal_details,
     build_goals,
     build_noted_time_sheet,
+    build_people,
     build_traits,
     get_allowed_user_ids,
     get_cors_allowed_origins,
@@ -60,6 +61,17 @@ from utilities.history_digest import DEFAULT_WINDOW_DAYS, DigestEntry, history_d
 from utilities.goal_details import WhatMatters
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
+from utilities.people import (
+    Circle,
+    CreatedCircle,
+    CreatedPerson,
+    DeletedCircle,
+    ListedCircle,
+    ListedPerson,
+    People,
+    Person,
+    PersonStatus,
+)
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.recurrences import Recurrences, Repeat, describe_rules
@@ -342,6 +354,7 @@ _recurrences: Recurrences | None = None
 _traits: Traits | None = None
 _goal_details: GoalDetails | None = None
 _actions: Actions | None = None
+_people: People | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -430,6 +443,25 @@ def get_action_store() -> Actions:
             if _actions is None:
                 _actions = build_actions()
     return _actions
+
+
+def get_people_store() -> People:
+    """Lazily construct and cache the People, the same way the other get_*
+    helpers cache theirs. Building it the first time adds the People and
+    Circles tabs."""
+    global _people
+    if _people is None:
+        with WRITE_LOCK:
+            if _people is None:
+                _people = build_people()
+    return _people
+
+
+def _prefetch_people() -> None:
+    """Read the People and Circles tabs in one request: every people tool
+    reads both (see `_prefetch`)."""
+    store = get_people_store()
+    store.prefetch(store.whole_tabs)
 
 
 def _prefetch_actions() -> None:
@@ -1534,6 +1566,144 @@ def delete_action_group(group_id: str) -> DeletedActionGroup:
         try:
             return get_action_store().delete_action_group(group_id)
         except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_people(statuses: list[PersonStatus] | None = None) -> list[ListedPerson]:
+    """The people the user spends time with: by default the active ones,
+    not archived (out of touch) or deleted ones. The user themself is
+    always first, with the id "self". Each has an id, name, context (what
+    tells them apart from others of the same name, e.g. "met at salsa"),
+    status, circles (the ids of the circles they're in) with their
+    circle_names, and what_matters (what's important to them). Read-only."""
+    with track("get_people"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().get_people(statuses)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_person(id_or_name: str) -> ListedPerson:
+    """One person, by id ("self" for the user) or else by name (ignoring
+    case), as get_people lists them. If several share the name, the error
+    lists them with their contexts; if there's none, it suggests close
+    matches. Read-only."""
+    with track("get_person"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().get_person(id_or_name)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def create_person(person: Person) -> CreatedPerson:
+    """Add a person: a name, and optionally a context (what tells them
+    apart, e.g. "met at salsa" -- a name and context together must be
+    unique, so give one when the name's taken), circles (circle ids, see
+    get_circles) and what_matters (what's important to them). Active
+    unless given a status. id is assigned. Returns the person and their
+    id as created_id."""
+    with track("create_person"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().create_person(person)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+PersonField = Literal["context", "circles", "what_matters"]
+"""Every Person field update_person can clear."""
+
+
+@tool
+@writes
+def update_person(person: Person, clear_fields: list[PersonField] | None = None) -> ListedPerson:
+    """Update a person by id ("self" for the user): their name, context,
+    status (active; archived, out of touch; or deleted, shouldn't have
+    existed -- self is always active), circles (replaced whole, so send
+    every circle to keep) or what_matters. Omitted properties keep their
+    value; list one in clear_fields to blank it instead. Returns the
+    person as updated."""
+    with track("update_person"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().update_person(person, clear_fields or ())
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_circles() -> list[ListedCircle]:
+    """Every circle: a group people belong to ("Close friends",
+    "Family"), a person belonging to any number of them. Each has an id,
+    name, note and member_ids (the people in it). Read-only."""
+    with track("get_circles"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().get_circles()
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_circle(id_or_name: str) -> ListedCircle:
+    """One circle, by id or else by name (ignoring case), as get_circles
+    lists it. Read-only."""
+    with track("get_circle"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().get_circle(id_or_name)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def create_circle(circle: Circle) -> CreatedCircle:
+    """Add a circle: a name (unique among circles, though a person may
+    share it) and optionally a note. id is assigned. Put people in it with
+    update_person's circles. Returns the circle and its id as
+    created_id."""
+    with track("create_circle"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().create_circle(circle)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+CircleField = Literal["note"]
+"""Every Circle field update_circle can clear."""
+
+
+@tool
+@writes
+def update_circle(circle: Circle, clear_fields: list[CircleField] | None = None) -> ListedCircle:
+    """Rename a circle or change its note, by id. Returns it as updated."""
+    with track("update_circle"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().update_circle(circle, clear_fields or ())
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def delete_circle(circle_id: str) -> DeletedCircle:
+    """Delete a circle, by id. Its people aren't deleted: they just leave
+    it. Returns the circle as it was, and the ids of the people who
+    left."""
+    with track("delete_circle"), cached_sheet_reads():
+        _prefetch_people()
+        try:
+            return get_people_store().delete_circle(circle_id)
+        except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
 

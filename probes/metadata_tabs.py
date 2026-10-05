@@ -1,6 +1,6 @@
 """Run the metadata spreadsheet's newer tabs end to end against Google:
-actions, their labels on the calendar, and whatever else lives in
-row-per-item tabs (utilities/row_sheet.py).
+actions and action groups, with their labels on the calendar, and people
+and circles -- the tabs of row-per-item data (utilities/row_sheet.py).
 
 It creates a throwaway calendar (this app's calendar.app.created scope
 allows that), which gets its own metadata spreadsheet, runs every step
@@ -27,6 +27,7 @@ from config import get_credentials_path, get_token_path
 from utilities import calendar_metadata_sheet
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action, Actions
+from utilities.people import SELF_ID, Circle, People, Person
 
 _SCRATCH_TITLE = "CTT tabs probe (safe to delete)"
 
@@ -59,6 +60,7 @@ def _main() -> None:
         ).execute()
         print(f"Scratch spreadsheet: https://docs.google.com/spreadsheets/d/{spreadsheet_id}")
         _probe_actions(calendar, sheets, spreadsheet_id)
+        _probe_people(sheets, spreadsheet_id)
         print("\nAll steps passed.")
     finally:
         if args.keep:
@@ -117,6 +119,25 @@ def _probe_actions(calendar: CalendarClient, sheets: SheetsClient, spreadsheet_i
         "deleting the group moves the action to the top",
         actions.get_action(walk).group_id is None and actions.get_action_groups() == [],
     )
+
+
+def _probe_people(sheets: SheetsClient, spreadsheet_id: str) -> None:
+    print("\nPeople and circles")
+    people = People.ensure(sheets, spreadsheet_id)
+    _check("self is there before any row", [p.id for p in people.get_people()] == [SELF_ID])
+    family = people.create_circle(Circle(name="Family")).created_id
+    sam = people.create_person(Person(name="Sam", context="cousin", circles=[family])).created_id
+    people.update_person(Person(id=SELF_ID, what_matters="music"))
+    again = People.ensure(sheets, spreadsheet_id)
+    listed = {p.id: p for p in again.get_people()}
+    _check("people and self's row read back", listed[sam].circle_names == ["Family"] and listed[SELF_ID].what_matters == "music")
+    try:
+        again.create_person(Person(name="sam", context="Cousin"))
+        _check("a duplicate name and context is refused", False)
+    except ValueError as exc:
+        _check("a duplicate name and context is refused", "already a person" in str(exc), f"({exc})")
+    again.delete_circle(family)
+    _check("deleting a circle takes its people out", again.get_person(sam).circles is None)
 
 
 if __name__ == "__main__":
