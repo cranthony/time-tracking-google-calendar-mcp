@@ -362,6 +362,15 @@ class TestUpdateEvent:
         (call_updated_event, call_options), _ = reallocating_calendar.update_event.call_args
         assert call_updated_event == public_event.to_event()
         assert call_options == ReallocationOptions()
+        assert reallocating_calendar.update_event.call_args.kwargs == {"reallocate": True}
+
+    def test_passes_reallocate_false_through(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
+
+        server.update_event(_public_event(id="abc123"), reallocate=False)
+
+        assert reallocating_calendar.update_event.call_args.kwargs == {"reallocate": False}
 
     def test_result_includes_every_affected_event(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
@@ -429,6 +438,15 @@ class TestCreateEvent:
         (call_new_event, call_options), _ = reallocating_calendar.create_event.call_args
         assert call_new_event == new_public_event.to_event()
         assert call_options == ReallocationOptions()
+        assert reallocating_calendar.create_event.call_args.kwargs == {"reallocate": True}
+
+    def test_passes_reallocate_false_through(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.create_event.return_value = [_event(id="abc123")]
+
+        server.create_event(_public_event(), reallocate=False)
+
+        assert reallocating_calendar.create_event.call_args.kwargs == {"reallocate": False}
 
     def test_result_includes_every_affected_event(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)

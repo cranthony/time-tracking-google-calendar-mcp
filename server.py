@@ -533,19 +533,21 @@ def get_event(id: str) -> PublicEvent:
 
 @tool
 @writes
-def update_event(event: PublicEvent) -> list[PublicEvent]:
+def update_event(event: PublicEvent, reallocate: bool = True) -> list[PublicEvent]:
     """Update an existing event, reallocating time from the rest of its
-    day as needed to make room for its new position. An update that
-    doesn't move it (start and end left out, or unchanged) changes only
-    its other fields: nothing else is touched, even on a day whose events
-    overlap. Set goal_ids to change its goals ([] for none). Returns the
-    events affected by the update."""
+    day as needed to make room for its new position. With reallocate
+    false, it's moved only if nothing else has to change: otherwise
+    nothing is written, and the error lists what would have changed. An
+    update that doesn't move it (start and end left out, or unchanged)
+    changes only its other fields: nothing else is touched, even on a day
+    whose events overlap. Set goal_ids to change its goals ([] for none).
+    Returns the events affected by the update."""
     with track("update_event"), cached_sheet_reads():
         _check_goal_ids(event, existing=True)
         updated_event = event.to_event()
         try:
             applied = get_reallocating_calendar().update_event(
-                updated_event, ReallocationOptions()
+                updated_event, ReallocationOptions(), reallocate=reallocate
             )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
@@ -651,14 +653,19 @@ def delete_recurrence(id: str, starting_at_event_id: str | None = None) -> list[
 
 @tool
 @writes
-def create_event(event: PublicEvent) -> list[PublicEvent]:
+def create_event(event: PublicEvent, reallocate: bool = True) -> list[PublicEvent]:
     """Create a new event, optionally serving goals (goal_ids, primary
-    first). Returns the events affected by the creation."""
+    first), reallocating time from the rest of its day as needed to make
+    room. With reallocate false, it's created only if nothing else has to
+    change: otherwise nothing is written, and the error lists what would
+    have changed. Returns the events affected by the creation."""
     with track("create_event"), cached_sheet_reads():
         _check_goal_ids(event)
         new_event = event.to_event()
         try:
-            applied = get_reallocating_calendar().create_event(new_event, ReallocationOptions())
+            applied = get_reallocating_calendar().create_event(
+                new_event, ReallocationOptions(), reallocate=reallocate
+            )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
         return _public_events(applied)

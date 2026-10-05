@@ -6,6 +6,7 @@ from tests.event_time_helpers import event_at, time_at
 from utilities.reallocation import (
     FixedTimeConflict,
     ReallocationOptions,
+    StartsInsideFixedTime,
     _duration,
     _effective_min_duration,
     _effective_priority,
@@ -561,46 +562,55 @@ class TestReallocateForNewEvent:
 
 
 class TestFixedTimeRepair:
-    def test_displaced_fixed_time_event_is_repaired_and_the_new_event_gives_way_instead(self):
-        # preceding can't retain its own min_duration before new_event's
-        # start (10 of its 30 minutes), so step 1 moves it whole -- but
-        # since it's fixed_time, that displacement gets repaired: it ends
-        # up back at its exact original position, and new_event (the
-        # thing that would have displaced it) gets pushed later instead.
+    def test_raises_when_new_event_starts_inside_a_fixed_time_event(self):
+        # preceding can neither shrink nor move, so new_event can't start
+        # there -- the message says when it can, and nothing is touched.
         preceding = event_at(
-            "09:00-09:30",
+            "06:00-12:01",
             id="p1",
-            priority=1,
+            summary="Sleep",
+            priority=0,
             is_fixed_time=True,
-            min_duration=timedelta(minutes=30),
+            min_duration=timedelta(hours=6, minutes=1),
         )
-        anchor = event_at("09:30-10:30", id="a1", priority=1)
-        new_event = event_at("09:10-09:40", priority=1)
+        later = event_at("13:00-14:00", id="l1", priority=1)
+        new_event = event_at("12:00-12:30", summary="Lunch", priority=1)
 
-        result = reallocate_for_new_event([preceding, anchor], new_event, ReallocationOptions())
+        with pytest.raises(StartsInsideFixedTime) as raised:
+            reallocate_for_new_event([preceding, later], new_event, ReallocationOptions())
 
-        # preceding is back exactly where it started -- nothing to write,
-        # not reported.
-        assert preceding.start == time_at("09:00")
-        assert preceding.end == time_at("09:30")
-        assert preceding not in result
+        assert str(raised.value) == (
+            "'Lunch' (2026-01-01T12:00:00+00:00 to 2026-01-01T12:30:00+00:00) starts during "
+            "fixed-time 'Sleep' (2026-01-01T06:00:00+00:00 to 2026-01-01T12:01:00+00:00), "
+            "which can't move or shrink. Start it at 2026-01-01T12:01:00+00:00 or later."
+        )
+        assert isinstance(raised.value, FixedTimeConflict)
+        assert raised.value.fixed == [preceding]
+        assert (preceding.start, preceding.end) == (time_at("06:00"), time_at("12:01"))
+        assert (new_event.start, new_event.end) == (time_at("12:00"), time_at("12:30"))
+        assert (later.start, later.end) == (time_at("13:00"), time_at("14:00"))
 
-        assert new_event in result
-        assert new_event.end - new_event.start == timedelta(minutes=30)
-        assert new_event.start >= preceding.end
-
-    def test_a_fixed_time_event_without_its_own_min_duration_is_repaired_without_being_pinned(self):
-        # Same as above, but preceding has no min_duration of its own.
+    def test_raises_when_new_event_starts_inside_a_fixed_time_event_without_a_min_duration(self):
+        # Same as above, but preceding has no min_duration of its own --
+        # is_fixed_time alone pins it.
         preceding = event_at("09:00-09:30", id="p1", priority=1, is_fixed_time=True)
         anchor = event_at("09:30-10:30", id="a1", priority=1)
         new_event = event_at("09:10-09:40", priority=1)
 
+        with pytest.raises(StartsInsideFixedTime):
+            reallocate_for_new_event([preceding, anchor], new_event, ReallocationOptions())
+
+        assert preceding.min_duration is None
+
+    def test_starting_exactly_where_a_fixed_time_event_ends_is_fine(self):
+        preceding = event_at("09:00-09:30", id="p1", priority=1, is_fixed_time=True)
+        anchor = event_at("09:30-10:30", id="a1", priority=1)
+        new_event = event_at("09:30-09:40", priority=1)
+
         result = reallocate_for_new_event([preceding, anchor], new_event, ReallocationOptions())
 
-        assert (preceding.start, preceding.end) == (time_at("09:00"), time_at("09:30"))
+        assert new_event in result
         assert preceding not in result
-        assert new_event.start >= preceding.end
-        assert preceding.min_duration is None
 
     def test_repairing_a_fixed_time_event_later_in_the_day_splits_what_was_pushed_into_it(self):
         # new_event pushes lunch and afternoon later, into a fixed-time
@@ -645,7 +655,7 @@ class TestFixedTimeRepair:
 
     def test_cascading_fixed_time_displacement_converges_by_drawing_from_lower_priority(self):
         # Both a and b are fixed_time and directly adjacent; new_event
-        # falls inside a, displacing it (step 1). Repairing a back to its
+        # runs into a, pushing it later. Repairing a back to its
         # original position would, in turn, need to displace b -- but
         # repairing draws from whatever's cheapest across the whole day
         # (anchor, the lowest-priority/most reclaimable event), not from
@@ -658,7 +668,7 @@ class TestFixedTimeRepair:
             "10:00-11:00", id="b1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
         )
         anchor = event_at("11:00-12:00", id="anchor1", priority=3)
-        new_event = event_at("09:30-09:45", priority=1)
+        new_event = event_at("08:30-09:15", priority=1)
 
         result = reallocate_for_new_event([a, b, anchor], new_event, ReallocationOptions())
 
@@ -683,14 +693,14 @@ class TestFixedTimeRepair:
         b = event_at(
             "10:00-11:00", id="b1", priority=2, is_fixed_time=True, min_duration=timedelta(hours=1)
         )
-        new_event = event_at("09:30-09:45", summary="Call", priority=1)
+        new_event = event_at("08:30-09:15", summary="Call", priority=1)
 
         with pytest.raises(FixedTimeConflict) as raised:
             reallocate_for_new_event([a, b], new_event, ReallocationOptions())
 
         message = str(raised.value)
         assert message.startswith(
-            "'Call' (2026-01-01T09:30:00+00:00 to 2026-01-01T09:45:00+00:00) doesn't fit: "
+            "'Call' (2026-01-01T08:30:00+00:00 to 2026-01-01T09:15:00+00:00) doesn't fit: "
             "making room for it would move fixed-time"
         )
         assert "Shorten it, or move it somewhere with room." in message

@@ -45,7 +45,14 @@ shrink either, so its effective `min_duration` is always its own full
 duration, whatever its `min_duration` field says (see
 `_effective_min_duration`).
 
-Nothing in steps 1-6 treats a fixed-time event specially: it can still be
+One case is refused before any pass runs: if `new_event` starts inside a
+fixed-time event, `reallocate_for_new_event` raises `StartsInsideFixedTime`
+(a `FixedTimeConflict`) saying when `new_event` can start instead.
+(Moving it whole in step 1 and repairing it back would push `new_event`
+later anyway, and everything after it later by however much of it
+preceded `new_event`'s start.)
+
+Otherwise, nothing in steps 1-6 treats a fixed-time event specially: it can still be
 displaced during a single pass, exactly like any other event of the same
 priority -- moved whole to make room for a preceding overlap (step 1,
 since its effective `min_duration` always equals its own duration, it's never the
@@ -547,6 +554,23 @@ class FixedTimeConflict(ValueError):
         self.fixed = fixed
 
 
+class StartsInsideFixedTime(FixedTimeConflict):
+    """`new_event` starts during fixed-time `fixed`, which can neither
+    shrink nor move to make room. The message says when `new_event` can
+    start instead, and is meant to be shown as is."""
+
+    def __init__(self, new_event: Schedulable, fixed: Schedulable):
+        ValueError.__init__(
+            self,
+            f"{new_event.summary or new_event.id!r} ({new_event.start.isoformat()} to "
+            f"{new_event.end.isoformat()}) starts during fixed-time {fixed.summary or fixed.id!r} "
+            f"({fixed.start.isoformat()} to {fixed.end.isoformat()}), which can't move or shrink. "
+            f"Start it at {fixed.end.isoformat()} or later.",
+        )
+        self.new_event = new_event
+        self.fixed = [fixed]
+
+
 def reallocate_for_new_event(
     day_events: list[Schedulable], new_event: Schedulable, options: ReallocationOptions
 ) -> list[Schedulable]:
@@ -559,10 +583,11 @@ def reallocate_for_new_event(
 
     Raises `ValueError` if `day_events` fails step 0's validation (not
     sorted, overlapping, already contains `new_event`'s `id`, or has
-    nothing ending after `new_event.end`), or `FixedTimeConflict` (a
-    `ValueError`) if a fixed-time repair pass (see "Fixed time" above)
-    can't converge because two or more fixed-time events conflict --
-    i.e. `new_event` doesn't fit. Given valid, non-conflicting `day_events`,
+    nothing ending after `new_event.end`), `StartsInsideFixedTime` if
+    `new_event` starts during a fixed-time event, or `FixedTimeConflict`
+    (a `ValueError`, as is `StartsInsideFixedTime`) if a fixed-time repair
+    pass (see "Fixed time" above) can't converge because two or more
+    fixed-time events conflict -- i.e. `new_event` doesn't fit. Given valid, non-conflicting `day_events`,
     reallocating itself can't otherwise fail: the immediately preceding
     event, if any, always shrinks enough to clear `new_event.start`
     (step 1), and every other event can be shrunk and then cancelled
@@ -583,6 +608,18 @@ def reallocate_for_new_event(
         for event in day_events
         if event.is_fixed_time
     }
+
+    # A fixed-time event new_event starts inside can neither shrink nor
+    # move, so new_event can't start there. Refuse up front, saying when it
+    # can start -- rather than let step 1 move it whole and a repair pass
+    # put it back, which would push new_event later anyway, and everything
+    # after it later by however much of it preceded new_event's start.
+    preceding = next(
+        (e for e in day_events if e.status != "cancelled" and e.start < new_event.start < e.end),
+        None,
+    )
+    if preceding is not None and preceding.is_fixed_time:
+        raise StartsInsideFixedTime(new_event, preceding)
 
     changed: dict[int, Schedulable] = {}
     current_day_events = day_events
