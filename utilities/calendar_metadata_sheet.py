@@ -129,3 +129,8 @@ TRAITS_SHEET_ROLE = "traits"
 TRAITS_SHEET_TITLE = "Traits"
 """See `utilities/traits.py`'s `Traits` for the tab this identifies -- the
 traits goals can be rated by."""
+
+GOAL_DETAILS_SHEET_ROLE = "goal-details"
+GOAL_DETAILS_SHEET_TITLE = "Goal Details"
+"""See `utilities/goal_details.py`'s `GoalDetails` for the tab this
+identifies -- goals' descriptions."""

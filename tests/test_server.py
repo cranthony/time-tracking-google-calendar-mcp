@@ -912,7 +912,7 @@ class TestCompactNotes:
         result = server.compact_notes(decisions=decisions)
 
         assert result is compactor.dry_run.return_value
-        compactor.dry_run.assert_called_once_with(decisions, None)
+        compactor.dry_run.assert_called_once_with(decisions, None, None)
 
     def test_a_dry_run_passes_ignored_notes_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -922,14 +922,14 @@ class TestCompactNotes:
 
         server.compact_notes(decisions=decisions, ignore_notes=["n2"])
 
-        compactor.dry_run.assert_called_once_with(decisions, ["n2"])
+        compactor.dry_run.assert_called_once_with(decisions, ["n2"], None)
 
     def test_a_dry_run_with_no_decisions_records_everything_as_on_schedule(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
 
         server.compact_notes()
 
-        compactor.dry_run.assert_called_once_with([], None)
+        compactor.dry_run.assert_called_once_with([], None, None)
 
     def test_a_dry_run_with_a_compaction_id_describes_the_stored_plan(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -1115,6 +1115,56 @@ class TestTraitTools:
         with pytest.raises(ToolError, match="isn't measured by traits"):
             server.explain_traits("g1", date(2026, 10, 1))
         health.traits_rating.assert_called_once_with("g1", date(2026, 10, 1))
+
+
+class TestGoalDescriptionTools:
+    def test_reads_and_replaces_a_goals_description(self, monkeypatch):
+        _fake_goals(monkeypatch, _goal("g1"))
+        details = MagicMock()
+        details.get.return_value = None
+        monkeypatch.setattr(server, "get_goal_details", lambda: details)
+
+        assert server.get_goal_description("g1") == ""
+        assert server.set_goal_description("g1", "## What matters to them") == "## What matters to them"
+        details.set.assert_called_once_with("g1", "## What matters to them")
+
+    def test_refuses_a_goal_that_isnt_one(self, monkeypatch):
+        _fake_goals(monkeypatch, _goal("g1"))
+        monkeypatch.setattr(server, "get_goal_details", lambda: MagicMock())
+
+        with pytest.raises(ToolError, match="'g2' isn't a goal"):
+            server.set_goal_description("g2", "x")
+
+
+class TestGetGoalDigest:
+    def test_digests_the_goals_events_with_what_matters_and_its_timeline(self, monkeypatch):
+        _fake_goals(monkeypatch, _goal("g1", name="Person"), _goal("g2", name="Other"))
+        client = _fake_client(monkeypatch)
+        client.get_time_zone.return_value = timezone.utc
+        now = datetime.now(timezone.utc)
+        client.list_events.return_value = [
+            _event(id="a", goal_ids=["g1"], start=now - timedelta(days=3), end=now - timedelta(days=3, hours=-1),
+                   facets=Facets(activity="dinner")),
+            _event(id="b", goal_ids=["g2"], start=now - timedelta(days=2), end=now - timedelta(days=2, hours=-1),
+                   facets=Facets(for_goal_ids=["g1"], activity="baking")),
+            _event(id="c", goal_ids=["g2"], start=now - timedelta(days=1), end=now - timedelta(days=1, hours=-1)),
+        ]
+        details = MagicMock()
+        details.get.return_value = "## What matters to them\n\n- 2026-10-01: likes tea"
+        monkeypatch.setattr(server, "get_goal_details", lambda: details)
+
+        digest = server.get_goal_digest("g1", window_days=30, include_events=True)
+
+        assert [(a.label, a.count) for a in digest.activities] == [("baking", 1), ("dinner", 1)]  # most recent first
+        assert digest.what_matters == "- 2026-10-01: likes tea"
+        assert [e.id for e in digest.events] == ["a", "b"]
+        assert digest.events[1].facets == Facets(for_goal_ids=["g1"], activity="baking")
+
+    def test_refuses_a_window_under_a_day(self, monkeypatch):
+        _fake_goals(monkeypatch, _goal("g1"))
+
+        with pytest.raises(ToolError, match="window_days"):
+            server.get_goal_digest("g1", window_days=0)
 
 
 class TestGetCompactionStatus:
@@ -1477,6 +1527,8 @@ _READ_ONLY_TOOLS = {
     "get_compaction_status",
     "get_notes",
     "get_traits",
+    "get_goal_description",
+    "get_goal_digest",
     "get_trait_history",
     "explain_traits",
 }

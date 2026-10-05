@@ -32,6 +32,8 @@ late or early an edge was, `⇢`/`⇠` how far a whole event moved. An
 event's goals go on the line after its start: `◆` for one it already
 serves, `◇` for one it's being given (or, before anything is decided,
 one suggested for it), and each goal's total time follows the events.
+Its facets (see utilities/facets.py) go on the line after that: `▸` for
+those it has, `▹` for those it's being given.
 `✓` marks the latest note an earlier compaction already used, shown as
 context, and a `┄┄ last compaction` line marks when that compaction ran
 -- what came before it is already on the calendar. Long lines wrap,
@@ -78,6 +80,7 @@ _LEGEND = [
     "↳ note added to that event",
     "○ note not added   ✓ compacted",
     "◆ goal   ◇ goal being added",
+    "▸ facets   ▹ facets being set",
     "+/− late/early   ⇢/⇠ moved",
 ]
 
@@ -126,6 +129,13 @@ class TimelineEvent:
     new_goals: list[str] = field(default_factory=list)
     """Which of `goals` it's being given by this compaction -- or, before
     anything is decided, names of goals suggested for it."""
+
+    facets: str | None = None
+    """Its facets (see utilities/facets.py), once this compaction is
+    applied, in a line."""
+
+    new_facets: bool = False
+    """Whether this compaction sets `facets`."""
 
 
 @dataclass(kw_only=True)
@@ -190,7 +200,7 @@ def join_days(days: list[tuple[datetime, Timeline]]) -> Timeline:
         lines.append(render(timeline, legend=False))
     if joined.decided:
         lines.append("")
-        lines.extend(_LEGEND)
+        lines.extend(_legend(joined.events))
     joined.text = "\n".join(lines)
     return joined
 
@@ -254,7 +264,7 @@ def render(timeline: Timeline, *, legend: bool = True) -> str:
         lines.extend(f"{duration:>7}  {goal}" for goal, duration in goal_time)
     if timeline.decided and legend:
         lines.append("")
-        lines.extend(_LEGEND)
+        lines.extend(_legend(timeline.events))
     return "\n".join(lines)
 
 
@@ -300,6 +310,8 @@ def _edge_lines(moment, live, removed, here: set[str], hm) -> list[tuple[bool, s
         lines.append((event.start_note in here, f"{joint} {event.summary}{_start_tag(event, hm)}"))
         if goals := _goal_tag(event):
             lines.append((False, f"    {goals}"))
+        if event.facets:
+            lines.append((False, f"    {'▹' if event.new_facets else '▸'} {event.facets}"))
     for event in removed:
         if event.planned_start != moment:
             continue
@@ -380,3 +392,8 @@ def _display_tz(timeline: Timeline) -> tzinfo:
         if moment is not None and moment.tzinfo is not None:
             return moment.tzinfo
     return timezone.utc
+
+
+def _legend(events: list[TimelineEvent]) -> list[str]:
+    """The legend, its facets line only when an event has facets."""
+    return [line for line in _LEGEND if not line.startswith("▸") or any(e.facets for e in events)]

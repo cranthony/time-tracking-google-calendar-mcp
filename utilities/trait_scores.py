@@ -183,7 +183,7 @@ def score_traits(
     chosen, left_out = selected_traits(measure, traits)
     window_days = measure.get("window_days", DEFAULT_WINDOW_DAYS)
     weights = measure.get("weights") or {}
-    scope = _Scope(goal, tree, events)
+    scope = Scope(goal, tree, events)
     scored = []
     for trait in chosen:
         parts = trait.parts if isinstance(trait.parts, list) else []
@@ -217,7 +217,7 @@ def score_traits(
     )
 
 
-class _Scope:
+class Scope:
     """A goal's with and for events: see the module docstring."""
 
     def __init__(self, goal: Goal, tree: GoalTree, events: list[Event]) -> None:
@@ -243,7 +243,7 @@ def _part(
     events: list[Event],
     cancelled: list[Event],
     tree: GoalTree,
-    scope: _Scope,
+    scope: Scope,
     judged: dict[str, int],
 ) -> PartScore:
     problems = part_problems(part)

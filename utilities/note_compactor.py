@@ -89,6 +89,9 @@ from typing import Literal
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import Event
+from utilities.facets import Facets, facet_problems
+from utilities.goal_details import WHAT_MATTERS, GoalDetails, add_to_section, section
+from utilities.history_digest import history_digest
 from utilities.compaction_journal import (
     ABANDONED,
     APPLIED,
@@ -109,6 +112,7 @@ from utilities.note_compaction import (
     EventDecision,
     EventState,
     PlanNote,
+    facets_from_dict,
     plan_compaction,
     planned_timeline,
 )
@@ -212,6 +216,25 @@ DECISION_GUIDE = (
     "clears them). Ask about a goal only when genuinely torn between two. In the timeline, ◆ marks "
     "a goal an event already serves and ◇ one it's being given (or, before deciding, one "
     "suggested); a correction from the user is just a new dry run. "
+    "FACETS: every past event with `traits_goal_ids` carries a goal rated by traits (often a "
+    "person), so record what happened at it: add `facets` to its 'keep' (or 'create'), judged "
+    "from its notes, title and description -- with_goal_ids (goals of the people present; "
+    "usually its traits goals), for_goal_ids (people it was done for who weren't there: "
+    "preparing a gift or a plan -- then they're not in with_goal_ids), activity and place (short "
+    "labels: REUSE the labels in that goal's `traits_goals` digest when they fit, so they group), "
+    "creative (0-3: made something together), new (none, activity, place or both: new to "
+    "them, judged against the digest -- an activity or place the digest lists isn't new), effort "
+    "(0-3: effort beyond showing up -- prepared, cooked, hosted, traveled), attention (0-3: the "
+    "quality of attention, from the notes; leave it out if they don't say) and why (one line of "
+    "evidence). Leave out what the notes don't support, rather than guess. Facets replace an "
+    "event's facets whole, so an event that has some (`facets`) keeps them unless you send new "
+    "ones; don't redo them without a reason. In the timeline, ▸ marks facets an event has and "
+    "▹ ones it's being given. "
+    "WHAT MATTERS TO THEM: `traits_goals` also shows each goal's \"What matters to them\" "
+    "section -- facts, upcoming moments and preferences. When the notes reveal something new "
+    "worth remembering about a person (a birthday, a new job, a worry, a favorite), pass it in "
+    "compact_notes' `what_matters` {goal_id, items: [one line each]}; it's added, dated, when the "
+    "plan is applied. Don't repeat what the section already says. "
     "After every dry run, show the user the result's `timeline.text` verbatim in a code block "
     "(it's laid out narrow enough for a phone, so don't reformat or widen it), and list the "
     "warnings, asking whether to apply it or what to change. " + _APPROVAL_RULE
@@ -252,6 +275,38 @@ class ContextEvent:
 
     priority: int | None = None
     is_fixed_time: bool | None = None
+    facets: Facets | None = None
+    """What happened at it, if it's been recorded (see utilities/facets.py)."""
+
+    traits_goal_ids: list[str] | None = None
+    """For a past event: the goals rated by traits that it counts toward
+    (its goals, or their ancestors, with a traits measure) -- give it
+    facets (see `DECISION_GUIDE`). `None` if none."""
+
+
+@dataclass(kw_only=True)
+class TraitsGoalContext:
+    """A goal rated by traits that one of the events counts toward."""
+
+    id: str
+    path: str
+    digest: str
+    """Its history digest: the activities and places of its past events,
+    with how often and when (see utilities/history_digest.py) -- the
+    labels to reuse in facets, and what's not new."""
+
+    what_matters: str | None = None
+    """Its description's "What matters to them" section, if it has one."""
+
+
+@dataclass(kw_only=True)
+class WhatMatters:
+    """Lines to add to a goal's "What matters to them" section."""
+
+    goal_id: str
+    items: list[str]
+    """One fact, upcoming moment or preference each, in a line; dated when
+    they're added."""
 
 
 @dataclass(kw_only=True)
@@ -312,6 +367,10 @@ class CompactionContext:
     previous_note: PreviousNote | None = None
     """The latest already-compacted note, however long ago it was
     written -- see the module docstring."""
+
+    traits_goals: list[TraitsGoalContext] | None = None
+    """The goals rated by traits that the events count toward, with their
+    digests and what matters to them -- see `DECISION_GUIDE`."""
 
     instructions: str = DECISION_GUIDE
 
@@ -386,7 +445,7 @@ class _Walked:
 
 _STATE_FIELDS = (
     "summary", "start", "end", "description", "location", "status",
-    "is_fixed_time", "priority", "event_label_id", "goal_ids", "min_duration",
+    "is_fixed_time", "priority", "event_label_id", "goal_ids", "min_duration", "facets",
 )
 
 
@@ -434,14 +493,18 @@ class NoteCompactor:
         clock: Callable[[], datetime] | None = None,
         goals: Goals | None = None,
         marker: CompactionMarker | None = None,
+        details: GoalDetails | None = None,
     ) -> None:
         """`calendar` reads the day's events (through the same goal-aware
         view reallocation uses); `client` is what the planned changes are
         written through (a GoalCalendar, so each event's label follows
         its goals). `goals` names, suggests and checks events' goals.
         `marker`, if given, is moved to each compaction once it's stamped
-        (see utilities/compaction_marker.py)."""
+        (see utilities/compaction_marker.py). `details` holds goals'
+        descriptions, whose "What matters to them" sections compaction
+        shows and adds to."""
         self._marker = marker
+        self._details = details
         self._calendar = calendar
         self._client = client
         self._goals = goals
@@ -461,6 +524,7 @@ class NoteCompactor:
         tree = self._goals.tree() if self._goals else None
         names = _goal_names(tree)
         suggested = self._suggestions(days, tree) if tree is not None else {}
+        traits_of = _traits_goals(days, tree) if tree is not None else {}
         notes: list[ContextNote] = []
         events: dict[str, ContextEvent] = {}
         timelines: list[tuple[datetime, Timeline]] = []
@@ -492,6 +556,8 @@ class NoteCompactor:
                         suggested_goal_ids=suggested.get(e.id),
                         priority=e.effective_priority,
                         is_fixed_time=e.is_fixed_time,
+                        facets=e.facets,
+                        traits_goal_ids=traits_of.get(e.id),
                     )
             timelines.append(
                 (
@@ -532,7 +598,32 @@ class NoteCompactor:
             previous_note=PreviousNote(
                 timestamp=previous_note.timestamp, description=previous_note.description
             ) if previous_note is not None else None,
+            traits_goals=self._traits_context(days, tree, traits_of) if traits_of else None,
         )
+
+    def _traits_context(
+        self, days: list[_Day], tree: GoalTree, traits_of: dict[str, list[str]]
+    ) -> list[TraitsGoalContext]:
+        """Each goal rated by traits that the days' events count toward,
+        with its digest of the events before the first day, and what
+        matters to it."""
+        goal_ids = list(dict.fromkeys(g for ids in traits_of.values() for g in ids))
+        start = days[0].compaction_window_start
+        history = [e for e in self._calendar.list_events(start - timedelta(days=180), start) if e.status != "cancelled"]
+        tz = start.tzinfo
+        context = []
+        for goal_id in goal_ids:
+            goal = tree.by_id[goal_id]
+            description = self._details.get(goal_id) if self._details is not None else None
+            context.append(
+                TraitsGoalContext(
+                    id=goal_id,
+                    path=tree.path(goal_id),
+                    digest=history_digest(goal, tree, history, start, tz).text,
+                    what_matters=section(description, WHAT_MATTERS),
+                )
+            )
+        return context
 
     def _prefetch(self, *, goals: bool = True) -> None:
         """Read the notes tab, the journal and (if `goals`) the goals tab
@@ -543,6 +634,8 @@ class NoteCompactor:
         tabs = [self._notes.whole_tab, self._journal.whole_tab]
         if goals and self._goals is not None:
             tabs.append(self._goals.whole_tab)
+        if goals and self._details is not None:
+            tabs.append(self._details.whole_tab)
         self._notes.prefetch(tabs)
 
     def _suggestions(self, days: list[_Day], tree: GoalTree) -> dict[str, list[str]]:
@@ -566,10 +659,17 @@ class NoteCompactor:
         return {e.id: hints[_title_key(e.summary)] for e in bare if _title_key(e.summary) in hints}
 
     def dry_run(
-        self, decisions: list[EventDecision], ignore_notes: list[str] | None = None
+        self,
+        decisions: list[EventDecision],
+        ignore_notes: list[str] | None = None,
+        what_matters: list[WhatMatters] | None = None,
     ) -> CompactionResult:
+        """`what_matters`: lines to add to goals' "What matters to them"
+        sections when the plan is applied."""
         self._prefetch()
         self._require_no_open_compaction()
+        decisions = self._checked_facets(decisions)
+        additions = self._checked_what_matters(what_matters or [])
         pending = list(decisions)
         ignoring = list(ignore_notes or [])
 
@@ -604,6 +704,7 @@ class NoteCompactor:
                     decisions=w.decisions,
                     ignore_notes=w.ignore_notes,
                     plan=w.plan,
+                    what_matters=additions if number == len(walked) else {},
                 )
                 for number, w in enumerate(walked, start=1)
             ]
@@ -611,11 +712,16 @@ class NoteCompactor:
         changes = [c for w in walked for c in w.plan.changes]
         note_count = sum(len(w.day.notes) for w in walked)
         days = f" over {len(walked)} days" if len(walked) > 1 else ""
+        tree = self._goals.tree() if self._goals else None
+        adding = [
+            f"add to {tree.by_id[g].name if tree else g}'s \"{WHAT_MATTERS}\": " + "; ".join(items)
+            for g, items in additions.items()
+        ]
         return CompactionResult(
             status="planned",
             compaction_id=compaction_id,
             changes=changes,
-            warnings=[warning for w in walked for warning in w.plan.warnings],
+            warnings=[warning for w in walked for warning in w.plan.warnings] + adding,
             timeline=join_days([(w.day.day_start, w.plan.timeline) for w in walked]),
             message=(
                 f"{len(changes)} calendar change(s) planned for {note_count} note(s){days}; "
@@ -687,6 +793,7 @@ class NoteCompactor:
                 if step.status != "done":
                     self._apply_step(journal, step)
                     self._journal.mark_step_done(step)
+            self._add_what_matters(journal)
             self._journal.set_status(journal, APPLIED)
             self._notes.mark_compacted(journal.note_ids, journal.id)
             self._journal.set_status(journal, STAMPED)
@@ -699,6 +806,65 @@ class NoteCompactor:
             warnings=[w for d in days for w in d.warnings] + self._move_marker(days[-1].now),
             message=f"applied {steps} change(s) and marked {notes} note(s) compacted",
         )
+
+    def _add_what_matters(self, journal: JournalCompaction) -> None:
+        """Add `journal`'s lines to goals' "What matters to them" sections,
+        dated its day. A line already there is skipped, so doing it again
+        (resuming a commit) is harmless."""
+        if not journal.what_matters or self._details is None:
+            return
+        on = journal.now.date()
+        for goal_id, items in journal.what_matters.items():
+            current = self._details.get(goal_id)
+            updated = add_to_section(current, items, on)
+            if updated != (current or ""):
+                self._details.set(goal_id, updated)
+
+    def _checked_facets(self, decisions: list[EventDecision]) -> list[EventDecision]:
+        """`decisions` with their facets normalized; CompactionError if any
+        aren't well formed or name goals that aren't."""
+        tree = self._goals.tree() if self._goals else None
+        checked, problems = [], []
+        for number, decision in enumerate(decisions, start=1):
+            if decision.facets is not None:
+                facets = decision.facets.normalized()
+                label = f"decision {number} ({decision.action}{' ' + decision.event_id if decision.event_id else ''})"
+                problems += [f"{label}: its facets {p}" for p in facet_problems(facets)]
+                named = [*(facets.with_goal_ids or ()), *(facets.for_goal_ids or ())]
+                if tree is not None and named:
+                    try:
+                        tree.check_goal_ids(named, for_events=True)
+                    except ValueError as exc:
+                        problems.append(f"{label}: its facets: {exc}")
+                decision = replace(decision, facets=facets)
+            checked.append(decision)
+        if problems:
+            raise CompactionError("\n".join(problems))
+        return checked
+
+    def _checked_what_matters(self, additions: list[WhatMatters]) -> dict[str, list[str]]:
+        """`additions` by goal id; CompactionError for an unknown goal or
+        a line that isn't one."""
+        if not additions:
+            return {}
+        if self._details is None:
+            raise CompactionError("this calendar has no goal descriptions to add what matters to")
+        tree = self._goals.tree() if self._goals else None
+        found: dict[str, list[str]] = {}
+        problems = []
+        for addition in additions:
+            if tree is not None and addition.goal_id not in tree.by_id:
+                problems.append(f"what_matters: {addition.goal_id!r} isn't a goal (get_goals lists them)")
+                continue
+            for item in addition.items:
+                text = " ".join(item.split())
+                if not text or len(text) > 300:
+                    problems.append(f"what_matters: each item is one line of at most 300 characters, not {item!r}")
+                elif text not in found.setdefault(addition.goal_id, []):
+                    found[addition.goal_id].append(text)
+        if problems:
+            raise CompactionError("\n".join(problems))
+        return {g: items for g, items in found.items() if items}
 
     def _move_marker(self, at: datetime) -> list[str]:
         """Move the last-compaction marker to `at`, if there's a marker;
@@ -1184,6 +1350,25 @@ def _candidates(timestamp: datetime, events: list[Event], previous: Event | None
     return ids
 
 
+def _traits_goals(days: list[_Day], tree: GoalTree) -> dict[str, list[str]]:
+    """For each of the days' past events that counts toward a goal rated
+    by traits -- one of its goals, or their ancestors, has a traits measure
+    -- those goals, by event id."""
+    rated = [g.id for g in tree.goals if g.active and isinstance(g.measure, dict) and g.measure.get("kind") == "traits"]
+    if not rated:
+        return {}
+    found: dict[str, list[str]] = {}
+    for day in days:
+        for event in day.events:
+            if not event.id or event.start >= day.now or event.status == "cancelled":
+                continue
+            ids = [*(event.goal_ids or ()), *((event.facets.with_goal_ids or []) if event.facets else [])]
+            goals = [g for g in rated if any(tree.under(i, g) for i in ids if i in tree.by_id)]
+            if goals:
+                found[event.id] = goals
+    return found
+
+
 def _goal_names(tree: GoalTree | None) -> dict[str, str]:
     return {g.id: g.name or g.id for g in tree.goals if g.id} if tree is not None else {}
 
@@ -1207,6 +1392,9 @@ def _patch_for(step: JournalStep) -> Event:
         value = getattr(after, name)
         if value is not None and value != getattr(before, name):
             setattr(patch, name, value)
+    if after.facets != before.facets:
+        # Empty facets remove them: see Event.facets.
+        patch.facets = facets_from_dict(after.facets)
     if after.is_fixed_time:
         # An actual event is pinned explicitly, not left to inherit it
         # from its label.

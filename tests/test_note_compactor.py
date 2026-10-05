@@ -23,7 +23,9 @@ from utilities.note_compaction import (
     EventDecision,
     EventState,
 )
-from utilities.note_compactor import NoteCompactor
+from utilities.note_compactor import NoteCompactor, WhatMatters
+from utilities.facets import Facets
+from utilities.goal_details import GoalDetails
 from utilities.goal_sheet import Goal
 from utilities.goals import GoalTree
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
@@ -57,7 +59,7 @@ class FakeCalendar:
 
 
 class Setup:
-    def __init__(self, notes, events=None, now="11:30", goals=None):
+    def __init__(self, notes, events=None, now="11:30", goals=None, details=None):
         self.sheets = FakeSheets()
         self.sheets.write_rows_in_sheet(
             "s", _NOTES_TAB, "A1:C1", [["timestamp", "description", "compaction_id"]]
@@ -81,6 +83,7 @@ class Setup:
             clock=lambda: time_at(self.now),
             goals=self.goals,
             marker=self.marker,
+            details=details,
         )
 
     @property
@@ -1423,3 +1426,103 @@ class TestSheetReadRequests:
             "compact_notes dry run": 1,
             "compact_notes apply": 1,
         }
+
+
+class TestTraits:
+    """Events counting toward a goal rated by traits get facets, and that
+    goal's "What matters to them" section can grow."""
+
+    _GOALS = [
+        Goal(id="pal", name="Person", status="active", label_id="l-pal", measure={"kind": "traits", "traits": "all"}),
+        Goal(id="pal-v", parent_id="pal", name="Visits", status="active", label_id="l-v"),
+        _goal("work", "Time Tracker"),
+    ]
+
+    def _setup(self, events=None, **kwargs):
+        events = events if events is not None else _day()
+        by_id = {e.id: e for e in events}
+        by_id["e1"].goal_ids = ["pal-v"]  # Email, counting toward the person's goal through a sub-goal
+        by_id["e2"].goal_ids = ["work"]
+        sheets = FakeSheets()
+        details = GoalDetails.ensure(sheets, "s")
+        details.set("pal", "Notes.\n\n## What matters to them\n\n- 2026-09-01: loves jazz\n")
+        return Setup([("09:05", "email"), ("10:20", "report")], events=events, goals=self._GOALS,
+                     details=details, **kwargs), details
+
+    def test_prepare_marks_events_to_give_facets_and_shows_each_goals_digest(self):
+        earlier = event_at("09:00-10:00", id="old", summary="Jazz night", goal_ids=["pal"],
+                           facets=Facets(activity="jazz club", place="the cellar"))
+        earlier = replace(earlier, start=earlier.start - timedelta(days=10), end=earlier.end - timedelta(days=10))
+        setup, _ = self._setup(events=[earlier] + _day())
+
+        context = setup.compactor.prepare()
+
+        by_id = {e.id: e for e in context.events}
+        assert by_id["e1"].traits_goal_ids == ["pal"]
+        assert by_id["e2"].traits_goal_ids is None
+        assert by_id["e3"].traits_goal_ids is None  # Lunch is after now
+        (goal,) = context.traits_goals
+        assert (goal.id, goal.what_matters) == ("pal", "- 2026-09-01: loves jazz")
+        assert "jazz club ×1" in goal.digest and "the cellar ×1" in goal.digest
+        assert "FACETS" in context.instructions
+
+    def test_a_keep_records_facets_and_shows_them_in_the_timeline(self):
+        setup, _ = self._setup()
+        facets = Facets(with_goal_ids=["pal"], activity="Jazz  Club", attention=3)
+
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facets=facets)])
+
+        change = next(c for c in planned.changes if c.event_id == "e1")
+        assert change.after.facets == {"with": ["pal"], "activity": "jazz club", "attention": 3}
+        assert "▹ with Person · jazz club ·\n        attention 3" in planned.timeline.text
+        assert "▸ facets   ▹ facets being set" in planned.timeline.text
+
+        setup.compactor.commit(planned.compaction_id)
+
+        patch = next(c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e1")
+        assert patch.facets == Facets(with_goal_ids=["pal"], activity="jazz club", attention=3)
+
+    def test_facets_that_arent_well_formed_are_refused(self):
+        setup, _ = self._setup()
+
+        with pytest.raises(CompactionError, match=r"decision 1 \(keep e1\): its facets \"effort\" must be"):
+            setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facets=Facets(effort=7))])
+        with pytest.raises(CompactionError, match="its facets: 'nobody' isn't a goal"):
+            setup.compactor.dry_run(
+                [EventDecision(action="keep", event_id="e1", facets=Facets(with_goal_ids=["nobody"]))]
+            )
+        with pytest.raises(CompactionError, match="facets only go with 'keep' or 'create'"):
+            setup.compactor.dry_run([EventDecision(action="cancel", event_id="e1", facets=Facets(effort=1))])
+
+    def test_a_created_event_takes_facets(self):
+        setup, _ = self._setup()
+        create = EventDecision(
+            action="create", summary="Call", start_note=setup.note_id(2), end=time_at("10:00"),
+            goal_ids=["pal"], facets=Facets(attention=2),
+        )
+
+        planned = setup.compactor.dry_run([EventDecision(action="cancel", event_id="e1"), create])
+        setup.compactor.commit(planned.compaction_id)
+
+        assert setup.client.create_event.call_args.args[0].facets == Facets(attention=2)
+
+    def test_what_matters_is_added_dated_when_the_plan_is_applied(self):
+        setup, details = self._setup()
+        additions = [WhatMatters(goal_id="pal", items=["starts a new job in November", "loves jazz"])]
+
+        planned = setup.compactor.dry_run([], what_matters=additions)
+
+        assert details.get("pal").count("- ") == 1  # Nothing yet.
+        assert any("starts a new job in November" in w for w in planned.warnings)
+        setup.compactor.commit(planned.compaction_id)
+        day = time_at("11:30").date().isoformat()
+        assert details.get("pal") == (
+            "Notes.\n\n## What matters to them\n\n- 2026-09-01: loves jazz\n"
+            f"- {day}: starts a new job in November\n"
+        )
+
+    def test_what_matters_for_an_unknown_goal_is_refused(self):
+        setup, _ = self._setup()
+
+        with pytest.raises(CompactionError, match="'nobody' isn't a goal"):
+            setup.compactor.dry_run([], what_matters=[WhatMatters(goal_id="nobody", items=["x"])])
