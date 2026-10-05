@@ -41,6 +41,7 @@ from utilities.goal_sheet import Goal
 from utilities.goals import GoalTree
 from utilities.health_days import Assessment
 from utilities.traits import (
+    activity_label,
     DEFAULT_MIN_CREATIVE,
     DEFAULT_TARGET,
     DEFAULT_WEEKS,
@@ -140,6 +141,14 @@ def selected_traits(measure: dict[str, Any], traits: list[Trait]) -> tuple[list[
     )
 
 
+def parts_of(trait: Trait, measure: dict[str, Any]) -> list[dict[str, Any]]:
+    """`trait`'s parts for a goal with `measure`: the goal's own, if its
+    measure gives them, else the trait's."""
+    own = (measure.get("parts") or {}).get(trait.id) if isinstance(measure.get("parts"), dict) else None
+    parts = own if isinstance(own, list) and own else trait.parts
+    return parts if isinstance(parts, list) else []
+
+
 def reach(measure: dict[str, Any], traits: list[Trait]) -> tuple[timedelta, timedelta, bool]:
     """How far before the end of the day being rated a traits measure
     reads events, how far after it (for continuity's next event), and
@@ -147,7 +156,7 @@ def reach(measure: dict[str, Any], traits: list[Trait]) -> tuple[timedelta, time
     window = measure.get("window_days", DEFAULT_WINDOW_DAYS)
     back, ahead, cancelled = timedelta(days=window), timedelta(), False
     for trait in selected_traits(measure, traits)[0]:
-        for part in trait.parts if isinstance(trait.parts, list) else []:
+        for part in parts_of(trait, measure):
             if part_problems(part):
                 continue
             kind = part["kind"]
@@ -186,7 +195,7 @@ def score_traits(
     scope = Scope(goal, tree, events)
     scored = []
     for trait in chosen:
-        parts = trait.parts if isinstance(trait.parts, list) else []
+        parts = parts_of(trait, measure)
         part_scores = [
             _part(goal, part, key, window, window_days, events, cancelled, tree, scope, judgments.get(trait.id, {}))
             for part, key in zip(parts, part_keys(parts))
@@ -319,10 +328,19 @@ def _part(
             return score(judged[key], "Judged in the reflection")
         return score(None, "To be judged in the reflection")
     if kind in ("count", "duration"):
-        spec = {"interval_days": window_days, **{k: v for k, v in part.items() if k != "weight"}}
-        rating, said, _metrics = _over_interval(goal, spec, window, events, tree, kind=kind)
+        spec = {"interval_days": window_days, **{k: v for k, v in part.items() if k not in ("weight", "activity")}}
+        counted = None
+        if isinstance(part.get("activity"), str):
+            wanted = activity_label(part["activity"])
+            counted = [
+                e for e in scope.with_events
+                if e.facets is not None and e.facets.activity and activity_label(e.facets.activity) == wanted
+            ]
+            spec.setdefault("noun", wanted)
+        rating, said, _metrics = _over_interval(goal, spec, window, events, tree, kind=kind, served=counted)
         interval = timedelta(days=spec["interval_days"])
-        used = [e for e in _served(events, goal, {}, tree) if e.start < end and e.end > end - interval]
+        pool = counted if counted is not None else _served(events, goal, {}, tree)
+        used = [e for e in pool if e.start < end and e.end > end - interval]
         return score(rating, said.rsplit(" → ", 1)[0], used)
     # follow_through
     spec = {k: v for k, v in part.items() if k != "weight"}

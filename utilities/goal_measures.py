@@ -32,8 +32,9 @@ than leaving the goal silently unmeasured.
 |              | `weights`) or "percentile" (with `percentile`) of the     |
 |              | immediate sub-goals' ratings                              |
 | `traits`     | `traits`: trait ids, or "all" (every active one); optional|
-|              | `weights` ({trait id: weight}) and `window_days` (> 0,    |
-|              | default 30)                                               |
+|              | `weights` ({trait id: weight}), `window_days` (> 0,       |
+|              | default 30) and `parts` ({trait id: [parts]}: this goal's |
+|              | own parts for that trait, instead of the Traits tab's)    |
 | (any kind)   | optional `only_if`: rated only on days with an event of   |
 |              | a goal                                                    |
 
@@ -160,7 +161,7 @@ MEASURE_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
         "subjective": (frozenset({"prompt"}), frozenset({"interval_days"})),
         "llm": (frozenset({"rubric"}), frozenset()),
         "rollup": (frozenset(), frozenset({"agg", "weights", "percentile"})),
-        "traits": (frozenset({"traits"}), frozenset({"weights", "window_days"})),
+        "traits": (frozenset({"traits"}), frozenset({"weights", "window_days", "parts"})),
     }.items()
 }
 """Each kind's (required, optional) fields, besides `kind` itself."""
@@ -285,6 +286,13 @@ def _traits_problems(measure: dict[str, Any], trait_ids: set[str] | None) -> lis
         if stray:
             problems.append(f"\"weights\" names {stray[0]!r}, which \"traits\" doesn't select")
         named += [t for t in weights if t not in named]
+    if "parts" in measure:
+        # Imported here: utilities/traits.py imports this module.
+        from utilities.traits import parts_override_problems
+
+        problems += parts_override_problems(measure["parts"], None if selected == "all" else list(selected))
+        if isinstance(measure["parts"], dict):
+            named += [t for t in measure["parts"] if t not in named]
     if trait_ids is not None:
         unknown = [t for t in named if t not in trait_ids]
         if unknown:

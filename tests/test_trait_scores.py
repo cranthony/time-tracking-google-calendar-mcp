@@ -241,3 +241,51 @@ def test_trait_history_is_the_daily_mean_across_goals():
     ]
     assert history[0].name == "Generous"
     assert trait_history(assessments, SEED_TRAITS, ["reliable"]) == []
+
+
+class TestCadences:
+    """A goal's own parts for a trait, and count parts by activity."""
+
+    def test_a_count_by_activity_counts_only_events_of_that_activity(self):
+        events = [
+            _event(3, activity="Visit"),
+            _event(10, activity="drive"),
+            _event(12, goal_ids=["o1"], with_goal_ids=["p1"], activity="visit"),  # with them, by facets
+            _event(5),  # no facets
+        ]
+
+        part = _part({"kind": "count", "target": 2, "interval_days": 21, "activity": "visit"}, events)
+
+        assert (part.score, part.event_ids) == (100, ["e3", "e12"])
+        assert part.said == "2 of 2 visit in the last 21 days"
+
+    def test_a_goals_own_parts_replace_the_traits(self):
+        measure = {
+            "kind": "traits",
+            "traits": ["t"],
+            "parts": {"t": [{"kind": "count", "target": 1, "interval_days": 60, "activity": "call"}]},
+        }
+        events = [_event(40, activity="call")]
+
+        rated = _score([{"kind": "count", "target": 1, "interval_days": 7}], events, measure=measure)
+
+        assert [(p.key, p.score) for p in rated.traits[0].parts] == [("count", 100)]
+        assert reach(measure, [_trait({"kind": "prep"})])[0] == timedelta(days=60)
+
+
+@pytest.mark.parametrize(
+    "parts, problem",
+    [
+        ({"reliable": []}, "\"parts\" for 'reliable' must be a list of at least one part"),
+        ({"creative": [{"kind": "prep"}]}, "\"parts\" names 'creative', which \"traits\" doesn't select"),
+        ({"reliable": [{"kind": "count"}]}, "\"parts\" for 'reliable': part 1 (count) needs \"target\""),
+        ({"reliable": [{"kind": "novelty", "activity": "x"}]}, "has no field \"activity\""),
+        ([], '"parts" must be {trait id: [parts]}'),
+    ],
+)
+def test_a_goals_own_parts_are_checked(parts, problem):
+    from utilities.goal_measures import measure_problems
+
+    found = measure_problems({"kind": "traits", "traits": ["reliable"], "parts": parts})
+
+    assert any(problem in p for p in found), found
