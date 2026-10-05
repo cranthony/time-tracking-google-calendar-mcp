@@ -32,6 +32,7 @@ from tests.fake_sheets import FakeSheets, FakeSheetsService
 from tests.test_goal_health import NOW, TODAY, YESTERDAY, FakeCalendar, _event
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
+from utilities.locations import Location
 from utilities.people import Circle, Person
 from utilities.goal_health import Assessment
 from utilities.goal_sheet import Goal
@@ -69,7 +70,7 @@ class _Server:
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
             "_calendar_client", "_reallocating_calendar", "_goals", "_goal_health", "_reflections",
-            "_noted_time_sheet", "_compaction_journal", "_note_compactor", "_recurrences", "_actions", "_people",
+            "_noted_time_sheet", "_compaction_journal", "_note_compactor", "_recurrences", "_actions", "_people", "_locations",
         ):
             monkeypatch.setattr(server, cached, None)
         # The seams: the clocks, so days fall on the test calendar's.
@@ -87,6 +88,7 @@ class _Server:
         self.walk = server.create_action(Action(name="Walk", group_id=self.outdoors)).created_id
         self.family = server.create_circle(Circle(name="Family")).created_id
         self.sam = server.create_person(Person(name="Sam", circles=[self.family])).created_id
+        self.home = server.create_location(Location(name="Home")).created_id
         evening = (NOW - timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
         self.calendar.events.append(
             _event(evening.isoformat()[:19], (evening + timedelta(hours=1)).isoformat()[:19], goal_ids=[cooking.id])
@@ -167,6 +169,12 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         "create_circle": lambda: server.create_circle(Circle(name="Friends")),
         "update_circle": lambda: server.update_circle(Circle(id=tools.family, note="n")),
         "delete_circle": lambda: server.delete_circle(tools.family),
+        # Locations only.
+        "get_locations": lambda: server.get_locations(),
+        "get_location": lambda: server.get_location("home"),
+        "create_location": lambda: server.create_location(Location(name="Studio")),
+        "update_location": lambda: server.update_location(Location(id=tools.home, hint="the apartment")),
+        "delete_location": lambda: server.delete_location(tools.home),
         "list_events": lambda: server.list_events(NOW - timedelta(days=2), NOW),
         "get_event": lambda: server.get_event(event_id),
         "delete_event": lambda: server.delete_event(event_id),

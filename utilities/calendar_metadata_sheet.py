@@ -154,3 +154,8 @@ CIRCLES_SHEET_ROLE = "circles"
 CIRCLES_SHEET_TITLE = "Circles"
 """See `utilities/people.py` for the tab this identifies -- the groups
 people belong to."""
+
+LOCATIONS_SHEET_ROLE = "locations"
+LOCATIONS_SHEET_TITLE = "Locations"
+"""See `utilities/locations.py`'s `Locations` for the tab this identifies
+-- the places events happen."""

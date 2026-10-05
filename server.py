@@ -24,6 +24,7 @@ from config import (
     build_compaction_journal,
     build_goal_details,
     build_goals,
+    build_locations,
     build_noted_time_sheet,
     build_people,
     build_traits,
@@ -53,6 +54,7 @@ from utilities.goal_health import Assessment, GoalHealth
 from utilities.reflection import ReflectionContext, ReflectionResult, Reflections, TraitJudgment
 from utilities.goal_sheet import Goal, GoalStatus
 from utilities.goals import CreatedGoal, GoalChanges, GoalList, Goals, GoalTree
+from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.compaction_journal import CompactionJournal
@@ -355,6 +357,7 @@ _traits: Traits | None = None
 _goal_details: GoalDetails | None = None
 _actions: Actions | None = None
 _people: People | None = None
+_locations: Locations | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -455,6 +458,18 @@ def get_people_store() -> People:
             if _people is None:
                 _people = build_people()
     return _people
+
+
+def get_location_store() -> Locations:
+    """Lazily construct and cache the Locations, the same way the other
+    get_* helpers cache theirs. Building it the first time adds the
+    Locations tab."""
+    global _locations
+    if _locations is None:
+        with WRITE_LOCK:
+            if _locations is None:
+                _locations = build_locations()
+    return _locations
 
 
 def _prefetch_people() -> None:
@@ -1703,6 +1718,71 @@ def delete_circle(circle_id: str) -> DeletedCircle:
         _prefetch_people()
         try:
             return get_people_store().delete_circle(circle_id)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_locations() -> list[Location]:
+    """Every location: a place the user's events happen ("Home", "Salsa
+    studio"), each with an id, a name and a hint for recognizing when an
+    event or note refers to it. Read-only."""
+    with track("get_locations"), cached_sheet_reads():
+        try:
+            return get_location_store().all()
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_location(id_or_name: str) -> Location:
+    """One location, by id or else by name (ignoring case). If there's
+    none, the error suggests close matches. Read-only."""
+    with track("get_location"), cached_sheet_reads():
+        try:
+            return get_location_store().get_location(id_or_name)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def create_location(location: Location) -> CreatedLocation:
+    """Add a location: a name (unique among locations) and a hint for
+    recognizing when an event or note refers to it -- other names for it,
+    an address, what happens there ("the apartment; 'home', 'my place'").
+    id is assigned. Returns the location and its id as created_id."""
+    with track("create_location"), cached_sheet_reads():
+        try:
+            return get_location_store().create_location(location)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+LocationField = Literal["hint"]
+"""Every Location field update_location can clear."""
+
+
+@tool
+@writes
+def update_location(location: Location, clear_fields: list[LocationField] | None = None) -> Location:
+    """Rename a location or change its hint, by id. Omitted properties keep
+    their value; list hint in clear_fields to blank it. Returns it as
+    updated."""
+    with track("update_location"), cached_sheet_reads():
+        try:
+            return get_location_store().update_location(location, clear_fields or ())
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def delete_location(location_id: str) -> Location:
+    """Delete a location, by id. Returns it as it was."""
+    with track("delete_location"), cached_sheet_reads():
+        try:
+            return get_location_store().delete_location(location_id)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 

@@ -37,6 +37,7 @@ from utilities.recurrences import Repeat
 from utilities.traits import SEED_TRAITS, Trait
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
+from utilities.locations import Location
 from utilities.people import Circle, Person
 
 UTC = timezone.utc
@@ -1201,6 +1202,32 @@ class TestPeopleTools:
             server.create_person(Person(name="Sam"))
 
 
+class TestLocationTools:
+    def test_delegate_to_the_store(self, monkeypatch):
+        locations = MagicMock()
+        monkeypatch.setattr(server, "get_location_store", lambda: locations)
+
+        server.get_locations()
+        server.get_location("Home")
+        server.create_location(Location(name="Home"))
+        server.update_location(Location(id="l1"), clear_fields=["hint"])
+        server.delete_location("l1")
+
+        locations.all.assert_called_once_with()
+        locations.get_location.assert_called_once_with("Home")
+        locations.create_location.assert_called_once_with(Location(name="Home"))
+        locations.update_location.assert_called_once_with(Location(id="l1"), ["hint"])
+        locations.delete_location.assert_called_once_with("l1")
+
+    def test_wrap_errors(self, monkeypatch):
+        locations = MagicMock()
+        locations.get_location.side_effect = ValueError("There's no location with the id or name 'x'")
+        monkeypatch.setattr(server, "get_location_store", lambda: locations)
+
+        with pytest.raises(ToolError, match="no location"):
+            server.get_location("x")
+
+
 class TestGoalDescriptionTools:
     def test_reads_and_replaces_a_goals_description(self, monkeypatch):
         _fake_goals(monkeypatch, _goal("g1"))
@@ -1623,6 +1650,8 @@ _READ_ONLY_TOOLS = {
     "get_person",
     "get_circles",
     "get_circle",
+    "get_locations",
+    "get_location",
 }
 
 
