@@ -103,8 +103,119 @@ class TestReallocatingCalendarListDayEvents:
 
         assert [e.id for e in events] == ["s"]
 
+    def test_skips_a_sleep_that_ends_by_end(self):
+        # The night before still overlaps start by a few seconds -- it
+        # doesn't end this day, the next one does.
+        start = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+        last_night = Event(
+            id="s1", start=start - timedelta(hours=6), end=start + timedelta(seconds=40),
+            is_end_of_day_sleep=True,
+        )
+        kept = Event(id="k", start=start + timedelta(hours=1), end=start + timedelta(hours=2))
+        tonight = Event(
+            id="s2", start=start + timedelta(hours=10), end=start + timedelta(hours=19),
+            is_end_of_day_sleep=True,
+        )
+        discarded = Event(id="d", start=start + timedelta(hours=19), end=start + timedelta(hours=20))
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[last_night, kept, tonight, discarded])
+
+        events = ReallocatingCalendar(client).list_day_events(start, start + timedelta(minutes=30))
+
+        assert [e.id for e in events] == ["s1", "k", "s2"]
+
+    def test_a_sleep_ending_after_end_still_ends_the_day(self):
+        # An event placed inside a sleep stays within that sleep's day.
+        start = datetime(2026, 1, 1, 3, 0, tzinfo=UTC)
+        sleep = Event(
+            id="s", start=start - timedelta(hours=5), end=start + timedelta(hours=4),
+            is_end_of_day_sleep=True,
+        )
+        discarded = Event(id="d", start=start + timedelta(hours=4), end=start + timedelta(hours=5))
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[sleep, discarded])
+
+        events = ReallocatingCalendar(client).list_day_events(start, start + timedelta(minutes=30))
+
+        assert [e.id for e in events] == ["s"]
+
+
+class TestReallocatingCalendarCreateEventWithoutReallocating:
+    def test_creates_an_event_that_fits_in_free_time(self):
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        anchor = Event(id="a1", start=start + timedelta(hours=1), end=start + timedelta(hours=2))
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[anchor])
+        client.create_event = MagicMock(side_effect=lambda event: event)
+        client.update_event = MagicMock()
+
+        new_event = Event(summary="New", start=start, end=start + timedelta(minutes=30))
+        result = ReallocatingCalendar(client).create_event(
+            new_event, ReallocationOptions(), reallocate=False
+        )
+
+        assert result == [new_event]
+        client.update_event.assert_not_called()
+
+    def test_refuses_naming_every_change_and_writes_nothing(self):
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        preceding = Event(id="p1", summary="Reading", start=start, end=start + timedelta(hours=1))
+        later = Event(
+            id="l1", summary="Chores", start=start + timedelta(hours=1), end=start + timedelta(hours=1, minutes=10)
+        )
+        tail = Event(id="t1", summary="Free", start=start + timedelta(hours=2), end=start + timedelta(hours=3))
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[preceding, later, tail])
+        client.create_event = MagicMock()
+        client.update_event = MagicMock()
+
+        new_event = Event(
+            summary="Call", start=start + timedelta(minutes=30), end=start + timedelta(minutes=50)
+        )
+        with pytest.raises(reallocating_calendar.ReallocationNeeded) as raised:
+            ReallocatingCalendar(client).create_event(
+                new_event, ReallocationOptions(), reallocate=False
+            )
+
+        assert str(raised.value) == (
+            "'Call' (2026-01-01T09:30:00+00:00 to 2026-01-01T09:50:00+00:00) doesn't fit without "
+            "changing other events, and reallocate is false. It would: change 'Reading' from "
+            "2026-01-01T09:00:00+00:00 until 2026-01-01T10:00:00+00:00 to 2026-01-01T09:00:00+00:00 "
+            "until 2026-01-01T09:30:00+00:00; split 'Reading', continuing it "
+            "2026-01-01T09:50:00+00:00 until 2026-01-01T10:00:00+00:00. Move it into free time, or "
+            "set reallocate true to make these changes."
+        )
+        assert isinstance(raised.value, ValueError)
+        client.create_event.assert_not_called()
+        client.update_event.assert_not_called()
+
 
 class TestReallocatingCalendarCreateEvent:
+    def test_creates_an_event_overlapping_the_last_seconds_of_last_nights_sleep(self):
+        # Sleep logged until 12:00:40, then an event created at 12:00:
+        # the day runs on to tonight's sleep, not just to 12:00:40.
+        start = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+        last_night = Event(
+            id="s1", start=start - timedelta(hours=6), end=start + timedelta(seconds=40),
+            is_end_of_day_sleep=True,
+        )
+        later = Event(id="l", start=start + timedelta(hours=1), end=start + timedelta(hours=2))
+        tonight = Event(
+            id="s2", start=start + timedelta(hours=10), end=start + timedelta(hours=19),
+            is_end_of_day_sleep=True,
+        )
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[last_night, later, tonight])
+        client.create_event = MagicMock(side_effect=lambda event: event)
+        client.update_event = MagicMock(side_effect=lambda event: event)
+
+        new_event = Event(summary="New", start=start, end=start + timedelta(minutes=30))
+        result = ReallocatingCalendar(client).create_event(new_event, ReallocationOptions())
+
+        assert new_event in result
+        assert last_night.end == start
+        assert (new_event.start, new_event.end) == (start, start + timedelta(minutes=30))
+
     def test_requires_start_and_end(self):
         client = make_client(MagicMock())
 
@@ -298,6 +409,35 @@ class TestReallocatingCalendarStaleLabels:
 
 
 class TestReallocatingCalendarUpdateEvent:
+    def test_without_reallocating_refuses_a_move_that_would_change_others(self):
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        moving = Event(id="m1", summary="Call", start=start, end=start + timedelta(minutes=20))
+        later = Event(id="l1", summary="Chores", start=start + timedelta(minutes=30), end=start + timedelta(hours=1))
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[moving, later])
+        client.update_event = MagicMock()
+        client.create_event = MagicMock()
+
+        updated = Event(id="m1", start=start + timedelta(minutes=20), end=start + timedelta(minutes=40))
+        with pytest.raises(reallocating_calendar.ReallocationNeeded, match="change 'Chores'"):
+            ReallocatingCalendar(client).update_event(updated, ReallocationOptions(), reallocate=False)
+
+        client.update_event.assert_not_called()
+        client.create_event.assert_not_called()
+
+    def test_without_reallocating_moves_into_free_time(self):
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+        moving = Event(id="m1", summary="Call", start=start, end=start + timedelta(minutes=20))
+        later = Event(id="l1", start=start + timedelta(hours=1), end=start + timedelta(hours=2))
+        client = make_client(MagicMock())
+        client.list_events = MagicMock(return_value=[moving, later])
+        client.update_event = MagicMock(side_effect=lambda event: event)
+
+        updated = Event(id="m1", start=start + timedelta(minutes=10), end=start + timedelta(minutes=30))
+        result = ReallocatingCalendar(client).update_event(updated, ReallocationOptions(), reallocate=False)
+
+        assert result == [updated]
+
     def test_requires_id(self):
         client = make_client(MagicMock())
         start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
