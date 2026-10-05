@@ -165,8 +165,13 @@ def _probe_facts(calendar: CalendarClient) -> None:
     _check("long facts are split across properties and read back whole", calendar.get_event(created.id).facts == long_facts)
     calendar.update_event(Event(id=created.id, facts=Facts(with_ids=["p1"])))
     _check("shorter facts leave no tail behind", calendar.get_event(created.id).facts == Facts(with_ids=["p1"]))
-    calendar.update_event(Event(id=created.id, cleared=frozenset({"facts"})))
-    _check("clearing removes them", calendar.get_event(created.id).facts is None)
+    judgments = {"self": {"adventurous": {"judgment": {"rating": 2, "scale": 3, "reasoning": "z" * 250}}}}
+    judgments.update({f"p{i}": judgments["self"] for i in range(8)})
+    calendar.update_event(Event(id=created.id, judgments=judgments))
+    _check("judgments round-trip too, across properties", calendar.get_event(created.id).judgments == judgments)
+    calendar.update_event(Event(id=created.id, cleared=frozenset({"facts", "judgments"})))
+    read = calendar.get_event(created.id)
+    _check("clearing removes them", read.facts is None and read.judgments is None)
 
 
 if __name__ == "__main__":

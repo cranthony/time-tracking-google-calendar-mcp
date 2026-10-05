@@ -94,6 +94,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import json
 import sys
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
@@ -174,6 +175,7 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "event_label_id": str,
     "action_ids": lambda s: [action_id.strip() for action_id in s.split(",") if action_id.strip()],
     "facts": lambda s: _parse_facts(s),
+    "judgments": json.loads,
 }
 
 

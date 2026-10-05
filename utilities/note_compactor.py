@@ -20,6 +20,10 @@ The flow, as the MCP tools expose it:
    are done. If it dies partway it can simply be called again: the
    journal remembers exactly what was approved and how far it got. A
    compaction that can't be finished can be `abandon`ed.
+4. `record_judgments` -- the facts written, the client judges the traits
+   of each event's people (see utilities/judgments.py), which the commit
+   hands it as requests; a compaction isn't complete until they're all
+   judged. `judgments_due` hands them over again -- to finish, or redo.
 
 A day at a time, all at once: one compaction takes on every day of
 uncompacted notes up to now (at most `_MAX_DAYS`, oldest first), but
@@ -101,6 +105,7 @@ from utilities.compaction_additions import (
     resolve,
 )
 from utilities.facts import SELF_ID, Facts, fact_problems
+from utilities.judgments import Judging, Judgment, JudgmentsDue, JudgmentsResult
 from utilities.locations import Locations
 from utilities.people import People
 from utilities.compaction_journal import (
@@ -357,6 +362,10 @@ class CompactionContext:
     """The id of a compaction that's begun but not finished, if any. It
     must be resumed or abandoned before a new one can start."""
 
+    judgments_pending: str | None = None
+    """The id of the last compaction, if its judgments aren't all made:
+    make them (judgments_due, record_judgments) before compacting more."""
+
     compaction_window_start: datetime | None = None
     """Where the events offered start: the later of the (first) day's
     start and the last compaction -- see the module docstring."""
@@ -400,6 +409,11 @@ class CompactionResult:
     additions: dict[str, list[dict]] | None = None
     """For a dry run: the actions, people and locations it adds when it's
     applied -- show these to the user too."""
+
+    judgments: JudgmentsDue | None = None
+    """Once applied: the judgments its events call for, to make now (see
+    utilities/judgments.py). The compaction isn't complete until they're
+    recorded."""
 
     def __post_init__(self) -> None:
         self.changes = self.changes or []
@@ -504,6 +518,7 @@ class NoteCompactor:
         people: People | None = None,
         locations: Locations | None = None,
         marker: CompactionMarker | None = None,
+        judging: Judging | None = None,
     ) -> None:
         """`calendar` reads the day's events (through the same
         action-aware view reallocation uses); `client` is what the planned
@@ -511,8 +526,11 @@ class NoteCompactor:
         label follows its actions). `actions`, `people` and `locations`
         are what events' actions and facts name, and what a plan can add
         to. `marker`, if given, is moved to each compaction once it's
-        stamped (see utilities/compaction_marker.py)."""
+        stamped (see utilities/compaction_marker.py). `judging`, if given,
+        makes and records the judgments that complete a compaction (see
+        utilities/judgments.py)."""
         self._marker = marker
+        self._judging = judging
         self._calendar = calendar
         self._client = client
         self._actions = actions
@@ -524,12 +542,14 @@ class NoteCompactor:
 
     def prepare(self) -> CompactionContext:
         self._prefetch()
+        # Before garbage collection, which may trim the last batch's days.
+        pending = self._judgments_pending()
         self._journal.garbage_collect()
         open_ids = self._journal.open_compactions()
         open_id = self._journal.load(open_ids[0][0]).batch_id if open_ids else None
         walked, remaining = self._walk(self._clock())
         if not walked:
-            return CompactionContext(notes=[], events=[], open_compaction=open_id)
+            return CompactionContext(notes=[], events=[], open_compaction=open_id, judgments_pending=pending)
         days = [w.day for w in walked]
         tree = self._actions.tree() if self._actions else None
         names = self._names()
@@ -615,7 +635,12 @@ class NoteCompactor:
             previous_note=PreviousNote(
                 timestamp=previous_note.timestamp, description=previous_note.description
             ) if previous_note is not None else None,
+            judgments_pending=pending,
         )
+
+    def prefetch(self) -> None:
+        """Read every tab a step reads, in one request -- see `_prefetch`."""
+        self._prefetch()
 
     def _prefetch(self, *, facts: bool = True) -> None:
         """Read the notes tab, the journal and (if `facts`) the actions,
@@ -631,6 +656,8 @@ class NoteCompactor:
                 tabs += self._people.whole_tabs
             if self._locations is not None:
                 tabs.append(self._locations.whole_tab)
+            if self._judging is not None:
+                tabs += self._judging.whole_tabs
         self._notes.prefetch(tabs)
 
     def _names(self, additions: Additions | None = None) -> dict[str, str]:
@@ -812,13 +839,76 @@ class NoteCompactor:
             self._journal.set_status(journal, STAMPED)
         steps = sum(len(d.steps) for d in days)
         notes = sum(len(d.note_ids) for d in days)
+        warnings = [w for d in days for w in d.warnings] + self._move_marker(days[-1].now)
+        # The days as loaded, not read again after all that writing.
+        due = self._due(compaction_id, days, redo=False) if self._judging is not None else None
+        message = f"applied {steps} change(s) and marked {notes} note(s) compacted"
+        if due is not None and due.requests:
+            message += (
+                f". The compaction isn't complete yet: make the {len(due.requests)} judgment(s) in `judgments` "
+                "now, yourself, and record them with record_judgments (see its instructions)"
+            )
         return CompactionResult(
             status="applied",
             compaction_id=compaction_id,
             changes=changes,
-            warnings=[w for d in days for w in d.warnings] + self._move_marker(days[-1].now),
-            message=f"applied {steps} change(s) and marked {notes} note(s) compacted",
+            warnings=warnings,
+            message=message,
+            judgments=due if due is not None and due.requests else None,
         )
+
+    # -- judgments -------------------------------------------------------------
+
+    def judgments_due(self, compaction_id: str | None = None, *, redo: bool = False) -> JudgmentsDue | None:
+        """The judgments the stamped compaction `compaction_id` (by default
+        the last one) calls for: those not made yet, or with `redo`, all of
+        them, each with the one made already. `None` without judging, or
+        with no stamped compaction."""
+        if self._judging is None:
+            return None
+        compaction_id = compaction_id or self._journal.last_stamped_batch()
+        if compaction_id is None:
+            return None
+        return self._due(compaction_id, self._journal.load_batch(compaction_id), redo=redo)
+
+    def _due(self, compaction_id: str, days: list[JournalCompaction], *, redo: bool) -> JudgmentsDue:
+        if not all(d.status == STAMPED for d in days):
+            raise CompactionError(f"compaction {compaction_id} hasn't been applied, so its events have nothing to judge")
+        return JudgmentsDue(
+            compaction_id=compaction_id,
+            requests=self._judging.requests(*_judged_events(days), include_judged=redo),
+        )
+
+    def record_judgments(self, compaction_id: str, judgments: list[Judgment]) -> JudgmentsResult:
+        """Record `judgments` on the compaction's events; whether that
+        completes it."""
+        due = self.judgments_due(compaction_id, redo=True)
+        if due is None:
+            raise CompactionError("this calendar has no traits to judge")
+        try:
+            recorded = self._judging.record(due.requests, judgments)
+        except ValueError as exc:
+            raise CompactionError(str(exc)) from exc
+        remaining = [r.id for r in self.judgments_due(compaction_id).requests]
+        return JudgmentsResult(
+            compaction_id=compaction_id,
+            recorded=recorded,
+            remaining=remaining,
+            complete=not remaining,
+            message=(
+                f"recorded {recorded} judgment(s); compaction {compaction_id} is complete" if not remaining
+                else f"recorded {recorded} judgment(s); {len(remaining)} still to make before compaction "
+                f"{compaction_id} is complete (see `remaining`)"
+            ),
+        )
+
+    def _judgments_pending(self) -> str | None:
+        """The last compaction's id, if it has judgments still to make."""
+        try:
+            due = self.judgments_due()
+        except CompactionError:
+            return None
+        return due.compaction_id if due is not None and due.requests else None
 
     def _checked_facts(self, decisions: list[EventDecision], additions: Additions) -> list[EventDecision]:
         """`decisions` with their facts normalized; CompactionError if any
@@ -1243,6 +1333,22 @@ def _require_not_being_applied(journal: CompactionJournal, note_id: str) -> None
                 f"finish it with compact_notes(compaction_id={batch_id!r}, dry_run=False), or "
                 "abandon it with abandon_compaction, first"
             )
+
+
+def _judged_events(days: list[JournalCompaction]) -> tuple[list[str], tuple[datetime, datetime]]:
+    """The ids of a batch's events whose facts it set -- updated or created
+    -- and the span of time they're in."""
+    ids: list[str] = []
+    spans: list[tuple[datetime, datetime]] = []
+    for day in days:
+        for step in day.steps:
+            if step.action == "cancel" or step.after is None or not step.after.facts:
+                continue
+            ids.append(step.event_id if step.action == "update" else _new_event_id(day.id, step.step))
+            spans.append((step.after.start, step.after.end))
+    if not spans:
+        return [], (days[0].now, days[0].now)
+    return ids, (min(s for s, _ in spans), max(e for _, e in spans))
 
 
 def _decisions_for(

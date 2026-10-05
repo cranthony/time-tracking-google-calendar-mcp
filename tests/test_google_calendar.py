@@ -496,6 +496,8 @@ class TestEvent:
                     "cascading-time-tracker-facts-6": None,
                     "cascading-time-tracker-facts-7": None,
                     "cascading-time-tracker-facts-8": None,
+                    "cascading-time-tracker-judgments": None,
+                    **{f"cascading-time-tracker-judgments-{i}": None for i in range(2, 17)},
                 }
             },
         }
