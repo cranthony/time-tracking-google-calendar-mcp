@@ -11,7 +11,7 @@ from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.goal_calendar import GoalCalendar
 from utilities.goal_sheet import GOAL_STATUSES, Goal
-from utilities.goals import GoalList, GoalTree, ListedGoal
+from utilities.goals import AffectedGoal, GoalChanges, GoalList, GoalTree, ListedGoal, PlacedGoal
 from utilities.note_compaction import CompactionError
 from utilities.noted_time_sheet import NotedTime, SheetNote
 
@@ -37,6 +37,10 @@ def _raw_event_label(**overrides) -> RawEventLabel:
 
 def _goal_list(*goals: ListedGoal) -> GoalList:
     return GoalList(goals=list(goals), label_slots_used=len(goals))
+
+
+def _goal_changes(*changed: PlacedGoal, affected: tuple[AffectedGoal, ...] = ()) -> GoalChanges:
+    return GoalChanges(changed=list(changed), affected=list(affected), label_slots_used=len(changed))
 
 
 class TestParseDuration:
@@ -754,21 +758,36 @@ class TestMainGoals:
         goals.get_goals.assert_called_once_with(None)
         assert "No goals found." in capsys.readouterr().out
 
-    def test_create_goal(self, monkeypatch):
+    def test_create_goal(self, capsys, monkeypatch):
         goals = _fake_goals(monkeypatch)
-        goals.create_goal.return_value = _goal_list()
+        goals.create_goal.return_value = _goal_changes(
+            PlacedGoal(id="g2", name="Cooking", status="active", path="Hosting › Cooking")
+        )
 
         self._run(monkeypatch, "create_goal", "name=Cooking", "parent_id=g1", "priority=2")
 
         goals.create_goal.assert_called_once_with(Goal(name="Cooking", parent_id="g1", priority=2))
+        out = capsys.readouterr().out
+        assert "g2\tactive\tHosting › Cooking" in out
+        assert "(1 of 200 event labels in use)" in out
 
-    def test_update_goal_sets_and_clears(self, monkeypatch):
+    def test_update_goal_sets_and_clears(self, capsys, monkeypatch):
         goals = _fake_goals(monkeypatch)
-        goals.update_goal.return_value = _goal_list()
+        goals.update_goal.return_value = _goal_changes(
+            PlacedGoal(id="g1", name="Cooking", status="inactive", path="Cooking"),
+            affected=(
+                AffectedGoal(
+                    id="g2", name="Tofu", parent_id="g1", status="active", effective_priority=None,
+                    effective_color="#039be5", path="Cooking › Tofu",
+                ),
+            ),
+        )
 
         self._run(monkeypatch, "update_goal", "g1", "status=inactive", "--clear", "measure")
 
         goals.update_goal.assert_called_once_with(Goal(id="g1", status="inactive"), ["measure"])
+        out = capsys.readouterr().out
+        assert "g1\tinactive\tCooking\nAlso affected:\ng2\tactive\tCooking › Tofu" in out
 
     def test_update_goal_needs_something_to_do(self, monkeypatch):
         _fake_goals(monkeypatch)
@@ -776,13 +795,14 @@ class TestMainGoals:
         with pytest.raises(SystemExit):
             self._run(monkeypatch, "update_goal", "g1")
 
-    def test_sync_goals(self, monkeypatch):
+    def test_sync_goals(self, capsys, monkeypatch):
         goals = _fake_goals(monkeypatch)
-        goals.sync.return_value = _goal_list()
+        goals.sync.return_value = _goal_changes()
 
         self._run(monkeypatch, "sync_goals")
 
         goals.sync.assert_called_once_with()
+        assert "No goals changed." in capsys.readouterr().out
 
     def test_errors_exit_with_the_message(self, monkeypatch):
         goals = _fake_goals(monkeypatch)

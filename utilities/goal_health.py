@@ -34,7 +34,9 @@ the calendar can answer -- `duration` (minutes of its events over its
 interval), `count` (how many), `time_constraint` (when the day's events
 start or end), `time_window` (whether one of them falls in a window of
 the day), `follow_through` (a running score its cancelled events lower
-and its kept ones restore) and `rollup` (its immediate sub-goals'
+and its kept ones restore), `traits` (its traits' scores, from parts
+computed over its events and their facets -- see
+utilities/trait_scores.py) and `rollup` (its immediate sub-goals'
 confirmed ratings that day),
 or "skip" for any goal, whatever its kind, whose measure's `only_if`
 names a goal with no events that day -- each with a one-line
@@ -54,8 +56,8 @@ from calendar_clients.google_calendar import CalendarClient, Event
 from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_measures import weight_on
 from utilities.goal_periods import Period, period_containing
-from utilities.goal_sheet import GOAL_STATUSES, Goal
-from utilities.goals import OVERALL_ID, GoalList, Goals, GoalTree
+from utilities.goal_sheet import Goal
+from utilities.goals import OVERALL_ID, GoalChanges, Goals, GoalTree
 from utilities.health_days import (
     Assessment,
     DayReflection,
@@ -69,6 +71,7 @@ from utilities.health_days import (
 )
 from utilities.health_summary import day_summary
 from utilities.sleep_days import current_day_from, listing_range, period_window
+from utilities.traits import Trait
 
 __all__ = ["Assessment", "DayReflection", "GoalHealth", "HealthDay", "band", "day_period"]
 
@@ -82,7 +85,12 @@ MAX_RATIONALE_BYTES = 8000
 """How long a rationale, or a journal, may be."""
 
 _MAX_PROPERTY_CHARS = 1024
-"""How long an explanation, or the metrics as JSON, may be."""
+"""How long an explanation may be."""
+
+_MAX_METRICS_CHARS = 4000
+"""How long the metrics may be, as JSON: an assessment is kept across as
+many properties as it needs (utilities/health_days.py), and a traits
+rating's run longer than most."""
 
 TREND_LENGTH = 8
 
@@ -92,9 +100,11 @@ HISTORY_DAYS = 12
 _CACHE_HISTORY = timedelta(days=3 * 366)
 """How far back the health cache looks for a goal's latest rating."""
 
-MEASURED_KINDS = frozenset({"duration", "count", "time_constraint", "time_window", "follow_through", "rollup"})
+MEASURED_KINDS = frozenset(
+    {"duration", "count", "time_constraint", "time_window", "follow_through", "traits", "rollup"}
+)
 
-_EVENT_KINDS = frozenset({"duration", "count", "time_constraint", "time_window", "follow_through"})
+_EVENT_KINDS = frozenset({"duration", "count", "time_constraint", "time_window", "follow_through", "traits"})
 """The measure kinds read from the calendar's events."""
 
 
@@ -112,9 +122,13 @@ class GoalHealth:
         *,
         now: Callable[[], datetime] | None = None,
         today: Callable[[], date] | None = None,
+        traits: Callable[[], list[Trait]] | None = None,
     ) -> None:
+        """`traits` reads the Traits tab (see utilities/traits.py), for
+        goals with a traits measure; without it, they aren't measured."""
         self._client = calendar_client
         self._goals = goals
+        self._traits = traits
         self._now = now or (lambda: datetime.now(calendar_client.get_time_zone()))
         self._today = today or (
             lambda: current_day_from(calendar_client.list_events, calendar_client.get_time_zone(), self._now())
@@ -239,8 +253,8 @@ class GoalHealth:
             raise ValueError(f"{label}: a rating is a whole number from 0 to 100, or \"skip\"")
         if assessment.explanation and len(assessment.explanation) > _MAX_PROPERTY_CHARS:
             raise ValueError(f"{label}: the explanation is longer than {_MAX_PROPERTY_CHARS} characters")
-        if assessment.metrics is not None and len(_json(assessment.metrics)) > _MAX_PROPERTY_CHARS:
-            raise ValueError(f"{label}: the metrics are longer than {_MAX_PROPERTY_CHARS} characters as JSON")
+        if assessment.metrics is not None and len(_json(assessment.metrics)) > _MAX_METRICS_CHARS:
+            raise ValueError(f"{label}: the metrics are longer than {_MAX_METRICS_CHARS} characters as JSON")
         if len((assessment.rationale or "").encode()) > MAX_RATIONALE_BYTES:
             raise ValueError(
                 f"{label}: the rationale is longer than {MAX_RATIONALE_BYTES} bytes"
@@ -319,26 +333,8 @@ class GoalHealth:
         `confirmed` holds that day's confirmed ratings by goal, for
         rollups."""
         measures = [tree.measure(g.id) or {} for g in goals]
-        span = day_period(day)
-        tz = self._client.get_time_zone()
-        window: tuple[datetime, datetime] | None = None
-        events: list[Event] = []
-        cancelled: list[Event] = []
-        if any(m.get("kind") in _EVENT_KINDS or isinstance(m.get("only_if"), dict) for m in measures):
-            # With the sleeps that bound the day, which runs from waking to
-            # waking -- see utilities/sleep_days.py -- and as far back as
-            # the longest look back.
-            first, last = listing_range(span, tz)
-            first = min([first] + [first - _look_back(m) for m in measures if m.get("kind") in _LOOKS_BACK])
-            if any(m.get("kind") == "follow_through" for m in measures):
-                listed = self._client.list_events(first, last, show_deleted=True)
-                listed = self._with_series_goals(listed)
-            else:
-                listed = self._client.list_events(first, last)
-            filled = fill_in_from_goals(listed, tree)
-            events = [e for e in filled if e.status != "cancelled"]
-            cancelled = [e for e in filled if e.status == "cancelled"]
-            window = period_window(span, events, tz, self._now())
+        traits = self._traits() if self._traits and any(m.get("kind") == "traits" for m in measures) else []
+        window, events, cancelled = self._events_for(day, measures, tree, traits)
         proposals: list[Assessment | None] = []
         for goal, measure in zip(goals, measures):
             kind = measure.get("kind")
@@ -350,6 +346,11 @@ class GoalHealth:
                 measured = _rollup(goal, measure, tree, confirmed, day)
             elif kind == "follow_through" and window is not None:
                 measured = _follow_through(goal, measure, window, events, cancelled, tree)
+            elif kind == "traits" and window is not None and self._traits is not None:
+                from utilities.trait_scores import score_traits
+
+                scored = score_traits(goal, measure, traits, window, events, cancelled, tree)
+                measured = scored.rating, scored.explanation, scored.metrics()
             elif kind in _MEASURES and window is not None:
                 measured = _MEASURES[kind](goal, measure, day, window, events, tree)
             else:
@@ -369,6 +370,59 @@ class GoalHealth:
                 )
             )
         return proposals
+
+    def traits_rating(self, goal_id: str, day: date | None = None, judgments=None):
+        """How `goal_id`'s traits measure rates `day` (default: the last
+        one that's over), part by part, with the events behind each part:
+        utilities/trait_scores.py's TraitsRating. `judgments` gives judgment
+        parts' scores, by trait id then part key. Writes nothing."""
+        from utilities.trait_scores import score_traits
+
+        tree = self._goals.tree()
+        tree.check_goal_ids([goal_id])
+        goal = tree.by_id[goal_id]
+        measure = goal.measure or {}
+        if measure.get("kind") != "traits":
+            raise ValueError(f"{goal.name!r} ({goal_id}) isn't measured by traits")
+        day = day or self._today() - timedelta(days=1)
+        traits = self._traits() if self._traits else []
+        window, events, cancelled = self._events_for(day, [measure], tree, traits)
+        rated = score_traits(goal, measure, traits, window, events, cancelled, tree, judgments)
+        return replace(rated, goal_id=goal_id, day=day)
+
+    def _events_for(
+        self, day: date, measures: list[dict[str, Any]], tree: GoalTree, traits: list[Trait]
+    ) -> tuple[tuple[datetime, datetime] | None, list[Event], list[Event]]:
+        """The day's window, and the events (kept, then cancelled) that
+        `measures` read to rate it -- none, and no window, if they read no
+        events."""
+        if not any(m.get("kind") in _EVENT_KINDS or isinstance(m.get("only_if"), dict) for m in measures):
+            return None, [], []
+        span = day_period(day)
+        tz = self._client.get_time_zone()
+        # With the sleeps that bound the day, which runs from waking to
+        # waking -- see utilities/sleep_days.py -- and as far back as the
+        # longest look back (and, for a traits measure's continuity, ahead).
+        first, last = listing_range(span, tz)
+        first = min([first] + [first - _look_back(m) for m in measures if m.get("kind") in _LOOKS_BACK])
+        show_deleted = any(m.get("kind") == "follow_through" for m in measures)
+        if traits:
+            from utilities.trait_scores import reach
+
+            starts, ends = first, last
+            for measure in measures:
+                if measure.get("kind") == "traits":
+                    back, ahead, needs_cancelled = reach(measure, traits)
+                    first, last = min(first, starts - back), max(last, ends + ahead)
+                    show_deleted = show_deleted or needs_cancelled
+        if show_deleted:
+            listed = self._with_series_goals(self._client.list_events(first, last, show_deleted=True))
+        else:
+            listed = self._client.list_events(first, last)
+        filled = fill_in_from_goals(listed, tree)
+        events = [e for e in filled if e.status != "cancelled"]
+        cancelled = [e for e in filled if e.status == "cancelled"]
+        return period_window(span, events, tz, self._now()), events, cancelled
 
     def _with_series_goals(self, events: list[Event]) -> list[Event]:
         """`events`, but with each cancelled instance of a recurring series
@@ -396,13 +450,16 @@ class GoalHealth:
 
     # -- the health cache ----------------------------------------------------
 
-    def rebuild_cache(self) -> GoalList:
-        """Recompute every goal's health cache from its confirmed history."""
+    def rebuild_cache(self) -> GoalChanges:
+        """Recompute every goal's health cache from its confirmed history.
+        Returns the goals whose cache changed."""
         tree = self._goals.tree()
-        self._refresh_cache({g.id for g in tree.goals if tree.rated(g.id) or g.health_period})
-        return self._goals.get_goals(GOAL_STATUSES)
+        changed = self._refresh_cache({g.id for g in tree.goals if tree.rated(g.id) or g.health_period})
+        return self._goals.changes(changed)
 
-    def _refresh_cache(self, goal_ids: set[str]) -> None:
+    def _refresh_cache(self, goal_ids: set[str]) -> list[str]:
+        """Recompute these goals' health caches; the ids of those that
+        changed."""
         tree = self._goals.tree()
         today = self._today()
         # Not just since it was created: history can be filled in for
@@ -414,7 +471,7 @@ class GoalHealth:
         updates = {
             goal_id: _health_of(confirmed.get(goal_id, []), today) for goal_id in goal_ids if goal_id in tree.by_id
         }
-        self._goals.set_health(updates)
+        return self._goals.set_health(updates)
 
     # -- the Goal Health calendar ---------------------------------------------
 

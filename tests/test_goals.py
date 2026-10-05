@@ -138,9 +138,26 @@ class TestCreateGoal:
         assert cooking.label_id == str(goals_module.uuid.uuid5(goals_module._LABEL_ID_NAMESPACE, cooking.id))
         assert calendar.named() == {cooking.label_id: ("Cooking", _PRIORITY_1_COLOR)}
         assert _UNNAMED in calendar.labels
-        assert [g.name for g in _others(result.goals)] == ["Cooking"]
+        assert [(g.id, g.path, g.effective_priority, g.effective_color) for g in result.changed] == [
+            (cooking.id, "Cooking", 1, _PRIORITY_1_COLOR)
+        ]
+        assert result.affected == []
         assert result.label_slots_used == 2  # the goal's, plus the unnamed one
-        assert result.created_id == _by_name(goals)["Cooking"].id
+        assert result.created_id == cooking.id
+
+    def test_reports_only_the_new_goal_without_reading_events(self):
+        calendar = _EventCalendar([_UNNAMED])
+        goals = Goals(
+            calendar, FakeSheets(), today=lambda: _TODAY,
+            last_compaction=lambda: datetime(2026, 10, 2, 21, tzinfo=timezone.utc),
+        )
+        goals.create_goal(Goal(name="Cooking"))
+
+        result = goals.create_goal(Goal(name="Tofu", parent_id=_by_name(goals)["Cooking"].id))
+
+        assert [g.path for g in result.changed] == ["Cooking › Tofu"]
+        assert not hasattr(result, "goals") and not hasattr(result.changed[0], "minutes_7d")
+        assert calendar.listed == []
 
     def test_ignores_read_only_fields(self):
         goals, _, _ = _goals()
@@ -333,12 +350,47 @@ class TestUpdateGoal:
         result = goals.update_goal(Goal(id=cooking.id, status="inactive"))
 
         assert calendar.named() == {}
-        assert [(g.name, g.status) for g in _others(result.goals)] == [("Cooking", "inactive")]
+        assert [(g.name, g.status) for g in result.changed] == [("Cooking", "inactive")]
+        assert result.label_slots_used == 1  # just the unnamed one
         assert _by_name(goals)["Cooking"].label_id == cooking.label_id
 
         goals.update_goal(Goal(id=cooking.id, status="active"))
 
         assert list(calendar.named()) == [cooking.label_id]
+
+    def test_reports_the_goals_whose_inherited_priority_color_or_path_changed(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking", priority=1))
+        goals.create_goal(Goal(name="Hosting"))
+        cooking, hosting = _by_name(goals)["Cooking"], _by_name(goals)["Hosting"]
+        goals.create_goal(Goal(name="Tofu", parent_id=cooking.id))
+        goals.create_goal(Goal(name="Curry", parent_id=cooking.id, priority=3, background_color="#123456"))
+        goals.create_goal(Goal(name="Silken", parent_id=_by_name(goals)["Tofu"].id, status="archived"))
+        by_name = _by_name(goals)
+
+        result = goals.update_goal(Goal(id=cooking.id, parent_id=hosting.id, priority=2))
+
+        assert [(g.id, g.path, g.effective_priority) for g in result.changed] == [
+            (cooking.id, "Hosting › Cooking", 2)
+        ]
+        tofu, silken, curry = by_name["Tofu"], by_name["Silken"], by_name["Curry"]
+        assert [(g.id, g.parent_id, g.status, g.path, g.effective_priority, g.effective_color) for g in result.affected] == [
+            (tofu.id, cooking.id, "active", "Hosting › Cooking › Tofu", 2, color_for_priority(2)[1]),
+            (silken.id, tofu.id, "archived", "Hosting › Cooking › Tofu › Silken", 2, color_for_priority(2)[1]),
+            # Its own priority and color, but a new path.
+            (curry.id, cooking.id, "active", "Hosting › Cooking › Curry", 3, "#123456"),
+        ]
+
+    def test_reports_nothing_else_when_nothing_else_changed(self):
+        goals, _, _ = _goals()
+        goals.create_goal(Goal(name="Cooking", priority=1))
+        cooking = _by_name(goals)["Cooking"]
+        goals.create_goal(Goal(name="Tofu", parent_id=cooking.id))
+
+        result = goals.update_goal(Goal(id=cooking.id, note="dinners"))
+
+        assert [g.note for g in result.changed] == ["dinners"]
+        assert result.affected == []
 
     def test_renaming_renames_the_label(self):
         goals, calendar, _ = _goals()
@@ -405,10 +457,22 @@ class TestSync:
         goals.create_goal(Goal(name="Cooking"))
         calendar.labels.append(RawEventLabel(id="stray", name="Hand-made", background_color="#000000"))
 
-        goals.sync()
+        result = goals.sync()
 
         assert list(calendar.named()) == [_by_name(goals)["Cooking"].label_id]
         assert _UNNAMED in calendar.labels
+        assert result.changed == []  # the stray label was no goal's
+        assert result.label_slots_used == 2
+
+    def test_reports_the_goals_whose_labels_it_changed(self):
+        goals, calendar, _ = _goals()
+        goals.create_goal(Goal(name="Cooking"))
+        goals.create_goal(Goal(name="Hosting"))
+        goals._sheet.write([replace(g, name="Dinners") if g.name == "Cooking" else g for g in goals.tree().goals])
+
+        result = goals.sync()
+
+        assert [g.name for g in result.changed] == ["Dinners"]
 
     def test_writes_nothing_when_already_in_sync(self):
         goals, calendar, _ = _goals()
@@ -521,11 +585,13 @@ class TestReorderGoals:
         by_name = _by_name(goals)
         writes = calendar.writes
 
-        goals.reorder_goals([by_name["Reading"].id, by_name["Cooking"].id, by_name["Hosting"].id])
+        result = goals.reorder_goals([by_name["Reading"].id, by_name["Cooking"].id, by_name["Hosting"].id])
         goals.reorder_goals([by_name["Curry"].id, by_name["Tofu"].id])
 
         assert self._names(goals) == ["Reading", "Cooking", "Curry", "Tofu", "Hosting"]
         assert calendar.writes == writes  # No labels touched.
+        assert [g.name for g in result.changed] == ["Reading", "Cooking", "Hosting"]
+        assert result.affected == []
 
     @pytest.mark.parametrize("which, message", [([], "Say which"), (["Cooking", "Tofu"], "Only sibling goals")])
     def test_refuses_what_it_cant_order(self, which, message):

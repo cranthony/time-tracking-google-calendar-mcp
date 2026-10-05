@@ -23,17 +23,19 @@ from config import (
     build_compaction_journal,
     build_goals,
     build_noted_time_sheet,
+    build_traits,
     get_allowed_user_ids,
     get_cors_allowed_origins,
     get_mcp_resource_url,
     get_workos_authkit_domain,
 )
 from oauth_proxy import oauth_proxy_handlers
+from utilities.facets import Facets, facet_problems
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_health import Assessment, GoalHealth
 from utilities.reflection import ReflectionContext, ReflectionResult, Reflections
 from utilities.goal_sheet import Goal, GoalStatus
-from utilities.goals import CreatedGoal, GoalList, Goals, GoalTree
+from utilities.goals import CreatedGoal, GoalChanges, GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.compaction_journal import CompactionJournal
@@ -43,6 +45,8 @@ from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.reallocation import ReallocationOptions
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.recurrences import Recurrences, Repeat, describe_rules
+from utilities.trait_scores import TraitDay, TraitsRating, trait_history
+from utilities.traits import ListedTrait, Trait, Traits, TraitStatus
 from workos_auth import WorkOSTokenVerifier
 
 # Without this, INFO-level logs (utilities/memory_diagnostics.py's, e.g.)
@@ -137,7 +141,18 @@ class PublicEvent:
     day ends for reallocation (see utilities/reallocating_calendar.py),
     so a wrong mark would quietly change what later updates shrink, move
     or cancel; it's only set by hand, via calendar_cli.py.
-    recurring_event_id is assigned by Google and can't be set at all."""
+    recurring_event_id is assigned by Google and can't be set at all.
+
+    facets say what happened at a past event, for its goals' traits (see
+    get_traits): with_goal_ids, the goals of the people present;
+    for_goal_ids, those of people it was done for who weren't there
+    (preparing a gift, say); activity and place, short labels reused from
+    the goal's history digest (lowercased when stored); creative (made
+    something together), effort (beyond showing up: prepared, cooked,
+    hosted, traveled) and attention (its quality, from the notes), each
+    0-3; new, what was new to them -- none, activity, place or both --
+    judged against the digest; and why, one line of evidence. Compaction
+    writes them; set them to replace them whole."""
 
     id: str | None = None
     summary: str | None = None
@@ -157,6 +172,7 @@ class PublicEvent:
     effective_priority: int | None = None
     is_end_of_day_sleep: bool | None = None
     recurring_event_id: str | None = None
+    facets: Facets | None = None
 
     @classmethod
     def from_event(cls, event: Event, tree: GoalTree | None = None) -> "PublicEvent":
@@ -185,6 +201,7 @@ class PublicEvent:
             effective_priority=event.effective_priority,
             is_end_of_day_sleep=event.is_end_of_day_sleep,
             recurring_event_id=event.recurring_event_id,
+            facets=event.facets,
         )
 
     def to_event(self, clear_fields: Collection[str] = ()) -> Event:
@@ -204,6 +221,7 @@ class PublicEvent:
             goal_ids=None if self.goals_from_label else self.goal_ids,
             priority=self.priority,
             status="cancelled" if self.is_cancelled else None,
+            facets=self.facets.normalized() if self.facets is not None else None,
             cleared=frozenset(clear_fields),
         )
 
@@ -303,6 +321,7 @@ _noted_time_sheet: NotedTimeSheet | None = None
 _compaction_journal: CompactionJournal | None = None
 _note_compactor: NoteCompactor | None = None
 _recurrences: Recurrences | None = None
+_traits: Traits | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -339,7 +358,7 @@ def get_goal_health() -> GoalHealth:
     if _goal_health is None:
         with WRITE_LOCK:
             if _goal_health is None:
-                _goal_health = GoalHealth(get_calendar_client(), get_goal_store())
+                _goal_health = GoalHealth(get_calendar_client(), get_goal_store(), traits=lambda: get_trait_store().all())
     return _goal_health
 
 
@@ -362,8 +381,23 @@ def get_goal_store() -> Goals:
         with WRITE_LOCK:
             if _goals is None:
                 # Goals' recent time is counted up to the last compaction.
-                _goals = build_goals(last_compaction=lambda: get_compaction_journal().last_stamped_now())
+                _goals = build_goals(
+                    last_compaction=lambda: get_compaction_journal().last_stamped_now(),
+                    trait_ids=lambda: [t.id for t in get_trait_store().all()],
+                )
     return _goals
+
+
+def get_trait_store() -> Traits:
+    """Lazily construct and cache the Traits, the same way the other get_*
+    helpers cache theirs. Building it the first time creates the Traits
+    tab, seeded with the starting traits."""
+    global _traits
+    if _traits is None:
+        with WRITE_LOCK:
+            if _traits is None:
+                _traits = build_traits()
+    return _traits
 
 
 def get_compaction_journal() -> CompactionJournal:
@@ -457,6 +491,23 @@ def _check_goal_ids(event: PublicEvent, *, existing: bool = False) -> None:
         raise ToolError(str(exc)) from exc
 
 
+def _check_facets(event: PublicEvent) -> None:
+    """Refuse facets that aren't well formed (see utilities/facets.py), or
+    whose with_goal_ids/for_goal_ids don't name goals."""
+    if event.facets is None:
+        return
+    facets = event.facets.normalized()
+    problems = facet_problems(facets)
+    if problems:
+        raise ToolError("Its facets " + "; ".join(problems))
+    named = [*(facets.with_goal_ids or ()), *(facets.for_goal_ids or ())]
+    if named:
+        try:
+            get_goal_store().tree().check_goal_ids(named, for_events=True)
+        except ValueError as exc:
+            raise ToolError(f"Its facets: {exc}") from exc
+
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -518,7 +569,9 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     ends a day; recurring_event_id is the id of an instance's recurring
     series (see get_recurrence and update_recurrence to read and edit the
     series as a whole); event_label_id is the calendar label derived from
-    its goals.
+    its goals. facets say what happened at a past event, for its goals'
+    traits: who it was with and for, what and where, and 0-3 judgments of
+    its creativity, effort and attention (see PublicEvent).
     goal_names, effective_priority, is_end_of_day_sleep,
     recurring_event_id and event_label_id are read-only: update_event and
     create_event ignore them."""
@@ -537,7 +590,9 @@ def get_event(id: str) -> PublicEvent:
         return _public_events([event])[0]
 
 
-EventField = Literal["description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority"]
+EventField = Literal[
+    "description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facets"
+]
 """Every event field update_event and update_recurrence can clear (see
 calendar_clients/google_calendar.py's CLEARABLE_EVENT_FIELDS)."""
 
@@ -557,9 +612,11 @@ def update_event(
     one in clear_fields to remove it instead (clearing priority makes the
     event follow its goals' priority again; clearing min_duration lets it
     shrink to nothing). Set goal_ids to change its goals ([] for none).
-    Returns the events affected by the update."""
+    Set facets to replace its facets whole (see list_events). Returns the
+    events affected by the update."""
     with track("update_event"), cached_sheet_reads():
         _check_goal_ids(event, existing=True)
+        _check_facets(event)
         try:
             applied = get_reallocating_calendar().update_event(
                 event.to_event(clear_fields or ()), ReallocationOptions(), reallocate=reallocate
@@ -604,7 +661,7 @@ def update_recurrence(
     Events edited on their own don't keep those edits (found with
     probes/series_edits.py): any edit resets every field but their times
     to the series' -- even fields it leaves out, so an event's own
-    priority, goal_ids or description are lost to a goals-only edit --
+    priority, goal_ids, facets or description are lost to a goals-only edit --
     and an edit to start/end moves them back onto the series' times too.
     Leave start/end out to keep each event's own time. A field left out
     is kept on the series itself, priority and goal_ids included."""
@@ -679,6 +736,7 @@ def create_event(event: PublicEvent, reallocate: bool = True) -> list[PublicEven
     have changed. Returns the events affected by the creation."""
     with track("create_event"), cached_sheet_reads():
         _check_goal_ids(event)
+        _check_facets(event)
         new_event = event.to_event()
         try:
             applied = get_reallocating_calendar().create_event(
@@ -745,9 +803,11 @@ def create_goal(goal: Goal) -> CreatedGoal:
     takes one of the calendar's event labels, and its events are shown in
     its color (background_color, or derived from priority). priority is
     inherited by sub-goals and events that don't set their own (an
-    event takes the highest of its goals'). id and label_id are assigned. Returns the resulting
-    proposed, active and inactive goals, and the new goal's id as
-    created_id.
+    event takes the highest of its goals'). id and label_id are assigned.
+    Returns the new goal's id as created_id, and only what changed, not
+    the whole tree (get_goals lists that): as changed, the new goal, with
+    its path, effective_priority and effective_color; and
+    label_slots_used of label_slots_total.
 
     Every active goal is reflected on daily, and its measure says how its
     health (0-100) is rated each day; one without a measure is rated as
@@ -791,8 +851,17 @@ def create_goal(goal: Goal) -> CreatedGoal:
     {"weight": 0, "until": "2026-11-05", "then": 1}, weighing "weight"
     on days before "until" and "then" from it on -- to set a sub-goal
     aside for a while (the daily reflection mentions it once its date
-    has come, until it's extended or replaced by a plain number); or "percentile" with "percentile": 0-100, 0 being
-    the lowest and 100 the highest). Only the fields shown are allowed. A
+    has come, until it's extended or replaced by a plain number); or
+    "percentile" with "percentile": 0-100, 0 being the lowest and 100
+    the highest), or {"kind": "traits", "traits":
+    "all", "weights": {"reliable": 2}, "window_days": 30} (rated by the
+    traits it selects -- "all" active ones, or a list of trait ids, see
+    get_traits -- as the weighted mean of their scores, a trait missing
+    from weights weighing 1; each trait's score is computed from its parts
+    over the goal's events (its own and its sub-goals') and their facets
+    in the window_days before the day's end; for people goals, which
+    select "all", and for goals of keeping one's word to oneself, which
+    select ["reliable"]). Only the fields shown are allowed. A
     duration, count, time_constraint, time_window or follow_through measure looks at the events of the
     goal and its sub-goals, or, given "events_of": "<goal id>", at those of
     that goal and its sub-goals instead, as though it were that goal (e.g.
@@ -806,7 +875,7 @@ def create_goal(goal: Goal) -> CreatedGoal:
     on days of practice. A subjective measure's interval passes over those
     skipped days."""
     with track("create_goal"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_store().create_goal(goal)
         except (ValueError, EventLabelConflictError) as exc:
@@ -820,7 +889,7 @@ CLEARABLE_FIELDS)."""
 
 @tool
 @writes
-def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> GoalList:
+def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> GoalChanges:
     """Update a goal by id. Omitted properties keep their current value;
     list one in clear_fields to blank it instead (clearing parent_id
     makes it a top-level goal; clearing background_color makes its color
@@ -834,10 +903,16 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
     is checked as for create_goal. The overall goal (id "overall") can be
     given a name, measure or note, but stays active and
     has no parent; no goal can name it as its parent, since every
-    top-level goal is already under it. Returns the resulting proposed,
-    active and inactive goals."""
+    top-level goal is already under it. Returns only what changed, not
+    the whole tree (get_goals lists that): as changed, the goal as
+    updated, with its path, effective_priority and effective_color; as
+    affected, briefly (id, name, parent_id, status, effective_priority,
+    effective_color, path), every other goal whose effective_priority,
+    effective_color or path changed as a result -- e.g. the sub-goals of
+    a goal moved, renamed or given a new priority or color; and
+    label_slots_used of label_slots_total."""
     with track("update_goal"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_store().update_goal(goal, clear_fields or ())
         except (ValueError, EventLabelConflictError) as exc:
@@ -846,14 +921,16 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
 
 @tool
 @writes
-def reorder_goals(goal_ids: list[str]) -> GoalList:
+def reorder_goals(goal_ids: list[str]) -> GoalChanges:
     """Put sibling goals (sharing a parent) in this order, among the places
     they already hold: goals are listed parents before children, siblings
     in this order. Name all of a parent's sub-goals (or all the top-level
-    goals) to order them all. Returns the resulting proposed, active and
-    inactive goals."""
+    goals) to order them all. Touches no labels. Returns only what changed,
+    not the whole tree (get_goals lists that): as changed, the goals named,
+    in their new order, each with its path, effective_priority and
+    effective_color; and label_slots_used of label_slots_total."""
     with track("reorder_goals"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_store().reorder_goals(goal_ids)
         except (ValueError, EventLabelConflictError) as exc:
@@ -862,14 +939,17 @@ def reorder_goals(goal_ids: list[str]) -> GoalList:
 
 @tool
 @writes
-def sync_goals_from_sheet() -> GoalList:
+def sync_goals_from_sheet() -> GoalChanges:
     """After hand edits to the Goals tab of the calendar metadata
     spreadsheet, make the calendar's event labels match it: one label per
     active goal (Calendar's own unnamed labels are left alone), and any
-    other label removed. Returns the resulting proposed, active and
-    inactive goals."""
+    other label removed. Returns only what changed, not the whole tree
+    (get_goals lists that): as changed, the goals whose label was added,
+    removed, renamed or recolored, each with its path,
+    effective_priority and effective_color; and label_slots_used of
+    label_slots_total."""
     with track("sync_goals_from_sheet"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_store().sync()
         except (ValueError, EventLabelConflictError) as exc:
@@ -881,7 +961,8 @@ def measure_goals(day: date | None = None, goal_ids: list[str] | None = None) ->
     """Proposed ratings of one day (from waking on it to waking the next;
     by default the last one that's over) for the goals whose measure the
     calendar can answer: duration, count, time_constraint, time_window,
-    follow_through, and rollups whose
+    follow_through, traits (without their judgment parts, which a
+    reflection makes; see explain_traits), and rollups whose
     sub-goals are all rated that day. Each has an explanation of how its
     0-100 rating was reached. Writes nothing; ratings are only confirmed
     in a reflection."""
@@ -922,13 +1003,141 @@ def get_goal_history(goal_ids: list[str], start: date | None = None, end: date |
 
 
 @tool
+def get_traits(statuses: list[TraitStatus] | None = None) -> list[ListedTrait]:
+    """The traits goals can be rated by, in order: by default the active
+    ones (rated) and those turned off (kept, but not rated for now), not
+    archived ones (retired). Each has an id (fixed when it's created, and
+    what a traits measure names), name, definition and parts. A trait's
+    score of a goal's day (0-100) is the weighted mean of its parts' scores,
+    leaving out any with nothing to rate it by. A part is a measure with no
+    scope -- the goal using the trait supplies it: that goal's events and
+    its sub-goals', and their facets (see list_events). "With events" are
+    the goal's events (unless their facets say they were only for it) and
+    any whose facets name it in with_goal_ids; "for events" are those
+    whose facets name it in for_goal_ids. Each part is {"kind": ...,
+    "weight": 1, ...}: "prep" (for events in the window, against "target",
+    default 1), "prep_regularity" (the share of the last "weeks", default
+    4, with a for event), "continuity" (the last with event ended within
+    "last_within_days" of the day's end and the next starts within
+    "next_within_days" after it, both default 14: 100 for both, 50 for
+    one, 0 for neither), "together_creative" (with events whose creative
+    facet is at least "min_creative", default 2, against "target"),
+    "novelty" (with events whose new facet isn't none, against "target"),
+    "effort_paid" (minutes x (1 + effort facet) over with and for events,
+    against "target"), "attention" (the mean attention facet of with
+    events, 0-3 as 0-100), "judgment" (a "rubric", judged in the
+    reflection), and "count", "duration" and "follow_through" (as the
+    measures of the same kind, over the goal's events; count's and
+    duration's interval_days default to the window). Window parts take an
+    optional "window_days", by default the measure's. problems lists
+    anything wrong with a trait edited by hand; a bad part isn't rated.
+    Read-only."""
+    with track("get_traits"), cached_sheet_reads():
+        try:
+            return get_trait_store().get_traits(statuses)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
 @writes
-def rebuild_goal_health_cache() -> GoalList:
+def create_trait(trait: Trait) -> Trait:
+    """Add a trait: a name (unique, at most 50 characters), a definition
+    (what it means, in a sentence or two) and parts (at least one; see
+    get_traits for each kind and its fields). Its status is active unless
+    given ("off" to keep it unrated for now). Its id is made from its name
+    and never changes, so renaming it later doesn't touch the measures
+    naming it. A trait with a part that isn't well formed is refused,
+    saying what's wrong. Goals rate by it once their traits measure selects
+    it (a measure selecting "all" does at once). Returns the trait as
+    created."""
+    with track("create_trait"), cached_sheet_reads():
+        try:
+            return get_trait_store().create_trait(trait)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+TraitField = Literal["definition"]
+"""Every Trait field update_trait can clear (see utilities/traits.py's
+CLEARABLE_TRAIT_FIELDS)."""
+
+
+@tool
+@writes
+def update_trait(trait: Trait, clear_fields: list[TraitField] | None = None) -> Trait:
+    """Change a trait, by id: rename it, reword its definition, change its
+    status, or give it new parts. Fields left out keep their value; parts,
+    if given, replace them whole, so send every part to keep. status is
+    active (rated), off (kept, but not rated for now) or archived (retired:
+    not rated, and get_traits leaves it out unless asked) -- archive a
+    trait rather than delete it, so its history stays readable. Checked as
+    for create_trait. Ratings already recorded aren't changed. Returns the
+    trait as updated."""
+    with track("update_trait"), cached_sheet_reads():
+        try:
+            return get_trait_store().update_trait(trait, clear_fields or ())
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_trait_history(
+    trait_ids: list[str] | None = None,
+    goal_ids: list[str] | None = None,
+    start: date | None = None,
+    end: date | None = None,
+) -> list[TraitDay]:
+    """Each trait's daily score from start to end (both inclusive; by
+    default the last 30 days and today), by trait then day: the mean of its
+    scores across the goals rated by it that day, from their confirmed
+    ratings (a traits measure keeps each trait's score), each goal's score
+    listed. Only trait_ids' (default: every trait), and only from goal_ids'
+    ratings, if given. Read-only."""
+    with track("get_trait_history"), cached_sheet_reads():
+        health = get_goal_health()
+        last = end or health.today()
+        first = start or last - timedelta(days=30)
+        try:
+            if goal_ids is not None:
+                get_goal_store().tree().check_goal_ids(goal_ids)
+            assessments = [
+                a for a in health.read(first, last + timedelta(days=1))
+                if a.status == "confirmed" and (goal_ids is None or a.goal_id in goal_ids)
+            ]
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return trait_history(assessments, get_trait_store().all(), trait_ids)
+
+
+@tool
+def explain_traits(goal_id: str, day: date | None = None) -> TraitsRating:
+    """How a goal's traits measure rates one day (by default the last one
+    that's over): each trait's score and weight, and each of its parts'
+    score, weight and how it was reached (said), with the ids of the events
+    behind it (get_event reads one) -- so a score can be traced to the
+    events that produced it. Judgment parts are left unscored: the
+    reflection makes them. The rating is the weighted mean of the traits
+    with a score; left_out names traits the measure selects that aren't
+    rated (off, archived or unknown). Writes nothing."""
+    with track("explain_traits"), cached_sheet_reads():
+        try:
+            return get_goal_health().traits_rating(goal_id, day)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def rebuild_goal_health_cache() -> GoalChanges:
     """Recompute every goal's at-a-glance health (health, health_period,
     health_trend in the goals tab) from its confirmed assessments, e.g.
-    after hand edits. Returns every goal, whatever its status."""
+    after hand edits. Returns only what changed, not the whole tree
+    (get_goals lists that): as changed, the goals whose health, health_period
+    or health_trend changed, each with its path, effective_priority and
+    effective_color; and label_slots_used of label_slots_total."""
     with track("rebuild_goal_health_cache"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_health().rebuild_cache()
         except ValueError as exc:
