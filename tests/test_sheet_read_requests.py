@@ -32,6 +32,7 @@ from tests.fake_sheets import FakeSheets, FakeSheetsService
 from tests.test_goal_health import NOW, TODAY, YESTERDAY, FakeCalendar, _event
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
+from utilities.people import Circle, Person
 from utilities.goal_health import Assessment
 from utilities.goal_sheet import Goal
 from utilities.goals import OVERALL_ID
@@ -68,7 +69,7 @@ class _Server:
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
             "_calendar_client", "_reallocating_calendar", "_goals", "_goal_health", "_reflections",
-            "_noted_time_sheet", "_compaction_journal", "_note_compactor", "_recurrences", "_actions",
+            "_noted_time_sheet", "_compaction_journal", "_note_compactor", "_recurrences", "_actions", "_people",
         ):
             monkeypatch.setattr(server, cached, None)
         # The seams: the clocks, so days fall on the test calendar's.
@@ -84,6 +85,8 @@ class _Server:
         server.create_goal(Goal(name="Reading"))
         self.outdoors = server.create_action_group(ActionGroup(name="Outdoors")).created_id
         self.walk = server.create_action(Action(name="Walk", group_id=self.outdoors)).created_id
+        self.family = server.create_circle(Circle(name="Family")).created_id
+        self.sam = server.create_person(Person(name="Sam", circles=[self.family])).created_id
         evening = (NOW - timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
         self.calendar.events.append(
             _event(evening.isoformat()[:19], (evening + timedelta(hours=1)).isoformat()[:19], goal_ids=[cooking.id])
@@ -154,6 +157,16 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         "get_action_group": lambda: server.get_action_group("outdoors"),
         "create_action_group": lambda: server.create_action_group(ActionGroup(name="Indoors")),
         "update_action_group": lambda: server.update_action_group(ActionGroup(id=tools.outdoors, priority=1)),
+        # People and circles, prefetched together.
+        "get_people": lambda: server.get_people(),
+        "get_person": lambda: server.get_person("sam"),
+        "create_person": lambda: server.create_person(Person(name="Alex")),
+        "update_person": lambda: server.update_person(Person(id=tools.sam, what_matters="tea")),
+        "get_circles": lambda: server.get_circles(),
+        "get_circle": lambda: server.get_circle("family"),
+        "create_circle": lambda: server.create_circle(Circle(name="Friends")),
+        "update_circle": lambda: server.update_circle(Circle(id=tools.family, note="n")),
+        "delete_circle": lambda: server.delete_circle(tools.family),
         "list_events": lambda: server.list_events(NOW - timedelta(days=2), NOW),
         "get_event": lambda: server.get_event(event_id),
         "delete_event": lambda: server.delete_event(event_id),

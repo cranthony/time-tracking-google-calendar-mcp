@@ -16,6 +16,7 @@ from utilities.compaction_journal import CompactionJournal
 from utilities.goal_details import GoalDetails
 from utilities.goals import Goals
 from utilities.noted_time_sheet import NotedTimeSheet
+from utilities.people import People
 from utilities.traits import Traits
 
 load_dotenv()
@@ -239,3 +240,15 @@ def build_actions(calendar_id: str | None = None) -> Actions:
         calendar_client, sheets_client
     )
     return Actions.ensure(calendar_client, sheets_client, spreadsheet_id)
+
+
+def build_people(calendar_id: str | None = None) -> People:
+    """Construct a People from environment configuration (and a local .env
+    file, if present). See `_build_calendar_and_sheets_clients` for
+    `calendar_id`. Constructing this ensures the calendar has a metadata
+    spreadsheet and People and Circles tabs -- see `People.ensure`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return People.ensure(sheets_client, spreadsheet_id)

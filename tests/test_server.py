@@ -37,6 +37,7 @@ from utilities.recurrences import Repeat
 from utilities.traits import SEED_TRAITS, Trait
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
+from utilities.people import Circle, Person
 
 UTC = timezone.utc
 
@@ -1166,6 +1167,40 @@ class TestActionTools:
         assert built == [1]
 
 
+class TestPeopleTools:
+    def test_delegate_to_the_store(self, monkeypatch):
+        people = MagicMock()
+        monkeypatch.setattr(server, "get_people_store", lambda: people)
+
+        server.get_people(["archived"])
+        server.get_person("self")
+        server.create_person(Person(name="Sam"))
+        server.update_person(Person(id="p1"), clear_fields=["context"])
+        server.get_circles()
+        server.get_circle("Family")
+        server.create_circle(Circle(name="Family"))
+        server.update_circle(Circle(id="c1"), clear_fields=["note"])
+        server.delete_circle("c1")
+
+        people.get_people.assert_called_once_with(["archived"])
+        people.get_person.assert_called_once_with("self")
+        people.create_person.assert_called_once_with(Person(name="Sam"))
+        people.update_person.assert_called_once_with(Person(id="p1"), ["context"])
+        people.get_circles.assert_called_once_with()
+        people.get_circle.assert_called_once_with("Family")
+        people.create_circle.assert_called_once_with(Circle(name="Family"))
+        people.update_circle.assert_called_once_with(Circle(id="c1"), ["note"])
+        people.delete_circle.assert_called_once_with("c1")
+
+    def test_wrap_errors(self, monkeypatch):
+        people = MagicMock()
+        people.create_person.side_effect = ValueError("there's already a person named 'Sam'")
+        monkeypatch.setattr(server, "get_people_store", lambda: people)
+
+        with pytest.raises(ToolError, match="already a person"):
+            server.create_person(Person(name="Sam"))
+
+
 class TestGoalDescriptionTools:
     def test_reads_and_replaces_a_goals_description(self, monkeypatch):
         _fake_goals(monkeypatch, _goal("g1"))
@@ -1584,6 +1619,10 @@ _READ_ONLY_TOOLS = {
     "get_action",
     "get_action_groups",
     "get_action_group",
+    "get_people",
+    "get_person",
+    "get_circles",
+    "get_circle",
 }
 
 

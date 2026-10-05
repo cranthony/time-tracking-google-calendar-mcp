@@ -13,7 +13,9 @@ nothing for `None`.
 from __future__ import annotations
 
 import json
-from dataclasses import fields
+import secrets
+from collections.abc import Collection
+from dataclasses import fields, replace
 from typing import Any, Generic, TypeVar
 
 from calendar_clients.google_sheets import SheetsClient, TabRange
@@ -24,6 +26,43 @@ _DATA_RANGE = "A2:Z"
 _WHOLE_RANGE = "A1:Z"
 
 Row = TypeVar("Row")
+
+
+_ID_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
+_ID_LENGTH = 6
+
+
+def new_id(taken: Collection[str | None]) -> str:
+    """A short random id (e.g. "a7k2qp") not in `taken`."""
+    while True:
+        candidate = "".join(secrets.choice(_ID_ALPHABET) for _ in range(_ID_LENGTH))
+        if candidate not in taken:
+            return candidate
+
+
+def check_clear(item: object, clear_fields: Collection[str], clearable: Collection[str]) -> None:
+    """Refuse an update's `clear_fields` that can't be cleared, or that
+    `item` also sets."""
+    unknown = set(clear_fields) - set(clearable)
+    if unknown:
+        raise ValueError(f"Can't clear {sorted(unknown)}; clearable fields are {sorted(clearable)}")
+    both = sorted(name for name in clear_fields if getattr(item, name) is not None)
+    if both:
+        raise ValueError(f"Can't both set and clear {both}")
+
+
+def updated(current: Row, given: Row, clear_fields: Collection[str], read_only: Collection[str] = ("id",)) -> Row:
+    """`current` with whichever of `given`'s fields are set (but the
+    read-only ones), and `clear_fields` blanked."""
+    return replace(
+        current,
+        **{
+            f.name: getattr(given, f.name)
+            for f in fields(given)
+            if f.name not in read_only and getattr(given, f.name) is not None
+        },
+        **{name: None for name in clear_fields},
+    )
 
 
 def _kind(annotation: Any) -> str:

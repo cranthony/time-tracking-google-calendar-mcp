@@ -28,11 +28,10 @@ nearest group's, so changing a group's recolors its actions' labels.
 from __future__ import annotations
 
 import difflib
-import secrets
 import uuid
 from collections.abc import Collection
 from dataclasses import astuple, dataclass, fields, replace
-from typing import Any, Literal
+from typing import Literal
 
 from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel, color_for_priority
 from calendar_clients.google_sheets import SheetsClient, TabRange
@@ -45,7 +44,7 @@ from utilities.action_groups import (
     find as find_group,
     group_problems,
 )
-from utilities.row_sheet import RowSheet
+from utilities.row_sheet import RowSheet, check_clear, new_id, updated
 
 ActionStatus = Literal["proposed", "active", "archived", "deleted"]
 ACTION_STATUSES: tuple[str, ...] = ("proposed", "active", "archived", "deleted")
@@ -72,8 +71,6 @@ _LABEL_ID_NAMESPACE = uuid.UUID("8f0d3c52-41b7-4a8e-9d0a-6c1e2b7f4a93")
 action ids are short). Not goals' namespace, so an action can't get a
 goal's label id."""
 
-_ID_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
-_ID_LENGTH = 6
 
 CLEARABLE_FIELDS = frozenset({"group_id", "background_color", "priority", "note"})
 """Action fields `update_action` can blank. Not `name`/`status` (always
@@ -284,7 +281,7 @@ class Actions:
         label id."""
         actions = self.all()
         new = replace(action, **{name: None for name in _READ_ONLY_FIELDS}, status=action.status or "proposed")
-        new.id = _new_id({a.id for a in actions})
+        new.id = new_id({a.id for a in actions})
         new.label_id = str(uuid.uuid5(_LABEL_ID_NAMESPACE, new.id))
         groups = self.groups().groups
         changes = self._commit(actions, actions + [new], groups, groups, write_groups=False)
@@ -301,13 +298,13 @@ class Actions:
         named in `clear_fields`."""
         if not action.id:
             raise ValueError("update_action needs the action's id")
-        _check_clear(action, clear_fields, CLEARABLE_FIELDS)
+        check_clear(action, clear_fields, CLEARABLE_FIELDS)
         actions = self.all()
         index = next((i for i, a in enumerate(actions) if a.id == action.id), None)
         if index is None:
             raise ValueError(_unknown(actions, action.id))
         after = list(actions)
-        after[index] = _updated(actions[index], action, clear_fields, _READ_ONLY_FIELDS)
+        after[index] = updated(actions[index], action, clear_fields, _READ_ONLY_FIELDS)
         groups = self.groups().groups
         changes = self._commit(actions, after, groups, groups, write_groups=False, changed_actions={action.id})
         return ActionChanges(
@@ -320,7 +317,7 @@ class Actions:
     def create_action_group(self, group: ActionGroup) -> CreatedActionGroup:
         """Add `group`, with a new id."""
         groups = self.groups().groups
-        new = replace(group, id=_new_id({g.id for g in groups}))
+        new = replace(group, id=new_id({g.id for g in groups}))
         actions = self.all()
         changes = self._commit(actions, actions, groups, groups + [new], write_actions=False)
         return CreatedActionGroup(
@@ -336,13 +333,13 @@ class Actions:
         `clear_fields`. Its actions' labels follow its color."""
         if not group.id:
             raise ValueError("update_action_group needs the group's id")
-        _check_clear(group, clear_fields, GROUP_CLEARABLE_FIELDS)
+        check_clear(group, clear_fields, GROUP_CLEARABLE_FIELDS)
         groups = self.groups().groups
         index = next((i for i, g in enumerate(groups) if g.id == group.id), None)
         if index is None:
             find_group(groups, group.id)  # Raises, suggesting close matches.
         after = list(groups)
-        after[index] = _updated(groups[index], group, clear_fields, frozenset({"id"}))
+        after[index] = updated(groups[index], group, clear_fields, frozenset({"id"}))
         actions = self.all()
         return self._commit(actions, actions, groups, after, write_actions=False, changed_groups={group.id})
 
@@ -485,36 +482,6 @@ def action_problems(actions: list[Action], groups: list[ActionGroup]) -> list[st
                 f"{label}'s group_id {action.group_id!r} isn't an action group (get_action_groups lists them)"
             )
     return problems
-
-
-def _check_clear(item: object, clear_fields: Collection[str], clearable: Collection[str]) -> None:
-    unknown = set(clear_fields) - set(clearable)
-    if unknown:
-        raise ValueError(f"Can't clear {sorted(unknown)}; clearable fields are {sorted(clearable)}")
-    both = sorted(name for name in clear_fields if getattr(item, name) is not None)
-    if both:
-        raise ValueError(f"Can't both set and clear {both}")
-
-
-def _updated(current: Any, given: Any, clear_fields: Collection[str], read_only: Collection[str]) -> Any:
-    """`current` with `given`'s set fields (but the read-only ones), and
-    `clear_fields` blanked."""
-    return replace(
-        current,
-        **{
-            f.name: getattr(given, f.name)
-            for f in fields(given)
-            if f.name not in read_only and getattr(given, f.name) is not None
-        },
-        **{name: None for name in clear_fields},
-    )
-
-
-def _new_id(taken: Collection[str | None]) -> str:
-    while True:
-        new_id = "".join(secrets.choice(_ID_ALPHABET) for _ in range(_ID_LENGTH))
-        if new_id not in taken:
-            return new_id
 
 
 def _listed(action: Action, tree: GroupTree, holders: Collection[str]) -> ListedAction:
