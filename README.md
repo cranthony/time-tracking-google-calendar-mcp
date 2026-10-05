@@ -86,7 +86,7 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | --- | --- |
 | `list_events` | `(min_time, max_time) -> list[PublicEvent]` |
 | `get_event` | `(id) -> PublicEvent` |
-| `update_event` | `(event: PublicEvent, reallocate: bool = True) -> list[PublicEvent]` |
+| `update_event` | `(event: PublicEvent, clear_fields: list[EventField] | None = None, reallocate: bool = True) -> list[PublicEvent]` |
 | `create_event` | `(event: PublicEvent, reallocate: bool = True) -> list[PublicEvent]` |
 | `delete_event` | `(id) -> list[PublicEvent]` |
 | `get_goals` | `(statuses: list[GoalStatus] \| None) -> GoalList` |

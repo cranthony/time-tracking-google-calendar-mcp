@@ -119,12 +119,13 @@ class Recurrences:
         self, changes: Event, starting_at: str | None = None, repeat: Repeat | None = None
     ) -> list[Event]:
         """Write whichever of `changes`' editable fields are set (see
-        `_EDITABLE`), and `repeat` if given, to the series `changes.id`
-        is, or is one of -- or, given `starting_at` (one of its events),
-        first split the series there, and edit only the part from that
-        event on. Returns the edited series, then the earlier part if it
-        was split. Raises ValueError, before writing anything, if
-        `repeat` can't be written (see `Repeat.check`).
+        `_EDITABLE`), and `repeat` if given, and clear those in
+        `changes.cleared`, on the series `changes.id` is, or is one of --
+        or, given `starting_at` (one of its events), first split the
+        series there, and edit only the part from that event on. Returns
+        the edited series, then the earlier part if it was split. Raises
+        ValueError, before writing anything, if `repeat` can't be written
+        (see `Repeat.check`).
 
         `changes.start`/`end` are the series' as the caller saw it (when
         its first event starts and ends), so when it's split they move
@@ -143,7 +144,9 @@ class Recurrences:
             if self.series(starting_at).id != series.id:
                 raise ValueError(f"Event {starting_at} isn't one of series {series.id}'s events")
             earlier, target = self.split(starting_at)
-        patch = Event(id=target.id, **{name: getattr(changes, name) for name in _EDITABLE})
+        patch = Event(
+            id=target.id, cleared=changes.cleared, **{name: getattr(changes, name) for name in _EDITABLE}
+        )
         if target.id != series.id:
             if patch.start is not None:
                 patch.start = target.start + (patch.start - series.start)

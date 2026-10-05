@@ -6,6 +6,7 @@ import pytest
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import (
+    CLEARABLE_EVENT_FIELDS,
     Calendar,
     CalendarClient,
     Event,
@@ -470,6 +471,49 @@ class TestEvent:
         event = Event(id="abc123", priority=priority)
 
         assert event.to_api_body()["colorId"] == expected_color_id
+
+    def test_to_api_body_sends_cleared_fields_as_null(self):
+        event = Event(id="abc123", summary="Focus", cleared=CLEARABLE_EVENT_FIELDS)
+
+        assert event.to_api_body() == {
+            "summary": "Focus",
+            "description": None,
+            "location": None,
+            "colorId": None,  # The calendar's default, rather than a priority's.
+            "extendedProperties": {
+                "private": {
+                    "cascading-time-tracker-min_duration": None,
+                    "cascading-time-tracker-is_fixed_duration": None,
+                    "cascading-time-tracker-is_fixed_time": None,
+                    "cascading-time-tracker-priority": None,
+                }
+            },
+        }
+
+    def test_to_api_body_clears_some_app_properties_while_setting_others(self):
+        event = Event(id="abc123", is_fixed_time=True, cleared=frozenset({"min_duration"}))
+
+        body = event.to_api_body()
+
+        assert "colorId" not in body
+        assert body["extendedProperties"] == {
+            "private": {
+                "cascading-time-tracker-is_fixed_time": "true",
+                "cascading-time-tracker-min_duration": None,
+            }
+        }
+
+    @pytest.mark.parametrize(
+        "kwargs, message",
+        [
+            ({"cleared": frozenset({"summary"})}, r"Can't clear \['summary'\]; clearable fields are"),
+            ({"cleared": frozenset({"goal_ids"})}, r"Can't clear \['goal_ids'\]"),
+            ({"priority": 1, "cleared": frozenset({"priority"})}, r"Can't both set and clear \['priority'\]"),
+        ],
+    )
+    def test_refuses_clearing_what_cant_be_cleared_or_is_also_set(self, kwargs, message):
+        with pytest.raises(ValueError, match=message):
+            Event(id="abc123", **kwargs)
 
     def test_clone_copies_fields_independently(self):
         event = Event(

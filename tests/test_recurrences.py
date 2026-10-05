@@ -17,8 +17,8 @@ def _at(day: int, hour: int = 9, month: int = 10) -> datetime:
 
 
 class FakeCalendar:
-    """Events by id; updates patch whichever fields are set, as Calendar's
-    patch does."""
+    """Events by id; updates patch whichever fields are set, and remove
+    those cleared, as Calendar's patch does."""
 
     def __init__(self, *events: Event) -> None:
         self.events = {event.id: replace(event) for event in events}
@@ -38,8 +38,10 @@ class FakeCalendar:
         self.writes.append(("update", event))
         stored = self.events[event.id]
         for field in fields(Event):
-            if field.name != "id" and getattr(event, field.name) is not None:
+            if field.name not in ("id", "cleared") and getattr(event, field.name) is not None:
                 setattr(stored, field.name, getattr(event, field.name))
+        for name in event.cleared:
+            setattr(stored, name, None)
         return replace(stored)
 
 
@@ -120,6 +122,24 @@ class TestUpdate:
         # Moved an hour later, from the event it was split at.
         assert (later.start, later.end) == (_at(19, 10), _at(19, 11))
         assert later.goal_ids == ["work"]
+
+    def test_clears_fields_on_the_series_keeping_the_rest(self):
+        calendar = FakeCalendar(replace(_weekly(), priority=1, location="Room 4"))
+
+        (updated,) = _recurrences(calendar).update(
+            Event(id="series1", summary="Team standup", cleared=frozenset({"priority"}))
+        )
+
+        assert (updated.summary, updated.priority, updated.location) == ("Team standup", None, "Room 4")
+
+    def test_this_and_following_clears_fields_on_the_later_part_only(self):
+        calendar = FakeCalendar(replace(_weekly(), priority=1), _instance(19))
+
+        later, earlier = _recurrences(calendar).update(
+            Event(id="series1", cleared=frozenset({"priority"})), starting_at="series1_20261019"
+        )
+
+        assert (later.priority, earlier.priority) == (None, 1)
 
     def test_this_and_following_refuses_an_event_from_another_series(self):
         other = Event(id="other_x", start=_at(6), end=_at(6, 10), recurring_event_id="other")
