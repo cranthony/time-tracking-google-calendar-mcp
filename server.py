@@ -32,7 +32,19 @@ from config import (
     get_workos_authkit_domain,
 )
 from oauth_proxy import oauth_proxy_handlers
-from utilities.actions import Action, ActionChanges, ActionList, ActionStatus, CreatedAction, ListedAction, Actions
+from utilities.action_groups import ActionGroup, ListedActionGroup
+from utilities.actions import (
+    Action,
+    ActionChanges,
+    ActionGroupChanges,
+    ActionList,
+    Actions,
+    ActionStatus,
+    CreatedAction,
+    CreatedActionGroup,
+    DeletedActionGroup,
+    ListedAction,
+)
 from utilities.facets import Facets, facet_problems
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_details import WHAT_MATTERS, GoalDetails, section
@@ -418,6 +430,13 @@ def get_action_store() -> Actions:
             if _actions is None:
                 _actions = build_actions()
     return _actions
+
+
+def _prefetch_actions() -> None:
+    """Read the Actions and Action Groups tabs in one request: every action
+    tool reads both (see `_prefetch`)."""
+    store = get_action_store()
+    store.prefetch(store.whole_tabs)
 
 
 def get_trait_store() -> Traits:
@@ -1352,11 +1371,13 @@ def get_actions(statuses: list[ActionStatus] | None = None) -> ActionList:
     meal"). By default the proposed and active ones, not archived or
     deleted ones. Each has its id, group_id (the action group it's in, if
     any), name, status, label_id, background_color, priority and note,
-    plus its effective_color and effective_priority and whether it
-    holds_label: active actions always hold one of the calendar's event
+    plus its path through its groups ("Creative › Guitar › Play guitar"),
+    its effective_color and effective_priority (its own, or else its
+    nearest group's) and whether it holds_label: active actions always hold one of the calendar's event
     labels, and proposed ones do while there's room. Also how many of the
     calendar's label slots are in use. Read-only."""
     with track("get_actions"), cached_sheet_reads():
+        _prefetch_actions()
         try:
             return get_action_store().get_actions(statuses)
         except (ValueError, EventLabelConflictError) as exc:
@@ -1369,6 +1390,7 @@ def get_action(id_or_name: str) -> ListedAction:
     get_actions lists it. If there's none, the error suggests close
     matches. Read-only."""
     with track("get_action"), cached_sheet_reads():
+        _prefetch_actions()
         try:
             return get_action_store().get_action(id_or_name)
         except (ValueError, EventLabelConflictError) as exc:
@@ -1380,9 +1402,11 @@ def get_action(id_or_name: str) -> ListedAction:
 def create_action(action: Action) -> CreatedAction:
     """Create an action: a name (a verb phrase for what the user is doing,
     e.g. "practice guitar"; at most 50 characters, and unique among all
-    actions, whatever their status), and optionally a group_id, a
-    background_color (hex; derived from priority when unset), a priority
-    (taken by its events that don't set their own) and a note. id and
+    actions, whatever their status), and optionally a group_id (an action
+    group, see get_action_groups), a background_color (hex; inherited
+    from its groups when unset, or else derived from priority), a priority
+    (taken by its events that don't set their own; inherited from its
+    groups when unset) and a note. id and
     label_id are assigned. status is "proposed" unless given: leave it so
     when you're adding an action no existing one matched, so the user can
     review it; give "active" when the user asked for it. Returns the new
@@ -1390,6 +1414,7 @@ def create_action(action: Action) -> CreatedAction:
     proposed action that lost its label to make room), with
     label_slots_used of label_slots_total."""
     with track("create_action"), cached_sheet_reads():
+        _prefetch_actions()
         try:
             return get_action_store().create_action(action)
         except (ValueError, EventLabelConflictError) as exc:
@@ -1415,8 +1440,99 @@ def update_action(action: Action, clear_fields: list[ActionField] | None = None)
     that gained or lost its label as a result, with label_slots_used of
     label_slots_total."""
     with track("update_action"), cached_sheet_reads():
+        _prefetch_actions()
         try:
             return get_action_store().update_action(action, clear_fields or ())
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_action_groups() -> list[ListedActionGroup]:
+    """Every action group: a name that rolls actions up ("Creative",
+    "Guitar"), for targets and finding one's way around. A group isn't an
+    action -- no event can be tagged with one -- and groups can be inside
+    other groups (group_id), so actions are always the leaves. Enclosing
+    groups come before the ones inside them. Each has its id, group_id,
+    name, background_color, priority and note, plus its path ("Creative ›
+    Guitar") and its effective_color and effective_priority (its own, or
+    else its nearest enclosing group's), which its actions and groups
+    inherit when they don't set their own. Read-only."""
+    with track("get_action_groups"), cached_sheet_reads():
+        _prefetch_actions()
+        try:
+            return get_action_store().get_action_groups()
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_action_group(id_or_name: str) -> ListedActionGroup:
+    """One action group, by its id or else its name (ignoring case), as
+    get_action_groups lists it. If there's none, the error suggests close
+    matches. Read-only."""
+    with track("get_action_group"), cached_sheet_reads():
+        _prefetch_actions()
+        try:
+            return get_action_store().get_action_group(id_or_name)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def create_action_group(group: ActionGroup) -> CreatedActionGroup:
+    """Create an action group: a name (unique among groups, though an
+    action may share it; at most 50 characters), and optionally a group_id
+    (the group it's inside), a background_color, a priority and a note,
+    which its actions and groups inherit when they don't set their own.
+    id is assigned. Put actions in it with update_action's group_id.
+    Returns the new group's id as created_id, and as changed, the group
+    with its path and what it inherits."""
+    with track("create_action_group"), cached_sheet_reads():
+        _prefetch_actions()
+        try:
+            return get_action_store().create_action_group(group)
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+ActionGroupField = Literal["group_id", "background_color", "priority", "note"]
+"""Every ActionGroup field update_action_group can clear (see utilities/
+action_groups.py's CLEARABLE_FIELDS)."""
+
+
+@tool
+@writes
+def update_action_group(group: ActionGroup, clear_fields: list[ActionGroupField] | None = None) -> ActionGroupChanges:
+    """Update an action group by id: its group_id (move it inside another
+    group; clear it to make it top-level), name (still unique among
+    groups), background_color, priority or note. Omitted properties keep
+    their value; list one in clear_fields to blank it instead. Its actions
+    that don't set their own color follow its new one on the calendar.
+    Returns, as changed, the group as updated, and as affected_actions,
+    every action whose path, effective_color or effective_priority
+    changed as a result."""
+    with track("update_action_group"), cached_sheet_reads():
+        _prefetch_actions()
+        try:
+            return get_action_store().update_action_group(group, clear_fields or ())
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def delete_action_group(group_id: str) -> DeletedActionGroup:
+    """Delete an action group, by id. Its actions and the groups inside it
+    aren't deleted: they move up into the group it was inside (or to the
+    top level, if it was top-level). Returns the group as it was
+    (deleted), as changed, the groups moved up out of it, and as
+    affected_actions, every action moved or recolored as a result."""
+    with track("delete_action_group"), cached_sheet_reads():
+        _prefetch_actions()
+        try:
+            return get_action_store().delete_action_group(group_id)
         except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
 

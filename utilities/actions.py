@@ -21,7 +21,8 @@ its name and color shown on the calendar -- while it's in play:
 
 Labels that aren't any action's (Calendar's own unnamed ones, and any
 other app's or goal's) are always left alone, and count against the
-calendar's room.
+calendar's room. An action without its own color or priority takes its
+nearest group's, so changing a group's recolors its actions' labels.
 """
 
 from __future__ import annotations
@@ -31,11 +32,19 @@ import secrets
 import uuid
 from collections.abc import Collection
 from dataclasses import astuple, dataclass, fields, replace
-from typing import Literal
+from typing import Any, Literal
 
 from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel, color_for_priority
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
+from utilities.action_groups import (
+    CLEARABLE_FIELDS as GROUP_CLEARABLE_FIELDS,
+    ActionGroup,
+    GroupTree,
+    ListedActionGroup,
+    find as find_group,
+    group_problems,
+)
 from utilities.row_sheet import RowSheet
 
 ActionStatus = Literal["proposed", "active", "archived", "deleted"]
@@ -96,10 +105,12 @@ class Action:
     doesn't hold the label, so it gets the same one back."""
 
     background_color: str | None = None
-    """Hex color for its label; derived from its priority when unset."""
+    """Hex color for its label; inherited from its groups when unset, or
+    else derived from its priority."""
 
     priority: int | None = None
-    """Taken by its events that don't set their own."""
+    """Taken by its events that don't set their own; inherited from its
+    groups when unset."""
 
     note: str | None = None
     """Short free text, e.g. what it covers."""
@@ -107,15 +118,21 @@ class Action:
 
 @dataclass(kw_only=True)
 class ListedAction(Action):
-    """An action as the action tools return it: plus what it inherits and
-    whether it holds its label."""
+    """An action as the action tools return it: plus where it sits, what
+    it inherits from its groups, and whether it holds its label."""
+
+    path: str | None = None
+    """Its groups from the top, then its name: "Creative › Guitar › Play
+    guitar"."""
 
     effective_color: str | None = None
     """Read-only: the color its label is shown in -- its own
-    background_color, or else its priority's."""
+    background_color, or its nearest group's, or else its effective
+    priority's."""
 
     effective_priority: int | None = None
-    """Read-only: the priority its events take, if it has one."""
+    """Read-only: the priority its events take -- its own, or its nearest
+    group's; `None` if none of them has one."""
 
     holds_label: bool | None = None
     """Read-only: whether it holds one of the calendar's event labels --
@@ -154,17 +171,48 @@ class CreatedAction(ActionChanges):
     created_id: str
 
 
-class Actions:
-    """A calendar's actions, kept in sync with its event labels -- see the
-    module docstring."""
+@dataclass(kw_only=True)
+class ActionGroupChanges:
+    """What the group-writing tools return: just what the call changed."""
 
-    def __init__(self, calendar_client: CalendarClient, sheet: RowSheet[Action]) -> None:
+    changed: list[ListedActionGroup]
+    """The groups the call created or changed (for a deletion, the ones
+    moved up out of it), as they are now."""
+
+    affected_actions: list[ListedAction]
+    """Actions whose group, path, effective_color or effective_priority
+    changed as a result, as they are now."""
+
+    label_slots_used: int
+    label_slots_total: int = MAX_LABELS
+
+
+@dataclass(kw_only=True)
+class CreatedActionGroup(ActionGroupChanges):
+    created_id: str
+
+
+@dataclass(kw_only=True)
+class DeletedActionGroup(ActionGroupChanges):
+    deleted: ActionGroup
+    """The group as it was."""
+
+
+class Actions:
+    """A calendar's actions and action groups, kept in sync with its event
+    labels -- see the module docstring."""
+
+    def __init__(
+        self, calendar_client: CalendarClient, sheet: RowSheet[Action], group_sheet: RowSheet[ActionGroup]
+    ) -> None:
         self._calendar_client = calendar_client
         self._sheet = sheet
+        self._group_sheet = group_sheet
 
     @staticmethod
     def ensure(calendar_client: CalendarClient, sheets_client: SheetsClient, spreadsheet_id: str) -> "Actions":
-        """The calendar's actions, adding the Actions tab the first time."""
+        """The calendar's actions, adding the Actions and Action Groups tabs
+        the first time."""
         return Actions(
             calendar_client,
             RowSheet.ensure(
@@ -174,11 +222,19 @@ class Actions:
                 title=calendar_metadata_sheet.ACTIONS_SHEET_TITLE,
                 row_type=Action,
             ),
+            RowSheet.ensure(
+                sheets_client,
+                spreadsheet_id,
+                role=calendar_metadata_sheet.ACTION_GROUPS_SHEET_ROLE,
+                title=calendar_metadata_sheet.ACTION_GROUPS_SHEET_TITLE,
+                row_type=ActionGroup,
+            ),
         )
 
     @property
-    def whole_tab(self) -> TabRange:
-        return self._sheet.whole_tab
+    def whole_tabs(self) -> list[TabRange]:
+        """Both tabs, for `SheetsClient.prefetch`."""
+        return [self._sheet.whole_tab, self._group_sheet.whole_tab]
 
     def prefetch(self, ranges: list[TabRange]) -> None:
         self._sheet.prefetch(ranges)
@@ -189,14 +245,18 @@ class Actions:
         """Every action, in sheet order."""
         return self._sheet.read()
 
+    def groups(self) -> GroupTree:
+        """Every group."""
+        return GroupTree(self._group_sheet.read())
+
     def get_actions(self, statuses: Collection[str] | None = None) -> ActionList:
         """The actions with any of `statuses` (by default DEFAULT_STATUSES)."""
         statuses = _check_statuses(statuses)
-        actions = self.all()
+        actions, tree = self.all(), self.groups()
         raw_labels, _etag = self._calendar_client.list_event_labels()
         holders = _label_holders(actions, raw_labels)
         return ActionList(
-            actions=[_listed(a, holders) for a in actions if a.status in statuses],
+            actions=[_listed(a, tree, holders) for a in actions if a.status in statuses],
             label_slots_used=_slots_used(actions, raw_labels, holders),
         )
 
@@ -205,20 +265,35 @@ class Actions:
         actions = self.all()
         action = find(actions, id_or_name)
         raw_labels, _etag = self._calendar_client.list_event_labels()
-        return _listed(action, _label_holders(actions, raw_labels))
+        return _listed(action, self.groups(), _label_holders(actions, raw_labels))
 
-    # -- writing ------------------------------------------------------------
+    def get_action_groups(self) -> list[ListedActionGroup]:
+        """Every group, enclosing groups before the ones inside them."""
+        tree = self.groups()
+        return [tree.listed(g) for g in tree.ordered()]
+
+    def get_action_group(self, id_or_name: str) -> ListedActionGroup:
+        """The group with this id, or else this name (ignoring case)."""
+        tree = self.groups()
+        return tree.listed(find_group(tree.groups, id_or_name))
+
+    # -- writing actions ----------------------------------------------------
 
     def create_action(self, action: Action) -> CreatedAction:
         """Add `action` (proposed unless given a status), with a new id and
         label id."""
         actions = self.all()
         new = replace(action, **{name: None for name in _READ_ONLY_FIELDS}, status=action.status or "proposed")
-        taken = {a.id for a in actions}
-        new.id = _new_id(taken)
+        new.id = _new_id({a.id for a in actions})
         new.label_id = str(uuid.uuid5(_LABEL_ID_NAMESPACE, new.id))
-        changes = self._commit(actions, actions + [new], new.id)
-        return CreatedAction(**{f.name: getattr(changes, f.name) for f in fields(ActionChanges)}, created_id=new.id)
+        groups = self.groups().groups
+        changes = self._commit(actions, actions + [new], groups, groups, write_groups=False)
+        return CreatedAction(
+            changed=[a for a in changes.affected_actions if a.id == new.id]
+            + [a for a in changes.affected_actions if a.id != new.id],
+            label_slots_used=changes.label_slots_used,
+            created_id=new.id,
+        )
 
     def update_action(self, action: Action, clear_fields: Collection[str] = ()) -> ActionChanges:
         """Set whichever of `action`'s fields aren't `None` (other than the
@@ -226,51 +301,128 @@ class Actions:
         named in `clear_fields`."""
         if not action.id:
             raise ValueError("update_action needs the action's id")
-        unknown = set(clear_fields) - CLEARABLE_FIELDS
-        if unknown:
-            raise ValueError(f"Can't clear {sorted(unknown)}; clearable fields are {sorted(CLEARABLE_FIELDS)}")
-        both = sorted(name for name in clear_fields if getattr(action, name) is not None)
-        if both:
-            raise ValueError(f"Can't both set and clear {both}")
+        _check_clear(action, clear_fields, CLEARABLE_FIELDS)
         actions = self.all()
         index = next((i for i, a in enumerate(actions) if a.id == action.id), None)
         if index is None:
             raise ValueError(_unknown(actions, action.id))
-        updated = replace(
-            actions[index],
-            **{
-                f.name: getattr(action, f.name)
-                for f in fields(Action)
-                if f.name not in _READ_ONLY_FIELDS and getattr(action, f.name) is not None
-            },
-            **{name: None for name in clear_fields},
-        )
         after = list(actions)
-        after[index] = updated
-        return self._commit(actions, after, action.id)
+        after[index] = _updated(actions[index], action, clear_fields, _READ_ONLY_FIELDS)
+        groups = self.groups().groups
+        changes = self._commit(actions, after, groups, groups, write_groups=False, changed_actions={action.id})
+        return ActionChanges(
+            changed=sorted(changes.affected_actions, key=lambda a: a.id != action.id),
+            label_slots_used=changes.label_slots_used,
+        )
 
-    def _commit(self, before: list[Action], after: list[Action], changed_id: str) -> ActionChanges:
-        """Validate `after`, write it to the sheet, then make the
-        calendar's labels match. Everything that can be refused is checked
-        before anything is written."""
-        problems = action_problems(after)
+    # -- writing groups -----------------------------------------------------
+
+    def create_action_group(self, group: ActionGroup) -> CreatedActionGroup:
+        """Add `group`, with a new id."""
+        groups = self.groups().groups
+        new = replace(group, id=_new_id({g.id for g in groups}))
+        actions = self.all()
+        changes = self._commit(actions, actions, groups, groups + [new], write_actions=False)
+        return CreatedActionGroup(
+            changed=changes.changed,
+            affected_actions=changes.affected_actions,
+            label_slots_used=changes.label_slots_used,
+            created_id=new.id,
+        )
+
+    def update_action_group(self, group: ActionGroup, clear_fields: Collection[str] = ()) -> ActionGroupChanges:
+        """Set whichever of `group`'s fields aren't `None` (other than its
+        id) on the group with `group.id`, and blank those named in
+        `clear_fields`. Its actions' labels follow its color."""
+        if not group.id:
+            raise ValueError("update_action_group needs the group's id")
+        _check_clear(group, clear_fields, GROUP_CLEARABLE_FIELDS)
+        groups = self.groups().groups
+        index = next((i for i, g in enumerate(groups) if g.id == group.id), None)
+        if index is None:
+            find_group(groups, group.id)  # Raises, suggesting close matches.
+        after = list(groups)
+        after[index] = _updated(groups[index], group, clear_fields, frozenset({"id"}))
+        actions = self.all()
+        return self._commit(actions, actions, groups, after, write_actions=False, changed_groups={group.id})
+
+    def delete_action_group(self, group_id: str) -> DeletedActionGroup:
+        """Delete the group with `group_id`, moving its actions and the
+        groups inside it up into its own enclosing group (or to the top)."""
+        groups = self.groups().groups
+        deleted = next((g for g in groups if g.id == group_id), None) or find_group(groups, group_id)
+        if deleted.id != group_id:
+            raise ValueError(f"Delete a group by its id: {deleted.name!r} is {deleted.id}")
+        groups_after = [
+            replace(g, group_id=deleted.group_id) if g.group_id == group_id else g for g in groups if g.id != group_id
+        ]
+        actions = self.all()
+        actions_after = [replace(a, group_id=deleted.group_id) if a.group_id == group_id else a for a in actions]
+        changes = self._commit(
+            actions,
+            actions_after,
+            groups,
+            groups_after,
+            changed_groups={g.id for g in groups if g.group_id == group_id},
+        )
+        return DeletedActionGroup(**vars(changes), deleted=deleted)
+
+    # -- committing ---------------------------------------------------------
+
+    def _commit(
+        self,
+        actions_before: list[Action],
+        actions_after: list[Action],
+        groups_before: list[ActionGroup],
+        groups_after: list[ActionGroup],
+        *,
+        write_actions: bool = True,
+        write_groups: bool = True,
+        changed_actions: Collection[str] = (),
+        changed_groups: Collection[str] = (),
+    ) -> ActionGroupChanges:
+        """Validate the actions and groups after a change, write them, then
+        make the calendar's labels match. Everything that can be refused is
+        checked before anything is written. Reports as changed the groups
+        in `changed_groups` and any new one; as affected, the actions in
+        `changed_actions`, any new one, and any other whose placement or
+        label changed."""
+        problems = group_problems(groups_after) + action_problems(actions_after, groups_after)
         if problems:
             raise ValueError("; ".join(problems))
+        tree_before, tree_after = GroupTree(groups_before), GroupTree(groups_after)
         raw_labels, etag = self._calendar_client.list_event_labels()
-        holders = _label_holders(after, raw_labels)
-        desired = _desired_labels(after, raw_labels, holders)
-        held_before = _label_holders(before, raw_labels)
-        self._sheet.write(after)
+        held_before = _label_holders(actions_before, raw_labels)
+        holders = _label_holders(actions_after, raw_labels)
+        desired = _desired_labels(actions_after, tree_after, raw_labels, holders)
+        if write_groups:
+            self._group_sheet.write(groups_after)
+        if write_actions:
+            self._sheet.write(actions_after)
         if {astuple(label) for label in desired} != {astuple(label) for label in raw_labels}:
             # The etag guards against a concurrent label change since the
             # read above (EventLabelConflictError).
             raw_labels = self._calendar_client.replace_event_labels(desired, etag)
-        changed = [
-            _listed(a, holders)
-            for a in after
-            if a.id == changed_id or (a.id in held_before) != (a.id in holders)
-        ]
-        return ActionChanges(changed=changed, label_slots_used=_slots_used(after, raw_labels, holders))
+
+        before_by_id = {a.id: a for a in actions_before}
+        old_groups = {g.id for g in groups_before}
+
+        def placement(action: Action, tree: GroupTree, held: Collection[str]) -> tuple:
+            return action.group_id, tree.path(action), tree.color(action), tree.priority(action), action.id in held
+
+        return ActionGroupChanges(
+            changed=[
+                tree_after.listed(g) for g in tree_after.ordered() if g.id in changed_groups or g.id not in old_groups
+            ],
+            affected_actions=[
+                _listed(a, tree_after, holders)
+                for a in actions_after
+                if a.id in changed_actions
+                or a.id not in before_by_id
+                or placement(before_by_id[a.id], tree_before, held_before) != placement(a, tree_after, holders)
+            ],
+            label_slots_used=_slots_used(actions_after, raw_labels, holders),
+        )
 
 
 def find(actions: list[Action], id_or_name: str) -> Action:
@@ -297,15 +449,16 @@ def _unknown(actions: list[Action], id_or_name: str) -> str:
     )
 
 
-def action_problems(actions: list[Action]) -> list[str]:
+def action_problems(actions: list[Action], groups: list[ActionGroup]) -> list[str]:
     """Everything wrong with `actions` as a whole, as phrases."""
     problems = []
     ids = [a.id for a in actions]
     for action_id in sorted({i for i in ids if i and ids.count(i) > 1}):
         problems.append(f"action id {action_id!r} is used more than once")
+    group_ids = {g.id for g in groups}
     names: dict[str, Action] = {}
     for action in actions:
-        label = f"action {action.id or action.name!r}"
+        label = f"action {action.id}" if action.id else f"action {action.name!r}"
         if not action.id:
             problems.append(f"an action named {action.name!r} has no id")
         if not action.label_id:
@@ -327,25 +480,49 @@ def action_problems(actions: list[Action]) -> list[str]:
             problems.append(f"{label}'s status must be one of {', '.join(ACTION_STATUSES)}")
         if action.priority is not None and not isinstance(action.priority, int):
             problems.append(f"{label}'s priority must be a whole number")
+        if action.group_id is not None and action.group_id not in group_ids:
+            problems.append(
+                f"{label}'s group_id {action.group_id!r} isn't an action group (get_action_groups lists them)"
+            )
     return problems
+
+
+def _check_clear(item: object, clear_fields: Collection[str], clearable: Collection[str]) -> None:
+    unknown = set(clear_fields) - set(clearable)
+    if unknown:
+        raise ValueError(f"Can't clear {sorted(unknown)}; clearable fields are {sorted(clearable)}")
+    both = sorted(name for name in clear_fields if getattr(item, name) is not None)
+    if both:
+        raise ValueError(f"Can't both set and clear {both}")
+
+
+def _updated(current: Any, given: Any, clear_fields: Collection[str], read_only: Collection[str]) -> Any:
+    """`current` with `given`'s set fields (but the read-only ones), and
+    `clear_fields` blanked."""
+    return replace(
+        current,
+        **{
+            f.name: getattr(given, f.name)
+            for f in fields(given)
+            if f.name not in read_only and getattr(given, f.name) is not None
+        },
+        **{name: None for name in clear_fields},
+    )
 
 
 def _new_id(taken: Collection[str | None]) -> str:
     while True:
-        action_id = "".join(secrets.choice(_ID_ALPHABET) for _ in range(_ID_LENGTH))
-        if action_id not in taken:
-            return action_id
+        new_id = "".join(secrets.choice(_ID_ALPHABET) for _ in range(_ID_LENGTH))
+        if new_id not in taken:
+            return new_id
 
 
-def _color(action: Action) -> str:
-    return action.background_color or color_for_priority(action.priority)[1]
-
-
-def _listed(action: Action, holders: Collection[str]) -> ListedAction:
+def _listed(action: Action, tree: GroupTree, holders: Collection[str]) -> ListedAction:
     return ListedAction(
         **{f.name: getattr(action, f.name) for f in fields(Action)},
-        effective_color=_color(action),
-        effective_priority=action.priority,
+        path=tree.path(action),
+        effective_color=tree.color(action),
+        effective_priority=tree.priority(action),
         holds_label=action.id in holders,
     )
 
@@ -369,7 +546,9 @@ def _label_holders(actions: list[Action], raw_labels: list[RawEventLabel]) -> se
     return holders
 
 
-def _desired_labels(actions: list[Action], raw_labels: list[RawEventLabel], holders: set[str]) -> list[RawEventLabel]:
+def _desired_labels(
+    actions: list[Action], tree: GroupTree, raw_labels: list[RawEventLabel], holders: set[str]
+) -> list[RawEventLabel]:
     """The calendar's labels as they should be; ValueError if the active
     actions need more than there's room for."""
     foreign = _foreign(actions, raw_labels)
@@ -381,7 +560,7 @@ def _desired_labels(actions: list[Action], raw_labels: list[RawEventLabel], hold
             "at once. Archive one that isn't done any more."
         )
     return foreign + [
-        RawEventLabel(id=a.label_id, name=a.name, background_color=_color(a)) for a in actions if a.id in holders
+        RawEventLabel(id=a.label_id, name=a.name, background_color=tree.color(a)) for a in actions if a.id in holders
     ]
 
 

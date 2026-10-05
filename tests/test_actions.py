@@ -4,6 +4,7 @@ from calendar_clients.google_calendar import EventLabel as RawEventLabel, EventL
 from tests.fake_labels import FakeLabelCalendar
 from tests.fake_sheets import FakeSheets
 from utilities import actions as actions_module, calendar_metadata_sheet
+from utilities.action_groups import ActionGroup
 from utilities.actions import Action, Actions
 
 _UNNAMED = RawEventLabel(id="default-1", background_color="#039be5")
@@ -162,13 +163,14 @@ class TestLabels:
 class TestUpdateAction:
     def test_sets_given_fields_and_keeps_the_rest(self):
         actions, _, _ = _actions()
-        walk = _create(actions, name="Walk", priority=1, note="outside", group_id="g1")
+        outdoors = actions.create_action_group(ActionGroup(name="Outdoors")).created_id
+        walk = _create(actions, name="Walk", priority=1, note="outside", group_id=outdoors)
 
         changes = actions.update_action(Action(id=walk, status="active", note="in the park"))
 
         (action,) = actions.all()
         assert (action.name, action.status, action.priority, action.note, action.group_id) == (
-            "Walk", "active", 1, "in the park", "g1"
+            "Walk", "active", 1, "in the park", outdoors
         )
         assert [a.id for a in changes.changed] == [walk]
 
@@ -263,3 +265,149 @@ class TestGetAction:
 
         with pytest.raises(ValueError, match=rf"did you mean {walk} \(Play guitar\)\?"):
             actions.get_action("play guitr")
+
+
+def _group(actions: Actions, **fields) -> str:
+    return actions.create_action_group(ActionGroup(**fields)).created_id
+
+
+class TestActionGroups:
+    def test_creates_groups_inside_groups(self):
+        actions, _, sheets = _actions()
+        creative = _group(actions, name="Creative", priority=1)
+        guitar = _group(actions, name="Guitar", group_id=creative)
+
+        listed = {g.name: g for g in actions.get_action_groups()}
+
+        assert listed["Guitar"].path == "Creative › Guitar"
+        assert listed["Guitar"].effective_priority == 1
+        assert actions.get_action_group("guitar").id == guitar
+        assert sheets.tags[("sheet-role", calendar_metadata_sheet.ACTION_GROUPS_SHEET_ROLE)] is not None
+
+    def test_lists_enclosing_groups_first(self):
+        actions, _, _ = _actions()
+        top = _group(actions, name="Top")
+        inner = _group(actions, name="Inner")
+        actions.update_action_group(ActionGroup(id=inner, group_id=top))
+        _group(actions, name="Other")
+
+        assert [g.name for g in actions.get_action_groups()] == ["Top", "Inner", "Other"]
+
+    def test_actions_inherit_their_groups_color_and_priority(self):
+        actions, calendar, _ = _actions()
+        creative = _group(actions, name="Creative", background_color="#123456", priority=3)
+        guitar = _group(actions, name="Guitar", group_id=creative)
+        play = _create(actions, name="Play guitar", group_id=guitar, status="active")
+
+        action = actions.get_action(play)
+
+        assert (action.path, action.effective_color, action.effective_priority) == (
+            "Creative › Guitar › Play guitar", "#123456", 3
+        )
+        assert list(calendar.named().values()) == [("Play guitar", "#123456")]
+
+    def test_recoloring_a_group_recolors_its_actions_labels(self):
+        actions, calendar, _ = _actions()
+        creative = _group(actions, name="Creative", background_color="#123456")
+        play = _create(actions, name="Play guitar", group_id=creative, status="active")
+        _create(actions, name="Walk", status="active", background_color="#000000")
+
+        changes = actions.update_action_group(ActionGroup(id=creative, background_color="#654321"))
+
+        assert [a.id for a in changes.affected_actions] == [play]
+        assert changes.affected_actions[0].effective_color == "#654321"
+        assert ("Play guitar", "#654321") in calendar.named().values()
+
+    def test_a_group_may_share_an_actions_name_but_not_another_groups(self):
+        actions, _, _ = _actions()
+        _create(actions, name="Cooking")
+        _group(actions, name="Cooking")
+
+        with pytest.raises(ValueError, match=r"already an action group named 'Cooking' \(.*\); group names must"):
+            _group(actions, name="cooking")
+
+    @pytest.mark.parametrize(
+        "group, message",
+        [
+            (ActionGroup(), "needs a name"),
+            (ActionGroup(name="X", group_id="nope"), "is inside 'nope', which isn't an action group"),
+        ],
+    )
+    def test_refuses_what_isnt_well_formed(self, group, message):
+        actions, _, _ = _actions()
+
+        with pytest.raises(ValueError, match=message):
+            actions.create_action_group(group)
+
+    def test_refuses_a_group_inside_itself(self):
+        actions, _, _ = _actions()
+        top = _group(actions, name="Top")
+        inner = _group(actions, name="Inner", group_id=top)
+
+        with pytest.raises(ValueError, match="can't be inside itself"):
+            actions.update_action_group(ActionGroup(id=top, group_id=inner))
+
+    def test_refuses_an_action_in_a_group_that_doesnt_exist(self):
+        actions, _, _ = _actions()
+
+        with pytest.raises(ValueError, match="group_id 'nope' isn't an action group"):
+            _create(actions, name="Walk", group_id="nope")
+
+    def test_clears_fields(self):
+        actions, _, _ = _actions()
+        top = _group(actions, name="Top")
+        inner = _group(actions, name="Inner", group_id=top, note="n")
+
+        actions.update_action_group(ActionGroup(id=inner), clear_fields=["group_id", "note"])
+
+        assert actions.get_action_group(inner).group_id is None
+        assert actions.get_action_group(inner).note is None
+
+    def test_an_unknown_group_suggests_close_matches(self):
+        actions, _, _ = _actions()
+        guitar = _group(actions, name="Guitar")
+
+        with pytest.raises(ValueError, match=rf"did you mean {guitar} \(Guitar\)"):
+            actions.get_action_group("guitr")
+        with pytest.raises(ValueError, match="no action group"):
+            actions.update_action_group(ActionGroup(id="nope", note="x"))
+
+
+class TestDeleteActionGroup:
+    def test_moves_its_actions_and_groups_up_to_its_parent(self):
+        actions, calendar, _ = _actions()
+        creative = _group(actions, name="Creative", background_color="#111111")
+        guitar = _group(actions, name="Guitar", group_id=creative, background_color="#222222")
+        lessons = _group(actions, name="Lessons", group_id=guitar)
+        play = _create(actions, name="Play guitar", group_id=guitar, status="active")
+        sing = _create(actions, name="Sing", group_id=creative)
+
+        deleted = actions.delete_action_group(guitar)
+
+        assert deleted.deleted.name == "Guitar"
+        assert [g.id for g in deleted.changed] == [lessons]
+        assert deleted.changed[0].path == "Creative › Lessons"
+        assert [a.id for a in deleted.affected_actions] == [play]
+        assert actions.get_action(play).group_id == creative
+        assert actions.get_action(sing).group_id == creative
+        assert {g.name for g in actions.get_action_groups()} == {"Creative", "Lessons"}
+        assert ("Play guitar", "#111111") in calendar.named().values()
+
+    def test_a_top_level_groups_contents_move_to_the_top(self):
+        actions, _, _ = _actions()
+        top = _group(actions, name="Top")
+        play = _create(actions, name="Play", group_id=top)
+
+        actions.delete_action_group(top)
+
+        assert actions.get_action(play).group_id is None
+        assert actions.get_action_groups() == []
+
+    def test_needs_the_groups_id(self):
+        actions, _, _ = _actions()
+        top = _group(actions, name="Top")
+
+        with pytest.raises(ValueError, match=f"by its id: 'Top' is {top}"):
+            actions.delete_action_group("top")
+        with pytest.raises(ValueError, match="no action group"):
+            actions.delete_action_group("nothing")

@@ -139,3 +139,8 @@ ACTIONS_SHEET_ROLE = "actions"
 ACTIONS_SHEET_TITLE = "Actions"
 """See `utilities/actions.py`'s `Actions` for the tab this identifies --
 what the user does with their time."""
+
+ACTION_GROUPS_SHEET_ROLE = "action-groups"
+ACTION_GROUPS_SHEET_TITLE = "Action Groups"
+"""See `utilities/action_groups.py` for the tab this identifies -- the
+groups that roll actions up."""
