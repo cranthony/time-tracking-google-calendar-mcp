@@ -287,10 +287,10 @@ def _traits_problems(measure: dict[str, Any], trait_ids: set[str] | None) -> lis
             problems.append(f"\"weights\" names {stray[0]!r}, which \"traits\" doesn't select")
         named += [t for t in weights if t not in named]
     if "parts" in measure:
-        # Imported here: utilities/traits.py imports this module.
-        from utilities.traits import parts_override_problems
+        from utilities.traits import person_traits_problems
 
-        problems += parts_override_problems(measure["parts"], None if selected == "all" else list(selected))
+        spec = {"select": "all" if selected == "all" else list(selected), "parts": measure["parts"]}
+        problems += [p.replace('"select"', '"traits"') for p in person_traits_problems(spec)]
         if isinstance(measure["parts"], dict):
             named += [t for t in measure["parts"] if t not in named]
     if trait_ids is not None:

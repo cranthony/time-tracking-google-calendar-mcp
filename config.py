@@ -243,16 +243,19 @@ def build_actions(calendar_id: str | None = None) -> Actions:
     return Actions.ensure(calendar_client, sheets_client, spreadsheet_id)
 
 
-def build_people(calendar_id: str | None = None) -> People:
+def build_people(
+    calendar_id: str | None = None, *, trait_ids: Callable[[], Collection[str]] | None = None
+) -> People:
     """Construct a People from environment configuration (and a local .env
     file, if present). See `_build_calendar_and_sheets_clients` for
     `calendar_id`. Constructing this ensures the calendar has a metadata
-    spreadsheet and People and Circles tabs -- see `People.ensure`."""
+    spreadsheet and People and Circles tabs -- see `People.ensure`, which
+    also says what `trait_ids` is for."""
     calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
     spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
         calendar_client, sheets_client
     )
-    return People.ensure(sheets_client, spreadsheet_id)
+    return People.ensure(sheets_client, spreadsheet_id, trait_ids)
 
 
 def build_locations(calendar_id: str | None = None) -> Locations:

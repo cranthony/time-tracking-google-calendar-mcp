@@ -1071,18 +1071,17 @@ class TestMeasureTraits:
         return health, calendar, person
 
     def test_rates_a_goal_by_its_traits_keeping_their_scores(self):
-        health, calendar, person = self._setup()
-        calendar.events = [
-            _event("2026-10-01T18:00", "2026-10-01T20:00", [person.id], facets=Facets(creative=2, effort=1, attention=3)),
-        ]
+        health, calendar, person = self._setup({"kind": "traits", "traits": ["reliable", "creative"]})
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T20:00", [person.id])]
 
         (rated,) = health.measure()
 
+        # Creative's one part is a judgment, not made yet, so it's left out.
         assert rated.method == "metric"
-        assert rated.explanation == "Traits (Creative 100, Generous 70) → 85"
+        assert rated.explanation == "Traits (Reliable 83, Creative –) → 83"
         assert rated.metrics == {
-            "traits": {"creative": 100, "generous": 70},
-            "parts": {"creative": {"together_creative": 100}, "generous": {"effort_paid": 40, "attention": 100}},
+            "traits": {"reliable": 83, "creative": None},
+            "parts": {"reliable": {"continuity": 50, "follow_through": 100, "count": 100}, "creative": {"judgment": None}},
             "window_days": 30,
         }
 
@@ -1098,14 +1097,14 @@ class TestMeasureTraits:
 
     def test_explains_each_part_with_the_events_behind_it(self):
         health, calendar, person = self._setup({"kind": "traits", "traits": "all"})
-        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T20:00", [person.id], facets=Facets(new="place"))]
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T20:00", [person.id])]
 
         explained = health.traits_rating(person.id)
 
         assert (explained.goal_id, explained.day) == (person.id, YESTERDAY)
-        novelty = next(t for t in explained.traits if t.trait_id == "adventurous").parts[0]
-        assert (novelty.score, novelty.event_ids) == (100, ["e-2026-10-01T18:00"])
-        assert [(t, p.key) for t, p in explained.judgments_due] == [("thoughtful", "judgment")]
+        count = next(t for t in explained.traits if t.trait_id == "reliable").parts[2]
+        assert (count.key, count.score, count.event_ids) == ("count", 100, ["e-2026-10-01T18:00"])
+        assert ("adventurous", "judgment") in [(t, p.key) for t, p in explained.judgments_due]
 
     def test_only_a_traits_measure_is_explained(self):
         health, _, _ = self._setup()

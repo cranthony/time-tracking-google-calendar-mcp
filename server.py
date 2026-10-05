@@ -456,7 +456,7 @@ def get_people_store() -> People:
     if _people is None:
         with WRITE_LOCK:
             if _people is None:
-                _people = build_people()
+                _people = build_people(trait_ids=lambda: [t.id for t in get_trait_store().all()])
     return _people
 
 
@@ -1209,39 +1209,41 @@ def get_goal_history(goal_ids: list[str], start: date | None = None, end: date |
 
 @tool
 def get_traits(statuses: list[TraitStatus] | None = None) -> list[ListedTrait]:
-    """The traits goals can be rated by, in order: by default the active
-    ones (rated) and those turned off (kept, but not rated for now), not
-    archived ones (retired). Each has an id (fixed when it's created, and
-    what a traits measure names), name, definition and parts. A trait's
-    score of a goal's day (0-100) is the weighted mean of its parts' scores,
-    leaving out any with nothing to rate it by. A part is a measure with no
-    scope -- the goal using the trait supplies it: that goal's events and
-    its sub-goals', and their facets (see list_events). "With events" are
-    the goal's events (unless their facets say they were only for it) and
-    any whose facets name it in with_goal_ids; "for events" are those
-    whose facets name it in for_goal_ids. Each part is {"kind": ...,
-    "weight": 1, ...}: "prep" (for events in the window, against "target",
-    default 1), "prep_regularity" (the share of the last "weeks", default
-    4, with a for event), "continuity" (the last with event ended within
-    "last_within_days" of the day's end and the next starts within
-    "next_within_days" after it, both default 14: 100 for both, 50 for
-    one, 0 for neither), "together_creative" (with events whose creative
-    facet is at least "min_creative", default 2, against "target"),
-    "novelty" (with events whose new facet isn't none, against "target"),
-    "effort_paid" (minutes x (1 + effort facet) over with and for events,
-    against "target"), "attention" (the mean attention facet of with
-    events, 0-3 as 0-100), "judgment" (a "rubric", judged in the
-    reflection), and "count", "duration" and "follow_through" (as the
-    measures of the same kind, over the goal's events; count's and
-    duration's interval_days default to the window, and with "activity"
-    they count only the goal's with events whose facets name that
-    activity: {"kind": "count", "target": 1, "interval_days": 21,
-    "zero_at_days": 42, "activity": "visit"}). A goal's traits measure can
-    give it its own parts for a trait (its "parts"), for cadences that
-    differ from person to person. Window parts take an
-    optional "window_days", by default the measure's. problems lists
-    anything wrong with a trait edited by hand; a bad part isn't rated.
-    Read-only."""
+    """The traits: how the user wants to be with people (and with
+    themselves), in order -- by default the active ones (rated) and those
+    turned off (kept, but not rated for now), not archived ones
+    (retired). Each has an id (fixed when it's created, and what a
+    person's traits name), name, definition and parts. A trait's score is
+    the weighted mean of its parts' scores (0-100), leaving out any with
+    nothing to rate it by. Each part is {"kind": ..., "weight": 1,
+    "engagement_type": "with", ...}: engagement_type "with" (the default)
+    reads the events the person was at with the user, "for" those the
+    user did for them while they weren't there. The kinds:
+    "judgment" -- each event judged by the assistant on its own, never by
+    asking the user, for one person or a named group, against a "rubric"
+    (the question: "Was this activity or place new?") on a scale of
+    "ratings" ({"0": "The activity and place were routine", "1": "There
+    was a twist on the activity or place", "2": "The activity or the
+    place were new", "3": "Both were new, or it was otherwise
+    adventurous"}), from the "facts" it names: "action" (what was done),
+    "action_history" (what's been done with them before), "location",
+    "location_history" (where they've been together before),
+    "general_notes" (the event's notes) and "person_notes" (the notes on
+    the person: the user's own for a "for" engagement, the other
+    person's for "with"), each a name or {"fact": "action_history",
+    "lookback_days": 90} (history facts look back 30 days by default);
+    "continuity" (the last event ended within "last_within_days" of the
+    day's end and the next starts within "next_within_days" after it,
+    both default 14: 100 for both, 50 for one, 0 for neither); "count"
+    ({"kind": "count", "target": 1, "interval_days": 21, "zero_at_days":
+    42, "noun": "visits"}), "duration" (with "target_min") and
+    "follow_through" ("penalty", "recovery", "look_back_days"), as the
+    measures of the same kind. continuity, count, duration and
+    follow_through can take an "action" (an action or action group id) to
+    count only its events. A person's traits can select which traits
+    apply to them and give them their own parts for any (see
+    create_person). problems lists anything wrong with a trait edited by
+    hand; a bad part isn't rated. Read-only."""
     with track("get_traits"), cached_sheet_reads():
         try:
             return get_trait_store().get_traits(statuses)
@@ -1258,9 +1260,8 @@ def create_trait(trait: Trait) -> Trait:
     given ("off" to keep it unrated for now). Its id is made from its name
     and never changes, so renaming it later doesn't touch the measures
     naming it. A trait with a part that isn't well formed is refused,
-    saying what's wrong. Goals rate by it once their traits measure selects
-    it (a measure selecting "all" does at once). Returns the trait as
-    created."""
+    saying what's wrong. It applies to every person whose traits don't
+    select others. Returns the trait as created."""
     with track("create_trait"), cached_sheet_reads():
         try:
             return get_trait_store().create_trait(trait)
@@ -1591,7 +1592,10 @@ def get_people(statuses: list[PersonStatus] | None = None) -> list[ListedPerson]
     always first, with the id "self". Each has an id, name, context (what
     tells them apart from others of the same name, e.g. "met at salsa"),
     status, circles (the ids of the circles they're in) with their
-    circle_names, and what_matters (what's important to them). Read-only."""
+    circle_names, what_matters (what's important to them) and traits:
+    which traits apply to them, and their own parts for any (see
+    create_person; without it, every active trait applies as get_traits
+    has it). Read-only."""
     with track("get_people"), cached_sheet_reads():
         _prefetch_people()
         try:
@@ -1620,9 +1624,15 @@ def create_person(person: Person) -> CreatedPerson:
     """Add a person: a name, and optionally a context (what tells them
     apart, e.g. "met at salsa" -- a name and context together must be
     unique, so give one when the name's taken), circles (circle ids, see
-    get_circles) and what_matters (what's important to them). Active
-    unless given a status. id is assigned. Returns the person and their
-    id as created_id."""
+    get_circles), what_matters (what's important to them) and traits:
+    {"select": "all" or [trait ids], "parts": {trait id: [parts]}}, both
+    optional -- the traits that apply to them (by default every active
+    one), and parts replacing a trait's for them alone, each checked as a
+    trait's own (see get_traits): a person's own cadence, say,
+    {"parts": {"reliable": [{"kind": "count", "target": 1,
+    "interval_days": 21, "noun": "visits"}]}}. Active unless given a
+    status. id is assigned. Returns the person and their id as
+    created_id."""
     with track("create_person"), cached_sheet_reads():
         _prefetch_people()
         try:
@@ -1631,7 +1641,7 @@ def create_person(person: Person) -> CreatedPerson:
             raise ToolError(str(exc)) from exc
 
 
-PersonField = Literal["context", "circles", "what_matters"]
+PersonField = Literal["context", "circles", "what_matters", "traits"]
 """Every Person field update_person can clear."""
 
 
@@ -1641,7 +1651,8 @@ def update_person(person: Person, clear_fields: list[PersonField] | None = None)
     """Update a person by id ("self" for the user): their name, context,
     status (active; archived, out of touch; or deleted, shouldn't have
     existed -- self is always active), circles (replaced whole, so send
-    every circle to keep) or what_matters. Omitted properties keep their
+    every circle to keep), what_matters or traits (replaced whole; see
+    create_person). Omitted properties keep their
     value; list one in clear_fields to blank it instead. Returns the
     person as updated."""
     with track("update_person"), cached_sheet_reads():

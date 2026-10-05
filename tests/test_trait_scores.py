@@ -35,6 +35,9 @@ def _event(days_before_end: float, hours: float = 2, goal_ids=("p1",), **facets)
     )
 
 
+_JUDGMENT = {"kind": "judgment", "rubric": "R", "ratings": {"0": "no", "1": "a bit", "2": "yes", "3": "very"}, "facts": []}
+
+
 def _trait(*parts, trait_id="t", status="active") -> Trait:
     return Trait(id=trait_id, name=trait_id.title(), status=status, parts=list(parts))
 
@@ -53,26 +56,6 @@ def _part(part, events, **kwargs):
 
 
 class TestParts:
-    def test_prep_counts_for_events_in_the_window(self):
-        events = [
-            _event(3, goal_ids=["o1"], for_goal_ids=["p1"]),
-            _event(10, goal_ids=["o1"], for_goal_ids=["p1v"]),  # a sub-goal's counts
-            _event(40, goal_ids=["o1"], for_goal_ids=["p1"]),  # outside the window
-            _event(2),  # with, not for
-        ]
-
-        part = _part({"kind": "prep", "target": 4}, events)
-
-        assert (part.score, part.said) == (50, "2 of 4 prep events in the last 30 days")
-        assert part.event_ids == ["e3", "e10"]
-
-    def test_prep_regularity_is_the_share_of_weeks_with_prep(self):
-        events = [_event(d, goal_ids=[], for_goal_ids=["p1"]) for d in (1, 2, 15, 30)]
-
-        part = _part({"kind": "prep_regularity", "weeks": 4}, events)
-
-        assert (part.score, part.said) == (50, "Prep in 2 of the last 4 weeks")
-
     @pytest.mark.parametrize(
         "days, score",
         [((3, -5), 100), ((3,), 50), ((-5,), 50), ((20, -20), 0), ((), 0)],
@@ -88,58 +71,22 @@ class TestParts:
         assert part.said == "Last 2 days ago; next in 5 days (within 14 and 14 days)"
         assert part.event_ids == ["e3", "e-5"]
 
-    def test_together_creative_counts_with_events_making_something(self):
-        events = [
-            _event(1, creative=3),
-            _event(2, creative=1),
-            _event(3, goal_ids=["o1"], with_goal_ids=["p1"], creative=2),  # with, by its facets
-            _event(4, for_goal_ids=["p1"], creative=3),  # for them, not with them
-            _event(5),  # no facets
-        ]
+    def test_continuity_for_reads_the_events_done_for_them(self):
+        events = [_event(3, goal_ids=["o1"], for_goal_ids=["p1"]), _event(-5)]
 
-        part = _part({"kind": "together_creative", "target": 2}, events)
+        part = _part({"kind": "continuity", "engagement_type": "for"}, events)
 
-        assert (part.score, part.event_ids) == (100, ["e1", "e3"])
-
-    def test_novelty_counts_whats_new(self):
-        events = [_event(1, new="place"), _event(2, new="none"), _event(3, new="both"), _event(4)]
-
-        part = _part({"kind": "novelty", "target": 4}, events)
-
-        assert (part.score, part.event_ids) == (50, ["e1", "e3"])
-
-    def test_effort_paid_weighs_minutes_by_effort_over_with_and_for_events(self):
-        events = [
-            _event(1, hours=2, effort=1),  # 120 × 2
-            _event(2, hours=1, goal_ids=["o1"], for_goal_ids=["p1"], effort=3),  # 60 × 4
-            _event(3, hours=1),  # 60 × 1
-            _event(4, hours=1, goal_ids=["o1"]),  # not theirs
-        ]
-
-        part = _part({"kind": "effort_paid", "target": 1080}, events)
-
-        assert (part.score, part.said) == (50, "540 of 1080 effort-minutes (minutes × (1 + effort)) in the last 30 days")
-
-    def test_attention_is_the_mean_of_with_events_as_0_to_100(self):
-        events = [_event(1, attention=3), _event(2, attention=1), _event(3)]
-
-        assert _part({"kind": "attention"}, events).score == 67
-
-    def test_attention_without_any_is_left_out(self):
-        part = _part({"kind": "attention"}, [_event(1)])
-
-        assert part.score is None
-        assert _score([{"kind": "attention"}], [_event(1)]).rating == "skip"
+        assert (part.score, part.event_ids) == (50, ["e3"])
 
     def test_a_judgment_waits_for_the_reflection(self):
-        rated = _score([{"kind": "judgment", "rubric": "R"}, {"kind": "prep"}], [])
+        rated = _score([_JUDGMENT, {"kind": "count", "target": 1}], [])
 
         assert rated.traits[0].parts[0].score is None
         assert rated.traits[0].score == 0
         assert [(t, p.key) for t, p in rated.judgments_due] == [("t", "judgment")]
 
     def test_a_judgment_given_counts(self):
-        rated = _score([{"kind": "judgment", "rubric": "R"}, {"kind": "prep"}], [], judgments={"t": {"judgment": 80}})
+        rated = _score([_JUDGMENT, {"kind": "count", "target": 1}], [], judgments={"t": {"judgment": 80}})
 
         assert rated.traits[0].score == 40
         assert rated.judgments_due == []
@@ -160,7 +107,7 @@ class TestParts:
         assert part.event_ids == ["e0.5"]
 
     def test_a_bad_part_isnt_rated(self):
-        part = _part({"kind": "prep", "target": -1}, [_event(1, for_goal_ids=["p1"])])
+        part = _part({"kind": "count", "target": -1}, [_event(1)])
 
         assert part.score is None
         assert part.said == 'Not rated: it "target" must be a number above 0'
@@ -169,27 +116,27 @@ class TestParts:
 class TestRating:
     def test_traits_and_parts_are_weighted_means(self):
         traits = [
-            _trait({"kind": "novelty"}, {"kind": "attention", "weight": 3}, trait_id="a"),
-            _trait({"kind": "prep"}, trait_id="b"),
+            _trait({"kind": "count", "target": 1}, {"kind": "continuity", "weight": 3}, trait_id="a"),
+            _trait({"kind": "count", "target": 4}, trait_id="b"),
         ]
-        events = [_event(1, new="place", attention=1)]
+        events = [_event(1)]
 
         rated = score_traits(
             PERSON, {"kind": "traits", "traits": "all", "weights": {"b": 3}}, traits, WINDOW, events, [], TREE
         )
 
-        # a: (100 + 33 × 3) / 4 = 50; b: 0; rating: (50 + 0 × 3) / 4.
-        assert [t.score for t in rated.traits] == [50, 0]
-        assert rated.rating == 12
-        assert rated.explanation == "Traits (A 50, B 0×3) → 12"
+        # a: (100 + 50 × 3) / 4 = 62; b: 25; rating: (62 + 25 × 3) / 4.
+        assert [t.score for t in rated.traits] == [62, 25]
+        assert rated.rating == 34
+        assert rated.explanation == "Traits (A 62, B 25×3) → 34"
         assert rated.metrics() == {
-            "traits": {"a": 50, "b": 0},
-            "parts": {"a": {"novelty": 100, "attention": 33}, "b": {"prep": 0}},
+            "traits": {"a": 62, "b": 25},
+            "parts": {"a": {"count": 100, "continuity": 50}, "b": {"count": 25}},
             "window_days": 30,
         }
 
     def test_off_archived_and_unknown_traits_are_left_out(self):
-        traits = [_trait({"kind": "prep"}, trait_id="a"), _trait({"kind": "prep"}, trait_id="b", status="off")]
+        traits = [_trait(_JUDGMENT, trait_id="a"), _trait(_JUDGMENT, trait_id="b", status="off")]
 
         chosen, left_out = selected_traits({"traits": ["a", "b", "c"]}, traits)
 
@@ -198,24 +145,24 @@ class TestRating:
         assert [t.id for t in selected_traits({"traits": "all"}, traits)[0]] == ["a"]
 
     def test_nothing_to_rate_is_a_skip(self):
-        rated = _score([{"kind": "attention"}], [])
+        rated = _score([_JUDGMENT], [])
 
         assert rated.rating == "skip"
         assert rated.explanation == "No trait had anything to rate it by (T –) → skip"
 
     def test_the_seed_traits_rate_a_month_with_a_person(self):
-        events = [
-            _event(2, hours=3, activity="salsa social", new="place", creative=2, effort=1, attention=3),
-            _event(9, goal_ids=["o1"], for_goal_ids=["p1"], effort=2),
-            _event(-4),
-        ]
+        events = [_event(2, hours=3), _event(9, goal_ids=["o1"], for_goal_ids=["p1"]), _event(-4)]
 
-        rated = score_traits(PERSON, PERSON.measure, SEED_TRAITS, WINDOW, events, [], TREE)
+        rated = score_traits(
+            PERSON, PERSON.measure, SEED_TRAITS, WINDOW, events, [], TREE,
+            {"creative": {"judgment": 100}, "adventurous": {"judgment": 33}},
+        )
 
+        # Only Reliable's parts are counted; the rest wait to be judged.
         assert {t.trait_id: t.score for t in rated.traits} == {
-            "thoughtful": 38, "reliable": 100, "creative": 100, "adventurous": 100, "generous": 100,
+            "thoughtful": None, "reliable": 100, "creative": 100, "adventurous": 33, "generous": None,
         }
-        assert rated.rating == 88
+        assert rated.rating == 78
 
 
 def test_reach_covers_every_parts_look_back_and_ahead():
@@ -244,42 +191,29 @@ def test_trait_history_is_the_daily_mean_across_goals():
 
 
 class TestCadences:
-    """A goal's own parts for a trait, and count parts by activity."""
-
-    def test_a_count_by_activity_counts_only_events_of_that_activity(self):
-        events = [
-            _event(3, activity="Visit"),
-            _event(10, activity="drive"),
-            _event(12, goal_ids=["o1"], with_goal_ids=["p1"], activity="visit"),  # with them, by facets
-            _event(5),  # no facets
-        ]
-
-        part = _part({"kind": "count", "target": 2, "interval_days": 21, "activity": "visit"}, events)
-
-        assert (part.score, part.event_ids) == (100, ["e3", "e12"])
-        assert part.said == "2 of 2 visit in the last 21 days"
+    """A goal's own parts for a trait."""
 
     def test_a_goals_own_parts_replace_the_traits(self):
         measure = {
             "kind": "traits",
             "traits": ["t"],
-            "parts": {"t": [{"kind": "count", "target": 1, "interval_days": 60, "activity": "call"}]},
+            "parts": {"t": [{"kind": "count", "target": 1, "interval_days": 60}]},
         }
-        events = [_event(40, activity="call")]
+        events = [_event(40)]
 
         rated = _score([{"kind": "count", "target": 1, "interval_days": 7}], events, measure=measure)
 
         assert [(p.key, p.score) for p in rated.traits[0].parts] == [("count", 100)]
-        assert reach(measure, [_trait({"kind": "prep"})])[0] == timedelta(days=60)
+        assert reach(measure, [_trait({"kind": "count", "target": 1})])[0] == timedelta(days=60)
 
 
 @pytest.mark.parametrize(
     "parts, problem",
     [
         ({"reliable": []}, "\"parts\" for 'reliable' must be a list of at least one part"),
-        ({"creative": [{"kind": "prep"}]}, "\"parts\" names 'creative', which \"traits\" doesn't select"),
+        ({"creative": [{"kind": "count", "target": 1}]}, "\"parts\" names 'creative', which isn't selected"),
         ({"reliable": [{"kind": "count"}]}, "\"parts\" for 'reliable': part 1 (count) needs \"target\""),
-        ({"reliable": [{"kind": "novelty", "activity": "x"}]}, "has no field \"activity\""),
+        ({"reliable": [{"kind": "count", "target": 1, "activity": "x"}]}, "has no field \"activity\""),
         ([], '"parts" must be {trait id: [parts]}'),
     ],
 )
