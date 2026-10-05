@@ -11,6 +11,7 @@ from calendar_clients.google_auth import build_service, load_credentials
 from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
+from utilities.actions import Actions
 from utilities.compaction_journal import CompactionJournal
 from utilities.goal_details import GoalDetails
 from utilities.goals import Goals
@@ -226,3 +227,15 @@ def build_compaction_journal(calendar_id: str | None = None) -> CompactionJourna
         calendar_client, sheets_client
     )
     return CompactionJournal.ensure(sheets_client, spreadsheet_id)
+
+
+def build_actions(calendar_id: str | None = None) -> Actions:
+    """Construct an Actions from environment configuration (and a local
+    .env file, if present). See `_build_calendar_and_sheets_clients` for
+    `calendar_id`. Constructing this ensures the calendar has a metadata
+    spreadsheet and an Actions tab -- see `Actions.ensure`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return Actions.ensure(calendar_client, sheets_client, spreadsheet_id)

@@ -30,6 +30,7 @@ from calendar_clients.google_calendar import Event
 from calendar_clients.google_sheets import SheetsClient
 from tests.fake_sheets import FakeSheets, FakeSheetsService
 from tests.test_goal_health import NOW, TODAY, YESTERDAY, FakeCalendar, _event
+from utilities.actions import Action
 from utilities.goal_health import Assessment
 from utilities.goal_sheet import Goal
 from utilities.goals import OVERALL_ID
@@ -66,7 +67,7 @@ class _Server:
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
             "_calendar_client", "_reallocating_calendar", "_goals", "_goal_health", "_reflections",
-            "_noted_time_sheet", "_compaction_journal", "_note_compactor", "_recurrences",
+            "_noted_time_sheet", "_compaction_journal", "_note_compactor", "_recurrences", "_actions",
         ):
             monkeypatch.setattr(server, cached, None)
         # The seams: the clocks, so days fall on the test calendar's.
@@ -80,6 +81,7 @@ class _Server:
         listed = server.create_goal(Goal(name="Cooking", measure={"kind": "subjective", "prompt": "How was it?"}))
         self.cooking = cooking = listed.changed[0]
         server.create_goal(Goal(name="Reading"))
+        self.walk = server.create_action(Action(name="Walk")).created_id
         evening = (NOW - timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
         self.calendar.events.append(
             _event(evening.isoformat()[:19], (evening + timedelta(hours=1)).isoformat()[:19], goal_ids=[cooking.id])
@@ -141,6 +143,11 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         "record_reflection (apply)": lambda: server.record_reflection(
             YESTERDAY, [tools.assessment(75)], dry_run=False
         ),
+        # Actions only.
+        "get_actions": lambda: server.get_actions(),
+        "get_action": lambda: server.get_action("walk"),
+        "create_action": lambda: server.create_action(Action(name="Run")),
+        "update_action": lambda: server.update_action(Action(id=tools.walk, status="active")),
         "list_events": lambda: server.list_events(NOW - timedelta(days=2), NOW),
         "get_event": lambda: server.get_event(event_id),
         "delete_event": lambda: server.delete_event(event_id),
