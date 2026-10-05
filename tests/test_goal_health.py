@@ -8,10 +8,12 @@ import pytest
 from calendar_clients.google_calendar import Event
 from tests.fake_sheets import FakeSheets
 from tests.test_goals import FakeLabelCalendar, _UNNAMED
+from utilities.facets import Facets
 from utilities.goal_health import Assessment, GoalHealth, band
 from utilities.health_days import day_event_id
 from utilities.goal_sheet import Goal
 from utilities.goals import OVERALL_ID, Goals
+from utilities.traits import SEED_TRAITS
 
 TZ = ZoneInfo("America/New_York")
 TODAY = date(2026, 10, 2)  # A Friday.
@@ -1038,3 +1040,67 @@ class TestOverall:
         (rated,) = health.measure(goal_ids=[OVERALL_ID])
 
         assert rated.explanation == "Mean of 2 sub-goals (80, 40) → 60"
+
+
+class TestMeasureTraits:
+    """Yesterday runs from 7am on 2026-10-01 to 7am on the 2nd."""
+
+    def _setup(self, measure=None):
+        calendar = FakeCalendar()
+        store = Goals(calendar, FakeSheets(), today=lambda: TODAY, trait_ids=lambda: [t.id for t in SEED_TRAITS])
+        store.create_goal(Goal(name="Person", measure=measure or {"kind": "traits", "traits": ["creative", "generous"]}))
+        person = next(g for g in store.tree().goals if g.name == "Person")
+        health = GoalHealth(calendar, store, now=lambda: NOW, traits=lambda: SEED_TRAITS)
+        return health, calendar, person
+
+    def test_rates_a_goal_by_its_traits_keeping_their_scores(self):
+        health, calendar, person = self._setup()
+        calendar.events = [
+            _event("2026-10-01T18:00", "2026-10-01T20:00", [person.id], facets=Facets(creative=2, effort=1, attention=3)),
+        ]
+
+        (rated,) = health.measure()
+
+        assert rated.method == "metric"
+        assert rated.explanation == "Traits (Creative 100, Generous 70) → 85"
+        assert rated.metrics == {
+            "traits": {"creative": 100, "generous": 70},
+            "parts": {"creative": {"together_creative": 100}, "generous": {"effort_paid": 40, "attention": 100}},
+            "window_days": 30,
+        }
+
+    def test_reads_back_over_the_window_and_ahead_for_continuity(self):
+        health, calendar, person = self._setup({"kind": "traits", "traits": ["reliable"]})
+        calendar.events = [_event("2026-10-10T18:00", "2026-10-10T20:00", [person.id])]
+
+        (rated,) = health.measure()
+
+        first, last = calendar.listed[-1]
+        assert first <= datetime(2026, 9, 1, 7, tzinfo=TZ) and last >= datetime(2026, 10, 16, tzinfo=TZ)
+        assert rated.metrics["parts"]["reliable"]["continuity"] == 50
+
+    def test_explains_each_part_with_the_events_behind_it(self):
+        health, calendar, person = self._setup({"kind": "traits", "traits": "all"})
+        calendar.events = [_event("2026-10-01T18:00", "2026-10-01T20:00", [person.id], facets=Facets(new="place"))]
+
+        explained = health.traits_rating(person.id)
+
+        assert (explained.goal_id, explained.day) == (person.id, YESTERDAY)
+        novelty = next(t for t in explained.traits if t.trait_id == "adventurous").parts[0]
+        assert (novelty.score, novelty.event_ids) == (100, ["e-2026-10-01T18:00"])
+        assert [(t, p.key) for t, p in explained.judgments_due] == [("thoughtful", "judgment")]
+
+    def test_only_a_traits_measure_is_explained(self):
+        health, _, _ = self._setup()
+        other = Goal(name="Other", measure={"kind": "count", "target": 1})
+        health._goals.create_goal(other)
+        other_id = next(g.id for g in health._goals.tree().goals if g.name == "Other")
+
+        with pytest.raises(ValueError, match="isn't measured by traits"):
+            health.traits_rating(other_id)
+
+    def test_a_measure_naming_an_unknown_trait_is_refused(self):
+        health, _, person = self._setup()
+
+        with pytest.raises(ValueError, match="names 'kind', which isn't a trait"):
+            health._goals.update_goal(Goal(id=person.id, measure={"kind": "traits", "traits": ["kind"]}))

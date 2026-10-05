@@ -12,6 +12,7 @@ from googleapiclient.errors import HttpError
 
 from calendar_clients.google_auth import build_service, load_credentials
 from calendar_clients.write_lock import requires_write_lock
+from utilities.facets import Facets
 
 _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 """Prefix for the extendedProperties.private keys this app uses to store its
@@ -106,7 +107,7 @@ def _event_label_version_kwargs(body: dict) -> dict:
 
 
 CLEARABLE_EVENT_FIELDS = frozenset(
-    {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority"}
+    {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facets"}
 )
 """Event fields an update can remove (see `Event.cleared`). Not summary,
 start or end (an event always has them); not goal_ids, whose `[]`
@@ -246,6 +247,13 @@ class Event:
     goals existed, or a partial update that doesn't touch them); `[]`
     means no goals."""
 
+    facets: Facets | None = None
+    """What happened at it, for its goals' traits -- who it was with and
+    for, what and where, and judgments of it (see utilities/facets.py).
+    Stored as JSON in one private extended property. `None` means none,
+    or unchanged in a partial update; a write replaces them whole, and
+    empty facets remove them."""
+
     goal_priority: int | None = None
     """The priority this event inherits from its goals -- the highest
     (lowest-numbered) of each goal's own, or its nearest ancestor's -- if
@@ -296,6 +304,7 @@ class Event:
                 "priority": int,
                 "is_end_of_day_sleep": lambda s: s.lower() == "true",
                 "goal_ids": str.split,
+                "facets": Facets.from_json,
             },
         )
         # A cancelled instance of a recurring series may come back with
@@ -366,6 +375,8 @@ class Event:
                 "priority": str,
                 "is_end_of_day_sleep": lambda b: "true" if b else "false",
                 "goal_ids": " ".join,
+                # Empty facets remove them, rather than keep "{}".
+                "facets": lambda f: None if f.is_empty() else f.to_json(),
             },
         )
         if self.goals_from_label:

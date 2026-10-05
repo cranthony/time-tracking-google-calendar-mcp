@@ -124,3 +124,8 @@ COMPACTIONS_SHEET_ROLE = "compactions"
 COMPACTIONS_SHEET_TITLE = "Compactions"
 """See `utilities/compaction_journal.py`'s `CompactionJournal` for the tab
 this identifies -- the write-ahead journal of note compactions."""
+
+TRAITS_SHEET_ROLE = "traits"
+TRAITS_SHEET_TITLE = "Traits"
+"""See `utilities/traits.py`'s `Traits` for the tab this identifies -- the
+traits goals can be rated by."""
