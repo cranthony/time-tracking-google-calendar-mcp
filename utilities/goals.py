@@ -82,11 +82,9 @@ _READ_ONLY_FIELDS = frozenset({"id", "label_id", "health", "health_period", "hea
 
 
 @dataclass(kw_only=True)
-class ListedGoal(Goal):
-    """A goal as tools return it: plus its `path` from the top of the
-    tree, e.g. "Cooking › Vegetarian › Tofu tikka", how many days have
-    ended with no confirmed rating since its last one, and how much time
-    went toward it recently."""
+class PlacedGoal(Goal):
+    """A goal plus where it sits in the tree: its `path` from the top,
+    e.g. "Cooking › Vegetarian › Tofu tikka", and what it inherits."""
 
     path: str | None = None
 
@@ -98,6 +96,12 @@ class ListedGoal(Goal):
     """Read-only: the priority its events take -- its own priority, or
     its nearest ancestor's; `None` if none of them has one."""
 
+
+@dataclass(kw_only=True)
+class ListedGoal(PlacedGoal):
+    """A goal as get_goals returns it: placed in the tree, plus how many
+    days have ended with no confirmed rating since its last one, and how
+    much time went toward it recently."""
 
     stale_days: int | None = None
     """Fully ended days since `health_period`; `None` if it's never been
@@ -173,9 +177,42 @@ class GoalList:
 
 
 @dataclass(kw_only=True)
-class CreatedGoal(GoalList):
-    """What `create_goal` returns: the goals, as a `GoalList`, and which of
-    them it made."""
+class AffectedGoal:
+    """A goal a change reached without being made to it -- e.g. a sub-goal
+    of one moved or given a new priority -- as it is now."""
+
+    id: str
+    name: str | None
+    parent_id: str | None
+    status: str | None
+    effective_priority: int | None
+    effective_color: str
+    path: str
+
+
+@dataclass(kw_only=True)
+class GoalChanges:
+    """What the goal-writing tools return instead of the whole tree (which
+    get_goals lists): just what the call changed. No goal's recent time is
+    counted, so no calendar events are read."""
+
+    changed: list[PlacedGoal]
+    """The goals the call created or changed, as they are now, in tree
+    order (for reorder_goals, the ones reordered, in their new order)."""
+
+    affected: list[AffectedGoal]
+    """Other goals whose effective_priority, effective_color or path
+    changed as a consequence, in tree order."""
+
+    label_slots_used: int
+    """Labels on the calendar once synced: active goals plus unnamed ones."""
+
+    label_slots_total: int = MAX_LABELS
+
+
+@dataclass(kw_only=True)
+class CreatedGoal(GoalChanges):
+    """What `create_goal` returns: the new goal (in `changed`) and its id."""
 
     created_id: str
     """The new goal's id."""
@@ -394,10 +431,10 @@ class Goals:
         )
         new.id = self._new_id(tree)
         new.label_id = str(uuid.uuid5(_LABEL_ID_NAMESPACE, new.id))
-        listing = self._commit(tree.goals + [new], check_measures={new.id})
-        return CreatedGoal(**{f.name: getattr(listing, f.name) for f in fields(GoalList)}, created_id=new.id)
+        changes = self._commit(tree, tree.goals + [new], [new.id], check_measures={new.id})
+        return CreatedGoal(**{f.name: getattr(changes, f.name) for f in fields(GoalChanges)}, created_id=new.id)
 
-    def update_goal(self, goal: Goal, clear_fields: Collection[str] = ()) -> GoalList:
+    def update_goal(self, goal: Goal, clear_fields: Collection[str] = ()) -> GoalChanges:
         """Set whichever of `goal`'s fields aren't `None` (other than the
         read-only ones) on the goal with `goal.id`, and blank those named
         in `clear_fields`. Making it active, or anything else, adds or
@@ -420,9 +457,9 @@ class Goals:
                 setattr(target, field.name, value)
         for name in clear_fields:
             setattr(target, name, None)
-        return self._commit(goals, check_measures={goal.id} if goal.measure is not None else ())
+        return self._commit(tree, goals, [goal.id], check_measures={goal.id} if goal.measure is not None else ())
 
-    def reorder_goals(self, goal_ids: list[str]) -> GoalList:
+    def reorder_goals(self, goal_ids: list[str]) -> GoalChanges:
         """Put sibling goals (sharing a parent) in the order `goal_ids`
         gives, among the places they already hold -- the order they're
         listed in, siblings being listed in sheet order. Touches no labels."""
@@ -442,33 +479,54 @@ class Goals:
         by_id = {goal.id: goal for goal in goals}
         for place, goal_id in zip(places, goal_ids):
             goals[place] = by_id[goal_id]
-        return self._commit(goals, check_measures=())
+        return self._commit(tree, goals, goal_ids, check_measures=())
 
-    def sync(self) -> GoalList:
+    def sync(self) -> GoalChanges:
         """Make the calendar's labels match the sheet's active goals (after
-        hand edits to the sheet). Validates the sheet first."""
-        return self._commit(self.tree().goals, write=False)
+        hand edits to the sheet). Validates the sheet first. The goals it
+        reports changed are those whose label it added, removed, renamed or
+        recolored."""
+        tree = self.tree()
+        return self._commit(tree, tree.goals, None, write=False)
 
-    def set_health(self, health: dict[str, tuple[int | None, str | None, str | None]]) -> None:
+    def set_health(self, health: dict[str, tuple[int | None, str | None, str | None]]) -> list[str]:
         """Set goals' health cache -- (health, health_period, health_trend)
-        by goal id; see utilities/goal_health.py. Touches no labels."""
+        by goal id; see utilities/goal_health.py. Touches no labels.
+        Returns the ids of the goals whose cache changed."""
         goals = [replace(goal) for goal in self.tree().goals]
-        changed = False
+        changed = []
         for goal in goals:
             if goal.id in health and (goal.health, goal.health_period, goal.health_trend) != health[goal.id]:
                 goal.health, goal.health_period, goal.health_trend = health[goal.id]
-                changed = True
+                changed.append(goal.id)
         if changed:
             self._sheet.write(goals)
+        return changed
+
+    def changes(self, changed_ids: Collection[str]) -> GoalChanges:
+        """The goals with `changed_ids` as they are in the sheet now, for a
+        write made outside this class (e.g. to the health cache)."""
+        tree = self.tree()
+        raw_labels, _etag = self._calendar_client.list_event_labels()
+        return _changes(tree, tree, [g.id for g in tree.ordered() if g.id in set(changed_ids)], raw_labels)
 
     def _commit(
-        self, goals: list[Goal], *, write: bool = True, check_measures: Collection[str] | None = None
-    ) -> GoalList:
+        self,
+        before: GoalTree,
+        goals: list[Goal],
+        changed_ids: Collection[str] | None,
+        *,
+        write: bool = True,
+        check_measures: Collection[str] | None = None,
+    ) -> GoalChanges:
         """Validate `goals`, write them to the sheet (unless `write` is
         false), then make the calendar's labels match. Everything that can
         be refused is checked before anything is written. Measures are
         checked in full only for the goals in `check_measures` (all of
-        them if `None`); see `_validate`."""
+        them if `None`); see `_validate`. Reports the goals with
+        `changed_ids` as changed (if `None`, those whose labels changed),
+        and any other whose placement differs from `before`'s as
+        affected."""
         _validate(goals, check_measures)
         tree = GoalTree(goals)
         raw_labels, etag = self._calendar_client.list_event_labels()
@@ -482,11 +540,15 @@ class Goals:
         desired = self._check_budget(tree, raw_labels)
         if write:
             self._sheet.write(goals)
-        if {astuple(label) for label in desired} != {astuple(label) for label in raw_labels}:
+        relabeled = {astuple(label) for label in desired} ^ {astuple(label) for label in raw_labels}
+        if relabeled:
             # The etag guards against a concurrent label change since the
             # read above (EventLabelConflictError).
             raw_labels = self._calendar_client.replace_event_labels(desired, etag)
-        return self._listing(tree, raw_labels, DEFAULT_STATUSES)
+        if changed_ids is None:
+            relabeled_ids = {label[0] for label in relabeled}
+            changed_ids = [g.id for g in tree.ordered() if g.label_id in relabeled_ids]
+        return _changes(before, tree, changed_ids, raw_labels)
 
     def _check_budget(self, tree: GoalTree, raw_labels: list[RawEventLabel]) -> list[RawEventLabel]:
         """The calendar's labels as they should be for `tree`; ValueError if
@@ -507,7 +569,6 @@ class Goals:
         return desired
 
     def _listing(self, tree: GoalTree, raw_labels: list[RawEventLabel], statuses: Collection[str]) -> GoalList:
-        unnamed = sum(1 for label in raw_labels if not label.name)
         today = self._today()
         as_of = self._last_compaction() if self._last_compaction else None
         recent, by_statuses, by_priority = (
@@ -516,10 +577,7 @@ class Goals:
         return GoalList(
             goals=[
                 ListedGoal(
-                    **{f.name: getattr(goal, f.name) for f in fields(Goal)},
-                    path=tree.path(goal.id),
-                    effective_color=tree.color(goal),
-                    effective_priority=tree.priority(goal.id),
+                    **_placed_fields(tree, goal),
                     stale_days=_stale_days(goal, tree, today),
                     minutes_24h=recent["24h"].get(goal.id, 0) if recent else None,
                     minutes_7d=recent["7d"].get(goal.id, 0) if recent else None,
@@ -529,7 +587,7 @@ class Goals:
                 # The overall goal whatever's asked for: it's above them all.
                 if goal.status in statuses or goal.id == OVERALL_ID
             ],
-            label_slots_used=unnamed + sum(1 for goal in tree.goals if _holds_label(goal)),
+            label_slots_used=_label_slots_used(tree, raw_labels),
             as_of=as_of,
             minutes_by_statuses=by_statuses.get(OVERALL_ID, []) if by_statuses is not None else None,
             minutes_by_priority=by_priority,
@@ -608,6 +666,53 @@ class Goals:
         return GoalSheet.create(
             sheets_client, spreadsheet_id, goals, reuse_sheet_id=0 if is_new_spreadsheet else None
         )
+
+
+def _placed_fields(tree: GoalTree, goal: Goal) -> dict[str, Any]:
+    """`goal`'s fields as a PlacedGoal in `tree`."""
+    return {
+        **{f.name: getattr(goal, f.name) for f in fields(Goal)},
+        "path": tree.path(goal.id),
+        "effective_color": tree.color(goal),
+        "effective_priority": tree.priority(goal.id),
+    }
+
+
+def _changes(
+    before: GoalTree, after: GoalTree, changed_ids: Collection[str], raw_labels: list[RawEventLabel]
+) -> GoalChanges:
+    """See GoalChanges: the goals with `changed_ids`, in that order, and
+    any other whose effective priority, color or path differs between
+    `before` and `after`."""
+    changed_ids = [goal_id for goal_id in dict.fromkeys(changed_ids) if goal_id in after.by_id]
+
+    def placement(tree: GoalTree, goal: Goal) -> tuple[Any, ...]:
+        return tree.priority(goal.id), tree.color(goal), tree.path(goal.id)
+
+    return GoalChanges(
+        changed=[PlacedGoal(**_placed_fields(after, after.by_id[goal_id])) for goal_id in changed_ids],
+        affected=[
+            AffectedGoal(
+                id=goal.id,
+                name=goal.name,
+                parent_id=goal.parent_id,
+                status=goal.status,
+                effective_priority=after.priority(goal.id),
+                effective_color=after.color(goal),
+                path=after.path(goal.id),
+            )
+            for goal in after.ordered()
+            if goal.id not in changed_ids
+            and goal.id in before.by_id
+            and placement(before, before.by_id[goal.id]) != placement(after, goal)
+        ],
+        label_slots_used=_label_slots_used(after, raw_labels),
+    )
+
+
+def _label_slots_used(tree: GoalTree, raw_labels: list[RawEventLabel]) -> int:
+    """See GoalChanges.label_slots_used."""
+    return sum(1 for label in raw_labels if not label.name) + sum(1 for goal in tree.goals if _holds_label(goal))
 
 
 def _holds_label(goal: Goal) -> bool:

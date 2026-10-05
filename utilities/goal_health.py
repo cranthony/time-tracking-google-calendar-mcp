@@ -53,8 +53,8 @@ from typing import Any
 from calendar_clients.google_calendar import CalendarClient, Event
 from utilities.goal_calendar import fill_in_from_goals
 from utilities.goal_periods import Period, period_containing
-from utilities.goal_sheet import GOAL_STATUSES, Goal
-from utilities.goals import OVERALL_ID, GoalList, Goals, GoalTree
+from utilities.goal_sheet import Goal
+from utilities.goals import OVERALL_ID, GoalChanges, Goals, GoalTree
 from utilities.health_days import (
     Assessment,
     DayReflection,
@@ -395,13 +395,16 @@ class GoalHealth:
 
     # -- the health cache ----------------------------------------------------
 
-    def rebuild_cache(self) -> GoalList:
-        """Recompute every goal's health cache from its confirmed history."""
+    def rebuild_cache(self) -> GoalChanges:
+        """Recompute every goal's health cache from its confirmed history.
+        Returns the goals whose cache changed."""
         tree = self._goals.tree()
-        self._refresh_cache({g.id for g in tree.goals if tree.rated(g.id) or g.health_period})
-        return self._goals.get_goals(GOAL_STATUSES)
+        changed = self._refresh_cache({g.id for g in tree.goals if tree.rated(g.id) or g.health_period})
+        return self._goals.changes(changed)
 
-    def _refresh_cache(self, goal_ids: set[str]) -> None:
+    def _refresh_cache(self, goal_ids: set[str]) -> list[str]:
+        """Recompute these goals' health caches; the ids of those that
+        changed."""
         tree = self._goals.tree()
         today = self._today()
         # Not just since it was created: history can be filled in for
@@ -413,7 +416,7 @@ class GoalHealth:
         updates = {
             goal_id: _health_of(confirmed.get(goal_id, []), today) for goal_id in goal_ids if goal_id in tree.by_id
         }
-        self._goals.set_health(updates)
+        return self._goals.set_health(updates)
 
     # -- the Goal Health calendar ---------------------------------------------
 

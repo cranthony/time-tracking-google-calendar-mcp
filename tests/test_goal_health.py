@@ -1,5 +1,6 @@
 import base64
 from datetime import date, datetime, time, timedelta
+from dataclasses import replace
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -306,6 +307,18 @@ class TestConfirmAndCache:
         assert (listed.health, listed.health_period) == (85, "2026-10-01")
         assert listed.health_trend == "-,-,-,-,-,40,85,-"  # the 8 days up to yesterday
         assert listed.stale_days == 0
+
+    def test_rebuilding_restores_a_lost_cache_and_reports_only_the_goals_it_changed(self):
+        health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL), Goal(name="Reading", measure=_FEEL)])
+        cooking = goals["Cooking"]
+        health.confirm_assessments([_assessment(cooking, "2026-10-01", 70)])
+        store._sheet.write([replace(g, health=None, health_period=None, health_trend=None) for g in store.tree().goals])
+
+        result = health.rebuild_cache()
+
+        assert [(g.id, g.health, g.health_period) for g in result.changed] == [(cooking.id, 70, "2026-10-01")]
+        assert result.affected == []
+        assert health.rebuild_cache().changed == []
 
     def test_the_trend_runs_to_today_once_today_is_rated(self):
         health, store, _, goals = _setup([Goal(name="Cooking", measure=_FEEL)])

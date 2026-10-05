@@ -91,12 +91,12 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `delete_event` | `(id) -> list[PublicEvent]` |
 | `get_goals` | `(statuses: list[GoalStatus] \| None) -> GoalList` |
 | `create_goal` | `(goal: Goal) -> CreatedGoal` |
-| `update_goal` | `(goal: Goal, clear_fields: list[GoalField] \| None) -> GoalList` |
-| `sync_goals_from_sheet` | `() -> GoalList` |
+| `update_goal` | `(goal: Goal, clear_fields: list[GoalField] \| None) -> GoalChanges` |
+| `sync_goals_from_sheet` | `() -> GoalChanges` |
 | `measure_goals` | `(day: date \| None, goal_ids: list[str] \| None) -> list[Assessment]` |
 | `record_assessments` | `(assessments: list[Assessment]) -> list[Assessment]` |
 | `get_goal_history` | `(goal_ids: list[str], start: date \| None, end: date \| None) -> list[Assessment]` |
-| `rebuild_goal_health_cache` | `() -> GoalList` |
+| `rebuild_goal_health_cache` | `() -> GoalChanges` |
 | `prepare_reflection` | `(day: date \| None) -> ReflectionContext` |
 | `record_reflection` | `(day: date, assessments: list[Assessment], proposed: list[str] \| None, dry_run: bool = True) -> ReflectionResult` |
 | `get_compaction_status` | `() -> CompactionStatus` |
@@ -125,7 +125,7 @@ Every event tool's `PublicEvent`s also carry a read-only `effective_priority`: t
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
-`get_goals`/`create_goal`/`update_goal`/`sync_goals_from_sheet` manage this calendar's goals — see [Goals](#goals) below. Each returns a `GoalList`: the goals with the statuses asked for (by default proposed, active and inactive), parents before children, each with its `path` from the top of the tree, plus how many of the calendar's 200 event labels are in use; `create_goal`'s also gives the new goal's id, as `created_id`. `update_goal` sets whichever fields are given and blanks those named in `clear_fields`; `id` and `label_id` are assigned and never change. A goal's `status` is one of `proposed` (suggested, not taken on yet), `active` (being worked on), `inactive` (paused), `completed` (achieved), `archived` (no longer relevant) or `deleted` (shouldn't have existed: no event can be given it, though events that already have it keep it). There's no `delete_goal`: setting `deleted` keeps the goal's history and its events' links to it.
+`get_goals`/`create_goal`/`update_goal`/`sync_goals_from_sheet` manage this calendar's goals — see [Goals](#goals) below. `get_goals` returns a `GoalList`: the goals with the statuses asked for (by default proposed, active and inactive), parents before children, each with its `path` from the top of the tree, plus how many of the calendar's 200 event labels are in use. The tools that write goals return a `GoalChanges` instead, so a big tree doesn't swamp the caller: as `changed`, just the goals the call created or changed; as `affected`, briefly, any other goal whose effective priority, color or path changed as a result (e.g. a moved goal's sub-goals); and the label count. No goal's recent time is counted in it. `create_goal`'s also gives the new goal's id, as `created_id`. `update_goal` sets whichever fields are given and blanks those named in `clear_fields`; `id` and `label_id` are assigned and never change. A goal's `status` is one of `proposed` (suggested, not taken on yet), `active` (being worked on), `inactive` (paused), `completed` (achieved), `archived` (no longer relevant) or `deleted` (shouldn't have existed: no event can be given it, though events that already have it keep it). There's no `delete_goal`: setting `deleted` keeps the goal's history and its events' links to it.
 
 The `note` tool records a new time note (`utilities/noted_time_sheet.py`'s `NotedTime`: a required `timestamp`, and an optional free-text `description` of what it marks) by appending it to this calendar's noted-times tab (via `NotedTimeSheet.append`, which writes only the new row — see [Calendar metadata sheets](#calendar-metadata-sheets) below), returning the note as recorded along with its id (`NoteWithId`: the note's timestamp and sheet row together, e.g. `2026-01-01T09:05:00+00:00#5`). A caller can't set a note's `compaction_id`; only compaction does. `get_notes` lists the notes that haven't been compacted yet, sorted by timestamp and each with its id (or all of them with `include_compacted`).
 

@@ -115,7 +115,7 @@ from config import (
 )
 from utilities.goal_calendar import GoalCalendar
 from utilities.goal_sheet import GOAL_STATUSES, Goal
-from utilities.goals import CLEARABLE_FIELDS, GoalList
+from utilities.goals import CLEARABLE_FIELDS, GoalChanges, GoalList
 from utilities.note_compaction import CompactionError
 from utilities.note_compactor import delete_note, edit_note
 from utilities.noted_time_sheet import NotedTime, SheetNote
@@ -296,6 +296,18 @@ def _print_goals(goal_list: GoalList) -> None:
     for goal in goal_list.goals:
         print(f"{goal.id}\t{goal.status}\t{goal.path}")
     print(f"({goal_list.label_slots_used} of {goal_list.label_slots_total} event labels in use)")
+
+
+def _print_goal_changes(changes: GoalChanges) -> None:
+    if not changes.changed:
+        print("No goals changed.")
+    for goal in changes.changed:
+        print(f"{goal.id}\t{goal.status}\t{goal.path}")
+    if changes.affected:
+        print("Also affected:")
+    for goal in changes.affected:
+        print(f"{goal.id}\t{goal.status}\t{goal.path}")
+    print(f"({changes.label_slots_used} of {changes.label_slots_total} event labels in use)")
 
 
 def _format_sheet_note_line(sheet_note: SheetNote) -> str:
@@ -596,19 +608,18 @@ def main() -> None:
     elif args.command in ("list_goals", "create_goal", "update_goal", "sync_goals"):
         try:
             if args.command == "list_goals":
-                goal_list = build_goals().get_goals(GOAL_STATUSES if args.all else args.status)
+                _print_goals(build_goals().get_goals(GOAL_STATUSES if args.all else args.status))
             elif args.command == "create_goal":
-                goal_list = build_goals().create_goal(Goal(**dict(args.properties)))
+                _print_goal_changes(build_goals().create_goal(Goal(**dict(args.properties))))
             elif args.command == "update_goal":
                 if not args.properties and not args.clear:
                     parser.error("update_goal requires at least one key=value or --clear")
                 goal = Goal(id=args.goal_id, **dict(args.properties))
-                goal_list = build_goals().update_goal(goal, args.clear)
+                _print_goal_changes(build_goals().update_goal(goal, args.clear))
             else:
-                goal_list = build_goals().sync()
+                _print_goal_changes(build_goals().sync())
         except ValueError as exc:
             sys.exit(f"error: {exc}")
-        _print_goals(goal_list)
     elif args.command == "note":
         noted_time = NotedTime(
             timestamp=resolve_note_timestamp(args.ago), description=args.description
