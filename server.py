@@ -705,7 +705,12 @@ def get_goals(statuses: list[GoalStatus] | None = None) -> GoalList:
     goals each event is given among it and its sub-goals (not their
     ancestors), so its time through goals of any statuses is the sum of
     the entries naming any of them, each event counted once; the list's
-    own minutes_by_statuses is the overall goal's.
+    own minutes_by_statuses is the overall goal's. The list's
+    minutes_by_priority splits the same 24 hours and 7 days by the
+    priority each moment went to -- the highest effective priority among
+    the events then, so overlaps count once -- with priority null for the
+    rest (no event, or none with a priority); each window's entries add up
+    to all of it.
 
     The first goal is always the overall goal (id "overall"), listed
     whatever the statuses: its sub-goals are implied to be every top-level

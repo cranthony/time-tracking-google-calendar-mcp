@@ -132,6 +132,20 @@ class StatusMinutes:
 
 
 @dataclass(kw_only=True)
+class PriorityMinutes:
+    """The wall-clock time that went to a priority: the moments whose
+    highest-priority event (by its effective priority -- its own, or its
+    goals') had this one. `None`'s is the rest: time with no event, or
+    only events without a priority. So a window's PriorityMinutes add up
+    to the whole of it (1440 minutes for 24 hours, 10080 for 7 days), each
+    moment counted once however many events overlap it."""
+
+    priority: int | None
+    minutes_24h: int
+    minutes_7d: int
+
+
+@dataclass(kw_only=True)
 class GoalList:
     goals: list[ListedGoal]
     """Parents before their children, siblings in sheet order."""
@@ -151,6 +165,11 @@ class GoalList:
     """The time spent on any goal in the 24 hours and 7 days up to
     as_of, split by status: the overall goal's minutes_by_statuses.
     `None` if there's no as_of."""
+
+    minutes_by_priority: list[PriorityMinutes] | None = None
+    """The 24 hours and 7 days up to as_of, split by the priority each
+    moment went to, most important first and `None` (unprioritized time)
+    last -- see PriorityMinutes. `None` if there's no as_of."""
 
 
 @dataclass(kw_only=True)
@@ -491,7 +510,9 @@ class Goals:
         unnamed = sum(1 for label in raw_labels if not label.name)
         today = self._today()
         as_of = self._last_compaction() if self._last_compaction else None
-        recent, by_statuses = self._recent_minutes(tree, as_of) if as_of is not None else (None, None)
+        recent, by_statuses, by_priority = (
+            self._recent_minutes(tree, as_of) if as_of is not None else (None, None, None)
+        )
         return GoalList(
             goals=[
                 ListedGoal(
@@ -511,17 +532,19 @@ class Goals:
             label_slots_used=unnamed + sum(1 for goal in tree.goals if _holds_label(goal)),
             as_of=as_of,
             minutes_by_statuses=by_statuses.get(OVERALL_ID, []) if by_statuses is not None else None,
+            minutes_by_priority=by_priority,
         )
 
     def _recent_minutes(
         self, tree: GoalTree, as_of: datetime
-    ) -> tuple[dict[str, dict[str, int]], dict[str, list[StatusMinutes]]]:
+    ) -> tuple[dict[str, dict[str, int]], dict[str, list[StatusMinutes]], list[PriorityMinutes]]:
         """Minutes per goal in each of utilities/goal_time.py's
-        RECENT_WINDOWS up to `as_of`, and each goal's split by statuses (see
-        StatusMinutes), from one listing of the calendar."""
+        RECENT_WINDOWS up to `as_of`, each goal's split by statuses (see
+        StatusMinutes), and the windows split by priority (see
+        PriorityMinutes), from one listing of the calendar."""
         # Imported here, since both modules import this one.
         from utilities.goal_calendar import fill_in_from_goals
-        from utilities.goal_time import RECENT_WINDOWS, goal_minutes, goal_status_minutes
+        from utilities.goal_time import RECENT_WINDOWS, goal_minutes, goal_status_minutes, priority_minutes
 
         longest = max(RECENT_WINDOWS.values())
         events = fill_in_from_goals(self._calendar_client.list_events(as_of - longest, as_of), tree)
@@ -537,7 +560,17 @@ class Goals:
             ]
             for goal_id, split in week.items()
         }
-        return per_goal, by_statuses
+        day_priorities = priority_minutes(events, as_of - RECENT_WINDOWS["24h"], as_of)
+        week_priorities = priority_minutes(events, as_of - RECENT_WINDOWS["7d"], as_of)
+        by_priority = [
+            PriorityMinutes(
+                priority=priority,
+                minutes_24h=day_priorities.get(priority, 0),
+                minutes_7d=week_priorities.get(priority, 0),
+            )
+            for priority in sorted(day_priorities.keys() | week_priorities.keys(), key=lambda p: (p is None, p or 0))
+        ]
+        return per_goal, by_statuses, by_priority
 
     @staticmethod
     def _new_id(tree: GoalTree) -> str:
