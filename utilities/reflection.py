@@ -59,6 +59,7 @@ from typing import Any, Literal
 
 from calendar_clients.google_calendar import Event
 from utilities.goal_calendar import fill_in_from_goals
+from utilities.goal_measures import expired_weights
 from utilities.goal_health import (
     Assessment,
     DayReflection,
@@ -150,6 +151,21 @@ class DayChoice:
 
 
 @dataclass(kw_only=True)
+class ExpiredWeight:
+    """A temporary weight in a weighted rollup whose `until` has come: the
+    sub-goal now weighs `then` in `goal_id`'s rollup -- see
+    utilities/goal_measures.py."""
+
+    goal_id: str
+    goal_path: str
+    sub_goal_id: str
+    sub_goal_path: str
+    weight: float
+    until: str
+    then: float
+
+
+@dataclass(kw_only=True)
 class GoalTimeSpent:
     goal_id: str
     path: str
@@ -199,6 +215,10 @@ class ReflectionContext:
     uncompacted_notes: int = 0
     """Notes up to the day's end that haven't been compacted: until they
     are, the calendar (and so the measured ratings) may be off."""
+
+    expired_weights: list[ExpiredWeight] = field(default_factory=list)
+    """Temporary rollup weights whose date has come by the day: each is
+    listed until it's extended or replaced by a plain number."""
 
     instructions: str = ""
 
@@ -287,6 +307,7 @@ class Reflections:
             events_digest=_events_digest(events, tree, start, end, tz),
             notes_digest=_notes_digest(notes, start, end, tz) if self._notes else None,
             uncompacted_notes=sum(1 for n in notes if n.compaction_id is None and n.timestamp < end),
+            expired_weights=_expired_weights(tree, day),
             instructions=_instructions(day),
         )
 
@@ -627,6 +648,22 @@ def _summary(day: date, tree: GoalTree, evaluation: _Evaluation) -> tuple[list[S
     return lines, "\n".join([head] + grouped(lines))
 
 
+def _expired_weights(tree: GoalTree, day: date) -> list[ExpiredWeight]:
+    return [
+        ExpiredWeight(
+            goal_id=goal.id,
+            goal_path=tree.path(goal.id),
+            sub_goal_id=sub_goal_id,
+            sub_goal_path=tree.path(sub_goal_id) if sub_goal_id in tree.by_id else sub_goal_id,
+            weight=entry["weight"],
+            until=entry["until"],
+            then=entry["then"],
+        )
+        for goal in tree.ordered()
+        for sub_goal_id, entry in expired_weights(tree.measure(goal.id), day).items()
+    ]
+
+
 def _instructions(day: date) -> str:
     return "\n".join(
         [
@@ -635,6 +672,10 @@ def _instructions(day: date) -> str:
             "holds only the goals that need judgement. Keep it brief.",
             "If uncompacted_notes > 0, say the calendar may not reflect them yet, and offer to compact "
             "notes first.",
+            "If expired_weights isn't empty, then after the reflection is recorded say, one line each, "
+            "that the sub-goal's temporary weight in its goal's rollup ran out on `until`, so it now "
+            "weighs `then`; ask whether to keep that (update_goal, replacing the entry with the plain "
+            "number) or set it aside again with a new `until`.",
             "1. For each llm question, rate it yourself against its rubric, from its sub_goals, "
             "events_digest, notes_digest and goal_time, with a one-sentence rationale. Only when they don't "
             "tell you what the rubric needs, ask the user too: list its goal_id in `proposed`.",

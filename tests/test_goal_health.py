@@ -938,6 +938,23 @@ class TestMeasureRollup:
         assert rolled.rating == 70
         assert rolled.explanation == "Weighted mean of 2 sub-goals (80×3, 40×1) → 70"
 
+    def test_a_temporary_weight_weighs_then_from_its_date_on(self):
+        health, store, home, (cook, clean, shop) = self._tree()
+        set_aside = {"weight": 0, "until": (YESTERDAY + timedelta(days=1)).isoformat(), "then": 1}
+        store.update_goal(Goal(id=home.id, measure={"kind": "rollup", "agg": "weighted", "weights": {cook.id: 1, clean.id: set_aside}}))
+        health.confirm_assessments(
+            [_assessment(cook, YESTERDAY, 80), _assessment(clean, YESTERDAY, 40), _assessment(shop, YESTERDAY, 0)]
+        )
+
+        (before,) = health.measure(goal_ids=[home.id])
+        store.update_goal(
+            Goal(id=home.id, measure={"kind": "rollup", "agg": "weighted", "weights": {cook.id: 1, clean.id: {**set_aside, "until": YESTERDAY.isoformat()}}})
+        )
+        (after,) = health.measure(goal_ids=[home.id])
+
+        assert (before.rating, before.metrics["weights"]) == (80, {cook.id: 1})
+        assert (after.rating, after.metrics["weights"]) == (60, {cook.id: 1, clean.id: 1})
+
     def test_weighted_with_nothing_weighed_is_skipped(self):
         health, store, home, (cook, clean, shop) = self._tree()
         store.update_goal(Goal(id=home.id, measure={"kind": "rollup", "agg": "weighted", "weights": {cook.id: 1}}))

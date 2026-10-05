@@ -54,6 +54,7 @@ from typing import Any
 
 from calendar_clients.google_calendar import CalendarClient, Event
 from utilities.goal_calendar import fill_in_from_goals
+from utilities.goal_measures import weight_on
 from utilities.goal_periods import Period, period_containing
 from utilities.goal_sheet import Goal
 from utilities.goals import OVERALL_ID, GoalChanges, Goals, GoalTree
@@ -342,7 +343,7 @@ class GoalHealth:
                 proposals.append(_unmet(goal, condition, day, kind, tree))
                 continue
             if kind == "rollup":
-                measured = _rollup(goal, measure, tree, confirmed)
+                measured = _rollup(goal, measure, tree, confirmed, day)
             elif kind == "follow_through" and window is not None:
                 measured = _follow_through(goal, measure, window, events, cancelled, tree)
             elif kind == "traits" and window is not None and self._traits is not None:
@@ -837,7 +838,7 @@ def roll_up(goal: Goal, tree: GoalTree, ratings: dict[str, Assessment], day: dat
     provisional rollup (see utilities/reflection.py) -- or `None` if none
     of them has."""
     measure = tree.measure(goal.id) or {}
-    measured = _rollup(goal, measure, tree, ratings, partial=True)
+    measured = _rollup(goal, measure, tree, ratings, day, partial=True)
     if measured is None:
         return None
     rating, explanation, metrics = measured
@@ -847,12 +848,19 @@ def roll_up(goal: Goal, tree: GoalTree, ratings: dict[str, Assessment], day: dat
 
 
 def _rollup(
-    goal: Goal, measure: dict[str, Any], tree: GoalTree, confirmed: dict[str, Assessment], *, partial: bool = False
+    goal: Goal,
+    measure: dict[str, Any],
+    tree: GoalTree,
+    confirmed: dict[str, Assessment],
+    day: date,
+    *,
+    partial: bool = False,
 ) -> Measured | None:
     """The goal's rating from its rated sub-goals' confirmed ratings that
-    day, or `None` while any of them has none yet (or, if `partial`, while
-    all of them have none, leaving out the rest). "skip" if they were all
-    skipped (or weigh nothing)."""
+    `day`, or `None` while any of them has none yet (or, if `partial`,
+    while all of them have none, leaving out the rest). "skip" if they were
+    all skipped (or weigh nothing). A temporary weight weighs what it does
+    on `day` (see `weight_on`)."""
     children = tree.rated_children(goal.id)
     if partial:
         children = [c for c in children if c.id in confirmed]
@@ -866,7 +874,8 @@ def _rollup(
     listed = ", ".join(str(r) for r in ratings.values())
     count = f"{len(ratings)} sub-goal{'s' if len(ratings) != 1 else ''}"
     if agg == "weighted":
-        weights = {goal_id: w for goal_id, w in (measure.get("weights") or {}).items() if goal_id in ratings and w > 0}
+        on_day = {goal_id: weight_on(w, day) for goal_id, w in (measure.get("weights") or {}).items()}
+        weights = {goal_id: w for goal_id, w in on_day.items() if goal_id in ratings and w > 0}
         metrics["weights"] = weights
         total = sum(weights.values())
         if not total:
