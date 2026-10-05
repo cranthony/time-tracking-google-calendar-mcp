@@ -134,3 +134,8 @@ GOAL_DETAILS_SHEET_ROLE = "goal-details"
 GOAL_DETAILS_SHEET_TITLE = "Goal Details"
 """See `utilities/goal_details.py`'s `GoalDetails` for the tab this
 identifies -- goals' descriptions."""
+
+ACTIONS_SHEET_ROLE = "actions"
+ACTIONS_SHEET_TITLE = "Actions"
+"""See `utilities/actions.py`'s `Actions` for the tab this identifies --
+what the user does with their time."""

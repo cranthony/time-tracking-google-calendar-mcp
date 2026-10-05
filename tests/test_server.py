@@ -35,6 +35,7 @@ from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
 from utilities.recurrences import Repeat
 from utilities.traits import SEED_TRAITS, Trait
+from utilities.actions import Action
 
 UTC = timezone.utc
 
@@ -1119,6 +1120,41 @@ class TestTraitTools:
         health.traits_rating.assert_called_once_with("g1", date(2026, 10, 1))
 
 
+class TestActionTools:
+    def test_delegate_to_the_store(self, monkeypatch):
+        actions = MagicMock()
+        monkeypatch.setattr(server, "get_action_store", lambda: actions)
+
+        server.get_actions(["archived"])
+        server.get_action("Walk")
+        server.create_action(Action(name="Walk"))
+        server.update_action(Action(id="a1"), clear_fields=["note"])
+
+        actions.get_actions.assert_called_once_with(["archived"])
+        actions.get_action.assert_called_once_with("Walk")
+        actions.create_action.assert_called_once_with(Action(name="Walk"))
+        actions.update_action.assert_called_once_with(Action(id="a1"), ["note"])
+
+    def test_wrap_errors(self, monkeypatch):
+        actions = MagicMock()
+        actions.get_action.side_effect = ValueError("There's no action with the id or name 'x'")
+        actions.create_action.side_effect = ValueError("there's already an action named 'Walk'")
+        monkeypatch.setattr(server, "get_action_store", lambda: actions)
+
+        with pytest.raises(ToolError, match="no action"):
+            server.get_action("x")
+        with pytest.raises(ToolError, match="already an action"):
+            server.create_action(Action(name="walk"))
+
+    def test_the_store_is_built_once(self, monkeypatch):
+        built = []
+        monkeypatch.setattr(server, "_actions", None)
+        monkeypatch.setattr(server, "build_actions", lambda: built.append(1) or MagicMock())
+
+        assert server.get_action_store() is server.get_action_store()
+        assert built == [1]
+
+
 class TestGoalDescriptionTools:
     def test_reads_and_replaces_a_goals_description(self, monkeypatch):
         _fake_goals(monkeypatch, _goal("g1"))
@@ -1533,6 +1569,8 @@ _READ_ONLY_TOOLS = {
     "get_goal_digest",
     "get_trait_history",
     "explain_traits",
+    "get_actions",
+    "get_action",
 }
 
 

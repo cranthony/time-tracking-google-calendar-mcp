@@ -4,6 +4,7 @@ from dataclasses import replace
 import pytest
 
 from calendar_clients.google_calendar import Event, EventLabel as RawEventLabel, EventLabelConflictError, color_for_priority
+from tests.fake_labels import FakeLabelCalendar
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet, goals as goals_module
 from utilities.goal_sheet import Goal, GoalSheet
@@ -14,37 +15,6 @@ _PRIORITY_1_COLOR = color_for_priority(1)[1]
 _SPREADSHEET_KEY = "calendar-metadata-spreadsheet-id"
 _UNNAMED = RawEventLabel(id="default-1", background_color="#039be5")
 """One of Calendar's own unnamed labels, which goals always leave alone."""
-
-
-class FakeLabelCalendar:
-    """The label and metadata calls `Goals` makes on a CalendarClient,
-    with the real etag check on writes."""
-
-    def __init__(self, labels=(), *, spreadsheet_id: str | None = "spreadsheet-1"):
-        self.labels = [replace(label) for label in labels]
-        self.metadata = {_SPREADSHEET_KEY: spreadsheet_id} if spreadsheet_id else {}
-        self.version = 0
-        self.writes = 0
-
-    def get_calendar_metadata(self, key):
-        return self.metadata.get(key)
-
-    def set_calendar_metadata(self, key, value):
-        self.metadata[key] = value
-
-    def list_event_labels(self):
-        return [replace(label) for label in self.labels], f"etag-{self.version}"
-
-    def replace_event_labels(self, labels, etag=None):
-        if etag is not None and etag != f"etag-{self.version}":
-            raise EventLabelConflictError("stale etag")
-        self.labels = [replace(label) for label in labels]
-        self.version += 1
-        self.writes += 1
-        return [replace(label) for label in self.labels]
-
-    def named(self):
-        return {label.id: (label.name, label.background_color) for label in self.labels if label.name}
 
 
 def _goals(calendar=None, sheets=None) -> tuple[Goals, FakeLabelCalendar, FakeSheets]:

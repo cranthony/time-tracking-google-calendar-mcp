@@ -19,6 +19,7 @@ from calendar_clients.google_calendar import CalendarClient, Event, EventLabelCo
 from calendar_clients.google_sheets import cached_sheet_reads
 from calendar_clients.write_lock import WRITE_LOCK
 from config import (
+    build_actions,
     build_calendar_client,
     build_compaction_journal,
     build_goal_details,
@@ -31,6 +32,7 @@ from config import (
     get_workos_authkit_domain,
 )
 from oauth_proxy import oauth_proxy_handlers
+from utilities.actions import Action, ActionChanges, ActionList, ActionStatus, CreatedAction, ListedAction, Actions
 from utilities.facets import Facets, facet_problems
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_details import WHAT_MATTERS, GoalDetails, section
@@ -327,6 +329,7 @@ _note_compactor: NoteCompactor | None = None
 _recurrences: Recurrences | None = None
 _traits: Traits | None = None
 _goal_details: GoalDetails | None = None
+_actions: Actions | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -404,6 +407,17 @@ def get_goal_details() -> GoalDetails:
             if _goal_details is None:
                 _goal_details = build_goal_details()
     return _goal_details
+
+
+def get_action_store() -> Actions:
+    """Lazily construct and cache the Actions, the same way the other get_*
+    helpers cache theirs. Building it the first time adds the Actions tab."""
+    global _actions
+    if _actions is None:
+        with WRITE_LOCK:
+            if _actions is None:
+                _actions = build_actions()
+    return _actions
 
 
 def get_trait_store() -> Traits:
@@ -1328,6 +1342,82 @@ def record_reflection(
                 day, assessments, proposed, judgments=judgments, what_matters=what_matters, dry_run=dry_run
             )
         except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_actions(statuses: list[ActionStatus] | None = None) -> ActionList:
+    """Every action: what the user does with their time, each a verb
+    phrase for what they're doing in a moment ("play guitar", "eat a
+    meal"). By default the proposed and active ones, not archived or
+    deleted ones. Each has its id, group_id (the action group it's in, if
+    any), name, status, label_id, background_color, priority and note,
+    plus its effective_color and effective_priority and whether it
+    holds_label: active actions always hold one of the calendar's event
+    labels, and proposed ones do while there's room. Also how many of the
+    calendar's label slots are in use. Read-only."""
+    with track("get_actions"), cached_sheet_reads():
+        try:
+            return get_action_store().get_actions(statuses)
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_action(id_or_name: str) -> ListedAction:
+    """One action, by its id or else its name (ignoring case), as
+    get_actions lists it. If there's none, the error suggests close
+    matches. Read-only."""
+    with track("get_action"), cached_sheet_reads():
+        try:
+            return get_action_store().get_action(id_or_name)
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def create_action(action: Action) -> CreatedAction:
+    """Create an action: a name (a verb phrase for what the user is doing,
+    e.g. "practice guitar"; at most 50 characters, and unique among all
+    actions, whatever their status), and optionally a group_id, a
+    background_color (hex; derived from priority when unset), a priority
+    (taken by its events that don't set their own) and a note. id and
+    label_id are assigned. status is "proposed" unless given: leave it so
+    when you're adding an action no existing one matched, so the user can
+    review it; give "active" when the user asked for it. Returns the new
+    action's id as created_id, and, as changed, the new action (plus any
+    proposed action that lost its label to make room), with
+    label_slots_used of label_slots_total."""
+    with track("create_action"), cached_sheet_reads():
+        try:
+            return get_action_store().create_action(action)
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+ActionField = Literal["group_id", "background_color", "priority", "note"]
+"""Every Action field update_action can clear (see utilities/actions.py's
+CLEARABLE_FIELDS)."""
+
+
+@tool
+@writes
+def update_action(action: Action, clear_fields: list[ActionField] | None = None) -> ActionChanges:
+    """Update an action by id: its group_id, name (still unique),
+    status, background_color, priority or note. Omitted properties keep
+    their value; list one in clear_fields to blank it instead. label_id
+    can't be changed. status is proposed (not yet reviewed by the user;
+    holds a label while there's room), active (holds a label), archived
+    (not done any more) or deleted (shouldn't have existed); archiving or
+    deleting frees its label, and making it active again restores it.
+    Returns, as changed, the action as updated, plus any proposed action
+    that gained or lost its label as a result, with label_slots_used of
+    label_slots_total."""
+    with track("update_action"), cached_sheet_reads():
+        try:
+            return get_action_store().update_action(action, clear_fields or ())
+        except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
 
 
