@@ -413,6 +413,19 @@ class CompactionJournal:
                 latest = now
         return latest
 
+    def last_stamped_batch(self) -> str | None:
+        """The batch id of the most recently stamped compaction, or `None`
+        if none has ever been stamped."""
+        latest: tuple[datetime, str] | None = None
+        for row in self._read_rows():
+            if row[2] != "compaction" or row[6] != STAMPED:
+                continue
+            detail = json.loads(row[7])
+            now = datetime.fromisoformat(detail["now"])
+            if latest is None or now > latest[0]:
+                latest = (now, detail.get("batch") or row[0])
+        return latest[1] if latest is not None else None
+
     def set_status(self, compaction: JournalCompaction, status: str) -> None:
         self._write_status(compaction.row, status)
         compaction.status = status

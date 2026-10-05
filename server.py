@@ -6,7 +6,7 @@ import os
 from collections.abc import Callable, Collection
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
-from typing import Literal, ParamSpec, TypeVar
+from typing import Any, Literal, ParamSpec, TypeVar
 from zoneinfo import ZoneInfo
 
 from mcp.server.auth.settings import AuthSettings
@@ -49,6 +49,7 @@ from utilities.actions import (
 from utilities.action_calendar import ActionCalendar, fill_in_from_actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.facts import Facts, fact_problems
+from utilities.judgments import Judging, Judgment, JudgmentsDue, JudgmentsResult
 from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
@@ -174,7 +175,13 @@ class PublicEvent:
     "self", who's at every event), for_ids (people it was done for who
     weren't there) and notes ({person id: a subjective note on how it was
     for them}, "self" for the user). Compaction writes them; set them to
-    replace them whole."""
+    replace them whole.
+
+    judgments are how the event went for each person, judged after
+    compaction against each judgment part of the traits that apply to them
+    (see record_judgments): {person id: {trait id: {part key: {"rating",
+    "scale", "reasoning"}}}}. Set them to overwrite a rating by hand
+    (replacing them whole), or clear them."""
 
     id: str | None = None
     summary: str | None = None
@@ -195,6 +202,7 @@ class PublicEvent:
     is_end_of_day_sleep: bool | None = None
     recurring_event_id: str | None = None
     facts: Facts | None = None
+    judgments: dict[str, Any] | None = None
 
     @classmethod
     def from_event(cls, event: Event, tree: ActionTree | None = None) -> "PublicEvent":
@@ -222,6 +230,7 @@ class PublicEvent:
             is_end_of_day_sleep=event.is_end_of_day_sleep,
             recurring_event_id=event.recurring_event_id,
             facts=event.facts,
+            judgments=event.judgments,
         )
 
     def to_event(self, clear_fields: Collection[str] = ()) -> Event:
@@ -242,6 +251,7 @@ class PublicEvent:
             priority=self.priority,
             status="cancelled" if self.is_cancelled else None,
             facts=self.facts.normalized() if self.facts is not None else None,
+            judgments=self.judgments,
             cleared=frozenset(clear_fields),
         )
 
@@ -486,6 +496,13 @@ def get_note_compactor() -> NoteCompactor:
                     journal=get_compaction_journal(),
                     # A red event in Google Calendar, at the last compaction.
                     marker=CompactionMarker(get_calendar_client()),
+                    judging=Judging(
+                        client=ActionCalendar(get_calendar_client(), get_action_store()),
+                        actions=get_action_store(),
+                        people=get_people_store(),
+                        locations=get_location_store(),
+                        traits=get_trait_store(),
+                    ),
                 )
     return _note_compactor
 
@@ -622,7 +639,7 @@ def get_event(id: str) -> PublicEvent:
 
 
 EventField = Literal[
-    "description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facts"
+    "description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facts", "judgments"
 ]
 """Every event field update_event and update_recurrence can clear (see
 calendar_clients/google_calendar.py's CLEARABLE_EVENT_FIELDS)."""
@@ -1277,17 +1294,28 @@ class CompactionStatus:
     latest_compacted_note: NotedTime | None = None
     """The compacted note with the latest timestamp, if any."""
 
+    judgments_pending: str | None = None
+    """The last compaction's id, if its judgments aren't all made yet:
+    it isn't complete until they are (see prepare_judgments)."""
+
 
 @tool
 def get_compaction_status() -> CompactionStatus:
-    """When notes were last compacted into the calendar, and the latest
-    note compacted. Read-only."""
+    """When notes were last compacted into the calendar, the latest note
+    compacted, and whether that compaction still has judgments to make.
+    Read-only."""
     with track("get_compaction_status"), cached_sheet_reads():
-        _prefetch(get_noted_time_sheet(), get_compaction_journal())
+        # The notes, the journal, and what judging reads, together.
+        get_note_compactor().prefetch()
         _notes, latest = get_noted_time_sheet().read_with_latest_compacted()
+        try:
+            due = get_note_compactor().judgments_due()
+        except CompactionError:
+            due = None
         return CompactionStatus(
             last_compaction=get_compaction_journal().last_stamped_now(),
             latest_compacted_note=latest,
+            judgments_pending=due.compaction_id if due is not None and due.requests else None,
         )
 
 
@@ -1365,7 +1393,9 @@ def prepare_compaction() -> CompactionContext:
     on each person there -- then call compact_notes with those decisions.
     Also every action an event can be given (`actions`, their groups left
     out), every person (`people`, the user as "self") and every location
-    (`locations`), to settle the facts from. Read-only."""
+    (`locations`), to settle the facts from. judgments_pending names the
+    last compaction if its judgments aren't all made: make them first
+    (prepare_judgments, record_judgments). Read-only."""
     with track("prepare_compaction"), cached_sheet_reads():
         return get_note_compactor().prepare()
 
@@ -1423,7 +1453,13 @@ def compact_notes(
     partway, calling it again resumes exactly where it stopped -- the plan
     is already approved, so that needs no new approval. Days are applied in
     order, each one's notes marked compacted once it's done. With a compaction_id and
-    dry_run=True you just get that compaction's stored plan back."""
+    dry_run=True you just get that compaction's stored plan back.
+
+    Step 4: once it's applied, the result's `judgments` are the traits to
+    judge for each person its events were about: make every one yourself,
+    right away, without asking the user, and record them with
+    record_judgments. The compaction isn't complete until they're all
+    recorded."""
     with track("compact_notes"), cached_sheet_reads():
         compactor = get_note_compactor()
         try:
@@ -1436,6 +1472,51 @@ def compact_notes(
             if dry_run:
                 return compactor.describe(compaction_id)
             return compactor.commit(compaction_id)
+        except CompactionError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def prepare_judgments(compaction_id: str | None = None, redo: bool = False) -> JudgmentsDue:
+    """The judgments a compaction (by default the last one applied) calls
+    for, to make with record_judgments: one request per event with facts,
+    per person it was about (the user, "self", and everyone there, for a
+    trait's "with" parts; everyone it was done for, for its "for" parts),
+    per judgment part of the traits that apply to them. Each has the
+    rubric, the ratings to choose from, the facts the part names (its
+    actions, where it was, the history with that person over the part's
+    lookback, the event's notes, the notes on them), and the framing to
+    judge it in. Only those not made yet -- or with redo, all of them,
+    each with the judgment already made, to redo one with more context.
+    Read-only."""
+    with track("prepare_judgments"), cached_sheet_reads():
+        compactor = get_note_compactor()
+        compactor.prefetch()
+        try:
+            due = compactor.judgments_due(compaction_id, redo=redo)
+        except CompactionError as exc:
+            raise ToolError(str(exc)) from exc
+        if due is None:
+            raise ToolError("there's no applied compaction to judge")
+        return due
+
+
+@tool
+@writes
+def record_judgments(compaction_id: str, judgments: list[Judgment]) -> JudgmentsResult:
+    """Record judgments of a compaction's events (see prepare_judgments, and
+    the `judgments` an applied compaction returns): each a request_id, a
+    rating from that request's ratings, and one succinct line of
+    reasoning. Make them yourself, never asking the user. They're kept on
+    the events, by person, trait and part; a judgment recorded again
+    replaces the earlier one. Returns how many were recorded, the ids of
+    any requests still to judge, and whether that completes the
+    compaction."""
+    with track("record_judgments"), cached_sheet_reads():
+        compactor = get_note_compactor()
+        compactor.prefetch()
+        try:
+            return compactor.record_judgments(compaction_id, judgments)
         except CompactionError as exc:
             raise ToolError(str(exc)) from exc
 

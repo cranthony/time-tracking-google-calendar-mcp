@@ -28,6 +28,7 @@ from utilities.action_groups import GroupTree
 from utilities.actions import ActionTree
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.facts import Facts
+from utilities.judgments import Judgment, JudgmentsDue
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
@@ -829,6 +830,7 @@ class TestGetNoteCompactor:
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: MagicMock())
         monkeypatch.setattr(server, "get_people_store", lambda: MagicMock())
         monkeypatch.setattr(server, "get_location_store", lambda: MagicMock())
+        monkeypatch.setattr(server, "get_trait_store", lambda: MagicMock())
         built = []
         monkeypatch.setattr(server, "build_compaction_journal", lambda: built.append(1) or MagicMock())
 
@@ -1016,11 +1018,15 @@ class TestGetCompactionStatus:
         notes.read_with_latest_compacted.return_value = ([], latest)
         monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: notes)
+        compactor = _fake_compactor(monkeypatch)
+        compactor.judgments_due.return_value = JudgmentsDue(compaction_id="c1", requests=[MagicMock()])
 
         status = server.get_compaction_status()
 
         assert status == server.CompactionStatus(
-            last_compaction=datetime(2026, 10, 2, 21, tzinfo=timezone.utc), latest_compacted_note=latest
+            last_compaction=datetime(2026, 10, 2, 21, tzinfo=timezone.utc),
+            latest_compacted_note=latest,
+            judgments_pending="c1",
         )
 
     def test_is_empty_before_any_compaction(self, monkeypatch):
@@ -1030,8 +1036,35 @@ class TestGetCompactionStatus:
         notes.read_with_latest_compacted.return_value = ([], None)
         monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: notes)
+        _fake_compactor(monkeypatch).judgments_due.return_value = None
 
         assert server.get_compaction_status() == server.CompactionStatus()
+
+
+class TestJudgmentTools:
+    def test_prepare_judgments_delegates(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        result = server.prepare_judgments("c1", redo=True)
+
+        assert result is compactor.judgments_due.return_value
+        compactor.judgments_due.assert_called_once_with("c1", redo=True)
+
+    def test_prepare_judgments_without_a_compaction_says_so(self, monkeypatch):
+        _fake_compactor(monkeypatch).judgments_due.return_value = None
+
+        with pytest.raises(ToolError, match="no applied compaction to judge"):
+            server.prepare_judgments()
+
+    def test_record_judgments_delegates_and_wraps_errors(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        judgments = [Judgment(request_id="e1/self/adventurous/judgment", rating=2, reasoning="A new place.")]
+
+        assert server.record_judgments("c1", judgments) is compactor.record_judgments.return_value
+        compactor.record_judgments.assert_called_once_with("c1", judgments)
+        compactor.record_judgments.side_effect = CompactionError("the rating 9 isn't one of its ratings")
+        with pytest.raises(ToolError, match="isn't one of its ratings"):
+            server.record_judgments("c1", judgments)
 
 
 class TestGetNotedTimeSheet:
@@ -1369,6 +1402,7 @@ _READ_ONLY_TOOLS = {
     "get_circle",
     "get_locations",
     "get_location",
+    "prepare_judgments",
 }
 
 

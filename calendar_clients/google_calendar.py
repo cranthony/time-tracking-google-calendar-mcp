@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -107,7 +108,7 @@ def _event_label_version_kwargs(body: dict) -> dict:
 
 
 CLEARABLE_EVENT_FIELDS = frozenset(
-    {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facts"}
+    {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facts", "judgments"}
 )
 """Event fields an update can remove (see `Event.cleared`). Not summary,
 start or end (an event always has them); not action_ids, whose `[]`
@@ -115,9 +116,10 @@ already means no actions, while removing them would leave the event's
 actions inferred from its label; nor what Google assigns or this app
 derives."""
 
-MAX_CHUNKS = 8
-"""The most extended properties one of an event's JSON fields (its facts)
-is split across: Calendar keeps at most 1024 characters a value."""
+CHUNKS = {"facts": 8, "judgments": 16}
+"""The most extended properties each of an event's JSON fields is split
+across: Calendar keeps at most 1024 characters a value (and 32 kB of
+properties an event)."""
 
 _CHUNK_CHARS = 1024
 
@@ -257,8 +259,15 @@ class Event:
     """What compaction established about it -- where, who with, who for,
     and notes on each person there (see utilities/facts.py). Stored as
     JSON in private extended properties (split across several when it's
-    long: see MAX_CHUNKS). `None` means none, or unchanged in a partial
+    long: see CHUNKS). `None` means none, or unchanged in a partial
     update; a write replaces them whole, and empty facts remove them."""
+
+    judgments: dict[str, Any] | None = None
+    """How the event went for each person, judged against each judgment
+    part of the traits that apply to them (see utilities/judgments.py):
+    {person id: {trait id: {part key: {"rating", "scale", "reasoning"}}}}.
+    Stored as JSON like `facts`. `None` means none, or unchanged in a
+    partial update; a write replaces them whole, and `{}` removes them."""
 
     action_priority: int | None = None
     """The priority this event inherits from its actions -- the highest
@@ -314,6 +323,9 @@ class Event:
         facts = _read_chunks(private_properties, "facts")
         if facts is not None:
             app_properties["facts"] = Facts.from_json(facts)
+        judgments = _read_chunks(private_properties, "judgments")
+        if judgments is not None:
+            app_properties["judgments"] = _json_object(judgments)
         # A cancelled instance of a recurring series may come back with
         # only its original start: it's then taken to be zero-length there.
         start_data = data.get("start") or data["originalStartTime"]
@@ -387,6 +399,9 @@ class Event:
         if self.facts is not None:
             # Empty facts remove them, rather than keep "{}".
             private_properties.update(_write_chunks("facts", None if self.facts.is_empty() else self.facts.to_json()))
+        if self.judgments is not None:
+            text = json.dumps(self.judgments, separators=(",", ":"), ensure_ascii=False) if self.judgments else None
+            private_properties.update(_write_chunks("judgments", text))
         if self.actions_from_label:
             # Inferred, not the event's own: see actions_from_label.
             private_properties.pop(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}action_ids", None)
@@ -395,8 +410,8 @@ class Event:
         for name in self.cleared:
             if name in ("description", "location"):
                 body[name] = None
-            elif name == "facts":
-                private_properties.update(_write_chunks("facts", None))
+            elif name in CHUNKS:
+                private_properties.update(_write_chunks(name, None))
             else:
                 private_properties[f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{name}"] = None
         if "priority" in self.cleared:
@@ -548,7 +563,7 @@ def _read_chunks(private_properties: dict[str, str], name: str) -> str | None:
     if first is None:
         return None
     parts = [first]
-    for index in range(1, MAX_CHUNKS):
+    for index in range(1, CHUNKS[name]):
         part = private_properties.get(_chunk_key(name, index))
         if part is None:
             break
@@ -561,10 +576,21 @@ def _write_chunks(name: str, text: str | None) -> dict[str, str | None]:
     each, and every chunk it doesn't need set to null (a patch removes
     those), so a shorter value never leaves a longer one's tail behind.
     `None` removes the field."""
-    if text is not None and len(text) > MAX_CHUNKS * _CHUNK_CHARS:
-        raise ValueError(f"{name} are longer than {MAX_CHUNKS * _CHUNK_CHARS} characters")
+    most = CHUNKS[name] * _CHUNK_CHARS
+    if text is not None and len(text) > most:
+        raise ValueError(f"{name} are longer than {most} characters")
     chunks = [text[i : i + _CHUNK_CHARS] for i in range(0, len(text), _CHUNK_CHARS)] if text else []
-    return {_chunk_key(name, i): chunks[i] if i < len(chunks) else None for i in range(MAX_CHUNKS)}
+    return {_chunk_key(name, i): chunks[i] if i < len(chunks) else None for i in range(CHUNKS[name])}
+
+
+def _json_object(raw: str) -> dict | None:
+    """`raw` as a JSON object; `None` if it isn't one (a broken hand
+    edit, say)."""
+    try:
+        value = json.loads(raw)
+    except ValueError:
+        return None
+    return value if isinstance(value, dict) else None
 
 
 def _parse_properties(

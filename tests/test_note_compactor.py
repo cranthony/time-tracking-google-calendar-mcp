@@ -27,6 +27,8 @@ from tests.fake_labels import FakeLabelCalendar
 from utilities.actions import Action, Actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.facts import Facts
+from utilities.judgments import Judging, Judgment
+from utilities.traits import Trait, Traits
 from utilities.locations import Location, Locations
 from utilities.note_compactor import NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
@@ -47,10 +49,19 @@ def _day():
 
 class FakeCalendar:
     """Just the `list_events` the compactor reads a day through -- handing
-    back fresh copies each call, like the real label-aware view."""
+    back fresh copies each call, like the real label-aware view -- and
+    the reads and writes judging makes."""
 
     def __init__(self, events):
         self.events = events
+
+    def get_event(self, event_id):
+        return replace(next(e for e in self.events if e.id == event_id))
+
+    def update_event(self, event):
+        index = next(i for i, e in enumerate(self.events) if e.id == event.id)
+        self.events[index] = replace(self.events[index], judgments=event.judgments)
+        return event
 
     def list_events(self, time_min, time_max):
         # Like the Calendar API: everything overlapping the range.
@@ -61,7 +72,7 @@ class FakeCalendar:
 
 
 class Setup:
-    def __init__(self, notes, events=None, now="11:30", actions=None, people=None, locations=None):
+    def __init__(self, notes, events=None, now="11:30", actions=None, people=None, locations=None, traits=None):
         self.sheets = FakeSheets()
         self.sheets.write_rows_in_sheet(
             "s", _NOTES_TAB, "A1:C1", [["timestamp", "description", "compaction_id"]]
@@ -83,6 +94,14 @@ class Setup:
         self.calendar = FakeCalendar(events if events is not None else _day())
         self.client = MagicMock()
         self.now = now
+        self.judging = None
+        if traits is not None:
+            trait_store = Traits.ensure(self.sheets, "s")
+            trait_store._write(traits)
+            self.judging = Judging(
+                client=self.calendar, actions=self.actions, people=self.people, locations=self.locations,
+                traits=trait_store,
+            )
         self.compactor = NoteCompactor(
             calendar=self.calendar,
             client=self.client,
@@ -93,6 +112,7 @@ class Setup:
             people=self.people,
             locations=self.locations,
             marker=self.marker,
+            judging=self.judging,
         )
 
     @property
@@ -1579,3 +1599,70 @@ class TestAdditions:
 
         with pytest.raises(CompactionError, match="a ref that isn't in new_actions"):
             setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", action_ids=["new:nope"])])
+
+
+class TestJudgments:
+    """Once its facts are written, a compaction's events are judged, and it
+    isn't complete until they are."""
+
+    _TRAIT = Trait(
+        id="heard", name="Heard", status="active", definition="Listen.",
+        parts=[{"kind": "judgment", "rubric": "Were they heard?", "ratings": {"0": "no", "1": "yes"},
+                "facts": ["person_notes"]}],
+    )
+
+    def _applied(self):
+        setup = Setup(
+            [("09:05", "email")], people=[Person(id="sam", name="Sam", status="active")], traits=[self._TRAIT]
+        )
+        facts = Facts(with_ids=["sam"], notes={"sam": "vented about work"})
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=facts)])
+        # The calendar as the commit leaves it, for judging to read.
+        setup.client.update_event.side_effect = lambda patch: setup.calendar.events.__setitem__(
+            0, replace(setup.calendar.events[0], facts=patch.facts or setup.calendar.events[0].facts)
+        )
+        return setup, setup.compactor.commit(planned.compaction_id)
+
+    def test_applying_asks_for_the_judgments_and_isnt_complete_until_theyre_made(self):
+        setup, applied = self._applied()
+
+        assert [r.id for r in applied.judgments.requests] == ["e1/self/heard/judgment", "e1/sam/heard/judgment"]
+        assert applied.judgments.requests[1].facts == {"person_notes": "vented about work"}
+        assert "isn't complete yet" in applied.message
+        assert "JUDGE EACH REQUEST YOURSELF" in applied.judgments.instructions
+        assert setup.compactor.prepare().judgments_pending == applied.compaction_id
+
+    def test_recording_them_all_completes_it(self):
+        setup, applied = self._applied()
+
+        partial = setup.compactor.record_judgments(
+            applied.compaction_id, [Judgment(request_id="e1/sam/heard/judgment", rating=1, reasoning="Talked it out.")]
+        )
+        assert (partial.complete, partial.remaining) == (False, ["e1/self/heard/judgment"])
+
+        done = setup.compactor.record_judgments(
+            applied.compaction_id, [Judgment(request_id="e1/self/heard/judgment", rating=0, reasoning="Mostly listened.")]
+        )
+
+        assert done.complete and done.remaining == []
+        assert setup.calendar.events[0].judgments["sam"]["heard"]["judgment"]["rating"] == 1
+        assert setup.compactor.judgments_due().requests == []
+        assert setup.compactor.prepare().judgments_pending is None
+
+    def test_a_judgment_can_be_redone(self):
+        setup, applied = self._applied()
+        judgment = Judgment(request_id="e1/sam/heard/judgment", rating=1, reasoning="Talked it out.")
+        setup.compactor.record_judgments(applied.compaction_id, [judgment])
+
+        redo = setup.compactor.judgments_due(applied.compaction_id, redo=True)
+        setup.compactor.record_judgments(applied.compaction_id, [replace(judgment, rating=0, reasoning="Only half.")])
+
+        assert {r.id: r.current for r in redo.requests}["e1/sam/heard/judgment"]["rating"] == 1
+        assert setup.calendar.events[0].judgments["sam"]["heard"]["judgment"]["reasoning"] == "Only half."
+
+    def test_an_unapplied_compaction_has_nothing_to_judge(self):
+        setup = Setup([("09:05", "email")], traits=[self._TRAIT])
+        planned = setup.compactor.dry_run([])
+
+        with pytest.raises(CompactionError, match="hasn't been applied"):
+            setup.compactor.judgments_due(planned.compaction_id)

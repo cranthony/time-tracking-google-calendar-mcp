@@ -113,8 +113,9 @@ class _Server:
             ),
         ]
         server.note(NotedTime(timestamp=NOW - timedelta(hours=2), description="walked"))
-        # Finding its tab is a one-time read, whichever tool's first.
+        # Finding a tab is a one-time read, whichever tool's first.
         server.get_compaction_journal()
+        server.get_note_compactor()
 
     def reads(self, tool) -> int:
         """The read requests the one tool call `tool()` makes."""
