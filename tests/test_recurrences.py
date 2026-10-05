@@ -1,5 +1,5 @@
 from dataclasses import fields, replace
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -54,7 +54,7 @@ def _weekly(rule: str = "RRULE:FREQ=WEEKLY;BYDAY=MO") -> Event:
         end=_at(5, 10),
         time_zone="America/New_York",
         recurrence=[rule],
-        goal_ids=["work"],
+        action_ids=["work"],
     )
 
 
@@ -121,7 +121,7 @@ class TestUpdate:
         assert later.summary == "Team standup"
         # Moved an hour later, from the event it was split at.
         assert (later.start, later.end) == (_at(19, 10), _at(19, 11))
-        assert later.goal_ids == ["work"]
+        assert later.action_ids == ["work"]
 
     def test_clears_fields_on_the_series_keeping_the_rest(self):
         calendar = FakeCalendar(replace(_weekly(), priority=1, location="Room 4"))

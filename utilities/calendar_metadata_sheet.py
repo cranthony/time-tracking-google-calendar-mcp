@@ -1,6 +1,6 @@
 """The shared Google Sheet -- one per calendar -- that this app's
 calendar-scoped data outside of Calendar's own API lives in: today, a
-calendar's goals, its time notes and its compaction journal, with room
+calendar's actions, people, traits, time notes and compaction journal, with room
 for more kinds of data later. One spreadsheet, one tab per kind of data.
 
 Each tab is located by developer metadata (`calendar_clients/
@@ -40,7 +40,7 @@ see the module docstring."""
 def ensure_spreadsheet(calendar_client: CalendarClient, sheets_client: SheetsClient) -> tuple[str, bool]:
     """This calendar's metadata spreadsheet id, and whether it was just
     created (as opposed to already existing). A caller creating
-    a tab with initial data (the goals tab, see `utilities/goals.py`)
+    a tab with initial data (the Traits tab, see `utilities/traits.py`)
     can then put it in a new spreadsheet's default first tab instead of
     leaving that one unused (see `create_tab`)."""
     spreadsheet_id = calendar_client.get_calendar_metadata(_SPREADSHEET_ID_METADATA_KEY)
@@ -92,8 +92,8 @@ def create_tab(
     a tab for `role`, call `populate(sheet_id)` to write its contents, and only then
     tag it -- so a failure partway leaves no tagged-but-empty tab for the
     next `find_tab` to mistake for a finished one. For a tab whose first
-    contents matter, e.g. the goals tab migrated from event labels (see
-    `utilities/goals.py`); `ensure_tab` tags first, which is fine for a
+    contents matter, e.g. the Traits tab seeded with the starting traits
+    (see `utilities/traits.py`); `ensure_tab` tags first, which is fine for a
     tab that starts empty."""
     if reuse_sheet_id is not None:
         sheet_id = reuse_sheet_id
@@ -115,11 +115,6 @@ TIME_NOTES_SHEET_TITLE = "Noted Times"
 """See `utilities/noted_time_sheet.py`'s `NotedTimeSheet` for the tab
 this identifies -- a calendar's uncompacted time notes."""
 
-GOALS_SHEET_ROLE = "goals"
-GOALS_SHEET_TITLE = "Goals"
-"""See `utilities/goal_sheet.py`'s `GoalSheet` for the tab this
-identifies -- a calendar's goals."""
-
 COMPACTIONS_SHEET_ROLE = "compactions"
 COMPACTIONS_SHEET_TITLE = "Compactions"
 """See `utilities/compaction_journal.py`'s `CompactionJournal` for the tab
@@ -128,12 +123,7 @@ this identifies -- the write-ahead journal of note compactions."""
 TRAITS_SHEET_ROLE = "traits"
 TRAITS_SHEET_TITLE = "Traits"
 """See `utilities/traits.py`'s `Traits` for the tab this identifies -- the
-traits goals can be rated by."""
-
-GOAL_DETAILS_SHEET_ROLE = "goal-details"
-GOAL_DETAILS_SHEET_TITLE = "Goal Details"
-"""See `utilities/goal_details.py`'s `GoalDetails` for the tab this
-identifies -- goals' descriptions."""
+traits people are rated by."""
 
 ACTIONS_SHEET_ROLE = "actions"
 ACTIONS_SHEET_TITLE = "Actions"

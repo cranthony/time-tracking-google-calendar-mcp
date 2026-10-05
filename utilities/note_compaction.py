@@ -28,14 +28,15 @@ testable and the plan is previewable before anything is written.
   how an event is renamed (`summary`) or given extra description text
   (`annotate`) without moving it.
 - `cancel` (an event id): it didn't happen.
-- `create` (a `summary`, both edges, optionally `goal_ids`): something
+- `create` (a `summary`, both edges, optionally `action_ids`): something
   that happened that wasn't planned.
 
-`keep` and `create` take `goal_ids` (primary first) to set the goals an
-event serves; for `keep`, leaving it out keeps them, and `[]` clears
-them. They take `facets` too (see utilities/facets.py): what happened at
-it, for its goals' traits, replacing its facets whole; left out, they're
-kept, and empty facets remove them.
+`keep` and `create` take `action_ids` (the first setting its color) to
+set what was done at an event; for `keep`, leaving it out keeps them,
+and `[]` clears them. They take `facts` too (see utilities/facts.py):
+where it was, who it was with and for, and a note on each person there,
+replacing its facts whole; left out, they're kept, and empty facts
+remove them.
 - `merge` (an event id, `into` another): fold one event into another, for
   when the user doesn't remember where one ended and the next began. The
   target grows to cover both and is titled after both (unless renamed);
@@ -75,7 +76,7 @@ from datetime import datetime, timedelta
 from typing import Any, Literal
 
 from calendar_clients.google_calendar import MAX_DESCRIPTION_BYTES, Event
-from utilities.facets import Facets
+from utilities.facts import Facts
 from utilities.compaction_timeline import Timeline, TimelineEvent, TimelineNote, build_timeline
 from utilities.reallocation import FixedTimeConflict, ReallocationOptions, reallocate_for_new_event
 
@@ -111,20 +112,20 @@ class EventDecision:
     annotate: str | None = None
     """`keep`/`create`: extra text for the event's description."""
 
-    goal_ids: list[str] | None = None
-    """`keep`/`create`: the goals it serves, primary first. For `keep`,
-    `None` keeps its goals and `[]` clears them."""
+    action_ids: list[str] | None = None
+    """`keep`/`create`: what was done at it, the first action setting its
+    color. For `keep`, `None` keeps its actions and `[]` clears them."""
 
-    facets: Facets | None = None
-    """`keep`/`create`: what happened at it, for its goals' traits (see
-    utilities/facets.py), replacing its facets whole. For `keep`, `None`
-    keeps them, and empty facets remove them."""
+    facts: Facts | None = None
+    """`keep`/`create`: where, who with, who for, and notes on each person
+    there (see utilities/facts.py), replacing its facts whole. For `keep`,
+    `None` keeps them, and empty facts remove them."""
 
     def to_json_dict(self) -> dict:
         return {
             key: (
                 value.isoformat() if isinstance(value, datetime)
-                else facets_dict(value) if isinstance(value, Facets)
+                else facts_dict(value) if isinstance(value, Facts)
                 else value
             )
             for key, value in self.__dict__.items()
@@ -134,26 +135,28 @@ class EventDecision:
     @classmethod
     def from_json_dict(cls, data: dict) -> "EventDecision":
         parsed = dict(data)
-        parsed.pop("event_label_id", None)  # From before goals.
+        # From before goals, and from goals, which actions replaced.
+        for retired in ("event_label_id", "goal_ids", "facets"):
+            parsed.pop(retired, None)
         for key in _DATETIME_FIELDS:
             if key in parsed:
                 parsed[key] = datetime.fromisoformat(parsed[key])
-        if "facets" in parsed:
-            parsed["facets"] = facets_from_dict(parsed["facets"])
+        if "facts" in parsed:
+            parsed["facts"] = facts_from_dict(parsed["facts"])
         return cls(**parsed)
 
 
-def facets_dict(facets: Facets | None) -> dict[str, Any] | None:
-    """`facets` as the JSON object they're stored as (see
-    utilities/facets.py) -- `None` for none, or empty ones."""
-    if facets is None or facets.is_empty():
+def facts_dict(facts: Facts | None) -> dict[str, Any] | None:
+    """`facts` as the JSON object they're stored as (see
+    utilities/facts.py) -- `None` for none, or empty ones."""
+    if facts is None or facts.is_empty():
         return None
-    return json.loads(facets.to_json())
+    return json.loads(facts.to_json())
 
 
-def facets_from_dict(data: dict[str, Any] | None) -> Facets | None:
-    """The inverse of `facets_dict`: empty facets for `None`."""
-    return Facets.from_json(json.dumps(data)) if data is not None else Facets()
+def facts_from_dict(data: dict[str, Any] | None) -> Facts | None:
+    """The inverse of `facts_dict`: empty facts for `None`."""
+    return Facts.from_json(json.dumps(data)) if data is not None else Facts()
 
 
 @dataclass(kw_only=True)
@@ -180,9 +183,9 @@ class EventState:
     is_fixed_time: bool | None = None
     priority: int | None = None
     event_label_id: str | None = None
-    goal_ids: list[str] | None = None
-    facets: dict[str, Any] | None = None
-    """As stored on the event (see utilities/facets.py); `None` for none."""
+    action_ids: list[str] | None = None
+    facts: dict[str, Any] | None = None
+    """As stored on the event (see utilities/facts.py); `None` for none."""
 
     @classmethod
     def from_event(cls, event: Event) -> "EventState":
@@ -199,8 +202,8 @@ class EventState:
             is_fixed_time=event.is_fixed_time,
             priority=event.priority,
             event_label_id=event.event_label_id,
-            goal_ids=list(event.goal_ids) if event.goal_ids is not None else None,
-            facets=facets_dict(event.facets),
+            action_ids=list(event.action_ids) if event.action_ids is not None else None,
+            facts=facts_dict(event.facts),
         )
 
     def to_event(self, event_id: str | None = None) -> Event:
@@ -220,8 +223,8 @@ class EventState:
             is_fixed_time=self.is_fixed_time,
             priority=self.priority,
             event_label_id=self.event_label_id,
-            goal_ids=list(self.goal_ids) if self.goal_ids is not None else None,
-            facets=facets_from_dict(self.facets) if self.facets is not None else None,
+            action_ids=list(self.action_ids) if self.action_ids is not None else None,
+            facts=facts_from_dict(self.facts) if self.facts is not None else None,
         )
 
     def to_json_dict(self) -> dict:
@@ -234,6 +237,9 @@ class EventState:
     @classmethod
     def from_json_dict(cls, data: dict) -> "EventState":
         parsed = dict(data)
+        # From goals, which actions replaced.
+        for retired in ("goal_ids", "facets"):
+            parsed.pop(retired, None)
         for key in ("start", "end"):
             if key in parsed:
                 parsed[key] = datetime.fromisoformat(parsed[key])
@@ -300,7 +306,7 @@ def plan_compaction(
     ignore_notes: list[str] | None = None,
     day_start: datetime | None = None,
     options: ReallocationOptions | None = None,
-    goal_names: dict[str, str] | None = None,
+    names: dict[str, str] | None = None,
     previous_note: PlanNote | None = None,
     last_compaction: datetime | None = None,
     next_day_follows: bool = False,
@@ -316,8 +322,8 @@ def plan_compaction(
     without sleep, the day runs on to the next one. `next_day_follows`:
     the next day is being compacted too, after this one, so moving this
     day's wake-up time needs no warning -- that day starts from it.
-    `goal_names` (goal id -> name) labels
-    events' goals in the timeline. `previous_note` (an already-compacted
+    `names` (an action's, person's or location's id -> its name) labels
+    events' actions and facts in the timeline. `previous_note` (an already-compacted
     note) and `last_compaction` (when that compaction ran) are only shown
     in the timeline, as context.
 
@@ -380,10 +386,10 @@ def plan_compaction(
     for event_id, decision in touched.items():
         if decision.summary:
             copies[event_id].summary = decision.summary
-        if decision.goal_ids is not None:
-            copies[event_id].goal_ids = list(decision.goal_ids)
-        if decision.facets is not None:
-            copies[event_id].facets = decision.facets
+        if decision.action_ids is not None:
+            copies[event_id].action_ids = list(decision.action_ids)
+        if decision.facts is not None:
+            copies[event_id].facts = decision.facts
     annotated = _annotate(ordered, ignored, facts, touched, copies, cancels, warnings, problems)
     if problems:
         raise CompactionError("\n".join(problems))
@@ -393,7 +399,7 @@ def plan_compaction(
     if not changes:
         warnings.append("nothing on the calendar needs to change")
     timeline = _timeline(
-        ordered, ignored, facts, live, copies, cancels, merged_into, annotated, simulated, now, goal_names or {}
+        ordered, ignored, facts, live, copies, cancels, merged_into, annotated, simulated, now, names or {}
     )
     timeline = _with_context(timeline, previous_note, last_compaction)
     return CompactionPlan(changes=changes, warnings=warnings, timeline=timeline)
@@ -452,9 +458,9 @@ def _resolve(
         if decision.event_id in by_event:
             problems.append(f"{label}: event {decision.event_id} has more than one decision")
             continue
-        if decision.action != "keep" and (moves or decision.summary or decision.annotate or decision.facets):
+        if decision.action != "keep" and (moves or decision.summary or decision.annotate or decision.facts):
             problems.append(
-                f"{label}: times, notes, summary, annotate and facets only go with 'keep' or 'create'"
+                f"{label}: times, notes, summary, annotate and facts only go with 'keep' or 'create'"
             )
             continue
         if decision.action == "merge":
@@ -518,10 +524,10 @@ def _resolve(
             if member.summary and member.summary not in names:
                 names.append(member.summary)
         event.summary = (decision.summary or "").strip() or " and ".join(names) or base.summary
-        if decision.goal_ids is not None:
-            event.goal_ids = list(decision.goal_ids)
-        if decision.facets is not None:
-            event.facets = decision.facets
+        if decision.action_ids is not None:
+            event.action_ids = list(decision.action_ids)
+        if decision.facts is not None:
+            event.facts = decision.facts
         event.start, event.end = start, end
         event.is_fixed_time = True
         event.min_duration = end - start
@@ -575,8 +581,8 @@ def _resolve(
                     summary=decision.summary.strip(),
                     start=start,
                     end=end,
-                    goal_ids=list(decision.goal_ids) if decision.goal_ids is not None else None,
-                    facets=decision.facets,
+                    action_ids=list(decision.action_ids) if decision.action_ids is not None else None,
+                    facts=decision.facts,
                     is_fixed_time=True,
                     min_duration=end - start,
                 ),
@@ -883,17 +889,17 @@ def _changes(
         else:
             after = EventState.from_event(copies[event_id])
             only_notes = replace(after, description=before.description) == before
-            only_goals = replace(after, description=before.description, goal_ids=before.goal_ids) == before
-            only_facets = (
-                replace(after, description=before.description, goal_ids=before.goal_ids, facets=before.facets)
+            only_actions = replace(after, description=before.description, action_ids=before.action_ids) == before
+            only_facts = (
+                replace(after, description=before.description, action_ids=before.action_ids, facts=before.facts)
                 == before
             )
             if only_notes:
                 reason = "added the notes that fall during it"
-            elif only_goals:
-                reason = "set the goals it serves"
-            elif only_facets:
-                reason = "recorded what happened at it (its facets)"
+            elif only_actions:
+                reason = "set what was done at it (its actions)"
+            elif only_facts:
+                reason = "recorded what happened at it (its facts)"
             elif event_id in default_ids:
                 reason = next(f.reason for f in facts if f.default and f.base.id == event_id)
             else:
@@ -934,17 +940,17 @@ def _timeline(
     annotated: dict[str, str],
     simulated: _Simulated,
     now: datetime,
-    goal_names: dict[str, str],
+    names: dict[str, str],
 ) -> Timeline:
-    def names(goal_ids) -> list[str]:
-        return [goal_names.get(g, g) for g in goal_ids or ()]
+    def named(action_ids) -> list[str]:
+        return [names.get(a, a) for a in action_ids or ()]
 
-    def facets(final: Event, original: Event | None = None) -> dict:
-        """The timeline's facets fields for `final`: its facets' summary,
+    def fact_fields(final: Event, original: Event | None = None) -> dict:
+        """The timeline's facts fields for `final`: its facts' lines,
         and whether this compaction sets them."""
-        said = facets_summary(final.facets, goal_names)
-        changed = said is not None and (original is None or facets_dict(final.facets) != facets_dict(original.facets))
-        return dict(facets=said, new_facets=changed)
+        said = facts_lines(final.facts, names)
+        changed = bool(said) and (original is None or facts_dict(final.facts) != facts_dict(original.facts))
+        return dict(facts=said, new_facts=changed)
 
     decided_by_base = {f.base.id: f for f in facts if f.base and not f.default}
     default_ids = {f.base.id for f in facts if f.default}
@@ -984,9 +990,9 @@ def _timeline(
                 end=final.end,
                 start_note=fact.start_note.id if fact and fact.start_note else None,
                 end_note=fact.end_note.id if fact and fact.end_note else None,
-                goals=names(final.goal_ids),
-                new_goals=[n for n in names(final.goal_ids) if n not in names(original.goal_ids)],
-                **facets(final, original),
+                actions=named(final.action_ids),
+                new_actions=[n for n in named(final.action_ids) if n not in named(original.action_ids)],
+                **fact_fields(final, original),
                 **planned,
             )
         )
@@ -1001,9 +1007,9 @@ def _timeline(
                     end=fact.end,
                     start_note=fact.start_note.id if fact.start_note else None,
                     end_note=fact.end_note.id if fact.end_note else None,
-                    goals=names(fact.event.goal_ids),
-                    new_goals=names(fact.event.goal_ids),
-                    **facets(fact.event),
+                    actions=named(fact.event.action_ids),
+                    new_actions=named(fact.event.action_ids),
+                    **fact_fields(fact.event),
                 )
             )
     for event in simulated.working:
@@ -1014,7 +1020,7 @@ def _timeline(
                     status="new",
                     start=event.start,
                     end=event.end,
-                    goals=names(event.goal_ids),
+                    actions=named(event.action_ids),
                 )
             )
 
@@ -1038,30 +1044,26 @@ def _timeline(
     return build_timeline(notes, events, now)
 
 
-def facets_summary(facets: Facets | None, goal_names: dict[str, str]) -> str | None:
-    """`facets` in a line for the timeline, e.g. "with Name · salsa
-    social @ the venue · new place · creative 2, effort 1, attention 3";
-    `None` for none."""
-    if facets is None or facets.is_empty():
-        return None
+def facts_lines(facts: Facts | None, names: dict[str, str]) -> list[str]:
+    """`facts` in lines for the timeline: where, who with and who for in
+    one ("@ home · with Sam, Alex · for Mom"), then each person's note
+    ("Sam: tired, but glad we went"); none for none."""
+    if facts is None or facts.is_empty():
+        return []
+
+    def named(ids) -> str:
+        return ", ".join(names.get(i, i) for i in ids)
+
     parts = []
-    if facets.with_goal_ids:
-        parts.append("with " + ", ".join(goal_names.get(g, g) for g in facets.with_goal_ids))
-    if facets.for_goal_ids:
-        parts.append("for " + ", ".join(goal_names.get(g, g) for g in facets.for_goal_ids))
-    what = " @ ".join(x for x in (facets.activity, facets.place) if x)
-    if what:
-        parts.append(what)
-    if facets.new and facets.new != "none":
-        parts.append(f"new {facets.new}")
-    scores = ", ".join(
-        f"{name} {getattr(facets, name)}" for name in ("creative", "effort", "attention") if getattr(facets, name) is not None
-    )
-    if scores:
-        parts.append(scores)
-    if facets.why:
-        parts.append(f"“{facets.why}”")
-    return " · ".join(parts)
+    if facts.location_id:
+        parts.append(f"@ {names.get(facts.location_id, facts.location_id)}")
+    if facts.with_ids:
+        parts.append(f"with {named(facts.with_ids)}")
+    if facts.for_ids:
+        parts.append(f"for {named(facts.for_ids)}")
+    lines = [" · ".join(parts)] if parts else []
+    lines += [f"{names.get(person, person)}: {note}" for person, note in (facts.notes or {}).items()]
+    return lines
 
 
 def _with_context(timeline: Timeline, previous_note: PlanNote | None, last_compaction: datetime | None) -> Timeline:
@@ -1083,7 +1085,7 @@ def planned_timeline(
     notes: list[PlanNote],
     day_events: list[Event],
     now: datetime,
-    goal_names: dict[str, str] | None = None,
+    names: dict[str, str] | None = None,
     suggested: dict[str, list[str]] | None = None,
     *,
     previous_note: PlanNote | None = None,
@@ -1091,10 +1093,10 @@ def planned_timeline(
 ) -> Timeline:
     """The timeline before anything is decided: the notes beside the
     day's events as planned -- what a model compares to make its
-    decisions. `suggested` (event id -> goal ids) marks goals suggested
+    decisions. `suggested` (event id -> action ids) marks actions suggested
     for events that have none. `previous_note`, an already-compacted note,
     and `last_compaction`, when it was compacted, are shown as context."""
-    goal_names = goal_names or {}
+    names = names or {}
     suggested = suggested or {}
     timeline_notes = [TimelineNote(id=n.id, time=n.timestamp, text=n.description) for n in notes]
     timeline = build_timeline(
@@ -1108,8 +1110,9 @@ def planned_timeline(
                 end=e.end,
                 planned_start=e.start,
                 planned_end=e.end,
-                goals=[goal_names.get(g, g) for g in e.goal_ids or ()],
-                new_goals=[goal_names.get(g, g) for g in suggested.get(e.id, ())],
+                actions=[names.get(a, a) for a in e.action_ids or ()],
+                new_actions=[names.get(a, a) for a in suggested.get(e.id, ())],
+                facts=facts_lines(e.facts, names),
             )
             for e in day_events
             if e.id and e.status != "cancelled"

@@ -8,7 +8,7 @@ end to end: the MCP tools in server.py, each in its own
 `cached_sheet_reads` as they are there, over the objects server.py's get_*
 helpers build with config.py's builders, all on the real `SheetsClient` --
 with only Google itself faked: the Sheets service by `FakeSheetsService`,
-the calendar by tests/test_goal_health.py's `FakeCalendar` (and memory
+the calendar by `_ProductionCalendar` below (and memory
 diagnostics left out). Compaction's tools are pinned the same way in
 tests/test_note_compactor.py's `TestSheetReadRequests`.
 
@@ -20,7 +20,8 @@ the tool newly reads -- and if one goes down, lower it here.
 
 import contextlib
 from dataclasses import replace
-from datetime import timedelta
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -28,22 +29,32 @@ import config
 import server
 from calendar_clients.google_calendar import Event
 from calendar_clients.google_sheets import SheetsClient
+from tests.fake_labels import FakeLabelCalendar
 from tests.fake_sheets import FakeSheets, FakeSheetsService
-from tests.test_goal_health import NOW, TODAY, YESTERDAY, FakeCalendar, _event
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
+from utilities.facts import Facts
 from utilities.locations import Location
-from utilities.people import Circle, Person
-from utilities.goal_health import Assessment
-from utilities.goal_sheet import Goal
-from utilities.goals import OVERALL_ID
 from utilities.noted_time_sheet import NotedTime
+from utilities.people import Circle, Person
+
+TZ = ZoneInfo("America/New_York")
+NOW = datetime.combine(date(2026, 10, 2), time(21), TZ)
 
 
-class _ProductionCalendar(FakeCalendar):
-    """tests/test_goal_health.py's calendar, plus the event calls the
-    server's goal-aware calendar makes -- the calendar isn't what's being
-    counted."""
+class _ProductionCalendar(FakeLabelCalendar):
+    """The calendar calls the server makes, with its events in memory --
+    the calendar isn't what's being counted."""
+
+    def __init__(self):
+        super().__init__()
+        self.events: list[Event] = []
+
+    def get_time_zone(self):
+        return TZ
+
+    def list_events(self, time_min, time_max, *, show_deleted=False):
+        return [e for e in self.events if e.end > time_min and e.start < time_max]
 
     def get_event(self, event_id):
         return next(e for e in self.events if e.id == event_id)
@@ -69,29 +80,27 @@ class _Server:
         # Memory diagnostics never touch Sheets, and take seconds.
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
-            "_calendar_client", "_reallocating_calendar", "_goals", "_goal_health", "_reflections",
-            "_noted_time_sheet", "_compaction_journal", "_note_compactor", "_recurrences", "_actions", "_people", "_locations",
+            "_calendar_client", "_reallocating_calendar", "_noted_time_sheet", "_compaction_journal",
+            "_note_compactor", "_recurrences", "_actions", "_people", "_locations", "_traits",
         ):
             monkeypatch.setattr(server, cached, None)
-        # The seams: the clocks, so days fall on the test calendar's.
-        server.get_goal_store()._today = lambda: TODAY
-        server.get_goal_health()._now = lambda: NOW
         self._fill()
 
     def _fill(self) -> None:
-        """Goals (one measured), an event serving one, a note and an
-        assessment, so every tab the tools read has something in it."""
-        listed = server.create_goal(Goal(name="Cooking", measure={"kind": "subjective", "prompt": "How was it?"}))
-        self.cooking = cooking = listed.changed[0]
-        server.create_goal(Goal(name="Reading"))
+        """An action in a group, a person in a circle, a location, an event
+        with an action and facts, and a note, so every tab the tools read
+        has something in it."""
         self.outdoors = server.create_action_group(ActionGroup(name="Outdoors")).created_id
-        self.walk = server.create_action(Action(name="Walk", group_id=self.outdoors)).created_id
+        self.walk = server.create_action(Action(name="Walk", group_id=self.outdoors, status="active")).created_id
         self.family = server.create_circle(Circle(name="Family")).created_id
         self.sam = server.create_person(Person(name="Sam", circles=[self.family])).created_id
         self.home = server.create_location(Location(name="Home")).created_id
-        evening = (NOW - timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
+        evening = (NOW - timedelta(days=1)).replace(hour=18, minute=0)
         self.calendar.events.append(
-            _event(evening.isoformat()[:19], (evening + timedelta(hours=1)).isoformat()[:19], goal_ids=[cooking.id])
+            Event(
+                id="walked", summary="Walk", start=evening, end=evening + timedelta(hours=1), action_ids=[self.walk],
+                facts=Facts(location_id=self.home, with_ids=[self.sam]),
+            )
         )
         # Tonight, still to come: an evening event, then the night's sleep
         # that ends the day -- what reallocation makes room in.
@@ -103,14 +112,9 @@ class _Server:
                 priority=0, is_end_of_day_sleep=True,
             ),
         ]
-        server.note(NotedTime(timestamp=NOW - timedelta(hours=2), description="cooked"))
-        server.record_assessments([self.assessment(80)])
+        server.note(NotedTime(timestamp=NOW - timedelta(hours=2), description="walked"))
         # Finding its tab is a one-time read, whichever tool's first.
         server.get_compaction_journal()
-
-    def assessment(self, rating: int) -> Assessment:
-        """A rating of the measured goal for yesterday."""
-        return Assessment(goal_id=self.cooking.id, day=YESTERDAY, rating=rating, method="subjective")
 
     def reads(self, tool) -> int:
         """The read requests the one tool call `tool()` makes."""
@@ -125,36 +129,15 @@ def tools(monkeypatch):
 
 
 def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
-    # Cooking's siblings (the overall goal stays first, so isn't among them).
-    siblings = [
-        g.id for g in server.get_goal_store().tree().goals
-        if g.parent_id == tools.cooking.parent_id and g.id != OVERALL_ID
-    ]
-    event_id = tools.calendar.events[0].id
     note_id = server.get_notes()[0].id
     later_evening = replace(server.get_event("evening"), start=NOW + timedelta(minutes=15))
+    with_facts = replace(server.get_event("walked"), facts=Facts(location_id=tools.home, notes={"self": "nice"}))
     calls = {
-        # Goals, and the journal for the last compaction's time (how far
-        # get_goals' goal time goes).
-        "get_goals": lambda: server.get_goals(),
-        # Goals only.
-        "create_goal": lambda: server.create_goal(Goal(name="Writing")),
-        "update_goal": lambda: server.update_goal(Goal(id=tools.cooking.id, note="dinners")),
-        "reorder_goals": lambda: server.reorder_goals(siblings[::-1]),
-        "sync_goals_from_sheet": lambda: server.sync_goals_from_sheet(),
-        "rebuild_goal_health_cache": lambda: server.rebuild_goal_health_cache(),
-        "measure_goals": lambda: server.measure_goals(YESTERDAY),
-        "record_assessments": lambda: server.record_assessments([tools.assessment(70)]),
-        "get_goal_history": lambda: server.get_goal_history([tools.cooking.id]),
-        "record_reflection (dry run)": lambda: server.record_reflection(YESTERDAY, [tools.assessment(75)]),
-        "record_reflection (apply)": lambda: server.record_reflection(
-            YESTERDAY, [tools.assessment(75)], dry_run=False
-        ),
         # Actions and action groups, prefetched together.
         "get_actions": lambda: server.get_actions(),
         "get_action": lambda: server.get_action("walk"),
         "create_action": lambda: server.create_action(Action(name="Run")),
-        "update_action": lambda: server.update_action(Action(id=tools.walk, status="active")),
+        "update_action": lambda: server.update_action(Action(id=tools.walk, note="outside")),
         "get_action_groups": lambda: server.get_action_groups(),
         "get_action_group": lambda: server.get_action_group("outdoors"),
         "create_action_group": lambda: server.create_action_group(ActionGroup(name="Indoors")),
@@ -168,29 +151,30 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         "get_circle": lambda: server.get_circle("family"),
         "create_circle": lambda: server.create_circle(Circle(name="Friends")),
         "update_circle": lambda: server.update_circle(Circle(id=tools.family, note="n")),
-        "delete_circle": lambda: server.delete_circle(tools.family),
         # Locations only.
         "get_locations": lambda: server.get_locations(),
         "get_location": lambda: server.get_location("home"),
         "create_location": lambda: server.create_location(Location(name="Studio")),
         "update_location": lambda: server.update_location(Location(id=tools.home, hint="the apartment")),
-        "delete_location": lambda: server.delete_location(tools.home),
+        # Events: the actions', people's and locations' tabs together.
         "list_events": lambda: server.list_events(NOW - timedelta(days=2), NOW),
-        "get_event": lambda: server.get_event(event_id),
-        "delete_event": lambda: server.delete_event(event_id),
-        "create_event": lambda: server.create_event(
-            server.PublicEvent(summary="Walk", start=NOW + timedelta(minutes=30), end=NOW + timedelta(hours=1))
-        ),
+        "get_event": lambda: server.get_event("walked"),
+        "update_event (facts)": lambda: server.update_event(with_facts),
         "update_event": lambda: server.update_event(later_evening),
-        # Goals, and the notes the day held.
-        "prepare_reflection": lambda: server.prepare_reflection(YESTERDAY),
+        "create_event": lambda: server.create_event(
+            server.PublicEvent(summary="Stroll", start=NOW + timedelta(minutes=30), end=NOW + timedelta(hours=1))
+        ),
+        "delete_event": lambda: server.delete_event("walked"),
         # Notes, and the journal (the last compaction; any open one).
         "get_compaction_status": lambda: server.get_compaction_status(),
-        "edit_note": lambda: server.edit_note(note_id, description="cooked dinner"),
+        "edit_note": lambda: server.edit_note(note_id, description="walked far"),
         "delete_note": lambda: server.delete_note(note_id),
         # Notes only.
         "get_notes": lambda: server.get_notes(),
         "note": lambda: server.note(NotedTime(timestamp=NOW, description="washed up")),
+        # Deleting tabs' rows: last, since they remove what others use.
+        "delete_circle": lambda: server.delete_circle(tools.family),
+        "delete_location": lambda: server.delete_location(tools.home),
     }
 
     counts = {name: tools.reads(call) for name, call in calls.items()}
@@ -198,13 +182,13 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
     assert counts == {name: 1 for name in calls}
 
 
-def test_a_tool_that_reads_two_tabs_makes_one_request_for_both(tools):
+def test_an_event_tool_reads_every_tab_it_needs_in_one_request(tools):
     before = len(tools.service.read_requests)
 
-    server.get_goals()
+    server.list_events(NOW - timedelta(days=2), NOW)
 
     (request,) = tools.service.read_requests[before:]
     assert request[0] is None  # across tabs
     titles = tools.service.sheets.titles
     read = {titles[int(part.split(":")[0])] for part in request[1].split(" + ")}
-    assert read == {"Goals", "Compactions"}
+    assert read == {"Actions", "Action Groups", "People", "Circles", "Locations"}

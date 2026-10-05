@@ -153,11 +153,11 @@ class TestBuildCalendarClient:
             config.build_calendar_client()
 
 
-class TestBuildGoals:
-    # build_goals' own job is just wiring CalendarClient/SheetsClient
-    # together and handing them to Goals -- Goals itself is mocked out here
-    # (its constructor has real side effects, like creating or migrating
-    # a tab -- see tests/test_goals.py for that).
+class TestBuildActions:
+    # build_actions' own job is just wiring CalendarClient/SheetsClient
+    # together and handing them to Actions.ensure -- which is mocked out
+    # here (it has real side effects, like creating tabs -- see
+    # tests/test_actions.py for that).
     def test_builds_both_clients_from_one_shared_load_credentials_call(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_CALENDAR_ID", "my-calendar-id")
         monkeypatch.setenv("GOOGLE_OAUTH_CREDENTIALS_PATH", "creds.json")
@@ -169,19 +169,21 @@ class TestBuildGoals:
         build_mock = MagicMock(side_effect=lambda name, _version, credentials: services[name])
         monkeypatch.setattr(config, "build_service", build_mock)
 
-        with patch.object(config, "Goals") as goals_cls:
-            result = config.build_goals()
+        with (
+            patch.object(config, "Actions") as actions_cls,
+            patch.object(config.calendar_metadata_sheet, "ensure_spreadsheet", return_value=("sheet-1", False)),
+        ):
+            result = config.build_actions()
 
         load_credentials_mock.assert_called_once_with(Path("tok.json"), Path("creds.json"))
-        assert result is goals_cls.return_value
+        assert result is actions_cls.ensure.return_value
         assert build_mock.call_count == 2
-        assert {call.args[0] for call in build_mock.call_args_list} == {"calendar", "sheets"}
         for call in build_mock.call_args_list:
             assert call.kwargs["credentials"] is creds
-        goals_cls.assert_called_once()
-        called_calendar_client, called_sheets_client = goals_cls.call_args.args
+        called_calendar_client, called_sheets_client, spreadsheet_id = actions_cls.ensure.call_args.args
         assert isinstance(called_calendar_client, CalendarClient)
         assert isinstance(called_sheets_client, SheetsClient)
+        assert spreadsheet_id == "sheet-1"
 
     def test_raises_when_calendar_id_unset(self, monkeypatch):
         monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
@@ -189,28 +191,11 @@ class TestBuildGoals:
         monkeypatch.setattr(config, "build_service", MagicMock())
 
         with pytest.raises(config.ConfigError):
-            config.build_goals()
-
-    def test_accepts_an_explicit_calendar_id_without_requiring_the_env_var(self, monkeypatch):
-        monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
-        monkeypatch.setattr(config, "load_credentials", MagicMock(return_value=object()))
-        monkeypatch.setattr(
-            config, "build_service", MagicMock(side_effect=lambda name, _v, credentials: MagicMock())
-        )
-
-        with (
-            patch.object(config, "CalendarClient") as calendar_client_cls,
-            patch.object(config, "Goals"),
-        ):
-            config.build_goals(calendar_id="explicit-cal-id")
-
-        # Constructed with the explicit id, not one from GOOGLE_CALENDAR_ID
-        # (which isn't even set here, and would otherwise raise).
-        assert calendar_client_cls.call_args.args[1] == "explicit-cal-id"
+            config.build_actions()
 
 
 class TestBuildNotedTimeSheet:
-    # Like build_goals, this just wires CalendarClient/SheetsClient
+    # Like build_actions, this just wires CalendarClient/SheetsClient
     # together and hands them to calendar_metadata_sheet.ensure_spreadsheet
     # and NotedTimeSheet.ensure -- see tests/test_calendar_metadata_sheet.py
     # and tests/test_noted_time_sheet.py for their behavior.

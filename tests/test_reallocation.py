@@ -55,11 +55,11 @@ class TestEffectivePriority:
     def test_returns_two_when_unset(self):
         assert _effective_priority(event_at("09:00-10:00", priority=None)) == 2
 
-    def test_falls_back_to_the_goals_priority(self):
-        assert _effective_priority(event_at("09:00-10:00", goal_priority=0)) == 0
+    def test_falls_back_to_the_actions_priority(self):
+        assert _effective_priority(event_at("09:00-10:00", action_priority=0)) == 0
 
-    def test_own_priority_wins_over_the_goals(self):
-        assert _effective_priority(event_at("09:00-10:00", priority=3, goal_priority=0)) == 3
+    def test_own_priority_wins_over_the_actions(self):
+        assert _effective_priority(event_at("09:00-10:00", priority=3, action_priority=0)) == 3
 
 
 class TestEffectiveMinDuration:

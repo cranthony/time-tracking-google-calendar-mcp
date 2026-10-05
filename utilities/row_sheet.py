@@ -2,7 +2,7 @@
 utilities/calendar_metadata_sheet.py) holding one dataclass per row: the
 actions, action groups, people, circles and locations tabs.
 
-Like the goals tab (utilities/goal_sheet.py), columns are read by header
+Columns are read by header
 name, so a column a user adds by hand never shifts the others, and its
 cells are kept as they were on every write. A field the tab has no column
 for yet gets one the first time a row has a value for it. Each field's
@@ -107,6 +107,10 @@ class RowSheet(Generic[Row]):
                 ),
             )
         return cls(sheets_client, spreadsheet_id, sheet_id, row_type)
+
+    @property
+    def spreadsheet_id(self) -> str:
+        return self._spreadsheet_id
 
     @property
     def whole_tab(self) -> TabRange:

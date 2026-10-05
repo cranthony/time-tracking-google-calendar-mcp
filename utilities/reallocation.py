@@ -175,7 +175,7 @@ logger = logging.getLogger(__name__)
 class Schedulable(Protocol):
     """The fields of an event that reallocation's algorithm actually reads
     or writes. Reads only the effective priority and fixed-time-ness,
-    never writes either, so the priority an event inherits from its goals
+    never writes either, so the priority an event inherits from its actions
     is never written back as its own."""
 
     id: str | None

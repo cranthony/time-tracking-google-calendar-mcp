@@ -89,10 +89,20 @@ from typing import Literal
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import Event
-from utilities.facets import Facets, facet_problems
-from utilities.goal_details import WHAT_MATTERS, GoalDetails, WhatMatters, add_to_section, checked_what_matters, section
-from utilities.history_digest import history_digest
-from utilities.traits import activity_label
+from utilities.actions import Actions, ActionTree
+from utilities.compaction_additions import (
+    REF_PREFIX,
+    Additions,
+    NewAction,
+    NewLocation,
+    NewPerson,
+    check_additions,
+    create_additions,
+    resolve,
+)
+from utilities.facts import SELF_ID, Facts, fact_problems
+from utilities.locations import Locations
+from utilities.people import People
 from utilities.compaction_journal import (
     ABANDONED,
     APPLIED,
@@ -111,14 +121,12 @@ from utilities.note_compaction import (
     CompactionError,
     CompactionPlan,
     EventDecision,
-    EventState,
     PlanNote,
-    facets_from_dict,
+    facts_from_dict,
     plan_compaction,
     planned_timeline,
 )
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote
-from utilities.goals import OVERALL_ID, Goals, GoalTree
 from utilities.reallocating_calendar import ReallocatingCalendar
 
 logger = logging.getLogger(__name__)
@@ -128,7 +136,7 @@ _CANDIDATE_WINDOW = timedelta(hours=1)
 and still be offered to it as a candidate."""
 
 _HINT_HISTORY = timedelta(days=28)
-"""How far back goals are looked for to suggest for an event."""
+"""How far back actions are looked for to suggest for an event."""
 
 _MAX_DAYS = 7
 """The most days one compaction takes on, oldest first: a longer backlog
@@ -171,7 +179,7 @@ DECISION_GUIDE = (
     "itself, e.g. 'leaving 15 minutes early'). 'keep' also takes {summary} to rename an event and "
     "{annotate} to add text to its description. "
     "'cancel' {event_id}: it didn't happen. "
-    "'create' {summary, a start and an end (a time or note each), goal_ids?}: something "
+    "'create' {summary, a start and an end (a time or note each), action_ids?, facts?}: something "
     "unplanned happened. "
     "'merge' {event_id, into}: fold one event into another, titled after both -- ONLY when the user "
     "has told you they don't remember where one ended and the other began; never just because the "
@@ -209,40 +217,40 @@ DECISION_GUIDE = (
     "night only if the user didn't sleep: its two days then become one long day. When the next "
     "day isn't in this round, compaction never adjusts it, so move only the night's start to "
     "change only bedtime. "
-    "GOALS: each event can serve goals (`goals` lists them; `goal_ids` on an event, primary "
-    "first). Tagging events with goals should cost the user almost nothing, so: for every past "
-    "event with `suggested_goal_ids`, add a 'keep' {event_id, goal_ids} applying them -- without "
-    "asking, unless the notes clearly say otherwise; give a 'create' goal_ids when the notes "
-    "clearly imply them; otherwise leave goals alone ('keep' without goal_ids keeps them, and [] "
-    "clears them). Ask about a goal only when genuinely torn between two. In the timeline, ◆ marks "
-    "a goal an event already serves and ◇ one it's being given (or, before deciding, one "
-    "suggested); a correction from the user is just a new dry run. "
-    "FACETS: every past event with `traits_goal_ids` carries a goal rated by traits (often a "
-    "person), so record what happened at it: add `facets` to its 'keep' (or 'create'), judged "
-    "from its notes, title and description -- with_goal_ids (goals of the people present; "
-    "usually its traits goals), for_goal_ids (people it was done for who weren't there: "
-    "preparing a gift or a plan -- then they're not in with_goal_ids), activity and place (short "
-    "labels: name what the event actually was, judged from it. Prefer that goal's "
-    "`cadence_activities` and the labels in its `traits_goals` digest when one of them truly fits "
-    "-- reuse the exact label, so they group and its cadences count the event (a cadence counts "
-    "only events labelled with its activity) -- but don't force one: when they did something "
-    "different, give it its own label; something new is what Adventurous rewards), "
-    "creative (0-3: made something together), new (none, activity, place or both: new to "
-    "them, judged against the digest -- an activity or place the digest lists isn't new), effort "
-    "(0-3: effort beyond showing up -- prepared, cooked, hosted, traveled), attention (0-3: the "
-    "quality of attention, from the notes; leave it out if they don't say) and why (one line of "
-    "evidence). Leave out what the notes don't support, rather than guess. Facets replace an "
-    "event's facets whole, so an event that has some (`facets`) keeps them unless you send new "
-    "ones; don't redo them without a reason. In the timeline, ▸ marks facets an event has and "
-    "▹ ones it's being given. "
-    "WHAT MATTERS TO THEM: `traits_goals` also shows each goal's \"What matters to them\" "
-    "section -- facts, upcoming moments and preferences. When the notes reveal something new "
-    "worth remembering about a person (a birthday, a new job, a worry, a favorite), pass it in "
-    "compact_notes' `what_matters` {goal_id, items: [one line each]}; it's added, dated, when the "
-    "plan is applied. Don't repeat what the section already says. "
+    "COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- "
+    "so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where "
+    "it was, who was there with them, who it was for, and a note on each person who was there. "
+    "Settle them from the notes, the title and the description; don't ask the user what the "
+    "notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). "
+    "ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` "
+    "(\"play guitar\", \"eat a meal\"); an event can have several, the first setting its color. "
+    "For every past event with `suggested_action_ids`, add a 'keep' {event_id, action_ids} applying "
+    "them unless the notes say otherwise; give a 'create' its action_ids too. When no action fits, "
+    "add one (see NEW below) rather than force a poor match. 'keep' without action_ids keeps them, "
+    "and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's "
+    "being given (or, before deciding, one suggested). "
+    "FACTS: add `facts` to the event's 'keep' (or 'create'): location_id (from `locations`, matched "
+    "by their hints), with_ids (people from `people` who were there; never \"self\" -- the user is at "
+    "every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- "
+    "then they're not in with_ids), and notes: {person id: a subjective line on how it was for "
+    "them} for each person who was there, \"self\" for the user -- whatever the notes say that "
+    "might help judge it later (they were tired, it was their idea, we laughed a lot). The notes "
+    "aren't judgments: you don't know the traits, so just record what happened. Facts replace an "
+    "event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. "
+    "In the timeline, ▸ marks facts an event has and ▹ ones it's being given. "
+    "NEW actions, people and locations: when an event's action, a person or a place isn't in the "
+    "lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a "
+    "`ref` starting \"new:\" (\"new:ukulele\") that your decisions use wherever its id would go -- "
+    "rather than by separate tools: they're created when the plan is applied, so the user "
+    "confirms them with it. A new action is a verb phrase, its status active (the user approves "
+    "it with the plan); a new person needs a context when their name is taken; a new location "
+    "needs a hint. Check the lists first: don't add one that's already there under another name. "
+    "Before the dry run, confirm with the user anything you couldn't settle from the notes -- who "
+    "was there, where it was -- in a short list; after it, they confirm the whole plan. "
     "After every dry run, show the user the result's `timeline.text` verbatim in a code block "
-    "(it's laid out narrow enough for a phone, so don't reformat or widen it), and list the "
-    "warnings, asking whether to apply it or what to change. " + _APPROVAL_RULE
+    "(it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each "
+    "event's actions and facts compactly, under it), then the new actions, people and locations "
+    "it adds, and the warnings, asking whether to apply it or what to change. " + _APPROVAL_RULE
 )
 
 
@@ -269,51 +277,46 @@ class ContextEvent:
     start: datetime
     end: datetime
     description: str | None = None
-    goal_ids: list[str] | None = None
-    """The goals it serves now, primary first."""
+    action_ids: list[str] | None = None
+    """What was done at it now, the first setting its color."""
 
-    goal_names: list[str] | None = None
-    suggested_goal_ids: list[str] | None = None
-    """For a past event serving no goals: those the latest event with the
-    same title, in the last few weeks, served -- to apply unless the notes
+    action_names: list[str] | None = None
+    suggested_action_ids: list[str] | None = None
+    """For a past event with no actions: those the latest event with the
+    same title, in the last few weeks, had -- to apply unless the notes
     say otherwise (see `DECISION_GUIDE`)."""
 
     priority: int | None = None
     is_fixed_time: bool | None = None
-    facets: Facets | None = None
-    """What happened at it, if it's been recorded (see utilities/facets.py)."""
-
-    traits_goal_ids: list[str] | None = None
-    """For a past event: the goals rated by traits that it counts toward
-    (its goals, or their ancestors, with a traits measure) -- give it
-    facets (see `DECISION_GUIDE`). `None` if none."""
+    facts: Facts | None = None
+    """Where, who with, who for, and notes on each person there, if
+    they've been recorded (see utilities/facts.py)."""
 
 
 @dataclass(kw_only=True)
-class TraitsGoalContext:
-    """A goal rated by traits that one of the events counts toward."""
+class ContextAction:
+    """An action an event can be given (its groups left out)."""
 
     id: str
-    path: str
-    digest: str
-    """Its history digest: the activities and places of its past events,
-    with how often and when (see utilities/history_digest.py) -- the
-    labels to reuse in facets, and what's not new."""
+    name: str
+    note: str | None = None
 
+
+@dataclass(kw_only=True)
+class ContextPerson:
+    id: str
+    name: str
+    context: str | None = None
     what_matters: str | None = None
-    """Its description's "What matters to them" section, if it has one."""
-
-    cadence_activities: list[str] | None = None
-    """The activities its own trait parts count (a visit every 21 days,
-    say): the labels to prefer for an event that's one of them -- a
-    cadence counts only events labelled with its activity -- though an
-    event that was something else gets its own."""
+    """What's important to them, for the notes to say what touched it."""
 
 
 @dataclass(kw_only=True)
-class ContextGoal:
+class ContextLocation:
     id: str
-    path: str
+    name: str
+    hint: str | None = None
+    """How to tell that an event or note refers to it."""
 
 
 @dataclass(kw_only=True)
@@ -362,16 +365,17 @@ class CompactionContext:
     """`notes` beside `events` as planned -- see
     utilities/compaction_timeline.py."""
 
-    goals: list[ContextGoal] | None = None
-    """The goals an event can be given: every active one."""
+    actions: list[ContextAction] | None = None
+    """The actions an event can be given: every active and proposed one."""
+
+    people: list[ContextPerson] | None = None
+    """Everyone active, "self" (the user) first."""
+
+    locations: list[ContextLocation] | None = None
 
     previous_note: PreviousNote | None = None
     """The latest already-compacted note, however long ago it was
     written -- see the module docstring."""
-
-    traits_goals: list[TraitsGoalContext] | None = None
-    """The goals rated by traits that the events count toward, with their
-    digests and what matters to them -- see `DECISION_GUIDE`."""
 
     instructions: str = DECISION_GUIDE
 
@@ -392,6 +396,10 @@ class CompactionResult:
     timeline: Timeline | None = None
     """For a dry run: the notes beside the events as they'd end up -- show
     this to the user (see `DECISION_GUIDE`)."""
+
+    additions: dict[str, list[dict]] | None = None
+    """For a dry run: the actions, people and locations it adds when it's
+    applied -- show these to the user too."""
 
     def __post_init__(self) -> None:
         self.changes = self.changes or []
@@ -446,7 +454,7 @@ class _Walked:
 
 _STATE_FIELDS = (
     "summary", "start", "end", "description", "location", "status",
-    "is_fixed_time", "priority", "event_label_id", "goal_ids", "min_duration", "facets",
+    "is_fixed_time", "priority", "event_label_id", "action_ids", "min_duration", "facts",
 )
 
 
@@ -492,23 +500,24 @@ class NoteCompactor:
         notes: NotedTimeSheet,
         journal: CompactionJournal,
         clock: Callable[[], datetime] | None = None,
-        goals: Goals | None = None,
+        actions: Actions | None = None,
+        people: People | None = None,
+        locations: Locations | None = None,
         marker: CompactionMarker | None = None,
-        details: GoalDetails | None = None,
     ) -> None:
-        """`calendar` reads the day's events (through the same goal-aware
-        view reallocation uses); `client` is what the planned changes are
-        written through (a GoalCalendar, so each event's label follows
-        its goals). `goals` names, suggests and checks events' goals.
-        `marker`, if given, is moved to each compaction once it's stamped
-        (see utilities/compaction_marker.py). `details` holds goals'
-        descriptions, whose "What matters to them" sections compaction
-        shows and adds to."""
+        """`calendar` reads the day's events (through the same
+        action-aware view reallocation uses); `client` is what the planned
+        changes are written through (an ActionCalendar, so each event's
+        label follows its actions). `actions`, `people` and `locations`
+        are what events' actions and facts name, and what a plan can add
+        to. `marker`, if given, is moved to each compaction once it's
+        stamped (see utilities/compaction_marker.py)."""
         self._marker = marker
-        self._details = details
         self._calendar = calendar
         self._client = client
-        self._goals = goals
+        self._actions = actions
+        self._people = people
+        self._locations = locations
         self._notes = notes
         self._journal = journal
         self._clock = clock or (lambda: datetime.now(timezone.utc))
@@ -522,10 +531,9 @@ class NoteCompactor:
         if not walked:
             return CompactionContext(notes=[], events=[], open_compaction=open_id)
         days = [w.day for w in walked]
-        tree = self._goals.tree() if self._goals else None
-        names = _goal_names(tree)
+        tree = self._actions.tree() if self._actions else None
+        names = self._names()
         suggested = self._suggestions(days, tree) if tree is not None else {}
-        traits_of = _traits_goals(days, tree) if tree is not None else {}
         notes: list[ContextNote] = []
         events: dict[str, ContextEvent] = {}
         timelines: list[tuple[datetime, Timeline]] = []
@@ -552,13 +560,12 @@ class NoteCompactor:
                         start=e.start,
                         end=e.end,
                         description=e.description,
-                        goal_ids=e.goal_ids,
-                        goal_names=[names.get(g, g) for g in e.goal_ids] if e.goal_ids is not None else None,
-                        suggested_goal_ids=suggested.get(e.id),
+                        action_ids=e.action_ids,
+                        action_names=[names.get(a, a) for a in e.action_ids] if e.action_ids is not None else None,
+                        suggested_action_ids=suggested.get(e.id),
                         priority=e.effective_priority,
                         is_fixed_time=e.is_fixed_time,
-                        facets=e.facets,
-                        traits_goal_ids=traits_of.get(e.id),
+                        facts=e.facts,
                     )
             timelines.append(
                 (
@@ -593,69 +600,66 @@ class NoteCompactor:
                 for day in days
             ] if len(days) > 1 else None,
             timeline=join_days(timelines),
-            goals=[
-                ContextGoal(id=g.id, path=tree.path(g.id)) for g in tree.ordered() if g.active and g.id != OVERALL_ID
+            actions=[
+                ContextAction(id=a.id, name=a.name, note=a.note)
+                for a in tree.actions
+                if a.status in ("active", "proposed")
             ] if tree is not None else None,
+            people=[
+                ContextPerson(id=p.id, name=p.name, context=p.context, what_matters=p.what_matters)
+                for p in self._people.get_people()
+            ] if self._people is not None else None,
+            locations=[
+                ContextLocation(id=loc.id, name=loc.name, hint=loc.hint) for loc in self._locations.all()
+            ] if self._locations is not None else None,
             previous_note=PreviousNote(
                 timestamp=previous_note.timestamp, description=previous_note.description
             ) if previous_note is not None else None,
-            traits_goals=self._traits_context(days, tree, traits_of) if traits_of else None,
         )
 
-    def _traits_context(
-        self, days: list[_Day], tree: GoalTree, traits_of: dict[str, list[str]]
-    ) -> list[TraitsGoalContext]:
-        """Each goal rated by traits that the days' events count toward,
-        with its digest of the events before the first day, and what
-        matters to it."""
-        goal_ids = list(dict.fromkeys(g for ids in traits_of.values() for g in ids))
-        start = days[0].compaction_window_start
-        history = [e for e in self._calendar.list_events(start - timedelta(days=180), start) if e.status != "cancelled"]
-        tz = start.tzinfo
-        context = []
-        for goal_id in goal_ids:
-            goal = tree.by_id[goal_id]
-            description = self._details.get(goal_id) if self._details is not None else None
-            context.append(
-                TraitsGoalContext(
-                    id=goal_id,
-                    path=tree.path(goal_id),
-                    digest=history_digest(goal, tree, history, start, tz).text,
-                    what_matters=section(description, WHAT_MATTERS),
-                    cadence_activities=_cadence_activities(goal.measure) or None,
-                )
-            )
-        return context
-
-    def _prefetch(self, *, goals: bool = True) -> None:
-        """Read the notes tab, the journal and (if `goals`) the goals tab
-        -- all a step reads of the spreadsheet -- in one request, so every
-        later read of them in the same tool call is served from the cache
-        (see `SheetsClient.prefetch`): Google Sheets caps read requests at
-        60 a minute."""
+    def _prefetch(self, *, facts: bool = True) -> None:
+        """Read the notes tab, the journal and (if `facts`) the actions,
+        people and locations tabs -- all a step reads of the spreadsheet
+        -- in one request, so every later read of them in the same tool
+        call is served from the cache (see `SheetsClient.prefetch`):
+        Google Sheets caps read requests at 60 a minute."""
         tabs = [self._notes.whole_tab, self._journal.whole_tab]
-        if goals and self._goals is not None:
-            tabs.append(self._goals.whole_tab)
-        if goals and self._details is not None:
-            tabs.append(self._details.whole_tab)
+        if facts:
+            if self._actions is not None:
+                tabs += self._actions.whole_tabs
+            if self._people is not None:
+                tabs += self._people.whole_tabs
+            if self._locations is not None:
+                tabs.append(self._locations.whole_tab)
         self._notes.prefetch(tabs)
 
-    def _suggestions(self, days: list[_Day], tree: GoalTree) -> dict[str, list[str]]:
-        """Goals to suggest for the days' past events that serve none: those
-        the latest earlier event with the same title served, within
-        _HINT_HISTORY (ignoring goals since deleted). Recurring events need
-        nothing extra: an instance's goals come with its series."""
-        bare = [e for day in days for e in day.events if e.id and not e.goal_ids and e.end <= day.now and e.summary]
+    def _names(self, additions: Additions | None = None) -> dict[str, str]:
+        """Every action's, person's and location's id (and every ref in
+        `additions`), with its name -- for the timeline."""
+        names: dict[str, str] = {}
+        if self._actions is not None:
+            names.update((a.id, a.name or a.id) for a in self._actions.all() if a.id)
+        if self._people is not None:
+            names.update((p.id, p.name or p.id) for p in self._people.all() if p.id)
+        if self._locations is not None:
+            names.update((loc.id, loc.name or loc.id) for loc in self._locations.all() if loc.id)
+        if additions is not None:
+            names.update((ref, f"{name} (new)") for ref, name in additions.refs.items())
+        return names
+
+    def _suggestions(self, days: list[_Day], tree: ActionTree) -> dict[str, list[str]]:
+        """Actions to suggest for the days' past events that have none: those
+        the latest earlier event with the same title had, within
+        _HINT_HISTORY (ignoring actions since deleted). Recurring events
+        need nothing extra: an instance's actions come with its series."""
+        bare = [e for day in days for e in day.events if e.id and not e.action_ids and e.end <= day.now and e.summary]
         if not bare:
             return {}
         start = days[0].compaction_window_start
         history = self._calendar.list_events(start - _HINT_HISTORY, start)
         hints: dict[str, list[str]] = {}
         for event in sorted(history, key=lambda e: e.start):
-            usable = [
-                g for g in event.goal_ids or ()
-                if g in tree.by_id and tree.by_id[g].status != "deleted"
-            ]
+            usable = [a for a in event.action_ids or () if a in tree.by_id and tree.by_id[a].status != "deleted"]
             if event.summary and usable and event.status != "cancelled":
                 hints[_title_key(event.summary)] = usable
         return {e.id: hints[_title_key(e.summary)] for e in bare if _title_key(e.summary) in hints}
@@ -664,14 +668,20 @@ class NoteCompactor:
         self,
         decisions: list[EventDecision],
         ignore_notes: list[str] | None = None,
-        what_matters: list[WhatMatters] | None = None,
+        new_actions: list[NewAction] | None = None,
+        new_people: list[NewPerson] | None = None,
+        new_locations: list[NewLocation] | None = None,
     ) -> CompactionResult:
-        """`what_matters`: lines to add to goals' "What matters to them"
-        sections when the plan is applied."""
+        """`new_actions`, `new_people` and `new_locations`: what the plan
+        adds when it's applied, which its decisions name by their refs
+        (see utilities/compaction_additions.py)."""
         self._prefetch()
         self._require_no_open_compaction()
-        decisions = self._checked_facets(decisions)
-        additions = self._checked_what_matters(what_matters or [])
+        additions = Additions(actions=new_actions or [], people=new_people or [], locations=new_locations or [])
+        problems = check_additions(additions, self._actions, self._people, self._locations)
+        if problems:
+            raise CompactionError("\n".join(problems))
+        decisions = self._checked_facts(decisions, additions)
         pending = list(decisions)
         ignoring = list(ignore_notes or [])
 
@@ -685,7 +695,7 @@ class NoteCompactor:
                 note_ids = {n.id for n in day.notes}
                 ignored = [i for i in ignoring if not day.has_next or i in note_ids]
                 ignoring[:] = [i for i in ignoring if i not in ignored]
-                plan = self._plan(day, mine, ignored)
+                plan = self._plan(day, mine, ignored, additions)
             except CompactionError as exc:
                 raise CompactionError(f"{label}: {exc}" if label else str(exc)) from exc
             if label:
@@ -706,7 +716,7 @@ class NoteCompactor:
                     decisions=w.decisions,
                     ignore_notes=w.ignore_notes,
                     plan=w.plan,
-                    what_matters=additions if number == len(walked) else {},
+                    additions=additions.to_json_dict() if number == 1 else {},
                 )
                 for number, w in enumerate(walked, start=1)
             ]
@@ -714,17 +724,13 @@ class NoteCompactor:
         changes = [c for w in walked for c in w.plan.changes]
         note_count = sum(len(w.day.notes) for w in walked)
         days = f" over {len(walked)} days" if len(walked) > 1 else ""
-        tree = self._goals.tree() if self._goals else None
-        adding = [
-            f"add to {tree.by_id[g].name if tree else g}'s \"{WHAT_MATTERS}\": " + "; ".join(items)
-            for g, items in additions.items()
-        ]
         return CompactionResult(
             status="planned",
             compaction_id=compaction_id,
             changes=changes,
-            warnings=[warning for w in walked for warning in w.plan.warnings] + adding,
+            warnings=[warning for w in walked for warning in w.plan.warnings],
             timeline=join_days([(w.day.day_start, w.plan.timeline) for w in walked]),
+            additions=additions.to_json_dict() or None,
             message=(
                 f"{len(changes)} calendar change(s) planned for {note_count} note(s){days}; "
                 "nothing has been changed yet. Show the user `timeline.text` in a code block (see the "
@@ -788,14 +794,19 @@ class NoteCompactor:
         if pending[0].status == PLANNED:
             self._require_no_open_compaction()
             self._verify_unchanged(pending)
+        refs: dict[str, str] | None = None
         for journal in pending:
             if journal.status == PLANNED:
                 self._journal.set_status(journal, APPLYING)
+            if refs is None:
+                # Created (or found, on a resumed commit) before any step
+                # names them.
+                additions = Additions.from_json_dict(days[0].additions)
+                refs = create_additions(additions, self._actions, self._people, self._locations)
             for step in journal.steps:
                 if step.status != "done":
-                    self._apply_step(journal, step)
+                    self._apply_step(journal, step, refs)
                     self._journal.mark_step_done(step)
-            self._add_what_matters(journal)
             self._journal.set_status(journal, APPLIED)
             self._notes.mark_compacted(journal.note_ids, journal.id)
             self._journal.set_status(journal, STAMPED)
@@ -809,54 +820,37 @@ class NoteCompactor:
             message=f"applied {steps} change(s) and marked {notes} note(s) compacted",
         )
 
-    def _add_what_matters(self, journal: JournalCompaction) -> None:
-        """Add `journal`'s lines to goals' "What matters to them" sections,
-        dated its day. A line already there is skipped, so doing it again
-        (resuming a commit) is harmless."""
-        if not journal.what_matters or self._details is None:
-            return
-        on = journal.now.date()
-        for goal_id, items in journal.what_matters.items():
-            current = self._details.get(goal_id)
-            updated = add_to_section(current, items, on)
-            if updated != (current or ""):
-                self._details.set(goal_id, updated)
-
-    def _checked_facets(self, decisions: list[EventDecision]) -> list[EventDecision]:
-        """`decisions` with their facets normalized; CompactionError if any
-        aren't well formed or name goals that aren't."""
-        tree = self._goals.tree() if self._goals else None
+    def _checked_facts(self, decisions: list[EventDecision], additions: Additions) -> list[EventDecision]:
+        """`decisions` with their facts normalized; CompactionError if any
+        aren't well formed, or name people or locations that aren't there
+        (or being added)."""
+        people = {p.id for p in self._people.all()} if self._people is not None else None
+        locations = {loc.id for loc in self._locations.all()} if self._locations is not None else None
+        new_people = {p.ref for p in additions.people}
+        new_locations = {loc.ref for loc in additions.locations}
         checked, problems = [], []
         for number, decision in enumerate(decisions, start=1):
-            if decision.facets is not None:
-                facets = decision.facets.normalized()
+            if decision.facts is not None:
+                facts = decision.facts.normalized()
                 label = f"decision {number} ({decision.action}{' ' + decision.event_id if decision.event_id else ''})"
-                problems += [f"{label}: its facets {p}" for p in facet_problems(facets)]
-                named = [*(facets.with_goal_ids or ()), *(facets.for_goal_ids or ())]
-                if tree is not None and named:
-                    try:
-                        tree.check_goal_ids(named, for_events=True)
-                    except ValueError as exc:
-                        problems.append(f"{label}: its facets: {exc}")
-                decision = replace(decision, facets=facets)
+                problems += [f"{label}: its facts {p}" for p in fact_problems(facts)]
+                if people is not None:
+                    unknown = [i for i in facts.people() if i not in people and i not in new_people and i != SELF_ID]
+                    if unknown:
+                        problems.append(
+                            f"{label}: its facts name {unknown}, who aren't people (get_people lists them; add "
+                            "someone new with new_people)"
+                        )
+                if locations is not None and facts.location_id and facts.location_id not in locations | new_locations:
+                    problems.append(
+                        f"{label}: its facts' location {facts.location_id!r} isn't a location (add a new one with "
+                        "new_locations)"
+                    )
+                decision = replace(decision, facts=facts)
             checked.append(decision)
         if problems:
             raise CompactionError("\n".join(problems))
         return checked
-
-    def _checked_what_matters(self, additions: list[WhatMatters]) -> dict[str, list[str]]:
-        """`additions` by goal id; CompactionError for an unknown goal or
-        a line that isn't one."""
-        if not additions:
-            return {}
-        if self._details is None:
-            raise CompactionError("this calendar has no goal descriptions to add what matters to")
-        tree = self._goals.tree() if self._goals else None
-        known = set(tree.by_id) if tree is not None else {a.goal_id for a in additions}
-        try:
-            return checked_what_matters(additions, known)
-        except ValueError as exc:
-            raise CompactionError(str(exc)) from exc
 
     def _move_marker(self, at: datetime) -> list[str]:
         """Move the last-compaction marker to `at`, if there's a marker;
@@ -875,12 +869,12 @@ class NoteCompactor:
         self, note_id: str, *, timestamp: datetime | None = None, description: str | None = None
     ) -> SheetNote:
         """See the module-level `edit_note`."""
-        self._prefetch(goals=False)
+        self._prefetch(facts=False)
         return edit_note(self._notes, self._journal, note_id, timestamp=timestamp, description=description)
 
     def delete_note(self, note_id: str) -> NotedTime:
         """See the module-level `delete_note`."""
-        self._prefetch(goals=False)
+        self._prefetch(facts=False)
         return delete_note(self._notes, self._journal, note_id)
 
     def abandon(self, compaction_id: str) -> CompactionResult:
@@ -1126,7 +1120,7 @@ class NoteCompactor:
             journal = days[index]
             if {n.id for n in day.notes} != set(journal.note_ids):
                 raise stale
-            plan = self._plan(day, journal.decisions, journal.ignore_notes)
+            plan = self._plan(day, journal.decisions, journal.ignore_notes, Additions.from_json_dict(days[0].additions))
             if comparable(plan.changes) != comparable(journal.changes()):
                 raise stale
             return _Walked(day=day, plan=plan)
@@ -1136,24 +1130,30 @@ class NoteCompactor:
             raise stale
 
     def _plan(
-        self, day: _Day, decisions: list[EventDecision], ignore_notes: list[str] | None
+        self, day: _Day, decisions: list[EventDecision], ignore_notes: list[str] | None, additions: Additions
     ) -> CompactionPlan:
-        """`plan_compaction` for `day`, with the decisions' goals checked,
-        and created events' labels checked against the calendar's: Calendar
-        rejects inserting an event with a label it doesn't have (HTTP 400),
-        which would stop the commit partway -- and every retry with it. A
+        """`plan_compaction` for `day`, with the decisions' actions checked
+        (a ref to a new action in `additions` included), and created
+        events' labels checked against the calendar's: Calendar rejects
+        inserting an event with a label it doesn't have (HTTP 400), which
+        would stop the commit partway -- and every retry with it. A
         created event that has one anyway (a split continuation, cloned
         label and all, from reflowing the day) just drops it; the label it
-        gets follows its goals when it's written. Only reads the labels when
-        a created event has one."""
-        tree = self._goals.tree() if self._goals else None
+        gets follows its actions when it's written. Only reads the labels
+        when a created event has one."""
+        tree = self._actions.tree() if self._actions else None
         if tree is not None:
-            current = {e.id: e.goal_ids or [] for e in day.events if e.id}
+            current = {e.id: e.action_ids or [] for e in day.events if e.id}
+            new = {a.ref for a in additions.actions}
             problems = []
             for d in decisions:
-                if d.goal_ids:
+                named = [a for a in d.action_ids or () if a not in new]
+                if d.action_ids and any(a.startswith(REF_PREFIX) and a not in new for a in d.action_ids):
+                    problems.append(f"{d.action} {d.event_id or d.summary!r}: a ref that isn't in new_actions")
+                    continue
+                if named:
                     try:
-                        tree.check_goal_ids(d.goal_ids, for_events=True, already=current.get(d.event_id, []))
+                        tree.check_action_ids(named, already=current.get(d.event_id, []))
                     except ValueError as exc:
                         problems.append(f"{d.action} {d.event_id or d.summary!r}: {exc}")
             if problems:
@@ -1172,7 +1172,7 @@ class NoteCompactor:
             day.now,
             ignore_notes=ignore_notes,
             day_start=day.day_start,
-            goal_names=_goal_names(tree),
+            names=self._names(additions),
             previous_note=_latest_compacted(day),
             last_compaction=day.last_compaction,
             next_day_follows=day.has_next,
@@ -1187,9 +1187,11 @@ class NoteCompactor:
                 change.after.event_label_id = None
         return plan
 
-    def _apply_step(self, journal: JournalCompaction, step: JournalStep) -> None:
+    def _apply_step(self, journal: JournalCompaction, step: JournalStep, refs: dict[str, str]) -> None:
+        """Make `step`'s change, with the refs to what the plan added
+        replaced by their ids (`refs`)."""
         if step.action == "create":
-            event = step.after.to_event(_new_event_id(journal.id, step.step))
+            event = resolve(step.after.to_event(_new_event_id(journal.id, step.step)), refs)
             try:
                 self._client.create_event(event)
             except HttpError as exc:
@@ -1197,7 +1199,7 @@ class NoteCompactor:
                 if exc.resp.status != 409:
                     raise
         else:
-            self._client.update_event(_patch_for(step))
+            self._client.update_event(resolve(_patch_for(step), refs))
 
 
 def edit_note(
@@ -1342,42 +1344,6 @@ def _candidates(timestamp: datetime, events: list[Event], previous: Event | None
     return ids
 
 
-def _cadence_activities(measure: dict | None) -> list[str]:
-    """The activities a traits measure's own parts count (see
-    utilities/traits.py), in order."""
-    overrides = (measure or {}).get("parts")
-    found: list[str] = []
-    for parts in overrides.values() if isinstance(overrides, dict) else ():
-        for part in parts if isinstance(parts, list) else ():
-            activity = part.get("activity") if isinstance(part, dict) else None
-            if isinstance(activity, str) and activity_label(activity) not in found:
-                found.append(activity_label(activity))
-    return found
-
-
-def _traits_goals(days: list[_Day], tree: GoalTree) -> dict[str, list[str]]:
-    """For each of the days' past events that counts toward a goal rated
-    by traits -- one of its goals, or their ancestors, has a traits measure
-    -- those goals, by event id."""
-    rated = [g.id for g in tree.goals if g.active and isinstance(g.measure, dict) and g.measure.get("kind") == "traits"]
-    if not rated:
-        return {}
-    found: dict[str, list[str]] = {}
-    for day in days:
-        for event in day.events:
-            if not event.id or event.start >= day.now or event.status == "cancelled":
-                continue
-            ids = [*(event.goal_ids or ()), *((event.facets.with_goal_ids or []) if event.facets else [])]
-            goals = [g for g in rated if any(tree.under(i, g) for i in ids if i in tree.by_id)]
-            if goals:
-                found[event.id] = goals
-    return found
-
-
-def _goal_names(tree: GoalTree | None) -> dict[str, str]:
-    return {g.id: g.name or g.id for g in tree.goals if g.id} if tree is not None else {}
-
-
 def _title_key(summary: str) -> str:
     return " ".join(summary.casefold().split())
 
@@ -1393,13 +1359,13 @@ def _patch_for(step: JournalStep) -> Event:
         return Event(id=step.event_id, status="cancelled")
     before, after = step.before, step.after
     patch = Event(id=step.event_id)
-    for name in ("summary", "start", "end", "description", "location", "priority", "event_label_id", "goal_ids"):
+    for name in ("summary", "start", "end", "description", "location", "priority", "event_label_id", "action_ids"):
         value = getattr(after, name)
         if value is not None and value != getattr(before, name):
             setattr(patch, name, value)
-    if after.facets != before.facets:
-        # Empty facets remove them: see Event.facets.
-        patch.facets = facets_from_dict(after.facets)
+    if after.facts != before.facts:
+        # Empty facts remove them: see Event.facts.
+        patch.facts = facts_from_dict(after.facts)
     if after.is_fixed_time:
         # An actual event is pinned explicitly, not left to inherit it
         # from its label.

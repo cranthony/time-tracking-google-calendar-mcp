@@ -27,12 +27,9 @@ from typing import Any, Literal
 
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
+from utilities.facts import SELF_ID
 from utilities.traits import person_traits_problems
 from utilities.row_sheet import RowSheet, check_clear, new_id, updated
-
-SELF_ID = "self"
-"""The user's own id among the people. (Generated ids are 6 characters,
-so none can be this.)"""
 
 SELF_NAME = "Me"
 """Self's name until one is given."""
@@ -193,11 +190,16 @@ class People:
     def all(self) -> list[Person]:
         """Every person, self first (supplied if the tab has no row for
         them), then in sheet order."""
+        self.prefetch(self.whole_tabs)
         people = self._sheet.read()
         mine = next((p for p in people if p.id == SELF_ID), None)
         return [_as_self(mine)] + [p for p in people if p.id != SELF_ID]
 
     def circles(self) -> list[Circle]:
+        """Every circle. (Both tabs are read together, in one request,
+        inside `cached_sheet_reads`: anything reading one reads the
+        other.)"""
+        self.prefetch(self.whole_tabs)
         return self._circle_sheet.read()
 
     def get_people(self, statuses: Collection[str] | None = None) -> list[ListedPerson]:
@@ -273,8 +275,9 @@ class People:
         if index is None:
             find_circle(circles, circle.id)  # Raises, suggesting close matches.
         circles[index] = updated(circles[index], circle, clear_fields)
+        people = self.all()  # Before writing, while it's still cached.
         self._write_circles(circles)
-        return _listed_circle(circles[index], self.all())
+        return _listed_circle(circles[index], people)
 
     def delete_circle(self, circle_id: str) -> DeletedCircle:
         """Delete the circle with `circle_id`; its people leave it."""

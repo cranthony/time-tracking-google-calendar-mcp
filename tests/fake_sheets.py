@@ -122,7 +122,7 @@ class FakeSheets:
         return self._tab(sheet_id).get((int(match.group(2)), _column_number(match.group(1))), "")
 
     # Tab management, for code that finds/creates tabs itself (e.g.
-    # utilities/goals.py's migration). Tabs are tagged with developer
+    # the Traits tab's seeding). Tabs are tagged with developer
     # metadata the way calendar_metadata_sheet does it.
 
     def find_sheet_id(self, spreadsheet_id: str, key: str, value: str) -> int | None:

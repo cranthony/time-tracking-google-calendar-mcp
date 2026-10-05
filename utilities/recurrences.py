@@ -74,15 +74,16 @@ _EDITABLE = (
     "is_fixed_duration",
     "is_fixed_time",
     "priority",
-    "goal_ids",
+    "action_ids",
 )
 """The fields of a series that `Recurrences.update` writes (its rules
 are written from the `Repeat` passed alongside)."""
 
 
 class _Calendar(Protocol):
-    """What Recurrences reads and writes events through: a GoalCalendar,
-    so events' goals are filled in and their labels derived."""
+    """What Recurrences reads and writes events through: an
+    ActionCalendar, so events' actions are filled in and their labels
+    derived."""
 
     def get_event(self, event_id: str) -> Event: ...
     def create_event(self, event: Event) -> Event: ...
