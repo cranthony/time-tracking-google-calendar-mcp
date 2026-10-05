@@ -69,3 +69,40 @@ def goal_status_minutes(
         goal_id: {statuses: round(total) for statuses, total in split.items() if round(total) > 0}
         for goal_id, split in minutes.items()
     }
+
+
+def priority_minutes(events: list[Event], start: datetime, end: datetime) -> dict[int | None, int]:
+    """The minutes between `start` and `end` by the priority they went to,
+    adding up to the whole window: each moment goes to the highest
+    (lowest-numbered) `effective_priority` among the events covering it --
+    `events` with their goal_priority filled in (see utilities/
+    goal_calendar.py's fill_in_from_goals) -- and to `None` if none with a
+    priority does, so overlapping events count once and the gaps between
+    them are `None`'s. Cancelled events are left out. Rounded to whole
+    minutes that still add up to the window, by largest remainder."""
+    clipped = [
+        (max(event.start, start), min(event.end, end), event.effective_priority)
+        for event in events
+        if event.status != "cancelled" and event.effective_priority is not None
+    ]
+    clipped = [(s, e, p) for s, e, p in clipped if s < e]
+    seconds: dict[int | None, float] = {}
+    edges = sorted({start, end, *(s for s, _, _ in clipped), *(e for _, e, _ in clipped)})
+    for left, right in zip(edges, edges[1:]):
+        covering = [p for s, e, p in clipped if s <= left and e >= right]
+        priority = min(covering, default=None)
+        seconds[priority] = seconds.get(priority, 0) + (right - left).total_seconds()
+    seconds.setdefault(None, 0)
+    return _round_to_total({p: s / 60 for p, s in seconds.items()})
+
+
+def _round_to_total(minutes: dict[int | None, float]) -> dict[int | None, int]:
+    """`minutes` floored, then the minutes lost to flooring given back one
+    each to the largest fractions, so the result adds up to the rounded
+    total."""
+    rounded = {key: int(value) for key, value in minutes.items()}
+    short = round(sum(minutes.values())) - sum(rounded.values())
+    by_fraction = sorted(minutes, key=lambda key: minutes[key] - rounded[key], reverse=True)
+    for key in by_fraction[:short]:
+        rounded[key] += 1
+    return rounded

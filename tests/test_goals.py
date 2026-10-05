@@ -613,6 +613,7 @@ class TestRecentTime:
 
         assert listing.as_of is None
         assert listing.goals[0].minutes_24h is None and listing.goals[0].minutes_7d is None
+        assert listing.minutes_by_priority is None
         assert calendar.listed == []
 
     def test_splits_the_time_spent_on_goals_by_their_statuses(self):
@@ -655,6 +656,62 @@ class TestRecentTime:
         overall = next(g for g in listing.goals if g.id == OVERALL_ID)
         # Every goal's time, each event once.
         assert (overall.minutes_24h, overall.minutes_7d) == (110, 155)
+
+    def test_splits_the_windows_by_the_priority_each_moment_went_to(self):
+        as_of = datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
+        goals, calendar = self._setup(as_of)
+        goals.create_goal(Goal(name="Health", priority=0))
+        goals.create_goal(Goal(name="Chores", priority=3))
+        goals.create_goal(Goal(name="Folder"))
+        by_name = _by_name(goals)
+        goals.create_goal(Goal(name="Walk", parent_id=by_name["Health"].id))
+        by_name = _by_name(goals)
+
+        def event(hours_before: float, minutes: int, goal_ids, **fields):
+            start = as_of - timedelta(hours=hours_before)
+            return Event(id=str(hours_before), start=start, end=start + timedelta(minutes=minutes), goal_ids=goal_ids, **fields)
+
+        calendar.events = [
+            event(2, 60, [by_name["Walk"].id]),  # 0, inherited from Health
+            event(1.5, 60, [by_name["Chores"].id]),  # overlaps the walk by 30: only its last 30 are 3's
+            event(4, 30, [by_name["Chores"].id, by_name["Health"].id]),  # its goals' highest: 0
+            event(6, 20, [by_name["Health"].id], priority=1),  # its own priority wins
+            event(8, 15, [by_name["Folder"].id]),  # no priority: unprioritized, like a gap
+            event(10, 45, []),  # likewise
+            event(12, 30, [by_name["Chores"].id], status="cancelled"),
+            event(30, 40, [by_name["Chores"].id]),  # 7 days only
+        ]
+
+        listing = goals.get_goals()
+
+        split = [(m.priority, m.minutes_24h, m.minutes_7d) for m in listing.minutes_by_priority]
+        assert split == [(0, 90, 90), (1, 20, 20), (3, 30, 70), (None, 1300, 9900)]
+        assert sum(m.minutes_24h for m in listing.minutes_by_priority) == 24 * 60
+        assert sum(m.minutes_7d for m in listing.minutes_by_priority) == 7 * 24 * 60
+
+    def test_rounded_minutes_still_add_up_to_the_window(self):
+        as_of = datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
+        goals, calendar = self._setup(as_of)
+        for name, priority in (("A", 0), ("B", 1), ("C", 2)):
+            goals.create_goal(Goal(name=name, priority=priority))
+        by_name = _by_name(goals)
+        start = as_of - timedelta(hours=3)
+        calendar.events = [
+            Event(id=name, start=start + i * timedelta(seconds=90), end=start + (i + 1) * timedelta(seconds=90), goal_ids=[by_name[name].id])
+            for i, name in enumerate("ABC")
+        ]  # a minute and a half each
+
+        listing = goals.get_goals()
+
+        assert sum(m.minutes_24h for m in listing.minutes_by_priority) == 24 * 60
+        assert sum(m.minutes_7d for m in listing.minutes_by_priority) == 7 * 24 * 60
+
+    def test_with_no_events_the_windows_are_all_unprioritized(self):
+        goals, calendar = self._setup(datetime(2026, 10, 2, 21, tzinfo=timezone.utc))
+
+        listing = goals.get_goals()
+
+        assert [(m.priority, m.minutes_24h, m.minutes_7d) for m in listing.minutes_by_priority] == [(None, 1440, 10080)]
 
 
 class TestOverall:
