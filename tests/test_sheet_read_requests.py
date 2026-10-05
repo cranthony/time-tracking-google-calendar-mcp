@@ -78,7 +78,7 @@ class _Server:
         """Goals (one measured), an event serving one, a note and an
         assessment, so every tab the tools read has something in it."""
         listed = server.create_goal(Goal(name="Cooking", measure={"kind": "subjective", "prompt": "How was it?"}))
-        self.cooking = cooking = next(g for g in listed.goals if g.name == "Cooking")
+        self.cooking = cooking = listed.changed[0]
         server.create_goal(Goal(name="Reading"))
         evening = (NOW - timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
         self.calendar.events.append(
@@ -96,6 +96,8 @@ class _Server:
         ]
         server.note(NotedTime(timestamp=NOW - timedelta(hours=2), description="cooked"))
         server.record_assessments([self.assessment(80)])
+        # Finding its tab is a one-time read, whichever tool's first.
+        server.get_compaction_journal()
 
     def assessment(self, rating: int) -> Assessment:
         """A rating of the measured goal for yesterday."""
@@ -126,12 +128,12 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         # Goals, and the journal for the last compaction's time (how far
         # get_goals' goal time goes).
         "get_goals": lambda: server.get_goals(),
+        # Goals only.
         "create_goal": lambda: server.create_goal(Goal(name="Writing")),
         "update_goal": lambda: server.update_goal(Goal(id=tools.cooking.id, note="dinners")),
         "reorder_goals": lambda: server.reorder_goals(siblings[::-1]),
         "sync_goals_from_sheet": lambda: server.sync_goals_from_sheet(),
         "rebuild_goal_health_cache": lambda: server.rebuild_goal_health_cache(),
-        # Goals only.
         "measure_goals": lambda: server.measure_goals(YESTERDAY),
         "record_assessments": lambda: server.record_assessments([tools.assessment(70)]),
         "get_goal_history": lambda: server.get_goal_history([tools.cooking.id]),

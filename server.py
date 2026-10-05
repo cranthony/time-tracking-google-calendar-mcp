@@ -33,7 +33,7 @@ from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_health import Assessment, GoalHealth
 from utilities.reflection import ReflectionContext, ReflectionResult, Reflections
 from utilities.goal_sheet import Goal, GoalStatus
-from utilities.goals import CreatedGoal, GoalList, Goals, GoalTree
+from utilities.goals import CreatedGoal, GoalChanges, GoalList, Goals, GoalTree
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.compaction_journal import CompactionJournal
@@ -745,9 +745,11 @@ def create_goal(goal: Goal) -> CreatedGoal:
     takes one of the calendar's event labels, and its events are shown in
     its color (background_color, or derived from priority). priority is
     inherited by sub-goals and events that don't set their own (an
-    event takes the highest of its goals'). id and label_id are assigned. Returns the resulting
-    proposed, active and inactive goals, and the new goal's id as
-    created_id.
+    event takes the highest of its goals'). id and label_id are assigned.
+    Returns the new goal's id as created_id, and only what changed, not
+    the whole tree (get_goals lists that): as changed, the new goal, with
+    its path, effective_priority and effective_color; and
+    label_slots_used of label_slots_total.
 
     Every active goal is reflected on daily, and its measure says how its
     health (0-100) is rated each day; one without a measure is rated as
@@ -802,7 +804,7 @@ def create_goal(goal: Goal) -> CreatedGoal:
     on days of practice. A subjective measure's interval passes over those
     skipped days."""
     with track("create_goal"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_store().create_goal(goal)
         except (ValueError, EventLabelConflictError) as exc:
@@ -816,7 +818,7 @@ CLEARABLE_FIELDS)."""
 
 @tool
 @writes
-def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> GoalList:
+def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> GoalChanges:
     """Update a goal by id. Omitted properties keep their current value;
     list one in clear_fields to blank it instead (clearing parent_id
     makes it a top-level goal; clearing background_color makes its color
@@ -830,10 +832,16 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
     is checked as for create_goal. The overall goal (id "overall") can be
     given a name, measure or note, but stays active and
     has no parent; no goal can name it as its parent, since every
-    top-level goal is already under it. Returns the resulting proposed,
-    active and inactive goals."""
+    top-level goal is already under it. Returns only what changed, not
+    the whole tree (get_goals lists that): as changed, the goal as
+    updated, with its path, effective_priority and effective_color; as
+    affected, briefly (id, name, parent_id, status, effective_priority,
+    effective_color, path), every other goal whose effective_priority,
+    effective_color or path changed as a result -- e.g. the sub-goals of
+    a goal moved, renamed or given a new priority or color; and
+    label_slots_used of label_slots_total."""
     with track("update_goal"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_store().update_goal(goal, clear_fields or ())
         except (ValueError, EventLabelConflictError) as exc:
@@ -842,14 +850,16 @@ def update_goal(goal: Goal, clear_fields: list[GoalField] | None = None) -> Goal
 
 @tool
 @writes
-def reorder_goals(goal_ids: list[str]) -> GoalList:
+def reorder_goals(goal_ids: list[str]) -> GoalChanges:
     """Put sibling goals (sharing a parent) in this order, among the places
     they already hold: goals are listed parents before children, siblings
     in this order. Name all of a parent's sub-goals (or all the top-level
-    goals) to order them all. Returns the resulting proposed, active and
-    inactive goals."""
+    goals) to order them all. Touches no labels. Returns only what changed,
+    not the whole tree (get_goals lists that): as changed, the goals named,
+    in their new order, each with its path, effective_priority and
+    effective_color; and label_slots_used of label_slots_total."""
     with track("reorder_goals"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_store().reorder_goals(goal_ids)
         except (ValueError, EventLabelConflictError) as exc:
@@ -858,14 +868,17 @@ def reorder_goals(goal_ids: list[str]) -> GoalList:
 
 @tool
 @writes
-def sync_goals_from_sheet() -> GoalList:
+def sync_goals_from_sheet() -> GoalChanges:
     """After hand edits to the Goals tab of the calendar metadata
     spreadsheet, make the calendar's event labels match it: one label per
     active goal (Calendar's own unnamed labels are left alone), and any
-    other label removed. Returns the resulting proposed, active and
-    inactive goals."""
+    other label removed. Returns only what changed, not the whole tree
+    (get_goals lists that): as changed, the goals whose label was added,
+    removed, renamed or recolored, each with its path,
+    effective_priority and effective_color; and label_slots_used of
+    label_slots_total."""
     with track("sync_goals_from_sheet"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_store().sync()
         except (ValueError, EventLabelConflictError) as exc:
@@ -919,12 +932,15 @@ def get_goal_history(goal_ids: list[str], start: date | None = None, end: date |
 
 @tool
 @writes
-def rebuild_goal_health_cache() -> GoalList:
+def rebuild_goal_health_cache() -> GoalChanges:
     """Recompute every goal's at-a-glance health (health, health_period,
     health_trend in the goals tab) from its confirmed assessments, e.g.
-    after hand edits. Returns every goal, whatever its status."""
+    after hand edits. Returns only what changed, not the whole tree
+    (get_goals lists that): as changed, the goals whose health, health_period
+    or health_trend changed, each with its path, effective_priority and
+    effective_color; and label_slots_used of label_slots_total."""
     with track("rebuild_goal_health_cache"), cached_sheet_reads():
-        _prefetch(get_goal_store(), get_compaction_journal())
+        _prefetch(get_goal_store())
         try:
             return get_goal_health().rebuild_cache()
         except ValueError as exc:
