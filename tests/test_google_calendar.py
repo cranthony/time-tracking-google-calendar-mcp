@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
@@ -15,6 +16,7 @@ from calendar_clients.google_calendar import (
     TimeZoneNotSetError,
 )
 from calendar_clients.write_lock import WriteLockNotHeldError
+from utilities.facets import Facets
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
@@ -486,9 +488,37 @@ class TestEvent:
                     "cascading-time-tracker-is_fixed_duration": None,
                     "cascading-time-tracker-is_fixed_time": None,
                     "cascading-time-tracker-priority": None,
+                    "cascading-time-tracker-facets": None,
                 }
             },
         }
+
+    def test_facets_round_trip_as_compact_json_under_short_keys(self):
+        facets = Facets(with_goal_ids=["g1"], for_goal_ids=["g2"], activity="salsa social", creative=2, new="place")
+        body = Event(id="abc123", facets=facets).to_api_body()
+
+        raw = body["extendedProperties"]["private"]["cascading-time-tracker-facets"]
+        assert json.loads(raw) == {
+            "with": ["g1"], "for": ["g2"], "activity": "salsa social", "creative": 2, "new": "place"
+        }
+        read = Event.from_api(
+            {**body, "id": "abc123", "start": {"dateTime": "2026-10-01T18:00:00-04:00"},
+             "end": {"dateTime": "2026-10-01T20:00:00-04:00"}}
+        )
+        assert read.facets == facets
+
+    def test_empty_facets_remove_them(self):
+        body = Event(id="abc123", facets=Facets()).to_api_body()
+
+        assert body["extendedProperties"]["private"] == {"cascading-time-tracker-facets": None}
+
+    def test_facets_that_arent_json_read_as_none(self):
+        read = Event.from_api(
+            {"id": "abc123", "start": {"dateTime": "2026-10-01T18:00:00-04:00"},
+             "end": {"dateTime": "2026-10-01T20:00:00-04:00"},
+             "extendedProperties": {"private": {"cascading-time-tracker-facets": "not json"}}}
+        )
+        assert read.facets is None
 
     def test_to_api_body_clears_some_app_properties_while_setting_others(self):
         event = Event(id="abc123", is_fixed_time=True, cleared=frozenset({"min_duration"}))

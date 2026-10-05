@@ -2,7 +2,7 @@ import contextlib
 import dataclasses
 import threading
 import typing
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -24,6 +24,7 @@ from calendar_clients.google_calendar import (
 )
 from calendar_clients.write_lock import WRITE_LOCK
 from server import PublicEvent
+from utilities.facets import Facets
 from utilities.goal_calendar import GoalCalendar
 from utilities.goal_health import Assessment
 from utilities.goal_sheet import Goal
@@ -33,6 +34,7 @@ from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
 from utilities.recurrences import Repeat
+from utilities.traits import SEED_TRAITS, Trait
 
 UTC = timezone.utc
 
@@ -450,6 +452,44 @@ class TestUpdateEvent:
 
     def test_clearable_fields_match_the_events(self):
         assert set(typing.get_args(server.EventField)) == CLEARABLE_EVENT_FIELDS
+
+    def test_sets_facets_normalized(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        _fake_goals(monkeypatch, _goal("g1"))
+        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
+
+        server.update_event(
+            _public_event(id="abc123", facets=Facets(with_goal_ids=["g1"], activity=" Salsa  Social", effort=2))
+        )
+
+        (call_updated_event, _), _ = reallocating_calendar.update_event.call_args
+        assert call_updated_event.facets == Facets(with_goal_ids=["g1"], activity="salsa social", effort=2)
+
+    @pytest.mark.parametrize(
+        "facets, message",
+        [
+            (Facets(creative=5), r'Its facets "creative" must be a whole number from 0 to 3'),
+            (Facets(for_goal_ids=["g9"]), r"Its facets: 'g9' isn't a goal"),
+            (Facets(with_goal_ids=["overall"]), r"Its facets: The overall goal can't be given to an event"),
+        ],
+    )
+    def test_refuses_facets_that_arent_well_formed(self, monkeypatch, facets, message):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        _fake_goals(monkeypatch, _goal("g1"))
+
+        with pytest.raises(ToolError, match=message):
+            server.update_event(_public_event(id="abc123", facets=facets))
+
+        reallocating_calendar.update_event.assert_not_called()
+
+    def test_clears_facets(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
+
+        server.update_event(_public_event(id="abc123"), clear_fields=["facets"])
+
+        (call_updated_event, _), _ = reallocating_calendar.update_event.call_args
+        assert call_updated_event.cleared == {"facets"}
 
 
 class TestCreateEvent:
@@ -1024,6 +1064,59 @@ class TestGetGoalStore:
         assert built[0]["last_compaction"]() == datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
 
 
+def _fake_traits(monkeypatch) -> MagicMock:
+    traits = MagicMock()
+    traits.all.return_value = list(SEED_TRAITS)
+    monkeypatch.setattr(server, "get_trait_store", lambda: traits)
+    return traits
+
+
+class TestTraitTools:
+    def test_get_traits_delegates(self, monkeypatch):
+        traits = _fake_traits(monkeypatch)
+        traits.get_traits.return_value = []
+
+        assert server.get_traits(["archived"]) == []
+        traits.get_traits.assert_called_once_with(["archived"])
+
+    def test_create_and_update_wrap_errors_as_tool_errors(self, monkeypatch):
+        traits = _fake_traits(monkeypatch)
+        traits.create_trait.side_effect = ValueError("The trait 'X': part 1 (prep) needs a target")
+        traits.update_trait.side_effect = ValueError("'x' isn't a trait")
+
+        with pytest.raises(ToolError, match="needs a target"):
+            server.create_trait(Trait(name="X"))
+        with pytest.raises(ToolError, match="isn't a trait"):
+            server.update_trait(Trait(id="x"), clear_fields=["definition"])
+        traits.update_trait.assert_called_once_with(Trait(id="x"), ["definition"])
+
+    def test_get_trait_history_reads_confirmed_ratings_of_the_goals_asked_for(self, monkeypatch):
+        _fake_traits(monkeypatch)
+        _fake_goals(monkeypatch, _goal("g1"), _goal("g2"))
+        health = _fake_goal_health(monkeypatch)
+        day = date(2026, 10, 1)
+        health.read.return_value = [
+            Assessment(goal_id="g1", day=day, rating=80, method="metric", status="confirmed",
+                       metrics={"traits": {"generous": 80}}),
+            Assessment(goal_id="g2", day=day, rating=40, method="metric", status="confirmed",
+                       metrics={"traits": {"generous": 40}}),
+            Assessment(goal_id="g1", day=day, rating=20, method="metric", metrics={"traits": {"reliable": 20}}),
+        ]
+
+        history = server.get_trait_history(goal_ids=["g1"], start=day, end=day)
+
+        health.read.assert_called_once_with(day, day + timedelta(days=1))
+        assert [(h.trait_id, h.score) for h in history] == [("generous", 80)]
+
+    def test_explain_traits_delegates_and_wraps_errors(self, monkeypatch):
+        health = _fake_goal_health(monkeypatch)
+        health.traits_rating.side_effect = ValueError("'Other' (g1) isn't measured by traits")
+
+        with pytest.raises(ToolError, match="isn't measured by traits"):
+            server.explain_traits("g1", date(2026, 10, 1))
+        health.traits_rating.assert_called_once_with("g1", date(2026, 10, 1))
+
+
 class TestGetCompactionStatus:
     def test_reports_the_last_compaction_and_latest_compacted_note(self, monkeypatch):
         journal = MagicMock()
@@ -1383,6 +1476,9 @@ _READ_ONLY_TOOLS = {
     "prepare_reflection",
     "get_compaction_status",
     "get_notes",
+    "get_traits",
+    "get_trait_history",
+    "explain_traits",
 }
 
 

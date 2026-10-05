@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from datetime import datetime
 from pathlib import Path
 
@@ -14,6 +14,7 @@ from utilities import calendar_metadata_sheet
 from utilities.compaction_journal import CompactionJournal
 from utilities.goals import Goals
 from utilities.noted_time_sheet import NotedTimeSheet
+from utilities.traits import Traits
 
 load_dotenv()
 
@@ -158,15 +159,32 @@ def _build_calendar_and_sheets_clients(
 
 
 def build_goals(
-    calendar_id: str | None = None, *, last_compaction: Callable[[], datetime | None] | None = None
+    calendar_id: str | None = None,
+    *,
+    last_compaction: Callable[[], datetime | None] | None = None,
+    trait_ids: Callable[[], Collection[str]] | None = None,
 ) -> Goals:
     """Construct a Goals from environment configuration (and a local .env
     file, if present). See `_build_calendar_and_sheets_clients` for
     `calendar_id`. Constructing this ensures the calendar has a goals tab,
     migrating its event labels into one if it didn't already -- see
-    `Goals.__init__`, which also says what `last_compaction` is for."""
+    `Goals.__init__`, which also says what `last_compaction` and
+    `trait_ids` are for."""
     calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
-    return Goals(calendar_client, sheets_client, last_compaction=last_compaction)
+    return Goals(calendar_client, sheets_client, last_compaction=last_compaction, trait_ids=trait_ids)
+
+
+def build_traits(calendar_id: str | None = None) -> Traits:
+    """Construct a Traits from environment configuration (and a local .env
+    file, if present). See `_build_calendar_and_sheets_clients` for
+    `calendar_id`. Constructing this ensures the calendar has a metadata
+    spreadsheet and a Traits tab, seeded with the starting traits the
+    first time -- see `Traits.ensure`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return Traits.ensure(sheets_client, spreadsheet_id)
 
 
 def build_noted_time_sheet(calendar_id: str | None = None) -> NotedTimeSheet:

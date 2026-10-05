@@ -31,6 +31,9 @@ than leaving the goal silently unmeasured.
 | `rollup`     | optional `agg`: "mean" (the default), "weighted" (with    |
 |              | `weights`) or "percentile" (with `percentile`) of the     |
 |              | immediate sub-goals' ratings                              |
+| `traits`     | `traits`: trait ids, or "all" (every active one); optional|
+|              | `weights` ({trait id: weight}) and `window_days` (> 0,    |
+|              | default 30)                                               |
 | (any kind)   | optional `only_if`: rated only on days with an event of   |
 |              | a goal                                                    |
 
@@ -102,6 +105,17 @@ missing from it, weighs 0. `percentile` is 0-100: 0 is the lowest
 sub-goal's rating, 100 the highest, 50 the median. A goal with no measure
 but sub-goals to rate is rated as a "mean" rollup.
 
+**Traits** rate a goal by the traits it selects from the Traits tab (see
+utilities/traits.py): the weighted mean of their scores (a trait missing
+from `weights` weighs 1, so one added later counts), each the weighted
+mean of its parts, computed over the goal's events (its own and
+its sub-goals') and their facets in the `window_days` before the day's
+end. People goals select "all"; a goal of looking after oneself might
+select only "reliable". A trait that's off or archived, or that every
+part of has nothing to rate it by, is left out; if they all are, the day
+is skipped. utilities/trait_scores.py computes it. Its sub-goals (visits,
+activities) are its inputs, through the parts, rather than averaged.
+
 **Only if.** Any measure can take `only_if`: `{"events_of": "<goal id>",
 "include_sub_goals": true}`, both optional and meaning what they do
 above. Without `events_of`, it looks at the same events the measure does
@@ -140,6 +154,7 @@ MEASURE_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
         "subjective": (frozenset({"prompt"}), frozenset({"interval_days"})),
         "llm": (frozenset({"rubric"}), frozenset()),
         "rollup": (frozenset(), frozenset({"agg", "weights", "percentile"})),
+        "traits": (frozenset({"traits"}), frozenset({"weights", "window_days"})),
     }.items()
 }
 """Each kind's (required, optional) fields, besides `kind` itself."""
@@ -159,11 +174,14 @@ measure at all."""
 _HH_MM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
 
-def measure_problems(measure: Any, *, sub_goal_ids: set[str] | None = None) -> list[str]:
+def measure_problems(
+    measure: Any, *, sub_goal_ids: set[str] | None = None, trait_ids: set[str] | None = None
+) -> list[str]:
     """Everything wrong with a measure spec, as phrases to follow "its
     measure" (e.g. 'needs "target_min"'); empty if it's fine. A weighted
     rollup's weights must name the goal's immediate sub-goals,
-    `sub_goal_ids`, if they're given."""
+    `sub_goal_ids`, if they're given; a traits measure's traits must be in
+    `trait_ids`, if they're given."""
     if not isinstance(measure, dict) or not isinstance(measure.get("kind"), str):
         return [MEASURE_SHAPE_PROBLEM]
     kind = measure["kind"]
@@ -234,6 +252,37 @@ def measure_problems(measure: Any, *, sub_goal_ids: set[str] | None = None) -> l
         text("rubric")
     elif kind == "rollup":
         problems += _rollup_problems(measure, sub_goal_ids)
+    elif kind == "traits":
+        positive("window_days")
+        problems += _traits_problems(measure, trait_ids)
+    return problems
+
+
+def _traits_problems(measure: dict[str, Any], trait_ids: set[str] | None) -> list[str]:
+    selected = measure.get("traits")
+    problems = []
+    if selected != "all" and not (
+        isinstance(selected, list) and selected and all(isinstance(t, str) and t for t in selected)
+    ):
+        return ['"traits" must be "all" or a list of trait ids (get_traits lists them)']
+    named = [] if selected == "all" else list(selected)
+    if len(set(named)) != len(named):
+        problems.append('"traits" names a trait more than once')
+    weights = measure.get("weights")
+    if "weights" in measure:
+        if not (
+            isinstance(weights, dict)
+            and all(isinstance(t, str) and _is_number(w) and w >= 0 for t, w in weights.items())
+        ):
+            return problems + ['"weights" must be {trait id: a number, 0 or more}']
+        stray = sorted(set(weights) - set(named)) if named else []
+        if stray:
+            problems.append(f"\"weights\" names {stray[0]!r}, which \"traits\" doesn't select")
+        named += [t for t in weights if t not in named]
+    if trait_ids is not None:
+        unknown = [t for t in named if t not in trait_ids]
+        if unknown:
+            problems.append(f"names {unknown[0]!r}, which isn't a trait (get_traits lists them)")
     return problems
 
 

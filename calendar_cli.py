@@ -30,7 +30,9 @@ Usage:
   them in, without fetching it first — any attribute not given is left
   untouched. `goal_ids` is comma-separated (an empty value clears them);
   setting it also sets the event's label from its goals (see
-  utilities/goal_calendar.py).
+  utilities/goal_calendar.py). `facets` is JSON as stored, e.g.
+  '{"with":["g7k2qp"],"activity":"dinner","effort":2}' (see
+  utilities/facets.py), and replaces the event's facets whole.
 - `update` moves/resizes an existing event (at least one of `start`/`end`
   is required; whichever is omitted is kept as the event's current
   value) via ReallocatingCalendar.update_event, reallocating time from
@@ -113,6 +115,7 @@ from config import (
     build_goals,
     build_noted_time_sheet,
 )
+from utilities.facets import Facets
 from utilities.goal_calendar import GoalCalendar
 from utilities.goal_sheet import GOAL_STATUSES, Goal
 from utilities.goals import CLEARABLE_FIELDS, GoalChanges, GoalList
@@ -177,7 +180,15 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "is_end_of_day_sleep": _parse_bool,
     "event_label_id": str,
     "goal_ids": lambda s: [goal_id.strip() for goal_id in s.split(",") if goal_id.strip()],
+    "facets": lambda s: _parse_facets(s),
 }
+
+
+def _parse_facets(value: str) -> Facets:
+    facets = Facets.from_json(value)
+    if facets is None:
+        raise ValueError(f"facets must be a JSON object, e.g. '{{\"activity\":\"dinner\"}}', not {value!r}")
+    return facets.normalized()
 
 
 _REQUIRED_CREATE_ATTRIBUTES = frozenset({"summary", "start", "end"})

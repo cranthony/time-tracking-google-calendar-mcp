@@ -373,12 +373,16 @@ class Goals:
         *,
         today: Callable[[], date] | None = None,
         last_compaction: Callable[[], datetime | None] | None = None,
+        trait_ids: Callable[[], Collection[str]] | None = None,
     ) -> None:
         """`last_compaction` says when notes were last compacted into the
         calendar (see GoalList.as_of); without it, goals' recent time
-        isn't counted."""
+        isn't counted. `trait_ids` gives the ids in the Traits tab (see
+        utilities/traits.py), which a traits measure must name; without
+        it, they aren't checked."""
         self._calendar_client = calendar_client
         self._last_compaction = last_compaction
+        self._trait_ids = trait_ids
         # Days are the calendar's own, not this server's, and run from
         # waking to waking.
         self._today = today or (
@@ -527,7 +531,7 @@ class Goals:
         `changed_ids` as changed (if `None`, those whose labels changed),
         and any other whose placement differs from `before`'s as
         affected."""
-        _validate(goals, check_measures)
+        _validate(goals, check_measures, self._trait_ids)
         tree = GoalTree(goals)
         raw_labels, etag = self._calendar_client.list_event_labels()
         if not any(g.id != OVERALL_ID for g in tree.goals) and any(label.name for label in raw_labels):
@@ -738,15 +742,21 @@ def _stale_days(goal: Goal, tree: GoalTree, today: date) -> int | None:
     return max(0, (today - first).days)
 
 
-def _validate(goals: list[Goal], check_measures: Collection[str] | None = None) -> None:
+def _validate(
+    goals: list[Goal],
+    check_measures: Collection[str] | None = None,
+    trait_ids: Callable[[], Collection[str]] | None = None,
+) -> None:
     """Raise ValueError listing everything wrong with `goals` as a whole.
 
     Measures are checked in full (utilities/goal_measures.py) only for the
     goals in `check_measures` -- those being created or given a measure --
     or for all of them if it's `None`, as when syncing hand edits. Any
     other goal's measure need only have a "kind", so one saved before the
-    full checks existed can't block edits to other goals."""
+    full checks existed can't block edits to other goals. A traits
+    measure's traits are checked against `trait_ids`, if it's given."""
     problems = []
+    known_traits: set[str] | None = None
     ids = [goal.id for goal in goals]
     for goal_id in sorted({i for i in ids if ids.count(i) > 1 and i}):
         problems.append(f"goal id {goal_id!r} is used more than once")
@@ -784,7 +794,14 @@ def _validate(goals: list[Goal], check_measures: Collection[str] | None = None) 
             elif goal.id and goal.id in [g.id for g in tree.chain(goal.parent_id)]:
                 problems.append(f"{label} can't be its own ancestor")
         if goal.measure is not None:
-            found = measure_problems(goal.measure, sub_goal_ids={c.id for c in tree.children(goal.id)})
+            checked = check_measures is None or goal.id in check_measures
+            if checked and trait_ids is not None and known_traits is None and isinstance(goal.measure, dict) and (
+                goal.measure.get("kind") == "traits"
+            ):
+                known_traits = set(trait_ids())
+            found = measure_problems(
+                goal.measure, sub_goal_ids={c.id for c in tree.children(goal.id)}, trait_ids=known_traits
+            )
             if check_measures is not None and goal.id not in check_measures:
                 found = [p for p in found if p == MEASURE_SHAPE_PROBLEM]
             elif isinstance(goal.measure, dict):
