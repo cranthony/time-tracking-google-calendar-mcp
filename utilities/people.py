@@ -8,7 +8,8 @@ header name (utilities/row_sheet.py), so either can be edited by hand.
 
 **Self.** The user is always one of the people, with the id `self`,
 whether or not the People tab has a row for them: updating `self` adds
-the row the first time, for their own circles or what matters to them.
+the row the first time, for their own circles, traits or what matters
+to them.
 Self is always active.
 
 A person is identified by their name and context together ("Sam", "met
@@ -20,12 +21,13 @@ make sense; a circle is simply deleted, and its people leave it.
 from __future__ import annotations
 
 import difflib
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, fields, replace
 from typing import Any, Literal
 
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
+from utilities.traits import person_traits_problems
 from utilities.row_sheet import RowSheet, check_clear, new_id, updated
 
 SELF_ID = "self"
@@ -49,7 +51,7 @@ DEFAULT_STATUSES: tuple[str, ...] = ("active",)
 MAX_NAME_LENGTH = 100
 
 
-PERSON_CLEARABLE_FIELDS = frozenset({"context", "circles", "what_matters"})
+PERSON_CLEARABLE_FIELDS = frozenset({"context", "circles", "what_matters", "traits"})
 CIRCLE_CLEARABLE_FIELDS = frozenset({"note"})
 
 
@@ -74,6 +76,12 @@ class Person:
 
     what_matters: str | None = None
     """What's important to them: facts, upcoming moments, preferences."""
+
+    traits: dict[str, Any] | None = None
+    """Which traits apply to them, and parts replacing a trait's for them
+    alone: {"select": "all" or [trait ids], "parts": {trait id: [parts]}},
+    both optional (see utilities/traits.py's `person_traits_problems`).
+    Without it, every active trait applies, with the Traits tab's parts."""
 
 
 @dataclass(kw_only=True)
@@ -135,12 +143,23 @@ def self_person() -> Person:
 class People:
     """A calendar's people and circles -- see the module docstring."""
 
-    def __init__(self, sheet: RowSheet[Person], circle_sheet: RowSheet[Circle]) -> None:
+    def __init__(
+        self,
+        sheet: RowSheet[Person],
+        circle_sheet: RowSheet[Circle],
+        trait_ids: Callable[[], Collection[str]] | None = None,
+    ) -> None:
+        """`trait_ids` gives the ids in the Traits tab (utilities/
+        traits.py), which a person's `traits` must name; without it,
+        they aren't checked."""
         self._sheet = sheet
         self._circle_sheet = circle_sheet
+        self._trait_ids = trait_ids
 
     @staticmethod
-    def ensure(sheets_client: SheetsClient, spreadsheet_id: str) -> "People":
+    def ensure(
+        sheets_client: SheetsClient, spreadsheet_id: str, trait_ids: Callable[[], Collection[str]] | None = None
+    ) -> "People":
         """The calendar's people, adding the People and Circles tabs the
         first time."""
         return People(
@@ -158,6 +177,7 @@ class People:
                 title=calendar_metadata_sheet.CIRCLES_SHEET_TITLE,
                 row_type=Circle,
             ),
+            trait_ids,
         )
 
     @property
@@ -230,7 +250,8 @@ class People:
     def _write_people(self, people: list[Person], circles: list[Circle]) -> None:
         # Self is checked too (a name of theirs can't be taken), row or not.
         checked = people if any(p.id == SELF_ID for p in people) else [self_person(), *people]
-        problems = person_problems(checked, circles)
+        trait_ids = self._trait_ids() if self._trait_ids and any(p.traits is not None for p in people) else None
+        problems = person_problems(checked, circles, trait_ids)
         if problems:
             raise ValueError("; ".join(problems))
         self._sheet.write(people)
@@ -324,8 +345,11 @@ def _no_match(kind: str, lister: str, items: list[Any], id_or_name: str) -> str:
     )
 
 
-def person_problems(people: list[Person], circles: list[Circle]) -> list[str]:
-    """Everything wrong with the People tab's rows as a whole, as phrases."""
+def person_problems(
+    people: list[Person], circles: list[Circle], trait_ids: Collection[str] | None = None
+) -> list[str]:
+    """Everything wrong with the People tab's rows as a whole, as phrases.
+    Their `traits` are checked against `trait_ids`, if given."""
     problems = []
     ids = [p.id for p in people]
     for person_id in sorted({i for i in ids if i and ids.count(i) > 1}):
@@ -363,6 +387,8 @@ def person_problems(people: list[Person], circles: list[Circle]) -> list[str]:
                 unknown = [c for c in person.circles if c not in circle_ids]
                 if unknown:
                     problems.append(f"{label}'s circles {unknown} aren't circles (get_circles lists them)")
+        if person.traits is not None:
+            problems += [f"{label}'s traits {p}" for p in person_traits_problems(person.traits, trait_ids)]
     return problems
 
 

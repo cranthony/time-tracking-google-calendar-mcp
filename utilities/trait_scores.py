@@ -31,9 +31,7 @@ from typing import Any, Literal
 from calendar_clients.google_calendar import Event
 from utilities.goal_health import (
     FOLLOW_THROUGH_LOOK_BACK_DAYS,
-    _capped,
     _follow_through,
-    _minutes_in,
     _over_interval,
     _served,
 )
@@ -41,19 +39,12 @@ from utilities.goal_sheet import Goal
 from utilities.goals import GoalTree
 from utilities.health_days import Assessment
 from utilities.traits import (
-    activity_label,
-    DEFAULT_MIN_CREATIVE,
-    DEFAULT_TARGET,
-    DEFAULT_WEEKS,
     DEFAULT_WINDOW_DAYS,
     DEFAULT_WITHIN_DAYS,
     Trait,
     part_keys,
     part_problems,
 )
-
-_NEW = ("activity", "place", "both")
-"""A `new` facet that counts as novelty."""
 
 
 @dataclass(kw_only=True)
@@ -160,10 +151,8 @@ def reach(measure: dict[str, Any], traits: list[Trait]) -> tuple[timedelta, time
             if part_problems(part):
                 continue
             kind = part["kind"]
-            days = part.get("window_days", window)
-            if kind == "prep_regularity":
-                days = 7 * part.get("weeks", DEFAULT_WEEKS)
-            elif kind == "continuity":
+            days = window
+            if kind == "continuity":
                 days = part.get("last_within_days", DEFAULT_WITHIN_DAYS)
                 ahead = max(ahead, timedelta(days=part.get("next_within_days", DEFAULT_WITHIN_DAYS)))
             elif kind in ("count", "duration"):
@@ -262,10 +251,9 @@ def _part(
     kind = part["kind"]
     weight = part.get("weight", 1)
     end = window[1]
-    days = part.get("window_days", window_days)
-    start = end - timedelta(days=days)
-    within = f"the last {days:g} days"
-    target = part.get("target", DEFAULT_TARGET)
+    # A part's engagement says whose events it reads: those the goal was
+    # at ("with"), or those done for it ("for").
+    engaged = scope.for_events if part.get("engagement_type") == "for" else scope.with_events
 
     def score(value: int | None, said: str, used: list[Event] = ()) -> PartScore:
         return PartScore(
@@ -273,23 +261,11 @@ def _part(
             event_ids=[e.id for e in used if e.id], rubric=part.get("rubric"),
         )
 
-    def past(found: list[Event]) -> list[Event]:
-        return [e for e in found if start <= e.start < end]
-
-    if kind == "prep":
-        used = past(scope.for_events)
-        return score(_capped(len(used), target), f"{len(used)} of {target:g} prep events in {within}", used)
-    if kind == "prep_regularity":
-        weeks = part.get("weeks", DEFAULT_WEEKS)
-        spans = [(end - timedelta(days=7 * k), end - timedelta(days=7 * (k - 1))) for k in range(1, weeks + 1)]
-        hit = [s for s in spans if any(s[0] <= e.start < s[1] for e in scope.for_events)]
-        used = [e for e in scope.for_events if spans[-1][0] <= e.start < end]
-        return score(round(100 * len(hit) / weeks), f"Prep in {len(hit)} of the last {weeks} weeks", used)
     if kind == "continuity":
         last_days = part.get("last_within_days", DEFAULT_WITHIN_DAYS)
         next_days = part.get("next_within_days", DEFAULT_WITHIN_DAYS)
-        before = [e for e in scope.with_events if e.start < end]
-        after = [e for e in scope.with_events if e.start >= end]
+        before = [e for e in engaged if e.start < end]
+        after = [e for e in engaged if e.start >= end]
         last = max(before, key=lambda e: e.end, default=None)
         upcoming = min(after, key=lambda e: e.start, default=None)
         last_ok = last is not None and end - last.end <= timedelta(days=last_days)
@@ -300,50 +276,24 @@ def _part(
         ]) + f" (within {last_days:g} and {next_days:g} days)"
         used = [e for e in (last, upcoming) if e is not None]
         return score(50 * last_ok + 50 * next_ok, said[0].upper() + said[1:], used)
-    if kind == "together_creative":
-        least = part.get("min_creative", DEFAULT_MIN_CREATIVE)
-        used = [e for e in past(scope.with_events) if e.facets is not None and (e.facets.creative or 0) >= least]
-        return score(
-            _capped(len(used), target), f"{len(used)} of {target:g} events making something together in {within}",
-            used,
-        )
-    if kind == "novelty":
-        used = [e for e in past(scope.with_events) if e.facets is not None and e.facets.new in _NEW]
-        return score(_capped(len(used), target), f"{len(used)} of {target:g} new experiences in {within}", used)
-    if kind == "effort_paid":
-        used = list({id(e): e for e in past(scope.with_events) + past(scope.for_events)}.values())
-        paid = sum(_minutes_in([e], start, end) * (1 + ((e.facets.effort if e.facets else None) or 0)) for e in used)
-        return score(
-            _capped(paid, target), f"{round(paid)} of {target:g} effort-minutes (minutes × (1 + effort)) in {within}",
-            used,
-        )
-    if kind == "attention":
-        used = [e for e in past(scope.with_events) if e.facets is not None and e.facets.attention is not None]
-        if not used:
-            return score(None, f"No events with an attention score in {within}")
-        mean = sum(e.facets.attention for e in used) / len(used)
-        return score(round(100 * mean / 3), f"Mean attention {mean:.1f} of 3 over {len(used)} events in {within}", used)
     if kind == "judgment":
         if key in judged:
             return score(judged[key], "Judged in the reflection")
         return score(None, "To be judged in the reflection")
     if kind in ("count", "duration"):
-        spec = {"interval_days": window_days, **{k: v for k, v in part.items() if k not in ("weight", "activity")}}
-        counted = None
-        if isinstance(part.get("activity"), str):
-            wanted = activity_label(part["activity"])
-            counted = [
-                e for e in scope.with_events
-                if e.facets is not None and e.facets.activity and activity_label(e.facets.activity) == wanted
-            ]
-            spec.setdefault("noun", wanted)
+        # A part's "action" isn't applied yet: events don't name actions.
+        spec = {
+            "interval_days": window_days,
+            **{k: v for k, v in part.items() if k not in ("weight", "action", "engagement_type")},
+        }
+        counted = engaged if "engagement_type" in part else None
         rating, said, _metrics = _over_interval(goal, spec, window, events, tree, kind=kind, served=counted)
         interval = timedelta(days=spec["interval_days"])
         pool = counted if counted is not None else _served(events, goal, {}, tree)
         used = [e for e in pool if e.start < end and e.end > end - interval]
         return score(rating, said.rsplit(" → ", 1)[0], used)
     # follow_through
-    spec = {k: v for k, v in part.items() if k != "weight"}
+    spec = {k: v for k, v in part.items() if k not in ("weight", "action", "engagement_type")}
     rating, said, _metrics = _follow_through(goal, spec, window, events, cancelled, tree)
     look_back = timedelta(days=spec.get("look_back_days", FOLLOW_THROUGH_LOOK_BACK_DAYS))
     dropped = [e for e in _served(cancelled, goal, {}, tree) if end - look_back <= e.start < end]

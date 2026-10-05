@@ -559,7 +559,11 @@ class TestTraits:
 
     _TRAITS = [
         Trait(id="thoughtful", name="Thoughtful", status="active",
-              parts=[{"kind": "attention"}, {"kind": "judgment", "rubric": "Did it reflect what matters?"}]),
+              parts=[
+                  {"kind": "count", "target": 1},
+                  {"kind": "judgment", "rubric": "Did it reflect what matters?", "ratings": {"0": "no", "1": "yes"},
+                   "facts": ["general_notes"]},
+              ]),
         Trait(id="reliable", name="Reliable", status="active", parts=[{"kind": "continuity"}]),
     ]
 
@@ -582,7 +586,7 @@ class TestTraits:
         (question,) = reflections.prepare(YESTERDAY).questions
 
         assert (question.goal_id, question.kind) == (person.id, "traits")
-        # Thoughtful: attention 100 (judgment to make); Reliable: last event
+        # Thoughtful: count 100 (judgment to make); Reliable: last event
         # ended within 14 days, nothing planned → 50.
         assert question.proposed_rating == 75
         assert question.explanation == "Traits (Thoughtful 100, Reliable 50) → 75"
@@ -613,7 +617,7 @@ class TestTraits:
         assert result.complete
         (recorded,) = [a for a in health.history([person.id]) if a.day == YESTERDAY]
         assert (recorded.rating, recorded.status) == (60, "confirmed")
-        assert recorded.metrics["parts"]["thoughtful"] == {"attention": 100, "judgment": 40}
+        assert recorded.metrics["parts"]["thoughtful"] == {"count": 100, "judgment": 40}
         # Kept as confirmed: it isn't worked out (or asked) again.
         assert reflections.prepare(YESTERDAY).questions == []
 

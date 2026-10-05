@@ -7,7 +7,7 @@ from utilities.people import SELF_ID, Circle, People, Person
 
 def _people(sheets=None) -> tuple[People, FakeSheets]:
     sheets = sheets or FakeSheets()
-    return People.ensure(sheets, "spreadsheet"), sheets
+    return People.ensure(sheets, "spreadsheet", lambda: ["reliable", "creative"]), sheets
 
 
 def _person(people: People, **fields) -> str:
@@ -185,3 +185,30 @@ class TestCircles:
             people.delete_circle("family")
         with pytest.raises(ValueError, match="no circle"):
             people.delete_circle("nothing")
+
+
+class TestPersonTraits:
+    def test_a_person_can_select_traits_and_give_their_own_parts(self):
+        people, _ = _people()
+        traits = {"select": ["reliable"], "parts": {"reliable": [{"kind": "count", "target": 1, "interval_days": 21}]}}
+
+        sam = _person(people, name="Sam", traits=traits)
+
+        assert people.get_person(sam).traits == traits
+
+    def test_self_can_have_traits_too_and_they_clear(self):
+        people, _ = _people()
+
+        people.update_person(Person(id=SELF_ID, traits={"select": ["reliable"]}))
+        assert people.get_person(SELF_ID).traits == {"select": ["reliable"]}
+
+        people.update_person(Person(id=SELF_ID), clear_fields=["traits"])
+        assert people.get_person(SELF_ID).traits is None
+
+    def test_refuses_traits_that_arent_traits_or_bad_parts(self):
+        people, _ = _people()
+
+        with pytest.raises(ValueError, match="traits \"select\" names 'kind', which isn't a trait"):
+            _person(people, name="Sam", traits={"select": ["kind"]})
+        with pytest.raises(ValueError, match="traits \"parts\" for 'reliable': part 1 \\(count\\) needs"):
+            _person(people, name="Sam", traits={"parts": {"reliable": [{"kind": "count"}]}})

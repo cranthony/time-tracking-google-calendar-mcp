@@ -1,61 +1,59 @@
-"""Traits: qualities the user wants to show toward people (and toward
-themselves) -- Thoughtful, Reliable, Creative, Adventurous, Generous --
-each rated from **parts** computed over a goal's events and their facets
-(see utilities/facets.py). A goal is rated by its traits with a `traits`
-measure (utilities/goal_measures.py), which utilities/trait_scores.py
-computes. See docs/goal-tree-and-traits-plan.md section 3.
+"""Traits: how the user wants to be with people (and with themselves) --
+Thoughtful, Reliable, Creative, Adventurous, Generous -- each rated, for
+a person, from **parts** read off the events they were part of. Nothing
+about a trait is hard-coded: the Traits tab holds them all.
 
 **Where they live.** The **Traits** tab of the calendar's metadata
 spreadsheet (utilities/calendar_metadata_sheet.py), one row per trait:
-`id | name | status | definition | parts`, read by header name like the
-goals tab, so it can be edited by hand. It's created the first time it's
-needed, seeded with SEED_TRAITS.
+`id | name | status | definition | parts`, read by header name, so it can
+be edited by hand. It's created the first time it's needed, seeded with
+SEED_TRAITS.
 
 - `id`: a short slug made from its first name (e.g. "thoughtful"), never
-  changed, so a measure's `traits` keep naming it after a rename.
+  changed, so a person's `traits` keep naming it after a rename.
 - `status`: `active` (rated), `off` (kept, but not rated for now) or
   `archived` (retired: not rated, and listed only when asked for).
 - `parts`: JSON, a list of parts -- see below.
 
-**Parts.** A part is a measure with no scope: the goal using the trait
-supplies it (its events, and its sub-goals'). Each is an object with a
-`kind`, the fields its kind takes (PART_KINDS) and an optional `weight`
-(>= 0, default 1); a trait's score is the weighted mean of its parts'
-scores (0-100), leaving out any with nothing to rate it by. "With events"
-are the goal's events whose facets don't say they were only *for* it,
-plus any whose facets name it in `with`; "for events" are those whose
-facets name it in `for` (preparation while they weren't there). Counts
-over the window (`window_days`, by default the measure's) are rated
-against `target` in proportion, capped at 100.
+**Parts.** Each part is an object with a `kind`, the fields its kind
+takes (PART_KINDS), an optional `weight` (>= 0, default 1) and an
+optional `engagement_type`: "with" (the default) reads the events the
+person was at with the user, "for" those the user did for them while
+they weren't there (preparation, a gift). A trait's score is the
+weighted mean of its parts' scores (0-100), leaving out any with nothing
+to rate it by.
 
-| kind                | rates                                                   |
-| ------------------- | ------------------------------------------------------- |
-| `prep`              | for events in the window, against `target` (default 1)  |
-| `prep_regularity`   | the share of the last `weeks` (default 4) 7-day spans   |
-|                     | with at least one for event                             |
-| `continuity`        | the last with event ended within `last_within_days`     |
-|                     | (default 14) of the day's end, and the next starts      |
-|                     | within `next_within_days` (default 14) after it: 100    |
-|                     | for both, 50 for one, 0 for neither                     |
-| `together_creative` | with events with `creative` >= `min_creative` (default  |
-|                     | 2) in the window, against `target` (default 1)          |
-| `novelty`           | with events whose `new` isn't none, against `target`    |
-|                     | (default 1)                                             |
-| `effort_paid`       | minutes x (1 + `effort`) over with and for events in    |
-|                     | the window, against `target` (required)                 |
-| `attention`         | the mean `attention` (0-3, as 0-100) of with events in  |
-|                     | the window that have one                                |
-| `judgment`          | a `rubric`, judged in the reflection                    |
-| `count`, `duration` | as the measures of the same kind, over the goal's       |
-|                     | events; `interval_days` defaults to the window. With    |
-|                     | `activity`, only its with events whose facets name that |
-|                     | activity: "visit every 21 days, drive every 30"         |
-| `follow_through`    | as the measure of the same kind, over the goal's events |
+| kind             | rates                                                    |
+| ---------------- | -------------------------------------------------------- |
+| `judgment`       | each event, judged by the assistant against a `rubric`   |
+|                  | on a scale of `ratings`, from the `facts` it names       |
+| `continuity`     | the last event ended within `last_within_days` (default  |
+|                  | 14) of the day's end, and the next starts within         |
+|                  | `next_within_days` (default 14) after it: 100 for both,  |
+|                  | 50 for one, 0 for neither                                |
+| `count`          | events over `interval_days` against `target`, as the     |
+|                  | count measure: "see them every 21 days"                  |
+| `duration`       | minutes over `interval_days` against `target_min`        |
+| `follow_through` | a running score that drops for each cancelled event and  |
+|                  | recovers on days one is kept                             |
 
-**Per goal.** A goal's traits measure can replace any trait's parts for
-that goal alone (its `parts`: {trait id: [parts]}, checked like the
-trait's own) -- each person's own cadences for Reliable, say, while the
-Traits tab keeps everyone else's.
+`continuity`, `count`, `duration` and `follow_through` also take an
+optional `action`: an action or action group id (utilities/actions.py),
+counting only events of it.
+
+**Judgments.** A judgment part is how a trait is read off what actually
+happened. Its `rubric` is the question ("Was this activity or place
+new?"), `ratings` the scale ({"0": "The activity and place were
+routine", ..., "3": "Both were new, or it was otherwise adventurous"}),
+and `facts` what the assistant is shown to answer it -- each a name or
+{"fact": name, "lookback_days": n} (see FACTS). A judgment is always made
+for one person, or a named group of people, and made by the assistant on
+its own, with a line of reasoning, never by asking the user.
+
+**Per person.** A person's `traits` (utilities/people.py) can select
+which traits apply to them and replace a trait's parts for them alone --
+see `person_traits_problems`. Without it, every active trait applies,
+with the Traits tab's parts.
 """
 
 from __future__ import annotations
@@ -68,7 +66,6 @@ from typing import Any, Literal
 
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
-from utilities.goal_measures import MEASURE_KINDS, measure_problems
 
 TraitStatus = Literal["active", "off", "archived"]
 TRAIT_STATUSES: tuple[str, ...] = ("active", "off", "archived")
@@ -78,42 +75,45 @@ DEFAULT_TRAIT_STATUSES: tuple[str, ...] = ("active", "off")
 MAX_NAME_LENGTH = 50
 _MAX_ID_LENGTH = 30
 
-_WINDOW = frozenset({"window_days"})
+ENGAGEMENT_TYPES = ("with", "for")
+"""A part's `engagement_type`: the events the person was at with the user,
+or those the user did for them while they weren't there."""
 
-_REUSED_KINDS = ("count", "duration", "follow_through")
-"""Measure kinds that are parts too, without their scope."""
+_COMMON = frozenset({"weight", "engagement_type"})
+"""Fields every part takes, besides `kind`."""
 
-_SCOPE = frozenset({"events_of", "include_sub_goals", "only_if"})
-"""A measure's fields saying whose events it reads: a part has none."""
-
-_ACTIVITY = frozenset({"activity"})
-"""A count or duration part's: only events of that activity count."""
-
-MAX_ACTIVITY_CHARS = 60
-"""As long as a facet's activity may be (utilities/facets.py)."""
+_ACTION = frozenset({"action"})
 
 PART_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
-    "prep": (frozenset(), frozenset({"target"}) | _WINDOW),
-    "prep_regularity": (frozenset(), frozenset({"weeks"})),
-    "continuity": (frozenset(), frozenset({"last_within_days", "next_within_days"})),
-    "together_creative": (frozenset(), frozenset({"target", "min_creative"}) | _WINDOW),
-    "novelty": (frozenset(), frozenset({"target"}) | _WINDOW),
-    "effort_paid": (frozenset({"target"}), _WINDOW),
-    "attention": (frozenset(), _WINDOW),
-    "judgment": (frozenset({"rubric"}), frozenset()),
-    **{
-        kind: (MEASURE_KINDS[kind][0], MEASURE_KINDS[kind][1] - _SCOPE | (_ACTIVITY if kind != "follow_through" else frozenset()))
-        for kind in _REUSED_KINDS
-    },
+    "judgment": (frozenset({"rubric", "ratings", "facts"}), frozenset()),
+    "continuity": (frozenset(), frozenset({"last_within_days", "next_within_days"}) | _ACTION),
+    "count": (frozenset({"target"}), frozenset({"noun", "interval_days", "zero_at_days"}) | _ACTION),
+    "duration": (frozenset({"target_min"}), frozenset({"interval_days", "zero_at_days"}) | _ACTION),
+    "follow_through": (frozenset(), frozenset({"penalty", "recovery", "look_back_days"}) | _ACTION),
 }
-"""Each part kind's (required, optional) fields, besides `kind` and
-`weight` -- see the module docstring."""
+"""Each part kind's (required, optional) fields, besides `kind`,
+`weight` and `engagement_type` -- see the module docstring."""
 
-DEFAULT_WINDOW_DAYS = 30
+FACTS = ("action", "action_history", "location", "location_history", "general_notes", "person_notes")
+"""What a judgment can be shown about an event, to judge it by:
+
+- `action`: what the user was doing (its actions).
+- `action_history`: what they've done with the person before, over the
+  last `lookback_days`.
+- `location`: where it was.
+- `location_history`: where they've been with the person before, over
+  the last `lookback_days`.
+- `general_notes`: the event's own notes.
+- `person_notes`: the notes about the person -- the user's own for a
+  "for" engagement, the other person's for a "with" one."""
+
+HISTORY_FACTS = frozenset({"action_history", "location_history"})
+"""The facts that look back, over `lookback_days`."""
+
+DEFAULT_LOOKBACK_DAYS = 30
 DEFAULT_TARGET = 1
-DEFAULT_WEEKS = 4
 DEFAULT_WITHIN_DAYS = 14
-DEFAULT_MIN_CREATIVE = 2
+DEFAULT_WINDOW_DAYS = 30
 
 
 @dataclass(kw_only=True)
@@ -182,6 +182,13 @@ _HEADER_RANGE = "A1:Z1"
 _DATA_RANGE = "A2:Z"
 _WHOLE_RANGE = "A1:Z"
 
+_ZERO_TO_THREE_EFFORT = {
+    "0": "Little effort, or my attention was elsewhere",
+    "1": "Some effort or attention",
+    "2": "Real effort, or my full attention",
+    "3": "I went out of my way for them and was fully present",
+}
+
 SEED_TRAITS: list[Trait] = [
     Trait(
         id="thoughtful",
@@ -189,11 +196,28 @@ SEED_TRAITS: list[Trait] = [
         status="active",
         definition="Remember what matters to them, and prepare for it.",
         parts=[
-            {"kind": "prep", "target": 2},
-            {"kind": "prep_regularity", "weeks": 4},
             {
                 "kind": "judgment",
-                "rubric": 'Did the events and notes reflect what\'s in the goal\'s "What matters to them" section?',
+                "rubric": "Did this event show that I remembered what matters to them?",
+                "ratings": {
+                    "0": "Nothing in it touched on what matters to them",
+                    "1": "A small sign that I remembered",
+                    "2": "It clearly reflected what matters to them",
+                    "3": "It was shaped around what matters to them",
+                },
+                "facts": ["action", "general_notes", "person_notes"],
+            },
+            {
+                "kind": "judgment",
+                "engagement_type": "for",
+                "rubric": "Was this preparation for them, built on what matters to them?",
+                "ratings": {
+                    "0": "It wasn't really for them",
+                    "1": "It was for them, but generic",
+                    "2": "It was for them, and fit what matters to them",
+                    "3": "It was carefully made around what matters to them",
+                },
+                "facts": ["action", "general_notes", "person_notes"],
             },
         ],
     ),
@@ -213,14 +237,43 @@ SEED_TRAITS: list[Trait] = [
         name="Creative",
         status="active",
         definition="Make something together with them (making something alone is taking care of myself).",
-        parts=[{"kind": "together_creative", "target": 1, "min_creative": 2}],
+        parts=[
+            {
+                "kind": "judgment",
+                "rubric": "Did we make something together?",
+                "ratings": {
+                    "0": "Nothing was made",
+                    "1": "We shared ideas, but made nothing",
+                    "2": "We made something small together",
+                    "3": "We made something substantial together",
+                },
+                "facts": ["action", {"fact": "action_history", "lookback_days": 30}, "general_notes"],
+            }
+        ],
     ),
     Trait(
         id="adventurous",
         name="Adventurous",
         status="active",
         definition="Share new experiences with them: new activities, new places.",
-        parts=[{"kind": "novelty", "target": 1}],
+        parts=[
+            {
+                "kind": "judgment",
+                "rubric": "Was this activity or place new?",
+                "ratings": {
+                    "0": "The activity and place were routine",
+                    "1": "There was a twist on the activity or place",
+                    "2": "The activity or the place were new",
+                    "3": "Both the activity and place were new, or the event was otherwise adventurous",
+                },
+                "facts": [
+                    "action",
+                    {"fact": "action_history", "lookback_days": 90},
+                    "location",
+                    {"fact": "location_history", "lookback_days": 90},
+                ],
+            }
+        ],
     ),
     Trait(
         id="generous",
@@ -230,19 +283,31 @@ SEED_TRAITS: list[Trait] = [
             "Make an effort for them, including the attention I give them: the follow-through of "
             "thoughtfulness."
         ),
-        parts=[{"kind": "effort_paid", "target": 600}, {"kind": "attention"}],
+        parts=[
+            {
+                "kind": "judgment",
+                "rubric": "How much effort and attention did I give them?",
+                "ratings": _ZERO_TO_THREE_EFFORT,
+                "facts": ["action", "general_notes", "person_notes"],
+            },
+            {
+                "kind": "judgment",
+                "engagement_type": "for",
+                "rubric": "How much effort did I put into doing this for them?",
+                "ratings": _ZERO_TO_THREE_EFFORT,
+                "facts": ["action", "general_notes"],
+            },
+        ],
     ),
 ]
-"""What a new Traits tab starts with -- see
-docs/goal-tree-and-traits-plan.md section 3.3. The numbers are starting
-points to tune."""
+"""What a new Traits tab starts with. The numbers and wording are
+starting points to tune."""
 
 
 def trait_problems(trait: Trait) -> list[str]:
-    """Everything wrong with a trait, as phrases (e.g. 'part 2 (prep) has
-    no field "goal"; ...'); empty if it's fine. Like
-    utilities/goal_measures.py's `measure_problems`, so a bad part is
-    refused when it's saved rather than silently left unrated."""
+    """Everything wrong with a trait, as phrases (e.g. 'part 2 (count)
+    needs "target"; ...'); empty if it's fine, so a bad part is refused
+    when it's saved rather than silently left unrated."""
     problems = []
     if not (isinstance(trait.name, str) and trait.name.strip()):
         problems.append("it needs a name")
@@ -269,45 +334,118 @@ def part_problems(part: Any) -> list[str]:
         return [f"has kind {kind!r}; a part's kind is one of {', '.join(PART_KINDS)}"]
     required, optional = PART_KINDS[kind]
     problems = [f'needs "{name}"' for name in sorted(required - part.keys())]
-    for name in sorted(part.keys() - required - optional - {"kind", "weight"}):
-        if name in _SCOPE:
-            problems.append(f'has "{name}", but a part has no scope: the goal using the trait supplies it')
-        else:
-            takes = ", ".join(f'"{n}"' for n in sorted(required | optional | {"weight"}))
-            problems.append(f'has no field "{name}"; a {kind} part takes {takes}')
+    for name in sorted(part.keys() - required - optional - _COMMON - {"kind"}):
+        takes = ", ".join(f'"{n}"' for n in sorted(required | optional | _COMMON))
+        problems.append(f'has no field "{name}"; a {kind} part takes {takes}')
     if problems:
         return problems
     if "weight" in part and not (_is_number(part["weight"]) and part["weight"] >= 0):
         problems.append('"weight" must be a number, 0 or more')
-    if "activity" in part and not (
-        isinstance(part["activity"], str) and part["activity"].strip() and len(part["activity"]) <= MAX_ACTIVITY_CHARS
-    ):
-        problems.append(f'"activity" must be a short label, at most {MAX_ACTIVITY_CHARS} characters')
-    if kind in _REUSED_KINDS:
-        measure = {k: v for k, v in part.items() if k not in ("weight", "activity")}
-        return problems + measure_problems(measure)
-    for name in ("target", "window_days", "last_within_days", "next_within_days"):
+    if "engagement_type" in part and part["engagement_type"] not in ENGAGEMENT_TYPES:
+        problems.append('"engagement_type" must be "with" or "for"')
+    if "action" in part and not (isinstance(part["action"], str) and part["action"].strip()):
+        problems.append('"action" must be an action or action group id')
+    for name in ("target", "target_min", "interval_days", "last_within_days", "next_within_days", "look_back_days"):
         if name in part and not (_is_number(part[name]) and part[name] > 0):
             problems.append(f'"{name}" must be a number above 0')
-    if "weeks" in part and not (isinstance(part["weeks"], int) and not isinstance(part["weeks"], bool) and part["weeks"] >= 1):
-        problems.append('"weeks" must be a whole number, 1 or more')
-    if "min_creative" in part and part["min_creative"] not in (1, 2, 3):
-        problems.append('"min_creative" must be 1, 2 or 3')
-    if "rubric" in part and not (isinstance(part["rubric"], str) and part["rubric"].strip()):
-        problems.append('"rubric" must be non-empty text')
+    for name in ("penalty", "recovery"):
+        if name in part and not (_is_number(part[name]) and 0 <= part[name] <= 100):
+            problems.append(f'"{name}" must be a number from 0 to 100')
+    if "zero_at_days" in part:
+        interval = part.get("interval_days", DEFAULT_WINDOW_DAYS)
+        if not (_is_number(part["zero_at_days"]) and _is_number(interval) and part["zero_at_days"] > interval):
+            problems.append('"zero_at_days" must be a number above "interval_days"')
+    if "noun" in part and not (isinstance(part["noun"], str) and part["noun"].strip()):
+        problems.append('"noun" must be non-empty text')
+    if kind == "judgment":
+        problems += _judgment_problems(part)
     return problems
 
 
-def parts_override_problems(overrides: Any, selected: list[str] | None) -> list[str]:
-    """What's wrong with a traits measure's `parts`: {trait id: [parts]},
-    each list checked as a trait's own; `selected` are the ids its
-    `traits` names (`None` for "all"). Phrases follow "its measure"."""
-    if not isinstance(overrides, dict):
-        return ['"parts" must be {trait id: [parts]}']
+def _judgment_problems(part: dict[str, Any]) -> list[str]:
     problems = []
+    if not (isinstance(part["rubric"], str) and part["rubric"].strip()):
+        problems.append('"rubric" must be non-empty text: the question to judge each event by')
+    ratings = part["ratings"]
+    if not (
+        isinstance(ratings, dict)
+        and len(ratings) >= 2
+        and all(isinstance(k, str) and k.isdigit() for k in ratings)
+        and all(isinstance(v, str) and v.strip() for v in ratings.values())
+    ):
+        problems.append(
+            '"ratings" must be an object of at least two ratings, each a whole number (as text, from "0") '
+            'saying what it means: {"0": "routine", "1": "a twist", ...}'
+        )
+    facts = part["facts"]
+    if not isinstance(facts, list):
+        return problems + [f'"facts" must be a list of facts to judge by: {", ".join(FACTS)}']
+    names = []
+    for fact in facts:
+        name = fact.get("fact") if isinstance(fact, dict) else fact
+        if name not in FACTS:
+            problems.append(f'"facts" has {fact!r}; a fact is one of {", ".join(FACTS)}')
+            continue
+        names.append(name)
+        if isinstance(fact, dict):
+            extra = sorted(fact.keys() - {"fact", "lookback_days"})
+            if extra:
+                problems.append(f'"facts": {name} has no field {extra[0]!r}; it takes "fact" and "lookback_days"')
+            if "lookback_days" in fact:
+                if name not in HISTORY_FACTS:
+                    problems.append(f'"facts": only {" and ".join(sorted(HISTORY_FACTS))} look back, not {name}')
+                elif not (isinstance(fact["lookback_days"], int) and fact["lookback_days"] >= 1):
+                    problems.append(f'"facts": {name}\'s "lookback_days" must be a whole number, 1 or more')
+    repeated = sorted({n for n in names if names.count(n) > 1})
+    if repeated:
+        problems.append(f'"facts" names {", ".join(repeated)} more than once')
+    return problems
+
+
+def judgment_scale(part: dict[str, Any]) -> int:
+    """The highest rating a judgment part's `ratings` allow: a rating of
+    it scores rating / this x 100."""
+    return max(int(k) for k in part["ratings"])
+
+
+def fact_lookbacks(part: dict[str, Any]) -> dict[str, int]:
+    """A judgment part's facts, each with its lookback in days (0 for one
+    that doesn't look back)."""
+    lookbacks = {}
+    for fact in part["facts"]:
+        name = fact.get("fact") if isinstance(fact, dict) else fact
+        default = DEFAULT_LOOKBACK_DAYS if name in HISTORY_FACTS else 0
+        lookbacks[name] = fact.get("lookback_days", default) if isinstance(fact, dict) else default
+    return lookbacks
+
+
+def person_traits_problems(spec: Any, trait_ids: Collection[str] | None = None) -> list[str]:
+    """What's wrong with a person's `traits`: {"select": "all" or [trait
+    ids], "parts": {trait id: [parts]}}, both optional -- the traits that
+    apply to them (by default all active ones), and parts replacing a
+    trait's for them alone, each list checked as a trait's own. Trait ids
+    are checked against `trait_ids`, if given. Phrases follow "its
+    traits"."""
+    if not isinstance(spec, dict):
+        return ['must be an object: {"select": "all" or [trait ids], "parts": {trait id: [parts]}}']
+    problems = [
+        f'has no field "{name}"; it takes "select" and "parts"' for name in sorted(spec.keys() - {"select", "parts"})
+    ]
+    select = spec.get("select", "all")
+    if select != "all" and not (isinstance(select, list) and all(isinstance(i, str) for i in select)):
+        problems.append('"select" must be "all" or a list of trait ids')
+        select = "all"
+    known = set(trait_ids) if trait_ids is not None else None
+    if known is not None and isinstance(select, list):
+        problems += [f'"select" names {i!r}, which isn\'t a trait' for i in select if i not in known]
+    overrides = spec.get("parts", {})
+    if not isinstance(overrides, dict):
+        return problems + ['"parts" must be {trait id: [parts]}']
     for trait_id, parts in overrides.items():
-        if selected is not None and trait_id not in selected:
-            problems.append(f'"parts" names {trait_id!r}, which "traits" doesn\'t select')
+        if known is not None and trait_id not in known:
+            problems.append(f'"parts" names {trait_id!r}, which isn\'t a trait')
+        elif isinstance(select, list) and trait_id not in select:
+            problems.append(f'"parts" names {trait_id!r}, which isn\'t selected')
         elif not (isinstance(parts, list) and parts):
             problems.append(f'"parts" for {trait_id!r} must be a list of at least one part')
         else:
