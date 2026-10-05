@@ -653,13 +653,14 @@ def _last_met(
 
 def _over_interval(
     goal: Goal, measure: dict[str, Any], window: tuple[datetime, datetime], events: list[Event], tree: GoalTree,
-    *, kind: str,
+    *, kind: str, served: list[Event] | None = None,
 ) -> Measured:
-    """A duration or count measure's rating: see utilities/goal_measures.py."""
+    """A duration or count measure's rating: see utilities/goal_measures.py.
+    `served`, if given, are the events it counts, instead of the goal's."""
     end = window[1]
     interval_days = measure.get("interval_days", 1)
     interval = timedelta(days=interval_days)
-    served = _served(events, goal, measure, tree)
+    served = served if served is not None else _served(events, goal, measure, tree)
     if kind == "duration":
         target = measure["target_min"]
 

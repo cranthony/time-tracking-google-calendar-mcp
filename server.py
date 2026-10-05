@@ -880,7 +880,10 @@ def create_goal(goal: Goal) -> CreatedGoal:
     over the goal's events (its own and its sub-goals') and their facets
     in the window_days before the day's end; for people goals, which
     select "all", and for goals of keeping one's word to oneself, which
-    select ["reliable"]). Only the fields shown are allowed. A
+    select ["reliable"]; "parts": {"reliable": [parts]} gives this goal
+    its own parts for a trait instead of the Traits tab's -- a person's
+    own cadences, as count parts with an "activity", say -- see
+    get_traits). Only the fields shown are allowed. A
     duration, count, time_constraint, time_window or follow_through measure looks at the events of the
     goal and its sub-goals, or, given "events_of": "<goal id>", at those of
     that goal and its sub-goals instead, as though it were that goal (e.g.
@@ -1150,7 +1153,12 @@ def get_traits(statuses: list[TraitStatus] | None = None) -> list[ListedTrait]:
     events, 0-3 as 0-100), "judgment" (a "rubric", judged in the
     reflection), and "count", "duration" and "follow_through" (as the
     measures of the same kind, over the goal's events; count's and
-    duration's interval_days default to the window). Window parts take an
+    duration's interval_days default to the window, and with "activity"
+    they count only the goal's with events whose facets name that
+    activity: {"kind": "count", "target": 1, "interval_days": 21,
+    "zero_at_days": 42, "activity": "visit"}). A goal's traits measure can
+    give it its own parts for a trait (its "parts"), for cadences that
+    differ from person to person. Window parts take an
     optional "window_days", by default the measure's. problems lists
     anything wrong with a trait edited by hand; a bad part isn't rated.
     Read-only."""

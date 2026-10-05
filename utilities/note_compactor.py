@@ -92,6 +92,7 @@ from calendar_clients.google_calendar import Event
 from utilities.facets import Facets, facet_problems
 from utilities.goal_details import WHAT_MATTERS, GoalDetails, WhatMatters, add_to_section, checked_what_matters, section
 from utilities.history_digest import history_digest
+from utilities.traits import activity_label
 from utilities.compaction_journal import (
     ABANDONED,
     APPLIED,
@@ -221,7 +222,9 @@ DECISION_GUIDE = (
     "from its notes, title and description -- with_goal_ids (goals of the people present; "
     "usually its traits goals), for_goal_ids (people it was done for who weren't there: "
     "preparing a gift or a plan -- then they're not in with_goal_ids), activity and place (short "
-    "labels: REUSE the labels in that goal's `traits_goals` digest when they fit, so they group), "
+    "labels: REUSE the labels in that goal's `traits_goals` digest when they fit, so they group, and use "
+    "its `cadence_activities` labels EXACTLY for those activities -- its cadences count only events "
+    "labelled so), "
     "creative (0-3: made something together), new (none, activity, place or both: new to "
     "them, judged against the digest -- an activity or place the digest lists isn't new), effort "
     "(0-3: effort beyond showing up -- prepared, cooked, hosted, traveled), attention (0-3: the "
@@ -297,6 +300,11 @@ class TraitsGoalContext:
 
     what_matters: str | None = None
     """Its description's "What matters to them" section, if it has one."""
+
+    cadence_activities: list[str] | None = None
+    """The activities its own trait parts count (a visit every 21 days,
+    say): label events of those activities with exactly these, or they
+    won't count."""
 
 
 @dataclass(kw_only=True)
@@ -611,6 +619,7 @@ class NoteCompactor:
                     path=tree.path(goal_id),
                     digest=history_digest(goal, tree, history, start, tz).text,
                     what_matters=section(description, WHAT_MATTERS),
+                    cadence_activities=_cadence_activities(goal.measure) or None,
                 )
             )
         return context
@@ -1328,6 +1337,19 @@ def _candidates(timestamp: datetime, events: list[Event], previous: Event | None
     if previous is not None and previous.id and previous.id not in ids:
         ids.append(previous.id)
     return ids
+
+
+def _cadence_activities(measure: dict | None) -> list[str]:
+    """The activities a traits measure's own parts count (see
+    utilities/traits.py), in order."""
+    overrides = (measure or {}).get("parts")
+    found: list[str] = []
+    for parts in overrides.values() if isinstance(overrides, dict) else ():
+        for part in parts if isinstance(parts, list) else ():
+            activity = part.get("activity") if isinstance(part, dict) else None
+            if isinstance(activity, str) and activity_label(activity) not in found:
+                found.append(activity_label(activity))
+    return found
 
 
 def _traits_goals(days: list[_Day], tree: GoalTree) -> dict[str, list[str]]:

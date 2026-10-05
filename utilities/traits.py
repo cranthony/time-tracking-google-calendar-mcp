@@ -47,8 +47,15 @@ against `target` in proportion, capped at 100.
 |                     | the window that have one                                |
 | `judgment`          | a `rubric`, judged in the reflection                    |
 | `count`, `duration` | as the measures of the same kind, over the goal's       |
-|                     | events; `interval_days` defaults to the window          |
+|                     | events; `interval_days` defaults to the window. With    |
+|                     | `activity`, only its with events whose facets name that |
+|                     | activity: "visit every 21 days, drive every 30"         |
 | `follow_through`    | as the measure of the same kind, over the goal's events |
+
+**Per goal.** A goal's traits measure can replace any trait's parts for
+that goal alone (its `parts`: {trait id: [parts]}, checked like the
+trait's own) -- each person's own cadences for Reliable, say, while the
+Traits tab keeps everyone else's.
 """
 
 from __future__ import annotations
@@ -79,6 +86,12 @@ _REUSED_KINDS = ("count", "duration", "follow_through")
 _SCOPE = frozenset({"events_of", "include_sub_goals", "only_if"})
 """A measure's fields saying whose events it reads: a part has none."""
 
+_ACTIVITY = frozenset({"activity"})
+"""A count or duration part's: only events of that activity count."""
+
+MAX_ACTIVITY_CHARS = 60
+"""As long as a facet's activity may be (utilities/facets.py)."""
+
 PART_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "prep": (frozenset(), frozenset({"target"}) | _WINDOW),
     "prep_regularity": (frozenset(), frozenset({"weeks"})),
@@ -88,7 +101,10 @@ PART_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "effort_paid": (frozenset({"target"}), _WINDOW),
     "attention": (frozenset(), _WINDOW),
     "judgment": (frozenset({"rubric"}), frozenset()),
-    **{kind: (MEASURE_KINDS[kind][0], MEASURE_KINDS[kind][1] - _SCOPE) for kind in _REUSED_KINDS},
+    **{
+        kind: (MEASURE_KINDS[kind][0], MEASURE_KINDS[kind][1] - _SCOPE | (_ACTIVITY if kind != "follow_through" else frozenset()))
+        for kind in _REUSED_KINDS
+    },
 }
 """Each part kind's (required, optional) fields, besides `kind` and
 `weight` -- see the module docstring."""
@@ -263,8 +279,12 @@ def part_problems(part: Any) -> list[str]:
         return problems
     if "weight" in part and not (_is_number(part["weight"]) and part["weight"] >= 0):
         problems.append('"weight" must be a number, 0 or more')
+    if "activity" in part and not (
+        isinstance(part["activity"], str) and part["activity"].strip() and len(part["activity"]) <= MAX_ACTIVITY_CHARS
+    ):
+        problems.append(f'"activity" must be a short label, at most {MAX_ACTIVITY_CHARS} characters')
     if kind in _REUSED_KINDS:
-        measure = {k: v for k, v in part.items() if k != "weight"}
+        measure = {k: v for k, v in part.items() if k not in ("weight", "activity")}
         return problems + measure_problems(measure)
     for name in ("target", "window_days", "last_within_days", "next_within_days"):
         if name in part and not (_is_number(part[name]) and part[name] > 0):
@@ -276,6 +296,32 @@ def part_problems(part: Any) -> list[str]:
     if "rubric" in part and not (isinstance(part["rubric"], str) and part["rubric"].strip()):
         problems.append('"rubric" must be non-empty text')
     return problems
+
+
+def parts_override_problems(overrides: Any, selected: list[str] | None) -> list[str]:
+    """What's wrong with a traits measure's `parts`: {trait id: [parts]},
+    each list checked as a trait's own; `selected` are the ids its
+    `traits` names (`None` for "all"). Phrases follow "its measure"."""
+    if not isinstance(overrides, dict):
+        return ['"parts" must be {trait id: [parts]}']
+    problems = []
+    for trait_id, parts in overrides.items():
+        if selected is not None and trait_id not in selected:
+            problems.append(f'"parts" names {trait_id!r}, which "traits" doesn\'t select')
+        elif not (isinstance(parts, list) and parts):
+            problems.append(f'"parts" for {trait_id!r} must be a list of at least one part')
+        else:
+            for number, part in enumerate(parts, 1):
+                problems += [
+                    f'"parts" for {trait_id!r}: part {number}{_kind_of(part)} {p}' for p in part_problems(part)
+                ]
+    return problems
+
+
+def activity_label(text: str) -> str:
+    """An activity as facets keep it: trimmed, single-spaced, lowercase
+    (see utilities/facets.py)."""
+    return " ".join(text.split()).casefold()
 
 
 def part_keys(parts: list[dict[str, Any]]) -> list[str]:
