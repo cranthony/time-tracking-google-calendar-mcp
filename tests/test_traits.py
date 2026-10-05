@@ -2,7 +2,6 @@ import pytest
 
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet
-from utilities.goal_measures import measure_problems
 from utilities.traits import (
     SEED_TRAITS,
     Trait,
@@ -230,33 +229,3 @@ class TestPersonTraits:
 
 def test_part_keys_number_repeated_kinds():
     assert part_keys([{"kind": "count"}, {"kind": "judgment"}, {"kind": "count"}]) == ["count", "judgment", "count#2"]
-
-
-class TestTraitsMeasure:
-    @pytest.mark.parametrize(
-        "measure",
-        [
-            {"kind": "traits", "traits": "all"},
-            {"kind": "traits", "traits": ["reliable"], "window_days": 14},
-            {"kind": "traits", "traits": "all", "weights": {"reliable": 2, "creative": 0}},
-            {"kind": "traits", "traits": ["reliable", "generous"], "weights": {"generous": 0.5}, "only_if": {}},
-        ],
-    )
-    def test_accepts_valid_specs(self, measure):
-        assert measure_problems(measure, trait_ids={"reliable", "creative", "generous"}) == []
-
-    @pytest.mark.parametrize(
-        "measure, problem",
-        [
-            ({"kind": "traits"}, 'needs "traits"'),
-            ({"kind": "traits", "traits": []}, '"traits" must be "all" or a list of trait ids'),
-            ({"kind": "traits", "traits": ["reliable", "reliable"]}, '"traits" names a trait more than once'),
-            ({"kind": "traits", "traits": "all", "weights": {"reliable": -1}}, '"weights" must be {trait id'),
-            ({"kind": "traits", "traits": ["reliable"], "weights": {"creative": 1}}, "\"weights\" names 'creative'"),
-            ({"kind": "traits", "traits": ["kind"]}, "names 'kind', which isn't a trait"),
-            ({"kind": "traits", "traits": "all", "window_days": 0}, '"window_days" must be a number above 0'),
-            ({"kind": "traits", "traits": "all", "events_of": "g1"}, 'has no field "events_of"'),
-        ],
-    )
-    def test_refuses_invalid_specs(self, measure, problem):
-        assert measure_problems(measure, trait_ids={"reliable", "creative"})[0].startswith(problem)

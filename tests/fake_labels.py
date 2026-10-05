@@ -1,5 +1,5 @@
 """A CalendarClient's label and metadata calls, for the stores that keep
-the calendar's event labels in step with a tab (goals, actions)."""
+the calendar's event labels in step with a tab (actions)."""
 
 from dataclasses import replace
 
@@ -9,7 +9,7 @@ _SPREADSHEET_KEY = "calendar-metadata-spreadsheet-id"
 
 
 class FakeLabelCalendar:
-    """The label and metadata calls `Goals` makes on a CalendarClient,
+    """The label and metadata calls `Actions` makes on a CalendarClient,
     with the real etag check on writes."""
 
     def __init__(self, labels=(), *, spreadsheet_id: str | None = "spreadsheet-1"):

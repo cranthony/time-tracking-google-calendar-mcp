@@ -411,3 +411,30 @@ class TestDeleteActionGroup:
             actions.delete_action_group("top")
         with pytest.raises(ValueError, match="no action group"):
             actions.delete_action_group("nothing")
+
+
+class TestActionTree:
+    def test_priorities_names_and_labels(self):
+        actions, _, _ = _actions()
+        food = _group(actions, name="Food", priority=1)
+        cook = _create(actions, name="Cook", group_id=food, status="active")
+
+        tree = actions.tree()
+
+        assert tree.priority(cook) == 1
+        assert tree.priority("nope") is None
+        assert (tree.name(cook), tree.name("nope")) == ("Cook", "(unknown action nope)")
+        assert tree.action_for_label(tree.by_id[cook].label_id).id == cook
+
+    def test_checks_ids_for_events(self):
+        actions, _, _ = _actions()
+        cook = _create(actions, name="Cook")
+        gone = _create(actions, name="Gone", status="deleted")
+        tree = actions.tree()
+
+        tree.check_action_ids([cook])
+        tree.check_action_ids([gone], already=[gone])
+        with pytest.raises(ValueError, match="Deleted actions can't be given to an event"):
+            tree.check_action_ids([gone])
+        with pytest.raises(ValueError, match=rf"no action with the id or name 'Cok'; did you mean {cook} \(Cook\)"):
+            tree.check_action_ids(["Cok"])

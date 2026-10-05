@@ -16,7 +16,7 @@ from calendar_clients.google_calendar import (
     TimeZoneNotSetError,
 )
 from calendar_clients.write_lock import WriteLockNotHeldError
-from utilities.facets import Facets
+from utilities.facts import Facts
 
 UTC = timezone.utc
 EST = timezone(timedelta(hours=-5))
@@ -38,19 +38,19 @@ def api_event(event_id: str, start: str, end: str, summary: str = "Busy") -> dic
 
 class TestEvent:
     @pytest.mark.parametrize(
-        "goal_ids, stored",
-        [(["g1", "g2"], "g1 g2"), ([], "")],  # [] is stored, so clearing goals sticks
+        "action_ids, stored",
+        [(["a1", "a2"], "a1 a2"), ([], "")],  # [] is stored, so clearing actions sticks
     )
-    def test_goal_ids_round_trip_through_a_private_extended_property(self, goal_ids, stored):
-        body = Event(goal_ids=goal_ids).to_api_body()
+    def test_action_ids_round_trip_through_a_private_extended_property(self, action_ids, stored):
+        body = Event(action_ids=action_ids).to_api_body()
 
-        assert body["extendedProperties"]["private"] == {"cascading-time-tracker-goal_ids": stored}
+        assert body["extendedProperties"]["private"] == {"cascading-time-tracker-action_ids": stored}
         data = api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00")
         data["extendedProperties"] = body["extendedProperties"]
-        assert Event.from_api(data).goal_ids == goal_ids
+        assert Event.from_api(data).action_ids == action_ids
 
-    def test_goal_ids_are_none_when_never_set(self):
-        assert Event.from_api(api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00")).goal_ids is None
+    def test_action_ids_are_none_when_never_set(self):
+        assert Event.from_api(api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00")).action_ids is None
         assert "extendedProperties" not in Event().to_api_body()
 
     def test_from_api_parses_fields(self):
@@ -488,37 +488,86 @@ class TestEvent:
                     "cascading-time-tracker-is_fixed_duration": None,
                     "cascading-time-tracker-is_fixed_time": None,
                     "cascading-time-tracker-priority": None,
-                    "cascading-time-tracker-facets": None,
+                    "cascading-time-tracker-facts": None,
+                    "cascading-time-tracker-facts-2": None,
+                    "cascading-time-tracker-facts-3": None,
+                    "cascading-time-tracker-facts-4": None,
+                    "cascading-time-tracker-facts-5": None,
+                    "cascading-time-tracker-facts-6": None,
+                    "cascading-time-tracker-facts-7": None,
+                    "cascading-time-tracker-facts-8": None,
                 }
             },
         }
 
-    def test_facets_round_trip_as_compact_json_under_short_keys(self):
-        facets = Facets(with_goal_ids=["g1"], for_goal_ids=["g2"], activity="salsa social", creative=2, new="place")
-        body = Event(id="abc123", facets=facets).to_api_body()
+    def test_facts_round_trip_as_compact_json_under_short_keys(self):
+        facts = Facts(location_id="l1", with_ids=["p1"], for_ids=["p2"], notes={"self": "tired", "p1": "glad"})
+        body = Event(id="abc123", facts=facts).to_api_body()
 
-        raw = body["extendedProperties"]["private"]["cascading-time-tracker-facets"]
-        assert json.loads(raw) == {
-            "with": ["g1"], "for": ["g2"], "activity": "salsa social", "creative": 2, "new": "place"
+        private = body["extendedProperties"]["private"]
+        assert json.loads(private["cascading-time-tracker-facts"]) == {
+            "location": "l1", "with": ["p1"], "for": ["p2"], "notes": {"self": "tired", "p1": "glad"}
         }
+        # Unused chunks are removed, so a shorter value leaves no tail.
+        assert all(private[f"cascading-time-tracker-facts-{i}"] is None for i in range(2, 9))
         read = Event.from_api(
             {**body, "id": "abc123", "start": {"dateTime": "2026-10-01T18:00:00-04:00"},
              "end": {"dateTime": "2026-10-01T20:00:00-04:00"}}
         )
-        assert read.facets == facets
+        assert read.facts == facts
 
-    def test_empty_facets_remove_them(self):
-        body = Event(id="abc123", facets=Facets()).to_api_body()
+    def test_long_facts_are_split_across_properties_and_joined_on_read(self):
+        facts = Facts(notes={"self": "x" * 900, "p1": "y" * 900}, with_ids=["p1"])
+        body = Event(id="abc123", facts=facts).to_api_body()
 
-        assert body["extendedProperties"]["private"] == {"cascading-time-tracker-facets": None}
+        private = {k: v for k, v in body["extendedProperties"]["private"].items() if v is not None}
+        assert sorted(private) == ["cascading-time-tracker-facts", "cascading-time-tracker-facts-2"]
+        assert all(len(v) <= 1024 for v in private.values())
+        read = Event.from_api(
+            {"id": "abc123", "start": {"dateTime": "2026-10-01T18:00:00-04:00"},
+             "end": {"dateTime": "2026-10-01T20:00:00-04:00"}, "extendedProperties": {"private": private}}
+        )
+        assert read.facts == facts
 
-    def test_facets_that_arent_json_read_as_none(self):
+    def test_creating_an_event_with_facts_sends_no_null_properties(self):
+        # An insert refuses a null private property, which a patch would
+        # take to mean "remove it".
+        service = MagicMock()
+        service.events.return_value.insert.return_value.execute.return_value = api_event(
+            "abc123", "2026-10-01T18:00:00-04:00", "2026-10-01T20:00:00-04:00"
+        )
+        event = Event(
+            summary="Dinner",
+            start=datetime(2026, 10, 1, 18, tzinfo=timezone.utc),
+            end=datetime(2026, 10, 1, 20, tzinfo=timezone.utc),
+            facts=Facts(with_ids=["p1"]),
+        )
+
+        make_client(service).create_event(event)
+
+        body = service.events.return_value.insert.call_args.kwargs["body"]
+        assert body["extendedProperties"]["private"] == {"cascading-time-tracker-facts": '{"with":["p1"]}'}
+
+    def test_facts_too_long_to_store_are_refused(self):
+        facts = Facts(notes={f"p{i}": "z" * 1000 for i in range(9)})
+
+        with pytest.raises(ValueError, match="longer than 8192 characters"):
+            Event(id="abc123", facts=facts).to_api_body()
+
+    def test_empty_facts_remove_them(self):
+        body = Event(id="abc123", facts=Facts()).to_api_body()
+
+        assert body["extendedProperties"]["private"] == {
+            "cascading-time-tracker-facts": None, **{f"cascading-time-tracker-facts-{i}": None for i in range(2, 9)}
+        }
+
+    def test_facts_that_arent_json_read_as_none(self):
         read = Event.from_api(
             {"id": "abc123", "start": {"dateTime": "2026-10-01T18:00:00-04:00"},
              "end": {"dateTime": "2026-10-01T20:00:00-04:00"},
-             "extendedProperties": {"private": {"cascading-time-tracker-facets": "not json"}}}
+             "extendedProperties": {"private": {"cascading-time-tracker-facts": "not json"}}}
         )
-        assert read.facets is None
+        assert read.facts is None
 
     def test_to_api_body_clears_some_app_properties_while_setting_others(self):
         event = Event(id="abc123", is_fixed_time=True, cleared=frozenset({"min_duration"}))
@@ -537,7 +586,7 @@ class TestEvent:
         "kwargs, message",
         [
             ({"cleared": frozenset({"summary"})}, r"Can't clear \['summary'\]; clearable fields are"),
-            ({"cleared": frozenset({"goal_ids"})}, r"Can't clear \['goal_ids'\]"),
+            ({"cleared": frozenset({"action_ids"})}, r"Can't clear \['action_ids'\]"),
             ({"priority": 1, "cleared": frozenset({"priority"})}, r"Can't both set and clear \['priority'\]"),
         ],
     )
@@ -626,8 +675,8 @@ class TestEventLabel:
 
     def test_has_no_priority_field(self):
         # Google Calendar has no field for a label's priority -- it's
-        # sourced only from the goal that owns the label (see
-        # utilities/goals.py), never this class -- even if the name happens
+        # sourced only from the action that holds the label (see
+        # utilities/actions.py), never this class -- even if the name happens
         # to look like it might encode one.
         label = EventLabel.from_api(
             {"id": "label-1", "backgroundColor": "#123456", "name": "P1 Design Work"}
@@ -1130,7 +1179,7 @@ class TestCalendarClientReplaceEventLabels:
         # replace_event_labels no longer fetches its own etag (unlike
         # create/update/delete_event_label) -- it's the caller's job to
         # supply one (e.g. from a prior list_event_labels() call), since
-        # utilities/goals.py's Goals does other work (validating, writing
+        # utilities/actions.py's Actions does other work (validating, writing
         # the sheet) between reading the etag and writing.
         service = MagicMock()
         service.calendars.return_value.patch.return_value.execute.return_value = {
@@ -1397,8 +1446,9 @@ class TestCalendarClientEventLabelEtagGuard:
             client.create_event_label("#8e24aa")
 
 
-class TestCalendarClientGoalHealthCalls:
-    """The raw calls utilities/goal_health.py makes for its own calendar."""
+class TestCalendarClientSideCalendarCalls:
+    """The raw calls utilities/compaction_marker.py makes for its own
+    calendar."""
 
     def test_upsert_inserts_with_the_given_id(self):
         service = MagicMock()
@@ -1497,9 +1547,9 @@ class TestCalendarClientGoalHealthCalls:
         service = MagicMock()
         service.calendars.return_value.insert.return_value.execute.return_value = {"id": "new-cal"}
 
-        assert make_client(service).create_calendar("Goal Health", "d", time_zone="Europe/Paris") == "new-cal"
+        assert make_client(service).create_calendar("Compactions", "d", time_zone="Europe/Paris") == "new-cal"
         service.calendars.return_value.insert.assert_called_once_with(
-            body={"summary": "Goal Health", "description": "d", "timeZone": "Europe/Paris"}
+            body={"summary": "Compactions", "description": "d", "timeZone": "Europe/Paris"}
         )
 
     def test_hiding_a_calendar_is_best_effort(self):

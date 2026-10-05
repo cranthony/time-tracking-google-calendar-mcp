@@ -10,7 +10,7 @@ import server
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import Event, EventLabel
-from calendar_clients.google_sheets import SheetsClient, cached_sheet_reads
+from calendar_clients.google_sheets import SheetsClient
 from tests.event_time_helpers import event_at, time_at
 from tests.fake_sheets import FakeSheets, FakeSheetsService
 from utilities import calendar_metadata_sheet
@@ -23,12 +23,14 @@ from utilities.note_compaction import (
     EventDecision,
     EventState,
 )
-from utilities.note_compactor import NoteCompactor, WhatMatters
-from utilities.facets import Facets
-from utilities.goal_details import GoalDetails
-from utilities.goal_sheet import Goal
-from utilities.goals import GoalTree
+from tests.fake_labels import FakeLabelCalendar
+from utilities.actions import Action, Actions
+from utilities.compaction_additions import NewAction, NewLocation, NewPerson
+from utilities.facts import Facts
+from utilities.locations import Location, Locations
+from utilities.note_compactor import NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet
+from utilities.people import People, Person
 
 _NOTES_TAB = 1
 _JOURNAL_TAB = 2
@@ -59,11 +61,21 @@ class FakeCalendar:
 
 
 class Setup:
-    def __init__(self, notes, events=None, now="11:30", goals=None, details=None):
+    def __init__(self, notes, events=None, now="11:30", actions=None, people=None, locations=None):
         self.sheets = FakeSheets()
         self.sheets.write_rows_in_sheet(
             "s", _NOTES_TAB, "A1:C1", [["timestamp", "description", "compaction_id"]]
         )
+        # The notes and journal tabs are made by hand; the stores' own
+        # tabs come after them.
+        self.sheets.titles.update({_NOTES_TAB: "Noted Times", _JOURNAL_TAB: "Compactions"})
+        self.labels = FakeLabelCalendar()
+        self.actions = Actions.ensure(self.labels, self.sheets, "s")
+        self.people = People.ensure(self.sheets, "s")
+        self.locations = Locations.ensure(self.sheets, "s")
+        for store, rows in ((self.actions, actions), (self.people, people), (self.locations, locations)):
+            if rows:
+                store._sheet.write(rows)
         self.notes = NotedTimeSheet(self.sheets, "s", _NOTES_TAB)
         for at, description in notes:
             self.append_note(at, description)
@@ -71,19 +83,16 @@ class Setup:
         self.calendar = FakeCalendar(events if events is not None else _day())
         self.client = MagicMock()
         self.now = now
-        self.goals = None
-        if goals is not None:
-            self.goals = MagicMock()
-            self.goals.tree.return_value = GoalTree(goals)
         self.compactor = NoteCompactor(
             calendar=self.calendar,
             client=self.client,
             notes=self.notes,
             journal=self.journal,
             clock=lambda: time_at(self.now),
-            goals=self.goals,
+            actions=self.actions,
+            people=self.people,
+            locations=self.locations,
             marker=self.marker,
-            details=details,
         )
 
     @property
@@ -1259,74 +1268,89 @@ class TestEventLabels:
         setup.client.list_event_labels.assert_not_called()
 
 
-def _goal(goal_id, name, status="active"):
-    return Goal(id=goal_id, name=name, status=status, label_id=f"label-{goal_id}")
+def _action(action_id, name, status="active"):
+    return Action(id=action_id, name=name, status=status, label_id=f"label-{action_id}")
 
 
-class TestGoals:
-    _GOALS = [_goal("work", "Time Tracker"), _goal("mail", "Inbox zero"), _goal("gone", "Old", status="deleted")]
+class TestActions:
+    _ACTIONS = [_action("work", "Time Tracker"), _action("mail", "Do email"), _action("gone", "Old", status="deleted")]
 
-    def test_prepare_lists_goals_and_suggests_them_from_earlier_events_with_the_same_title(self):
+    def test_prepare_lists_actions_and_suggests_them_from_earlier_events_with_the_same_title(self):
         events = _day()
         yesterday = [
             replace(e, id=f"y-{e.id}", start=e.start - timedelta(days=1), end=e.end - timedelta(days=1))
             for e in events[:2]
         ]
-        yesterday[0].goal_ids = ["gone", "mail"]  # Email: a deleted goal isn't suggested
-        yesterday[1].goal_ids = ["work"]
-        events[1].goal_ids = ["work"]  # Report already has one: nothing suggested
-        setup = Setup([("09:05", "x")], events=yesterday + events, goals=self._GOALS)
+        yesterday[0].action_ids = ["gone", "mail"]  # Email: a deleted action isn't suggested
+        yesterday[1].action_ids = ["work"]
+        events[1].action_ids = ["work"]  # Report already has one: nothing suggested
+        setup = Setup([("09:05", "x")], events=yesterday + events, actions=self._ACTIONS)
 
         context = setup.compactor.prepare()
 
         by_id = {e.id: e for e in context.events}
-        assert by_id["e1"].suggested_goal_ids == ["mail"]
-        assert by_id["e2"].suggested_goal_ids is None
-        assert by_id["e2"].goal_names == ["Time Tracker"]
-        assert [g.path for g in context.goals] == ["Time Tracker", "Inbox zero"]  # active ones
+        assert by_id["e1"].suggested_action_ids == ["mail"]
+        assert by_id["e2"].suggested_action_ids is None
+        assert by_id["e2"].action_names == ["Time Tracker"]
+        assert [a.name for a in context.actions] == ["Time Tracker", "Do email"]  # not deleted ones
         text = context.timeline.text
-        assert "┌ Email\n          ◇ Inbox zero" in text
+        assert "┌ Email\n          ◇ Do email" in text
         assert "├ Report\n          ◆ Time Tracker" in text
+
+    def test_prepare_gives_the_people_and_locations_to_settle_facts_from(self):
+        setup = Setup(
+            [("09:05", "x")],
+            people=[Person(id="sam", name="Sam", context="salsa", status="active", what_matters="tea")],
+            locations=[Location(id="home", name="Home", hint="the apartment")],
+        )
+
+        context = setup.compactor.prepare()
+
+        assert [(p.id, p.name, p.context, p.what_matters) for p in context.people] == [
+            ("self", "Me", None, None), ("sam", "Sam", "salsa", "tea")
+        ]
+        assert [(loc.id, loc.name, loc.hint) for loc in context.locations] == [("home", "Home", "the apartment")]
+        assert "COMPACTION ESTABLISHES THE FACTS" in context.instructions
 
     def test_future_events_get_no_suggestions(self):
         events = _day()
         earlier = replace(events[2], id="y-e3", start=events[2].start - timedelta(days=1),
-                          end=events[2].end - timedelta(days=1), goal_ids=["work"])
-        setup = Setup([("09:05", "x")], events=[earlier] + events, goals=self._GOALS)
+                          end=events[2].end - timedelta(days=1), action_ids=["work"])
+        setup = Setup([("09:05", "x")], events=[earlier] + events, actions=self._ACTIONS)
 
         context = setup.compactor.prepare()
 
-        assert {e.id: e for e in context.events}["e3"].suggested_goal_ids is None  # Lunch is after now
+        assert {e.id: e for e in context.events}["e3"].suggested_action_ids is None  # Lunch is after now
 
-    def test_a_dry_run_refuses_unknown_or_deleted_goals(self):
-        setup = Setup([("09:00", None), ("09:30", None)], goals=self._GOALS)
+    def test_a_dry_run_refuses_unknown_or_deleted_actions(self):
+        setup = Setup([("09:00", None), ("09:30", None)], actions=self._ACTIONS)
         decisions = setup.coffee_instead_of_email()
 
-        decisions[0].goal_ids = ["wrk"]
-        with pytest.raises(CompactionError, match="'wrk' isn't a goal; did you mean work"):
+        decisions[0].action_ids = ["wrk"]
+        with pytest.raises(CompactionError, match="no action with the id or name 'wrk'; did you mean work"):
             setup.compactor.dry_run(decisions)
-        decisions[0].goal_ids = ["gone"]
-        with pytest.raises(CompactionError, match="Deleted goals can't be given to an event"):
+        decisions[0].action_ids = ["gone"]
+        with pytest.raises(CompactionError, match="Deleted actions can't be given to an event"):
             setup.compactor.dry_run(decisions)
 
-    def test_created_events_are_written_with_their_goals(self):
-        setup = Setup([("09:00", None), ("09:30", None)], goals=self._GOALS)
+    def test_created_events_are_written_with_their_actions(self):
+        setup = Setup([("09:00", None), ("09:30", None)], actions=self._ACTIONS)
         decisions = setup.coffee_instead_of_email()
-        decisions[0].goal_ids = ["work"]
+        decisions[0].action_ids = ["work"]
         planned = setup.compactor.dry_run(decisions)
 
         setup.compactor.commit(planned.compaction_id)
 
-        assert setup.client.create_event.call_args.args[0].goal_ids == ["work"]
+        assert setup.client.create_event.call_args.args[0].action_ids == ["work"]
 
-    def test_a_goals_only_change_is_patched_as_just_that(self):
-        setup = Setup([("09:05", "x")], goals=self._GOALS)
-        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", goal_ids=["mail"])])
+    def test_an_actions_only_change_is_patched_as_just_that(self):
+        setup = Setup([("09:05", "x")], actions=self._ACTIONS)
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", action_ids=["mail"])])
 
         setup.compactor.commit(planned.compaction_id)
 
         patches = [c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e1"]
-        assert any(p.goal_ids == ["mail"] for p in patches)
+        assert any(p.action_ids == ["mail"] for p in patches)
 
 
 class _ProductionCalendar(FakeCalendar):
@@ -1382,7 +1406,10 @@ class TestSheetReadRequests:
         monkeypatch.setattr(server, "build_calendar_client", lambda: calendar)
         # Memory diagnostics never touch Sheets, and take seconds.
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
-        for cached in ("_calendar_client", "_reallocating_calendar", "_goals", "_noted_time_sheet", "_note_compactor"):
+        for cached in (
+            "_calendar_client", "_reallocating_calendar", "_actions", "_people", "_locations", "_traits",
+            "_noted_time_sheet", "_note_compactor",
+        ):
             monkeypatch.setattr(server, cached, None)
         self.now = "09:10+1"
         # The one seam: the compactor's clock, so the rounds fall on the
@@ -1417,7 +1444,7 @@ class TestSheetReadRequests:
         counts = self._round(service, "10:40+1", "10:45+1")
 
         # Each compaction call reads the notes tab, the journal and the
-        # goals tab whole, together in one request (NoteCompactor's
+        # actions', people's and locations' tabs whole, together in one request (NoteCompactor's
         # prefetch); every later read of them in the call falls within
         # that, so it's served from the cache.
         assert counts == {
@@ -1428,101 +1455,127 @@ class TestSheetReadRequests:
         }
 
 
-class TestTraits:
-    """Events counting toward a goal rated by traits get facets, and that
-    goal's "What matters to them" section can grow."""
+class TestFacts:
+    """Compaction records each past event's facts: where, who with, who
+    for, and a note on each person there."""
 
-    _GOALS = [
-        Goal(id="pal", name="Person", status="active", label_id="l-pal", measure={"kind": "traits", "traits": "all"}),
-        Goal(id="pal-v", parent_id="pal", name="Visits", status="active", label_id="l-v"),
-        _goal("work", "Time Tracker"),
-    ]
+    _PEOPLE = [Person(id="sam", name="Sam", status="active"), Person(id="mom", name="Mom", status="active")]
+    _LOCATIONS = [Location(id="home", name="Home")]
 
-    def _setup(self, events=None, **kwargs):
-        events = events if events is not None else _day()
-        by_id = {e.id: e for e in events}
-        by_id["e1"].goal_ids = ["pal-v"]  # Email, counting toward the person's goal through a sub-goal
-        by_id["e2"].goal_ids = ["work"]
-        sheets = FakeSheets()
-        details = GoalDetails.ensure(sheets, "s")
-        details.set("pal", "Notes.\n\n## What matters to them\n\n- 2026-09-01: loves jazz\n")
-        return Setup([("09:05", "email"), ("10:20", "report")], events=events, goals=self._GOALS,
-                     details=details, **kwargs), details
+    def _setup(self, **kwargs):
+        return Setup([("09:05", "email"), ("10:20", "report")], people=self._PEOPLE, locations=self._LOCATIONS, **kwargs)
 
-    def test_prepare_marks_events_to_give_facets_and_shows_each_goals_digest(self):
-        earlier = event_at("09:00-10:00", id="old", summary="Jazz night", goal_ids=["pal"],
-                           facets=Facets(activity="jazz club", place="the cellar"))
-        earlier = replace(earlier, start=earlier.start - timedelta(days=10), end=earlier.end - timedelta(days=10))
-        setup, _ = self._setup(events=[earlier] + _day())
+    def test_a_keep_records_facts_and_shows_them_in_the_timeline(self):
+        setup = self._setup()
+        facts = Facts(location_id="home", with_ids=["sam"], for_ids=["mom"], notes={"self": "sleepy", "sam": " happy  "})
 
-        context = setup.compactor.prepare()
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=facts)])
 
-        by_id = {e.id: e for e in context.events}
-        assert by_id["e1"].traits_goal_ids == ["pal"]
-        assert by_id["e2"].traits_goal_ids is None
-        assert by_id["e3"].traits_goal_ids is None  # Lunch is after now
-        (goal,) = context.traits_goals
-        assert (goal.id, goal.what_matters) == ("pal", "- 2026-09-01: loves jazz")
-        assert "jazz club ×1" in goal.digest and "the cellar ×1" in goal.digest
-        assert "FACETS" in context.instructions
-
-    def test_a_keep_records_facets_and_shows_them_in_the_timeline(self):
-        setup, _ = self._setup()
-        facets = Facets(with_goal_ids=["pal"], activity="Jazz  Club", attention=3)
-
-        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facets=facets)])
-
-        change = next(c for c in planned.changes if c.event_id == "e1")
-        assert change.after.facets == {"with": ["pal"], "activity": "jazz club", "attention": 3}
-        assert "▹ with Person · jazz club ·\n        attention 3" in planned.timeline.text
-        assert "▸ facets   ▹ facets being set" in planned.timeline.text
-
+        (change,) = [c for c in planned.changes if c.event_id == "e1"]
+        assert change.after.facts == {
+            "location": "home", "with": ["sam"], "for": ["mom"], "notes": {"self": "sleepy", "sam": "happy"}
+        }
+        text = planned.timeline.text
+        assert "▹ @ Home · with Sam · for Mom" in text
+        assert "▹ Me: sleepy" in text and "▹ Sam: happy" in text
         setup.compactor.commit(planned.compaction_id)
+        (patch,) = [c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e1"]
+        assert patch.facts == Facts(location_id="home", with_ids=["sam"], for_ids=["mom"], notes={"self": "sleepy", "sam": "happy"})
 
-        patch = next(c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e1")
-        assert patch.facets == Facets(with_goal_ids=["pal"], activity="jazz club", attention=3)
+    def test_facts_that_arent_well_formed_or_name_strangers_are_refused(self):
+        setup = self._setup()
 
-    def test_facets_that_arent_well_formed_are_refused(self):
-        setup, _ = self._setup()
+        with pytest.raises(CompactionError, match=r'decision 1 \(keep e1\): its facts "with_ids" never names "self"'):
+            setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=Facts(with_ids=["self"]))])
+        with pytest.raises(CompactionError, match=r"its facts name \['nobody'\], who aren't people"):
+            setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=Facts(for_ids=["nobody"]))])
+        with pytest.raises(CompactionError, match="its facts' location 'nowhere' isn't a location"):
+            setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=Facts(location_id="nowhere"))])
+        with pytest.raises(CompactionError, match="facts only go with 'keep' or 'create'"):
+            setup.compactor.dry_run([EventDecision(action="cancel", event_id="e1", facts=Facts(with_ids=["sam"]))])
 
-        with pytest.raises(CompactionError, match=r"decision 1 \(keep e1\): its facets \"effort\" must be"):
-            setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facets=Facets(effort=7))])
-        with pytest.raises(CompactionError, match="its facets: 'nobody' isn't a goal"):
-            setup.compactor.dry_run(
-                [EventDecision(action="keep", event_id="e1", facets=Facets(with_goal_ids=["nobody"]))]
-            )
-        with pytest.raises(CompactionError, match="facets only go with 'keep' or 'create'"):
-            setup.compactor.dry_run([EventDecision(action="cancel", event_id="e1", facets=Facets(effort=1))])
+    def test_a_created_event_takes_facts(self):
+        setup = Setup([("09:00", None), ("09:30", None)], people=self._PEOPLE)
+        decisions = setup.coffee_instead_of_email()
+        decisions[0].facts = Facts(with_ids=["sam"], notes={"sam": "chatty"})
 
-    def test_a_created_event_takes_facets(self):
-        setup, _ = self._setup()
-        create = EventDecision(
-            action="create", summary="Call", start_note=setup.note_id(2), end=time_at("10:00"),
-            goal_ids=["pal"], facets=Facets(attention=2),
+        setup.compactor.commit(setup.compactor.dry_run(decisions).compaction_id)
+
+        assert setup.client.create_event.call_args.args[0].facts == Facts(with_ids=["sam"], notes={"sam": "chatty"})
+
+
+class TestAdditions:
+    """New actions, people and locations, added from the compaction itself."""
+
+    def test_new_ones_are_named_by_ref_shown_and_created_when_applied(self):
+        setup = Setup([("09:00", None), ("09:30", None)], people=[Person(id="sam", name="Sam", status="active")])
+        decisions = setup.coffee_instead_of_email()
+        decisions[0].action_ids = ["new:coffee"]
+        decisions[0].facts = Facts(location_id="new:cafe", with_ids=["sam", "new:alex"], notes={"new:alex": "new in town"})
+
+        planned = setup.compactor.dry_run(
+            decisions,
+            new_actions=[NewAction(ref="new:coffee", name="Drink coffee")],
+            new_people=[NewPerson(ref="new:alex", name="Alex", context="Sam's friend")],
+            new_locations=[NewLocation(ref="new:cafe", name="Corner cafe", hint="the cafe on Main")],
         )
 
-        planned = setup.compactor.dry_run([EventDecision(action="cancel", event_id="e1"), create])
+        assert planned.additions == {
+            "actions": [{"ref": "new:coffee", "name": "Drink coffee"}],
+            "people": [{"ref": "new:alex", "name": "Alex", "context": "Sam's friend"}],
+            "locations": [{"ref": "new:cafe", "name": "Corner cafe", "hint": "the cafe on Main"}],
+        }
+        text = planned.timeline.text
+        assert "◇ Drink coffee (new)" in text
+        # Wrapped to the timeline's width.
+        assert "▹ @ Corner cafe (new) · with\n            Sam, Alex (new)\n" in text
+        assert setup.actions.all() == []  # Nothing created yet.
+
         setup.compactor.commit(planned.compaction_id)
 
-        assert setup.client.create_event.call_args.args[0].facets == Facets(attention=2)
+        (coffee,) = setup.actions.all()
+        assert (coffee.name, coffee.status) == ("Drink coffee", "active")
+        alex = setup.people.get_person("alex")
+        cafe = setup.locations.get_location("corner cafe")
+        created = setup.client.create_event.call_args.args[0]
+        assert created.action_ids == [coffee.id]
+        assert created.facts == Facts(location_id=cafe.id, with_ids=["sam", alex.id], notes={alex.id: "new in town"})
 
-    def test_what_matters_is_added_dated_when_the_plan_is_applied(self):
-        setup, details = self._setup()
-        additions = [WhatMatters(goal_id="pal", items=["starts a new job in November", "loves jazz"])]
+    def test_a_resumed_commit_reuses_what_it_already_added(self):
+        setup = Setup([("09:00", None), ("09:30", None)])
+        decisions = setup.coffee_instead_of_email()
+        decisions[0].action_ids = ["new:coffee"]
+        planned = setup.compactor.dry_run(decisions, new_actions=[NewAction(ref="new:coffee", name="Drink coffee")])
+        setup.client.create_event.side_effect = [RuntimeError("network"), None]
+        with pytest.raises(RuntimeError):
+            setup.compactor.commit(planned.compaction_id)
 
-        planned = setup.compactor.dry_run([], what_matters=additions)
-
-        assert details.get("pal").count("- ") == 1  # Nothing yet.
-        assert any("starts a new job in November" in w for w in planned.warnings)
         setup.compactor.commit(planned.compaction_id)
-        day = time_at("11:30").date().isoformat()
-        assert details.get("pal") == (
-            "Notes.\n\n## What matters to them\n\n- 2026-09-01: loves jazz\n"
-            f"- {day}: starts a new job in November\n"
-        )
 
-    def test_what_matters_for_an_unknown_goal_is_refused(self):
-        setup, _ = self._setup()
+        assert [a.name for a in setup.actions.all()] == ["Drink coffee"]
+        assert setup.client.create_event.call_args.args[0].action_ids == [setup.actions.all()[0].id]
 
-        with pytest.raises(CompactionError, match="'nobody' isn't a goal"):
-            setup.compactor.dry_run([], what_matters=[WhatMatters(goal_id="nobody", items=["x"])])
+    @pytest.mark.parametrize(
+        "kwargs, message",
+        [
+            ({"new_actions": [NewAction(ref="coffee", name="Coffee")]}, "'coffee' isn't a ref: refs start with 'new:'"),
+            (
+                {"new_actions": [NewAction(ref="new:a", name="Coffee")], "new_locations": [NewLocation(ref="new:a", name="Cafe")]},
+                "the ref 'new:a' is used more than once",
+            ),
+            ({"new_actions": [NewAction(ref="new:a", name="Time Tracker")]}, "new actions: there's already an action named"),
+            ({"new_people": [NewPerson(ref="new:p", name="Me")]}, "new people: there's already a person named 'Me'"),
+            ({"new_locations": [NewLocation(ref="new:l", name="")]}, "new locations: location new:l needs a name"),
+        ],
+    )
+    def test_additions_are_checked_as_their_stores_would(self, kwargs, message):
+        setup = Setup([("09:05", "x")], actions=[_action("work", "Time Tracker")])
+
+        with pytest.raises(CompactionError, match=message):
+            setup.compactor.dry_run([], **kwargs)
+
+    def test_a_ref_that_isnt_added_is_refused(self):
+        setup = Setup([("09:05", "x")])
+
+        with pytest.raises(CompactionError, match="a ref that isn't in new_actions"):
+            setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", action_ids=["new:nope"])])

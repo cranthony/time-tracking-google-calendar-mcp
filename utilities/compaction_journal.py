@@ -18,8 +18,10 @@ Layout: one row per fact, all in the same eight columns --
   ids of the notes it consumes, the ids of notes it was told to ignore,
   and any planner warnings -- and, for the second and later days of a
   batch, the `batch` (the first day's id) and which `day` of it it is.
-  The batch's last day also keeps any `what_matters` additions to goals'
-  descriptions (goal id -> lines), applied with that day's steps.
+  The batch's first day also keeps any `additions`: the actions, people
+  and locations the plan adds, each with the `ref` its decisions name it
+  by ({"actions": [...], "people": [...], "locations": [...]}), created
+  before that day's steps.
 - `kind == "decision"`: one per `EventDecision`, as JSON in `before`
   (`event_id` repeats its event id, if it has one, for reading the tab by
   hand). Rows of the retired `disposition` kind, from before decisions
@@ -133,9 +135,9 @@ class JournalCompaction:
     batch -- see the module docstring."""
 
     day: int = 1
-    what_matters: dict[str, list[str]] = field(default_factory=dict)
-    """Lines to add to goals' "What matters to them" sections (see
-    utilities/goal_details.py), by goal id."""
+    additions: dict[str, list[dict]] = field(default_factory=dict)
+    """The actions, people and locations the plan adds -- see the module
+    docstring."""
 
     @property
     def batch_id(self) -> str:
@@ -162,7 +164,7 @@ class PlannedDay:
     decisions: list[EventDecision]
     plan: CompactionPlan
     ignore_notes: list[str] = field(default_factory=list)
-    what_matters: dict[str, list[str]] = field(default_factory=dict)
+    additions: dict[str, list[dict]] = field(default_factory=dict)
 
 
 class CompactionJournal:
@@ -238,8 +240,8 @@ class CompactionJournal:
             }
             if number > 1:
                 detail.update(batch=batch, day=number)
-            if day.what_matters:
-                detail["what_matters"] = day.what_matters
+            if day.additions:
+                detail["additions"] = day.additions
             rows.append([day.compaction_id, "0", "compaction", "", "", "", PLANNED, json.dumps(detail)])
             for decision in day.decisions:
                 rows.append(
@@ -348,7 +350,7 @@ class CompactionJournal:
                     row=sheet_row,
                     batch=detail.get("batch"),
                     day=detail.get("day", 1),
-                    what_matters=detail.get("what_matters", {}),
+                    additions=detail.get("additions", {}),
                 )
             elif kind == "decision":
                 decisions.append(EventDecision.from_json_dict(json.loads(row[4])))

@@ -9,9 +9,9 @@ import pytest
 import calendar_cli
 from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
-from utilities.goal_calendar import GoalCalendar
-from utilities.goal_sheet import GOAL_STATUSES, Goal
-from utilities.goals import AffectedGoal, GoalChanges, GoalList, GoalTree, ListedGoal, PlacedGoal
+from utilities.action_calendar import ActionCalendar
+from utilities.action_groups import GroupTree
+from utilities.actions import ACTION_STATUSES, Action, ActionChanges, ActionList, ActionTree, ListedAction
 from utilities.note_compaction import CompactionError
 from utilities.noted_time_sheet import NotedTime, SheetNote
 
@@ -35,12 +35,12 @@ def _raw_event_label(**overrides) -> RawEventLabel:
     return RawEventLabel(**fields)
 
 
-def _goal_list(*goals: ListedGoal) -> GoalList:
-    return GoalList(goals=list(goals), label_slots_used=len(goals))
+def _action_list(*actions: ListedAction) -> ActionList:
+    return ActionList(actions=list(actions), label_slots_used=len(actions))
 
 
-def _goal_changes(*changed: PlacedGoal, affected: tuple[AffectedGoal, ...] = ()) -> GoalChanges:
-    return GoalChanges(changed=list(changed), affected=list(affected), label_slots_used=len(changed))
+def _action_changes(*changed: ListedAction) -> ActionChanges:
+    return ActionChanges(changed=list(changed), label_slots_used=len(changed))
 
 
 class TestParseDuration:
@@ -121,25 +121,19 @@ class TestParseKeyValue:
             calendar_cli._parse_event_key_value("priority=not-a-number")
 
 
-class TestParseGoalKeyValue:
+class TestParseActionKeyValue:
     def test_parses_name(self):
-        assert calendar_cli._parse_goal_key_value("name=Design Work") == ("name", "Design Work")
+        assert calendar_cli._parse_action_key_value("name=Play guitar") == ("name", "Play guitar")
 
     def test_parses_a_status(self):
-        assert calendar_cli._parse_goal_key_value("status=archived") == ("status", "archived")
+        assert calendar_cli._parse_action_key_value("status=archived") == ("status", "archived")
         with pytest.raises(argparse.ArgumentTypeError, match="expected one of proposed, active"):
-            calendar_cli._parse_goal_key_value("status=done")
-
-    def test_parses_measure_as_json(self):
-        assert calendar_cli._parse_goal_key_value('measure={"kind":"duration"}') == (
-            "measure",
-            {"kind": "duration"},
-        )
+            calendar_cli._parse_action_key_value("status=inactive")
 
     def test_raises_on_read_only_attributes(self):
-        for key in ("id", "label_id", "created"):
+        for key in ("id", "label_id"):
             with pytest.raises(argparse.ArgumentTypeError):
-                calendar_cli._parse_goal_key_value(f"{key}=x")
+                calendar_cli._parse_action_key_value(f"{key}=x")
 
 
 class TestParseRawLabelKeyValue:
@@ -172,8 +166,8 @@ class TestUpdatableAttributeParsers:
     def test_covers_every_event_attribute_the_api_accepts_except_id(self):
         # id would repoint the patch at a different event; recurring_event_id
         # is assigned by Google and never sent to the API, so setting it here
-        # would silently have no effect. goal_priority belongs to the
-        # event's goals, not the event, and is never sent to the API
+        # would silently have no effect. action_priority belongs to the
+        # event's actions, not the event, and is never sent to the API
         # either. A series' recurrence/time_zone are edited
         # through the recurrence tools (utilities/recurrences.py), and
         # original_start, like recurring_event_id, is Google's. cleared
@@ -182,8 +176,8 @@ class TestUpdatableAttributeParsers:
         event_attributes = {f.name for f in dataclasses.fields(Event)} - {
             "id",
             "recurring_event_id",
-            "goal_priority",
-            "goals_from_label",
+            "action_priority",
+            "actions_from_label",
             "recurrence",
             "time_zone",
             "original_start",
@@ -193,12 +187,11 @@ class TestUpdatableAttributeParsers:
         assert set(calendar_cli._UPDATABLE_ATTRIBUTE_PARSERS) == event_attributes
 
 
-class TestGoalAttributeParsers:
-    def test_covers_every_goal_attribute_except_the_read_only_ones(self):
-        read_only = {"id", "label_id", "created", "health", "health_period", "health_trend"}
-        goal_attributes = {f.name for f in dataclasses.fields(Goal)} - read_only
+class TestActionAttributeParsers:
+    def test_covers_every_action_attribute_except_the_read_only_ones(self):
+        action_attributes = {f.name for f in dataclasses.fields(Action)} - {"id", "label_id"}
 
-        assert set(calendar_cli._GOAL_ATTRIBUTE_PARSERS) == goal_attributes
+        assert set(calendar_cli._ACTION_ATTRIBUTE_PARSERS) == action_attributes
 
 
 class TestRawLabelAttributeParsers:
@@ -360,21 +353,23 @@ class TestMainUpdateProperties:
         assert sent_event.description is None
         assert sent_event.location is None
 
-    def test_goal_ids_also_set_the_label_they_imply(self, monkeypatch):
+    def test_action_ids_also_set_the_label_they_imply(self, monkeypatch):
         client = MagicMock()
         client.update_event.side_effect = lambda event: event
         monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: client)
-        goals = MagicMock()
-        goals.tree.return_value = GoalTree([Goal(id="g1", name="Cooking", status="active", label_id="label-1")])
-        monkeypatch.setattr(calendar_cli, "build_goals", lambda: goals)
+        actions = MagicMock()
+        actions.tree.return_value = ActionTree(
+            [Action(id="g1", name="Cook", status="active", label_id="label-1")], GroupTree([])
+        )
+        monkeypatch.setattr(calendar_cli, "build_actions", lambda: actions)
         monkeypatch.setattr(
-            sys, "argv", ["calendar_cli.py", "update_properties", "abc123", "goal_ids=g1, g2"]
+            sys, "argv", ["calendar_cli.py", "update_properties", "abc123", "action_ids=g1, g2"]
         )
 
         calendar_cli.main()
 
         sent_event = client.update_event.call_args[0][0]
-        assert sent_event.goal_ids == ["g1", "g2"]
+        assert sent_event.action_ids == ["g1", "g2"]
         assert sent_event.event_label_id == "label-1"
 
 
@@ -387,16 +382,16 @@ def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
 
 
 class TestBuildReallocatingCalendar:
-    def test_wraps_client_in_a_goal_calendar(self, monkeypatch):
+    def test_wraps_client_in_an_action_calendar(self, monkeypatch):
         client = MagicMock()
-        goals = MagicMock()
-        monkeypatch.setattr(calendar_cli, "build_goals", lambda: goals)
+        actions = MagicMock()
+        monkeypatch.setattr(calendar_cli, "build_actions", lambda: actions)
 
         reallocating_calendar = calendar_cli._build_reallocating_calendar(client)
 
-        assert isinstance(reallocating_calendar._client, GoalCalendar)
+        assert isinstance(reallocating_calendar._client, ActionCalendar)
         assert reallocating_calendar._client._client is client
-        assert reallocating_calendar._client._goals is goals
+        assert reallocating_calendar._client._actions is actions
 
 
 class TestMainUpdate:
@@ -578,10 +573,10 @@ class TestMainDelete:
         assert "abc123" in capsys.readouterr().out
 
 
-def _fake_goals(monkeypatch) -> MagicMock:
-    goals = MagicMock()
-    monkeypatch.setattr(calendar_cli, "build_goals", lambda: goals)
-    return goals
+def _fake_actions(monkeypatch) -> MagicMock:
+    actions = MagicMock()
+    monkeypatch.setattr(calendar_cli, "build_actions", lambda: actions)
+    return actions
 
 
 def _fake_noted_time_sheet(monkeypatch) -> MagicMock:
@@ -720,96 +715,74 @@ class TestMainDeleteRawLabel:
         assert "label-1" in capsys.readouterr().out
 
 
-class TestMainGoals:
+class TestMainActions:
     def _run(self, monkeypatch, *argv):
         monkeypatch.setattr(calendar_cli, "build_calendar_client", MagicMock)
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", *argv])
         calendar_cli.main()
 
-    def test_list_goals_prints_each_goal_and_the_label_count(self, capsys, monkeypatch):
-        goals = _fake_goals(monkeypatch)
-        goals.get_goals.return_value = _goal_list(
-            ListedGoal(id="g1", name="Cooking", status="active", path="Cooking"),
-            ListedGoal(id="g2", name="Tofu", status="inactive", path="Cooking › Tofu"),
+    def test_list_actions_prints_each_action_and_the_label_count(self, capsys, monkeypatch):
+        actions = _fake_actions(monkeypatch)
+        actions.get_actions.return_value = _action_list(
+            ListedAction(id="a1", name="Play guitar", status="active", path="Creative › Play guitar"),
+            ListedAction(id="a2", name="Juggle", status="proposed", path="Juggle"),
         )
 
-        self._run(monkeypatch, "list_goals", "--all")
+        self._run(monkeypatch, "list_actions", "--all")
 
-        goals.get_goals.assert_called_once_with(GOAL_STATUSES)
+        actions.get_actions.assert_called_once_with(ACTION_STATUSES)
         out = capsys.readouterr().out
-        assert "g1\tactive\tCooking" in out
-        assert "g2\tinactive\tCooking › Tofu" in out
+        assert "a1\tactive\tCreative › Play guitar" in out
         assert "(2 of 200 event labels in use)" in out
 
-    def test_list_goals_picks_statuses(self, monkeypatch):
-        goals = _fake_goals(monkeypatch)
-        goals.get_goals.return_value = _goal_list()
+    def test_list_actions_picks_statuses(self, monkeypatch):
+        actions = _fake_actions(monkeypatch)
+        actions.get_actions.return_value = _action_list()
 
-        self._run(monkeypatch, "list_goals", "--status", "completed", "--status", "archived")
+        self._run(monkeypatch, "list_actions", "--status", "archived", "--status", "deleted")
 
-        goals.get_goals.assert_called_once_with(["completed", "archived"])
+        actions.get_actions.assert_called_once_with(["archived", "deleted"])
 
-    def test_list_goals_says_when_there_are_none(self, capsys, monkeypatch):
-        goals = _fake_goals(monkeypatch)
-        goals.get_goals.return_value = _goal_list()
+    def test_list_actions_says_when_there_are_none(self, capsys, monkeypatch):
+        actions = _fake_actions(monkeypatch)
+        actions.get_actions.return_value = _action_list()
 
-        self._run(monkeypatch, "list_goals")
+        self._run(monkeypatch, "list_actions")
 
-        goals.get_goals.assert_called_once_with(None)
-        assert "No goals found." in capsys.readouterr().out
+        actions.get_actions.assert_called_once_with(None)
+        assert "No actions found." in capsys.readouterr().out
 
-    def test_create_goal(self, capsys, monkeypatch):
-        goals = _fake_goals(monkeypatch)
-        goals.create_goal.return_value = _goal_changes(
-            PlacedGoal(id="g2", name="Cooking", status="active", path="Hosting › Cooking")
+    def test_create_action(self, capsys, monkeypatch):
+        actions = _fake_actions(monkeypatch)
+        actions.create_action.return_value = _action_changes(
+            ListedAction(id="a2", name="Cook", status="active", path="Food › Cook")
         )
 
-        self._run(monkeypatch, "create_goal", "name=Cooking", "parent_id=g1", "priority=2")
+        self._run(monkeypatch, "create_action", "name=Cook", "group_id=g1", "priority=2")
 
-        goals.create_goal.assert_called_once_with(Goal(name="Cooking", parent_id="g1", priority=2))
-        out = capsys.readouterr().out
-        assert "g2\tactive\tHosting › Cooking" in out
-        assert "(1 of 200 event labels in use)" in out
+        actions.create_action.assert_called_once_with(Action(name="Cook", group_id="g1", priority=2))
+        assert "a2\tactive\tFood › Cook" in capsys.readouterr().out
 
-    def test_update_goal_sets_and_clears(self, capsys, monkeypatch):
-        goals = _fake_goals(monkeypatch)
-        goals.update_goal.return_value = _goal_changes(
-            PlacedGoal(id="g1", name="Cooking", status="inactive", path="Cooking"),
-            affected=(
-                AffectedGoal(
-                    id="g2", name="Tofu", parent_id="g1", status="active", effective_priority=None,
-                    effective_color="#039be5", path="Cooking › Tofu",
-                ),
-            ),
-        )
+    def test_update_action_sets_and_clears(self, monkeypatch):
+        actions = _fake_actions(monkeypatch)
+        actions.update_action.return_value = _action_changes()
 
-        self._run(monkeypatch, "update_goal", "g1", "status=inactive", "--clear", "measure")
+        self._run(monkeypatch, "update_action", "a1", "status=archived", "--clear", "note")
 
-        goals.update_goal.assert_called_once_with(Goal(id="g1", status="inactive"), ["measure"])
-        out = capsys.readouterr().out
-        assert "g1\tinactive\tCooking\nAlso affected:\ng2\tactive\tCooking › Tofu" in out
+        actions.update_action.assert_called_once_with(Action(id="a1", status="archived"), ["note"])
 
-    def test_update_goal_needs_something_to_do(self, monkeypatch):
-        _fake_goals(monkeypatch)
+    def test_update_action_needs_something_to_do(self, monkeypatch):
+        _fake_actions(monkeypatch)
 
         with pytest.raises(SystemExit):
-            self._run(monkeypatch, "update_goal", "g1")
-
-    def test_sync_goals(self, capsys, monkeypatch):
-        goals = _fake_goals(monkeypatch)
-        goals.sync.return_value = _goal_changes()
-
-        self._run(monkeypatch, "sync_goals")
-
-        goals.sync.assert_called_once_with()
-        assert "No goals changed." in capsys.readouterr().out
+            self._run(monkeypatch, "update_action", "a1")
 
     def test_errors_exit_with_the_message(self, monkeypatch):
-        goals = _fake_goals(monkeypatch)
-        goals.create_goal.side_effect = ValueError("A goal needs a name")
+        actions = _fake_actions(monkeypatch)
+        actions.create_action.side_effect = ValueError("action 'x' needs a name")
 
-        with pytest.raises(SystemExit, match="error: A goal needs a name"):
-            self._run(monkeypatch, "create_goal", "priority=1")
+        with pytest.raises(SystemExit, match="error: action 'x' needs a name"):
+            self._run(monkeypatch, "create_action", "priority=1")
 
 
 class TestResolveNoteTimestamp:

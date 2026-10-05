@@ -2,7 +2,7 @@ import contextlib
 import dataclasses
 import threading
 import typing
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -19,16 +19,15 @@ from calendar_clients import google_sheets
 from calendar_clients.google_calendar import (
     CLEARABLE_EVENT_FIELDS,
     Event,
-    EventLabelConflictError,
     TimeZoneNotSetError,
 )
 from calendar_clients.write_lock import WRITE_LOCK
 from server import PublicEvent
-from utilities.facets import Facets
-from utilities.goal_calendar import GoalCalendar
-from utilities.goal_health import Assessment
-from utilities.goal_sheet import Goal
-from utilities.goals import GoalList, GoalTree
+from utilities.action_calendar import ActionCalendar
+from utilities.action_groups import GroupTree
+from utilities.actions import ActionTree
+from utilities.compaction_additions import NewAction, NewLocation, NewPerson
+from utilities.facts import Facts
 from utilities.note_compaction import CompactionError, EventDecision
 from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
@@ -66,29 +65,40 @@ def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
 
 
 @pytest.fixture(autouse=True)
-def _no_goals(monkeypatch):
-    """Every event tool fills in goal_names and effective_priority from
-    the goals tab -- faked here as having no
-    goals at all, so tests that don't care about goals never touch a real
-    sheet. Tests that do care use _fake_goals. Seeds the cache rather than
-    replacing get_goal_store, so its own caching tests still exercise the
-    real one."""
-    goals = MagicMock()
-    goals.tree.return_value = GoalTree([])
-    monkeypatch.setattr(server, "_goals", goals)
+def _no_actions(monkeypatch):
+    """Every event tool fills in action_names and effective_priority from
+    the Actions tab -- faked here as having no actions at all, so tests
+    that don't care about actions never touch a real sheet. Tests that do
+    care use _fake_actions. Seeds the cache rather than replacing
+    get_action_store, so its own caching tests still exercise the real
+    one."""
+    actions = MagicMock()
+    actions.tree.return_value = ActionTree([], GroupTree([]))
+    monkeypatch.setattr(server, "_actions", actions)
 
 
-def _fake_goals(monkeypatch, *goals: Goal) -> MagicMock:
+@pytest.fixture(autouse=True)
+def _no_people_or_locations(monkeypatch):
+    """Event tools read people and locations too (for facts): faked here as
+    there being none but the user, the same way as `_no_actions`."""
+    people, locations = MagicMock(), MagicMock()
+    people.all.return_value = [Person(id="self", name="Me")]
+    locations.all.return_value = []
+    monkeypatch.setattr(server, "_people", people)
+    monkeypatch.setattr(server, "_locations", locations)
+
+
+def _fake_actions(monkeypatch, *actions: Action) -> MagicMock:
     store = MagicMock()
-    store.tree.return_value = GoalTree(list(goals))
-    monkeypatch.setattr(server, "get_goal_store", lambda: store)
+    store.tree.return_value = ActionTree(list(actions), GroupTree([]))
+    monkeypatch.setattr(server, "get_action_store", lambda: store)
     return store
 
 
-def _goal(goal_id: str = "g1", **overrides) -> Goal:
-    fields = {"id": goal_id, "name": "Focus", "status": "active", "label_id": f"label-{goal_id}"}
+def _action(action_id: str = "g1", **overrides) -> Action:
+    fields = {"id": action_id, "name": "Focus", "status": "active", "label_id": f"label-{action_id}"}
     fields.update(overrides)
-    return Goal(**fields)
+    return Action(**fields)
 
 
 def _fake_noted_time_sheet(monkeypatch) -> MagicMock:
@@ -129,13 +139,13 @@ def _public_event(**overrides) -> PublicEvent:
 
 
 class TestPublicEvent:
-    def test_goals_inferred_from_a_label_are_marked_and_not_written_back(self):
-        public = PublicEvent.from_event(Event(id="e1", goal_ids=["g1"], goals_from_label=True))
+    def test_actions_inferred_from_a_label_are_marked_and_not_written_back(self):
+        public = PublicEvent.from_event(Event(id="e1", action_ids=["g1"], actions_from_label=True))
 
-        assert public.goals_from_label
-        assert public.to_event().goal_ids is None
-        public.goals_from_label = False  # Confirmed: stored.
-        assert public.to_event().goal_ids == ["g1"]
+        assert public.actions_from_label
+        assert public.to_event().action_ids is None
+        public.actions_from_label = False  # Confirmed: stored.
+        assert public.to_event().action_ids == ["g1"]
 
     def test_hides_internal_fields_from_its_fields(self):
         field_names = {f.name for f in dataclasses.fields(PublicEvent)}
@@ -143,12 +153,12 @@ class TestPublicEvent:
         assert field_names.isdisjoint(server.INTERNAL_EVENT_FIELDS)
         # is_cancelled has no Event equivalent -- it's derived from the
         # hidden status field, not a field PublicEvent passes through.
-        # Likewise effective_priority and goal_names, derived from the
-        # event's goals.
+        # Likewise effective_priority and action_names, derived from the
+        # event's actions.
         event_derived_fields = field_names - {
             "is_cancelled",
             "effective_priority",
-            "goal_names",
+            "action_names",
         }
         assert event_derived_fields == {
             f.name for f in dataclasses.fields(Event)
@@ -188,8 +198,8 @@ class TestPublicEvent:
 
         assert public_event.effective_priority == 1
 
-    def test_from_event_takes_effective_priority_from_the_events_goals(self):
-        event = _event(id="abc123", goal_ids=["g1"], goal_priority=0)
+    def test_from_event_takes_effective_priority_from_the_events_actions(self):
+        event = _event(id="abc123", action_ids=["g1"], action_priority=0)
 
         public_event = PublicEvent.from_event(event)
 
@@ -203,28 +213,28 @@ class TestPublicEvent:
 
         assert event.priority is None
 
-    def test_to_event_ignores_event_label_id_since_goals_decide_it(self):
+    def test_to_event_ignores_event_label_id_since_actions_decide_it(self):
         public_event = _public_event(id="abc123", event_label_id="label-1")
 
         event = public_event.to_event()
 
         assert event.event_label_id is None
 
-    def test_to_event_carries_goal_ids_but_not_goal_names(self):
-        public_event = _public_event(id="abc123", goal_ids=["g1", "g2"], goal_names=["A", "B"])
+    def test_to_event_carries_action_ids_but_not_action_names(self):
+        public_event = _public_event(id="abc123", action_ids=["g1", "g2"], action_names=["A", "B"])
 
         event = public_event.to_event()
 
-        assert event.goal_ids == ["g1", "g2"]
+        assert event.action_ids == ["g1", "g2"]
 
-    def test_from_event_names_the_events_goals(self):
-        tree = GoalTree([_goal("g1", name="Cooking"), _goal("g2", name="Hosting")])
-        event = _event(id="abc123", goal_ids=["g2", "g1", "gone"])
+    def test_from_event_names_the_events_actions(self):
+        tree = ActionTree([_action("g1", name="Cooking"), _action("g2", name="Hosting")], GroupTree([]))
+        event = _event(id="abc123", action_ids=["g2", "g1", "gone"])
 
         public_event = PublicEvent.from_event(event, tree)
 
-        assert public_event.goal_ids == ["g2", "g1", "gone"]
-        assert public_event.goal_names == ["Hosting", "Cooking", "(unknown goal gone)"]
+        assert public_event.action_ids == ["g2", "g1", "gone"]
+        assert public_event.action_names == ["Hosting", "Cooking", "(unknown action gone)"]
 
     def test_from_event_exposes_cancellation_alongside_its_other_fields(self):
         event = _event(id="abc123", status="cancelled", priority=1, location="Room")
@@ -301,28 +311,28 @@ class TestListEvents:
 
         assert [event.id for event in result] == ["abc123"]
 
-    def test_fills_in_goals_and_effective_priority_from_the_event_label(self, monkeypatch):
-        # An event written before goals has only a label: it's read as
-        # serving the goal that owns it.
+    def test_fills_in_actions_and_effective_priority_from_the_event_label(self, monkeypatch):
+        # An event never given actions has only a label: it's read as
+        # doing the action that holds it.
         client = _fake_client(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", label_id="label-1", priority=0))
+        _fake_actions(monkeypatch, _action("g1", label_id="label-1", priority=0))
         client.list_events.return_value = [_event(id="abc123", event_label_id="label-1")]
 
         result = server.list_events(
             datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
         )
 
-        assert result[0].goal_ids == ["g1"]
-        assert result[0].goal_names == ["Focus"]
+        assert result[0].action_ids == ["g1"]
+        assert result[0].action_names == ["Focus"]
         assert result[0].effective_priority == 0
         # The event's own priority stays unset, so sending it back to
-        # update_event doesn't copy the goal's onto it.
+        # update_event doesn't copy the action's onto it.
         assert result[0].priority is None
 
-    def test_events_own_priority_wins_over_its_goals(self, monkeypatch):
+    def test_events_own_priority_wins_over_its_actions(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", priority=0))
-        client.list_events.return_value = [_event(id="abc123", goal_ids=["g1"], priority=3)]
+        _fake_actions(monkeypatch, _action("g1", priority=0))
+        client.list_events.return_value = [_event(id="abc123", action_ids=["g1"], priority=3)]
 
         result = server.list_events(
             datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
@@ -350,10 +360,10 @@ class TestGetEvent:
         with pytest.raises(ToolError):
             server.get_event("abc123")
 
-    def test_fills_in_effective_priority_from_the_events_goal(self, monkeypatch):
+    def test_fills_in_effective_priority_from_the_events_action(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", priority=0))
-        client.get_event.return_value = _event(id="abc123", goal_ids=["g1"])
+        _fake_actions(monkeypatch, _action("g1", priority=0))
+        client.get_event.return_value = _event(id="abc123", action_ids=["g1"])
 
         result = server.get_event("abc123")
 
@@ -394,38 +404,38 @@ class TestUpdateEvent:
 
         assert {e.id for e in result} == {"abc123", "def456"}
 
-    def test_fills_in_effective_fields_from_the_events_goal(self, monkeypatch):
+    def test_fills_in_effective_fields_from_the_events_action(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", priority=0))
-        reallocating_calendar.update_event.return_value = [_event(id="abc123", goal_ids=["g1"])]
+        _fake_actions(monkeypatch, _action("g1", priority=0))
+        reallocating_calendar.update_event.return_value = [_event(id="abc123", action_ids=["g1"])]
 
         result = server.update_event(_public_event(id="abc123"))
 
         assert result[0].effective_priority == 0
         assert result[0].priority is None
 
-    def test_refuses_goal_ids_that_arent_goals(self, monkeypatch):
+    def test_refuses_action_ids_that_arent_actions(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g7k2qp", name="Cooking"))
+        _fake_actions(monkeypatch, _action("g7k2qp", name="Cooking"))
 
-        with pytest.raises(ToolError, match=r"'g7k2qq' isn't a goal; did you mean g7k2qp \(Cooking\)"):
-            server.update_event(_public_event(id="abc123", goal_ids=["g7k2qq"]))
+        with pytest.raises(ToolError, match=r"no action with the id or name 'g7k2qq'; did you mean g7k2qp \(Cooking\)"):
+            server.update_event(_public_event(id="abc123", action_ids=["g7k2qq"]))
 
         reallocating_calendar.update_event.assert_not_called()
 
-    def test_an_event_can_keep_a_deleted_goal_it_already_has(self, monkeypatch):
+    def test_an_event_can_keep_a_deleted_action_it_already_has(self, monkeypatch):
         client = _fake_client(monkeypatch)
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", name="Oops", status="deleted"), _goal("g2"))
-        client.get_event.return_value = _event(id="abc123", goal_ids=["g1"])
-        reallocating_calendar.update_event.return_value = [_event(id="abc123", goal_ids=["g1"])]
+        _fake_actions(monkeypatch, _action("g1", name="Oops", status="deleted"), _action("g2"))
+        client.get_event.return_value = _event(id="abc123", action_ids=["g1"])
+        reallocating_calendar.update_event.return_value = [_event(id="abc123", action_ids=["g1"])]
 
-        server.update_event(_public_event(id="abc123", goal_ids=["g1"], summary="Renamed"))
+        server.update_event(_public_event(id="abc123", action_ids=["g1"], summary="Renamed"))
 
         reallocating_calendar.update_event.assert_called_once()
-        client.get_event.return_value = _event(id="abc123", goal_ids=["g2"])
-        with pytest.raises(ToolError, match="Deleted goals"):
-            server.update_event(_public_event(id="abc123", goal_ids=["g2", "g1"]))
+        client.get_event.return_value = _event(id="abc123", action_ids=["g2"])
+        with pytest.raises(ToolError, match="Deleted actions"):
+            server.update_event(_public_event(id="abc123", action_ids=["g2", "g1"]))
 
     def test_wraps_value_error_as_tool_error(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
@@ -457,43 +467,50 @@ class TestUpdateEvent:
     def test_clearable_fields_match_the_events(self):
         assert set(typing.get_args(server.EventField)) == CLEARABLE_EVENT_FIELDS
 
-    def test_sets_facets_normalized(self, monkeypatch):
+    def _fake_people_and_places(self, monkeypatch):
+        people, locations = MagicMock(), MagicMock()
+        people.all.return_value = [Person(id="self", name="Me"), Person(id="sam", name="Sam")]
+        locations.all.return_value = [Location(id="home", name="Home")]
+        monkeypatch.setattr(server, "get_people_store", lambda: people)
+        monkeypatch.setattr(server, "get_location_store", lambda: locations)
+
+    def test_sets_facts_normalized(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1"))
+        self._fake_people_and_places(monkeypatch)
         reallocating_calendar.update_event.return_value = [_event(id="abc123")]
 
         server.update_event(
-            _public_event(id="abc123", facets=Facets(with_goal_ids=["g1"], activity=" Salsa  Social", effort=2))
+            _public_event(id="abc123", facts=Facts(location_id="home", with_ids=[" sam"], notes={"sam": " glad  "}))
         )
 
         (call_updated_event, _), _ = reallocating_calendar.update_event.call_args
-        assert call_updated_event.facets == Facets(with_goal_ids=["g1"], activity="salsa social", effort=2)
+        assert call_updated_event.facts == Facts(location_id="home", with_ids=["sam"], notes={"sam": "glad"})
 
     @pytest.mark.parametrize(
-        "facets, message",
+        "facts, message",
         [
-            (Facets(creative=5), r'Its facets "creative" must be a whole number from 0 to 3'),
-            (Facets(for_goal_ids=["g9"]), r"Its facets: 'g9' isn't a goal"),
-            (Facets(with_goal_ids=["overall"]), r"Its facets: The overall goal can't be given to an event"),
+            (Facts(with_ids=["self"]), r'Its facts "with_ids" never names "self"'),
+            (Facts(for_ids=["p9"]), r"Its facts name \['p9'\], who aren't people"),
+            (Facts(location_id="nowhere"), r"Its facts' location 'nowhere' isn't a location"),
         ],
     )
-    def test_refuses_facets_that_arent_well_formed(self, monkeypatch, facets, message):
+    def test_refuses_facts_that_arent_well_formed(self, monkeypatch, facts, message):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1"))
+        self._fake_people_and_places(monkeypatch)
 
         with pytest.raises(ToolError, match=message):
-            server.update_event(_public_event(id="abc123", facets=facets))
+            server.update_event(_public_event(id="abc123", facts=facts))
 
         reallocating_calendar.update_event.assert_not_called()
 
-    def test_clears_facets(self, monkeypatch):
+    def test_clears_facts(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.return_value = [_event(id="abc123")]
 
-        server.update_event(_public_event(id="abc123"), clear_fields=["facets"])
+        server.update_event(_public_event(id="abc123"), clear_fields=["facts"])
 
         (call_updated_event, _), _ = reallocating_calendar.update_event.call_args
-        assert call_updated_event.cleared == {"facets"}
+        assert call_updated_event.cleared == {"facts"}
 
 
 class TestCreateEvent:
@@ -549,34 +566,34 @@ class TestCreateEvent:
         with pytest.raises(ToolError):
             server.create_event(_public_event())
 
-    def test_refuses_goal_ids_that_arent_goals(self, monkeypatch):
+    def test_refuses_action_ids_that_arent_actions(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", name="Cooking"))
+        _fake_actions(monkeypatch, _action("g1", name="Cooking"))
 
-        with pytest.raises(ToolError, match="'cooking' isn't a goal; did you mean g1 \\(Cooking\\)"):
-            server.create_event(_public_event(goal_ids=["cooking"]))
+        with pytest.raises(ToolError, match="no action with the id or name 'cooking'; did you mean g1 \\(Cooking\\)"):
+            server.create_event(_public_event(action_ids=["cooking"]))
 
         reallocating_calendar.create_event.assert_not_called()
 
-    def test_refuses_a_deleted_goal(self, monkeypatch):
+    def test_refuses_a_deleted_action(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1", name="Oops", status="deleted"))
+        _fake_actions(monkeypatch, _action("g1", name="Oops", status="deleted"))
 
-        with pytest.raises(ToolError, match="Deleted goals can't be given to an event"):
-            server.create_event(_public_event(goal_ids=["g1"]))
+        with pytest.raises(ToolError, match="Deleted actions can't be given to an event"):
+            server.create_event(_public_event(action_ids=["g1"]))
 
         reallocating_calendar.create_event.assert_not_called()
 
-    def test_passes_valid_goal_ids_through(self, monkeypatch):
+    def test_passes_valid_action_ids_through(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1"))
-        reallocating_calendar.create_event.return_value = [_event(id="abc123", goal_ids=["g1"])]
+        _fake_actions(monkeypatch, _action("g1"))
+        reallocating_calendar.create_event.return_value = [_event(id="abc123", action_ids=["g1"])]
 
-        result = server.create_event(_public_event(goal_ids=["g1"]))
+        result = server.create_event(_public_event(action_ids=["g1"]))
 
         (call_new_event, _options), _ = reallocating_calendar.create_event.call_args
-        assert call_new_event.goal_ids == ["g1"]
-        assert result[0].goal_names == ["Focus"]
+        assert call_new_event.action_ids == ["g1"]
+        assert result[0].action_names == ["Focus"]
 
 
 class TestDeleteEvent:
@@ -593,199 +610,6 @@ class TestDeleteEvent:
         assert len(result) == 1
         assert result[0].id == "abc123"
         assert result[0].is_cancelled is True
-
-
-class TestGetGoals:
-    def test_delegates_to_goals(self, monkeypatch):
-        store = _fake_goals(monkeypatch)
-        goal_list = GoalList(goals=[], label_slots_used=0)
-        store.get_goals.return_value = goal_list
-
-        assert server.get_goals(["completed"]) is goal_list
-        store.get_goals.assert_called_once_with(["completed"])
-
-    def test_wraps_errors_as_tool_errors(self, monkeypatch):
-        store = _fake_goals(monkeypatch)
-        store.get_goals.side_effect = ValueError("broken tab")
-
-        with pytest.raises(ToolError, match="broken tab"):
-            server.get_goals()
-
-
-class TestCreateGoal:
-    def test_delegates_to_goals(self, monkeypatch):
-        store = _fake_goals(monkeypatch)
-        goal_list = GoalList(goals=[], label_slots_used=1)
-        store.create_goal.return_value = goal_list
-        new_goal = Goal(name="Cooking", parent_id="g1")
-
-        assert server.create_goal(new_goal) is goal_list
-        store.create_goal.assert_called_once_with(new_goal)
-
-    @pytest.mark.parametrize("error", [ValueError("too many labels"), EventLabelConflictError("stale etag")])
-    def test_wraps_errors_as_tool_errors(self, monkeypatch, error):
-        store = _fake_goals(monkeypatch)
-        store.create_goal.side_effect = error
-
-        with pytest.raises(ToolError):
-            server.create_goal(Goal(name="Cooking"))
-
-
-class TestUpdateGoal:
-    def test_delegates_to_goals(self, monkeypatch):
-        store = _fake_goals(monkeypatch)
-        goal_list = GoalList(goals=[], label_slots_used=0)
-        store.update_goal.return_value = goal_list
-        goal = Goal(id="g1", status="inactive")
-
-        assert server.update_goal(goal) is goal_list
-        store.update_goal.assert_called_once_with(goal, ())
-
-    def test_passes_clear_fields(self, monkeypatch):
-        store = _fake_goals(monkeypatch)
-        goal = Goal(id="g1")
-
-        server.update_goal(goal, clear_fields=["parent_id", "measure"])
-
-        store.update_goal.assert_called_once_with(goal, ["parent_id", "measure"])
-
-    @pytest.mark.parametrize("error", [ValueError("'g9' isn't a goal"), EventLabelConflictError("stale etag")])
-    def test_wraps_errors_as_tool_errors(self, monkeypatch, error):
-        store = _fake_goals(monkeypatch)
-        store.update_goal.side_effect = error
-
-        with pytest.raises(ToolError):
-            server.update_goal(Goal(id="g9", name="X"))
-
-
-class TestSyncGoalsFromSheet:
-    def test_delegates_to_goals(self, monkeypatch):
-        store = _fake_goals(monkeypatch)
-        goal_list = GoalList(goals=[], label_slots_used=0)
-        store.sync.return_value = goal_list
-
-        assert server.sync_goals_from_sheet() is goal_list
-        store.sync.assert_called_once_with()
-
-    @pytest.mark.parametrize("error", [ValueError("goal 'g1' has no name"), EventLabelConflictError("stale")])
-    def test_wraps_errors_as_tool_errors(self, monkeypatch, error):
-        store = _fake_goals(monkeypatch)
-        store.sync.side_effect = error
-
-        with pytest.raises(ToolError):
-            server.sync_goals_from_sheet()
-
-
-def _fake_goal_health(monkeypatch) -> MagicMock:
-    health = MagicMock()
-    monkeypatch.setattr(server, "get_goal_health", lambda: health)
-    return health
-
-
-class TestGoalHealthTools:
-    def test_measure_goals_delegates(self, monkeypatch):
-        health = _fake_goal_health(monkeypatch)
-        health.measure.return_value = []
-
-        assert server.measure_goals(date(2026, 9, 20), ["g1"]) == []
-        health.measure.assert_called_once_with(date(2026, 9, 20), ["g1"])
-
-    def test_record_assessments_delegates(self, monkeypatch):
-        health = _fake_goal_health(monkeypatch)
-        assessment = Assessment(goal_id="g1", day=date(2026, 10, 1), rating=80, method="subjective")
-        health.record_assessments.return_value = [assessment]
-
-        assert server.record_assessments([assessment]) == [assessment]
-        health.record_assessments.assert_called_once_with([assessment])
-
-    def test_get_goal_history_delegates(self, monkeypatch):
-        from datetime import date
-
-        health = _fake_goal_health(monkeypatch)
-        health.history.return_value = []
-
-        server.get_goal_history(["g1"], date(2026, 9, 1), date(2026, 9, 30))
-
-        health.history.assert_called_once_with(["g1"], date(2026, 9, 1), date(2026, 9, 30))
-
-    def test_rebuild_goal_health_cache_delegates(self, monkeypatch):
-        health = _fake_goal_health(monkeypatch)
-        goal_list = GoalList(goals=[], label_slots_used=0)
-        health.rebuild_cache.return_value = goal_list
-
-        assert server.rebuild_goal_health_cache() is goal_list
-
-    @pytest.mark.parametrize(
-        "tool, method, args",
-        [
-            ("measure_goals", "measure", ()),
-            ("record_assessments", "record_assessments", ([],)),
-            ("get_goal_history", "history", (["g1"],)),
-            ("rebuild_goal_health_cache", "rebuild_cache", ()),
-        ],
-    )
-    def test_wrap_value_errors_as_tool_errors_and_are_tracked(self, monkeypatch, tool, method, args):
-        health = _fake_goal_health(monkeypatch)
-        getattr(health, method).side_effect = ValueError("'2026-13' isn't a period")
-        labels = _tracked_labels(monkeypatch)
-
-        with pytest.raises(ToolError, match="isn't a period"):
-            getattr(server, tool)(*args)
-
-        assert labels == [tool]
-
-
-class TestReflectionTools:
-    def _fake(self, monkeypatch) -> MagicMock:
-        reflections = MagicMock()
-        monkeypatch.setattr(server, "get_reflections", lambda: reflections)
-        return reflections
-
-    def test_prepare_reflection_delegates(self, monkeypatch):
-        reflections = self._fake(monkeypatch)
-
-        server.prepare_reflection(date(2026, 9, 20))
-
-        reflections.prepare.assert_called_once_with(date(2026, 9, 20))
-
-    def test_record_reflection_previews_by_default(self, monkeypatch):
-        reflections = self._fake(monkeypatch)
-
-        server.record_reflection(date(2026, 9, 20), [], proposed=["abc123"])
-
-        reflections.record.assert_called_once_with(
-            date(2026, 9, 20), [], ["abc123"], judgments=None, what_matters=None, dry_run=True
-        )
-
-    @pytest.mark.parametrize(
-        "tool, method, args",
-        [
-            ("prepare_reflection", "prepare", ()),
-            ("record_reflection", "record", (date(2026, 9, 20), [])),
-        ],
-    )
-    def test_wrap_value_errors_and_are_tracked(self, monkeypatch, tool, method, args):
-        reflections = self._fake(monkeypatch)
-        getattr(reflections, method).side_effect = ValueError("hasn't started yet")
-        labels = _tracked_labels(monkeypatch)
-
-        with pytest.raises(ToolError, match="hasn't started yet"):
-            getattr(server, tool)(*args)
-
-        assert labels == [tool]
-
-
-class TestGetGoalHealth:
-    def test_caches_across_calls_on_the_shared_client_and_goals(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        goals = MagicMock()
-        monkeypatch.setattr(server, "get_goal_store", lambda: goals)
-        monkeypatch.setattr(server, "_goal_health", None)
-
-        first = server.get_goal_health()
-
-        assert first is server.get_goal_health()
-        assert first._client is client and first._goals is goals
 
 
 class TestNote:
@@ -918,7 +742,7 @@ class TestCompactNotes:
         result = server.compact_notes(decisions=decisions)
 
         assert result is compactor.dry_run.return_value
-        compactor.dry_run.assert_called_once_with(decisions, None, None)
+        compactor.dry_run.assert_called_once_with(decisions, None, None, None, None)
 
     def test_a_dry_run_passes_ignored_notes_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -928,14 +752,24 @@ class TestCompactNotes:
 
         server.compact_notes(decisions=decisions, ignore_notes=["n2"])
 
-        compactor.dry_run.assert_called_once_with(decisions, ["n2"], None)
+        compactor.dry_run.assert_called_once_with(decisions, ["n2"], None, None, None)
 
     def test_a_dry_run_with_no_decisions_records_everything_as_on_schedule(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
 
         server.compact_notes()
 
-        compactor.dry_run.assert_called_once_with([], None, None)
+        compactor.dry_run.assert_called_once_with([], None, None, None, None)
+
+    def test_a_dry_run_passes_what_it_adds_through(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        new_actions = [NewAction(ref="new:juggle", name="Juggle")]
+        new_people = [NewPerson(ref="new:alex", name="Alex")]
+        new_locations = [NewLocation(ref="new:park", name="Park")]
+
+        server.compact_notes(new_actions=new_actions, new_people=new_people, new_locations=new_locations)
+
+        compactor.dry_run.assert_called_once_with([], None, new_actions, new_people, new_locations)
 
     def test_a_dry_run_with_a_compaction_id_describes_the_stored_plan(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -993,6 +827,8 @@ class TestGetNoteCompactor:
         monkeypatch.setattr(server, "get_reallocating_calendar", lambda: MagicMock())
         monkeypatch.setattr(server, "get_calendar_client", lambda: MagicMock())
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: MagicMock())
+        monkeypatch.setattr(server, "get_people_store", lambda: MagicMock())
+        monkeypatch.setattr(server, "get_location_store", lambda: MagicMock())
         built = []
         monkeypatch.setattr(server, "build_compaction_journal", lambda: built.append(1) or MagicMock())
 
@@ -1025,8 +861,8 @@ class TestGetCalendarClient:
 class TestGetReallocatingCalendar:
     def test_caches_across_calls(self, monkeypatch):
         client = _fake_client(monkeypatch)
-        goals = MagicMock()
-        monkeypatch.setattr(server, "get_goal_store", lambda: goals)
+        actions = MagicMock()
+        monkeypatch.setattr(server, "get_action_store", lambda: actions)
         monkeypatch.setattr(server, "_reallocating_calendar", None)
 
         first = server.get_reallocating_calendar()
@@ -1034,40 +870,9 @@ class TestGetReallocatingCalendar:
 
         assert first is second
         assert isinstance(first, ReallocatingCalendar)
-        assert isinstance(first._client, GoalCalendar)
+        assert isinstance(first._client, ActionCalendar)
         assert first._client._client is client
-        assert first._client._goals is goals
-
-
-class TestGetGoalStore:
-    def test_caches_across_calls(self, monkeypatch):
-        built = []
-
-        def fake_build(**kwargs):
-            goals = MagicMock()
-            built.append(kwargs)
-            return goals
-
-        monkeypatch.setattr(server, "_goals", None)
-        monkeypatch.setattr(server, "build_goals", fake_build)
-
-        first = server.get_goal_store()
-        second = server.get_goal_store()
-
-        assert first is second
-        assert len(built) == 1
-
-    def test_counts_recent_time_up_to_the_last_compaction(self, monkeypatch):
-        built = []
-        journal = MagicMock()
-        journal.last_stamped_now.return_value = datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
-        monkeypatch.setattr(server, "_goals", None)
-        monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
-        monkeypatch.setattr(server, "build_goals", lambda **kwargs: built.append(kwargs) or MagicMock())
-
-        server.get_goal_store()
-
-        assert built[0]["last_compaction"]() == datetime(2026, 10, 2, 21, tzinfo=timezone.utc)
+        assert first._client._actions is actions
 
 
 def _fake_traits(monkeypatch) -> MagicMock:
@@ -1095,32 +900,6 @@ class TestTraitTools:
         with pytest.raises(ToolError, match="isn't a trait"):
             server.update_trait(Trait(id="x"), clear_fields=["definition"])
         traits.update_trait.assert_called_once_with(Trait(id="x"), ["definition"])
-
-    def test_get_trait_history_reads_confirmed_ratings_of_the_goals_asked_for(self, monkeypatch):
-        _fake_traits(monkeypatch)
-        _fake_goals(monkeypatch, _goal("g1"), _goal("g2"))
-        health = _fake_goal_health(monkeypatch)
-        day = date(2026, 10, 1)
-        health.read.return_value = [
-            Assessment(goal_id="g1", day=day, rating=80, method="metric", status="confirmed",
-                       metrics={"traits": {"generous": 80}}),
-            Assessment(goal_id="g2", day=day, rating=40, method="metric", status="confirmed",
-                       metrics={"traits": {"generous": 40}}),
-            Assessment(goal_id="g1", day=day, rating=20, method="metric", metrics={"traits": {"reliable": 20}}),
-        ]
-
-        history = server.get_trait_history(goal_ids=["g1"], start=day, end=day)
-
-        health.read.assert_called_once_with(day, day + timedelta(days=1))
-        assert [(h.trait_id, h.score) for h in history] == [("generous", 80)]
-
-    def test_explain_traits_delegates_and_wraps_errors(self, monkeypatch):
-        health = _fake_goal_health(monkeypatch)
-        health.traits_rating.side_effect = ValueError("'Other' (g1) isn't measured by traits")
-
-        with pytest.raises(ToolError, match="isn't measured by traits"):
-            server.explain_traits("g1", date(2026, 10, 1))
-        health.traits_rating.assert_called_once_with("g1", date(2026, 10, 1))
 
 
 class TestActionTools:
@@ -1228,56 +1007,6 @@ class TestLocationTools:
             server.get_location("x")
 
 
-class TestGoalDescriptionTools:
-    def test_reads_and_replaces_a_goals_description(self, monkeypatch):
-        _fake_goals(monkeypatch, _goal("g1"))
-        details = MagicMock()
-        details.get.return_value = None
-        monkeypatch.setattr(server, "get_goal_details", lambda: details)
-
-        assert server.get_goal_description("g1") == ""
-        assert server.set_goal_description("g1", "## What matters to them") == "## What matters to them"
-        details.set.assert_called_once_with("g1", "## What matters to them")
-
-    def test_refuses_a_goal_that_isnt_one(self, monkeypatch):
-        _fake_goals(monkeypatch, _goal("g1"))
-        monkeypatch.setattr(server, "get_goal_details", lambda: MagicMock())
-
-        with pytest.raises(ToolError, match="'g2' isn't a goal"):
-            server.set_goal_description("g2", "x")
-
-
-class TestGetGoalDigest:
-    def test_digests_the_goals_events_with_what_matters_and_its_timeline(self, monkeypatch):
-        _fake_goals(monkeypatch, _goal("g1", name="Person"), _goal("g2", name="Other"))
-        client = _fake_client(monkeypatch)
-        client.get_time_zone.return_value = timezone.utc
-        now = datetime.now(timezone.utc)
-        client.list_events.return_value = [
-            _event(id="a", goal_ids=["g1"], start=now - timedelta(days=3), end=now - timedelta(days=3, hours=-1),
-                   facets=Facets(activity="dinner")),
-            _event(id="b", goal_ids=["g2"], start=now - timedelta(days=2), end=now - timedelta(days=2, hours=-1),
-                   facets=Facets(for_goal_ids=["g1"], activity="baking")),
-            _event(id="c", goal_ids=["g2"], start=now - timedelta(days=1), end=now - timedelta(days=1, hours=-1)),
-        ]
-        details = MagicMock()
-        details.get.return_value = "## What matters to them\n\n- 2026-10-01: likes tea"
-        monkeypatch.setattr(server, "get_goal_details", lambda: details)
-
-        digest = server.get_goal_digest("g1", window_days=30, include_events=True)
-
-        assert [(a.label, a.count) for a in digest.activities] == [("baking", 1), ("dinner", 1)]  # most recent first
-        assert digest.what_matters == "- 2026-10-01: likes tea"
-        assert [e.id for e in digest.events] == ["a", "b"]
-        assert digest.events[1].facets == Facets(for_goal_ids=["g1"], activity="baking")
-
-    def test_refuses_a_window_under_a_day(self, monkeypatch):
-        _fake_goals(monkeypatch, _goal("g1"))
-
-        with pytest.raises(ToolError, match="window_days"):
-            server.get_goal_digest("g1", window_days=0)
-
-
 class TestGetCompactionStatus:
     def test_reports_the_last_compaction_and_latest_compacted_note(self, monkeypatch):
         journal = MagicMock()
@@ -1376,23 +1105,14 @@ class TestMemoryTracking:
 
         assert labels == ["delete_event"]
 
-    @pytest.mark.parametrize(
-        "tool, args, method",
-        [
-            ("get_goals", (), "get_goals"),
-            ("create_goal", (Goal(name="Cooking"),), "create_goal"),
-            ("update_goal", (Goal(id="g1"),), "update_goal"),
-            ("sync_goals_from_sheet", (), "sync"),
-        ],
-    )
-    def test_goal_tools(self, monkeypatch, tool, args, method):
-        store = _fake_goals(monkeypatch)
-        getattr(store, method).return_value = GoalList(goals=[], label_slots_used=0)
+    def test_action_tools(self, monkeypatch):
+        monkeypatch.setattr(server, "get_action_store", lambda: MagicMock())
         labels = _tracked_labels(monkeypatch)
 
-        getattr(server, tool)(*args)
+        server.get_actions()
+        server.create_action(Action(name="Walk"))
 
-        assert labels == [tool]
+        assert labels == ["get_actions", "create_action"]
 
     def test_note(self, monkeypatch):
         _fake_noted_time_sheet(monkeypatch)
@@ -1474,15 +1194,15 @@ class TestPublicRecurrence:
             end=datetime(2026, 10, 5, 14, tzinfo=timezone.utc),
             time_zone="America/New_York",
             recurrence=["RRULE:FREQ=WEEKLY;BYDAY=MO"],
-            goal_ids=["g1"],
+            action_ids=["g1"],
         )
-        tree = GoalTree([Goal(id="g1", name="Work", status="active", label_id="l1")])
+        tree = ActionTree([Action(id="g1", name="Work", status="active", label_id="l1")], GroupTree([]))
 
         public = server.PublicRecurrence.from_event(series, tree)
 
         assert public.start.isoformat() == "2026-10-05T09:00:00-04:00"
         assert public.schedule == "Every week on Mon"
-        assert public.goal_names == ["Work"]
+        assert public.action_names == ["Work"]
         assert public.repeat == Repeat(every="week", weekdays=["mon"])
 
     def test_a_series_repeating_in_ways_repeat_cant_say_shows_its_rules_in_schedule(self):
@@ -1496,7 +1216,7 @@ class TestPublicRecurrence:
             recurrence=rules,
         )
 
-        public = server.PublicRecurrence.from_event(series, GoalTree([]))
+        public = server.PublicRecurrence.from_event(series, ActionTree([], GroupTree([])))
 
         assert public.repeat is None
         assert public.schedule == rules[0]
@@ -1505,7 +1225,7 @@ class TestPublicRecurrence:
         recurrences = MagicMock()
         recurrences.update.return_value = []
         monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
-        monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
+        monkeypatch.setattr(server, "_check_action_ids", lambda *args, **kwargs: None)
         repeat = Repeat(every="day", count=5)
 
         server.update_recurrence(server.PublicRecurrence(id="s1", repeat=repeat), "s1_x")
@@ -1517,7 +1237,7 @@ class TestPublicRecurrence:
         recurrences = MagicMock()
         recurrences.update.side_effect = ValueError("Give count or until, not both")
         monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
-        monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
+        monkeypatch.setattr(server, "_check_action_ids", lambda *args, **kwargs: None)
 
         with pytest.raises(ToolError, match="count or until"):
             server.update_recurrence(
@@ -1528,7 +1248,7 @@ class TestPublicRecurrence:
         recurrences = MagicMock()
         recurrences.update.return_value = []
         monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
-        monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
+        monkeypatch.setattr(server, "_check_action_ids", lambda *args, **kwargs: None)
 
         server.update_recurrence(server.PublicRecurrence(id="s1"), "s1_x", clear_fields=["priority"])
 
@@ -1538,7 +1258,7 @@ class TestPublicRecurrence:
     def test_update_recurrence_refuses_a_bad_clear_before_splitting(self, monkeypatch):
         recurrences = MagicMock()
         monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
-        monkeypatch.setattr(server, "_check_goal_ids", lambda *args, **kwargs: None)
+        monkeypatch.setattr(server, "_check_action_ids", lambda *args, **kwargs: None)
 
         with pytest.raises(ToolError, match="Can't both set and clear"):
             server.update_recurrence(server.PublicRecurrence(id="s1", priority=1), "s1_x", clear_fields=["priority"])
@@ -1574,7 +1294,7 @@ class TestDeleteRecurrence:
             recurrence=["RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T125959Z"],
         )
         monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
-        monkeypatch.setattr(server, "get_goal_store", lambda: MagicMock(tree=lambda: GoalTree([])))
+
 
         (left,) = server.delete_recurrence("s1", "s1_x")
 
@@ -1591,57 +1311,54 @@ class TestDeleteRecurrence:
 
 
 class TestSetTimeZone:
+    def _fake_marker(self, monkeypatch) -> MagicMock:
+        marker = MagicMock()
+        monkeypatch.setattr(server, "CompactionMarker", lambda client: marker)
+        return marker
+
     def test_sets_both_calendars_time_zones(self, monkeypatch):
         client = _fake_client(monkeypatch)
         client.set_time_zone.return_value = ZoneInfo("America/New_York")
-        health = _fake_goal_health(monkeypatch)
+        marker = self._fake_marker(monkeypatch)
 
         assert server.set_time_zone("America/New_York") == "America/New_York"
 
         client.set_time_zone.assert_called_once_with("America/New_York")
-        health.health_calendar.assert_called_once_with(create=False)
-        health.health_calendar.return_value.set_time_zone.assert_called_once_with("America/New_York")
+        marker.calendar.assert_called_once_with(create=False)
+        marker.calendar.return_value.set_time_zone.assert_called_once_with("America/New_York")
 
-    def test_without_a_goal_health_calendar_sets_only_the_main_one(self, monkeypatch):
+    def test_without_a_compactions_calendar_sets_only_the_main_one(self, monkeypatch):
         client = _fake_client(monkeypatch)
         client.set_time_zone.return_value = ZoneInfo("America/New_York")
-        _fake_goal_health(monkeypatch).health_calendar.return_value = None
+        self._fake_marker(monkeypatch).calendar.return_value = None
 
         assert server.set_time_zone("America/New_York") == "America/New_York"
 
     def test_reports_a_bad_name_as_a_tool_error(self, monkeypatch):
         _fake_client(monkeypatch).set_time_zone.side_effect = ValueError("'Nowhere' isn't a time zone")
-        health = _fake_goal_health(monkeypatch)
+        marker = self._fake_marker(monkeypatch)
 
         with pytest.raises(ToolError, match="isn't a time zone"):
             server.set_time_zone("Nowhere")
 
-        health.health_calendar.assert_not_called()
+        marker.calendar.assert_not_called()
 
     def test_any_tool_without_one_asks_for_it_to_be_set_then_retried(self, monkeypatch):
-        reflections = MagicMock()
-        reflections.prepare.side_effect = TimeZoneNotSetError("no time zone")
-        monkeypatch.setattr(server, "get_reflections", lambda: reflections)
+        compactor = MagicMock()
+        compactor.prepare.side_effect = TimeZoneNotSetError("no time zone")
+        monkeypatch.setattr(server, "get_note_compactor", lambda: compactor)
 
-        with pytest.raises(ToolError, match="Call set_time_zone .* then call prepare_reflection again"):
-            server.prepare_reflection(date(2026, 9, 20))
+        with pytest.raises(ToolError, match="Call set_time_zone .* then call prepare_compaction again"):
+            server.prepare_compaction()
 
 
 _READ_ONLY_TOOLS = {
     "list_events",
     "get_event",
     "get_recurrence",
-    "get_goals",
-    "measure_goals",
-    "get_goal_history",
-    "prepare_reflection",
     "get_compaction_status",
     "get_notes",
     "get_traits",
-    "get_goal_description",
-    "get_goal_digest",
-    "get_trait_history",
-    "explain_traits",
     "get_actions",
     "get_action",
     "get_action_groups",

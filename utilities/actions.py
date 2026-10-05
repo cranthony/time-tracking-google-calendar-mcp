@@ -8,7 +8,7 @@ spreadsheet (utilities/calendar_metadata_sheet.py), one row per action,
 read by header name (utilities/row_sheet.py), so it can be edited by
 hand.
 
-**Labels.** Like goals (utilities/goals.py), each action reserves one of
+**Labels.** Each action reserves one of
 the calendar's event label ids when it's created, and holds that label --
 its name and color shown on the calendar -- while it's in play:
 
@@ -20,7 +20,7 @@ its name and color shown on the calendar -- while it's in play:
   back under the same id if they're made active again.
 
 Labels that aren't any action's (Calendar's own unnamed ones, and any
-other app's or goal's) are always left alone, and count against the
+other app's, or the goals' that actions replaced) are always left alone, and count against the
 calendar's room. An action without its own color or priority takes its
 nearest group's, so changing a group's recolors its actions' labels.
 """
@@ -33,7 +33,7 @@ from collections.abc import Collection
 from dataclasses import astuple, dataclass, fields, replace
 from typing import Literal
 
-from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel, color_for_priority
+from calendar_clients.google_calendar import CalendarClient, EventLabel as RawEventLabel
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 from utilities.action_groups import (
@@ -68,8 +68,8 @@ MAX_NAME_LENGTH = 50
 
 _LABEL_ID_NAMESPACE = uuid.UUID("8f0d3c52-41b7-4a8e-9d0a-6c1e2b7f4a93")
 """For deriving a new action's label id from its id (labels need a UUID;
-action ids are short). Not goals' namespace, so an action can't get a
-goal's label id."""
+action ids are short). Not the namespace goals' labels used, so an
+action can't get one of theirs."""
 
 
 CLEARABLE_FIELDS = frozenset({"group_id", "background_color", "priority", "note"})
@@ -195,6 +195,42 @@ class DeletedActionGroup(ActionGroupChanges):
     """The group as it was."""
 
 
+class ActionTree:
+    """Read-only lookups over one snapshot of the actions and their
+    groups: what events need of them."""
+
+    def __init__(self, actions: list[Action], groups: GroupTree) -> None:
+        self.actions = actions
+        self.groups = groups
+        self.by_id = {a.id: a for a in actions if a.id}
+        self._by_label = {a.label_id: a for a in actions if a.label_id}
+
+    def priority(self, action_id: str) -> int | None:
+        """The action's priority, or its nearest group's; `None` for an
+        unknown action, or one without any."""
+        action = self.by_id.get(action_id)
+        return self.groups.priority(action) if action is not None else None
+
+    def name(self, action_id: str) -> str:
+        action = self.by_id.get(action_id)
+        return action.name or action_id if action is not None else f"(unknown action {action_id})"
+
+    def action_for_label(self, label_id: str | None) -> Action | None:
+        return self._by_label.get(label_id) if label_id else None
+
+    def check_action_ids(self, action_ids: Collection[str], *, already: Collection[str] = ()) -> None:
+        """Raise ValueError naming any id that isn't an action, with the
+        closest matches as suggestions, or that gives an event a deleted
+        action -- unless it's in `already`, the actions the event has now."""
+        deleted = [i for i in action_ids if i in self.by_id and self.by_id[i].status == "deleted" and i not in already]
+        if deleted:
+            names = ", ".join(f"{i} ({self.by_id[i].name})" for i in deleted)
+            raise ValueError(f"Deleted actions can't be given to an event: {names}")
+        unknown = [i for i in action_ids if i not in self.by_id]
+        if unknown:
+            raise ValueError("; ".join(_unknown(self.actions, i) for i in unknown))
+
+
 class Actions:
     """A calendar's actions and action groups, kept in sync with its event
     labels -- see the module docstring."""
@@ -229,6 +265,10 @@ class Actions:
         )
 
     @property
+    def spreadsheet_id(self) -> str:
+        return self._sheet.spreadsheet_id
+
+    @property
     def whole_tabs(self) -> list[TabRange]:
         """Both tabs, for `SheetsClient.prefetch`."""
         return [self._sheet.whole_tab, self._group_sheet.whole_tab]
@@ -239,12 +279,20 @@ class Actions:
     # -- reading ------------------------------------------------------------
 
     def all(self) -> list[Action]:
-        """Every action, in sheet order."""
+        """Every action, in sheet order. (Both tabs are read together, in
+        one request, inside `cached_sheet_reads`: anything reading one
+        reads the other.)"""
+        self.prefetch(self.whole_tabs)
         return self._sheet.read()
 
     def groups(self) -> GroupTree:
         """Every group."""
+        self.prefetch(self.whole_tabs)
         return GroupTree(self._group_sheet.read())
+
+    def tree(self) -> ActionTree:
+        """Every action and group, as they are in the sheet now."""
+        return ActionTree(self.all(), self.groups())
 
     def get_actions(self, statuses: Collection[str] | None = None) -> ActionList:
         """The actions with any of `statuses` (by default DEFAULT_STATUSES)."""

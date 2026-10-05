@@ -22,7 +22,7 @@ from utilities.reallocation import ReallocationOptions, reallocate_for_new_event
 
 class _EventCalendar(Protocol):
     """The subset of `CalendarClient`'s interface `ReallocatingCalendar`
-    actually needs -- so `utilities/goal_calendar.py`'s `GoalCalendar`
+    actually needs -- so `utilities/action_calendar.py`'s `ActionCalendar`
     (or any other `CalendarClient`-shaped wrapper)
     can stand in for a plain `CalendarClient` without `ReallocatingCalendar`
     needing to know the difference."""
@@ -35,7 +35,7 @@ class _EventCalendar(Protocol):
 
 
 class ReallocatingCalendar:
-    """Wraps a `CalendarClient` (or `GoalCalendar`) with
+    """Wraps a `CalendarClient` (or `ActionCalendar`) with
     reallocation-aware `create_event`/`update_event` -- see the module
     docstring."""
 

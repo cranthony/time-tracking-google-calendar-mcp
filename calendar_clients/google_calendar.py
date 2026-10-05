@@ -12,7 +12,7 @@ from googleapiclient.errors import HttpError
 
 from calendar_clients.google_auth import build_service, load_credentials
 from calendar_clients.write_lock import requires_write_lock
-from utilities.facets import Facets
+from utilities.facts import Facts
 
 _APP_EXTENDED_PROPERTY_KEY_PREFIX = "cascading-time-tracker-"
 """Prefix for the extendedProperties.private keys this app uses to store its
@@ -32,7 +32,7 @@ whatever human-readable description surrounds it."""
 MAX_DESCRIPTION_BYTES = 8192
 """The longest event description Calendar keeps: anything longer is
 silently cut to this length, with no error (found empirically -- see
-probes/label_lifecycle.py and docs/goals-design.md section 6.2). Measured
+probes/label_lifecycle.py). Measured
 there with ASCII, so whether the limit counts characters or bytes is
 unknown; treating it as UTF-8 bytes is the safe reading."""
 
@@ -69,8 +69,8 @@ def color_for_priority(priority: int | None) -> tuple[str | None, str]:
     event label. The default calendar color isn't queryable by the API,
     unfortunately, so we hack it and hard-code it here.
 
-    Public (not prefixed with `_`) so that `utilities/goals.py` can use
-    it to derive a goal's label color from its priority -- something this
+    Public (not prefixed with `_`) so that `utilities/actions.py` can use
+    it to derive an action's label color from its priority -- something this
     module itself has no reason to do, since `EventLabel` here has no
     `priority` field (see its docstring)."""
     if priority is None:
@@ -107,13 +107,19 @@ def _event_label_version_kwargs(body: dict) -> dict:
 
 
 CLEARABLE_EVENT_FIELDS = frozenset(
-    {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facets"}
+    {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facts"}
 )
 """Event fields an update can remove (see `Event.cleared`). Not summary,
-start or end (an event always has them); not goal_ids, whose `[]`
-already means no goals, while removing them would leave the event's
-goals inferred from its label; nor what Google assigns or this app
+start or end (an event always has them); not action_ids, whose `[]`
+already means no actions, while removing them would leave the event's
+actions inferred from its label; nor what Google assigns or this app
 derives."""
+
+MAX_CHUNKS = 8
+"""The most extended properties one of an event's JSON fields (its facts)
+is split across: Calendar keeps at most 1024 characters a value."""
+
+_CHUNK_CHARS = 1024
 
 
 @dataclass(kw_only=True)
@@ -237,39 +243,38 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#eventLabelId
     for more information.
 
-    Derived from `goal_ids` whenever those are written (see `utilities/
-    goal_calendar.py`), never chosen directly by the agent."""
+    Derived from `action_ids` whenever those are written (see `utilities/
+    action_calendar.py`), never chosen directly by the agent."""
 
-    goal_ids: list[str] | None = None
-    """The ids of the goals this event serves (see `utilities/goals.py`),
-    primary goal first. Stored as a space-separated private extended
-    property. `None` means unknown or unchanged (an event written before
-    goals existed, or a partial update that doesn't touch them); `[]`
-    means no goals."""
+    action_ids: list[str] | None = None
+    """The ids of the actions done at this event (see `utilities/
+    actions.py`), the first setting its label and color. Stored as a
+    space-separated private extended property. `None` means unknown or
+    unchanged (an event never given actions, or a partial update that
+    doesn't touch them); `[]` means none."""
 
-    facets: Facets | None = None
-    """What happened at it, for its goals' traits -- who it was with and
-    for, what and where, and judgments of it (see utilities/facets.py).
-    Stored as JSON in one private extended property. `None` means none,
-    or unchanged in a partial update; a write replaces them whole, and
-    empty facets remove them."""
+    facts: Facts | None = None
+    """What compaction established about it -- where, who with, who for,
+    and notes on each person there (see utilities/facts.py). Stored as
+    JSON in private extended properties (split across several when it's
+    long: see MAX_CHUNKS). `None` means none, or unchanged in a partial
+    update; a write replaces them whole, and empty facts remove them."""
 
-    goal_priority: int | None = None
-    """The priority this event inherits from its goals -- the highest
-    (lowest-numbered) of each goal's own, or its nearest ancestor's -- if
-    any. Filled in on read by `utilities/goal_calendar.py`, never by
-    `from_api`, and never sent to
-    the API (see `to_api_body`). Kept apart from `priority`, which is only
-    ever the event's own, so writing an event back never copies its
-    goal's priority onto it. Read `effective_priority` for the value that
-    actually applies."""
+    action_priority: int | None = None
+    """The priority this event inherits from its actions -- the highest
+    (lowest-numbered) of each action's own, or its nearest group's -- if
+    any. Filled in on read by `utilities/action_calendar.py`, never by
+    `from_api`, and never sent to the API (see `to_api_body`). Kept apart
+    from `priority`, which is only ever the event's own, so writing an
+    event back never copies its actions' priority onto it. Read
+    `effective_priority` for the value that actually applies."""
 
-    goals_from_label: bool = False
-    """Whether `goal_ids` were inferred from the event's label, on read, for
-    an event that was never given goals (see `utilities/goal_calendar.py`),
-    rather than stored on it. Such goal_ids are never sent to the API (see
-    `to_api_body`), so writing an event back never turns the inference into
-    a stored tag; only goal_ids set with this false are stored."""
+    actions_from_label: bool = False
+    """Whether `action_ids` were inferred from the event's label, on read,
+    for an event that was never given actions (see `utilities/
+    action_calendar.py`), rather than stored on it. Such action_ids are
+    never sent to the API (see `to_api_body`), so writing an event back
+    never turns the inference into a stored tag."""
 
     cleared: frozenset[str] = frozenset()
     """For an update: fields to remove from the event, each one of
@@ -289,8 +294,8 @@ class Event:
 
     @property
     def effective_priority(self) -> int | None:
-        """`priority`, falling back to `goal_priority` when unset."""
-        return self.priority if self.priority is not None else self.goal_priority
+        """`priority`, falling back to `action_priority` when unset."""
+        return self.priority if self.priority is not None else self.action_priority
 
     @classmethod
     def from_api(cls, data: dict) -> "Event":
@@ -303,10 +308,12 @@ class Event:
                 "is_fixed_time": lambda s: s.lower() == "true",
                 "priority": int,
                 "is_end_of_day_sleep": lambda s: s.lower() == "true",
-                "goal_ids": str.split,
-                "facets": Facets.from_json,
+                "action_ids": str.split,
             },
         )
+        facts = _read_chunks(private_properties, "facts")
+        if facts is not None:
+            app_properties["facts"] = Facts.from_json(facts)
         # A cancelled instance of a recurring series may come back with
         # only its original start: it's then taken to be zero-length there.
         start_data = data.get("start") or data["originalStartTime"]
@@ -363,8 +370,8 @@ class Event:
             # should mean "leave the color the same".
             body["colorId"] = _color_id_for_priority(self.priority)
         # recurring_event_id and original_start are deliberately never
-        # sent: they're assigned by Google, not something a client sets. Nor is goal_priority:
-        # it belongs to the goals, not the event.
+        # sent: they're assigned by Google, not something a client sets. Nor is action_priority:
+        # it belongs to the actions, not the event.
 
         private_properties: dict[str, str | None] = _format_properties(
             self,
@@ -374,19 +381,22 @@ class Event:
                 "is_fixed_time": lambda b: "true" if b else "false",
                 "priority": str,
                 "is_end_of_day_sleep": lambda b: "true" if b else "false",
-                "goal_ids": " ".join,
-                # Empty facets remove them, rather than keep "{}".
-                "facets": lambda f: None if f.is_empty() else f.to_json(),
+                "action_ids": " ".join,
             },
         )
-        if self.goals_from_label:
-            # Inferred, not the event's own: see goals_from_label.
-            private_properties.pop(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}goal_ids", None)
+        if self.facts is not None:
+            # Empty facts remove them, rather than keep "{}".
+            private_properties.update(_write_chunks("facts", None if self.facts.is_empty() else self.facts.to_json()))
+        if self.actions_from_label:
+            # Inferred, not the event's own: see actions_from_label.
+            private_properties.pop(f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}action_ids", None)
         # A patch removes whatever it sets to null: a top-level field, or a
         # key of extendedProperties.private (the rest of which it keeps).
         for name in self.cleared:
             if name in ("description", "location"):
                 body[name] = None
+            elif name == "facts":
+                private_properties.update(_write_chunks("facts", None))
             else:
                 private_properties[f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{name}"] = None
         if "priority" in self.cleared:
@@ -463,11 +473,12 @@ class EventLabel:
 
     Google Calendar itself has no concept of a label's priority -- there's
     no such field on the API's label resource, so this class has no
-    `priority` field either. Labels are managed through goals
-    (`utilities/goals.py`): each active goal owns one, with its priority
-    and everything else kept in the goals tab of a synced Google Sheet.
+    `priority` field either. Labels are managed through actions
+    (`utilities/actions.py`): each action in play holds one, with its
+    priority and everything else kept in the Actions tab of a synced
+    Google Sheet.
     This class is for direct, raw access (the CLI's `raw_label`-prefixed
-    commands, and `Goals`' own syncing).
+    commands, and `Actions`' own syncing).
     """
 
     id: str | None = None
@@ -522,6 +533,38 @@ def _format_datetime(value: datetime, time_zone: str | None = None) -> dict:
     if time_zone is not None:
         formatted["timeZone"] = time_zone
     return formatted
+
+
+def _chunk_key(name: str, index: int) -> str:
+    """The private property holding chunk `index` of a JSON field: the
+    field's own key for the first, then "name-2", "name-3"..."""
+    return f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{name}" + (f"-{index + 1}" if index else "")
+
+
+def _read_chunks(private_properties: dict[str, str], name: str) -> str | None:
+    """A JSON field split across private properties by `_write_chunks`,
+    joined; `None` if it has none."""
+    first = private_properties.get(_chunk_key(name, 0))
+    if first is None:
+        return None
+    parts = [first]
+    for index in range(1, MAX_CHUNKS):
+        part = private_properties.get(_chunk_key(name, index))
+        if part is None:
+            break
+        parts.append(part)
+    return "".join(parts)
+
+
+def _write_chunks(name: str, text: str | None) -> dict[str, str | None]:
+    """`text` split across private properties of at most 1024 characters
+    each, and every chunk it doesn't need set to null (a patch removes
+    those), so a shorter value never leaves a longer one's tail behind.
+    `None` removes the field."""
+    if text is not None and len(text) > MAX_CHUNKS * _CHUNK_CHARS:
+        raise ValueError(f"{name} are longer than {MAX_CHUNKS * _CHUNK_CHARS} characters")
+    chunks = [text[i : i + _CHUNK_CHARS] for i in range(0, len(text), _CHUNK_CHARS)] if text else []
+    return {_chunk_key(name, i): chunks[i] if i < len(chunks) else None for i in range(MAX_CHUNKS)}
 
 
 def _parse_properties(
@@ -797,6 +840,11 @@ class CalendarClient:
         body = event.to_api_body()
         if event.id:
             body["id"] = event.id
+        # A null private property removes it in a patch, but an insert
+        # refuses one ("Required") -- and there's nothing to remove yet.
+        private = body.get("extendedProperties", {}).get("private")
+        if private is not None:
+            body["extendedProperties"]["private"] = {k: v for k, v in private.items() if v is not None}
         response = (
             self._service.events()
             .insert(calendarId=self._calendar_id, body=body, **_event_label_version_kwargs(body))
@@ -815,7 +863,7 @@ class CalendarClient:
         reaches every instance, including ones edited on their own
         (exceptions), whose fields other than their times are all reset
         to the master's -- even fields the patch doesn't set, such as an
-        instance's own priority, goal_ids or description. A patch with
+        instance's own priority, action_ids or description. A patch with
         `start`/`end` resets the exceptions' times too, moving every
         instance onto the series' times. Found with
         probes/series_edits.py."""
@@ -933,7 +981,7 @@ class CalendarClient:
         calendar's etag exactly like create/update/delete_event_label, so
         a concurrent change raises `EventLabelConflictError`.
 
-        Used by `utilities/goals.py` to sync labels from the goals tab,
+        Used by `utilities/actions.py` to sync labels from the Actions tab,
         which is the source of truth for the whole set."""
         updated = self._patch_event_labels(etag, [label.to_api_body() for label in labels])
         return updated

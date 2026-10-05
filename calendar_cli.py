@@ -13,10 +13,9 @@ Usage:
     python calendar_cli.py create_raw_label key=value [key=value ...]
     python calendar_cli.py update_raw_label <label_id> key=value [key=value ...]
     python calendar_cli.py delete_raw_label <label_id>
-    python calendar_cli.py list_goals [--status status ...] [--all]
-    python calendar_cli.py create_goal key=value [key=value ...]
-    python calendar_cli.py update_goal <goal_id> [key=value ...] [--clear attribute ...]
-    python calendar_cli.py sync_goals
+    python calendar_cli.py list_actions [--status status ...] [--all]
+    python calendar_cli.py create_action key=value [key=value ...]
+    python calendar_cli.py update_action <action_id> [key=value ...] [--clear attribute ...]
     python calendar_cli.py note <ago> [description]
     python calendar_cli.py get_notes
     python calendar_cli.py edit_note <note_id> [--ago <ago> | --at <time>] [--description <text>]
@@ -28,11 +27,11 @@ Usage:
 - `get` shows a single event by its id.
 - `update_properties` sets the given attributes on the event and patches
   them in, without fetching it first — any attribute not given is left
-  untouched. `goal_ids` is comma-separated (an empty value clears them);
-  setting it also sets the event's label from its goals (see
-  utilities/goal_calendar.py). `facets` is JSON as stored, e.g.
-  '{"with":["g7k2qp"],"activity":"dinner","effort":2}' (see
-  utilities/facets.py), and replaces the event's facets whole.
+  untouched. `action_ids` is comma-separated (an empty value clears them);
+  setting it also sets the event's label from its first action (see
+  utilities/action_calendar.py). `facts` is JSON as stored, e.g.
+  '{"location":"l7k2qp","with":["p3x9aa"],"notes":{"self":"tired"}}' (see
+  utilities/facts.py), and replaces the event's facts whole.
 - `update` moves/resizes an existing event (at least one of `start`/`end`
   is required; whichever is omitted is kept as the event's current
   value) via ReallocatingCalendar.update_event, reallocating time from
@@ -58,21 +57,17 @@ Usage:
   so `create_raw_label`/`update_raw_label` take only
   `background_color=value`/`name=value` pairs, and `background_color` is
   required for `create_raw_label`. Labels are normally managed through
-  goals (below), which own one label each while active -- a raw label
-  that isn't an active goal's is removed the next time goals sync.
-- `list_goals`/`create_goal`/`update_goal`/`sync_goals` manage this
-  calendar's goals (`utilities/goals.py`'s `Goals`), stored in the Goals
-  tab of its metadata spreadsheet (migrated from its event labels the
-  first time any of them runs). Each prints the resulting goals, one per
-  line: id, status, and path. `list_goals` shows the proposed, active and
-  inactive ones (`--status` to pick others, repeatable; `--all` for every
-  status) without changing anything.
-  `create_goal` needs `name=...`; `update_goal` sets whichever
-  attributes are given and blanks any named with `--clear`.
-  `status=inactive` (or completed, archived, deleted, proposed) frees the
-  goal's label but keeps its history; `status=active` restores it.
-  `sync_goals` applies hand edits to the Goals tab to the calendar's
-  labels. `measure` is JSON (e.g. `measure={"kind":"duration"}`). See docs/goals-design.md.
+  actions (below), which hold one label each while in play; a raw label
+  that isn't an action's is left alone.
+- `list_actions`/`create_action`/`update_action` manage this calendar's
+  actions (`utilities/actions.py`'s `Actions`), stored in the Actions tab
+  of its metadata spreadsheet. Each prints the resulting actions, one per
+  line: id, status, and path. `list_actions` shows the proposed and
+  active ones (`--status` to pick others, repeatable; `--all` for every
+  status) without changing anything. `create_action` needs `name=...`;
+  `update_action` sets whichever attributes are given and blanks any
+  named with `--clear`. `status=archived` (or deleted) frees the
+  action's label; `status=active` restores it.
 - `note` records a new uncompacted time note -- `ago` is required, and
   (like `list`'s `from`/`to` above) a pytimeparse duration (e.g. "1h",
   "90m", "0s" for right now) giving how long before *now* this note is
@@ -99,7 +94,6 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
-import json
 import sys
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
@@ -111,14 +105,13 @@ from calendar_clients.google_calendar import CalendarClient, Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from config import (
     build_calendar_client,
+    build_actions,
     build_compaction_journal,
-    build_goals,
     build_noted_time_sheet,
 )
-from utilities.facets import Facets
-from utilities.goal_calendar import GoalCalendar
-from utilities.goal_sheet import GOAL_STATUSES, Goal
-from utilities.goals import CLEARABLE_FIELDS, GoalChanges, GoalList
+from utilities.action_calendar import ActionCalendar
+from utilities.actions import ACTION_STATUSES, CLEARABLE_FIELDS, Action, ActionChanges, ActionList
+from utilities.facts import Facts
 from utilities.note_compaction import CompactionError
 from utilities.note_compactor import delete_note, edit_note
 from utilities.noted_time_sheet import NotedTime, SheetNote
@@ -147,8 +140,8 @@ def _parse_bool(value: str) -> bool:
 
 
 def _parse_status(value: str) -> str:
-    if value not in GOAL_STATUSES:
-        raise ValueError(f"expected one of {', '.join(GOAL_STATUSES)}")
+    if value not in ACTION_STATUSES:
+        raise ValueError(f"expected one of {', '.join(ACTION_STATUSES)}")
     return value
 
 
@@ -163,8 +156,8 @@ def _parse_iso_datetime(value: str) -> datetime:
 # Every Event attribute that update_properties may set, other than `id`
 # (changing id would repoint the patch at a different event) and
 # `recurring_event_id` (assigned by Google, never sent to the API -- setting
-# it here would silently have no effect) or `goal_priority` (the event's
-# goals', never sent to the API either), mapped to a function parsing its
+# it here would silently have no effect) or `action_priority` (the event's
+# actions', never sent to the API either), mapped to a function parsing its
 # command-line string value into the right type.
 _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "summary": str,
@@ -179,16 +172,16 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "priority": int,
     "is_end_of_day_sleep": _parse_bool,
     "event_label_id": str,
-    "goal_ids": lambda s: [goal_id.strip() for goal_id in s.split(",") if goal_id.strip()],
-    "facets": lambda s: _parse_facets(s),
+    "action_ids": lambda s: [action_id.strip() for action_id in s.split(",") if action_id.strip()],
+    "facts": lambda s: _parse_facts(s),
 }
 
 
-def _parse_facets(value: str) -> Facets:
-    facets = Facets.from_json(value)
-    if facets is None:
-        raise ValueError(f"facets must be a JSON object, e.g. '{{\"activity\":\"dinner\"}}', not {value!r}")
-    return facets.normalized()
+def _parse_facts(value: str) -> Facts:
+    facts = Facts.from_json(value)
+    if facts is None:
+        raise ValueError(f"facts must be a JSON object, e.g. '{{\"with\":[\"p3x9aa\"]}}', not {value!r}")
+    return facts.normalized()
 
 
 _REQUIRED_CREATE_ATTRIBUTES = frozenset({"summary", "start", "end"})
@@ -212,17 +205,16 @@ requires background_color (enforced by CalendarClient.create_event_label
 itself, not here)."""
 
 
-_GOAL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
-    "parent_id": str,
+_ACTION_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
+    "group_id": str,
     "name": str,
     "status": _parse_status,
     "background_color": str,
     "priority": int,
-    "measure": json.loads,
     "note": str,
 }
-"""Every utilities.goal_sheet.Goal attribute create_goal/update_goal may
-set, mapped to a function parsing its command-line string value."""
+"""Every utilities.actions.Action attribute create_action/update_action
+may set, mapped to a function parsing its command-line string value."""
 
 
 def _parse_key_value_pair(
@@ -232,7 +224,7 @@ def _parse_key_value_pair(
     parsed value), looking `key` up in `attribute_parsers` to find how to
     parse `value` -- the shared logic behind `_parse_event_key_value`
     (Event attributes), `_parse_raw_label_key_value` (raw EventLabel
-    attributes), and `_parse_goal_key_value` (Goal attributes)."""
+    attributes), and `_parse_action_key_value` (Action attributes)."""
     if "=" not in value:
         raise argparse.ArgumentTypeError(f"expected key=value, got {value!r}")
     key, raw_value = value.split("=", 1)
@@ -258,10 +250,10 @@ def _parse_raw_label_key_value(value: str) -> tuple[str, Any]:
     return _parse_key_value_pair(value, _RAW_LABEL_ATTRIBUTE_PARSERS)
 
 
-def _parse_goal_key_value(value: str) -> tuple[str, Any]:
-    """Parse a "key=value" command-line argument into (Goal attribute
+def _parse_action_key_value(value: str) -> tuple[str, Any]:
+    """Parse a "key=value" command-line argument into (Action attribute
     name, parsed value), for use as an argparse `type`."""
-    return _parse_key_value_pair(value, _GOAL_ATTRIBUTE_PARSERS)
+    return _parse_key_value_pair(value, _ACTION_ATTRIBUTE_PARSERS)
 
 
 def resolve_window(
@@ -301,23 +293,19 @@ def _format_raw_event_label_line(label: RawEventLabel) -> str:
     return f"{label.id}\t{label.background_color}\t{label.name or ''}"
 
 
-def _print_goals(goal_list: GoalList) -> None:
-    if not goal_list.goals:
-        print("No goals found.")
-    for goal in goal_list.goals:
-        print(f"{goal.id}\t{goal.status}\t{goal.path}")
-    print(f"({goal_list.label_slots_used} of {goal_list.label_slots_total} event labels in use)")
+def _print_actions(action_list: ActionList) -> None:
+    if not action_list.actions:
+        print("No actions found.")
+    for action in action_list.actions:
+        print(f"{action.id}\t{action.status}\t{action.path}")
+    print(f"({action_list.label_slots_used} of {action_list.label_slots_total} event labels in use)")
 
 
-def _print_goal_changes(changes: GoalChanges) -> None:
+def _print_action_changes(changes: ActionChanges) -> None:
     if not changes.changed:
-        print("No goals changed.")
-    for goal in changes.changed:
-        print(f"{goal.id}\t{goal.status}\t{goal.path}")
-    if changes.affected:
-        print("Also affected:")
-    for goal in changes.affected:
-        print(f"{goal.id}\t{goal.status}\t{goal.path}")
+        print("No actions changed.")
+    for action in changes.changed:
+        print(f"{action.id}\t{action.status}\t{action.path}")
     print(f"({changes.label_slots_used} of {changes.label_slots_total} event labels in use)")
 
 
@@ -452,45 +440,43 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     delete_raw_label_parser.add_argument("label_id", help="The label id.")
 
-    list_goals_parser = subparsers.add_parser("list_goals", help="List this calendar's goals.")
-    list_goals_parser.add_argument(
+    list_actions_parser = subparsers.add_parser("list_actions", help="List this calendar's actions.")
+    list_actions_parser.add_argument(
         "--status",
         action="append",
-        choices=GOAL_STATUSES,
-        help="A status to list; repeat for several. Default: proposed, active and inactive.",
+        choices=ACTION_STATUSES,
+        help="A status to list; repeat for several. Default: proposed and active.",
     )
-    list_goals_parser.add_argument("--all", action="store_true", help="List goals of every status.")
+    list_actions_parser.add_argument("--all", action="store_true", help="List actions of every status.")
 
-    create_goal_parser = subparsers.add_parser("create_goal", help="Create a new goal.")
-    create_goal_parser.add_argument(
+    create_action_parser = subparsers.add_parser("create_action", help="Create a new action.")
+    create_action_parser.add_argument(
         "properties",
         metavar="key=value",
         nargs="+",
-        type=_parse_goal_key_value,
+        type=_parse_action_key_value,
         help=(
-            "Goal attribute=value pairs; name is required. Valid attributes: "
-            f"{', '.join(sorted(_GOAL_ATTRIBUTE_PARSERS))}."
+            "Action attribute=value pairs; name is required. Valid attributes: "
+            f"{', '.join(sorted(_ACTION_ATTRIBUTE_PARSERS))}."
         ),
     )
 
-    update_goal_parser = subparsers.add_parser("update_goal", help="Update any of a goal's properties.")
-    update_goal_parser.add_argument("goal_id", help="The goal id.")
-    update_goal_parser.add_argument(
+    update_action_parser = subparsers.add_parser("update_action", help="Update any of an action's properties.")
+    update_action_parser.add_argument("action_id", help="The action id.")
+    update_action_parser.add_argument(
         "properties",
         metavar="key=value",
         nargs="*",
-        type=_parse_goal_key_value,
-        help=f"Goal attribute=value pairs to set. Valid attributes: {', '.join(sorted(_GOAL_ATTRIBUTE_PARSERS))}.",
+        type=_parse_action_key_value,
+        help=f"Action attribute=value pairs to set. Valid attributes: {', '.join(sorted(_ACTION_ATTRIBUTE_PARSERS))}.",
     )
-    update_goal_parser.add_argument(
+    update_action_parser.add_argument(
         "--clear",
         action="append",
         default=[],
         choices=sorted(CLEARABLE_FIELDS),
         help="An attribute to blank; repeat for several.",
     )
-
-    subparsers.add_parser("sync_goals", help="Apply hand edits to the Goals tab to the calendar's labels.")
 
     note_parser = subparsers.add_parser("note", help="Record a new uncompacted time note.")
     note_parser.add_argument(
@@ -533,13 +519,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _build_reallocating_calendar(client: CalendarClient) -> ReallocatingCalendar:
-    """A ReallocatingCalendar wrapping client plus a GoalCalendar, so
-    reallocation sees an event's goal-derived priority as the fallback
+    """A ReallocatingCalendar wrapping client plus an ActionCalendar, so
+    reallocation sees an event's action-derived priority as the fallback
     whenever the event itself doesn't set one. Built lazily -- only
-    `update`/`create` below need it -- since constructing a Goals may
-    create (or migrate into) this calendar's goals tab on first use (see
-    utilities/goals.py)."""
-    return ReallocatingCalendar(GoalCalendar(client, build_goals()))
+    `update`/`create` below need it -- since constructing an Actions may
+    create this calendar's Actions tab on first use."""
+    return ReallocatingCalendar(ActionCalendar(client, build_actions()))
 
 
 def main() -> None:
@@ -561,8 +546,8 @@ def main() -> None:
         event = Event(id=args.id)
         for key, value in args.properties:
             setattr(event, key, value)
-        # Setting goals also sets the label they imply.
-        writer = GoalCalendar(client, build_goals()) if event.goal_ids is not None else client
+        # Setting actions also sets the label they imply.
+        writer = ActionCalendar(client, build_actions()) if event.action_ids is not None else client
         updated_event = writer.update_event(event)
         print(_format_event_details(updated_event))
     elif args.command == "update":
@@ -616,19 +601,17 @@ def main() -> None:
     elif args.command == "delete_raw_label":
         label = client.delete_event_label(args.label_id)
         print(f"Deleted event label {label.id}.")
-    elif args.command in ("list_goals", "create_goal", "update_goal", "sync_goals"):
+    elif args.command in ("list_actions", "create_action", "update_action"):
         try:
-            if args.command == "list_goals":
-                _print_goals(build_goals().get_goals(GOAL_STATUSES if args.all else args.status))
-            elif args.command == "create_goal":
-                _print_goal_changes(build_goals().create_goal(Goal(**dict(args.properties))))
-            elif args.command == "update_goal":
-                if not args.properties and not args.clear:
-                    parser.error("update_goal requires at least one key=value or --clear")
-                goal = Goal(id=args.goal_id, **dict(args.properties))
-                _print_goal_changes(build_goals().update_goal(goal, args.clear))
+            if args.command == "list_actions":
+                _print_actions(build_actions().get_actions(ACTION_STATUSES if args.all else args.status))
+            elif args.command == "create_action":
+                _print_action_changes(build_actions().create_action(Action(**dict(args.properties))))
             else:
-                _print_goal_changes(build_goals().sync())
+                if not args.properties and not args.clear:
+                    parser.error("update_action requires at least one key=value or --clear")
+                action = Action(id=args.action_id, **dict(args.properties))
+                _print_action_changes(build_actions().update_action(action, args.clear))
         except ValueError as exc:
             sys.exit(f"error: {exc}")
     elif args.command == "note":

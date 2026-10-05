@@ -7,9 +7,9 @@ import pytest
 from calendar_clients.google_calendar import CalendarClient, Event, EventLabel
 from tests.event_time_helpers import event_at, time_at
 from utilities import reallocating_calendar
-from utilities.goal_calendar import GoalCalendar
-from utilities.goal_sheet import Goal
-from utilities.goals import GoalTree
+from utilities.action_calendar import ActionCalendar
+from utilities.action_groups import GroupTree
+from utilities.actions import Action, ActionTree
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
 
@@ -276,23 +276,23 @@ class TestReallocatingCalendarCreateEvent:
         # out of the plan entirely -- not created, not updated.
         assert result == [preceding, new_event]
 
-    def test_never_writes_goal_derived_values_onto_the_events_it_touches(self):
-        # Both existing events get their priority only from their goals.
+    def test_never_writes_action_derived_values_onto_the_events_it_touches(self):
+        # Both existing events get their priority only from their actions.
         # Reallocation honors it -- the less important one shrinks, the
         # most important one stays put -- but only what reallocation itself
-        # changed is sent back, never the goal's priority.
+        # changed is sent back, never the action's priority.
         day = datetime(2026, 1, 1, tzinfo=UTC)
         prioritized = Event(
             id="p1",
             summary="Prioritized",
-            goal_ids=["gp"],
+            action_ids=["gp"],
             start=day + timedelta(hours=9),
             end=day + timedelta(hours=10),
         )
         fixed = Event(
             id="f1",
             summary="Fixed",
-            goal_ids=["gf"],
+            action_ids=["gf"],
             start=day + timedelta(hours=10),
             end=day + timedelta(hours=11),
         )
@@ -300,11 +300,14 @@ class TestReallocatingCalendarCreateEvent:
         client.list_events = MagicMock(return_value=[prioritized, fixed])
         client.create_event = MagicMock(side_effect=lambda event: event)
         client.update_event = MagicMock(side_effect=lambda event: event)
-        goals = MagicMock()
-        goals.tree.return_value = GoalTree([
-            Goal(id="gp", name="Prioritized", status="active", label_id="label-p", priority=3),
-            Goal(id="gf", name="Fixed", status="active", label_id="label-f", priority=0),
-        ])
+        actions = MagicMock()
+        actions.tree.return_value = ActionTree(
+            [
+                Action(id="gp", name="Prioritized", status="active", label_id="label-p", priority=3),
+                Action(id="gf", name="Fixed", status="active", label_id="label-f", priority=0),
+            ],
+            GroupTree([]),
+        )
 
         new_event = Event(
             summary="New",
@@ -312,7 +315,7 @@ class TestReallocatingCalendarCreateEvent:
             end=day + timedelta(hours=10),
             priority=1,
         )
-        ReallocatingCalendar(GoalCalendar(client, goals)).create_event(
+        ReallocatingCalendar(ActionCalendar(client, actions)).create_event(
             new_event, ReallocationOptions()
         )
 
@@ -324,8 +327,8 @@ class TestReallocatingCalendarCreateEvent:
         )
         body = written.to_api_body()
         assert "colorId" not in body
-        # Only its goals are written back -- never their priority.
-        assert body["extendedProperties"]["private"] == {"cascading-time-tracker-goal_ids": "gp"}
+        # Only its actions are written back -- never their priority.
+        assert body["extendedProperties"]["private"] == {"cascading-time-tracker-action_ids": "gp"}
 
 
 def _split_day(event_label_id: str) -> tuple[Event, Event]:

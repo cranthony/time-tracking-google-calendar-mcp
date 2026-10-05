@@ -1,6 +1,7 @@
 """Run the metadata spreadsheet's newer tabs end to end against Google:
 actions and action groups, with their labels on the calendar, and people
-and circles, and locations -- the tabs of row-per-item data (utilities/row_sheet.py).
+and circles, and locations -- the tabs of row-per-item data (utilities/row_sheet.py)
+-- and events' facts, split across private properties.
 
 It creates a throwaway calendar (this app's calendar.app.created scope
 allows that), which gets its own metadata spreadsheet, runs every step
@@ -16,17 +17,19 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timedelta, timezone
 
 from googleapiclient.discovery import build
 
 from calendar_clients.google_auth import load_credentials
-from calendar_clients.google_calendar import CalendarClient
+from calendar_clients.google_calendar import CalendarClient, Event
 from calendar_clients.google_sheets import SheetsClient
 from calendar_clients.write_lock import WRITE_LOCK
 from config import get_credentials_path, get_token_path
 from utilities import calendar_metadata_sheet
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action, Actions
+from utilities.facts import Facts
 from utilities.locations import Location, Locations
 from utilities.people import SELF_ID, Circle, People, Person
 
@@ -63,6 +66,7 @@ def _main() -> None:
         _probe_actions(calendar, sheets, spreadsheet_id)
         _probe_people(sheets, spreadsheet_id)
         _probe_locations(sheets, spreadsheet_id)
+        _probe_facts(calendar)
         print("\nAll steps passed.")
     finally:
         if args.keep:
@@ -151,6 +155,18 @@ def _probe_locations(sheets: SheetsClient, spreadsheet_id: str) -> None:
     _check("a location reads back by name", again.get_location("home").hint == "the apartment; 'my place'")
     again.delete_location(home)
     _check("deleting removes it", again.all() == [])
+
+
+def _probe_facts(calendar: CalendarClient) -> None:
+    print("\nFacts on an event")
+    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(hours=2)
+    long_facts = Facts(with_ids=["p1"], notes={"self": "x" * 900, "p1": "y" * 900})
+    created = calendar.create_event(Event(summary="Probe", start=start, end=start + timedelta(hours=1), facts=long_facts))
+    _check("long facts are split across properties and read back whole", calendar.get_event(created.id).facts == long_facts)
+    calendar.update_event(Event(id=created.id, facts=Facts(with_ids=["p1"])))
+    _check("shorter facts leave no tail behind", calendar.get_event(created.id).facts == Facts(with_ids=["p1"]))
+    calendar.update_event(Event(id=created.id, cleared=frozenset({"facts"})))
+    _check("clearing removes them", calendar.get_event(created.id).facts is None)
 
 
 if __name__ == "__main__":

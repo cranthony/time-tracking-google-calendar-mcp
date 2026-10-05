@@ -457,8 +457,8 @@ def person_traits_problems(spec: Any, trait_ids: Collection[str] | None = None) 
 
 
 def activity_label(text: str) -> str:
-    """An activity as facets keep it: trimmed, single-spaced, lowercase
-    (see utilities/facets.py)."""
+    """An activity label as it's compared: trimmed, single-spaced,
+    lowercase."""
     return " ".join(text.split()).casefold()
 
 
