@@ -1,6 +1,6 @@
 """Run the metadata spreadsheet's newer tabs end to end against Google:
 actions and action groups, with their labels on the calendar, and people
-and circles -- the tabs of row-per-item data (utilities/row_sheet.py).
+and circles, and locations -- the tabs of row-per-item data (utilities/row_sheet.py).
 
 It creates a throwaway calendar (this app's calendar.app.created scope
 allows that), which gets its own metadata spreadsheet, runs every step
@@ -27,6 +27,7 @@ from config import get_credentials_path, get_token_path
 from utilities import calendar_metadata_sheet
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action, Actions
+from utilities.locations import Location, Locations
 from utilities.people import SELF_ID, Circle, People, Person
 
 _SCRATCH_TITLE = "CTT tabs probe (safe to delete)"
@@ -61,6 +62,7 @@ def _main() -> None:
         print(f"Scratch spreadsheet: https://docs.google.com/spreadsheets/d/{spreadsheet_id}")
         _probe_actions(calendar, sheets, spreadsheet_id)
         _probe_people(sheets, spreadsheet_id)
+        _probe_locations(sheets, spreadsheet_id)
         print("\nAll steps passed.")
     finally:
         if args.keep:
@@ -138,6 +140,17 @@ def _probe_people(sheets: SheetsClient, spreadsheet_id: str) -> None:
         _check("a duplicate name and context is refused", "already a person" in str(exc), f"({exc})")
     again.delete_circle(family)
     _check("deleting a circle takes its people out", again.get_person(sam).circles is None)
+
+
+def _probe_locations(sheets: SheetsClient, spreadsheet_id: str) -> None:
+    print("\nLocations")
+    locations = Locations.ensure(sheets, spreadsheet_id)
+    home = locations.create_location(Location(name="Home", hint="the apartment")).created_id
+    locations.update_location(Location(id=home, hint="the apartment; 'my place'"))
+    again = Locations.ensure(sheets, spreadsheet_id)
+    _check("a location reads back by name", again.get_location("home").hint == "the apartment; 'my place'")
+    again.delete_location(home)
+    _check("deleting removes it", again.all() == [])
 
 
 if __name__ == "__main__":

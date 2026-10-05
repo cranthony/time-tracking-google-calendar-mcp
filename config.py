@@ -15,6 +15,7 @@ from utilities.actions import Actions
 from utilities.compaction_journal import CompactionJournal
 from utilities.goal_details import GoalDetails
 from utilities.goals import Goals
+from utilities.locations import Locations
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.people import People
 from utilities.traits import Traits
@@ -252,3 +253,15 @@ def build_people(calendar_id: str | None = None) -> People:
         calendar_client, sheets_client
     )
     return People.ensure(sheets_client, spreadsheet_id)
+
+
+def build_locations(calendar_id: str | None = None) -> Locations:
+    """Construct a Locations from environment configuration (and a local
+    .env file, if present). See `_build_calendar_and_sheets_clients` for
+    `calendar_id`. Constructing this ensures the calendar has a metadata
+    spreadsheet and a Locations tab -- see `Locations.ensure`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return Locations.ensure(sheets_client, spreadsheet_id)
