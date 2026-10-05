@@ -19,6 +19,15 @@ The plan names goals by id only, so keep it out of the repo:
                                       # question): just archived
         }
       },
+      "adjust": {
+        "<person goal id>": {
+          "continuity_days": 1,       # instead of the shortest cadence
+          "cadences": [               # more cadences, not from a sub-goal
+            {"activity": "dinner", "interval_days": 7}
+          ]
+        }
+      },
+      "switch_series": true,
       "backfill_days": 365
     }
 
@@ -28,9 +37,10 @@ For each person:
   [...]}}`: continuity (the last event with them within, and the next
   within, the shortest of their cadences' days), follow-through, and a
   count part for each cadence sub-goal with a count measure (its target,
-  interval and zero-at, and the activity). A person goal that has a count
-  measure of its own (and no sub-goals) keeps it as a cadence of any
-  event.
+  interval and zero-at, and the activity), plus any `adjust` cadences
+  (`target` 1 unless given). A person goal that has a count measure of
+  its own (and no cadences) keeps it as a cadence of any event. `adjust`'s
+  `continuity_days` sets the continuity window instead.
 - **Sub-goals** in the plan are archived, which keeps their history; their
   events still count toward the person, whose sub-goals they stay.
 - **Past events** (the last `backfill_days`) tagged with one of the
@@ -39,8 +49,10 @@ For each person:
   `{"with": [person], "activity": <its sub-goal's activity>}`.
 - **Future events** that aren't part of a recurring series are given the
   person instead of the sub-goal too. A recurring series tagged with one
-  is only listed: editing a series resets its events' own fields (see
-  update_recurrence), so change those by hand.
+  is only listed -- or, with `switch_series`, given the person from its
+  next event on ("this and following", see update_recurrence), which
+  leaves its past events as they are: editing a whole series would reset
+  their own fields.
 
 Nothing is written without --apply; the preview says what would be.
 Run it with the main checkout's credentials.
@@ -62,14 +74,18 @@ from utilities.facets import Facets
 from utilities.goal_calendar import GoalCalendar, fill_in_from_goals
 from utilities.goal_sheet import Goal
 from utilities.goals import Goals, GoalTree
+from utilities.recurrences import Recurrences
 from utilities.traits import activity_label
 
 DEFAULT_WITHIN_DAYS = 14
 
 
-def reliable_parts(person: Goal, cadences: dict[str, str | None | bool], tree: GoalTree) -> list[dict[str, Any]]:
-    """The person's own Reliable parts, from their cadence sub-goals (see
-    the module docstring)."""
+def reliable_parts(
+    person: Goal, cadences: dict[str, str | None | bool], tree: GoalTree, adjust: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """The person's own Reliable parts, from their cadence sub-goals and
+    `adjust` (see the module docstring)."""
+    adjust = adjust or {}
     counts = []
     for sub_goal_id, activity in cadences.items():
         if activity is False:
@@ -85,12 +101,19 @@ def reliable_parts(person: Goal, cadences: dict[str, str | None | bool], tree: G
         if isinstance(activity, str):
             part["activity"] = activity_label(activity)
         counts.append(part)
+    for extra in adjust.get("cadences", []):
+        part = {"kind": "count", "target": extra.get("target", 1), "interval_days": extra["interval_days"]}
+        if "zero_at_days" in extra:
+            part["zero_at_days"] = extra["zero_at_days"]
+        if extra.get("activity"):
+            part["activity"] = activity_label(extra["activity"])
+        counts.append(part)
     own = person.measure or {}
     if not counts and own.get("kind") == "count":
         counts.append(
             {"kind": "count", **{k: own[k] for k in ("target", "interval_days", "zero_at_days") if k in own}}
         )
-    shortest = min((p["interval_days"] for p in counts), default=DEFAULT_WITHIN_DAYS)
+    shortest = adjust.get("continuity_days") or min((p["interval_days"] for p in counts), default=DEFAULT_WITHIN_DAYS)
     return [
         {"kind": "continuity", "last_within_days": shortest, "next_within_days": shortest},
         {"kind": "follow_through"},
@@ -155,8 +178,13 @@ def main(argv: list[str] | None = None) -> int:
             print("Refused:", "; ".join(problems))
             return 1
 
+        adjusts = plan.get("adjust", {})
         measures = {
-            person: {"kind": "traits", "traits": "all", "parts": {"reliable": reliable_parts(tree.by_id[person], subs, tree)}}
+            person: {
+                "kind": "traits",
+                "traits": "all",
+                "parts": {"reliable": reliable_parts(tree.by_id[person], subs, tree, adjusts.get(person))},
+            }
             for person, subs in people.items()
         }
         now = datetime.now(client.get_time_zone())
@@ -174,11 +202,24 @@ def main(argv: list[str] | None = None) -> int:
         retagged = sum(1 for e, p in patches if p.goal_ids != e.goal_ids)
         print(f"\n{len(patches)} events to patch: {retagged} given the person instead of a sub-goal; "
               f"facets for {sum(given.values())} ({', '.join(f'{a} ×{n}' for a, n in given.most_common())})")
-        if by_hand:
-            series = {e.recurring_event_id: e for e in by_hand}
-            print(f"\nRecurring series tagged with a sub-goal, to change by hand ({len(series)}):")
-            for series_id, event in series.items():
-                print(f"  {series_id}: {event.summary!r}, tagged {', '.join(event.goal_ids or ())}")
+        # Each series' next event, and its goals from then on.
+        owner = {sub: person for person, subs in people.items() for sub in subs}
+        series: dict[str, tuple[Event, list[str]]] = {}
+        for event in sorted(by_hand, key=lambda e: e.start):
+            if event.recurring_event_id not in series:
+                retagged = list(dict.fromkeys(owner.get(g, g) for g in event.goal_ids or ()))
+                series[event.recurring_event_id] = (event, retagged)
+        switch = bool(plan.get("switch_series"))
+        if series:
+            print(
+                f"\nRecurring series tagged with a sub-goal ({len(series)}): "
+                + ("given the person from their next event on" if switch else "to change by hand")
+            )
+            for series_id, (event, retagged) in series.items():
+                print(
+                    f"  {series_id}: {event.summary!r} from {event.start:%Y-%m-%d}, "
+                    f"{', '.join(event.goal_ids or ())} -> {', '.join(retagged)}"
+                )
         if not args.apply:
             print("\nNothing written: run again with --apply to write it.")
             return 0
@@ -188,6 +229,10 @@ def main(argv: list[str] | None = None) -> int:
         writer = GoalCalendar(client, goals)
         for _, patch in patches:
             writer.update_event(patch)
+        if switch:
+            recurrences = Recurrences(writer, client.list_instances, client.get_time_zone)
+            for series_id, (event, retagged) in series.items():
+                recurrences.update(Event(id=series_id, goal_ids=retagged), starting_at=event.id)
         for subs in people.values():
             for sub in subs:
                 if goals.tree().by_id[sub].status != "archived":
