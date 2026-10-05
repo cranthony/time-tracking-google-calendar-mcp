@@ -30,6 +30,7 @@ from calendar_clients.google_calendar import Event
 from calendar_clients.google_sheets import SheetsClient
 from tests.fake_sheets import FakeSheets, FakeSheetsService
 from tests.test_goal_health import NOW, TODAY, YESTERDAY, FakeCalendar, _event
+from utilities.action_groups import ActionGroup
 from utilities.actions import Action
 from utilities.goal_health import Assessment
 from utilities.goal_sheet import Goal
@@ -81,7 +82,8 @@ class _Server:
         listed = server.create_goal(Goal(name="Cooking", measure={"kind": "subjective", "prompt": "How was it?"}))
         self.cooking = cooking = listed.changed[0]
         server.create_goal(Goal(name="Reading"))
-        self.walk = server.create_action(Action(name="Walk")).created_id
+        self.outdoors = server.create_action_group(ActionGroup(name="Outdoors")).created_id
+        self.walk = server.create_action(Action(name="Walk", group_id=self.outdoors)).created_id
         evening = (NOW - timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
         self.calendar.events.append(
             _event(evening.isoformat()[:19], (evening + timedelta(hours=1)).isoformat()[:19], goal_ids=[cooking.id])
@@ -143,11 +145,15 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         "record_reflection (apply)": lambda: server.record_reflection(
             YESTERDAY, [tools.assessment(75)], dry_run=False
         ),
-        # Actions only.
+        # Actions and action groups, prefetched together.
         "get_actions": lambda: server.get_actions(),
         "get_action": lambda: server.get_action("walk"),
         "create_action": lambda: server.create_action(Action(name="Run")),
         "update_action": lambda: server.update_action(Action(id=tools.walk, status="active")),
+        "get_action_groups": lambda: server.get_action_groups(),
+        "get_action_group": lambda: server.get_action_group("outdoors"),
+        "create_action_group": lambda: server.create_action_group(ActionGroup(name="Indoors")),
+        "update_action_group": lambda: server.update_action_group(ActionGroup(id=tools.outdoors, priority=1)),
         "list_events": lambda: server.list_events(NOW - timedelta(days=2), NOW),
         "get_event": lambda: server.get_event(event_id),
         "delete_event": lambda: server.delete_event(event_id),

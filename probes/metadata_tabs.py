@@ -25,6 +25,7 @@ from calendar_clients.google_sheets import SheetsClient
 from calendar_clients.write_lock import WRITE_LOCK
 from config import get_credentials_path, get_token_path
 from utilities import calendar_metadata_sheet
+from utilities.action_groups import ActionGroup
 from utilities.actions import Action, Actions
 
 _SCRATCH_TITLE = "CTT tabs probe (safe to delete)"
@@ -103,6 +104,19 @@ def _probe_actions(calendar: CalendarClient, sheets: SheetsClient, spreadsheet_i
         _check("a duplicate name is refused", "already an action" in str(exc), f"({exc})")
     again = Actions.ensure(calendar, sheets, spreadsheet_id)
     _check("the tab is found again", {a.id for a in again.all()} == {walk, idea})
+
+    print("\nAction groups")
+    outdoors = actions.create_action_group(ActionGroup(name="Outdoors", background_color="#0b8043")).created_id
+    actions.update_action(Action(id=walk, group_id=outdoors))
+    label_id = by_id[walk].label_id
+    labels, _etag = calendar.list_event_labels()
+    color = next(label.background_color for label in labels if label.id == label_id)
+    _check("an action's label takes its group's color", color.lower() == "#0b8043", color)
+    actions.delete_action_group(outdoors)
+    _check(
+        "deleting the group moves the action to the top",
+        actions.get_action(walk).group_id is None and actions.get_action_groups() == [],
+    )
 
 
 if __name__ == "__main__":

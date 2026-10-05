@@ -35,6 +35,7 @@ from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
 from utilities.recurrences import Repeat
 from utilities.traits import SEED_TRAITS, Trait
+from utilities.action_groups import ActionGroup
 from utilities.actions import Action
 
 UTC = timezone.utc
@@ -1129,7 +1130,17 @@ class TestActionTools:
         server.get_action("Walk")
         server.create_action(Action(name="Walk"))
         server.update_action(Action(id="a1"), clear_fields=["note"])
+        server.get_action_groups()
+        server.get_action_group("Creative")
+        server.create_action_group(ActionGroup(name="Creative"))
+        server.update_action_group(ActionGroup(id="g1"), clear_fields=["group_id"])
+        server.delete_action_group("g1")
 
+        actions.get_action_groups.assert_called_once_with()
+        actions.get_action_group.assert_called_once_with("Creative")
+        actions.create_action_group.assert_called_once_with(ActionGroup(name="Creative"))
+        actions.update_action_group.assert_called_once_with(ActionGroup(id="g1"), ["group_id"])
+        actions.delete_action_group.assert_called_once_with("g1")
         actions.get_actions.assert_called_once_with(["archived"])
         actions.get_action.assert_called_once_with("Walk")
         actions.create_action.assert_called_once_with(Action(name="Walk"))
@@ -1571,6 +1582,8 @@ _READ_ONLY_TOOLS = {
     "explain_traits",
     "get_actions",
     "get_action",
+    "get_action_groups",
+    "get_action_group",
 }
 
 
