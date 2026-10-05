@@ -57,6 +57,9 @@ class ActionCalendar:
     def update_event(self, event: Event) -> Event:
         return self._client.update_event(self._with_label(event, inserting=False))
 
+    def import_event(self, event: Event, ical_uid: str) -> Event:
+        return self._client.import_event(self._with_label(event, inserting=True), ical_uid)
+
     def list_event_labels(self) -> tuple[list[EventLabel], str]:
         return self._client.list_event_labels()
 

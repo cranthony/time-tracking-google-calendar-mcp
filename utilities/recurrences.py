@@ -35,7 +35,24 @@ the old one, starts at it:
   already made rather than making another;
 - instances after the split that were edited on their own (moved,
   retitled) are dropped with the rest of the old series' tail, as in
-  Google Calendar itself: the new series makes them afresh, unedited.
+  Google Calendar itself: the new series makes them afresh, unedited;
+- the copy is made first, so a split that fails to end the series
+  cancels the copy again (and says so, or says to cancel it if that
+  fails too) -- rather than leave every later event there twice.
+
+A series Google Calendar split itself (its "this and following" edit)
+has an id like "abc123_R20260915T223000": the id of the series it was
+split from, "_R", and the time it was split at, in UTC. Google won't
+change such a series' rules: a patch to them deletes the series --
+cancels it, past events and all -- or fails ("Bad Request") if its first
+event is cancelled; nor will it move its start ("Invalid start time").
+So it's ended early the way Google itself splits a series -- importing
+an event with the iCalendar UID "abc123_R<time>@google.com" ends it at
+the local midnight before that time's day (so any of its events earlier
+that day go too) and makes the rest a new series, which is then
+cancelled at once, leaving none of its events, cancelled or not -- and
+changing its rules or start whole is refused: from a later event on, the
+copy split off is an ordinary series. Found with probes/series_splits.py.
 
 A series' rules reach this server's clients as a `Repeat` -- "every week
 on Mon and Wed, until Dec 31" -- rather than Google's strings, and only
@@ -88,6 +105,18 @@ class _Calendar(Protocol):
     def get_event(self, event_id: str) -> Event: ...
     def create_event(self, event: Event) -> Event: ...
     def update_event(self, event: Event) -> Event: ...
+    def import_event(self, event: Event, ical_uid: str) -> Event: ...
+
+
+_SPLIT_BY_GOOGLE = re.compile(r"(?P<base>.+)_R\d{8}T\d{6}")
+"""The id of a series Google Calendar split from another itself: the
+other's id, then "_R" and the time it was split at, in UTC."""
+
+
+class SplitError(ValueError):
+    """A split (or a "this and following" edit) that failed part way: its
+    message says what was written and what was undone. A ValueError, so
+    the tools report it as they do a refused edit."""
 
 
 class Recurrences:
@@ -153,6 +182,19 @@ class Recurrences:
                 patch.start = target.start + (patch.start - series.start)
             if patch.end is not None:
                 patch.end = target.end + (patch.end - series.end)
+        if _SPLIT_BY_GOOGLE.fullmatch(target.id):
+            # Not split above (starting_at was its first event, if given),
+            # so nothing's been written yet. See the module docstring.
+            if repeat is not None:
+                raise ValueError(
+                    f"Series {target.id} was split from another in Google Calendar, which won't change its "
+                    "rules (it would delete the series instead): change them from one of its later events on"
+                )
+            if patch.start is not None and patch.start != target.start:
+                raise ValueError(
+                    f"Series {target.id} was split from another in Google Calendar, which won't move its "
+                    "start: move it from one of its later events on"
+                )
         zone = target.time_zone or self._time_zone().key
         if patch.start is not None or patch.end is not None:
             # A series' times need its zone, to keep its wall-clock time.
@@ -178,10 +220,7 @@ class Recurrences:
         if at is None or at <= series.start:
             self._calendar.update_event(Event(id=series.id, status="cancelled"))
             return None
-        rules, index, parts = _rrule(series)
-        return self._calendar.update_event(
-            Event(id=series.id, recurrence=_with_rule(rules, index, _ending_before(parts, at)))
-        )
+        return self._end_before(series, at)
 
     def split(self, event_id: str) -> tuple[Event | None, Event]:
         """Split the series `event_id` is one of at that event: end it just
@@ -201,6 +240,13 @@ class Recurrences:
 
         later_parts = dict(parts)
         if "COUNT" in parts:
+            if _SPLIT_BY_GOOGLE.fullmatch(series.id):
+                # Its COUNT counts from the first event of the series Google
+                # split it from, whose instances aren't its own.
+                raise ValueError(
+                    f"Series {series.id} was split from another in Google Calendar and ends after a count of "
+                    "events, so it can't be split here: split it there"
+                )
             before = sum(
                 1 for event in self._list_instances(series.id, at) if (event.original_start or event.start) < at
             )
@@ -226,10 +272,56 @@ class Recurrences:
             if exc.resp.status != 409:
                 raise
             created = self._calendar.get_event(later.id)  # Made by an earlier try.
-        earlier = self._calendar.update_event(
-            Event(id=series.id, recurrence=_with_rule(rules, index, _ending_before(parts, at)))
-        )
+            if created.status == "cancelled":  # ...which then undid itself.
+                created = self._calendar.update_event(Event(id=later.id, status="confirmed"))
+        try:
+            earlier = self._end_before(series, at)
+        except Exception as exc:
+            # The copy and the series would both go on from `at`, so every
+            # event from then on would be there twice: undo the copy.
+            try:
+                self._calendar.update_event(Event(id=created.id, status="cancelled"))
+            except Exception as undo:
+                raise SplitError(
+                    f"Couldn't end series {series.id} before {at.isoformat()} ({exc}), nor cancel its copy "
+                    f"{created.id} from then on ({undo}): cancel that copy (delete_recurrence {created.id}), "
+                    "or its events will be there twice"
+                ) from exc
+            raise SplitError(
+                f"Couldn't end series {series.id} before {at.isoformat()}, so it wasn't split "
+                f"(its copy from then on was cancelled again): {exc}"
+            ) from exc
         return earlier, created
+
+    def _end_before(self, series: Event, at: datetime) -> Event:
+        """End `series` just before `at`, one of its events after its first,
+        and return it.
+
+        Google won't change the rules of a series it split itself
+        ("<id>_R<time>"): any change deletes the series, or fails if its
+        first event is cancelled. So such a series is split again the way
+        Google does it, and the part from `at` on deleted -- leaving the
+        series ending at the local midnight before `at`'s day. See the
+        module docstring."""
+        if (google_split := _SPLIT_BY_GOOGLE.fullmatch(series.id)) is None:
+            rules, index, parts = _rrule(series)
+            return self._calendar.update_event(
+                Event(id=series.id, recurrence=_with_rule(rules, index, _ending_before(parts, at)))
+            )
+        zone = series.time_zone or self._time_zone().key
+        start = at.astimezone(ZoneInfo(zone))
+        rest = self._calendar.import_event(
+            Event(
+                summary=series.summary,
+                start=start,
+                end=start + (series.end - series.start),
+                time_zone=zone,
+                recurrence=series.recurrence,
+            ),
+            f"{google_split['base']}_R{at.astimezone(timezone.utc):%Y%m%dT%H%M%S}@google.com",
+        )
+        self._calendar.update_event(Event(id=rest.id, status="cancelled"))
+        return self._calendar.get_event(series.id)
 
 
 def split_series_id(series_id: str, at: datetime) -> str:
