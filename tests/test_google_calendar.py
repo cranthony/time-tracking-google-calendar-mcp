@@ -499,6 +499,7 @@ class TestEvent:
                     "cascading-time-tracker-facts-8": None,
                     "cascading-time-tracker-judgments": None,
                     **{f"cascading-time-tracker-judgments-{i}": None for i in range(2, 17)},
+                    "cascading-time-tracker-compacted_until": None,
                 }
             },
         }

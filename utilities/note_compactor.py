@@ -60,7 +60,12 @@ A day can take several compactions, so the events offered -- the
 *compaction window* -- start at the later of the day's start and the last
 *stamped* compaction's `now` (or, for a later day of a batch, the day
 before it's): whatever an earlier compaction already
-settled isn't offered again. The one event that ended within `_LOOKBACK`
+settled isn't offered again. Nor is anything after it skipped: when the
+last compaction ran before the night that ends its day (in the evening,
+before bed), that day isn't over, so the batch starts with it, at the
+last compaction -- even if its oldest note was written during that night
+(the user stayed up), or the morning after it (that day's evening and
+night are settled first, notes or not). See `_anchor`. The one event that ended within `_LOOKBACK`
 before the compaction window starts is offered too, so an event the last
 compaction closed off at "now" (or the night's sleep) can still be
 stretched. The latest compacted note, however long ago it was written,
@@ -133,6 +138,7 @@ from utilities.note_compaction import (
     CompactionPlan,
     EventDecision,
     PlanNote,
+    Problem,
     facts_from_dict,
     plan_compaction,
     planned_timeline,
@@ -156,6 +162,11 @@ takes more than one, so each plan stays small enough to review."""
 _LOOKBACK = timedelta(minutes=15)
 """How long before the compaction window starts an event may have ended
 and still be offered (only the latest one) -- see the module docstring."""
+
+_ADJACENT = timedelta(hours=48)
+"""The longest the oldest note may come after the last compaction for
+the batch to start at the last compaction, not the note: no more than
+the day after the night after it -- see `NoteCompactor._anchor`."""
 
 _PREFETCH_BEFORE = timedelta(hours=24) + _LOOKBACK
 _PREFETCH_AFTER = timedelta(hours=48)
@@ -213,6 +224,14 @@ DECISION_GUIDE = (
     "`events` may start with one that ended just before `compaction_window_start` (usually last "
     "night's sleep); if a note shows it actually ran later -- the user slept in -- move its end "
     "with 'keep', and say when whatever it now overlaps happened. "
+    "An event with `compacted_until` was settled by an earlier compaction up to then -- usually one "
+    "still going on when it ran: its start, and its lasting until then, are fact, so keep its start, "
+    "end it no earlier (it may well have run later), and don't cancel or merge it; compact_notes "
+    "refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next "
+    "compaction says where it ended. When the last compaction ran in the evening, before the "
+    "night, this round starts there, at `compaction_window_start`: notes written during the planned "
+    "night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- "
+    "and a first day with no notes of its own settles that evening and night before the morning. "
     "`previous_note`, if there is one, is the last note an earlier compaction already used, "
     "however long ago -- context only (it can't be used as a start_note/end_note or ignored): "
     "e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report "
@@ -313,6 +332,10 @@ class ContextEvent:
     facts: Facts | None = None
     """Where, who with, who for, and notes on each person there, if
     they've been recorded (see utilities/facts.py)."""
+
+    compacted_until: datetime | None = None
+    """How much of it an earlier compaction settled: its start, and its
+    lasting until this, can't change (see `DECISION_GUIDE`)."""
 
 
 @dataclass(kw_only=True)
@@ -475,6 +498,10 @@ class _Day:
     """The batch's earlier days' notes (id -> time): this day's decisions
     may use one as an edge, at its time, without taking the note."""
 
+    calendar: "_PlannedCalendar | None" = field(default=None, repr=False)
+    """The calendar it was read from, as the days before it in the batch
+    leave it -- for what's before its compaction window."""
+
 
 @dataclass(kw_only=True)
 class _Walked:
@@ -488,7 +515,7 @@ class _Walked:
 
 _STATE_FIELDS = (
     "summary", "start", "end", "description", "location", "status",
-    "is_fixed_time", "priority", "event_label_id", "action_ids", "min_duration", "facts",
+    "is_fixed_time", "priority", "event_label_id", "action_ids", "min_duration", "facts", "compacted_until",
 )
 
 
@@ -582,7 +609,7 @@ class NoteCompactor:
         events: dict[str, ContextEvent] = {}
         timelines: list[tuple[datetime, Timeline]] = []
         for day in days:
-            first = min(n.note.timestamp for n in day.notes)
+            first = min((n.note.timestamp for n in day.notes), default=None)
             candidates = {
                 n.id: _candidates(n.note.timestamp, day.events, day.previous if n.note.timestamp == first else None)
                 for n in day.notes
@@ -610,6 +637,7 @@ class NoteCompactor:
                         priority=e.effective_priority,
                         is_fixed_time=e.is_fixed_time,
                         facts=e.facts,
+                        compacted_until=e.compacted_until,
                     )
             timelines.append(
                 (
@@ -1085,6 +1113,7 @@ class NoteCompactor:
         # so inside a tool call they're each answered from it (see
         # `cached_calendar_listings`).
         self._calendar.list_events(min(times.values()) - _PREFETCH_BEFORE, now + _PREFETCH_AFTER)
+        anchor = self._anchor(min(times.values()), last_stamped, calendar)
         while True:
             day = self._cut(
                 lambda sleepless, border: self._day(
@@ -1097,6 +1126,7 @@ class NoteCompactor:
                     window_start=window_start,
                     sleepless=sleepless,
                     border=border,
+                    anchor=None if walked else anchor,
                 ),
                 (lambda event_id: night(event_id, len(walked))) if night else None,
                 times,
@@ -1122,6 +1152,32 @@ class NoteCompactor:
             night_before = day.closing if overslept else None
             earlier.update((n.id, n.note.timestamp) for n in day.notes)
         return walked, len(sheet_notes) - sum(len(w.day.notes) for w in walked)
+
+    @staticmethod
+    def _anchor(oldest: datetime, last_stamped: datetime | None, calendar: _PlannedCalendar) -> datetime | None:
+        """Where to find a batch's first day, if not at its `oldest` note: at
+        the last compaction (`last_stamped`), when that ran before the night
+        that ends its day -- that day isn't over, so nothing after the last
+        compaction is skipped -- and the oldest note is no later than the
+        day after that night: written during it (the user stayed up), or
+        the next morning (the evening and night are settled first). `None`
+        to find it at the oldest note, as when the note's on the same day,
+        or the last compaction ran during the night, or long before."""
+        if last_stamped is None or oldest - last_stamped > _ADJACENT:
+            return None
+        nights = sorted(
+            (
+                e for e in calendar.list_events(last_stamped, oldest + timedelta(seconds=1))
+                if e.is_end_of_day_sleep and e.status != "cancelled"
+            ),
+            key=lambda e: e.start,
+        )
+        night = next((e for e in nights if e.end > last_stamped), None)
+        if night is None or night.start <= last_stamped or oldest < night.start:
+            return None
+        if any(e.start > night.start for e in nights):
+            return None  # The note's later than the day after the night.
+        return last_stamped
 
     @staticmethod
     def _cut(
@@ -1166,16 +1222,18 @@ class NoteCompactor:
         window_start: datetime | None = None,
         sleepless: frozenset[str] = frozenset(),
         border: datetime | None = None,
+        anchor: datetime | None = None,
     ) -> _Day:
         """The day the oldest of `notes` falls in -- or, with none, the one
-        `window_start` does -- with its notes. Its
+        `window_start` does, or with an `anchor` (see `_anchor`), the one
+        that does -- with its notes. Its
         compaction window starts at `window_start`, if given, or else no
         earlier than `last_stamped`. `first`: whether it's the batch's
         first day, the only one shown the latest compacted note and the
         last compaction, as context. `sleepless`: nights that don't end
         it, and `border`: where it ends instead of where its night does
         -- see `_cut`."""
-        oldest = min(n.note.timestamp for n in notes) if notes else window_start
+        oldest = anchor or (min(n.note.timestamp for n in notes) if notes else window_start)
         # The day the oldest note falls in starts when the night before it
         # ends -- or at the note, if it was written before the wake-up time.
         recent = calendar.list_events(oldest - timedelta(hours=24), oldest + timedelta(seconds=1))
@@ -1233,6 +1291,7 @@ class NoteCompactor:
             latest_compacted=latest_compacted if first else None,
             last_compaction=last_stamped if first else None,
             closing=events[-1] if closing is not None else None,
+            calendar=calendar,
         )
 
     def _supersede_planned(self) -> int:
@@ -1337,6 +1396,7 @@ class NoteCompactor:
             last_compaction=day.last_compaction,
             next_day_follows=day.has_next,
         )
+        self._check_before_window(day, plan)
         labelled = [c for c in plan.changes if c.action == "create" and c.after.event_label_id is not None]
         if not labelled:
             return plan
@@ -1346,6 +1406,36 @@ class NoteCompactor:
             if change.after.event_label_id not in label_ids:
                 change.after.event_label_id = None
         return plan
+
+    @staticmethod
+    def _check_before_window(day: _Day, plan: CompactionPlan) -> None:
+        """CompactionError (an overlap) if `plan` puts an event over one
+        before `day`'s compaction window that isn't among its events --
+        one an earlier compaction already settled, which the plan's own
+        overlap checks never see."""
+        placed = [c for c in plan.changes if c.action != "cancel" and c.after is not None]
+        reach = min((c.after.start for c in placed), default=None)
+        if reach is None or reach >= day.compaction_window_start or day.calendar is None:
+            return
+        offered = {e.id for e in day.events}
+        before = [
+            e for e in day.calendar.list_events(reach, day.compaction_window_start)
+            if e.status != "cancelled" and e.id not in offered
+        ]
+        problems = [
+            Problem(
+                "overlap",
+                f"{c.after.summary!r} ({c.after.start.isoformat()} to {c.after.end.isoformat()}) runs back over "
+                f"{e.summary!r} ({e.start.isoformat()} to {e.end.isoformat()}), from before this round's events "
+                f"begin ({day.compaction_window_start.isoformat()}) -- an earlier compaction settled it. Start it "
+                f"no earlier than {e.end.isoformat()}, or change {e.summary!r} with update_event first.",
+            )
+            for c in placed
+            for e in before
+            if e.id != c.event_id and e.start < c.after.end and e.end > c.after.start
+        ]
+        if problems:
+            raise CompactionError.of(problems, "overlap")
 
     def _apply_step(self, journal: JournalCompaction, step: JournalStep, refs: dict[str, str]) -> None:
         """Make `step`'s change, with the refs to what the plan added
@@ -1536,7 +1626,9 @@ def _patch_for(step: JournalStep) -> Event:
         return Event(id=step.event_id, status="cancelled")
     before, after = step.before, step.after
     patch = Event(id=step.event_id)
-    for name in ("summary", "start", "end", "description", "location", "priority", "event_label_id", "action_ids"):
+    for name in (
+        "summary", "start", "end", "description", "location", "priority", "event_label_id", "action_ids", "compacted_until",
+    ):
         value = getattr(after, name)
         if value is not None and value != getattr(before, name):
             setattr(patch, name, value)

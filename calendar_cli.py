@@ -176,6 +176,7 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "action_ids": lambda s: [action_id.strip() for action_id in s.split(",") if action_id.strip()],
     "facts": lambda s: _parse_facts(s),
     "judgments": json.loads,
+    "compacted_until": _parse_iso_datetime,
 }
 
 
