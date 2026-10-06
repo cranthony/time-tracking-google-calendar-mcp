@@ -21,6 +21,17 @@ person, trait and part, with the scale they were rated on, so a score
 up yet. A compaction isn't complete until every request is judged; a
 judgment can be redone at any time, with different context, or a rating
 simply overwritten by hand (`update_event`).
+
+**Judged as a compaction is applied.** Rather than ask for each request
+whole -- the rubric, ratings and framing repeated in every one -- a
+compaction gives the assistant each judgment part once, up front
+(`Judging.context`: `JudgingContext`), along with each person's recent
+history, and its dry run says which parts each of its events calls for,
+per person (`due_by_event`). The assistant has the events and their
+facts already; it makes the judgments when the user has approved the
+plan, and they're checked (`check`) and written with the events as the
+plan is applied. `Judging.requests`, whole, is what's left for a
+compaction applied without them, and for redoing judgments.
 """
 
 from __future__ import annotations
@@ -51,6 +62,78 @@ INSTRUCTIONS = (
     "record_judgments(compaction_id, judgments); the compaction isn't complete until every request "
     "is judged. Don't show the user the judgments unless they ask."
 )
+
+JUDGING_GUIDE = (
+    "JUDGMENTS complete a compaction, and they're yours to make, never the user's: once the user "
+    "approves the plan, apply it with `judgments` -- one for each entry in the dry run's "
+    "`judgments_due`, which lists, for each event, each person it was about and the parts to judge "
+    "for them (\"<trait id>/<part key>\"). Each judgment's request_id is \"<event id>/<person id>/<trait "
+    "id>/<part key>\"; its part is in `judging.parts` under \"<trait id>/<part key>@<person id>\" if "
+    "there is one (that person's own), or else \"<trait id>/<part key>\". Answer the part's rubric "
+    "for that person alone, as the event was for them -- \"with\" parts for someone who was there, "
+    "\"for\" parts for someone it was done for while they weren't -- from what you know of the "
+    "event: its notes, its actions, its facts, what matters to the person (`people`), and "
+    "`judging.history`, what each person did and where over the days before this compaction. "
+    "Choose one of its ratings (the number), with one succinct line of reasoning that names the fact "
+    "it rests on; where the facts don't say, rate what they do show rather than guess. Every "
+    "judgment due must be given, or nothing is applied. Don't show the user the judgments unless "
+    "they ask."
+)
+
+
+@dataclass(kw_only=True)
+class JudgmentPart:
+    """A judgment part of a trait, given once for every judgment of it --
+    see `Judging.context`."""
+
+    key: str
+    """"<trait id>/<part key>", or, for a person's own parts in place of
+    the trait's, "<trait id>/<part key>@<person id>"."""
+
+    trait_name: str
+    definition: str | None
+    engagement: str
+    """"with" (judged for people who were there) or "for" (for people it
+    was done for while they weren't)."""
+
+    rubric: str
+    ratings: dict[str, str]
+    facts: list[str]
+    """The facts it rests on, by name (see utilities/traits.py)."""
+
+
+@dataclass(kw_only=True)
+class PersonHistory:
+    """What one person did and where, over the days before a compaction."""
+
+    days: int
+    actions: dict[str, int]
+    """Each action's name, with how many events had it, most first."""
+
+    locations: dict[str, int]
+
+
+@dataclass(kw_only=True)
+class JudgingContext:
+    """What a compaction's judgments are made from, given once: every
+    judgment part, and each person's recent history."""
+
+    parts: list[JudgmentPart]
+    history: dict[str, PersonHistory]
+    """By person id, for each person whose parts look back."""
+
+    instructions: str = JUDGING_GUIDE
+
+
+@dataclass(kw_only=True)
+class EventJudgmentsDue:
+    """The judgments one event calls for."""
+
+    event_id: str
+    summary: str | None
+    people: dict[str, list[str]]
+    """Each person it was about, with the parts to judge for them --
+    "<trait id>/<part key>"."""
 
 
 @dataclass(kw_only=True)
@@ -160,29 +243,26 @@ class Judging:
         with the history the judgments look back over."""
         if not event_ids:
             return []
-        traits = [t for t in self._traits.all() if t.status == "active" and t.id]
-        people = {p.id: p for p in self._people.all() if p.id}
-        lookback = max(
-            (
-                days
-                for person in people.values()
-                for _trait, parts in _traits_for(person, traits)
-                for part in parts
-                if _is_judgment(part)
-                for days in fact_lookbacks(part).values()
-            ),
-            default=0,
-        )
         listed = [
-            e for e in self._list_events(span[0] - timedelta(days=lookback), span[1] + timedelta(seconds=1))
+            e for e in self._list_events(span[0] - timedelta(days=self.lookback()), span[1] + timedelta(seconds=1))
             if e.status != "cancelled"
         ]
         wanted = set(event_ids)
-        events = [e for e in listed if e.id in wanted and _judgeable(e)]
+        events = [e for e in listed if e.id in wanted]
+        return self.requests_for(events, [e for e in listed if e.facts is not None], include_judged=include_judged)
+
+    def requests_for(
+        self, events: list[Event], history: list[Event], *, include_judged: bool = False
+    ) -> list[JudgmentRequest]:
+        """Every judgment `events` call for, as `requests` -- for events
+        given whole (as a plan would leave them), with the `history` the
+        judgments' facts look back over."""
+        traits = self._active_traits()
+        people = {p.id: p for p in self._people.all() if p.id}
+        events = [e for e in events if _judgeable(e)]
         if not events:
             return []
         names = self._names(people)
-        history = [e for e in listed if e.facts is not None]
         requests = []
         for event in sorted(events, key=lambda e: e.start):
             facts = event.facts
@@ -206,40 +286,87 @@ class Judging:
         events, beside any already made. ValueError, before writing
         anything, for one that doesn't answer a request or whose rating
         isn't on its scale. Returns how many were recorded."""
-        by_id = {r.id: r for r in requests}
-        problems = []
-        for judgment in judgments:
-            request = by_id.get(judgment.request_id)
-            if request is None:
-                problems.append(f"{judgment.request_id!r} isn't one of the compaction's judgment requests")
-            elif str(judgment.rating) not in request.ratings:
-                problems.append(
-                    f"{judgment.request_id}: the rating {judgment.rating} isn't one of its ratings "
-                    f"({', '.join(request.ratings)})"
-                )
-            elif not judgment.reasoning.strip():
-                problems.append(f"{judgment.request_id}: give a line of reasoning")
-            elif len(judgment.reasoning) > MAX_REASONING_CHARS:
-                problems.append(f"{judgment.request_id}: keep the reasoning to one line, {MAX_REASONING_CHARS} characters")
+        problems = check(requests, judgments)
         if problems:
             raise ValueError("; ".join(problems))
+        by_id = {r.id: r for r in requests}
         for event_id in dict.fromkeys(by_id[j.request_id].event_id for j in judgments):
-            merged = dict(self._client.get_event(event_id).judgments or {})
-            for judgment in judgments:
-                request = by_id[judgment.request_id]
-                if request.event_id != event_id:
-                    continue
-                person = dict(merged.get(request.person_id) or {})
-                trait = dict(person.get(request.trait_id) or {})
-                trait[request.part] = {
-                    "rating": judgment.rating,
-                    "scale": max(int(k) for k in request.ratings),
-                    "reasoning": " ".join(judgment.reasoning.split()),
-                }
-                person[request.trait_id] = trait
-                merged[request.person_id] = person
-            self._client.update_event(Event(id=event_id, judgments=merged))
+            existing = self._client.get_event(event_id).judgments
+            self._client.update_event(Event(id=event_id, judgments=merged(existing, requests, judgments, event_id)))
         return len(judgments)
+
+    def lookback(self) -> int:
+        """The most days any active judgment part looks back."""
+        traits = self._active_traits()
+        return max(
+            (
+                days
+                for person in self._people.all()
+                for _trait, parts in _traits_for(person, traits)
+                for part in parts
+                if _is_judgment(part)
+                for days in fact_lookbacks(part).values()
+            ),
+            default=0,
+        )
+
+    def context(self, before: datetime) -> JudgingContext:
+        """Every judgment part of the traits that apply to anyone, each
+        once -- a person's own parts in place of a trait's under a key of
+        their own -- and what each person did and where over the days
+        their parts look back from `before` (one listing)."""
+        traits = self._active_traits()
+        people = [p for p in self._people.all() if p.id]
+        if not any(p.id == SELF_ID for p in people):
+            people.insert(0, Person(id=SELF_ID, name="Me"))
+        names = self._names({p.id: p for p in people})
+        parts: dict[str, JudgmentPart] = {}
+        looks: dict[str, int] = {}
+        for person in people:
+            spec = person.traits if isinstance(person.traits, dict) else {}
+            overrides = spec.get("parts") if isinstance(spec.get("parts"), dict) else {}
+            for trait, trait_parts in _traits_for(person, traits):
+                own = bool(overrides.get(trait.id))
+                for part, key in zip(trait_parts, part_keys(trait_parts)):
+                    if not _is_judgment(part):
+                        continue
+                    lookbacks = fact_lookbacks(part)
+                    looks[person.id] = max([looks.get(person.id, 0), *lookbacks.values()])
+                    name = f"{trait.id}/{key}" + (f"@{person.id}" if own else "")
+                    parts.setdefault(
+                        name,
+                        JudgmentPart(
+                            key=name,
+                            trait_name=trait.name or trait.id,
+                            definition=trait.definition,
+                            engagement=part.get("engagement_type", "with"),
+                            rubric=part["rubric"],
+                            ratings=dict(part["ratings"]),
+                            facts=list(lookbacks),
+                        ),
+                    )
+        history: dict[str, PersonHistory] = {}
+        longest = max(looks.values(), default=0)
+        if longest:
+            listed = [
+                e for e in self._list_events(before - timedelta(days=longest), before)
+                if e.status != "cancelled" and e.facts is not None and e.start < before
+            ]
+            for person_id, days in looks.items():
+                if not days:
+                    continue
+                past = [e for e in listed if e.start >= before - timedelta(days=days) and _with(e, person_id)]
+                actions = Counter(names.get(a, a) for e in past for a in e.action_ids or ())
+                locations = Counter(
+                    names.get(e.facts.location_id, e.facts.location_id) for e in past if e.facts.location_id
+                )
+                history[person_id] = PersonHistory(
+                    days=days, actions=dict(actions.most_common()), locations=dict(locations.most_common())
+                )
+        return JudgingContext(parts=list(parts.values()), history=history)
+
+    def _active_traits(self) -> list[Trait]:
+        return [t for t in self._traits.all() if t.status == "active" and t.id]
 
     def _names(self, people: dict[str, Person]) -> dict[str, str]:
         names = {i: p.name or i for i, p in people.items()}
@@ -317,6 +444,81 @@ class Judging:
             ),
             current=current,
         )
+
+
+def due_by_event(requests: list[JudgmentRequest]) -> list[EventJudgmentsDue]:
+    """`requests`, grouped by event and then person, each as just its
+    part -- what a dry run says is due (see the module docstring)."""
+    due: dict[str, EventJudgmentsDue] = {}
+    for request in requests:
+        event = due.setdefault(
+            request.event_id, EventJudgmentsDue(event_id=request.event_id, summary=request.summary, people={})
+        )
+        event.people.setdefault(request.person_id, []).append(f"{request.trait_id}/{request.part}")
+    return list(due.values())
+
+
+def check(
+    requests: list[JudgmentRequest], judgments: list[Judgment], *, complete: bool = False
+) -> list[str]:
+    """Everything wrong with `judgments` as answers to `requests`: one
+    that answers none of them, or twice, a rating off its scale, missing
+    or overlong reasoning -- and, if they must be `complete`, the requests
+    none answers."""
+    by_id = {r.id: r for r in requests}
+    problems = []
+    answered: set[str] = set()
+    for judgment in judgments:
+        request = by_id.get(judgment.request_id)
+        if request is None:
+            problems.append(f"{judgment.request_id!r} isn't one of the compaction's judgment requests")
+        elif judgment.request_id in answered:
+            problems.append(f"{judgment.request_id}: judged more than once")
+        elif str(judgment.rating) not in request.ratings:
+            problems.append(
+                f"{judgment.request_id}: the rating {judgment.rating} isn't one of its ratings "
+                f"({', '.join(request.ratings)})"
+            )
+        elif not judgment.reasoning.strip():
+            problems.append(f"{judgment.request_id}: give a line of reasoning")
+        elif len(judgment.reasoning) > MAX_REASONING_CHARS:
+            problems.append(f"{judgment.request_id}: keep the reasoning to one line, {MAX_REASONING_CHARS} characters")
+        answered.add(judgment.request_id)
+    if complete:
+        missing = [r.id for r in requests if r.id not in answered]
+        if missing:
+            problems.append(f"{len(missing)} judgment(s) due weren't given: {', '.join(missing)}")
+    return problems
+
+
+def merged(
+    existing: dict[str, Any] | None,
+    requests: list[JudgmentRequest],
+    judgments: list[Judgment],
+    event_id: str,
+    person_ids: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """`existing` (an event's judgments) with those of `judgments` about
+    `event_id` added -- each kept by person, trait and part, with the
+    scale it was rated on. `person_ids` replaces a person's id (a ref to
+    someone a compaction adds) with the one they're kept under."""
+    by_id = {r.id: r for r in requests}
+    result = dict(existing or {})
+    for judgment in judgments:
+        request = by_id[judgment.request_id]
+        if request.event_id != event_id:
+            continue
+        person_id = (person_ids or {}).get(request.person_id, request.person_id)
+        person = dict(result.get(person_id) or {})
+        trait = dict(person.get(request.trait_id) or {})
+        trait[request.part] = {
+            "rating": judgment.rating,
+            "scale": max(int(k) for k in request.ratings),
+            "reasoning": " ".join(judgment.reasoning.split()),
+        }
+        person[request.trait_id] = trait
+        result[person_id] = person
+    return result
 
 
 def _judgeable(event: Event) -> bool:
