@@ -156,11 +156,12 @@ class TestPublicEvent:
         # is_cancelled has no Event equivalent -- it's derived from the
         # hidden status field, not a field PublicEvent passes through.
         # Likewise effective_priority and action_names, derived from the
-        # event's actions.
+        # event's actions. And compacted, from compacted_until.
         event_derived_fields = field_names - {
             "is_cancelled",
             "effective_priority",
             "action_names",
+            "compacted",
         }
         assert event_derived_fields == {
             f.name for f in dataclasses.fields(Event)

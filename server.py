@@ -191,7 +191,14 @@ class PublicEvent:
     compaction against each judgment part of the traits that apply to them
     (see record_judgments): {person id: {trait id: {part key: {"rating",
     "scale", "reasoning"}}}}. Set them to overwrite a rating by hand
-    (replacing them whole), or clear them."""
+    (replacing them whole), or clear them.
+
+    compacted_until is how much of the event compaction has settled as
+    fact (the time of the compaction that recorded it, or its end if it
+    was over by then): its start, and its lasting until then, can't be
+    changed by a later compaction. compacted is read-only: whether all
+    of it is settled. Set compacted_until, or clear it, only to correct
+    what a compaction recorded."""
 
     id: str | None = None
     summary: str | None = None
@@ -213,6 +220,8 @@ class PublicEvent:
     recurring_event_id: str | None = None
     facts: Facts | None = None
     judgments: dict[str, Any] | None = None
+    compacted_until: datetime | None = None
+    compacted: bool = False
 
     @classmethod
     def from_event(cls, event: Event, tree: ActionTree | None = None) -> "PublicEvent":
@@ -241,6 +250,8 @@ class PublicEvent:
             recurring_event_id=event.recurring_event_id,
             facts=event.facts,
             judgments=event.judgments,
+            compacted_until=event.compacted_until,
+            compacted=event.compacted,
         )
 
     def to_event(self, clear_fields: Collection[str] = ()) -> Event:
@@ -262,6 +273,7 @@ class PublicEvent:
             status="cancelled" if self.is_cancelled else None,
             facts=self.facts.normalized() if self.facts is not None else None,
             judgments=self.judgments,
+            compacted_until=self.compacted_until,
             cleared=frozenset(clear_fields),
         )
 
@@ -686,7 +698,15 @@ def get_event(id: str) -> PublicEvent:
 
 
 EventField = Literal[
-    "description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facts", "judgments"
+    "description",
+    "location",
+    "min_duration",
+    "is_fixed_duration",
+    "is_fixed_time",
+    "priority",
+    "facts",
+    "judgments",
+    "compacted_until",
 ]
 """Every event field update_event and update_recurrence can clear (see
 calendar_clients/google_calendar.py's CLEARABLE_EVENT_FIELDS)."""

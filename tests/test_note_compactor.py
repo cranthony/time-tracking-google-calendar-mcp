@@ -63,7 +63,7 @@ class FakeCalendar:
         self.events[index] = replace(self.events[index], judgments=event.judgments)
         return event
 
-    def list_events(self, time_min, time_max):
+    def list_events(self, time_min, time_max, show_deleted=False):
         # Like the Calendar API: everything overlapping the range.
         return sorted(
             (replace(e) for e in self.events if e.end > time_min and e.start < time_max),
@@ -286,14 +286,34 @@ class TestTheCompactionWindow:
         assert [e.id for e in context.events] == ["s0", "gr", "w1", "w2", "s1"]
         assert context.day_end == time_at("07:00+1") + timedelta(days=1)
 
-    def test_a_compaction_before_the_day_started_does_not_reach_back_past_it(self):
+    def test_a_compaction_before_the_night_settles_the_rest_of_its_day_first(self):
+        # Compacted at 19:45, before bed: reading ran on past it, and the
+        # night hadn't begun -- so they're settled first, with no notes of
+        # their own, before the morning the note is in.
         setup = self._setup()
         self._stamp_a_compaction_at(setup, "19:45")
 
         context = setup.compactor.prepare()
 
-        assert context.compaction_window_start == time_at("07:00+1")
-        assert [e.id for e in context.events] == ["s0", "gr", "w1", "w2", "s1"]
+        assert context.compaction_window_start == time_at("19:45")
+        assert [(d.compaction_window_start, d.note_ids) for d in context.days] == [
+            (time_at("19:45"), []),
+            (time_at("07:00+1"), [setup.note_id(2)]),
+        ]
+        assert [e.id for e in context.events] == ["r0", "s0", "gr", "w1", "w2", "s1"]
+
+    def test_a_compaction_more_than_a_day_before_the_notes_does_not_reach_back_to_it(self):
+        # Notes two days on: the days in between, with no notes, aren't
+        # compacted -- the batch starts at the notes, as it always has.
+        setup = self._setup()
+        self._stamp_a_compaction_at(setup, "19:45")
+        later = time_at("09:05+1") + timedelta(days=2)
+        setup.notes.edit(setup.note_id(2), timestamp=later)
+        setup.compactor._clock = lambda: later + timedelta(hours=1)
+
+        context = setup.compactor.prepare()
+
+        assert context.compaction_window_start == later
 
     def test_a_later_compaction_the_same_day_starts_the_window_there(self):
         # Compacted at 10:05, just after work ended -- so work is offered
@@ -1801,3 +1821,91 @@ class TestJudgments:
 
         with pytest.raises(CompactionError, match="hasn't been applied"):
             setup.compactor.judgments_due(planned.compaction_id)
+
+
+class TestStayingUpPastTheLastCompaction:
+    """The night that prompted `compacted_until`: compacted at 00:32 while
+    work ran on (planned to 00:47, then getting ready for bed and sleep
+    from 01:17), the next notes came at 01:56 and 02:55 -- during the
+    planned night, but the user hadn't gone to bed."""
+
+    def _events(self):
+        work = event_at("23:07-00:47+1", id="work", summary="Working", priority=2)
+        work.compacted_until = time_at("00:32+1")
+        return [
+            event_at("22:22-23:07", id="dinner", summary="Dinner", priority=2, is_fixed_time=True,
+                     compacted_until=time_at("23:07")),
+            work,
+            event_at("00:47+1-01:17+1", id="gr", summary="Get ready for bed", priority=2),
+            event_at("01:17+1-07:00+1", id="s0", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+            event_at("07:00+1-08:00+1", id="up", summary="Get up", priority=2),
+            event_at("08:00+1-12:00+1", id="w1", summary="Work", priority=3),
+            Event(id="s1", summary="Sleep", start=time_at("23:00+1"), end=time_at("07:00+1") + timedelta(days=1),
+                  priority=0, is_end_of_day_sleep=True),
+        ]
+
+    def _setup(self):
+        setup = Setup(
+            [("01:56+1", "Restructuring goals"), ("02:55+1", "Getting ready for bed"), ("09:00+1", "up at last")],
+            events=self._events(),
+            now="09:30+1",
+        )
+        TestTheCompactionWindow._stamp_a_compaction_at(None, setup, "00:32+1")
+        return setup
+
+    def test_the_window_starts_at_the_last_compaction_not_the_first_note(self):
+        setup = self._setup()
+
+        context = setup.compactor.prepare()
+
+        first, second = context.days
+        assert first.compaction_window_start == time_at("00:32+1")
+        assert first.note_ids == [setup.note_id(2), setup.note_id(3)]
+        assert second.note_ids == [setup.note_id(4)]
+        # The work going on at the last compaction, and the evening planned
+        # after it, are offered -- and the work says how far it's settled.
+        offered = {e.id: e for e in context.events}
+        assert {"work", "gr", "s0"} <= set(offered)
+        assert offered["work"].compacted_until == time_at("00:32+1")
+
+    def test_the_work_runs_on_and_bedtime_moves_with_it(self):
+        setup = self._setup()
+        n2 = setup.note_id(3)
+
+        planned = setup.compactor.dry_run([
+            EventDecision(action="keep", event_id="work", end_note=n2),
+            EventDecision(action="cancel", event_id="gr"),
+            EventDecision(action="keep", event_id="s0", start=time_at("03:10+1")),
+        ])
+
+        changes = {c.event_id: c for c in planned.changes if c.event_id}
+        assert (changes["work"].after.start, changes["work"].after.end) == (time_at("23:07"), time_at("02:55+1"))
+        assert changes["work"].after.compacted_until == time_at("02:55+1")
+        assert changes["gr"].action == "cancel"
+        assert (changes["s0"].after.start, changes["s0"].after.end) == (time_at("03:10+1"), time_at("07:00+1"))
+
+    @pytest.mark.parametrize(
+        "decision, message",
+        [
+            (EventDecision(action="keep", event_id="work", end=time_at("00:20+1")), "going on until"),
+            (EventDecision(action="keep", event_id="work", start=time_at("23:30")), "its start can't move"),
+            (EventDecision(action="cancel", event_id="work"), "can't be cancelled"),
+        ],
+    )
+    def test_what_the_last_compaction_settled_stays_settled(self, decision, message):
+        setup = self._setup()
+
+        with pytest.raises(CompactionError, match=message) as excinfo:
+            setup.compactor.dry_run([decision])
+
+        assert excinfo.value.categories == ["compacted"]
+
+    def test_a_new_event_cant_reach_back_over_what_was_settled_before_the_window(self):
+        setup = self._setup()
+
+        with pytest.raises(CompactionError, match="runs back over 'Dinner'") as excinfo:
+            setup.compactor.dry_run([
+                EventDecision(action="create", summary="Snack", start=time_at("22:50"), end=time_at("23:05")),
+            ])
+
+        assert "overlap" in excinfo.value.categories

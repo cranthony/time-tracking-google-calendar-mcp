@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -86,15 +87,27 @@ class TestSilenceMeansOnSchedule:
         assert changes["e1"].after.min_duration_minutes == 60
         assert "as planned" in changes["e1"].reason
 
-    def test_an_already_pinned_past_event_needs_no_change(self):
+    def test_an_already_pinned_past_event_is_only_marked_compacted(self):
         day = _day()
         day[0].is_fixed_time = True
         day[0].min_duration = timedelta(hours=1)
 
-        assert "e1" not in _by_event(_plan([], [], day))
+        change = _by_event(_plan([], [], day))["e1"]
 
-    def test_an_event_still_in_progress_is_left_alone(self):
-        assert "e2" not in _by_event(_plan([], [], now="10:30"))
+        assert replace(change.after, compacted_until=None) == change.before
+        assert change.after.compacted_until == time_at("10:00")
+
+    def test_a_past_event_is_compacted_to_its_end(self):
+        assert _by_event(_plan([], []))["e1"].after.compacted_until == time_at("10:00")
+
+    def test_an_event_still_in_progress_is_compacted_up_to_now_but_left_free_to_run_on(self):
+        change = _by_event(_plan([], [], now="10:30"))["e2"]
+
+        assert _span(change.after) == (time_at("10:00"), time_at("11:00"))
+        assert change.after.compacted_until == time_at("10:30")
+        assert change.after.min_duration_minutes == 30
+        assert not change.after.is_fixed_time
+        assert "still going on" in change.reason
 
     def test_an_end_note_for_one_event_does_not_merge_it_with_the_one_before(self):
         # Only dinner's end was noted: the class and dinner's start still
@@ -122,7 +135,46 @@ class TestSilenceMeansOnSchedule:
     def test_the_end_of_day_sleep_event_is_never_pinned(self):
         plan = _plan([], [], now="07:00+1")
 
-        assert "s1" not in _by_event(plan)
+        after = _by_event(plan)["s1"].after
+        assert not after.is_fixed_time
+        assert after.compacted_until == time_at("07:00+1")
+
+
+class TestCompacted:
+    """Only what's happened is settled; and what an earlier compaction
+    settled, a later one keeps to."""
+
+    def test_a_decided_event_still_going_on_is_compacted_to_now_not_pinned(self):
+        plan = _plan([], [EventDecision(action="create", summary="Coffee", start=time_at("11:00"), end=time_at("11:50"))])
+
+        (created,) = [c for c in plan.changes if c.action == "create"]
+        assert created.after.compacted_until == time_at("11:30")
+        assert not created.after.is_fixed_time
+        assert created.after.min_duration_minutes == 30
+
+    def test_a_future_reschedule_is_pinned_but_not_compacted(self):
+        plan = _plan([], [_keep("e3", start=time_at("12:30"), end=time_at("13:30"))])
+
+        after = _by_event(plan)["e3"].after
+        assert after.is_fixed_time
+        assert after.compacted_until is None
+
+    def test_reflowing_cant_move_what_an_earlier_compaction_settled(self):
+        day = _day()
+        day[1].compacted_until = time_at("10:30")  # Report, compacted while under way.
+
+        with pytest.raises(CompactionError, match="would move or cut short 'Report'") as excinfo:
+            _plan([_note(1, "10:20")], [_keep("e1", end_note="n1")], day, now="10:45")
+
+        assert excinfo.value.categories == ["compacted"]
+
+    def test_an_earlier_compactions_event_may_run_on(self):
+        day = _day()
+        day[1].compacted_until = time_at("10:30")
+
+        plan = _plan([_note(1, "11:10")], [_keep("e2", end_note="n1")], day)
+
+        assert _span(_by_event(plan)["e2"].after) == (time_at("10:00"), time_at("11:10"))
 
 
 class TestKeep:

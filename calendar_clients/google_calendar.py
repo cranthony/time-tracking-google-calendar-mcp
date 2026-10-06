@@ -123,7 +123,17 @@ def _insert_body(event: Event) -> dict:
 
 
 CLEARABLE_EVENT_FIELDS = frozenset(
-    {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facts", "judgments"}
+    {
+        "description",
+        "location",
+        "min_duration",
+        "is_fixed_duration",
+        "is_fixed_time",
+        "priority",
+        "facts",
+        "judgments",
+        "compacted_until",
+    }
 )
 """Event fields an update can remove (see `Event.cleared`). Not summary,
 start or end (an event always has them); not action_ids, whose `[]`
@@ -284,6 +294,15 @@ class Event:
     Stored as JSON like `facts`. `None` means none, or unchanged in a
     partial update; a write replaces them whole, and `{}` removes them."""
 
+    compacted_until: datetime | None = None
+    """How much of it compaction has settled as fact: the `now` of the
+    compaction that recorded it, or its end if it was over by then (see
+    utilities/note_compaction.py). Its start, and its lasting until this,
+    are fact: a later compaction can't move the start, end it any
+    earlier, or cancel it. Past this, it's still a plan -- an event in
+    progress when it was compacted may run on. `None` if no compaction
+    has settled it. Stored as an ISO 8601 private extended property."""
+
     action_priority: int | None = None
     """The priority this event inherits from its actions -- the highest
     (lowest-numbered) of each action's own, or its nearest group's -- if
@@ -317,6 +336,11 @@ class Event:
             raise ValueError(f"Can't both set and clear {sorted(both)}")
 
     @property
+    def compacted(self) -> bool:
+        """Whether compaction has settled all of it (see `compacted_until`)."""
+        return self.compacted_until is not None and self.end is not None and self.compacted_until >= self.end
+
+    @property
     def effective_priority(self) -> int | None:
         """`priority`, falling back to `action_priority` when unset."""
         return self.priority if self.priority is not None else self.action_priority
@@ -333,6 +357,7 @@ class Event:
                 "priority": int,
                 "is_end_of_day_sleep": lambda s: s.lower() == "true",
                 "action_ids": str.split,
+                "compacted_until": datetime.fromisoformat,
             },
         )
         facts = _read_chunks(private_properties, "facts")
@@ -409,6 +434,7 @@ class Event:
                 "priority": str,
                 "is_end_of_day_sleep": lambda b: "true" if b else "false",
                 "action_ids": " ".join,
+                "compacted_until": datetime.isoformat,
             },
         )
         if self.facts is not None:
