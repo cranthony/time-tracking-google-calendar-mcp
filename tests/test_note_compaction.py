@@ -7,6 +7,7 @@ from tests.event_time_helpers import event_at, time_at
 from utilities.facts import Facts
 from utilities.note_compaction import (
     CompactionError,
+    Problem,
     EventDecision,
     EventState,
     PlanNote,
@@ -430,6 +431,36 @@ class TestNotesAddedToEvents:
         plan = _plan([_note(1, "11:10", "wandered")], [])
 
         assert any("doesn't fall within any event" in w for w in plan.warnings)
+
+
+class TestCategories:
+    """Every rejection says which kinds of mistake it holds, for the server
+    to log them by."""
+
+    def test_an_overlap_is_categorized(self):
+        with pytest.raises(CompactionError) as excinfo:
+            _plan([_note(1, "10:20")], [_keep("e1", end_note="n1")])
+
+        assert excinfo.value.categories == ["overlap"]
+
+    def test_mixed_problems_list_each_kind_once(self):
+        with pytest.raises(CompactionError) as excinfo:
+            _plan([], [_keep("nope"), _keep("nada"), _keep("e1", end_note="n9")])
+
+        assert excinfo.value.categories == ["unknown_event", "unknown_note"]
+
+    def test_an_untagged_problem_takes_the_category_of_where_it_was_found(self):
+        with pytest.raises(CompactionError) as excinfo:
+            _plan([], [EventDecision(action="create", start=time_at("09:30"), end=time_at("09:45"))])
+
+        assert excinfo.value.categories == ["malformed_decision"]
+
+    def test_a_reworded_error_keeps_its_categories(self):
+        cause = CompactionError.of([Problem("overlap", "a"), "b"], "facts")
+
+        error = CompactionError.wrapping("Sat 03 Oct: a", cause)
+
+        assert (str(error), error.categories) == ("Sat 03 Oct: a", ["facts", "overlap"])
 
 
 class TestValidation:

@@ -266,11 +266,48 @@ class CompactionPlan:
     timeline: Timeline | None = None
 
 
+class Problem(str):
+    """One thing wrong, as a message, tagged with the `category` of
+    mistake it is -- so a `CompactionError` made of several can say which
+    kinds it holds. It's still a `str`, so a list of them joins like any
+    other list of messages."""
+
+    category: str
+
+    def __new__(cls, category: str, message: str) -> "Problem":
+        problem = super().__new__(cls, message)
+        problem.category = category
+        return problem
+
+
 class CompactionError(ValueError):
     """The decisions (or the calendar they were checked against) can't be
     turned into a plan. The message says what to fix, and lists the valid
     choices where there are any -- it's written to be read by the model
-    that produced the decisions."""
+    that produced the decisions.
+
+    `categories` names the kinds of mistake it holds ("overlap",
+    "unknown_note", ...), sorted, for the server to log every rejection by
+    -- so the logs show which instructions a model gets wrong."""
+
+    def __init__(self, message: str, *, category: str = "other") -> None:
+        super().__init__(message)
+        self.categories: list[str] = [category]
+
+    @classmethod
+    def of(cls, problems: list[str], category: str = "other") -> "CompactionError":
+        """One error for all of `problems`: each a `Problem` with its own
+        category, or a plain message that's `category`."""
+        error = cls("\n".join(problems), category=category)
+        error.categories = sorted({getattr(p, "category", category) for p in problems})
+        return error
+
+    @classmethod
+    def wrapping(cls, message: str, cause: "CompactionError") -> "CompactionError":
+        """`cause` reworded as `message`, keeping its categories."""
+        error = cls(message)
+        error.categories = list(cause.categories)
+        return error
 
 
 @dataclass
@@ -339,9 +376,11 @@ def plan_compaction(
     notes_by_id = {n.id: n for n in notes}
     for note in ordered:
         if note.timestamp > now:
-            problems.append(f"note {note.id} is timestamped after now ({now.isoformat()})")
+            problems.append(Problem("note_after_now", f"note {note.id} is timestamped after now ({now.isoformat()})"))
     for note_id in sorted(ignored - set(notes_by_id)):
-        problems.append(f"ignore_notes: {note_id!r} isn't one of this round's notes; {_valid_notes(notes)}")
+        problems.append(
+            Problem("unknown_note", f"ignore_notes: {note_id!r} isn't one of this round's notes; {_valid_notes(notes)}")
+        )
 
     live = sorted(
         (e for e in day_events if e.id and e.status != "cancelled"), key=lambda e: e.start
@@ -356,7 +395,7 @@ def plan_compaction(
 
     resolved = _resolve(decisions, notes, notes_by_id, events_by_id, closing, now, problems)
     if problems:
-        raise CompactionError("\n".join(problems))
+        raise CompactionError.of(problems, "malformed_decision")
     facts, cancels, merged_into, touched = resolved
 
     decided_ids = {f.base.id for f in facts if f.base} | set(cancels) | set(touched)
@@ -381,7 +420,7 @@ def plan_compaction(
     facts.sort(key=lambda f: (f.start, f.end))
     _check_overlaps(facts, problems)
     if problems:
-        raise CompactionError("\n".join(problems))
+        raise CompactionError.of(problems, "overlap")
 
     for event_id, decision in touched.items():
         if decision.summary:
@@ -392,7 +431,7 @@ def plan_compaction(
             copies[event_id].facts = decision.facts
     annotated = _annotate(ordered, ignored, facts, touched, copies, cancels, warnings, problems)
     if problems:
-        raise CompactionError("\n".join(problems))
+        raise CompactionError.of(problems, "description_too_long")
 
     simulated = _simulate(facts, copies, cancels, options, warnings, next_day_follows)
     changes = _changes(facts, events_by_id, copies, cancels, simulated)
@@ -429,7 +468,9 @@ def _resolve(
         if note_id is not None:
             note = notes_by_id.get(note_id)
             if note is None:
-                problems.append(f"{label}: {note_id!r} isn't one of this round's notes; {_valid_notes(notes)}")
+                problems.append(
+                    Problem("unknown_note", f"{label}: {note_id!r} isn't one of this round's notes; {_valid_notes(notes)}")
+                )
         if explicit is not None:
             return explicit, note
         return (note.timestamp if note is not None else fallback), note
@@ -453,10 +494,12 @@ def _resolve(
             problems.append(f"{label}: unknown action {decision.action!r}; use keep, cancel, create or merge")
             continue
         if decision.event_id not in events_by_id:
-            problems.append(f"{label}: {decision.event_id!r} isn't one of this day's events; {valid_events}")
+            problems.append(
+                Problem("unknown_event", f"{label}: {decision.event_id!r} isn't one of this day's events; {valid_events}")
+            )
             continue
         if decision.event_id in by_event:
-            problems.append(f"{label}: event {decision.event_id} has more than one decision")
+            problems.append(Problem("duplicate_decision", f"{label}: event {decision.event_id} has more than one decision"))
             continue
         if decision.action != "keep" and (moves or decision.summary or decision.annotate or decision.facts):
             problems.append(
@@ -510,8 +553,8 @@ def _resolve(
             start, end = min(start, member.start), max(end, member.end)
         if end <= start:
             problems.append(
-                f"{label}: {base.summary!r} would run from {start.isoformat()} to {end.isoformat()}, "
-                "which isn't a positive length"
+                Problem("nonpositive_length", f"{label}: {base.summary!r} would run from {start.isoformat()} to {end.isoformat()}, "
+                "which isn't a positive length")
             )
             continue
         changed = (start, end) != (base.start, base.end)
@@ -568,8 +611,11 @@ def _resolve(
             continue
         if end <= start:
             problems.append(
-                f"{label}: {decision.summary!r} would run from {start.isoformat()} to "
-                f"{end.isoformat()}, which isn't a positive length"
+                Problem(
+                    "nonpositive_length",
+                    f"{label}: {decision.summary!r} would run from {start.isoformat()} to "
+                    f"{end.isoformat()}, which isn't a positive length",
+                )
             )
             continue
         facts.append(
@@ -755,7 +801,7 @@ def _end_day_at(
             explicit_cancel[event.id] = f"doesn't fit before the new bedtime, {bedtime.isoformat()}"
         # else: the unsaved remainder of a split event -- just never created.
     if problems:
-        raise CompactionError("\n".join(problems))
+        raise CompactionError.of(problems, "fixed_time_conflict")
     if fact.end != fact.base.end and not next_day_follows:
         warnings.append(
             f"{sleep.summary!r} now ends at {fact.end.isoformat()} instead of "
@@ -820,12 +866,13 @@ def _simulate(
                 f"doesn't fit: it overlaps fixed-time {pinned.summary!r} "
                 f"({pinned.start.isoformat()} to {pinned.end.isoformat()}), which can't move. "
                 f"{_SHORTEN_OR_MOVE} If a note shows when {pinned.summary!r} actually started or "
-                "ended, move it with 'keep' too."
+                "ended, move it with 'keep' too.",
+                category="fixed_time_conflict",
             )
         try:
             changed = reallocate_for_new_event(tail, fact.event, options)
         except FixedTimeConflict as exc:
-            raise CompactionError(f"{exc} {_SHORTEN_OR_MOVE}") from exc
+            raise CompactionError(f"{exc} {_SHORTEN_OR_MOVE}", category="fixed_time_conflict") from exc
         except ValueError as exc:
             hint = (
                 " A day needs an event after the last noted time (normally the end-of-day sleep "
@@ -835,7 +882,8 @@ def _simulate(
             )
             raise CompactionError(
                 f"can't fit {fact.event.summary!r} ({fact.start.isoformat()} to "
-                f"{fact.end.isoformat()}) into the day: {exc}.{hint}"
+                f"{fact.end.isoformat()}) into the day: {exc}.{hint}",
+                category="reflow_failed",
             ) from exc
         known = {id(e) for e in tail}
         alive = [e for e in tail if e.status != "cancelled"]
@@ -847,7 +895,8 @@ def _simulate(
             raise CompactionError(
                 f"{fact.event.summary!r} ({fact.start.isoformat()} to {fact.end.isoformat()}) "
                 "doesn't fit: the rest of the day can't be moved around it without moving it too. "
-                f"{_SHORTEN_OR_MOVE}"
+                f"{_SHORTEN_OR_MOVE}",
+                category="reflow_failed",
             )
     return _Simulated(
         working=working,

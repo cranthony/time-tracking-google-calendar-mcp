@@ -214,6 +214,8 @@ Notes that don't set an edge have their text added to the description of the eve
 
 **Rejecting or changing a plan.** Nothing touches the calendar until the commit, so a plan you don't like costs nothing: tell the model what's wrong, it corrects the decisions, and it calls `compact_notes` again with them — no need to call `prepare_compaction` again unless the notes or calendar changed. Each new dry run replaces the earlier unapplied plans (they're marked `abandoned`), so a stale one can't be committed by mistake. Once a compaction has been applied, its events are ordinary events: adjust them with `update_event` like any other.
 
+**Rejections are logged.** Every compaction tool call refused with a `CompactionError` (`compact_notes`, `edit_note`, `delete_note`, `prepare_judgments`, `record_judgments`, `abandon_compaction`) logs one warning line naming the tool, the categories of mistake it held, and the full message: `compaction rejected: tool=compact_notes categories=overlap,unknown_note: ...`. Each problem is tagged where it's found (`utilities/note_compaction.py`'s `Problem`) — `overlap`, `unknown_note`, `unknown_event`, `duplicate_decision`, `nonpositive_length`, `malformed_decision`, `note_after_now`, `description_too_long`, `fixed_time_conflict`, `reflow_failed`, `facts`, `actions`, `additions`, `stale`, `open_compaction`, `judgment`, and a few for refused state changes — so the logs show which instructions a model gets wrong, and how often.
+
 There's no CLI command for this: comparing the notes to the plan needs a model, which is what the MCP client is.
 
 ## Calendar metadata sheets

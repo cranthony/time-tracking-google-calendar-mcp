@@ -82,6 +82,7 @@ from workos_auth import WorkOSTokenVerifier
 # this is safe under the stdio transport too, whose protocol messages
 # themselves go over stdout.
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # "stdio" (the default) is for local use -- a client spawns this process
 # directly (Claude Desktop's local config, `mcp dev`). "streamable-http" is
@@ -521,6 +522,19 @@ def get_note_compactor() -> NoteCompactor:
                     rollup=get_trait_rollup(),
                 )
     return _note_compactor
+
+
+def _rejected(tool_name: str, exc: CompactionError) -> ToolError:
+    """Log a compaction tool refusing a call, by the categories of mistake
+    it found (see CompactionError), and return the ToolError to raise --
+    so the logs show which instructions a model gets wrong, and how often."""
+    logger.warning(
+        "compaction rejected: tool=%s categories=%s: %s",
+        tool_name,
+        ",".join(exc.categories),
+        " | ".join(str(exc).splitlines()),
+    )
+    return ToolError(str(exc))
 
 
 def _public_events(events: list[Event]) -> list[PublicEvent]:
@@ -1386,7 +1400,7 @@ def edit_note(
                 note_id, timestamp=timestamp, description=description
             ).with_id()
         except CompactionError as exc:
-            raise ToolError(str(exc)) from exc
+            raise _rejected("edit_note", exc) from exc
 
 
 @tool
@@ -1400,7 +1414,7 @@ def delete_note(note_id: str) -> NotedTime:
         try:
             return get_note_compactor().delete_note(note_id)
         except CompactionError as exc:
-            raise ToolError(str(exc)) from exc
+            raise _rejected("delete_note", exc) from exc
 
 
 @tool
@@ -1490,14 +1504,15 @@ def compact_notes(
             if compaction_id is None:
                 if not dry_run:
                     raise CompactionError(
-                        "run a dry run first (decisions, dry_run=True) and pass its compaction_id"
+                        "run a dry run first (decisions, dry_run=True) and pass its compaction_id",
+                        category="no_dry_run",
                     )
                 return compactor.dry_run(decisions or [], ignore_notes, new_actions, new_people, new_locations)
             if dry_run:
                 return compactor.describe(compaction_id)
             return compactor.commit(compaction_id)
         except CompactionError as exc:
-            raise ToolError(str(exc)) from exc
+            raise _rejected("compact_notes", exc) from exc
 
 
 @tool
@@ -1519,7 +1534,7 @@ def prepare_judgments(compaction_id: str | None = None, redo: bool = False) -> J
         try:
             due = compactor.judgments_due(compaction_id, redo=redo)
         except CompactionError as exc:
-            raise ToolError(str(exc)) from exc
+            raise _rejected("prepare_judgments", exc) from exc
         if due is None:
             raise ToolError("there's no applied compaction to judge")
         return due
@@ -1542,7 +1557,7 @@ def record_judgments(compaction_id: str, judgments: list[Judgment]) -> Judgments
         try:
             return compactor.record_judgments(compaction_id, judgments)
         except CompactionError as exc:
-            raise ToolError(str(exc)) from exc
+            raise _rejected("record_judgments", exc) from exc
 
 
 @tool
@@ -1587,7 +1602,7 @@ def abandon_compaction(compaction_id: str) -> CompactionResult:
         try:
             return get_note_compactor().abandon(compaction_id)
         except CompactionError as exc:
-            raise ToolError(str(exc)) from exc
+            raise _rejected("abandon_compaction", exc) from exc
 
 
 @tool
