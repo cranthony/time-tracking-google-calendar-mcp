@@ -797,7 +797,15 @@ class TestCompactNotes:
         result = server.compact_notes(compaction_id="abc", dry_run=False)
 
         assert result is compactor.commit.return_value
-        compactor.commit.assert_called_once_with("abc")
+        compactor.commit.assert_called_once_with("abc", None)
+
+    def test_committing_passes_the_judgments_through(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        judgments = [Judgment(request_id="e1/self/heard/judgment", rating=1, reasoning="Fine.")]
+
+        server.compact_notes(compaction_id="abc", dry_run=False, judgments=judgments)
+
+        compactor.commit.assert_called_once_with("abc", judgments)
 
     def test_committing_without_a_dry_run_first_is_refused(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
