@@ -714,7 +714,11 @@ def update_recurrence(
     priority, action_ids, facts or description are lost to an actions-only edit --
     and an edit to start/end moves them back onto the series' times too.
     Leave start/end out to keep each event's own time. A field left out
-    is kept on the series itself, priority and action_ids included."""
+    is kept on the series itself, priority and action_ids included.
+
+    A series split in Google Calendar itself (an id like
+    "abc123_R20260915T223000") can't have its repeat or start changed
+    whole -- Google refuses -- only from one of its later events on."""
     with track("update_recurrence"), cached_sheet_reads():
         _prefetch_stores()
         _check_action_ids(recurrence, existing=True)
@@ -734,7 +738,8 @@ def split_recurrence(event_id: str) -> list[PublicRecurrence]:
     series ends just before it, and a copy starts at it, so the two can be
     edited apart. A COUNT is shared between them; events after the split
     that were edited on their own lose those edits, as in Google Calendar.
-    Returns the series from the event on, then the one before it (none if
+    If the series can't be ended, the copy is cancelled again and the
+    error says so. Returns the series from the event on, then the one before it (none if
     it was the series' first event, which leaves nothing to split)."""
     with track("split_recurrence"), cached_sheet_reads():
         _prefetch_stores()

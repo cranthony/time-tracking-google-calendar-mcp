@@ -107,6 +107,17 @@ def _event_label_version_kwargs(body: dict) -> dict:
     return {"eventLabelVersion": 1} if "eventLabelId" in body else {}
 
 
+def _insert_body(event: Event) -> dict:
+    """`event`'s API body for an insert or import. A null private property
+    removes it in a patch, but an insert refuses one ("Required") -- and
+    there's nothing to remove yet."""
+    body = event.to_api_body()
+    private = body.get("extendedProperties", {}).get("private")
+    if private is not None:
+        body["extendedProperties"]["private"] = {k: v for k, v in private.items() if v is not None}
+    return body
+
+
 CLEARABLE_EVENT_FIELDS = frozenset(
     {"description", "location", "min_duration", "is_fixed_duration", "is_fixed_time", "priority", "facts", "judgments"}
 )
@@ -863,19 +874,36 @@ class CalendarClient:
         of a-v and 0-9), which makes a retried create idempotent -- the
         second attempt fails with a 409 instead of creating a duplicate.
         See `utilities/note_compactor.py`."""
-        body = event.to_api_body()
+        body = _insert_body(event)
         if event.id:
             body["id"] = event.id
-        # A null private property removes it in a patch, but an insert
-        # refuses one ("Required") -- and there's nothing to remove yet.
-        private = body.get("extendedProperties", {}).get("private")
-        if private is not None:
-            body["extendedProperties"]["private"] = {k: v for k, v in private.items() if v is not None}
         response = (
             self._service.events()
             .insert(calendarId=self._calendar_id, body=body, **_event_label_version_kwargs(body))
             .execute()
         )
+        return Event.from_api(response)
+
+    @requires_write_lock
+    def import_event(self, event: Event, ical_uid: str) -> Event:
+        """Import `event` with the iCalendar UID `ical_uid` (events.import),
+        which Calendar gives an id of its own. Importing a UID again
+        updates the event it made the first time rather than making
+        another.
+
+        A UID of the form "<series id>_R<time, UTC>@google.com" -- as in
+        "abc123_R20261019T223000@google.com" -- makes Calendar split the
+        series itself, leaving what its "this and following" edit leaves
+        (undocumented, so check the result): the series
+        `<series id>` (or its latest part, itself split that way, from
+        before that time) is ended at the local midnight before that
+        time's day, and the event made is the series' rest, with the id
+        "<series id>_R<time>" -- events after it that were edited on their
+        own move to it. Found with probes/series_splits.py; see
+        utilities/recurrences.py."""
+        body = _insert_body(event)
+        body["iCalUID"] = ical_uid
+        response = self._service.events().import_(calendarId=self._calendar_id, body=body).execute()
         return Event.from_api(response)
 
     @requires_write_lock
