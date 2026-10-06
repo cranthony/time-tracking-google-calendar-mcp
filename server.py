@@ -1197,11 +1197,15 @@ def get_people(statuses: list[PersonStatus] | None = None) -> list[ListedPerson]
     circle_names, what_matters (what's important to them) and traits:
     which traits apply to them, and their own parts for any (see
     create_person; without it, every active trait applies as get_traits
-    has it). Read-only."""
+    has it). Each also has cancelled_events: the events the user cancelled
+    that count against their follow-through, newest first -- when each was
+    planned, its actions, whether they were to be there ("with") or it was
+    for them ("for"), the follow-through parts it counted against, and
+    what cancelled it. Read-only."""
     with track("get_people"), cached_reads():
-        _prefetch_stores()
+        _prefetch_people()
         try:
-            return get_people_store().get_people(statuses)
+            return _with_cancellations(get_people_store().get_people(statuses))
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
@@ -1213,11 +1217,23 @@ def get_person(id_or_name: str) -> ListedPerson:
     lists them with their contexts; if there's none, it suggests close
     matches. Read-only."""
     with track("get_person"), cached_reads():
-        _prefetch_stores()
+        _prefetch_people()
         try:
-            return get_people_store().get_person(id_or_name)
+            return _with_cancellations([get_people_store().get_person(id_or_name)])[0]
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
+
+
+def _prefetch_people() -> None:
+    """`_prefetch_stores`, and the Cancellations tab, in one request."""
+    _prefetch(get_action_store(), get_people_store(), get_location_store(), get_cancellation_store())
+
+
+def _with_cancellations(people: list[ListedPerson]) -> list[ListedPerson]:
+    """`people`, each with the events the user cancelled that count
+    against their follow-through (see utilities/cancellations.py)."""
+    by_person = get_cancellation_store().by_person()
+    return [replace(p, cancelled_events=by_person.get(p.id, [])) for p in people]
 
 
 @tool

@@ -39,7 +39,7 @@ from utilities.traits import SEED_TRAITS, Trait
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
 from utilities.locations import Location
-from utilities.people import Circle, Person
+from utilities.people import CancelledEvent, Circle, ListedPerson, Person
 
 UTC = timezone.utc
 
@@ -1027,9 +1027,18 @@ class TestActionTools:
 
 
 class TestPeopleTools:
+    def _cancellations(self, monkeypatch, by_person=None):
+        store = MagicMock()
+        store.by_person.return_value = by_person or {}
+        monkeypatch.setattr(server, "get_cancellation_store", lambda: store)
+        return store
+
     def test_delegate_to_the_store(self, monkeypatch):
         people = MagicMock()
+        people.get_people.return_value = [ListedPerson(id="self", name="Me")]
+        people.get_person.return_value = ListedPerson(id="self", name="Me")
         monkeypatch.setattr(server, "get_people_store", lambda: people)
+        self._cancellations(monkeypatch)
 
         server.get_people(["archived"])
         server.get_person("self")
@@ -1050,6 +1059,20 @@ class TestPeopleTools:
         people.create_circle.assert_called_once_with(Circle(name="Family"))
         people.update_circle.assert_called_once_with(Circle(id="c1"), ["note"])
         people.delete_circle.assert_called_once_with("c1")
+
+    def test_each_person_comes_with_the_events_the_user_cancelled_that_count_against_them(self, monkeypatch):
+        dropped = CancelledEvent(event_id="c1", summary="Lunch", engagement="with", source="delete_event")
+        people = MagicMock()
+        people.get_people.return_value = [ListedPerson(id="self", name="Me"), ListedPerson(id="sam", name="Sam")]
+        people.get_person.return_value = ListedPerson(id="sam", name="Sam")
+        monkeypatch.setattr(server, "get_people_store", lambda: people)
+        self._cancellations(monkeypatch, {"sam": [dropped]})
+
+        listed = server.get_people()
+        one = server.get_person("Sam")
+
+        assert [(p.id, p.cancelled_events) for p in listed] == [("self", []), ("sam", [dropped])]
+        assert one.cancelled_events == [dropped]
 
     def test_wrap_errors(self, monkeypatch):
         people = MagicMock()

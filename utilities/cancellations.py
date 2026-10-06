@@ -31,7 +31,7 @@ from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 from utilities.actions import Actions
 from utilities.facts import SELF_ID, Facts
-from utilities.people import People
+from utilities.people import CancelledEvent, People
 from utilities.row_sheet import RowSheet
 from utilities.trait_scores import of_action, traits_for
 from utilities.traits import Traits, part_keys, part_problems
@@ -140,6 +140,26 @@ class Cancellations:
     def all(self) -> list[Cancellation]:
         return self._sheet.read()
 
+    def by_person(self) -> dict[str, list[CancelledEvent]]:
+        """Each person's recorded cancellations, newest first."""
+        found: dict[str, list[CancelledEvent]] = {}
+        for row in sorted(self.all(), key=_start, reverse=True):
+            if row.person_id:
+                found.setdefault(row.person_id, []).append(
+                    CancelledEvent(
+                        event_id=row.event_id,
+                        summary=row.summary,
+                        start=_time(row.start),
+                        end=_time(row.end),
+                        action_ids=row.action_ids,
+                        engagement=row.engagement,
+                        parts=row.parts,
+                        cancelled_at=_time(row.cancelled_at),
+                        source=row.source,
+                    )
+                )
+        return found
+
     def matches(self, event: Event) -> list[FollowThroughMatch]:
         """Who `event`, cancelled, counts against: each active person with
         a follow-through part it matches (see the module docstring), and
@@ -203,6 +223,15 @@ class Cancellations:
         kept = [r for r in self.all() if r.id not in written and _start(r) >= oldest]
         self._sheet.write(sorted(kept + rows, key=lambda r: (r.start or "", r.id or "")))
         return rows
+
+
+def _time(text: str | None) -> datetime | None:
+    """`text` as a time, or `None` if it's missing or can't be read (a hand
+    edit)."""
+    try:
+        return datetime.fromisoformat(text) if text else None
+    except ValueError:
+        return None
 
 
 def _start(row: Cancellation) -> datetime:

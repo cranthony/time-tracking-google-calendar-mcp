@@ -103,3 +103,19 @@ def test_rows_older_than_it_keeps_are_dropped_as_new_ones_are_written():
     store.record(_event("new"), "delete_event", at=_AT)
 
     assert [r.event_id for r in store.all()] == ["new"]
+
+
+def test_by_person_gives_each_persons_cancellations_newest_first():
+    store, _ = _store([{"kind": "follow_through"}], [_SAM])
+    earlier = _event("early", with_ids=["sam"])
+    earlier.start -= timedelta(days=1)
+    earlier.end -= timedelta(days=1)
+    store.record(earlier, "delete_event", at=_AT)
+    store.record(_event("late", with_ids=["sam"]), "compaction abc", at=_AT)
+
+    by_person = store.by_person()
+
+    assert [c.event_id for c in by_person["sam"]] == ["late", "early"]
+    late = by_person["sam"][0]
+    assert (late.start, late.engagement, late.source, late.cancelled_at) == (_AT, "with", "compaction abc", _AT)
+    assert [c.event_id for c in by_person["self"]] == ["late", "early"]
