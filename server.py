@@ -1370,7 +1370,7 @@ def get_compaction_status() -> CompactionStatus:
         return CompactionStatus(
             last_compaction=get_compaction_journal().last_stamped_now(),
             latest_compacted_note=latest,
-            judgments_pending=due.compaction_id if due is not None and due.requests else None,
+            judgments_pending=due.compaction_id if due is not None and due.events else None,
         )
 
 
@@ -1465,7 +1465,6 @@ def compact_notes(
     new_actions: list[NewAction] | None = None,
     new_people: list[NewPerson] | None = None,
     new_locations: list[NewLocation] | None = None,
-    judgments: list[Judgment] | None = None,
 ) -> CompactionResult:
     """Steps 2 and 3 of compacting notes: realign each day's events to
     its notes and turn that into calendar changes. The past becomes fact
@@ -1485,10 +1484,9 @@ def compact_notes(
     id; they're created when the plan is applied (see
     prepare_compaction's instructions). dry_run=True (the default)
     changes nothing: you get the proposed changes, a compaction_id, the
-    additions, a `timeline` of the notes beside the resulting events,
+    additions, and a `timeline` of the notes beside the resulting events,
     each with its actions and facts -- show its `text` to the user in a
-    code block -- and `judgments_due`, the judgments to give when it's
-    applied.
+    code block.
     If past events would overlap, the call fails naming them: decide which
     gives way (asking the user if the notes don't say) and call again.
 
@@ -1506,22 +1504,20 @@ def compact_notes(
     Step 3: only after the user has explicitly approved this specific plan,
     having seen it -- never in the same turn as the dry run, and a request
     to compact made before they saw the plan isn't approval -- call with
-    that compaction_id and dry_run=False to apply it, with `judgments`:
-    one for each the dry run's `judgments_due` lists, made yourself,
-    without asking the user (see prepare_compaction's `judging`) -- each a
-    request_id ("<event id>/<person id>/<trait id>/<part key>"), a rating
-    from its part's ratings, and one succinct line of reasoning. If any
-    due is missing or wrong, nothing is applied. If that fails
+    that compaction_id and dry_run=False to apply it. If that fails
     partway, calling it again resumes exactly where it stopped -- the plan
     is already approved, so that needs no new approval. Days are applied in
     order, each one's notes marked compacted once it's done. With a compaction_id and
     dry_run=True you just get that compaction's stored plan back.
 
-    Applied without `judgments`, the result's `judgments` are the traits
-    to judge for each person its events were about: make every one
-    yourself, right away, without asking the user, and record them with
-    record_judgments. The compaction isn't complete until they're all
-    recorded."""
+    Step 4: once it's applied, the result has the plan's final `timeline`
+    and, beside it, its `judgments`: each event it settled, with the
+    people it was about and the parts to judge for each of them, then
+    each part's rubric and ratings once, and each person's recent
+    history. Judge every one yourself, right away, without asking the
+    user, of the events as that timeline shows them, and record them
+    with record_judgments. The compaction isn't complete until they're
+    all recorded."""
     with track("compact_notes"), cached_reads():
         compactor = get_note_compactor()
         try:
@@ -1534,7 +1530,7 @@ def compact_notes(
                 return compactor.dry_run(decisions or [], ignore_notes, new_actions, new_people, new_locations)
             if dry_run:
                 return compactor.describe(compaction_id)
-            return compactor.commit(compaction_id, judgments)
+            return compactor.commit(compaction_id)
         except CompactionError as exc:
             raise _rejected("compact_notes", exc) from exc
 
@@ -1542,16 +1538,15 @@ def compact_notes(
 @tool
 def prepare_judgments(compaction_id: str | None = None, redo: bool = False) -> JudgmentsDue:
     """The judgments a compaction (by default the last one applied) calls
-    for, to make with record_judgments: one request per event with facts,
-    per person it was about (the user, "self", and everyone there, for a
-    trait's "with" parts; everyone it was done for, for its "for" parts),
-    per judgment part of the traits that apply to them. Each has the
-    rubric, the ratings to choose from, the facts the part names (its
-    actions, where it was, the history with that person over the part's
-    lookback, the event's notes, the notes on them), and the framing to
-    judge it in. Only those not made yet -- or with redo, all of them,
-    each with the judgment already made, to redo one with more context.
-    Read-only."""
+    for, to make with record_judgments: each event with facts, with each
+    person it was about (the user, "self", and everyone there, for a
+    trait's "with" parts; everyone it was done for, for its "for" parts)
+    and the judgment parts of the traits that apply to them; then each of
+    those parts once -- its rubric and the ratings to choose from -- and
+    each person's history (what they did and where) over the days their
+    parts look back. Only those not made yet -- or with redo, all of
+    them, each event with the judgments already made (`current`), to
+    redo one with more context. Read-only."""
     with track("prepare_judgments"), cached_reads():
         compactor = get_note_compactor()
         compactor.prefetch()
