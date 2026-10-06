@@ -1407,6 +1407,8 @@ class NoteCompactor:
         )
         self._check_before_window(day, plan)
         self._show_follow_through(day, decisions, plan)
+        if tree is not None:
+            _keep_priorities(plan, tree)
         labelled = [c for c in plan.changes if c.action == "create" and c.after.event_label_id is not None]
         if not labelled:
             return plan
@@ -1657,6 +1659,21 @@ def _candidates(timestamp: datetime, events: list[Event], previous: Event | None
 
 def _title_key(summary: str) -> str:
     return " ".join(summary.casefold().split())
+
+
+def _keep_priorities(plan: CompactionPlan, tree: ActionTree) -> None:
+    """Give each event `plan` compacts the priority its actions give it now
+    -- the highest (lowest-numbered) of theirs -- as its own, unless it has
+    one: actions' priorities change often, and what happened keeps the
+    priority it had (see Event.action_priority). An event whose actions
+    give none is left without."""
+    for change in plan.changes:
+        after = change.after
+        if change.action == "cancel" or after is None or after.compacted_until is None or after.priority is not None:
+            continue
+        priorities = [p for p in (tree.priority(a) for a in after.action_ids or ()) if p is not None]
+        if priorities:
+            after.priority = min(priorities)
 
 
 def _new_event_id(compaction_id: str, step: int) -> str:

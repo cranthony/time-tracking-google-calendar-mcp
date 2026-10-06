@@ -1961,3 +1961,25 @@ class TestFollowThrough:
 
         assert "Follow-through:" not in planned.timeline.text
         assert setup.cancellations.all() == []
+
+
+class TestPrioritiesKept:
+    """What compaction settles keeps the priority its actions gave it then."""
+
+    def _setup(self):
+        events = _day()
+        events[0] = replace(events[0], priority=None, action_ids=["mail"])
+        events[1] = replace(events[1], priority=None, action_ids=["mail"])
+        events[2] = replace(events[2], priority=None, action_ids=["mail"])
+        events[1].priority = 3  # Its own: kept.
+        actions = [replace(_action("mail", "Do email"), priority=1)]
+        return Setup([("09:05", "email")], events=events, actions=actions)
+
+    def test_a_compacted_event_is_given_its_actions_priority_as_its_own(self):
+        planned = self._setup().compactor.dry_run([])
+
+        changes = {c.event_id: c for c in planned.changes if c.event_id}
+        assert changes["e1"].after.priority == 1
+        assert changes["e2"].after.priority == 3
+        # Lunch, still to come, keeps following its actions.
+        assert "e3" not in changes or changes["e3"].after.priority is None
