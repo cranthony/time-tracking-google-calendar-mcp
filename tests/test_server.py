@@ -16,7 +16,7 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 import server
-from calendar_clients import google_sheets
+from calendar_clients import google_calendar, google_sheets
 from calendar_clients.google_calendar import (
     CLEARABLE_EVENT_FIELDS,
     Event,
@@ -734,6 +734,16 @@ class TestPrepareCompaction:
 
         assert caches == [{}]
         assert google_sheets._read_cache.get() is None
+
+    def test_runs_with_calendar_listings_cached_for_the_call_only(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        caches = []
+        compactor.prepare.side_effect = lambda: caches.append(google_calendar._listings.get())
+
+        server.prepare_compaction()
+
+        assert caches == [[]]
+        assert google_calendar._listings.get() is None
 
 
 class TestCompactNotes:

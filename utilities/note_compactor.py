@@ -154,6 +154,14 @@ _LOOKBACK = timedelta(minutes=15)
 """How long before the compaction window starts an event may have ended
 and still be offered (only the latest one) -- see the module docstring."""
 
+_PREFETCH_BEFORE = timedelta(hours=24) + _LOOKBACK
+_PREFETCH_AFTER = timedelta(hours=48)
+"""What `NoteCompactor._walk` lists up front, around its notes: from the
+night before the oldest (a day starts no earlier than 24 hours before
+its oldest note, and offers what ended `_LOOKBACK` before that) to two
+days past now (where the last day ends, unless more than one night in a
+row is cancelled -- a listing past it just isn't answered from this)."""
+
 _APPROVAL_RULE = (
     "Then STOP and wait for the user's reply. Only call compact_notes with dry_run=False once the "
     "user has explicitly approved this plan after seeing it -- never in the same turn as the dry "
@@ -1054,6 +1062,11 @@ class NoteCompactor:
         earlier: dict[str, datetime] = {}
         if not notes:
             return walked, len(sheet_notes)
+        # Every day below lists a stretch of this, several times over as
+        # its night is decided (see `_cut`): one listing of it all first,
+        # so inside a tool call they're each answered from it (see
+        # `cached_calendar_listings`).
+        self._calendar.list_events(min(times.values()) - _PREFETCH_BEFORE, now + _PREFETCH_AFTER)
         while True:
             day = self._cut(
                 lambda sleepless, border: self._day(

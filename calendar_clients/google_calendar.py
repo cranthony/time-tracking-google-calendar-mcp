@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import contextlib
+import copy
+import functools
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, ParamSpec, TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from googleapiclient.errors import HttpError
@@ -634,6 +638,95 @@ def _format_properties(
     return formatted
 
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+@dataclass(frozen=True)
+class _Listing:
+    """One `CalendarClient.list_events` answer, kept by
+    `cached_calendar_listings`."""
+
+    calendar_id: str
+    time_min: datetime
+    time_max: datetime
+    show_deleted: bool
+    events: tuple[Event, ...]
+
+
+_listings: ContextVar[list[_Listing] | None] = ContextVar("_listings", default=None)
+
+
+@contextlib.contextmanager
+def cached_calendar_listings() -> Iterator[None]:
+    """Within this block, a `CalendarClient.list_events` that falls within
+    one made earlier (same calendar, a range inside the earlier one's, and
+    the same `show_deleted`) is answered from memory, filtered to its own
+    range, instead of listing again -- on any `CalendarClient`. Any write
+    through any of them forgets every listing first, so a listing always
+    sees this process's own writes.
+
+    Meant to wrap one MCP tool call (see `server.py`), the same way as
+    `cached_sheet_reads`: compaction lists overlapping stretches of the
+    same days many times over in one step (see utilities/note_compactor.py).
+    Never kept across calls, so an edit in Google Calendar between calls
+    is always seen. Nested blocks share the outer one's cache."""
+    if _listings.get() is not None:
+        yield
+        return
+    token = _listings.set([])
+    try:
+        yield
+    finally:
+        _listings.reset(token)
+
+
+def _cached_listing(
+    calendar_id: str, time_min: datetime, time_max: datetime, show_deleted: bool
+) -> list[Event] | None:
+    """The events an earlier listing covering `time_min`..`time_max` holds
+    in that range -- copies, so a caller changing one changes nothing
+    cached -- or `None` if there's no such listing."""
+    for listing in _listings.get() or ():
+        if (
+            listing.calendar_id == calendar_id
+            and listing.show_deleted == show_deleted
+            and listing.time_min <= time_min
+            and time_max <= listing.time_max
+        ):
+            return [copy.deepcopy(e) for e in listing.events if _overlaps(e, time_min, time_max)]
+    return None
+
+
+def _overlaps(event: Event, time_min: datetime, time_max: datetime) -> bool:
+    """Whether Calendar lists `event` for `time_min`..`time_max`: it ends
+    after `time_min` (or, taking no time, is at it) and starts before
+    `time_max`."""
+    return (event.end > time_min or event.start == event.end == time_min) and event.start < time_max
+
+
+def _remember_listing(listing: _Listing) -> None:
+    listings = _listings.get()
+    if listings is not None:
+        listings.append(listing)
+
+
+def _writes(method: Callable[P, R]) -> Callable[P, R]:
+    """`requires_write_lock`, and forget every cached listing (see
+    `cached_calendar_listings`) before writing -- even a write that then
+    fails may have changed something."""
+
+    @requires_write_lock
+    @functools.wraps(method)
+    def forgetting(*args: P.args, **kwargs: P.kwargs) -> R:
+        listings = _listings.get()
+        if listings is not None:
+            listings.clear()
+        return method(*args, **kwargs)
+
+    return forgetting
+
+
 class CalendarClient:
     """Wraps the Google Calendar API behind a small, mockable interface.
 
@@ -658,7 +751,7 @@ class CalendarClient:
         credentials."""
         return CalendarClient(self._service, calendar_id)
 
-    @requires_write_lock
+    @_writes
     def create_calendar(
         self, summary: str, description: str | None = None, time_zone: str | None = None
     ) -> str:
@@ -669,7 +762,7 @@ class CalendarClient:
             body["timeZone"] = time_zone
         return self._service.calendars().insert(body=body).execute()["id"]
 
-    @requires_write_lock
+    @_writes
     def hide_calendar(self, calendar_id: str) -> bool:
         """Best effort: hide `calendar_id` from the user's calendar list in
         Google Calendar. Returns whether that worked -- this app's
@@ -680,7 +773,7 @@ class CalendarClient:
         except HttpError:
             return False
 
-    @requires_write_lock
+    @_writes
     def color_calendar(self, calendar_id: str, background_color: str) -> bool:
         """Best effort: show `calendar_id` in `background_color` ("#rrggbb")
         in the user's calendar list in Google Calendar, with white text.
@@ -726,7 +819,7 @@ class CalendarClient:
             self._time_zone = ZoneInfo(calendar["timeZone"])
         return self._time_zone
 
-    @requires_write_lock
+    @_writes
     def set_time_zone(self, time_zone: str) -> ZoneInfo:
         """Set this calendar's time zone (an IANA name, e.g.
         "America/New_York"), returning it. Events keep their moments;
@@ -771,7 +864,7 @@ class CalendarClient:
             if not page_token:
                 return items
 
-    @requires_write_lock
+    @_writes
     def upsert_event_resource(self, event_id: str, body: dict) -> dict:
         """Create the event `event_id` from the API dict `body`, or, if one
         with that id already exists, overwrite it with `body` -- so a
@@ -784,7 +877,7 @@ class CalendarClient:
                 raise
         return self._service.events().patch(calendarId=self._calendar_id, eventId=event_id, body=body).execute()
 
-    @requires_write_lock
+    @_writes
     def replace_event_resource(self, event_id: str, body: dict) -> dict:
         """Like `upsert_event_resource`, but an existing event is replaced
         by `body` in full (an update, not a patch), so no field or
@@ -801,7 +894,7 @@ class CalendarClient:
             .execute()
         )
 
-    @requires_write_lock
+    @_writes
     def delete_event_resource(self, event_id: str) -> None:
         """Delete the event `event_id`, if it's there: one already gone (or
         never made) is fine."""
@@ -830,7 +923,13 @@ class CalendarClient:
         `_LIST_PAGE_SIZE` events per page (250 if asked for nothing), so a
         week or more of events can span several. With `show_deleted`,
         cancelled events too (Calendar leaves them out otherwise) -- but
-        not one that's kept no start at all."""
+        not one that's kept no start at all.
+
+        Inside `cached_calendar_listings`, a range an earlier listing
+        covers is answered from it."""
+        cached = _cached_listing(self._calendar_id, time_min, time_max, show_deleted)
+        if cached is not None:
+            return cached
         events: list[Event] = []
         page_token: str | None = None
         while True:
@@ -857,6 +956,9 @@ class CalendarClient:
             )
             page_token = response.get("nextPageToken")
             if not page_token:
+                _remember_listing(
+                    _Listing(self._calendar_id, time_min, time_max, show_deleted, tuple(copy.deepcopy(events)))
+                )
                 return events
 
     def get_event(self, event_id: str) -> Event:
@@ -867,7 +969,7 @@ class CalendarClient:
         )
         return Event.from_api(response)
 
-    @requires_write_lock
+    @_writes
     def create_event(self, event: Event) -> Event:
         """Create `event`. If `event.id` is set it's sent as the new
         event's id (Calendar accepts a caller-chosen one: 5-1024 characters
@@ -884,7 +986,7 @@ class CalendarClient:
         )
         return Event.from_api(response)
 
-    @requires_write_lock
+    @_writes
     def import_event(self, event: Event, ical_uid: str) -> Event:
         """Import `event` with the iCalendar UID `ical_uid` (events.import),
         which Calendar gives an id of its own. Importing a UID again
@@ -906,7 +1008,7 @@ class CalendarClient:
         response = self._service.events().import_(calendarId=self._calendar_id, body=body).execute()
         return Event.from_api(response)
 
-    @requires_write_lock
+    @_writes
     def update_event(self, event: Event) -> Event:
         """Patch the event `event.id` with `event`'s fields that are set;
         those left `None` are kept, and extended properties not in the
@@ -976,7 +1078,7 @@ class CalendarClient:
             if not page_token:
                 return events
 
-    @requires_write_lock
+    @_writes
     def delete_event(self, event_id: str) -> None:
         self._service.events().delete(
             calendarId=self._calendar_id, eventId=event_id
@@ -989,7 +1091,7 @@ class CalendarClient:
         etag, labels = self._get_raw_event_labels()
         return [EventLabel.from_api(label) for label in labels], etag
 
-    @requires_write_lock
+    @_writes
     def create_event_label(self, background_color: str, name: str | None = None) -> EventLabel:
         """Define a new event label on this calendar. The API has no way
         to add a single label in place -- creating one means replacing
@@ -1001,7 +1103,7 @@ class CalendarClient:
         updated = self._patch_event_labels(etag, labels + [new_label.to_api_body()])
         return next(label for label in updated if label.id not in existing_ids)
 
-    @requires_write_lock
+    @_writes
     def update_event_label(
         self, label_id: str, *, background_color: str | None = None, name: str | None = None
     ) -> EventLabel:
@@ -1026,7 +1128,7 @@ class CalendarClient:
         updated = self._patch_event_labels(etag, labels)
         return next(label for label in updated if label.id == label_id)
 
-    @requires_write_lock
+    @_writes
     def delete_event_label(self, label_id: str) -> EventLabel:
         """Remove an event label from this calendar. Returns the label as
         it was just before removal. Raises `ValueError` if no label with
@@ -1039,7 +1141,7 @@ class CalendarClient:
         self._patch_event_labels(etag, remaining)
         return removed
 
-    @requires_write_lock
+    @_writes
     def replace_event_labels(self, labels: list[EventLabel], etag: str | None = None) -> list[EventLabel]:
         """Atomically replace this calendar's entire set of custom event
         labels with `labels`: each given label is created (if `id` is
@@ -1063,7 +1165,7 @@ class CalendarClient:
         calendar = self._service.calendars().get(calendarId=self._calendar_id).execute()
         return _parse_calendar_metadata(calendar.get("description")).get(key)
 
-    @requires_write_lock
+    @_writes
     def set_calendar_metadata(self, key: str, value: str | None) -> None:
         """Set (or, if `value` is `None`, remove) this app's own `key` on
         the calendar -- see `get_calendar_metadata`. Guarded by the
@@ -1089,7 +1191,7 @@ class CalendarClient:
             for label in response.get("labelProperties", {}).get("eventLabels", [])
         ]
 
-    @requires_write_lock
+    @_writes
     def _patch_calendar(self, etag: str | None, body: dict) -> dict:
         """PATCH this calendar with `body`, guarded by `etag` -- shared by
         every read-modify-write against the Calendars resource

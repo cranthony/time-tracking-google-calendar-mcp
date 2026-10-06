@@ -850,6 +850,21 @@ class TestSeveralDays:
             ),
         ]
 
+    def test_every_day_lists_within_one_listing_made_first(self):
+        setup = self._setup()
+        listed = []
+        list_events = setup.calendar.list_events
+        setup.calendar.list_events = lambda start, end: listed.append((start, end)) or list_events(start, end)
+
+        setup.compactor.dry_run(self._late_wake_up(setup))
+
+        # The rest are answered from the first, inside a tool call (see
+        # cached_calendar_listings) -- all but suggesting actions, which
+        # looks weeks back, and only prepare does.
+        (first_start, first_end), *rest = listed
+        assert len(rest) > 2
+        assert all(first_start <= start and end <= first_end for start, end in rest)
+
     def test_each_day_starts_where_the_one_before_it_ends(self):
         context = self._setup().compactor.prepare()
 
