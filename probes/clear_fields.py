@@ -4,8 +4,8 @@ removes them.
 
 Event.to_api_body sends each cleared field as null in a patch: description
 and location as top-level fields, the app's own fields (priority,
-min_duration, is_fixed_duration, is_fixed_time) as keys of
-extendedProperties.private, and colorId too for priority. Google documents
+compacted_until, facts, judgments) as keys of extendedProperties.private,
+and colorId too for priority. Google documents
 patch as replacing only the fields it's given, but not, in so many words,
 that a null removes a top-level field, or that a null key of
 extendedProperties.private removes that key while the rest are kept.
@@ -15,10 +15,10 @@ it checks the bodies the tools actually send.
 It creates a throwaway calendar (this app's calendar.app.created scope
 allows that), then:
 
-1. creates an event with every clearable field set, plus goal_ids, and
+1. creates an event with clearable fields set, plus action_ids, and
    clears them all while renaming it;
-2. creates an event with a priority and a min_duration, and clears only
-   the min_duration;
+2. creates an event with a priority and a compacted_until, and clears only
+   the compacted_until;
 3. creates a daily series with a priority and a location, and clears its
    priority, checking the series and each of its instances;
 4. clears another series' priority from its third event on ("this and
@@ -116,15 +116,13 @@ def _probe(client: CalendarClient) -> None:
             time_zone=_TIME_ZONE,
             description="a description",
             location="a location",
-            min_duration=timedelta(minutes=15),
-            is_fixed_duration=True,
-            is_fixed_time=True,
+            compacted_until=nine + timedelta(minutes=30),
             priority=1,
-            goal_ids=["goalA"],
+            action_ids=["actionA"],
         )
     )
     before = _raw(client, full.id)
-    _check("set up with a colorId and all the app's fields", "colorId" in before and len(_private(before)) == 5, before)
+    _check("set up with a colorId and all the app's fields", "colorId" in before and len(_private(before)) == 3, before)
     returned = client.update_event(Event(id=full.id, summary="Probe event (renamed)", cleared=CLEARABLE_EVENT_FIELDS))
     after = _raw(client, full.id)
     _check("summary renamed", after.get("summary") == "Probe event (renamed)", after.get("summary"))
@@ -132,8 +130,8 @@ def _probe(client: CalendarClient) -> None:
     _check("location removed", not after.get("location"), after.get("location"))
     _check("colorId removed (calendar default)", "colorId" not in after, after.get("colorId"))
     _check(
-        "only goal_ids left in extendedProperties.private",
-        _private(after) == {_key("goal_ids"): "goalA"},
+        "only action_ids left in extendedProperties.private",
+        _private(after) == {_key("action_ids"): "actionA"},
         _private(after),
     )
     _check("times kept", after["start"] == before["start"] and after["end"] == before["end"])
@@ -143,21 +141,21 @@ def _probe(client: CalendarClient) -> None:
         returned,
     )
 
-    print("\n2. Clear only an event's min_duration")
+    print("\n2. Clear only an event's compacted_until")
     partial = client.create_event(
         Event(
             summary="Probe partial",
             start=nine + timedelta(hours=2),
             end=nine + timedelta(hours=3),
             time_zone=_TIME_ZONE,
-            min_duration=timedelta(minutes=20),
+            compacted_until=nine + timedelta(hours=2, minutes=20),
             priority=3,
         )
     )
     color = _raw(client, partial.id).get("colorId")
-    client.update_event(Event(id=partial.id, cleared=frozenset({"min_duration"})))
+    client.update_event(Event(id=partial.id, cleared=frozenset({"compacted_until"})))
     after = _raw(client, partial.id)
-    _check("min_duration removed", _key("min_duration") not in _private(after), _private(after))
+    _check("compacted_until removed", _key("compacted_until") not in _private(after), _private(after))
     _check("priority kept", _private(after).get(_key("priority")) == "3", _private(after))
     _check("colorId kept", after.get("colorId") == color, (color, after.get("colorId")))
 

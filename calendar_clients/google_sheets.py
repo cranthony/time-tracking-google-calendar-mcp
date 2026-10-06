@@ -20,7 +20,7 @@ class SheetsClient:
     the thin layer `utilities/calendar_metadata_sheet.py` and each tab's
     own module (e.g. `utilities/goal_sheet.py`) build their higher-level
     logic on top of, the same way `CalendarClient` is a thin layer under
-    `utilities/reallocating_calendar.py`. Knows nothing about event
+    `utilities/event_changes.py`. Knows nothing about event
     labels, time notes, or any other meaning attached to a tab; just
     spreadsheets, tabs, rows, and columns.
 

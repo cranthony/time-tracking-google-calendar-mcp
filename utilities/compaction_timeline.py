@@ -62,7 +62,7 @@ from typing import Literal
 TimelineGap = Literal["action", "location"]
 """What a past event can be missing once this compaction is applied."""
 
-TimelineStatus = Literal["planned", "on_schedule", "adjusted", "reflowed", "new", "cancelled", "merged"]
+TimelineStatus = Literal["planned", "on_schedule", "adjusted", "new", "cancelled", "merged"]
 """What compaction did to an event:
 
 - `planned`: not touched (an offered future event, or
@@ -71,9 +71,7 @@ TimelineStatus = Literal["planned", "on_schedule", "adjusted", "reflowed", "new"
 - `on_schedule`: in the past, and recorded exactly as planned.
 - `adjusted`: its times were changed to match the notes (or a direct
   request to move it).
-- `reflowed`: moved to make room for an adjusted one.
-- `new`: created -- something unplanned, or the remainder of an event an
-  adjusted one split in two.
+- `new`: created -- something unplanned that happened.
 - `cancelled` / `merged`: removed (`merged` into `merged_into`)."""
 
 _WIDTH = 40
@@ -371,7 +369,7 @@ def _edge_lines(moment, live, removed, here: set[str], hm) -> list[tuple[bool, s
 def _start_tag(event: TimelineEvent, hm) -> str:
     if event.status == "new":
         return " · new"
-    if event.status not in ("adjusted", "reflowed") or event.planned_start is None:
+    if event.status != "adjusted" or event.planned_start is None:
         return ""
     start_shift = event.start - event.planned_start
     end_shift = event.end - event.planned_end
@@ -384,7 +382,7 @@ def _start_tag(event: TimelineEvent, hm) -> str:
 
 
 def _end_tag(event: TimelineEvent, hm) -> str:
-    if event.status not in ("adjusted", "reflowed") or event.planned_end is None:
+    if event.status != "adjusted" or event.planned_end is None:
         return ""
     start_shift = event.start - event.planned_start
     end_shift = event.end - event.planned_end

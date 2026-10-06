@@ -41,15 +41,15 @@ hours, if there isn't one). Each day after the first is planned as if the
 one before it had already been compacted: it starts where that one ended
 (its `now`), against the calendar as that one's plan would leave it
 (`_PlannedCalendar`). A day before the last is wholly past, so its plan
-records it and reflows nothing; only the last day, the one with now in
-it, has a future to reflow. The night between two days is decided once,
+only records it; only the last day, the one with now in it, has a
+future to reschedule. The night between two days is decided once,
 whole, by the earlier day, and its end is the border between them (see
 `_cut`): a note the decisions use to end it -- woke early, or slept in
 -- moves the border to it, taking every note up to it into the earlier
 day, and the later day starts there. After a late wake-up, the later day
 still starts at the planned one, and is compacted even without notes of
 its own, so the morning the night now runs over is settled there: past
-events under it are overlaps to resolve, and later ones reflow after it.
+events under it, and later ones it reaches, are overlaps to resolve.
 A cancelled night -- no sleep -- makes the two days one long one. In the journal, each day is a compaction of
 its own, applied and stamped in order, and together they're a *batch*
 under the first day's id (see utilities/compaction_journal.py) -- the
@@ -77,8 +77,9 @@ offered is recorded as on schedule unless
 the client's decisions say otherwise (see utilities/note_compaction.py).
 
 The events offered run through each day's end-of-day sleep, because an
-event that ran long pushes what follows it later, and the reflow needs
-somewhere for that to go. But compaction is about recording the past,
+event that ran long runs into what follows it, which the decisions then
+have to move too -- and nothing may overlap any of them (see utilities/
+note_compaction.py). But compaction is about recording the past,
 so the timeline shown to the user stops at `now`: a later event appears
 in it only if it's near enough to a note to be one of its candidates
 (lunch at noon, for an 11:45 "starting lunch") or -- after a dry run --
@@ -145,7 +146,6 @@ from utilities.note_compaction import (
     planned_timeline,
 )
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, SheetNote
-from utilities.reallocating_calendar import ReallocatingCalendar
 
 logger = logging.getLogger(__name__)
 
@@ -190,8 +190,8 @@ DECISION_GUIDE = (
     "`timeline` shows the notes beside the planned events -- for every day of notes up to now, each "
     "under a heading with its date (`days` lists them when there's more than one). Each day is "
     "compacted on its own, but you decide them all in one list. Compare them and decide, event "
-    "by event, what the notes show happened differently -- then call compact_notes with those "
-    "`decisions`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly "
+    "by event, what the notes show happened differently -- then call compact_notes with them, as "
+    "`updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly "
     "as planned, so only mention the events the notes contradict. Notes are sparse -- the user "
     "doesn't note every event, so a missing start or end note never means an event didn't happen "
     "or ran into its neighbor. "
@@ -203,31 +203,36 @@ DECISION_GUIDE = (
     "to', 'now working on') marks a START. Don't assume a note starts the event it names; when the "
     "tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if "
     "it's still unclear. "
-    "Each decision has an `action`: "
-    "'keep' {event_id}: it happened; each edge stays as planned unless you move it -- "
+    "`updates` {event_id}: it happened; each edge stays as planned unless you move it -- "
     "{start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to "
     "it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to "
-    "itself, e.g. 'leaving 15 minutes early'). 'keep' also takes {summary} to rename an event and "
+    "itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and "
     "{annotate} to add text to its description. "
-    "'cancel' {event_id}: it didn't happen. "
-    "'create' {summary, a start and an end (a time or note each), action_ids?, facts?}: something "
+    "`creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something "
     "unplanned happened. "
-    "'merge' {event_id, into}: fold one event into another, titled after both -- ONLY when the user "
-    "has told you they don't remember where one ended and the other began; never just because the "
-    "notes are sparse. "
-    "Past events can't overlap: if a moved edge runs into another past event, compact_notes rejects "
-    "the plan and names the overlap. Decide which edge gives way (an overrun usually delays or "
-    "shortens the next event), and ask the user if the notes don't tell you. "
+    "`cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user "
+    "dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it "
+    "was planned with), false if the plan changed for another reason (someone else called it off, "
+    "it moved elsewhere). An event goes in only one of the lists. When the user tells you they "
+    "don't remember where one event ended and the next began, grow one with an update (renamed "
+    "after both) and cancel the other, not counting it -- only then, never just because the notes "
+    "are sparse. "
+    "NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and "
+    "must not overlap any other event in `events` -- past or still to come, the others you change "
+    "included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the "
+    "same call (an overrun usually delays or shortens the next event; ask the user if the notes "
+    "don't say which gives way). A call that breaks this changes nothing, and lists every problem "
+    "and the day as it would leave it, so fix them all at once. "
     "Every note you don't use as a start_note/end_note has its text added to the description of the "
     "event it falls within; list any that shouldn't be in `ignore_notes`. Use only note ids from "
     "`notes` (only this round's -- a longer backlog than this takes another round, see "
     "`remaining_note_count`) and event ids from `events`. "
     "`events` may start with one that ended just before `compaction_window_start` (usually last "
     "night's sleep); if a note shows it actually ran later -- the user slept in -- move its end "
-    "with 'keep', and say when whatever it now overlaps happened. "
+    "with an update, and say when whatever it now overlaps happened. "
     "An event with `compacted_until` was settled by an earlier compaction up to then -- usually one "
     "still going on when it ran: its start, and its lasting until then, are fact, so keep its start, "
-    "end it no earlier (it may well have run later), and don't cancel or merge it; compact_notes "
+    "end it no earlier (it may well have run later), and don't cancel it; compact_notes "
     "refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next "
     "compaction says where it ended. When the last compaction ran in the evening, before the "
     "night, this round starts there, at `compaction_window_start`: notes written during the planned "
@@ -241,18 +246,19 @@ DECISION_GUIDE = (
     "timeline shows it too (✓), and when the last compaction ran, both as context. "
     "COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at "
     "`now`, except for later events near a note (one may be what a note starts early) and, after "
-    "a dry run, later events the plan changes -- e.g. pushes later after an overrun. "
-    "A 'keep' that moves a future event reschedules it: it's pinned there and the rest of the day "
-    "reflows around it, in the same plan -- for 'move lunch later and adjust the afternoon' "
-    "requests. A day's end-of-day sleep event works differently: moving its start moves "
-    "bedtime (an earlier one shortens or cancels what runs past it), and its end -- the wake-up "
+    "a dry run, later events the plan changes. "
+    "An update that moves a future event reschedules it -- for 'move lunch later and adjust the "
+    "afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep "
+    "event works differently: moving its start moves bedtime (an earlier one needs whatever runs "
+    "past it shortened or cancelled in the same call), and its end -- the wake-up "
     "time -- starts the next day. THE NIGHT IS THE BORDER BETWEEN DAYS: give each night at most "
     "one decision, whichever day's heading its notes are under. A note that marks waking up "
     "(early or late) is that night's end_note -- it moves the border to that note, so the notes "
     "up to it belong to the day before; a note in the night that doesn't end it ('can't sleep') "
     "is just added to it. If the user slept in, the morning events the night now runs over are "
     "settled with the next day: a past one it overlaps has to be moved or cancelled (the next day's "
-    "decisions may use the wake-up note as an edge too), and later ones reflow after it. Cancel a "
+    "decisions may use the wake-up note as an edge too), and later ones it reaches have to move "
+    "too. Cancel a "
     "night only if the user didn't sleep: its two days then become one long day. When the next "
     "day isn't in this round, compaction never adjusts it, so move only the night's start to "
     "change only bedtime. "
@@ -263,12 +269,12 @@ DECISION_GUIDE = (
     "notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). "
     "ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` "
     "(\"play guitar\", \"eat a meal\"); an event can have several, the first setting its color. "
-    "For every past event with `suggested_action_ids`, add a 'keep' {event_id, action_ids} applying "
-    "them unless the notes say otherwise; give a 'create' its action_ids too. When no action fits, "
-    "add one (see NEW below) rather than force a poor match. 'keep' without action_ids keeps them, "
+    "For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying "
+    "them unless the notes say otherwise; give a create its action_ids too. When no action fits, "
+    "add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, "
     "and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's "
     "being given (or, before deciding, one suggested). "
-    "FACTS: add `facts` to the event's 'keep' (or 'create'): location_id (from `locations`, matched "
+    "FACTS: add `facts` to the event's update (or create): location_id (from `locations`, matched "
     "by their hints), with_ids (people from `people` who were there; never \"self\" -- the user is at "
     "every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- "
     "then they're not in with_ids), and notes: {person id: a subjective line on how it was for "
@@ -282,7 +288,7 @@ DECISION_GUIDE = (
     "don't say, ask the user. "
     "NEW actions, people and locations: when an event's action, a person or a place isn't in the "
     "lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a "
-    "`ref` starting \"new:\" (\"new:ukulele\") that your decisions use wherever its id would go -- "
+    "`ref` starting \"new:\" (\"new:ukulele\") that your updates and creates use wherever its id would go -- "
     "rather than by separate tools: they're created when the plan is applied, so the user "
     "confirms them with it. A new action is a verb phrase, its status active (the user approves "
     "it with the plan); a new person needs a context when their name is taken; a new location "
@@ -329,7 +335,6 @@ class ContextEvent:
     say otherwise (see `DECISION_GUIDE`)."""
 
     priority: int | None = None
-    is_fixed_time: bool | None = None
     facts: Facts | None = None
     """Where, who with, who for, and notes on each person there, if
     they've been recorded (see utilities/facts.py)."""
@@ -516,7 +521,7 @@ class _Walked:
 
 _STATE_FIELDS = (
     "summary", "start", "end", "description", "location", "status",
-    "is_fixed_time", "priority", "event_label_id", "action_ids", "min_duration", "facts", "compacted_until",
+    "priority", "event_label_id", "action_ids", "facts", "compacted_until",
 )
 
 
@@ -525,7 +530,7 @@ class _PlannedCalendar:
     leave them, without writing anything: what each day of a batch is
     planned against, so it starts from the day before it as planned."""
 
-    def __init__(self, calendar: ReallocatingCalendar) -> None:
+    def __init__(self, calendar) -> None:
         self._calendar = calendar
         self._changed: dict[str, Event] = {}
         self._created: list[Event] = []
@@ -557,7 +562,7 @@ class NoteCompactor:
     def __init__(
         self,
         *,
-        calendar: ReallocatingCalendar,
+        calendar,
         client,
         notes: NotedTimeSheet,
         journal: CompactionJournal,
@@ -571,7 +576,7 @@ class NoteCompactor:
         cancellations: Cancellations | None = None,
     ) -> None:
         """`calendar` reads the day's events (through the same
-        action-aware view reallocation uses); `client` is what the planned
+        action-aware view, an ActionCalendar); `client` is what the planned
         changes are written through (an ActionCalendar, so each event's
         label follows its actions). `actions`, `people` and `locations`
         are what events' actions and facts name, and what a plan can add
@@ -641,7 +646,6 @@ class NoteCompactor:
                         action_names=[names.get(a, a) for a in e.action_ids] if e.action_ids is not None else None,
                         suggested_action_ids=suggested.get(e.id),
                         priority=e.effective_priority,
-                        is_fixed_time=e.is_fixed_time,
                         facts=e.facts,
                         compacted_until=e.compacted_until,
                     )
@@ -1365,10 +1369,9 @@ class NoteCompactor:
         events' labels checked against the calendar's: Calendar rejects
         inserting an event with a label it doesn't have (HTTP 400), which
         would stop the commit partway -- and every retry with it. A
-        created event that has one anyway (a split continuation, cloned
-        label and all, from reflowing the day) just drops it; the label it
-        gets follows its actions when it's written. Only reads the labels
-        when a created event has one."""
+        created event that has one anyway just drops it; the label it gets
+        follows its actions when it's written. Only reads the labels when a
+        created event has one."""
         tree = self._actions.tree() if self._actions else None
         if tree is not None:
             current = {e.id: e.action_ids or [] for e in day.events if e.id}
@@ -1425,7 +1428,7 @@ class NoteCompactor:
         who -- see utilities/cancellations.py."""
         if self._cancellations is None or plan.timeline is None:
             return
-        cancelled = {d.event_id for d in decisions if d.action == "cancel"}
+        cancelled = {d.event_id for d in decisions if d.action == "cancel" and d.counts_against_follow_through is not False}
         events = {e.id: e for e in day.events if e.id in cancelled}
         marked = False
         for shown in plan.timeline.events:
@@ -1441,12 +1444,16 @@ class NoteCompactor:
 
     def _record_cancellations(self, journal: JournalCompaction) -> None:
         """Record each event `journal`'s day cancelled with a 'cancel'
-        decision -- not a merge, nor one the reflow had no room for -- for
+        decision that counts -- not one that doesn't, nor a merge -- for
         the people it counts against in follow-through, as it was planned.
         Again, harmlessly, on a resumed commit."""
         if self._cancellations is None:
             return
-        cancelled = {d.event_id for d in journal.decisions if d.action == "cancel"}
+        # A cancel from before cancels said whether they counted, counted.
+        cancelled = {
+            d.event_id for d in journal.decisions
+            if d.action == "cancel" and d.counts_against_follow_through is not False
+        }
         for step in journal.steps:
             if step.action == "cancel" and step.event_id in cancelled and step.before is not None:
                 self._cancellations.record(
@@ -1696,13 +1703,5 @@ def _patch_for(step: JournalStep) -> Event:
     if after.facts != before.facts:
         # Empty facts remove them: see Event.facts.
         patch.facts = facts_from_dict(after.facts)
-    if after.is_fixed_time:
-        # An actual event is pinned explicitly, not left to inherit it
-        # from its label.
-        patch.is_fixed_time = True
-    if after.min_duration_minutes is not None and (
-        after.is_fixed_time or after.min_duration_minutes != before.min_duration_minutes
-    ):
-        patch.min_duration = timedelta(minutes=after.min_duration_minutes)
     return patch
 

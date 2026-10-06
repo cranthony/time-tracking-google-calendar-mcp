@@ -60,10 +60,12 @@ from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.facts import Facts, fact_problems
 from utilities.judgments import Judging, Judgment, JudgmentsDue, JudgmentsResult
 from utilities.trait_rollup import TraitRollup, TraitScoreRow
+from utilities import event_changes
 from utilities.cancellations import Cancellations
+from utilities.event_changes import Cancel, ChangeError, EventChanges, Shift
 from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
-from utilities.note_compaction import CompactionError, EventDecision
+from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision
 from utilities.compaction_journal import CompactionJournal
 from utilities.compaction_marker import CompactionMarker
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
@@ -79,8 +81,6 @@ from utilities.people import (
     Person,
     PersonStatus,
 )
-from utilities.reallocation import ReallocationOptions
-from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.recurrences import Recurrences, Repeat, describe_rules
 from utilities.traits import ListedTrait, Trait, Traits, TraitStatus
 from workos_auth import WorkOSTokenVerifier
@@ -166,7 +166,7 @@ class PublicEvent:
     action_ids with actions_from_label false (or left out).
 
     effective_priority is read-only: Event's property of the same name,
-    the priority reallocation actually uses, i.e. priority falling back,
+    the priority that applies, i.e. priority falling back,
     when the event doesn't set one, to the highest (lowest-numbered)
     priority among its actions (each action's own, or its nearest
     group's). Kept separate from priority so that sending a listed event
@@ -176,7 +176,7 @@ class PublicEvent:
 
     is_end_of_day_sleep/recurring_event_id are read-only too, and
     to_event ignores them as well. is_end_of_day_sleep decides where a
-    day ends for reallocation (see utilities/reallocating_calendar.py),
+    day ends for compaction (see utilities/note_compactor.py),
     so a wrong mark would quietly change what later updates shrink, move
     or cancel; it's only set by hand, via calendar_cli.py.
     recurring_event_id is assigned by Google and can't be set at all.
@@ -208,9 +208,6 @@ class PublicEvent:
     end: datetime | None = None
     description: str | None = None
     location: str | None = None
-    min_duration: timedelta | None = None
-    is_fixed_duration: bool | None = None
-    is_fixed_time: bool | None = None
     priority: int | None = None
     action_ids: list[str] | None = None
     action_names: list[str] | None = None
@@ -238,9 +235,6 @@ class PublicEvent:
             end=event.end,
             description=event.description,
             location=event.location,
-            min_duration=event.min_duration,
-            is_fixed_duration=event.is_fixed_duration,
-            is_fixed_time=event.is_fixed_time,
             priority=event.priority,
             action_ids=event.action_ids,
             action_names=names,
@@ -266,9 +260,6 @@ class PublicEvent:
             end=self.end,
             description=self.description,
             location=self.location,
-            min_duration=self.min_duration,
-            is_fixed_duration=self.is_fixed_duration,
-            is_fixed_time=self.is_fixed_time,
             # Inferred actions, sent back, aren't the event's to store.
             action_ids=None if self.actions_from_label else self.action_ids,
             priority=self.priority,
@@ -308,9 +299,6 @@ class PublicRecurrence:
     schedule: str | None = None
     description: str | None = None
     location: str | None = None
-    min_duration: timedelta | None = None
-    is_fixed_duration: bool | None = None
-    is_fixed_time: bool | None = None
     priority: int | None = None
     action_ids: list[str] | None = None
     action_names: list[str] | None = None
@@ -334,9 +322,6 @@ class PublicRecurrence:
             schedule=describe_rules(event.recurrence, zone),
             description=event.description,
             location=event.location,
-            min_duration=event.min_duration,
-            is_fixed_duration=event.is_fixed_duration,
-            is_fixed_time=event.is_fixed_time,
             priority=event.priority,
             action_ids=event.action_ids,
             action_names=public.action_names,
@@ -354,9 +339,6 @@ class PublicRecurrence:
             end=self.end,
             description=self.description,
             location=self.location,
-            min_duration=self.min_duration,
-            is_fixed_duration=self.is_fixed_duration,
-            is_fixed_time=self.is_fixed_time,
             priority=self.priority,
             action_ids=None if self.actions_from_label else self.action_ids,
             cleared=frozenset(clear_fields),
@@ -367,7 +349,6 @@ class PublicRecurrence:
 # time only: building some writes to Google (creating a spreadsheet or
 # tab), and two tool calls arriving together mustn't both build one.
 _calendar_client: CalendarClient | None = None
-_reallocating_calendar: ReallocatingCalendar | None = None
 _noted_time_sheet: NotedTimeSheet | None = None
 _compaction_journal: CompactionJournal | None = None
 _note_compactor: NoteCompactor | None = None
@@ -391,20 +372,6 @@ def get_calendar_client() -> CalendarClient:
                 _calendar_client = build_calendar_client()
     return _calendar_client
 
-
-def get_reallocating_calendar() -> ReallocatingCalendar:
-    """Lazily construct and cache the ReallocatingCalendar, the same way
-    get_calendar_client caches its CalendarClient. Wraps an ActionCalendar
-    (get_calendar_client() plus get_action_store()) rather than
-    get_calendar_client() directly, so reallocation sees an event's
-    action-derived priority as the fallback whenever the event itself
-    doesn't set one, and every write derives its label from its actions."""
-    global _reallocating_calendar
-    if _reallocating_calendar is None:
-        with WRITE_LOCK:
-            if _reallocating_calendar is None:
-                _reallocating_calendar = ReallocatingCalendar(ActionCalendar(get_calendar_client(), get_action_store()))
-    return _reallocating_calendar
 
 
 def get_action_store() -> Actions:
@@ -440,6 +407,13 @@ def get_location_store() -> Locations:
             if _locations is None:
                 _locations = build_locations()
     return _locations
+
+
+def get_event_changes() -> EventChanges:
+    """What the event tools check and write their batches with (see
+    utilities/event_changes.py): through the actions, so each event's
+    label follows them."""
+    return EventChanges(ActionCalendar(get_calendar_client(), get_action_store()), get_cancellation_store())
 
 
 def get_cancellation_store() -> Cancellations:
@@ -538,7 +512,7 @@ def get_note_compactor() -> NoteCompactor:
         with WRITE_LOCK:
             if _note_compactor is None:
                 _note_compactor = NoteCompactor(
-                    calendar=get_reallocating_calendar(),
+                    calendar=ActionCalendar(get_calendar_client(), get_action_store()),
                     # Written through actions, so each event's label follows them.
                     client=ActionCalendar(get_calendar_client(), get_action_store()),
                     actions=get_action_store(),
@@ -561,9 +535,10 @@ def get_note_compactor() -> NoteCompactor:
     return _note_compactor
 
 
-def _rejected(tool_name: str, exc: CompactionError) -> ToolError:
-    """Log a compaction tool refusing a call, by the categories of mistake
-    it found (see CompactionError), and return the ToolError to raise --
+def _rejected(tool_name: str, exc: ChangeError) -> ToolError:
+    """Log a tool refusing a call -- a compaction or a batch of event
+    changes -- by the categories of mistake it found (see ChangeError),
+    and return the ToolError to raise --
     so the logs show which instructions a model gets wrong, and how often."""
     logger.warning(
         "compaction rejected: tool=%s categories=%s: %s",
@@ -686,7 +661,7 @@ def tool(fn: Callable[P, R]) -> Callable[P, R]:
 def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     """List events between min_time and max_time. action_ids are what was
     done at each event, the first setting its color (action_names gives
-    their names). effective_priority is what reallocation actually uses:
+    their names). effective_priority is the priority that applies:
     the event's own priority, falling back to the highest priority of its
     actions.
     is_end_of_day_sleep marks the sleep event that
@@ -718,9 +693,6 @@ def get_event(id: str) -> PublicEvent:
 EventField = Literal[
     "description",
     "location",
-    "min_duration",
-    "is_fixed_duration",
-    "is_fixed_time",
     "priority",
     "facts",
     "judgments",
@@ -730,41 +702,110 @@ EventField = Literal[
 calendar_clients/google_calendar.py's CLEARABLE_EVENT_FIELDS)."""
 
 
+@dataclass(kw_only=True)
+class EventUpdate:
+    """One event's update: `event` (its id and the fields to set), and the
+    fields to remove (`clear_fields`)."""
+
+    event: PublicEvent
+    clear_fields: list[EventField] | None = None
+
+
+@dataclass(kw_only=True)
+class EventCancel:
+    """An event to cancel, and whether that counts against follow-through:
+    a commitment dropped (true) rather than just a change of plan (false)."""
+
+    event_id: str
+    counts_against_follow_through: bool
+
+
+@dataclass(kw_only=True)
+class EventShift:
+    """Events to move together by `minutes` (later if positive, earlier if
+    negative), keeping their lengths."""
+
+    event_ids: list[str]
+    minutes: int
+
+
+@dataclass(kw_only=True)
+class EventChangesResult:
+    events: list[PublicEvent]
+    """The events changed (or, in a dry run, as they would be)."""
+
+    timeline: str | None = None
+    """The changes beside the events around them, as compaction draws its
+    plans: show it in a monospace block."""
+
+    dry_run: bool = False
+
+
 @tool
 @writes
 def update_event(
-    event: PublicEvent, clear_fields: list[EventField] | None = None, reallocate: bool = True
-) -> list[PublicEvent]:
-    """Update an existing event, reallocating time from the rest of its
-    day as needed to make room for its new position. With reallocate
-    false, it's moved only if nothing else has to change: otherwise
-    nothing is written, and the error lists what would have changed. An
-    update that doesn't move it (start and end left out, or unchanged)
-    changes only its other fields: nothing else is touched, even on a day
-    whose events overlap. Fields left out keep their current value; list
-    one in clear_fields to remove it instead (clearing priority makes the
-    event follow its actions' priority again; clearing min_duration lets
-    it shrink to nothing). Set action_ids to change its actions ([] for
-    none). Set facts to replace its facts whole (see list_events).
-    Returns the events affected by the update. It can't cancel an event
-    (is_cancelled): use delete_event."""
+    updates: list[EventUpdate] | None = None,
+    creates: list[PublicEvent] | None = None,
+    cancels: list[EventCancel] | None = None,
+    shifts: list[EventShift] | None = None,
+    allow_compacted_changes: bool = False,
+    dry_run: bool = False,
+) -> EventChangesResult:
+    """Change several events at once, as one batch: `updates` (each an
+    event's id and the fields to set -- left out, a field keeps its value;
+    list it in that update's clear_fields to remove it instead -- clearing
+    priority makes it follow its actions' priority again), `creates` (new
+    events, optionally with actions: action_ids, the first setting its
+    color), `cancels` (each saying whether it counts against
+    follow-through: a commitment dropped, rather than a change of plan --
+    see delete_event) and `shifts` (events moved together by the same
+    number of minutes, each as an update). An event can be in only one of
+    them. Set action_ids to change an event's actions ([] for none), and
+    facts to replace its facts whole (see list_events). An update can't
+    cancel an event (is_cancelled): put it in `cancels`.
+
+    BATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every
+    event the call creates or updates must end after it starts and must
+    not overlap any other event -- one on the calendar or another in the
+    call -- so move, shorten or cancel whatever's in the way in the same
+    call. A call that breaks this changes nothing, and the error lists
+    every problem and the events around them, to send a valid call at
+    once.
+
+    An event compaction settled (compacted_until) is history: it can't be
+    changed or cancelled unless allow_compacted_changes is set -- ONLY set
+    it when the user has explicitly approved changing history -- except
+    that an event still going on may run on (an update moving only its
+    end, to no earlier than its compacted_until). dry_run checks the batch
+    and returns what it would do without changing anything. Returns the
+    events changed, and a timeline of them beside the events around
+    them."""
     with track("update_event"), cached_reads():
-        if event.is_cancelled:
-            raise ToolError(
-                "update_event can't cancel an event: use delete_event, and say with "
-                "counts_against_follow_through whether the cancellation counts against follow-through"
-            )
-        _prefetch_stores()
-        _check_action_ids(event, existing=True)
-        _check_facts(event)
+        _prefetch_people()
+        for update in updates or ():
+            if update.event.is_cancelled:
+                raise ToolError(
+                    "an update can't cancel an event: put it in cancels, saying with counts_against_follow_through "
+                    "whether the cancellation counts against follow-through"
+                )
+            _check_action_ids(update.event, existing=True)
+            _check_facts(update.event)
+        for event in creates or ():
+            _check_action_ids(event)
+            _check_facts(event)
         try:
-            applied = get_reallocating_calendar().update_event(
-                event.to_event(clear_fields or ()), ReallocationOptions(), reallocate=reallocate
-            )
+            patches = [u.event.to_event(u.clear_fields or ()) for u in updates or ()]
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
-        return _public_events(applied)
-
+        return _change_events(
+            "update_event",
+            updates=patches,
+            creates=[e.to_event() for e in creates or ()],
+            cancels=[Cancel(event_id=c.event_id, counts_against_follow_through=c.counts_against_follow_through) for c in cancels or ()],
+            shifts=[Shift(event_ids=s.event_ids, minutes=s.minutes) for s in shifts or ()],
+            allow_compacted=allow_compacted_changes,
+            dry_run=dry_run,
+        )
 
 @tool
 def get_recurrence(id: str) -> PublicRecurrence:
@@ -795,8 +836,8 @@ def update_recurrence(
     start/end are its first event's, as get_recurrence gave them; when
     it's split, the later part moves by as much as they changed. repeat,
     if given, replaces how it repeats whole (including count/until and
-    skipped/added), so send every part of it you want kept. Series aren't
-    reallocated. Returns the edited series, then the earlier part if it
+    skipped/added), so send every part of it you want kept. A series' edits
+    aren't checked for overlaps. Returns the edited series, then the earlier part if it
     was split.
 
     Events edited on their own don't keep those edits (found with
@@ -877,51 +918,78 @@ def delete_recurrence(id: str, starting_at_event_id: str | None = None) -> list[
 
 @tool
 @writes
-def create_event(event: PublicEvent, reallocate: bool = True) -> list[PublicEvent]:
-    """Create a new event, optionally with actions (action_ids, the first
-    setting its color), reallocating time from the rest of its day as needed to make
-    room. With reallocate false, it's created only if nothing else has to
-    change: otherwise nothing is written, and the error lists what would
-    have changed. Returns the events affected by the creation."""
-    with track("create_event"), cached_reads():
-        _prefetch_stores()
-        _check_action_ids(event)
-        _check_facts(event)
-        new_event = event.to_event()
-        try:
-            applied = get_reallocating_calendar().create_event(
-                new_event, ReallocationOptions(), reallocate=reallocate
-            )
-        except ValueError as exc:
-            raise ToolError(str(exc)) from exc
-        return _public_events(applied)
+def create_event(events: list[PublicEvent], dry_run: bool = False) -> EventChangesResult:
+    """Create new events, as one batch, optionally with actions
+    (action_ids, the first setting its color) and facts. update_event
+    takes creates too, beside updates and cancels, for a change that
+    makes room for them.
 
+    BATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every
+    event the call creates or updates must end after it starts and must
+    not overlap any other event -- one on the calendar or another in the
+    call -- so move, shorten or cancel whatever's in the way in the same
+    call. A call that breaks this changes nothing, and the error lists
+    every problem and the events around them, to send a valid call at
+    once.
+
+    dry_run checks them and returns what it would do without changing
+    anything. Returns the events created, and a timeline of them beside
+    the events around them."""
+    with track("create_event"), cached_reads():
+        _prefetch_people()
+        for event in events:
+            _check_action_ids(event)
+            _check_facts(event)
+        return _change_events("create_event", creates=[e.to_event() for e in events], dry_run=dry_run)
 
 @tool
 @writes
-def delete_event(id: str, counts_against_follow_through: bool = False) -> list[PublicEvent]:
-    """Delete (cancel) an event by its ID. Given one event of a recurring
+def delete_event(
+    cancels: list[EventCancel], allow_compacted_changes: bool = False, dry_run: bool = False
+) -> EventChangesResult:
+    """Delete (cancel) events, as one batch. Given one event of a recurring
     series, deletes only that event; to delete the whole series, or an
-    event and the ones after it, use delete_recurrence. With
-    counts_against_follow_through, the cancellation is recorded against
-    the follow-through of each person a follow-through trait part matches
-    it for -- the user and everyone it was planned with (facts' with_ids),
-    or for (for_ids), if it's of the part's action -- as a commitment the
-    user dropped; by default it's just a change of plan, and counts
-    against no one. Returns the events affected by the deletion."""
+    event and the ones after it, use delete_recurrence. Each cancel says,
+    with counts_against_follow_through, whether it counts against
+    follow-through: true records it against the follow-through of each
+    person a follow-through trait part matches it for -- the user and
+    everyone it was planned with (facts' with_ids), or for (for_ids), if
+    it's of the part's action -- as a commitment the user dropped; false
+    is just a change of plan, and counts against no one. An event
+    compaction settled (compacted_until) is history, and can't be
+    cancelled unless allow_compacted_changes is set -- ONLY set it when
+    the user has explicitly approved changing history. dry_run returns
+    what it would do without changing anything. Returns the events
+    cancelled."""
     with track("delete_event"), cached_reads():
-        _prefetch_stores()
-        before = None
-        if counts_against_follow_through:
-            store = get_cancellation_store()
-            _prefetch(store)
-            # Its actions as planned, inferred from its label if need be.
-            before = ActionCalendar(get_calendar_client(), get_action_store()).get_event(id)
-        cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
-        if before is not None and before.status != "cancelled":
-            store.record(before, "delete_event")
-        return _public_events([cancelled])
+        _prefetch_people()
+        return _change_events(
+            "delete_event",
+            cancels=[Cancel(event_id=c.event_id, counts_against_follow_through=c.counts_against_follow_through) for c in cancels],
+            allow_compacted=allow_compacted_changes,
+            dry_run=dry_run,
+        )
 
+
+def _change_events(tool_name: str, *, dry_run: bool = False, **batch) -> EventChangesResult:
+    """Check `batch` (see utilities/event_changes.py) and, unless `dry_run`,
+    write it."""
+    changes = get_event_changes()
+    try:
+        checked = changes.check(**batch)
+    except ChangeError as exc:
+        raise _rejected(tool_name, exc) from exc
+    drawn = event_changes.timeline(checked)
+    if dry_run:
+        return EventChangesResult(
+            events=_public_events([c.after or replace(c.before, status="cancelled") for c in checked.changes]),
+            timeline=drawn.text if drawn is not None else None,
+            dry_run=True,
+        )
+    return EventChangesResult(
+        events=_public_events(changes.apply(checked, tool_name)),
+        timeline=drawn.text if drawn is not None else None,
+    )
 
 @tool
 def get_traits(statuses: list[TraitStatus] | None = None) -> list[ListedTrait]:
@@ -1534,7 +1602,9 @@ def prepare_compaction() -> CompactionContext:
 @tool
 @writes
 def compact_notes(
-    decisions: list[EventDecision] | None = None,
+    updates: list[CompactionUpdate] | None = None,
+    creates: list[CompactionCreate] | None = None,
+    cancels: list[EventCancel] | None = None,
     ignore_notes: list[str] | None = None,
     compaction_id: str | None = None,
     dry_run: bool = True,
@@ -1543,34 +1613,38 @@ def compact_notes(
     new_locations: list[NewLocation] | None = None,
 ) -> CompactionResult:
     """Steps 2 and 3 of compacting notes: realign each day's events to
-    its notes and turn that into calendar changes. The past becomes fact
-    and the future reflows around it. Each day is planned on its own,
-    after the day before it, and never moves the next day's start; one
-    list of decisions covers them all.
+    its notes and turn that into calendar changes, the past becoming
+    fact. Each day is planned on its own, after the day before it, and
+    never moves the next day's start; one call covers them all.
 
-    Step 2: call with `decisions` -- one per event the notes show happened
-    differently from the plan (keep with moved edges, cancel, create, or
-    merge; see prepare_compaction's instructions). Any past event you don't
+    Step 2: call with what the notes show happened differently from the
+    plan, as update_event takes a batch (see prepare_compaction's
+    instructions): `updates` (events that happened, with edges moved to a
+    time or a note's, renamed, annotated, their actions and facts set),
+    `creates` (something unplanned that happened) and `cancels` (what
+    didn't happen, each saying whether it counts against follow-through:
+    the user dropped it, or the plan changed). Any past event you don't
     mention is recorded as on schedule. Notes that don't set an event edge
     are added to the event they fall within, except those in
-    `ignore_notes`. A 'keep' or 'create' also sets an event's action_ids
-    and facts (where, who with, who for, a note on each person there).
-    new_actions, new_people and new_locations add what isn't there yet,
-    each with a `ref` ("new:ukulele") the decisions use in place of its
-    id; they're created when the plan is applied (see
-    prepare_compaction's instructions). dry_run=True (the default)
-    changes nothing: you get the proposed changes, a compaction_id, the
-    additions, and a `timeline` of the notes beside the resulting events,
-    each with its actions and facts -- show its `text` to the user in a
-    code block.
-    If past events would overlap, the call fails naming them: decide which
-    gives way (asking the user if the notes don't say) and call again.
+    `ignore_notes`. new_actions, new_people and new_locations add what
+    isn't there yet, each with a `ref` ("new:ukulele") the updates and
+    creates use in place of its id; they're created when the plan is
+    applied. dry_run=True (the default) changes nothing: you get the
+    proposed changes, a compaction_id, the additions, and a `timeline` of
+    the notes beside the resulting events, each with its actions and
+    facts -- show its `text` to the user in a code block.
 
-    A 'keep' that moves a future event reschedules it, reflowing the rest
-    of the day around it in the same plan. Moving the end-of-day sleep
-    event moves where the day ends: an earlier bedtime shortens or cancels
-    whatever no longer fits before it, a later one leaves the evening
-    free. Its end (the wake-up time) is the border with the next day: a
+    NOTHING IS MOVED TO MAKE ROOM: every event you update or create must
+    end after it starts and must not overlap any other event -- past or
+    still to come, the others you change included -- so move, shorten or
+    cancel whatever's in the way in the same call. A call that breaks this
+    changes nothing, and the error lists every problem and the day as it
+    would leave it, to fix them all at once.
+
+    An update that moves a future event reschedules it. Moving the
+    end-of-day sleep event moves where the day ends: an earlier bedtime
+    needs whatever runs past it shortened or cancelled too, a later one
+    leaves the evening free. Its end (the wake-up time) is the border with the next day: a
     note ending it moves the border there. If that day is being compacted
     too, its morning is settled against the night; if not, compaction
     never adjusts the next day -- so move only its start to change only the
@@ -1600,10 +1674,21 @@ def compact_notes(
             if compaction_id is None:
                 if not dry_run:
                     raise CompactionError(
-                        "run a dry run first (decisions, dry_run=True) and pass its compaction_id",
+                        "run a dry run first (updates, creates and cancels, dry_run=True) and pass its compaction_id",
                         category="no_dry_run",
                     )
-                return compactor.dry_run(decisions or [], ignore_notes, new_actions, new_people, new_locations)
+                decisions = [
+                    *(u.decision() for u in updates or ()),
+                    *(c.decision() for c in creates or ()),
+                    *(
+                        EventDecision(
+                            action="cancel", event_id=c.event_id,
+                            counts_against_follow_through=c.counts_against_follow_through,
+                        )
+                        for c in cancels or ()
+                    ),
+                ]
+                return compactor.dry_run(decisions, ignore_notes, new_actions, new_people, new_locations)
             if dry_run:
                 return compactor.describe(compaction_id)
             return compactor.commit(compaction_id)

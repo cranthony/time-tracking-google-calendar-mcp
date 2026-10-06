@@ -474,7 +474,7 @@ class TestDryRun:
 
         by_event = {c.event_id: c for c in result.changes}
         assert set(by_event) == {"e1", "e2"}
-        assert by_event["e1"].after.is_fixed_time is True
+        assert by_event["e1"].after.compacted_until is not None
         assert (by_event["e1"].after.start, by_event["e1"].after.end) == (time_at("09:00"), time_at("10:00"))
 
     def test_journals_the_decisions_and_ignored_notes(self):
@@ -587,7 +587,7 @@ class TestCommit:
         assert result.status == "applied"
         patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
         assert (patches["e1"].start, patches["e1"].end) == (time_at("09:05"), time_at("10:20"))
-        assert patches["e1"].is_fixed_time is True
+        assert patches["e1"].compacted_until is not None
         # Only what changed: the report still ended as planned.
         assert (patches["e2"].start, patches["e2"].end) == (time_at("10:20"), None)
         journal = setup.journal.load(planned.compaction_id)
@@ -598,7 +598,7 @@ class TestCommit:
             planned.compaction_id
         }
 
-    def test_the_patch_carries_only_what_changed_plus_the_pin(self):
+    def test_the_patch_carries_only_what_changed(self):
         setup = _standard()
         planned = setup.compactor.dry_run(setup.email_then_report())
 
@@ -608,7 +608,7 @@ class TestCommit:
             c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e1"
         )
         assert patch.summary is None and patch.description is None
-        assert patch.min_duration is not None
+        assert patch.compacted_until is not None
 
     def test_cancelled_events_are_patched_to_cancelled(self):
         setup = Setup([("09:00", None), ("09:30", None)])
@@ -865,13 +865,14 @@ class TestSeveralDays:
 
     def _late_wake_up(self, setup):
         """"finally up" ends the night, which takes the next morning's
-        getting ready later with it."""
+        getting ready later with it -- and work, after it."""
         return [
             EventDecision(action="keep", event_id="e1", start_note=setup.note_id(2)),
             EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3)),
             EventDecision(
                 action="keep", event_id="gr1", start_note=setup.note_id(3), end=time_at("09:00+1")
             ),
+            EventDecision(action="keep", event_id="w1", start=time_at("09:00+1")),
         ]
 
     def test_every_day_lists_within_one_listing_made_first(self):
@@ -942,7 +943,7 @@ class TestSeveralDays:
     def test_a_later_wake_up_is_checked_against_the_mornings_events(self):
         setup = self._setup()
 
-        with pytest.raises(CompactionError, match="^Fri 02 Jan: .*'Sleep'.*overlaps 'Getting Ready'"):
+        with pytest.raises(CompactionError, match="(?s)^Fri 02 Jan: .*'Sleep'.*overlaps 'Getting Ready'"):
             setup.compactor.dry_run(
                 [EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3))]
             )
@@ -954,7 +955,7 @@ class TestSeveralDays:
 
         first, second = setup.journal.load_batch(planned.compaction_id)
         assert [first.note_ids, second.note_ids] == [[setup.note_id(2), setup.note_id(3)], []]
-        assert [d.event_id for d in second.decisions] == ["gr1"]
+        assert [d.event_id for d in second.decisions] == ["gr1", "w1"]
         assert setup.compactor.commit(planned.compaction_id).status == "applied"
         assert setup.notes.read_with_rows() == []
 
@@ -1016,7 +1017,7 @@ class TestSeveralDays:
         assert day.now == time_at("09:00+1")
         assert [c.event_id for c in day.changes() if c.action == "cancel"] == ["s1"]
         # The next morning is part of the same day: settled as planned.
-        assert next(c for c in day.changes() if c.event_id == "gr1").after.is_fixed_time
+        assert next(c for c in day.changes() if c.event_id == "gr1").after.compacted_until
         assert "━━ " not in planned.timeline.text
 
     def test_committing_applies_and_stamps_a_day_at_a_time(self):
@@ -1155,12 +1156,12 @@ class TestSleepingIn:
     def test_extending_it_over_the_morning_needs_the_morning_moved_too(self):
         setup = self._slept_in()
 
-        with pytest.raises(CompactionError, match="'Sleep' \\(s1, as decided.*overlaps 'Getting Ready'"):
+        with pytest.raises(CompactionError, match="(?s)'Sleep' \\(20:00–08:30, as asked\\) overlaps 'Getting Ready'"):
             setup.compactor.dry_run(
                 [EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3))]
             )
 
-    def test_a_late_wake_up_extends_it_and_reflows_the_rest_of_the_morning(self):
+    def test_a_late_wake_up_extends_it_and_moves_the_rest_of_the_morning_as_decided(self):
         setup = self._slept_in()
         planned = setup.compactor.dry_run(
             [
@@ -1168,6 +1169,7 @@ class TestSleepingIn:
                 EventDecision(
                     action="keep", event_id="gr1", start_note=setup.note_id(3), end=time_at("09:00+1")
                 ),
+                EventDecision(action="keep", event_id="w1", start=time_at("09:00+1")),
             ]
         )
         changes = {c.event_id: c for c in planned.changes}
@@ -1249,7 +1251,6 @@ class TestMovingFutureEvents:
             c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e3"
         )
         assert (patch.start, patch.end) == (time_at("12:15"), time_at("12:45"))
-        assert patch.is_fixed_time is True
 
     def test_moving_bedtime_near_the_end_of_the_day_plans_and_commits(self):
         setup = Setup([("09:05", "email"), ("10:20", "report")], now="19:45")
@@ -1469,7 +1470,7 @@ class TestSheetReadRequests:
         # Memory diagnostics never touch Sheets, and take seconds.
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
-            "_calendar_client", "_reallocating_calendar", "_actions", "_people", "_locations", "_traits",
+            "_calendar_client", "_actions", "_people", "_locations", "_traits",
             "_noted_time_sheet", "_note_compactor", "_trait_rollup", "_cancellations",
         ):
             monkeypatch.setattr(server, cached, None)
@@ -1494,7 +1495,7 @@ class TestSheetReadRequests:
 
         call("note", lambda: server.note(NotedTime(timestamp=time_at(note_at), description="note")))
         call("prepare_compaction", server.prepare_compaction)
-        plan = call("compact_notes dry run", lambda: server.compact_notes(decisions=[]))
+        plan = call("compact_notes dry run", lambda: server.compact_notes())
         call("compact_notes apply", lambda: server.compact_notes(compaction_id=plan.compaction_id, dry_run=False))
         return counts
 
@@ -1837,7 +1838,7 @@ class TestStayingUpPastTheLastCompaction:
         work = event_at("23:07-00:47+1", id="work", summary="Working", priority=2)
         work.compacted_until = time_at("00:32+1")
         return [
-            event_at("22:22-23:07", id="dinner", summary="Dinner", priority=2, is_fixed_time=True,
+            event_at("22:22-23:07", id="dinner", summary="Dinner", priority=2,
                      compacted_until=time_at("23:07")),
             work,
             event_at("00:47+1-01:17+1", id="gr", summary="Get ready for bed", priority=2),
@@ -1952,6 +1953,17 @@ class TestFollowThrough:
             ("e1/sam/with", "Email", f"compaction {planned.compaction_id}"),
             ("e1/self/with", "Email", f"compaction {planned.compaction_id}"),
         ]
+
+    def test_a_cancel_that_doesnt_count_is_neither_listed_nor_recorded(self):
+        setup = self._setup()
+        planned = setup.compactor.dry_run(
+            [EventDecision(action="cancel", event_id="e1", counts_against_follow_through=False)]
+        )
+
+        setup.compactor.commit(planned.compaction_id)
+
+        assert "Follow-through:" not in planned.timeline.text
+        assert setup.cancellations.all() == []
 
     def test_a_merge_isnt_a_cancellation(self):
         setup = self._setup()

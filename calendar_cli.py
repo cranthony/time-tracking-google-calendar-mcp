@@ -34,18 +34,14 @@ Usage:
   utilities/facts.py), and replaces the event's facts whole.
 - `update` moves/resizes an existing event (at least one of `start`/`end`
   is required; whichever is omitted is kept as the event's current
-  value) via ReallocatingCalendar.update_event, reallocating time from
-  the rest of its day as needed to make room for its new position — see
-  utilities/reallocating_calendar.py. Prints every event that was
-  created or changed as a result. Use `update_properties` instead for a
-  plain patch that doesn't need to make room for anything (e.g. renaming
-  an event without moving it).
+  value), as update_event does (utilities/event_changes.py): nothing else
+  is moved to make room, so a new time that overlaps another event is
+  refused, naming it. Prints the event as written. Use
+  `update_properties` instead for a plain patch (e.g. renaming an event
+  without moving it).
 - `create` builds an Event from the given attributes (`summary`, `start`,
-  and `end` are required) and creates it via
-  ReallocatingCalendar.create_event, reallocating time from the rest of
-  its day as needed to make room — see
-  utilities/reallocating_calendar.py. Prints every event that was
-  created or changed as a result.
+  and `end` are required) and creates it the same way, refused if it
+  overlaps another event. Prints the event as written.
 - `delete` deletes a single event by its id.
 - `list_raw_labels`/`create_raw_label`/`update_raw_label`/`delete_raw_label`
   manage this calendar's custom event labels exactly as Google Calendar's
@@ -116,8 +112,7 @@ from utilities.facts import Facts
 from utilities.note_compaction import CompactionError
 from utilities.note_compactor import delete_note, edit_note
 from utilities.noted_time_sheet import NotedTime, SheetNote
-from utilities.reallocation import ReallocationOptions
-from utilities.reallocating_calendar import ReallocatingCalendar
+from utilities.event_changes import ChangeError, EventChanges
 
 DEFAULT_WINDOW = "1h"
 
@@ -167,9 +162,6 @@ _UPDATABLE_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
     "description": str,
     "location": str,
     "status": str,
-    "min_duration": lambda s: timedelta(seconds=_parse_duration(s)),
-    "is_fixed_duration": _parse_bool,
-    "is_fixed_time": _parse_bool,
     "priority": int,
     "is_end_of_day_sleep": _parse_bool,
     "event_label_id": str,
@@ -191,10 +183,9 @@ _REQUIRED_CREATE_ATTRIBUTES = frozenset({"summary", "start", "end"})
 """Event attributes `create` won't build an event without."""
 
 _UPDATE_POSITION_ATTRIBUTES = frozenset({"start", "end"})
-"""`update` requires at least one of these -- reallocation needs a real
-position to make room for, unlike `update_properties`'s plain patch. Either
-may be omitted: ReallocatingCalendar.update_event fills in whichever one
-is missing from the event's current value."""
+"""`update` requires at least one of these -- it's for moving an event,
+unlike `update_properties`'s plain patch. Either may be omitted: the
+other keeps the event's current value."""
 
 
 _RAW_LABEL_ATTRIBUTE_PARSERS: dict[str, Callable[[str], Any]] = {
@@ -369,12 +360,12 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    update_reallocate_parser = subparsers.add_parser(
+    update_parser = subparsers.add_parser(
         "update",
-        help="Move/resize an existing event, reallocating time from its day as needed.",
+        help="Move/resize an existing event, refused if it would overlap another.",
     )
-    update_reallocate_parser.add_argument("id", help="The event id.")
-    update_reallocate_parser.add_argument(
+    update_parser.add_argument("id", help="The event id.")
+    update_parser.add_argument(
         "properties",
         metavar="key=value",
         nargs="+",
@@ -388,7 +379,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     create_parser = subparsers.add_parser(
-        "create", help="Create a new event, reallocating time from its day as needed."
+        "create", help="Create a new event, refused if it would overlap another."
     )
     create_parser.add_argument(
         "properties",
@@ -521,13 +512,25 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _build_reallocating_calendar(client: CalendarClient) -> ReallocatingCalendar:
-    """A ReallocatingCalendar wrapping client plus an ActionCalendar, so
-    reallocation sees an event's action-derived priority as the fallback
-    whenever the event itself doesn't set one. Built lazily -- only
-    `update`/`create` below need it -- since constructing an Actions may
-    create this calendar's Actions tab on first use."""
-    return ReallocatingCalendar(ActionCalendar(client, build_actions()))
+def _build_event_changes(client: CalendarClient) -> EventChanges:
+    """What `update`/`create` check and write a change with, through an
+    ActionCalendar (so an event's label follows its actions). Built lazily
+    -- only they need it -- since constructing an Actions may create this
+    calendar's Actions tab on first use."""
+    return EventChanges(ActionCalendar(client, build_actions()))
+
+
+def _change(client: CalendarClient, **batch) -> None:
+    """Check and write `batch`, printing what was written -- or, refused,
+    why, exiting non-zero."""
+    changes = _build_event_changes(client)
+    try:
+        written = changes.apply(changes.check(**batch), "calendar_cli")
+    except ChangeError as exc:
+        raise SystemExit(str(exc)) from exc
+    for event in written:
+        print(_format_event_details(event))
+        print()
 
 
 def main() -> None:
@@ -559,25 +562,13 @@ def main() -> None:
             parser.error(
                 f"update requires at least one of: {', '.join(sorted(_UPDATE_POSITION_ATTRIBUTES))}"
             )
-        updated_event = Event(id=args.id, **fields)
-        applied_events = _build_reallocating_calendar(client).update_event(
-            updated_event, ReallocationOptions()
-        )
-        for event in applied_events:
-            print(_format_event_details(event))
-            print()
+        _change(client, updates=[Event(id=args.id, **fields)])
     elif args.command == "create":
         fields = dict(args.properties)
         missing = _REQUIRED_CREATE_ATTRIBUTES - fields.keys()
         if missing:
             parser.error(f"create requires: {', '.join(sorted(missing))}")
-        new_event = Event(**fields)
-        applied_events = _build_reallocating_calendar(client).create_event(
-            new_event, ReallocationOptions()
-        )
-        for event in applied_events:
-            print(_format_event_details(event))
-            print()
+        _change(client, creates=[Event(**fields)])
     elif args.command == "delete":
         client.delete_event(args.id)
         print(f"Deleted event {args.id}.")

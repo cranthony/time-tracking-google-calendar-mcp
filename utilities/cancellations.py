@@ -5,7 +5,7 @@ utilities/trait_scores.py).
 **What's recorded.** Only a deliberate cancellation: a compaction's
 `cancel` decision ("it didn't happen"), once its day is applied (see
 utilities/note_compactor.py), or `delete_event` asked to count it. A
-merge, an event a reflow had no room for, a deleted series, or a plan
+merge, a cancel that says it doesn't count, a deleted series, or a plan
 changed by hand isn't one. And only for the people a follow-through part
 of their traits matches, as the event was planned: for a part with the
 "with" engagement, the user and everyone the event's facts have there
