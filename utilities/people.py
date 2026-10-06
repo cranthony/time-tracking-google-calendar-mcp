@@ -23,6 +23,7 @@ from __future__ import annotations
 import difflib
 from collections.abc import Callable, Collection
 from dataclasses import dataclass, fields, replace
+from datetime import datetime
 from typing import Any, Literal
 
 from calendar_clients.google_sheets import SheetsClient, TabRange
@@ -97,10 +98,41 @@ class Circle:
 @dataclass(kw_only=True)
 class ListedPerson(Person):
     """A person as the people tools return them: plus their circles'
-    names."""
+    names, and the events the user cancelled that count against their
+    follow-through."""
 
     circle_names: list[str] | None = None
     """Their circles' names, in the order of `circles`."""
+
+    cancelled_events: list["CancelledEvent"] | None = None
+    """The events the user cancelled that count against their
+    follow-through, newest first (see utilities/cancellations.py)."""
+
+
+@dataclass(kw_only=True)
+class CancelledEvent:
+    """An event the user cancelled, as it counts against one person's
+    follow-through -- one row of the Cancellations tab (see utilities/
+    cancellations.py)."""
+
+    event_id: str | None = None
+    summary: str | None = None
+    start: datetime | None = None
+    end: datetime | None = None
+    """When it was planned."""
+
+    action_ids: list[str] | None = None
+    engagement: str | None = None
+    """"with" (they were to be there) or "for" (it was to be done for
+    them while they weren't)."""
+
+    parts: list[str] | None = None
+    """The follow-through parts it counted against when it was recorded,
+    "<trait id>/<part key>"."""
+
+    cancelled_at: datetime | None = None
+    source: str | None = None
+    """What cancelled it: "compaction <id>", or "delete_event"."""
 
 
 @dataclass(kw_only=True)
