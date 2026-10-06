@@ -94,7 +94,9 @@ PART_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
 """Each part kind's (required, optional) fields, besides `kind`,
 `weight` and `engagement_type` -- see the module docstring."""
 
-FACTS = ("action", "action_history", "location", "location_history", "general_notes", "person_notes")
+FACTS = (
+    "action", "action_history", "location", "location_history", "general_notes", "person_notes", "what_matters"
+)
 """What a judgment can be shown about an event, to judge it by:
 
 - `action`: what the user was doing (its actions).
@@ -105,7 +107,9 @@ FACTS = ("action", "action_history", "location", "location_history", "general_no
   the last `lookback_days`.
 - `general_notes`: the event's own notes.
 - `person_notes`: the notes about the person -- the user's own for a
-  "for" engagement, the other person's for a "with" one."""
+  "for" engagement, the other person's for a "with" one.
+- `what_matters`: what's important to the person being judged, as their
+  `what_matters` says (utilities/people.py)."""
 
 HISTORY_FACTS = frozenset({"action_history", "location_history"})
 """The facts that look back, over `lookback_days`."""
@@ -205,7 +209,7 @@ SEED_TRAITS: list[Trait] = [
                     "2": "It clearly reflected what matters to them",
                     "3": "It was shaped around what matters to them",
                 },
-                "facts": ["action", "general_notes", "person_notes"],
+                "facts": ["action", "general_notes", "person_notes", "what_matters"],
             },
             {
                 "kind": "judgment",
@@ -217,7 +221,7 @@ SEED_TRAITS: list[Trait] = [
                     "2": "It was for them, and fit what matters to them",
                     "3": "It was carefully made around what matters to them",
                 },
-                "facts": ["action", "general_notes", "person_notes"],
+                "facts": ["action", "general_notes", "person_notes", "what_matters"],
             },
         ],
     ),
