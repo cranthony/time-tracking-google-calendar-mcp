@@ -719,7 +719,7 @@ class NoteCompactor:
         additions = Additions(actions=new_actions or [], people=new_people or [], locations=new_locations or [])
         problems = check_additions(additions, self._actions, self._people, self._locations)
         if problems:
-            raise CompactionError("\n".join(problems))
+            raise CompactionError.of(problems, "additions")
         decisions = self._checked_facts(decisions, additions)
         pending = list(decisions)
         ignoring = list(ignore_notes or [])
@@ -736,7 +736,7 @@ class NoteCompactor:
                 ignoring[:] = [i for i in ignoring if i not in ignored]
                 plan = self._plan(day, mine, ignored, additions)
             except CompactionError as exc:
-                raise CompactionError(f"{label}: {exc}" if label else str(exc)) from exc
+                raise CompactionError.wrapping(f"{label}: {exc}" if label else str(exc), exc) from exc
             if label:
                 plan.warnings = [f"{label}: {w}" for w in plan.warnings]
             return _Walked(day=day, plan=plan, decisions=mine, ignore_notes=ignored)
@@ -828,7 +828,7 @@ class NoteCompactor:
                 message=f"compaction {compaction_id} was already applied and its notes stamped",
             )
         if any(d.status == ABANDONED for d in days):
-            raise CompactionError(f"compaction {compaction_id} was abandoned; run a new dry run")
+            raise CompactionError(f"compaction {compaction_id} was abandoned; run a new dry run", category="abandoned")
         pending = [d for d in days if d.status != STAMPED]
         if pending[0].status == PLANNED:
             self._require_no_open_compaction()
@@ -902,7 +902,10 @@ class NoteCompactor:
 
     def _due(self, compaction_id: str, days: list[JournalCompaction], *, redo: bool) -> JudgmentsDue:
         if not all(d.status == STAMPED for d in days):
-            raise CompactionError(f"compaction {compaction_id} hasn't been applied, so its events have nothing to judge")
+            raise CompactionError(
+                f"compaction {compaction_id} hasn't been applied, so its events have nothing to judge",
+                category="not_applied",
+            )
         return JudgmentsDue(
             compaction_id=compaction_id,
             requests=self._judging.requests(*_judged_events(days), include_judged=redo),
@@ -913,11 +916,11 @@ class NoteCompactor:
         completes it."""
         due = self.judgments_due(compaction_id, redo=True)
         if due is None:
-            raise CompactionError("this calendar has no traits to judge")
+            raise CompactionError("this calendar has no traits to judge", category="no_traits")
         try:
             recorded = self._judging.record(due.requests, judgments)
         except ValueError as exc:
-            raise CompactionError(str(exc)) from exc
+            raise CompactionError(str(exc), category="judgment") from exc
         remaining = [r.id for r in self.judgments_due(compaction_id).requests]
         scored = self._roll_up(self._journal.load_batch(compaction_id)) if not remaining else None
         return JudgmentsResult(
@@ -970,7 +973,7 @@ class NoteCompactor:
                 decision = replace(decision, facts=facts)
             checked.append(decision)
         if problems:
-            raise CompactionError("\n".join(problems))
+            raise CompactionError.of(problems, "facts")
         return checked
 
     def _move_marker(self, at: datetime) -> list[str]:
@@ -1001,7 +1004,9 @@ class NoteCompactor:
     def abandon(self, compaction_id: str) -> CompactionResult:
         days = self._journal.load_batch(compaction_id)
         if all(d.status == STAMPED for d in days):
-            raise CompactionError(f"compaction {compaction_id} is already complete; there's nothing to abandon")
+            raise CompactionError(
+                f"compaction {compaction_id} is already complete; there's nothing to abandon", category="already_complete"
+            )
         finished = sum(1 for d in days if d.status == STAMPED)
         for day in days:
             if day.status not in (STAMPED, ABANDONED):
@@ -1217,7 +1222,8 @@ class NoteCompactor:
             raise CompactionError(
                 f"compaction {batch_id} is {status} -- finish it with compact_notes("
                 f"compaction_id={batch_id!r}, dry_run=False), or abandon it with "
-                "abandon_compaction, before starting another"
+                "abandon_compaction, before starting another",
+                category="open_compaction",
             )
 
     def _verify_unchanged(self, days: list[JournalCompaction]) -> None:
@@ -1226,7 +1232,8 @@ class NoteCompactor:
         were previewed."""
         stale = CompactionError(
             f"the notes or calendar changed since compaction {days[0].batch_id} was previewed; "
-            "run a new dry run"
+            "run a new dry run",
+            category="stale",
         )
 
         def comparable(changes: list[CompactionChange]) -> list[tuple]:
@@ -1278,7 +1285,7 @@ class NoteCompactor:
                     except ValueError as exc:
                         problems.append(f"{d.action} {d.event_id or d.summary!r}: {exc}")
             if problems:
-                raise CompactionError("\n".join(problems))
+                raise CompactionError.of(problems, "actions")
         night = day.night_before
         if night is not None and any(e.id == night.id for e in day.events):
             # The night the day before decided ran late is placed first, as
@@ -1337,7 +1344,7 @@ def edit_note(
     try:
         return notes.edit(note_id, timestamp=timestamp, description=description)
     except ValueError as exc:
-        raise CompactionError(str(exc)) from exc
+        raise CompactionError(str(exc), category="note_edit") from exc
 
 
 def delete_note(notes: NotedTimeSheet, journal: CompactionJournal, note_id: str) -> NotedTime:
@@ -1346,7 +1353,7 @@ def delete_note(notes: NotedTimeSheet, journal: CompactionJournal, note_id: str)
     try:
         return notes.delete(note_id)
     except ValueError as exc:
-        raise CompactionError(str(exc)) from exc
+        raise CompactionError(str(exc), category="note_edit") from exc
 
 
 def _require_not_being_applied(journal: CompactionJournal, note_id: str) -> None:
@@ -1362,7 +1369,8 @@ def _require_not_being_applied(journal: CompactionJournal, note_id: str) -> None
             raise CompactionError(
                 f"note {note_id!r} is part of compaction {batch_id}, which is {status} -- "
                 f"finish it with compact_notes(compaction_id={batch_id!r}, dry_run=False), or "
-                "abandon it with abandon_compaction, first"
+                "abandon it with abandon_compaction, first",
+                category="note_in_compaction",
             )
 
 

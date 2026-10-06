@@ -1,5 +1,6 @@
 import contextlib
 import dataclasses
+import logging
 import threading
 import typing
 from datetime import date, datetime, timezone
@@ -29,7 +30,7 @@ from utilities.actions import ActionTree
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.facts import Facts
 from utilities.judgments import Judgment, JudgmentsDue
-from utilities.note_compaction import CompactionError, EventDecision
+from utilities.note_compaction import CompactionError, EventDecision, Problem
 from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
 from utilities.reallocating_calendar import ReallocatingCalendar
 from utilities.reallocation import ReallocationOptions
@@ -802,6 +803,28 @@ class TestCompactNotes:
 
         with pytest.raises(ToolError, match="the notes changed"):
             server.compact_notes(compaction_id="abc", dry_run=False)
+
+    def test_a_rejection_is_logged_with_its_categories(self, monkeypatch, caplog):
+        compactor = _fake_compactor(monkeypatch)
+        compactor.dry_run.side_effect = CompactionError.of(
+            [Problem("overlap", "'A' overlaps 'B'"), Problem("unknown_note", "'n9' isn't a note")]
+        )
+
+        with caplog.at_level(logging.WARNING, logger="server"), pytest.raises(ToolError):
+            server.compact_notes(decisions=[])
+
+        assert caplog.messages == [
+            "compaction rejected: tool=compact_notes categories=overlap,unknown_note: "
+            "'A' overlaps 'B' | 'n9' isn't a note"
+        ]
+
+    def test_committing_without_a_dry_run_is_logged_as_such(self, monkeypatch, caplog):
+        _fake_compactor(monkeypatch)
+
+        with caplog.at_level(logging.WARNING, logger="server"), pytest.raises(ToolError):
+            server.compact_notes(dry_run=False)
+
+        assert "categories=no_dry_run" in caplog.text
 
 
 class TestAbandonCompaction:

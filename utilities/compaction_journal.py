@@ -370,7 +370,7 @@ class CompactionJournal:
                     )
                 )
         if compaction is None:
-            raise CompactionError(f"there's no compaction with id {compaction_id!r}")
+            raise CompactionError(f"there's no compaction with id {compaction_id!r}", category="unknown_compaction")
         compaction.decisions = decisions
         compaction.steps = sorted(steps, key=lambda s: s.step)
         return compaction
