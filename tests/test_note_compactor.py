@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import replace
-from datetime import date, timedelta, timezone
+from datetime import timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -74,7 +74,7 @@ class FakeCalendar:
 
 class Setup:
     def __init__(
-        self, notes, events=None, now="11:30", actions=None, people=None, locations=None, traits=None, rollup=None
+        self, notes, events=None, now="11:30", actions=None, people=None, locations=None, traits=None
     ):
         self.sheets = FakeSheets()
         self.sheets.write_rows_in_sheet(
@@ -118,7 +118,6 @@ class Setup:
             locations=self.locations,
             marker=self.marker,
             judging=self.judging,
-            rollup=rollup,
             cancellations=self.cancellations,
         )
 
@@ -1471,7 +1470,7 @@ class TestSheetReadRequests:
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
             "_calendar_client", "_actions", "_people", "_locations", "_traits",
-            "_noted_time_sheet", "_note_compactor", "_trait_rollup", "_cancellations",
+            "_noted_time_sheet", "_note_compactor", "_cancellations",
         ):
             monkeypatch.setattr(server, cached, None)
         self.now = "09:10+1"
@@ -1767,46 +1766,6 @@ class TestJudgments:
         assert setup.calendar.events[0].judgments["sam"]["heard"]["judgment"]["rating"] == 1
         assert setup.compactor.judgments_due().events == []
         assert setup.compactor.prepare().judgments_pending is None
-
-    def test_completing_it_rolls_up_the_days_it_settled(self):
-        rollup = MagicMock()
-        rollup.days_between.return_value = [date(2026, 1, 1)]
-        rollup.roll_up.return_value = [MagicMock(day="2026-01-01")]
-        setup = Setup(
-            [("09:05", "email")], people=[Person(id="sam", name="Sam", status="active")], traits=[self._TRAIT],
-            rollup=rollup,
-        )
-        facts = Facts(with_ids=["sam"])
-        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=facts)])
-        setup.client.update_event.side_effect = lambda patch: setup.calendar.events.__setitem__(
-            0, replace(setup.calendar.events[0], facts=patch.facts or setup.calendar.events[0].facts)
-        )
-
-        applied = setup.compactor.commit(planned.compaction_id)
-        assert applied.scored_days is None
-        rollup.roll_up.assert_not_called()  # Not complete: judgments to make.
-
-        done = setup.compactor.record_judgments(applied.compaction_id, [
-            Judgment(request_id=f"{e.event_id}/{person}/{part}", rating=1, reasoning="Fine.")
-            for e in applied.judgments.events
-            for person, parts in e.people.items()
-            for part in parts
-        ])
-
-        assert done.scored_days == ["2026-01-01"]
-        rollup.roll_up.assert_called_once_with([date(2026, 1, 1)])
-        start, end = rollup.days_between.call_args.args
-        assert end == time_at("11:30")
-
-    def test_with_nothing_to_judge_applying_it_rolls_up_at_once(self):
-        rollup = MagicMock()
-        rollup.roll_up.return_value = []
-        setup = Setup([("09:05", "email")], rollup=rollup)
-
-        applied = setup.compactor.commit(setup.compactor.dry_run([]).compaction_id)
-
-        assert applied.scored_days == []
-        rollup.roll_up.assert_called_once()
 
     def test_a_judgment_can_be_redone(self):
         setup, applied = self._applied()

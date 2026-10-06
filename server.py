@@ -6,7 +6,7 @@ import logging
 import os
 from collections.abc import Callable, Collection, Iterator
 from dataclasses import dataclass, replace
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Literal, ParamSpec, TypeVar
 from zoneinfo import ZoneInfo
 
@@ -33,7 +33,6 @@ from config import (
     build_noted_time_sheet,
     build_people,
     build_cancellations,
-    build_trait_rollup,
     build_traits,
     get_allowed_user_ids,
     get_cors_allowed_origins,
@@ -61,7 +60,6 @@ from utilities.action_calendar import ActionCalendar, fill_in_from_actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.facts import Facts, fact_problems
 from utilities.judgments import Judging, Judgment, JudgmentsDue, JudgmentsResult
-from utilities.trait_rollup import TraitRollup, TraitScoreRow
 from utilities import event_changes
 from utilities.cancellations import Cancellations
 from utilities.event_changes import Cancel, ChangeError, EventChanges, Shift
@@ -359,7 +357,6 @@ _traits: Traits | None = None
 _actions: Actions | None = None
 _people: People | None = None
 _locations: Locations | None = None
-_trait_rollup: TraitRollup | None = None
 _cancellations: Cancellations | None = None
 
 
@@ -428,20 +425,6 @@ def get_cancellation_store() -> Cancellations:
             if _cancellations is None:
                 _cancellations = build_cancellations(get_action_store(), get_people_store(), get_trait_store())
     return _cancellations
-
-
-def get_trait_rollup() -> TraitRollup:
-    """Lazily construct and cache the TraitRollup, the same way the other
-    get_* helpers cache theirs. Building it the first time adds the Trait
-    Scores tab."""
-    global _trait_rollup
-    if _trait_rollup is None:
-        with WRITE_LOCK:
-            if _trait_rollup is None:
-                _trait_rollup = build_trait_rollup(
-                    get_action_store(), get_people_store(), get_trait_store(), cancellations=get_cancellation_store()
-                )
-    return _trait_rollup
 
 
 def _prefetch_stores() -> None:
@@ -531,7 +514,6 @@ def get_note_compactor() -> NoteCompactor:
                         locations=get_location_store(),
                         traits=get_trait_store(),
                     ),
-                    rollup=get_trait_rollup(),
                     cancellations=get_cancellation_store(),
                 )
     return _note_compactor
@@ -1020,7 +1002,7 @@ def get_traits(statuses: list[TraitStatus] | None = None) -> list[ListedTrait]:
     person, as their what_matters says), each a name or {"fact": "action_history",
     "lookback_days": 90} (history facts look back 30 days by default),
     and scored over the person's events in its last "window_days" (30
-    by default -- see get_trait_scores);
+    by default);
     "continuity" (the last event ended within "last_within_days" of the
     day's end and the next starts within "next_within_days" after it,
     both default 14: 100 for both, 50 for one, 0 for neither); "count"
@@ -1771,37 +1753,6 @@ def record_judgments(compaction_id: str, judgments: list[Judgment]) -> Judgments
             return compactor.record_judgments(compaction_id, judgments)
         except CompactionError as exc:
             raise _rejected("record_judgments", exc) from exc
-
-
-@tool
-def get_trait_scores(
-    person_id: str | None = None, start: date | None = None, end: date | None = None
-) -> list[TraitScoreRow]:
-    """Each person's daily trait scores (0-100): one row per person per day
-    (or just person_id's), from start to end inclusive, each with its
-    traits' scores and, under parts, each part's score and how it was
-    reached. A trait's score is the weighted mean of its parts': its
-    judgments (the mean of their ratings on the person's events in the
-    part's window) and its computed parts (continuity, count, duration and
-    follow_through over the person's events -- see get_traits). A day is
-    rolled up once a compaction that settled it is complete; days without
-    a row haven't been (see rebuild_trait_scores). Read-only."""
-    with track("get_trait_scores"), cached_reads():
-        return get_trait_rollup().get(person_id, start, end)
-
-
-@tool
-@writes
-def rebuild_trait_scores(start: date, end: date) -> list[TraitScoreRow]:
-    """Roll every active person's trait scores up again for each day from
-    start to end inclusive that's over -- to backfill days from before
-    scores were kept, or after a judgment was redone or a trait changed.
-    Replaces those days' rows; returns them."""
-    with track("rebuild_trait_scores"), cached_reads():
-        if end < start:
-            raise ToolError("end is before start")
-        days = [start + timedelta(days=n) for n in range((end - start).days + 1)]
-        return get_trait_rollup().roll_up(days)
 
 
 @tool

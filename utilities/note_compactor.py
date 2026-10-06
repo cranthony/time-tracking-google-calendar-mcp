@@ -27,8 +27,7 @@ The flow, as the MCP tools expose it:
    one compact list (each event's people and their parts, then each part
    and each person's history once). A compaction isn't complete until
    they're all judged. `judgments_due` hands them over again -- to
-   finish, or redo. Once it's complete, the days it settled are rolled up
-   into each person's trait scores (see utilities/trait_rollup.py).
+   finish, or redo.
 
 A day at a time, all at once: one compaction takes on every day of
 uncompacted notes up to now (at most `_MAX_DAYS`, oldest first), but
@@ -117,7 +116,6 @@ from utilities.compaction_additions import (
 )
 from utilities.facts import SELF_ID, Facts, fact_problems
 from utilities.judgments import Judging, Judgment, JudgmentRequest, JudgmentsDue, JudgmentsResult
-from utilities.trait_rollup import TraitRollup
 from utilities.locations import Locations
 from utilities.people import People
 from utilities.compaction_journal import (
@@ -461,9 +459,6 @@ class CompactionResult:
     the events as `timeline` shows them (see utilities/judgments.py). The
     compaction isn't complete until they're recorded."""
 
-    scored_days: list[str] | None = None
-    """Once complete: the days whose trait scores it rolled up."""
-
     def __post_init__(self) -> None:
         self.changes = self.changes or []
         self.warnings = self.warnings or []
@@ -572,7 +567,6 @@ class NoteCompactor:
         locations: Locations | None = None,
         marker: CompactionMarker | None = None,
         judging: Judging | None = None,
-        rollup: TraitRollup | None = None,
         cancellations: Cancellations | None = None,
     ) -> None:
         """`calendar` reads the day's events (through the same
@@ -583,16 +577,13 @@ class NoteCompactor:
         to. `marker`, if given, is moved to each compaction once it's
         stamped (see utilities/compaction_marker.py). `judging`, if given,
         makes and records the judgments that complete a compaction (see
-        utilities/judgments.py), and `rollup`, if given, rolls the days a
-        complete compaction settled up into trait scores (see
-        utilities/trait_rollup.py). `cancellations`, if given, records each
+        utilities/judgments.py). `cancellations`, if given, records each
         event a compaction cancels for the people it counts against in
         follow-through, and the timeline lists them (see utilities/
         cancellations.py)."""
         self._cancellations = cancellations
         self._marker = marker
         self._judging = judging
-        self._rollup = rollup
         self._calendar = calendar
         self._client = client
         self._actions = actions
@@ -720,8 +711,6 @@ class NoteCompactor:
                 tabs.append(self._locations.whole_tab)
             if self._judging is not None:
                 tabs += self._judging.whole_tabs
-            if self._rollup is not None:
-                tabs += self._rollup.whole_tabs
             if self._cancellations is not None:
                 tabs += self._cancellations.whole_tabs
         self._notes.prefetch(tabs)
@@ -913,15 +902,12 @@ class NoteCompactor:
         # The days as loaded, not read again after all that writing.
         due = self._due(compaction_id, days, redo=False) if self._judging is not None else None
         message = f"applied {steps} change(s) and marked {notes} note(s) compacted"
-        scored = None
         if due is not None and due.events:
             message += (
                 f". The compaction isn't complete yet: make the {due.count} judgment(s) in `judgments` now, "
                 "yourself, of the events as `timeline` shows them, and record them with record_judgments "
                 "(see `judgments.instructions`)"
             )
-        else:
-            scored = self._roll_up(days)
         return CompactionResult(
             status="applied",
             compaction_id=compaction_id,
@@ -929,22 +915,8 @@ class NoteCompactor:
             warnings=warnings,
             message=message,
             judgments=due if due is not None and due.events else None,
-            scored_days=scored,
             timeline=timeline,
         )
-
-    def _roll_up(self, days: list[JournalCompaction]) -> list[str] | None:
-        """Roll the days a complete compaction settled up into trait scores
-        (none without a rollup); the days, as dates."""
-        if self._rollup is None:
-            return None
-        starts = [
-            state.start for day in days for step in day.steps for state in (step.before, step.after)
-            if state is not None and state.start is not None
-        ]
-        start = min(starts, default=days[0].now)
-        rows = self._rollup.roll_up(self._rollup.days_between(start, days[-1].now))
-        return sorted({r.day for r in rows})
 
     # -- judgments -------------------------------------------------------------
 
@@ -984,13 +956,11 @@ class NoteCompactor:
         except ValueError as exc:
             raise CompactionError(str(exc), category="judgment") from exc
         remaining = [r.id for r in self._requests(compaction_id, days, redo=False)]
-        scored = self._roll_up(days) if not remaining else None
         return JudgmentsResult(
             compaction_id=compaction_id,
             recorded=recorded,
             remaining=remaining,
             complete=not remaining,
-            scored_days=scored,
             message=(
                 f"recorded {recorded} judgment(s); compaction {compaction_id} is complete" if not remaining
                 else f"recorded {recorded} judgment(s); {len(remaining)} still to make before compaction "
