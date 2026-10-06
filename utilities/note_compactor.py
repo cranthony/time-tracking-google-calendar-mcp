@@ -20,17 +20,15 @@ The flow, as the MCP tools expose it:
    are done. If it dies partway it can simply be called again: the
    journal remembers exactly what was approved and how far it got. A
    compaction that can't be finished can be `abandon`ed.
-4. Judgments -- the client judges the traits of each event's people
-   (see utilities/judgments.py). `prepare` gives it every judgment part
-   once, and each person's recent history; the dry run says which parts
-   each event calls for, per person (`judgments_due`); and the commit
-   takes the judgments, checks every one due is there before applying
-   anything, and writes each with its event's step. A compaction applied
-   without them hands them over as whole requests instead, to make with
-   `record_judgments`; it isn't complete until they're all judged.
-   `judgments_due` hands them over again -- to finish, or redo. Once it's
-   complete, the days it settled are rolled up into each person's trait
-   scores (see utilities/trait_rollup.py).
+4. `record_judgments` -- the facts written, the client judges the traits
+   of each event's people (see utilities/judgments.py). Nothing about
+   judging is sent before the user approves the plan: the commit hands
+   back the plan's final timeline and, beside it, the judgments due, in
+   one compact list (each event's people and their parts, then each part
+   and each person's history once). A compaction isn't complete until
+   they're all judged. `judgments_due` hands them over again -- to
+   finish, or redo. Once it's complete, the days it settled are rolled up
+   into each person's trait scores (see utilities/trait_rollup.py).
 
 A day at a time, all at once: one compaction takes on every day of
 uncompacted notes up to now (at most `_MAX_DAYS`, oldest first), but
@@ -112,18 +110,7 @@ from utilities.compaction_additions import (
     resolve,
 )
 from utilities.facts import SELF_ID, Facts, fact_problems
-from utilities.judgments import (
-    EventJudgmentsDue,
-    Judging,
-    JudgingContext,
-    Judgment,
-    JudgmentRequest,
-    JudgmentsDue,
-    JudgmentsResult,
-    check,
-    merged,
-    due_by_event,
-)
+from utilities.judgments import Judging, Judgment, JudgmentRequest, JudgmentsDue, JudgmentsResult
 from utilities.trait_rollup import TraitRollup
 from utilities.locations import Locations
 from utilities.people import People
@@ -279,9 +266,6 @@ DECISION_GUIDE = (
     "needs a hint. Check the lists first: don't add one that's already there under another name. "
     "Before the dry run, confirm with the user anything you couldn't settle from the notes -- who "
     "was there, where it was -- in a short list; after it, they confirm the whole plan. "
-    "JUDGMENTS: once the user approves the plan, apply it with the judgments its dry run's "
-    "`judgments_due` lists, judging the events as that final plan leaves them -- see "
-    "`judging.instructions` (none are due without `judging`). "
     "After every dry run, show the user the result's `timeline.text` verbatim in a code block "
     "(it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each "
     "event's actions and facts compactly, under it), then the new actions, people and locations "
@@ -416,11 +400,6 @@ class CompactionContext:
     """The latest already-compacted note, however long ago it was
     written -- see the module docstring."""
 
-    judging: JudgingContext | None = None
-    """Every judgment part of the traits, once, and each person's recent
-    history: what to make the judgments the dry run lists from (see
-    utilities/judgments.py). `None` without traits to judge."""
-
     instructions: str = DECISION_GUIDE
 
 
@@ -446,17 +425,12 @@ class CompactionResult:
     applied -- show these to the user too."""
 
     judgments: JudgmentsDue | None = None
-    """Once applied: the judgments its events call for, to make now (see
-    utilities/judgments.py). The compaction isn't complete until they're
-    recorded."""
+    """Once applied: the judgments its events call for, to make now, of
+    the events as `timeline` shows them (see utilities/judgments.py). The
+    compaction isn't complete until they're recorded."""
 
     scored_days: list[str] | None = None
     """Once complete: the days whose trait scores it rolled up."""
-
-    judgments_due: list[EventJudgmentsDue] | None = None
-    """For a dry run: the judgments its events call for -- each event's
-    people, and the parts to judge for each -- to give when it's applied
-    (see utilities/judgments.py). `None` when there are none."""
 
     def __post_init__(self) -> None:
         self.changes = self.changes or []
@@ -600,12 +574,6 @@ class NoteCompactor:
         days = [w.day for w in walked]
         tree = self._actions.tree() if self._actions else None
         names = self._names()
-        start = days[0].compaction_window_start
-        if self._judging is not None:
-            # The history judging looks back over and the events actions
-            # are suggested from, in one listing (see
-            # cached_calendar_listings).
-            self._calendar.list_events(start - max(_HINT_HISTORY, timedelta(days=self._judging.lookback())), start)
         suggested = self._suggestions(days, tree) if tree is not None else {}
         notes: list[ContextNote] = []
         events: dict[str, ContextEvent] = {}
@@ -689,7 +657,6 @@ class NoteCompactor:
                 timestamp=previous_note.timestamp, description=previous_note.description
             ) if previous_note is not None else None,
             judgments_pending=pending,
-            judging=self._judging.context(start) if self._judging is not None else None,
         )
 
     def prefetch(self) -> None:
@@ -807,15 +774,6 @@ class NoteCompactor:
         changes = [c for w in walked for c in w.plan.changes]
         note_count = sum(len(w.day.notes) for w in walked)
         days = f" over {len(walked)} days" if len(walked) > 1 else ""
-        existing = {e.id: e.judgments for w in walked for e in w.day.events if e.id}
-        due = self._requests_for(
-            [
-                (_day_id(compaction_id, number), step, change)
-                for number, w in enumerate(walked, start=1)
-                for step, change in enumerate(w.plan.changes, start=1)
-            ],
-            existing,
-        )
         return CompactionResult(
             status="planned",
             compaction_id=compaction_id,
@@ -823,21 +781,13 @@ class NoteCompactor:
             warnings=[warning for w in walked for warning in w.plan.warnings],
             timeline=join_days([(w.day.day_start, w.plan.timeline) for w in walked]),
             additions=additions.to_json_dict() or None,
-            judgments_due=due_by_event(due) or None,
             message=(
                 f"{len(changes)} calendar change(s) planned for {note_count} note(s){days}; "
                 "nothing has been changed yet. Show the user `timeline.text` in a code block (see the "
                 "instructions from prepare_compaction) and the warnings. "
                 + _APPROVAL_RULE
                 + f" Once they approve, apply it with compaction_id={compaction_id!r} and "
-                "dry_run=False"
-                + (
-                    f", giving the {len(due)} judgment(s) in `judgments_due` as `judgments` -- made then, "
-                    "of the events as this plan leaves them"
-                    if due
-                    else ""
-                )
-                + ". If they want something different, correct the decisions and call "
+                "dry_run=False. If they want something different, correct the decisions and call "
                 "compact_notes again (this plan is then replaced)."
                 + (f" (Replaced {superseded} earlier unapplied plan(s).)" if superseded else "")
                 + (
@@ -872,13 +822,11 @@ class NoteCompactor:
             message=message,
         )
 
-    def commit(self, compaction_id: str, judgments: list[Judgment] | None = None) -> CompactionResult:
+    def commit(self, compaction_id: str) -> CompactionResult:
         """Apply the batch `compaction_id` a day at a time: each day's steps,
-        then its notes stamped, before the next day's. `judgments` are
-        those its dry run said were due (`judgments_due`), written with
-        their events' steps; with any due left out, or wrong, nothing is
-        applied. Without them, they're handed back as requests, to make
-        with `record_judgments`."""
+        then its notes stamped, before the next day's. Hands back its final
+        timeline (unless it's resumed partway) and the judgments it calls
+        for, to make of the events as that timeline shows them."""
         self._prefetch()
         days = self._journal.load_batch(compaction_id)
         changes = [c for d in days for c in d.changes()]
@@ -895,14 +843,10 @@ class NoteCompactor:
         if any(d.status == ABANDONED for d in days):
             raise CompactionError(f"compaction {compaction_id} was abandoned; run a new dry run", category="abandoned")
         pending = [d for d in days if d.status != STAMPED]
-        resuming = pending[0].status != PLANNED
-        existing: dict[str, dict | None] = {}
-        if not resuming:
+        timeline = None
+        if pending[0].status == PLANNED:
             self._require_no_open_compaction()
-            existing = self._verify_unchanged(pending)
-        requests: list[JudgmentRequest] = []
-        if judgments is not None:
-            requests, judgments = self._checked_judgments(days, judgments, existing, resuming=resuming)
+            timeline = self._verify_unchanged(pending)
         refs: dict[str, str] | None = None
         for journal in pending:
             if journal.status == PLANNED:
@@ -914,7 +858,7 @@ class NoteCompactor:
                 refs = create_additions(additions, self._actions, self._people, self._locations)
             for step in journal.steps:
                 if step.status != "done":
-                    self._apply_step(journal, step, refs, requests, judgments or [], existing)
+                    self._apply_step(journal, step, refs)
                     self._journal.mark_step_done(step)
             self._journal.set_status(journal, APPLIED)
             self._notes.mark_compacted(journal.note_ids, journal.id)
@@ -925,13 +869,12 @@ class NoteCompactor:
         # The days as loaded, not read again after all that writing.
         due = self._due(compaction_id, days, redo=False) if self._judging is not None else None
         message = f"applied {steps} change(s) and marked {notes} note(s) compacted"
-        if judgments:
-            message += f", and recorded {len(judgments)} judgment(s)"
         scored = None
-        if due is not None and due.requests:
+        if due is not None and due.events:
             message += (
-                f". The compaction isn't complete yet: make the {len(due.requests)} judgment(s) in `judgments` "
-                "now, yourself, and record them with record_judgments (see its instructions)"
+                f". The compaction isn't complete yet: make the {due.count} judgment(s) in `judgments` now, "
+                "yourself, of the events as `timeline` shows them, and record them with record_judgments "
+                "(see `judgments.instructions`)"
             )
         else:
             scored = self._roll_up(days)
@@ -941,8 +884,9 @@ class NoteCompactor:
             changes=changes,
             warnings=warnings,
             message=message,
-            judgments=due if due is not None and due.requests else None,
+            judgments=due if due is not None and due.events else None,
             scored_days=scored,
+            timeline=timeline,
         )
 
     def _roll_up(self, days: list[JournalCompaction]) -> list[str] | None:
@@ -973,28 +917,30 @@ class NoteCompactor:
         return self._due(compaction_id, self._journal.load_batch(compaction_id), redo=redo)
 
     def _due(self, compaction_id: str, days: list[JournalCompaction], *, redo: bool) -> JudgmentsDue:
+        return self._judging.due(compaction_id, self._requests(compaction_id, days, redo=redo))
+
+    def _requests(self, compaction_id: str, days: list[JournalCompaction], *, redo: bool) -> list[JudgmentRequest]:
+        """The judgment requests the stamped batch `days` calls for -- see
+        `judgments_due`."""
         if not all(d.status == STAMPED for d in days):
             raise CompactionError(
                 f"compaction {compaction_id} hasn't been applied, so its events have nothing to judge",
                 category="not_applied",
             )
-        return JudgmentsDue(
-            compaction_id=compaction_id,
-            requests=self._judging.requests(*_judged_events(days), include_judged=redo),
-        )
+        return self._judging.requests(*_judged_events(days), include_judged=redo)
 
     def record_judgments(self, compaction_id: str, judgments: list[Judgment]) -> JudgmentsResult:
         """Record `judgments` on the compaction's events; whether that
         completes it."""
-        due = self.judgments_due(compaction_id, redo=True)
-        if due is None:
+        if self._judging is None:
             raise CompactionError("this calendar has no traits to judge", category="no_traits")
+        days = self._journal.load_batch(compaction_id)
         try:
-            recorded = self._judging.record(due.requests, judgments)
+            recorded = self._judging.record(self._requests(compaction_id, days, redo=True), judgments)
         except ValueError as exc:
             raise CompactionError(str(exc), category="judgment") from exc
-        remaining = [r.id for r in self.judgments_due(compaction_id).requests]
-        scored = self._roll_up(self._journal.load_batch(compaction_id)) if not remaining else None
+        remaining = [r.id for r in self._requests(compaction_id, days, redo=False)]
+        scored = self._roll_up(days) if not remaining else None
         return JudgmentsResult(
             compaction_id=compaction_id,
             recorded=recorded,
@@ -1010,11 +956,16 @@ class NoteCompactor:
 
     def _judgments_pending(self) -> str | None:
         """The last compaction's id, if it has judgments still to make."""
+        if self._judging is None:
+            return None
+        compaction_id = self._journal.last_stamped_batch()
+        if compaction_id is None:
+            return None
         try:
-            due = self.judgments_due()
+            due = self._requests(compaction_id, self._journal.load_batch(compaction_id), redo=False)
         except CompactionError:
             return None
-        return due.compaction_id if due is not None and due.requests else None
+        return compaction_id if due else None
 
     def _checked_facts(self, decisions: list[EventDecision], additions: Additions) -> list[EventDecision]:
         """`decisions` with their facts normalized; CompactionError if any
@@ -1303,11 +1254,10 @@ class NoteCompactor:
                 category="open_compaction",
             )
 
-    def _verify_unchanged(self, days: list[JournalCompaction]) -> dict[str, dict | None]:
+    def _verify_unchanged(self, days: list[JournalCompaction]) -> Timeline:
         """Plan `days` -- a batch's days not yet applied -- again, each with
         its own decisions, and check they come out as they did when they
-        were previewed. Returns the judgments the days' events have now,
-        by event id, for the new ones to be added to."""
+        were previewed. Returns their timeline, as planned."""
         stale = CompactionError(
             f"the notes or calendar changed since compaction {days[0].batch_id} was previewed; "
             "run a new dry run",
@@ -1334,60 +1284,7 @@ class NoteCompactor:
         walked, _remaining = self._walk(days[-1].now, plan_day, night, max_days=len(days))
         if len(walked) != len(days):
             raise stale
-        return {e.id: e.judgments for w in walked for e in w.day.events if e.id}
-
-    def _requests_for(
-        self, steps: list[tuple[str, int, CompactionChange]], existing: dict[str, dict | None]
-    ) -> list[JudgmentRequest]:
-        """The judgments due for the events `steps` (a day's compaction id,
-        the step's number, its change) write facts on, as the steps leave
-        them -- under the ids they'll have, beside the judgments they have
-        already (`existing`, by event id). None without judging."""
-        if self._judging is None:
-            return []
-        events = []
-        for day_id, step, change in steps:
-            if change.action == "cancel" or change.after is None or not change.after.facts:
-                continue
-            event = change.after.to_event(change.event_id if change.action == "update" else _new_event_id(day_id, step))
-            event.judgments = existing.get(change.event_id) if change.action == "update" else None
-            events.append(event)
-        # Only which judgments are due: their facts' history isn't needed.
-        return self._judging.requests_for(events, [])
-
-    def _checked_judgments(
-        self,
-        days: list[JournalCompaction],
-        judgments: list[Judgment],
-        existing: dict[str, dict | None],
-        *,
-        resuming: bool,
-    ) -> tuple[list[JudgmentRequest], list[Judgment]]:
-        """The judgments a batch's steps call for, and `judgments` -- once
-        they answer every one (CompactionError, before anything's applied,
-        if not). A resumed commit doesn't know which were made by the
-        steps already done, so it only checks the judgments it's given,
-        and leaves out any that are no longer due."""
-        if self._judging is None:
-            if judgments:
-                raise CompactionError("this calendar has no traits to judge", category="judgment")
-            return [], []
-        if resuming:
-            existing = {
-                s.event_id: self._client.get_event(s.event_id).judgments
-                for d in days for s in d.steps
-                if s.action == "update" and s.status != "done" and s.after is not None and s.after.facts
-            }
-        requests = self._requests_for(
-            [(d.id, s.step, c) for d in days for s, c in zip(d.steps, d.changes())], existing
-        )
-        if resuming:
-            due = {r.id for r in requests}
-            judgments = [j for j in judgments if j.request_id in due]
-        problems = check(requests, judgments, complete=not resuming)
-        if problems:
-            raise CompactionError.of(problems, "judgment")
-        return requests, judgments
+        return join_days([(w.day.day_start, w.plan.timeline) for w in walked])
 
     def _plan(
         self, day: _Day, decisions: list[EventDecision], ignore_notes: list[str] | None, additions: Additions
@@ -1447,25 +1344,11 @@ class NoteCompactor:
                 change.after.event_label_id = None
         return plan
 
-    def _apply_step(
-        self,
-        journal: JournalCompaction,
-        step: JournalStep,
-        refs: dict[str, str],
-        requests: list[JudgmentRequest],
-        judgments: list[Judgment],
-        existing: dict[str, dict | None],
-    ) -> None:
+    def _apply_step(self, journal: JournalCompaction, step: JournalStep, refs: dict[str, str]) -> None:
         """Make `step`'s change, with the refs to what the plan added
-        replaced by their ids (`refs`), and with the `judgments` of its
-        event (answering `requests`) added to those it has (`existing`,
-        by event id -- or read, if it isn't there)."""
-        event_id = _new_event_id(journal.id, step.step) if step.action == "create" else step.event_id
-        judged = [j for j in judgments if j.request_id.startswith(f"{event_id}/")]
+        replaced by their ids (`refs`)."""
         if step.action == "create":
-            event = resolve(step.after.to_event(event_id), refs)
-            if judged:
-                event.judgments = merged(None, requests, judged, event_id, person_ids=refs)
+            event = resolve(step.after.to_event(_new_event_id(journal.id, step.step)), refs)
             try:
                 self._client.create_event(event)
             except HttpError as exc:
@@ -1473,11 +1356,7 @@ class NoteCompactor:
                 if exc.resp.status != 409:
                     raise
         else:
-            patch = resolve(_patch_for(step), refs)
-            if judged and step.action == "update":
-                before = existing[event_id] if event_id in existing else self._client.get_event(event_id).judgments
-                patch.judgments = merged(before, requests, judged, event_id, person_ids=refs)
-            self._client.update_event(patch)
+            self._client.update_event(resolve(_patch_for(step), refs))
 
 
 def edit_note(

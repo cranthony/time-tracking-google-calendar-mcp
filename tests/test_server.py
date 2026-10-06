@@ -797,15 +797,7 @@ class TestCompactNotes:
         result = server.compact_notes(compaction_id="abc", dry_run=False)
 
         assert result is compactor.commit.return_value
-        compactor.commit.assert_called_once_with("abc", None)
-
-    def test_committing_passes_the_judgments_through(self, monkeypatch):
-        compactor = _fake_compactor(monkeypatch)
-        judgments = [Judgment(request_id="e1/self/heard/judgment", rating=1, reasoning="Fine.")]
-
-        server.compact_notes(compaction_id="abc", dry_run=False, judgments=judgments)
-
-        compactor.commit.assert_called_once_with("abc", judgments)
+        compactor.commit.assert_called_once_with("abc")
 
     def test_committing_without_a_dry_run_first_is_refused(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -1061,7 +1053,7 @@ class TestGetCompactionStatus:
         monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: notes)
         compactor = _fake_compactor(monkeypatch)
-        compactor.judgments_due.return_value = JudgmentsDue(compaction_id="c1", requests=[MagicMock()])
+        compactor.judgments_due.return_value = JudgmentsDue(compaction_id="c1", events=[MagicMock()], parts=[], history={})
 
         status = server.get_compaction_status()
 

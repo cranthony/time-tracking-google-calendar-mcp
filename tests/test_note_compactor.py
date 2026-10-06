@@ -1,5 +1,4 @@
 import contextlib
-import re
 from dataclasses import replace
 from datetime import date, timedelta, timezone
 from unittest.mock import MagicMock
@@ -1645,11 +1644,87 @@ class TestJudgments:
     def test_applying_asks_for_the_judgments_and_isnt_complete_until_theyre_made(self):
         setup, applied = self._applied()
 
-        assert [r.id for r in applied.judgments.requests] == ["e1/self/heard/judgment", "e1/sam/heard/judgment"]
-        assert applied.judgments.requests[1].facts == {"person_notes": "vented about work"}
-        assert "isn't complete yet" in applied.message
-        assert "JUDGE EACH REQUEST YOURSELF" in applied.judgments.instructions
+        (event,) = applied.judgments.events
+        assert (event.event_id, event.summary, event.people) == (
+            "e1", "Email", {"self": ["heard/judgment"], "sam": ["heard/judgment"]},
+        )
+        assert "isn't complete yet: make the 2 judgment(s)" in applied.message
+        assert "JUDGE EACH ONE YOURSELF" in applied.judgments.instructions
         assert setup.compactor.prepare().judgments_pending == applied.compaction_id
+
+    def test_each_part_is_given_once_however_many_judgments_name_it(self):
+        _setup, applied = self._applied()
+
+        (part,) = applied.judgments.parts
+        assert (part.key, part.trait_name, part.engagement, part.rubric, part.ratings, part.facts) == (
+            "heard/judgment", "Heard", "with", "Were they heard?", {"0": "no", "1": "yes"}, ["person_notes"],
+        )
+
+    def test_they_come_beside_the_final_timeline_the_user_approved(self):
+        setup = Setup(
+            [("09:05", "email")], people=[Person(id="sam", name="Sam", status="active")], traits=[self._TRAIT]
+        )
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=Facts(with_ids=["sam"]))])
+        setup.client.update_event.side_effect = lambda patch: setup.calendar.events.__setitem__(
+            0, replace(setup.calendar.events[0], facts=patch.facts or setup.calendar.events[0].facts)
+        )
+
+        applied = setup.compactor.commit(planned.compaction_id)
+
+        assert applied.timeline.text == planned.timeline.text
+        assert "of the events as `timeline` shows them" in applied.message
+
+    def test_nothing_about_judging_is_sent_before_the_plan_is_approved(self):
+        setup = Setup(
+            [("09:05", "email")], people=[Person(id="sam", name="Sam", status="active")], traits=[self._TRAIT]
+        )
+
+        context = setup.compactor.prepare()
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=Facts(with_ids=["sam"]))])
+
+        assert "Were they heard?" not in repr(context) + repr(planned)
+
+    def test_a_persons_own_parts_are_given_under_a_key_of_their_own(self):
+        own = [{"kind": "judgment", "rubric": "Did Sam feel heard?", "ratings": {"0": "no", "1": "yes"},
+                "facts": ["person_notes"]}]
+        setup = Setup(
+            [("09:05", "email")],
+            people=[Person(id="sam", name="Sam", status="active", traits={"parts": {"heard": own}})],
+            traits=[self._TRAIT],
+        )
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=Facts(with_ids=["sam"]))])
+        setup.client.update_event.side_effect = lambda patch: setup.calendar.events.__setitem__(
+            0, replace(setup.calendar.events[0], facts=patch.facts or setup.calendar.events[0].facts)
+        )
+
+        applied = setup.compactor.commit(planned.compaction_id)
+
+        assert {p.key: p.rubric for p in applied.judgments.parts} == {
+            "heard/judgment": "Were they heard?", "heard/judgment@sam": "Did Sam feel heard?",
+        }
+
+    def test_each_persons_recent_history_is_given_once(self):
+        trait = replace(
+            self._TRAIT, parts=[{**self._TRAIT.parts[0], "facts": [{"fact": "action_history", "lookback_days": 7}]}]
+        )
+        yesterday = event_at("09:00-10:00", id="g1", summary="Guitar", action_ids=["guitar"], facts=Facts(with_ids=["sam"]))
+        yesterday.start -= timedelta(days=1)
+        yesterday.end -= timedelta(days=1)
+        setup = Setup(
+            [("09:05", "email")], events=[yesterday, *_day()], people=[Person(id="sam", name="Sam", status="active")],
+            traits=[trait], actions=[_action("guitar", "Play guitar")],
+        )
+        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=Facts(with_ids=["sam"]))])
+        setup.client.update_event.side_effect = lambda patch: setup.calendar.events.__setitem__(
+            1, replace(setup.calendar.events[1], facts=patch.facts or setup.calendar.events[1].facts)
+        )
+
+        applied = setup.compactor.commit(planned.compaction_id)
+
+        assert {p: (h.days, h.actions) for p, h in applied.judgments.history.items()} == {
+            "self": (7, {"Play guitar": 1}),
+            "sam": (7, {"Play guitar": 1}),
+        }
 
     def test_recording_them_all_completes_it(self):
         setup, applied = self._applied()
@@ -1665,7 +1740,7 @@ class TestJudgments:
 
         assert done.complete and done.remaining == []
         assert setup.calendar.events[0].judgments["sam"]["heard"]["judgment"]["rating"] == 1
-        assert setup.compactor.judgments_due().requests == []
+        assert setup.compactor.judgments_due().events == []
         assert setup.compactor.prepare().judgments_pending is None
 
     def test_completing_it_rolls_up_the_days_it_settled(self):
@@ -1687,7 +1762,10 @@ class TestJudgments:
         rollup.roll_up.assert_not_called()  # Not complete: judgments to make.
 
         done = setup.compactor.record_judgments(applied.compaction_id, [
-            Judgment(request_id=r.id, rating=1, reasoning="Fine.") for r in applied.judgments.requests
+            Judgment(request_id=f"{e.event_id}/{person}/{part}", rating=1, reasoning="Fine.")
+            for e in applied.judgments.events
+            for person, parts in e.people.items()
+            for part in parts
         ])
 
         assert done.scored_days == ["2026-01-01"]
@@ -1713,7 +1791,8 @@ class TestJudgments:
         redo = setup.compactor.judgments_due(applied.compaction_id, redo=True)
         setup.compactor.record_judgments(applied.compaction_id, [replace(judgment, rating=0, reasoning="Only half.")])
 
-        assert {r.id: r.current for r in redo.requests}["e1/sam/heard/judgment"]["rating"] == 1
+        (event,) = redo.events
+        assert event.current == {"sam": {"heard/judgment": {"rating": 1, "reasoning": "Talked it out."}}}
         assert setup.calendar.events[0].judgments["sam"]["heard"]["judgment"]["reasoning"] == "Only half."
 
     def test_an_unapplied_compaction_has_nothing_to_judge(self):
@@ -1722,196 +1801,3 @@ class TestJudgments:
 
         with pytest.raises(CompactionError, match="hasn't been applied"):
             setup.compactor.judgments_due(planned.compaction_id)
-
-
-class TestJudgedWhenApplied:
-    """The judgments a plan calls for are given when it's applied: every
-    part once in prepare, which are due in the dry run, then checked
-    before anything's applied and written with their events."""
-
-    _TRAIT = TestJudgments._TRAIT
-    _VENTED = Facts(with_ids=["sam"], notes={"sam": "vented"})
-
-    def _setup(self, people=None, traits=None, **kwargs):
-        setup = Setup(
-            [("09:05", "email")],
-            people=people or [Person(id="sam", name="Sam", status="active")],
-            traits=traits or [self._TRAIT],
-            **kwargs,
-        )
-
-        def update(patch):
-            index = next(i for i, e in enumerate(setup.calendar.events) if e.id == patch.id)
-            old = setup.calendar.events[index]
-            setup.calendar.events[index] = replace(
-                old, facts=patch.facts or old.facts, judgments=patch.judgments or old.judgments
-            )
-
-        setup.client.update_event.side_effect = update
-        setup.client.create_event.side_effect = lambda event: setup.calendar.events.append(replace(event))
-        return setup
-
-    @staticmethod
-    def _all(due, rating=1):
-        return [
-            Judgment(request_id=f"{event.event_id}/{person}/{part}", rating=rating, reasoning="Fine.")
-            for event in due
-            for person, parts in event.people.items()
-            for part in parts
-        ]
-
-    @staticmethod
-    def _patch(setup, event_id):
-        (patch,) = [c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == event_id]
-        return patch
-
-    def test_prepare_gives_each_part_once(self):
-        context = self._setup().compactor.prepare()
-
-        (part,) = context.judging.parts
-        assert (part.key, part.trait_name, part.engagement, part.rubric, part.ratings, part.facts) == (
-            "heard/judgment", "Heard", "with", "Were they heard?", {"0": "no", "1": "yes"}, ["person_notes"],
-        )
-        assert "JUDGMENTS complete a compaction" in context.judging.instructions
-        assert "JUDGE ONLY THAT FINAL PLAN" in context.judging.instructions
-        assert "judging.instructions" in context.instructions
-
-    def test_a_persons_own_parts_are_given_under_a_key_of_their_own(self):
-        own = [{"kind": "judgment", "rubric": "Did Sam feel heard?", "ratings": {"0": "no", "1": "yes"},
-                "facts": ["person_notes"]}]
-        setup = self._setup(people=[Person(id="sam", name="Sam", status="active", traits={"parts": {"heard": own}})])
-
-        parts = {p.key: p.rubric for p in setup.compactor.prepare().judging.parts}
-
-        assert parts == {"heard/judgment": "Were they heard?", "heard/judgment@sam": "Did Sam feel heard?"}
-
-    def test_prepare_gives_each_persons_recent_history_once(self):
-        trait = replace(
-            self._TRAIT, parts=[{**self._TRAIT.parts[0], "facts": [{"fact": "action_history", "lookback_days": 7}]}]
-        )
-        yesterday = replace(
-            event_at("09:00-10:00", id="g1", summary="Guitar", action_ids=["guitar"], facts=Facts(with_ids=["sam"])),
-        )
-        yesterday.start -= timedelta(days=1)
-        yesterday.end -= timedelta(days=1)
-        setup = self._setup(traits=[trait], events=[yesterday, *_day()], actions=[_action("guitar", "Play guitar")])
-
-        history = setup.compactor.prepare().judging.history
-
-        assert {person: (h.days, h.actions) for person, h in history.items()} == {
-            "self": (7, {"Play guitar": 1}),
-            "sam": (7, {"Play guitar": 1}),
-        }
-
-    def test_the_dry_run_lists_whats_due_by_event_and_person(self):
-        setup = self._setup()
-
-        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=self._VENTED)])
-
-        (due,) = planned.judgments_due
-        assert (due.event_id, due.summary, due.people) == (
-            "e1", "Email", {"self": ["heard/judgment"], "sam": ["heard/judgment"]},
-        )
-        assert "giving the 2 judgment(s) in `judgments_due` as `judgments`" in planned.message
-
-    def test_applying_with_them_writes_each_with_its_event_and_completes_it(self):
-        rollup = MagicMock()
-        rollup.roll_up.return_value = []
-        setup = self._setup(rollup=rollup)
-        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=self._VENTED)])
-
-        applied = setup.compactor.commit(planned.compaction_id, self._all(planned.judgments_due))
-
-        assert applied.judgments is None
-        assert "recorded 2 judgment(s)" in applied.message
-        patch = self._patch(setup, "e1")
-        assert patch.facts == self._VENTED
-        assert patch.judgments == {
-            "self": {"heard": {"judgment": {"rating": 1, "scale": 1, "reasoning": "Fine."}}},
-            "sam": {"heard": {"judgment": {"rating": 1, "scale": 1, "reasoning": "Fine."}}},
-        }
-        setup.client.get_event.assert_not_called()
-        rollup.roll_up.assert_called_once()
-        assert setup.compactor.prepare().judgments_pending is None
-
-    def test_judgments_an_event_has_already_are_kept_beside_the_new_ones(self):
-        earlier = {"sam": {"other": {"judgment": {"rating": 0, "scale": 1, "reasoning": "Earlier."}}}}
-        events = _day()
-        events[0] = replace(events[0], judgments=earlier)
-        setup = self._setup(events=events)
-        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=self._VENTED)])
-
-        setup.compactor.commit(planned.compaction_id, self._all(planned.judgments_due))
-
-        assert self._patch(setup, "e1").judgments["sam"] == {
-            "other": earlier["sam"]["other"],
-            "heard": {"judgment": {"rating": 1, "scale": 1, "reasoning": "Fine."}},
-        }
-
-    @pytest.mark.parametrize(
-        "judged, message",
-        [
-            (lambda all: all[:1], "1 judgment(s) due weren't given: e1/sam/heard/judgment"),
-            (lambda all: [all[0], replace(all[1], rating=5)], "the rating 5 isn't one of its ratings"),
-            (lambda all: all + [replace(all[0], request_id="e2/self/heard/judgment")], "'e2/self/heard/judgment' isn't one"),
-            (lambda all: all + all[:1], "judged more than once"),
-        ],
-    )
-    def test_a_judgment_missing_or_wrong_applies_nothing(self, judged, message):
-        setup = self._setup()
-        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=self._VENTED)])
-
-        with pytest.raises(CompactionError, match=re.escape(message)) as excinfo:
-            setup.compactor.commit(planned.compaction_id, judged(self._all(planned.judgments_due)))
-
-        assert excinfo.value.categories == ["judgment"]
-        setup.client.update_event.assert_not_called()
-        assert setup.journal.load(planned.compaction_id).status == PLANNED
-
-    def test_a_created_event_is_judged_under_the_id_it_will_have(self):
-        setup = self._setup()
-        planned = setup.compactor.dry_run([
-            EventDecision(
-                action="create", summary="Coffee", start=time_at("11:00"), end=time_at("11:20"),
-                facts=Facts(with_ids=["sam"]),
-            )
-        ])
-
-        (due,) = planned.judgments_due
-        setup.compactor.commit(planned.compaction_id, self._all(planned.judgments_due))
-
-        created = setup.client.create_event.call_args.args[0]
-        assert (created.id, created.summary) == (due.event_id, "Coffee")
-        assert set(created.judgments) == {"self", "sam"}
-
-    def test_someone_the_plan_adds_is_judged_under_the_id_they_get(self):
-        setup = self._setup()
-        planned = setup.compactor.dry_run(
-            [EventDecision(action="keep", event_id="e1", facts=Facts(with_ids=["new:alex"]))],
-            new_people=[NewPerson(ref="new:alex", name="Alex")],
-        )
-        assert planned.judgments_due[0].people == {"self": ["heard/judgment"], "new:alex": ["heard/judgment"]}
-
-        setup.compactor.commit(planned.compaction_id, self._all(planned.judgments_due))
-
-        alex = setup.people.get_person("alex")
-        assert set(self._patch(setup, "e1").judgments) == {"self", alex.id}
-
-    def test_a_resumed_commit_takes_only_the_judgments_still_due(self):
-        setup = self._setup()
-        planned = setup.compactor.dry_run([EventDecision(action="keep", event_id="e1", facts=self._VENTED)])
-        judgments = self._all(planned.judgments_due)
-        setup.client.update_event.side_effect = RuntimeError("Calendar is down")
-        with pytest.raises(RuntimeError):
-            setup.compactor.commit(planned.compaction_id, judgments)
-        setup.client.update_event.side_effect = None
-        setup.client.get_event.return_value = Event(id="e1")
-
-        applied = setup.compactor.commit(planned.compaction_id, judgments)
-
-        assert applied.status == "applied"
-        assert set(self._patch_calls(setup, "e1")[-1].judgments) == {"self", "sam"}
-
-    @staticmethod
-    def _patch_calls(setup, event_id):
-        return [c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == event_id]
