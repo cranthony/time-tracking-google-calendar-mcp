@@ -924,6 +924,21 @@ class CalendarClient:
         if not event.id:
             raise ValueError("event.id is required to update an event")
         body = event.to_api_body()
+        private = body.get("extendedProperties", {}).get("private")
+        if private and any(v is None for v in private.values()):
+            # A null removes a property -- but Calendar refuses one the event
+            # doesn't have ("Required") on a recurring series' instance, and
+            # a field split across properties (facts) nulls every chunk it
+            # doesn't use. Removing what isn't there is nothing, so drop those.
+            current = (
+                self._service.events().get(calendarId=self._calendar_id, eventId=event.id).execute()
+                .get("extendedProperties", {}).get("private", {})
+            )
+            private = {k: v for k, v in private.items() if v is not None or k in current}
+            if private:
+                body["extendedProperties"]["private"] = private
+            else:
+                del body["extendedProperties"]
         response = (
             self._service.events()
             .patch(

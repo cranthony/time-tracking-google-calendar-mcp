@@ -550,6 +550,43 @@ class TestEvent:
         body = service.events.return_value.insert.call_args.kwargs["body"]
         assert body["extendedProperties"]["private"] == {"cascading-time-tracker-facts": '{"with":["p1"]}'}
 
+    def test_updating_an_event_nulls_only_the_properties_it_has(self):
+        # A recurring instance refuses a null for a property it doesn't
+        # have, and shorter facts null every chunk they don't use.
+        service = MagicMock()
+        service.events.return_value.get.return_value.execute.return_value = {
+            "extendedProperties": {"private": {
+                "cascading-time-tracker-facts": "{}", "cascading-time-tracker-facts-2": "x",
+                "cascading-time-tracker-priority": "1",
+            }}
+        }
+        service.events.return_value.patch.return_value.execute.return_value = api_event(
+            "abc123", "2026-10-01T18:00:00-04:00", "2026-10-01T20:00:00-04:00"
+        )
+
+        make_client(service).update_event(
+            Event(id="abc123", facts=Facts(with_ids=["p1"]), cleared=frozenset({"priority", "location"}))
+        )
+
+        body = service.events.return_value.patch.call_args.kwargs["body"]
+        assert body["extendedProperties"]["private"] == {
+            "cascading-time-tracker-facts": '{"with":["p1"]}',
+            "cascading-time-tracker-facts-2": None,
+            "cascading-time-tracker-priority": None,
+        }
+        assert body["location"] is None
+
+    def test_updating_with_nothing_to_remove_sends_no_properties(self):
+        service = MagicMock()
+        service.events.return_value.get.return_value.execute.return_value = {}
+        service.events.return_value.patch.return_value.execute.return_value = api_event(
+            "abc123", "2026-10-01T18:00:00-04:00", "2026-10-01T20:00:00-04:00"
+        )
+
+        make_client(service).update_event(Event(id="abc123", summary="Dinner", cleared=frozenset({"facts"})))
+
+        assert "extendedProperties" not in service.events.return_value.patch.call_args.kwargs["body"]
+
     def test_facts_too_long_to_store_are_refused(self):
         facts = Facts(notes={f"p{i}": "z" * 1000 for i in range(9)})
 

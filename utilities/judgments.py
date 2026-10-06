@@ -10,7 +10,8 @@ and can replace a trait's parts). Each judgment is one **request**: the
 rubric, the scale of ratings, and the facts the part names, resolved
 for that event and person -- its actions, where it was, their history
 together over the part's lookback, the event's notes, the notes on the
-person -- with the framing the assistant judges it in.
+person, what matters to them -- with the framing the assistant judges it
+in.
 
 The assistant that drives the MCP tools makes every judgment itself,
 without asking the user: a rating from the scale and one succinct line
@@ -269,6 +270,8 @@ class Judging:
                 # wasn't there.
                 about = person.id if engagement == "with" else SELF_ID
                 resolved[fact] = (facts.notes or {}).get(about)
+            elif fact == "what_matters":
+                resolved[fact] = person.what_matters
             else:  # action_history, location_history
                 since = event.start - timedelta(days=days)
                 past = [
