@@ -13,14 +13,14 @@ probes/series_edits.py.
 
 Deleting a series cancels its master, which cancels every instance,
 past ones and exceptions included: they're left on the calendar as
-cancelled events, hidden unless listed with showDeleted, so each counts
-as a cancellation for the follow_through measure (utilities/
-goal_health.py). Deleting from one of its events on ("this and following
-events") ends the series just before that event, as splitting does
-below, but makes no copy -- so it too works on any rules. Its instances
-from that event on are then gone, not cancelled, exceptions included (by
-their original start, even one moved to before the event), so
-follow_through never sees them. Found with probes/series_deletes.py.
+cancelled events, hidden unless listed with showDeleted. Deleting from
+one of its events on ("this and following events") ends the series just
+before that event, as splitting does below, but makes no copy -- so it
+too works on any rules. Its instances from that event on are then gone,
+not cancelled, exceptions included (by their original start, even one
+moved to before the event). Neither counts against follow-through, which
+only counts the cancellations the user made (utilities/
+cancellations.py). Found with probes/series_deletes.py.
 
 Splitting ("this and following events") follows Google's own recipe --
 https://developers.google.com/workspace/calendar/api/guides/recurringevents#modifying_all_following_instances

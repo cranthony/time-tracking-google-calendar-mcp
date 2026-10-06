@@ -389,6 +389,14 @@ class TestUpdateEvent:
         assert call_options == ReallocationOptions()
         assert reallocating_calendar.update_event.call_args.kwargs == {"reallocate": True}
 
+    def test_cancelling_is_refused_pointing_to_delete_event(self, monkeypatch):
+        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+
+        with pytest.raises(ToolError, match="use delete_event"):
+            server.update_event(_public_event(id="abc123", is_cancelled=True))
+
+        reallocating_calendar.update_event.assert_not_called()
+
     def test_passes_reallocate_false_through(self, monkeypatch):
         reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
         reallocating_calendar.update_event.return_value = [_event(id="abc123")]
@@ -613,6 +621,39 @@ class TestDeleteEvent:
         assert len(result) == 1
         assert result[0].id == "abc123"
         assert result[0].is_cancelled is True
+
+    def _counting(self, monkeypatch):
+        client = _fake_client(monkeypatch)
+        client.update_event.return_value = _event(id="abc123", status="cancelled")
+        store = MagicMock()
+        monkeypatch.setattr(server, "get_cancellation_store", lambda: store)
+        planned = _event(id="abc123", summary="Gym")
+        action_calendar = MagicMock()
+        action_calendar.get_event.return_value = planned
+        monkeypatch.setattr(server, "ActionCalendar", lambda client, actions: action_calendar)
+        return store, planned
+
+    def test_by_default_it_counts_against_no_ones_follow_through(self, monkeypatch):
+        store, _planned = self._counting(monkeypatch)
+
+        server.delete_event("abc123")
+
+        store.record.assert_not_called()
+
+    def test_counting_it_records_the_event_as_it_was_planned(self, monkeypatch):
+        store, planned = self._counting(monkeypatch)
+
+        server.delete_event("abc123", counts_against_follow_through=True)
+
+        store.record.assert_called_once_with(planned, "delete_event")
+
+    def test_an_event_already_cancelled_isnt_counted_again(self, monkeypatch):
+        store, planned = self._counting(monkeypatch)
+        planned.status = "cancelled"
+
+        server.delete_event("abc123", counts_against_follow_through=True)
+
+        store.record.assert_not_called()
 
 
 class TestNote:
@@ -866,6 +907,7 @@ class TestGetNoteCompactor:
         monkeypatch.setattr(server, "get_location_store", lambda: MagicMock())
         monkeypatch.setattr(server, "get_trait_store", lambda: MagicMock())
         monkeypatch.setattr(server, "get_trait_rollup", lambda: MagicMock())
+        monkeypatch.setattr(server, "get_cancellation_store", lambda: MagicMock())
         built = []
         monkeypatch.setattr(server, "build_compaction_journal", lambda: built.append(1) or MagicMock())
 

@@ -5,10 +5,10 @@ rate it by), over a trailing window that ends with the day.
 **A person's events.** The user ("self") was at every event. Anyone else's
 "with" events are those whose facts name them in `with_ids`; their "for"
 events, those naming them in `for_ids` (done for them while they weren't
-there). A part reads one or the other by its `engagement_type`. Planned
-events are tagged with their people and actions ahead of time, so a
-cancelled event still says whom it was planned with -- which is what
-follow-through counts.
+there). A part reads one or the other by its `engagement_type`.
+Follow-through's cancellations aren't read off the calendar: they're the
+ones recorded for each person when the user cancelled an event they were
+to be at, or for (see utilities/cancellations.py).
 
 | kind             | scores                                                  |
 | ---------------- | ------------------------------------------------------- |
@@ -23,8 +23,9 @@ follow-through counts.
 |                  | when it was last met to 0 by `zero_at_days`             |
 | `duration`       | the same with minutes, against `target_min`             |
 | `follow_through` | a running score over `look_back_days` (default 30):     |
-|                  | from 100, each day loses `penalty` (25) per cancelled   |
-|                  | event and regains `recovery` (25) if one was kept       |
+|                  | from 100, each day loses `penalty` (25) per event the   |
+|                  | user cancelled and regains `recovery` (25) if one was   |
+|                  | kept                                                    |
 
 `continuity`, `count`, `duration` and `follow_through` with an `action`
 count only events of that action -- or, for an action group, of any
@@ -149,7 +150,7 @@ def _engaged(person_id: str, engagement: str, events: list[Event]) -> list[Event
     return [e for e in events if e.facts is not None and person_id in (e.facts.for_ids or ())]
 
 
-def _of_action(events: list[Event], action_id: str | None, tree: ActionTree | None) -> list[Event]:
+def of_action(events: list[Event], action_id: str | None, tree: ActionTree | None) -> list[Event]:
     """`events` of the action `action_id` -- or of any action in the group
     it names -- or all of them without one."""
     if not action_id:
@@ -199,7 +200,7 @@ def _part(
             return score(None, f"No judgments in the last {days:g} days")
         mean = sum(ratings) / len(ratings)
         return score(round(100 * mean), f"Mean of {len(ratings)} judgment(s) in the last {days:g} days")
-    engaged = _of_action(engaged, part.get("action"), tree)
+    engaged = of_action(engaged, part.get("action"), tree)
     if kind == "continuity":
         last_days = part.get("last_within_days", DEFAULT_WITHIN_DAYS)
         next_days = part.get("next_within_days", DEFAULT_WITHIN_DAYS)
@@ -259,13 +260,13 @@ def _follow_through(
     cancelled: list[Event],
     tree: ActionTree | None,
 ) -> tuple[int, str]:
-    """A follow-through part's running score -- see the module docstring. A
-    cancelled event overlapped by a kept one (merged into it, say) isn't
-    counted."""
+    """A follow-through part's running score -- see the module docstring.
+    `cancelled` are the recorded cancellations (utilities/
+    cancellations.py): each was a deliberate one, so each counts."""
     penalty = part.get("penalty", FOLLOW_THROUGH_PENALTY)
     recovery = part.get("recovery", FOLLOW_THROUGH_RECOVERY)
     look_back_days = part.get("look_back_days", FOLLOW_THROUGH_LOOK_BACK_DAYS)
-    dropped = [e for e in _of_action(cancelled, part.get("action"), tree) if not any(_overlap(k, e) for k in kept)]
+    dropped = of_action(cancelled, part.get("action"), tree)
     start, end = day
     days = [(start - timedelta(days=back), start - timedelta(days=back - 1)) for back in range(look_back_days - 1, 0, -1)]
     days.append((start, end))
@@ -311,12 +312,6 @@ def _last_met(
         elif value(low) >= target:
             return low
     return None
-
-
-def _overlap(kept: Event, dropped: Event) -> bool:
-    if dropped.end > dropped.start:
-        return kept.start < dropped.end and kept.end > dropped.start
-    return kept.start <= dropped.start < kept.end
 
 
 def _minutes_in(events: list[Event], start: datetime, end: datetime) -> float:

@@ -7,6 +7,7 @@ from tests.fake_labels import FakeLabelCalendar
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet, trait_rollup
 from utilities.actions import Actions
+from utilities.cancellations import Cancellations
 from utilities.facts import Facts
 from utilities.people import People, Person
 from utilities.trait_rollup import TraitRollup
@@ -54,7 +55,10 @@ def _rollup(events):
     traits = Traits.ensure(sheets, "s")
     traits._write([Trait(id="reliable", name="Reliable", status="active", parts=[{"kind": "continuity"}, {"kind": "follow_through"}])])
     calendar = _Calendar(events)
-    return TraitRollup.ensure(calendar, actions, people, traits, sheets, "s"), calendar, sheets
+    cancellations = Cancellations.ensure(sheets, "s", people, traits, actions)
+    rollup = TraitRollup.ensure(calendar, actions, people, traits, sheets, "s", cancellations)
+    rollup.cancellations = cancellations  # For the tests to record with.
+    return rollup, calendar, sheets
 
 
 _D1, _D2 = date(2026, 9, 1), date(2026, 9, 2)
@@ -71,6 +75,7 @@ def test_rolls_up_each_active_person_for_each_finished_day():
         _event("e2", _at(_D2, 12)),
     ]
     rollup, calendar, sheets = _rollup(events)
+    rollup.cancellations.record(events[1], "compaction c")
 
     rows = rollup.roll_up([_D2, _D1, _today()])  # today isn't over: left out
 
@@ -83,7 +88,7 @@ def test_rolls_up_each_active_person_for_each_finished_day():
     assert by_id["2026-09-01/sam"].scores == {"reliable": 75}
     assert by_id["2026-09-02/sam"].scores == {"reliable": 62}
     assert by_id["2026-09-02/sam"].parts["reliable"]["follow_through"]["said"].startswith("1 cancelled")
-    assert calendar.listed[0][2] is True  # cancelled events read too
+    assert calendar.listed[0][2] is False  # cancellations come from their own tab
     assert sheets.tags[("sheet-role", calendar_metadata_sheet.TRAIT_SCORES_SHEET_ROLE)] is not None
     assert rollup.get("sam") == [by_id["2026-09-01/sam"], by_id["2026-09-02/sam"]]
     assert rollup.get(start=_D2, end=_D2) == [by_id["2026-09-02/sam"], by_id["2026-09-02/self"]]
@@ -122,3 +127,13 @@ def test_the_days_a_span_finished(start, end, days):
     rollup, _, _ = _rollup([])
 
     assert rollup.days_between(start, end) == days
+
+
+def test_a_cancelled_event_nobody_recorded_doesnt_count_against_follow_through():
+    # A plan changed by hand, or a deleted series: cancelled on the
+    # calendar, but not a cancellation the user made.
+    rollup, _, _ = _rollup([_event("c1", _at(_D2, 10), with_ids=["sam"], status="cancelled")])
+
+    (sam,) = [r for r in rollup.roll_up([_D2]) if r.person_id == "sam"]
+
+    assert sam.parts["reliable"]["follow_through"]["said"].startswith("Nothing cancelled or kept")

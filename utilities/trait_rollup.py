@@ -21,6 +21,7 @@ from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 from utilities.action_calendar import fill_in_from_actions
 from utilities.actions import Actions
+from utilities.cancellations import Cancellations
 from utilities.people import People
 from utilities.row_sheet import RowSheet
 from utilities.trait_scores import reach, score_person, traits_for
@@ -52,19 +53,33 @@ class TraitRollup:
     """A calendar's daily trait scores -- see the module docstring."""
 
     def __init__(
-        self, client, actions: Actions, people: People, traits: Traits, sheet: RowSheet[TraitScoreRow]
+        self,
+        client,
+        actions: Actions,
+        people: People,
+        traits: Traits,
+        sheet: RowSheet[TraitScoreRow],
+        cancellations: Cancellations | None = None,
     ) -> None:
-        """`client` lists events, cancelled ones included (a
-        CalendarClient), and gives the calendar's time zone."""
+        """`client` lists events (a CalendarClient) and gives the calendar's
+        time zone. `cancellations` are what follow-through counts (see
+        utilities/cancellations.py); without them, nothing's cancelled."""
         self._client = client
         self._actions = actions
         self._people = people
         self._traits = traits
         self._sheet = sheet
+        self._cancellations = cancellations
 
     @staticmethod
     def ensure(
-        client, actions: Actions, people: People, traits: Traits, sheets_client: SheetsClient, spreadsheet_id: str
+        client,
+        actions: Actions,
+        people: People,
+        traits: Traits,
+        sheets_client: SheetsClient,
+        spreadsheet_id: str,
+        cancellations: Cancellations | None = None,
     ) -> "TraitRollup":
         """The calendar's trait scores, adding the Trait Scores tab the first
         time."""
@@ -76,11 +91,12 @@ class TraitRollup:
             row_type=TraitScoreRow,
             required=("id", "day", "person_id"),
         )
-        return TraitRollup(client, actions, people, traits, sheet)
+        return TraitRollup(client, actions, people, traits, sheet, cancellations)
 
     @property
     def whole_tabs(self) -> list[TabRange]:
-        return [self._sheet.whole_tab, self._traits.whole_tab]
+        cancellations = [self._cancellations.whole_tabs[0]] if self._cancellations is not None else []
+        return [self._sheet.whole_tab, self._traits.whole_tab, *cancellations]
 
     def days_between(self, start: datetime, end: datetime) -> list[date]:
         """The days from the one `start` falls in to the last that's over by
@@ -117,9 +133,11 @@ class TraitRollup:
         first = datetime.combine(days[0], time(), tz)
         last = datetime.combine(days[-1], time(), tz) + timedelta(days=1)
         tree = self._actions.tree()
-        listed = fill_in_from_actions(self._client.list_events(first - back, last + ahead, show_deleted=True), tree)
-        kept = [e for e in listed if e.status != "cancelled"]
-        cancelled = [e for e in listed if e.status == "cancelled"]
+        kept = [
+            e for e in fill_in_from_actions(self._client.list_events(first - back, last + ahead), tree)
+            if e.status != "cancelled"
+        ]
+        cancelled = [c.to_event() for c in self._cancellations.all()] if self._cancellations is not None else []
         rows = []
         for day in days:
             start = datetime.combine(day, time(), tz)

@@ -34,8 +34,9 @@ to rate it by.
 | `count`          | events over `interval_days` against `target`, as the     |
 |                  | count measure: "see them every 21 days"                  |
 | `duration`       | minutes over `interval_days` against `target_min`        |
-| `follow_through` | a running score that drops for each cancelled event and  |
-|                  | recovers on days one is kept                             |
+| `follow_through` | a running score that drops for each event the user       |
+|                  | cancelled (recorded per person -- see utilities/         |
+|                  | cancellations.py) and recovers on days one is kept       |
 
 `continuity`, `count`, `duration` and `follow_through` also take an
 optional `action`: an action or action group id (utilities/actions.py),

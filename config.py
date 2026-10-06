@@ -11,6 +11,7 @@ from calendar_clients.google_calendar import CalendarClient
 from calendar_clients.google_sheets import SheetsClient
 from utilities import calendar_metadata_sheet
 from utilities.actions import Actions
+from utilities.cancellations import Cancellations
 from utilities.compaction_journal import CompactionJournal
 from utilities.locations import Locations
 from utilities.noted_time_sheet import NotedTimeSheet
@@ -160,7 +161,28 @@ def _build_calendar_and_sheets_clients(
     return calendar_client, sheets_client
 
 
-def build_trait_rollup(actions: Actions, people: People, traits: Traits, calendar_id: str | None = None) -> TraitRollup:
+def build_cancellations(
+    actions: Actions, people: People, traits: Traits, calendar_id: str | None = None
+) -> Cancellations:
+    """Construct a Cancellations over the given stores, from environment
+    configuration (and a local .env file, if present). See
+    `_build_calendar_and_sheets_clients` for `calendar_id`. Constructing
+    this ensures the calendar has a Cancellations tab -- see
+    `Cancellations.ensure`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return Cancellations.ensure(sheets_client, spreadsheet_id, people, traits, actions)
+
+
+def build_trait_rollup(
+    actions: Actions,
+    people: People,
+    traits: Traits,
+    calendar_id: str | None = None,
+    cancellations: Cancellations | None = None,
+) -> TraitRollup:
     """Construct a TraitRollup over the given stores, from environment
     configuration (and a local .env file, if present). See
     `_build_calendar_and_sheets_clients` for `calendar_id`. Constructing
@@ -170,7 +192,9 @@ def build_trait_rollup(actions: Actions, people: People, traits: Traits, calenda
     spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
         calendar_client, sheets_client
     )
-    return TraitRollup.ensure(calendar_client, actions, people, traits, sheets_client, spreadsheet_id)
+    return TraitRollup.ensure(
+        calendar_client, actions, people, traits, sheets_client, spreadsheet_id, cancellations
+    )
 
 
 def build_traits(calendar_id: str | None = None) -> Traits:

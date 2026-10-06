@@ -81,7 +81,7 @@ class _Server:
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
             "_calendar_client", "_reallocating_calendar", "_noted_time_sheet", "_compaction_journal",
-            "_note_compactor", "_recurrences", "_actions", "_people", "_locations", "_traits", "_trait_rollup",
+            "_note_compactor", "_recurrences", "_actions", "_people", "_locations", "_traits", "_trait_rollup", "_cancellations",
         ):
             monkeypatch.setattr(server, cached, None)
         self._fill()
