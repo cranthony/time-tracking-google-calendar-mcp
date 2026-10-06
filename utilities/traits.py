@@ -85,7 +85,7 @@ _COMMON = frozenset({"weight", "engagement_type"})
 _ACTION = frozenset({"action"})
 
 PART_KINDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
-    "judgment": (frozenset({"rubric", "ratings", "facts"}), frozenset()),
+    "judgment": (frozenset({"rubric", "ratings", "facts"}), frozenset({"window_days"})),
     "continuity": (frozenset(), frozenset({"last_within_days", "next_within_days"}) | _ACTION),
     "count": (frozenset({"target"}), frozenset({"noun", "interval_days", "zero_at_days"}) | _ACTION),
     "duration": (frozenset({"target_min"}), frozenset({"interval_days", "zero_at_days"}) | _ACTION),
@@ -349,7 +349,9 @@ def part_problems(part: Any) -> list[str]:
         problems.append('"engagement_type" must be "with" or "for"')
     if "action" in part and not (isinstance(part["action"], str) and part["action"].strip()):
         problems.append('"action" must be an action or action group id')
-    for name in ("target", "target_min", "interval_days", "last_within_days", "next_within_days", "look_back_days"):
+    for name in (
+        "target", "target_min", "interval_days", "last_within_days", "next_within_days", "look_back_days", "window_days"
+    ):
         if name in part and not (_is_number(part[name]) and part[name] > 0):
             problems.append(f'"{name}" must be a number above 0')
     for name in ("penalty", "recovery"):

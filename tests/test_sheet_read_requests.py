@@ -81,7 +81,7 @@ class _Server:
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
             "_calendar_client", "_reallocating_calendar", "_noted_time_sheet", "_compaction_journal",
-            "_note_compactor", "_recurrences", "_actions", "_people", "_locations", "_traits",
+            "_note_compactor", "_recurrences", "_actions", "_people", "_locations", "_traits", "_trait_rollup",
         ):
             monkeypatch.setattr(server, cached, None)
         self._fill()
@@ -173,6 +173,10 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         # Notes only.
         "get_notes": lambda: server.get_notes(),
         "note": lambda: server.note(NotedTime(timestamp=NOW, description="washed up")),
+        # Trait scores: the scores tab; rebuilding reads everything scores
+        # come from too, together.
+        "get_trait_scores": lambda: server.get_trait_scores(),
+        "rebuild_trait_scores": lambda: server.rebuild_trait_scores(date(2026, 9, 30), date(2026, 10, 1)),
         # Deleting tabs' rows: last, since they remove what others use.
         "delete_circle": lambda: server.delete_circle(tools.family),
         "delete_location": lambda: server.delete_location(tools.home),

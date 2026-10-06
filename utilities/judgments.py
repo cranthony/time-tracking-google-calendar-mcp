@@ -117,6 +117,9 @@ class JudgmentsResult:
 
     complete: bool = False
     message: str = ""
+    scored_days: list[str] | None = None
+    """Once complete: the days whose trait scores it rolled up (see
+    utilities/trait_rollup.py)."""
 
 
 class Judging:
