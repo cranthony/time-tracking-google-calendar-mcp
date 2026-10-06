@@ -126,9 +126,6 @@ CLEARABLE_EVENT_FIELDS = frozenset(
     {
         "description",
         "location",
-        "min_duration",
-        "is_fixed_duration",
-        "is_fixed_time",
         "priority",
         "facts",
         "judgments",
@@ -234,23 +231,6 @@ class Event:
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#originalStartTime
     for more information."""
 
-    min_duration: timedelta | None = None
-    """The minimum duration this event may be shrunk to (e.g. by whatever
-    resolves overlaps between events)."""
-
-    is_fixed_duration: bool | None = None
-    """If true, then we shouldn't change the duration of this event."""
-
-    is_fixed_time: bool | None = None
-    """If true, then this event's start/end must not change at all --
-    not just its duration (see `is_fixed_duration`), its actual
-    position in the day. Implies the same `min_duration` treatment as
-    `is_fixed_duration`: its `min_duration` is forced to its own full
-    duration at load time (see `from_api`), since a fixed-time event's
-    duration can't shrink either. `utilities/reallocation.py` is what
-    actually keeps a fixed-time event pinned to its position -- see
-    that module's "Fixed time" section."""
-
     priority: int | None = None
     """This event's priority; lower values are higher priority. Also
     determines the event's `colorId` -- see `to_api_body` and
@@ -258,14 +238,14 @@ class Event:
 
     is_end_of_day_sleep: bool | None = None
     """If true, this event is the user's end-of-day sleep block. A marker
-    for identifying that event specifically (e.g. among reallocation
-    candidates), independent of whatever `priority` it's also given."""
+    for identifying that event specifically (e.g. where compaction's day
+    ends), independent of whatever `priority` it's also given."""
 
     event_label_id: str | None = None
     """The id of one of this calendar's custom event labels (see
     `EventLabel`/`CalendarClient.list_event_labels`) assigned to this
     event, if any -- a real top-level API field (`eventLabelId`), not an
-    `extendedProperties.private` one like `priority`/`min_duration`/etc
+    `extendedProperties.private` one like `priority`/etc
     above. Its color supersedes `colorId` on the calendar.
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#eventLabelId
     for more information.
@@ -351,9 +331,6 @@ class Event:
         app_properties = _parse_properties(
             private_properties,
             {
-                "min_duration": lambda s: timedelta(minutes=int(s)),
-                "is_fixed_duration": lambda s: s.lower() == "true",
-                "is_fixed_time": lambda s: s.lower() == "true",
                 "priority": int,
                 "is_end_of_day_sleep": lambda s: s.lower() == "true",
                 "action_ids": str.split,
@@ -371,12 +348,6 @@ class Event:
         start_data = data.get("start") or data["originalStartTime"]
         start = _parse_datetime(start_data)
         end = _parse_datetime(data["end"]) if "end" in data else start
-        if app_properties.get("is_fixed_duration") or app_properties.get("is_fixed_time"):
-            # A fixed-duration (or fixed-time -- see is_fixed_time) event
-            # may never be shrunk, so its min_duration is its own full
-            # duration -- not whatever was separately stored (or not) in
-            # extendedProperties.
-            app_properties["min_duration"] = end - start
         return cls(
             id=data.get("id"),
             summary=data.get("summary"),
@@ -395,7 +366,7 @@ class Event:
 
     def clone(self) -> "Event":
         """A copy of this event, safe to mutate independently -- e.g. to
-        represent a split-off continuation event during reallocation."""
+        represent an event not created yet."""
         return replace(self)
 
     def to_api_body(self) -> dict:
@@ -428,9 +399,6 @@ class Event:
         private_properties: dict[str, str | None] = _format_properties(
             self,
             {
-                "min_duration": lambda d: str(int(d.total_seconds() / 60)),
-                "is_fixed_duration": lambda b: "true" if b else "false",
-                "is_fixed_time": lambda b: "true" if b else "false",
                 "priority": str,
                 "is_end_of_day_sleep": lambda b: "true" if b else "false",
                 "action_ids": " ".join,

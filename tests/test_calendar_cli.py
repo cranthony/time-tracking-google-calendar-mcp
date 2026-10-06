@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 import pytest
 
 import calendar_cli
+from tests.test_event_changes import FakeCalendar
+from utilities.event_changes import EventChanges
 from calendar_clients.google_calendar import Event
 from calendar_clients.google_calendar import EventLabel as RawEventLabel
 from utilities.action_calendar import ActionCalendar
@@ -91,17 +93,6 @@ class TestParseKeyValue:
 
     def test_parses_int_attribute(self):
         assert calendar_cli._parse_event_key_value("priority=1") == ("priority", 1)
-
-    def test_parses_bool_attribute(self):
-        assert calendar_cli._parse_event_key_value("is_fixed_duration=true") == (
-            "is_fixed_duration",
-            True,
-        )
-
-    def test_parses_duration_attribute(self):
-        key, value = calendar_cli._parse_event_key_value("min_duration=30m")
-        assert key == "min_duration"
-        assert value == timedelta(minutes=30)
 
     def test_parses_datetime_attribute(self):
         key, value = calendar_cli._parse_event_key_value("start=2026-01-01T09:00:00Z")
@@ -241,18 +232,12 @@ class TestFormatEventDetails:
         assert f"end: {event.end}" in details
         assert "description" not in details
         assert "location" not in details
-        assert "min_duration" not in details
-        assert "is_fixed_duration" not in details
-        assert "is_fixed_time" not in details
         assert "priority" not in details
 
     def test_includes_optional_fields_when_set(self):
         event = _event(
             description="Details",
             location="Room",
-            min_duration=timedelta(minutes=30),
-            is_fixed_duration=True,
-            is_fixed_time=True,
             priority=1,
         )
 
@@ -260,9 +245,6 @@ class TestFormatEventDetails:
 
         assert "description: Details" in details
         assert "location: Room" in details
-        assert "min_duration: 0:30:00" in details
-        assert "is_fixed_duration: True" in details
-        assert "is_fixed_time: True" in details
         assert "priority: 1" in details
 
 
@@ -373,174 +355,90 @@ class TestMainUpdateProperties:
         assert sent_event.event_label_id == "label-1"
 
 
-def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
-    reallocating_calendar = MagicMock()
-    monkeypatch.setattr(
-        calendar_cli, "_build_reallocating_calendar", lambda client: reallocating_calendar
-    )
-    return reallocating_calendar
+def _fake_changes(monkeypatch, events=()):
+    """`update`/`create` checked and written against a fake calendar
+    (tests/test_event_changes.py's)."""
+    calendar = FakeCalendar(list(events))
+    monkeypatch.setattr(calendar_cli, "_build_event_changes", lambda client: EventChanges(calendar))
+    monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
+    return calendar
 
 
-class TestBuildReallocatingCalendar:
-    def test_wraps_client_in_an_action_calendar(self, monkeypatch):
+class TestBuildEventChanges:
+    def test_writes_through_an_action_calendar(self, monkeypatch):
         client = MagicMock()
         actions = MagicMock()
         monkeypatch.setattr(calendar_cli, "build_actions", lambda: actions)
 
-        reallocating_calendar = calendar_cli._build_reallocating_calendar(client)
+        changes = calendar_cli._build_event_changes(client)
 
-        assert isinstance(reallocating_calendar._client, ActionCalendar)
-        assert reallocating_calendar._client._client is client
-        assert reallocating_calendar._client._actions is actions
+        assert isinstance(changes._client, ActionCalendar)
+        assert changes._client._client is client
+        assert changes._client._actions is actions
 
 
 class TestMainUpdate:
-    def test_builds_event_and_delegates_to_reallocation(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.return_value = [_event(summary="Moved")]
+    def test_moves_the_event(self, capsys, monkeypatch):
+        calendar = _fake_changes(monkeypatch, [_event(id="abc123", summary="Focus")])
         monkeypatch.setattr(
             sys,
             "argv",
-            [
-                "calendar_cli.py",
-                "update",
-                "abc123",
-                "start=2026-01-01T09:00:00Z",
-                "end=2026-01-01T09:30:00Z",
-                "priority=1",
-            ],
+            ["calendar_cli.py", "update", "abc123", "start=2026-01-01T11:00:00Z", "end=2026-01-01T11:30:00Z", "priority=1"],
         )
 
         calendar_cli.main()
 
-        (sent_event, options), _ = reallocating_calendar.update_event.call_args
-        assert sent_event.id == "abc123"
-        assert sent_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
-        assert sent_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
-        assert sent_event.priority == 1
-        assert options.split_threshold_minutes is None
-        out = capsys.readouterr().out
-        assert "summary: Moved" in out
-
-    def test_prints_every_affected_event(self, monkeypatch, capsys):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.return_value = [
-            _event(id="abc123", summary="Moved"),
-            _event(id="def456", summary="Shrunk"),
-        ]
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "calendar_cli.py",
-                "update",
-                "abc123",
-                "start=2026-01-01T09:00:00Z",
-                "end=2026-01-01T09:30:00Z",
-            ],
+        event = calendar.events["abc123"]
+        assert (event.start, event.end, event.priority) == (
+            datetime(2026, 1, 1, 11, 0, tzinfo=UTC), datetime(2026, 1, 1, 11, 30, tzinfo=UTC), 1,
         )
+        assert "summary: Focus" in capsys.readouterr().out
+
+    def test_keeps_the_end_without_one(self, monkeypatch):
+        calendar = _fake_changes(monkeypatch, [_event(id="abc123")])
+        before = calendar.events["abc123"].end
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update", "abc123", "start=2026-01-01T08:00:00Z"])
 
         calendar_cli.main()
 
-        out = capsys.readouterr().out
-        assert "abc123" in out
-        assert "def456" in out
+        assert calendar.events["abc123"].end == before
 
-    def test_allows_start_without_end(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.return_value = [_event()]
-        monkeypatch.setattr(
-            sys, "argv", ["calendar_cli.py", "update", "abc123", "start=2026-01-01T09:00:00Z"]
-        )
+    def test_an_overlap_is_refused(self, monkeypatch):
+        calendar = _fake_changes(monkeypatch, [
+            _event(id="abc123"),
+            _event(id="def456", start=datetime(2026, 1, 1, 11, 0, tzinfo=UTC), end=datetime(2026, 1, 1, 12, 0, tzinfo=UTC)),
+        ])
+        monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update", "abc123", "end=2026-01-01T11:30:00Z"])
 
-        calendar_cli.main()
+        with pytest.raises(SystemExit, match="Nothing was changed"):
+            calendar_cli.main()
 
-        sent_event = reallocating_calendar.update_event.call_args[0][0]
-        assert sent_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
-        assert sent_event.end is None
-
-    def test_allows_end_without_start(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.return_value = [_event()]
-        monkeypatch.setattr(
-            sys, "argv", ["calendar_cli.py", "update", "abc123", "end=2026-01-01T09:30:00Z"]
-        )
-
-        calendar_cli.main()
-
-        sent_event = reallocating_calendar.update_event.call_args[0][0]
-        assert sent_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
-        assert sent_event.start is None
+        assert calendar.written == []
 
     def test_requires_start_or_end(self, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        calendar = _fake_changes(monkeypatch, [_event(id="abc123")])
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "update", "abc123", "priority=1"])
 
         with pytest.raises(SystemExit):
             calendar_cli.main()
 
-        reallocating_calendar.update_event.assert_not_called()
+        assert calendar.written == []
 
 
 class TestMainCreate:
-    def test_builds_event_and_delegates_to_reallocation(self, capsys, monkeypatch):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.create_event.return_value = [_event(summary="New")]
+    def test_creates_the_event(self, capsys, monkeypatch):
+        calendar = _fake_changes(monkeypatch)
         monkeypatch.setattr(
             sys,
             "argv",
-            [
-                "calendar_cli.py",
-                "create",
-                "summary=New",
-                "start=2026-01-01T09:00:00Z",
-                "end=2026-01-01T09:30:00Z",
-                "priority=1",
-            ],
+            ["calendar_cli.py", "create", "summary=New", "start=2026-01-01T09:00:00Z", "end=2026-01-01T09:30:00Z", "priority=1"],
         )
 
         calendar_cli.main()
 
-        (sent_event, options), _ = reallocating_calendar.create_event.call_args
-        assert sent_event.id is None
-        assert sent_event.summary == "New"
-        assert sent_event.start == datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
-        assert sent_event.end == datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
-        assert sent_event.priority == 1
-        assert options.split_threshold_minutes is None
-        out = capsys.readouterr().out
-        assert "summary: New" in out
-
-    def test_prints_every_affected_event(self, monkeypatch, capsys):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.create_event.return_value = [
-            _event(id="abc123", summary="New"),
-            _event(id="def456", summary="Shrunk"),
-        ]
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "calendar_cli.py",
-                "create",
-                "summary=New",
-                "start=2026-01-01T09:00:00Z",
-                "end=2026-01-01T09:30:00Z",
-            ],
-        )
-
-        calendar_cli.main()
-
-        out = capsys.readouterr().out
-        assert "abc123" in out
-        assert "def456" in out
+        (created,) = calendar.events.values()
+        assert (created.summary, created.priority) == ("New", 1)
+        assert "summary: New" in capsys.readouterr().out
 
     @pytest.mark.parametrize(
         "properties",
@@ -551,14 +449,13 @@ class TestMainCreate:
         ],
     )
     def test_requires_summary_start_and_end(self, monkeypatch, properties):
-        monkeypatch.setattr(calendar_cli, "build_calendar_client", lambda: MagicMock())
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        calendar = _fake_changes(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["calendar_cli.py", "create", *properties])
 
         with pytest.raises(SystemExit):
             calendar_cli.main()
 
-        reallocating_calendar.create_event.assert_not_called()
+        assert calendar.written == []
 
 
 class TestMainDelete:

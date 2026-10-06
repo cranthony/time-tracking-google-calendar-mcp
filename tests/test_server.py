@@ -16,6 +16,10 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 import server
+from server import EventCancel, EventShift, EventUpdate
+from utilities.note_compaction import CompactionCreate, CompactionUpdate
+from tests.test_event_changes import FakeCalendar
+from utilities.event_changes import EventChanges
 from calendar_clients import google_calendar, google_sheets
 from calendar_clients.google_calendar import (
     CLEARABLE_EVENT_FIELDS,
@@ -32,8 +36,6 @@ from utilities.facts import Facts
 from utilities.judgments import Judgment, JudgmentsDue
 from utilities.note_compaction import CompactionError, EventDecision, Problem
 from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
-from utilities.reallocating_calendar import ReallocatingCalendar
-from utilities.reallocation import ReallocationOptions
 from utilities.recurrences import Repeat
 from utilities.traits import SEED_TRAITS, Trait
 from utilities.action_groups import ActionGroup
@@ -59,11 +61,6 @@ def _fake_client(monkeypatch) -> MagicMock:
     monkeypatch.setattr(server, "get_calendar_client", lambda: client)
     return client
 
-
-def _fake_reallocating_calendar(monkeypatch) -> MagicMock:
-    reallocating_calendar = MagicMock()
-    monkeypatch.setattr(server, "get_reallocating_calendar", lambda: reallocating_calendar)
-    return reallocating_calendar
 
 
 @pytest.fixture(autouse=True)
@@ -374,109 +371,123 @@ class TestGetEvent:
         assert result.priority is None
 
 
+def _fake_changes(monkeypatch, events=None):
+    """The event tools' batches checked and written against a fake calendar
+    (tests/test_event_changes.py's), with a fake Cancellations."""
+    calendar = FakeCalendar(events if events is not None else [_event(id="abc123"), _event(
+        id="def456", start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC), end=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
+    )])
+    cancellations = MagicMock()
+    monkeypatch.setattr(server, "get_cancellation_store", lambda: cancellations)
+    monkeypatch.setattr(server, "get_event_changes", lambda: EventChanges(calendar, cancellations))
+    return calendar, cancellations
+
+
+def _at(hour, minute=0):
+    return datetime(2026, 1, 1, hour, minute, tzinfo=UTC)
+
+
 class TestUpdateEvent:
-    def test_delegates_to_calendar_client(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        updated = _event(id="abc123", summary="Renamed")
-        reallocating_calendar.update_event.return_value = [updated]
-        public_event = _public_event(id="abc123", summary="Renamed")
+    def test_updates_several_events_at_once(self, monkeypatch):
+        calendar, _ = _fake_changes(monkeypatch)
 
-        result = server.update_event(public_event)
+        result = server.update_event(updates=[
+            EventUpdate(event=PublicEvent(id="abc123", start=_at(8), end=_at(9))),
+            EventUpdate(event=PublicEvent(id="def456", summary="Renamed")),
+        ])
 
-        assert result == [PublicEvent.from_event(updated)]
-        (call_updated_event, call_options), _ = reallocating_calendar.update_event.call_args
-        assert call_updated_event == public_event.to_event()
-        assert call_options == ReallocationOptions()
-        assert reallocating_calendar.update_event.call_args.kwargs == {"reallocate": True}
+        assert [e.id for e in result.events] == ["abc123", "def456"]
+        assert calendar.events["abc123"].start == _at(8)
+        assert calendar.events["def456"].summary == "Renamed"
+        assert result.dry_run is False
 
-    def test_cancelling_is_refused_pointing_to_delete_event(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+    def test_an_overlap_is_refused_and_logged_changing_nothing(self, monkeypatch, caplog):
+        calendar, _ = _fake_changes(monkeypatch)
 
-        with pytest.raises(ToolError, match="use delete_event"):
-            server.update_event(_public_event(id="abc123", is_cancelled=True))
+        with caplog.at_level(logging.WARNING, logger="server"), pytest.raises(ToolError, match="Nothing was changed"):
+            server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", start=_at(9), end=_at(10, 30)))])
 
-        reallocating_calendar.update_event.assert_not_called()
+        assert calendar.written == []
+        assert "tool=update_event categories=overlap" in caplog.text
 
-    def test_passes_reallocate_false_through(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
+    def test_moves_cancels_creates_and_shifts_together(self, monkeypatch):
+        calendar, cancellations = _fake_changes(monkeypatch)
 
-        server.update_event(_public_event(id="abc123"), reallocate=False)
-
-        assert reallocating_calendar.update_event.call_args.kwargs == {"reallocate": False}
-
-    def test_result_includes_every_affected_event(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        updated = _event(id="abc123")
-        shrunk = _event(id="def456", summary="Shrunk")
-        reallocating_calendar.update_event.return_value = [updated, shrunk]
-
-        result = server.update_event(_public_event(id="abc123"))
-
-        assert {e.id for e in result} == {"abc123", "def456"}
-
-    def test_fills_in_effective_fields_from_the_events_action(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_actions(monkeypatch, _action("g1", priority=0))
-        reallocating_calendar.update_event.return_value = [_event(id="abc123", action_ids=["g1"])]
-
-        result = server.update_event(_public_event(id="abc123"))
-
-        assert result[0].effective_priority == 0
-        assert result[0].priority is None
-
-    def test_refuses_action_ids_that_arent_actions(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_actions(monkeypatch, _action("g7k2qp", name="Cooking"))
-
-        with pytest.raises(ToolError, match=r"no action with the id or name 'g7k2qq'; did you mean g7k2qp \(Cooking\)"):
-            server.update_event(_public_event(id="abc123", action_ids=["g7k2qq"]))
-
-        reallocating_calendar.update_event.assert_not_called()
-
-    def test_an_event_can_keep_a_deleted_action_it_already_has(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_actions(monkeypatch, _action("g1", name="Oops", status="deleted"), _action("g2"))
-        client.get_event.return_value = _event(id="abc123", action_ids=["g1"])
-        reallocating_calendar.update_event.return_value = [_event(id="abc123", action_ids=["g1"])]
-
-        server.update_event(_public_event(id="abc123", action_ids=["g1"], summary="Renamed"))
-
-        reallocating_calendar.update_event.assert_called_once()
-        client.get_event.return_value = _event(id="abc123", action_ids=["g2"])
-        with pytest.raises(ToolError, match="Deleted actions"):
-            server.update_event(_public_event(id="abc123", action_ids=["g2", "g1"]))
-
-    def test_wraps_value_error_as_tool_error(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.side_effect = ValueError(
-            "updated_event.id is required to update an event with reallocation"
+        result = server.update_event(
+            updates=[EventUpdate(event=PublicEvent(id="abc123", start=_at(9), end=_at(10, 30)))],
+            cancels=[EventCancel(event_id="def456", counts_against_follow_through=True)],
+            creates=[PublicEvent(summary="Walk", start=_at(10, 30), end=_at(11))],
         )
 
-        with pytest.raises(ToolError):
-            server.update_event(_public_event(id="abc123"))
+        assert calendar.events["def456"].status == "cancelled"
+        cancellations.record.assert_called_once()
+        assert any(e.summary == "Walk" for e in calendar.events.values())
+        assert "Focus block · ⇢30m" not in (result.timeline or "")
+        assert "✕" in result.timeline
+
+    def test_a_shift_moves_its_events(self, monkeypatch):
+        calendar, _ = _fake_changes(monkeypatch)
+
+        server.update_event(shifts=[EventShift(event_ids=["abc123", "def456"], minutes=60)])
+
+        assert [calendar.events[i].start for i in ("abc123", "def456")] == [_at(10), _at(11)]
+
+    def test_a_dry_run_changes_nothing(self, monkeypatch):
+        calendar, _ = _fake_changes(monkeypatch)
+
+        result = server.update_event(
+            updates=[EventUpdate(event=PublicEvent(id="abc123", start=_at(8), end=_at(9)))], dry_run=True
+        )
+
+        assert result.dry_run is True
+        assert calendar.written == []
+        assert "Focus block · ⇠1h00m" in result.timeline
+
+    def test_an_update_cant_cancel(self, monkeypatch):
+        calendar, _ = _fake_changes(monkeypatch)
+
+        with pytest.raises(ToolError, match="put it in cancels"):
+            server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", is_cancelled=True))])
+
+        assert calendar.written == []
+
+    def test_history_is_changed_only_when_allowed(self, monkeypatch):
+        calendar, _ = _fake_changes(monkeypatch, [_event(id="abc123", compacted_until=_at(10))])
+
+        with pytest.raises(ToolError, match="is history"):
+            server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", summary="Renamed"))])
+        server.update_event(
+            updates=[EventUpdate(event=PublicEvent(id="abc123", summary="Renamed"))], allow_compacted_changes=True
+        )
+
+        assert calendar.events["abc123"].summary == "Renamed"
 
     def test_clears_the_fields_it_names(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
+        calendar, _ = _fake_changes(monkeypatch)
+        calendar.events["abc123"].priority = 2
 
-        server.update_event(_public_event(id="abc123", summary="Renamed"), clear_fields=["priority", "location"])
+        server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", summary="Renamed"), clear_fields=["priority"])])
 
-        (call_updated_event, _), _ = reallocating_calendar.update_event.call_args
-        assert call_updated_event.summary == "Renamed"
-        assert call_updated_event.cleared == {"priority", "location"}
+        (_, patch) = calendar.written[0]
+        assert patch.summary == "Renamed" and patch.cleared == {"priority"}
 
     def test_refuses_to_both_set_and_clear_a_field(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        _fake_changes(monkeypatch)
 
         with pytest.raises(ToolError, match=r"Can't both set and clear \['priority'\]"):
-            server.update_event(_public_event(id="abc123", priority=1), clear_fields=["priority"])
-
-        reallocating_calendar.update_event.assert_not_called()
+            server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", priority=1), clear_fields=["priority"])])
 
     def test_clearable_fields_match_the_events(self):
         assert set(typing.get_args(server.EventField)) == CLEARABLE_EVENT_FIELDS
+
+    def test_refuses_action_ids_that_arent_actions(self, monkeypatch):
+        calendar, _ = _fake_changes(monkeypatch)
+        _fake_actions(monkeypatch, _action("g7k2qp", name="Cooking"))
+
+        with pytest.raises(ToolError, match=r"no action with the id or name 'g7k2qq'; did you mean g7k2qp \(Cooking\)"):
+            server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", action_ids=["g7k2qq"]))])
+
+        assert calendar.written == []
 
     def _fake_people_and_places(self, monkeypatch):
         people, locations = MagicMock(), MagicMock()
@@ -486,16 +497,14 @@ class TestUpdateEvent:
         monkeypatch.setattr(server, "get_location_store", lambda: locations)
 
     def test_sets_facts_normalized(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        calendar, _ = _fake_changes(monkeypatch)
         self._fake_people_and_places(monkeypatch)
-        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
 
-        server.update_event(
-            _public_event(id="abc123", facts=Facts(location_id="home", with_ids=[" sam"], notes={"sam": " glad  "}))
-        )
+        server.update_event(updates=[EventUpdate(
+            event=PublicEvent(id="abc123", facts=Facts(location_id="home", with_ids=[" sam"], notes={"sam": " glad  "}))
+        )])
 
-        (call_updated_event, _), _ = reallocating_calendar.update_event.call_args
-        assert call_updated_event.facts == Facts(location_id="home", with_ids=["sam"], notes={"sam": "glad"})
+        assert calendar.events["abc123"].facts == Facts(location_id="home", with_ids=["sam"], notes={"sam": "glad"})
 
     @pytest.mark.parametrize(
         "facts, message",
@@ -506,154 +515,48 @@ class TestUpdateEvent:
         ],
     )
     def test_refuses_facts_that_arent_well_formed(self, monkeypatch, facts, message):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
+        calendar, _ = _fake_changes(monkeypatch)
         self._fake_people_and_places(monkeypatch)
 
         with pytest.raises(ToolError, match=message):
-            server.update_event(_public_event(id="abc123", facts=facts))
+            server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", facts=facts))])
 
-        reallocating_calendar.update_event.assert_not_called()
-
-    def test_clears_facts(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
-
-        server.update_event(_public_event(id="abc123"), clear_fields=["facts"])
-
-        (call_updated_event, _), _ = reallocating_calendar.update_event.call_args
-        assert call_updated_event.cleared == {"facts"}
+        assert calendar.written == []
 
 
 class TestCreateEvent:
-    def test_delegates_to_calendar_client(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        created = _event(id="abc123")
-        reallocating_calendar.create_event.return_value = [created]
-        new_public_event = _public_event()
+    def test_creates_several_at_once(self, monkeypatch):
+        calendar, _ = _fake_changes(monkeypatch)
 
-        result = server.create_event(new_public_event)
+        result = server.create_event([
+            PublicEvent(summary="Walk", start=_at(11), end=_at(11, 30)),
+            PublicEvent(summary="Read", start=_at(11, 30), end=_at(12)),
+        ])
 
-        assert result == [PublicEvent.from_event(created)]
-        (call_new_event, call_options), _ = reallocating_calendar.create_event.call_args
-        assert call_new_event == new_public_event.to_event()
-        assert call_options == ReallocationOptions()
-        assert reallocating_calendar.create_event.call_args.kwargs == {"reallocate": True}
+        assert [e.summary for e in result.events] == ["Walk", "Read"]
+        assert len(calendar.events) == 4
 
-    def test_passes_reallocate_false_through(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.create_event.return_value = [_event(id="abc123")]
+    def test_one_that_overlaps_is_refused(self, monkeypatch):
+        calendar, _ = _fake_changes(monkeypatch)
 
-        server.create_event(_public_event(), reallocate=False)
+        with pytest.raises(ToolError, match="overlaps 'Walk'"):
+            server.create_event([PublicEvent(summary="Walk", start=_at(9, 30), end=_at(10, 15))])
 
-        assert reallocating_calendar.create_event.call_args.kwargs == {"reallocate": False}
-
-    def test_result_includes_every_affected_event(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        created = _event(id="abc123")
-        shrunk = _event(id="def456", summary="Shrunk")
-        reallocating_calendar.create_event.return_value = [created, shrunk]
-
-        result = server.create_event(_public_event())
-
-        assert {e.id for e in result} == {"abc123", "def456"}
-
-    def test_includes_cancelled_events_marked_is_cancelled(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        created = _event(id="abc123")
-        cancelled = _event(id="def456", status="cancelled", summary="Old meeting")
-        reallocating_calendar.create_event.return_value = [created, cancelled]
-
-        result = server.create_event(_public_event())
-
-        assert [e.id for e in result] == ["abc123", "def456"]
-        cancelled_public_event = result[1]
-        assert cancelled_public_event.is_cancelled is True
-        assert cancelled_public_event.summary == "Old meeting"
-
-    def test_wraps_value_error_as_tool_error(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.create_event.side_effect = ValueError("bad input")
-
-        with pytest.raises(ToolError):
-            server.create_event(_public_event())
-
-    def test_refuses_action_ids_that_arent_actions(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_actions(monkeypatch, _action("g1", name="Cooking"))
-
-        with pytest.raises(ToolError, match="no action with the id or name 'cooking'; did you mean g1 \\(Cooking\\)"):
-            server.create_event(_public_event(action_ids=["cooking"]))
-
-        reallocating_calendar.create_event.assert_not_called()
-
-    def test_refuses_a_deleted_action(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_actions(monkeypatch, _action("g1", name="Oops", status="deleted"))
-
-        with pytest.raises(ToolError, match="Deleted actions can't be given to an event"):
-            server.create_event(_public_event(action_ids=["g1"]))
-
-        reallocating_calendar.create_event.assert_not_called()
-
-    def test_passes_valid_action_ids_through(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        _fake_actions(monkeypatch, _action("g1"))
-        reallocating_calendar.create_event.return_value = [_event(id="abc123", action_ids=["g1"])]
-
-        result = server.create_event(_public_event(action_ids=["g1"]))
-
-        (call_new_event, _options), _ = reallocating_calendar.create_event.call_args
-        assert call_new_event.action_ids == ["g1"]
-        assert result[0].action_names == ["Focus"]
+        assert calendar.written == []
 
 
 class TestDeleteEvent:
-    def test_delegates_to_calendar_client(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        client.update_event.return_value = _event(id="abc123", status="cancelled")
+    def test_cancels_several_saying_which_count(self, monkeypatch):
+        calendar, cancellations = _fake_changes(monkeypatch)
 
-        result = server.delete_event("abc123")
+        result = server.delete_event([
+            EventCancel(event_id="abc123", counts_against_follow_through=False),
+            EventCancel(event_id="def456", counts_against_follow_through=True),
+        ])
 
-        sent_event = client.update_event.call_args[0][0]
-        assert sent_event.id == "abc123"
-        assert sent_event.status == "cancelled"
-        client.delete_event.assert_not_called()
-        assert len(result) == 1
-        assert result[0].id == "abc123"
-        assert result[0].is_cancelled is True
-
-    def _counting(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        client.update_event.return_value = _event(id="abc123", status="cancelled")
-        store = MagicMock()
-        monkeypatch.setattr(server, "get_cancellation_store", lambda: store)
-        planned = _event(id="abc123", summary="Gym")
-        action_calendar = MagicMock()
-        action_calendar.get_event.return_value = planned
-        monkeypatch.setattr(server, "ActionCalendar", lambda client, actions: action_calendar)
-        return store, planned
-
-    def test_by_default_it_counts_against_no_ones_follow_through(self, monkeypatch):
-        store, _planned = self._counting(monkeypatch)
-
-        server.delete_event("abc123")
-
-        store.record.assert_not_called()
-
-    def test_counting_it_records_the_event_as_it_was_planned(self, monkeypatch):
-        store, planned = self._counting(monkeypatch)
-
-        server.delete_event("abc123", counts_against_follow_through=True)
-
-        store.record.assert_called_once_with(planned, "delete_event")
-
-    def test_an_event_already_cancelled_isnt_counted_again(self, monkeypatch):
-        store, planned = self._counting(monkeypatch)
-        planned.status = "cancelled"
-
-        server.delete_event("abc123", counts_against_follow_through=True)
-
-        store.record.assert_not_called()
+        assert {e.id: e.is_cancelled for e in result.events} == {"abc123": True, "def456": True}
+        (event, source), _ = cancellations.record.call_args
+        assert (event.id, source) == ("def456", "delete_event")
 
 
 class TestNote:
@@ -789,24 +692,32 @@ class TestPrepareCompaction:
 
 
 class TestCompactNotes:
-    def test_a_dry_run_with_decisions_plans(self, monkeypatch):
+    def test_a_dry_run_plans_its_updates_creates_and_cancels(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
-        decisions = [EventDecision(action="cancel", event_id="e1")]
+        end = datetime(2026, 1, 1, 12, 15, tzinfo=UTC)
 
-        result = server.compact_notes(decisions=decisions)
+        result = server.compact_notes(
+            updates=[CompactionUpdate(event_id="e1", end=end)],
+            creates=[CompactionCreate(summary="Walk", start_note="n1", end_note="n2")],
+            cancels=[EventCancel(event_id="e2", counts_against_follow_through=False)],
+        )
 
         assert result is compactor.dry_run.return_value
-        compactor.dry_run.assert_called_once_with(decisions, None, None, None, None)
+        compactor.dry_run.assert_called_once_with(
+            [
+                EventDecision(action="keep", event_id="e1", end=end),
+                EventDecision(action="create", summary="Walk", start_note="n1", end_note="n2"),
+                EventDecision(action="cancel", event_id="e2", counts_against_follow_through=False),
+            ],
+            None, None, None, None,
+        )
 
     def test_a_dry_run_passes_ignored_notes_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
-        decisions = [
-            EventDecision(action="keep", event_id="e1", end=datetime(2026, 1, 1, 12, 15, tzinfo=UTC))
-        ]
 
-        server.compact_notes(decisions=decisions, ignore_notes=["n2"])
+        server.compact_notes(updates=[CompactionUpdate(event_id="e1")], ignore_notes=["n2"])
 
-        compactor.dry_run.assert_called_once_with(decisions, ["n2"], None, None, None)
+        compactor.dry_run.assert_called_once_with([EventDecision(action="keep", event_id="e1")], ["n2"], None, None, None)
 
     def test_a_dry_run_with_no_decisions_records_everything_as_on_schedule(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -845,7 +756,7 @@ class TestCompactNotes:
         compactor = _fake_compactor(monkeypatch)
 
         with pytest.raises(ToolError, match="dry run first"):
-            server.compact_notes(decisions=[], dry_run=False)
+            server.compact_notes(updates=[], dry_run=False)
 
         compactor.commit.assert_not_called()
 
@@ -863,7 +774,7 @@ class TestCompactNotes:
         )
 
         with caplog.at_level(logging.WARNING, logger="server"), pytest.raises(ToolError):
-            server.compact_notes(decisions=[])
+            server.compact_notes(updates=[])
 
         assert caplog.messages == [
             "compaction rejected: tool=compact_notes categories=overlap,unknown_note: "
@@ -900,7 +811,6 @@ class TestGetNoteCompactor:
     def test_caches_across_calls(self, monkeypatch):
         monkeypatch.setattr(server, "_note_compactor", None)
         monkeypatch.setattr(server, "_compaction_journal", None)
-        monkeypatch.setattr(server, "get_reallocating_calendar", lambda: MagicMock())
         monkeypatch.setattr(server, "get_calendar_client", lambda: MagicMock())
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: MagicMock())
         monkeypatch.setattr(server, "get_people_store", lambda: MagicMock())
@@ -935,23 +845,6 @@ class TestGetCalendarClient:
 
         assert first is second
         assert len(built) == 1
-
-
-class TestGetReallocatingCalendar:
-    def test_caches_across_calls(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        actions = MagicMock()
-        monkeypatch.setattr(server, "get_action_store", lambda: actions)
-        monkeypatch.setattr(server, "_reallocating_calendar", None)
-
-        first = server.get_reallocating_calendar()
-        second = server.get_reallocating_calendar()
-
-        assert first is second
-        assert isinstance(first, ReallocatingCalendar)
-        assert isinstance(first._client, ActionCalendar)
-        assert first._client._client is client
-        assert first._client._actions is actions
 
 
 def _fake_traits(monkeypatch) -> MagicMock:
@@ -1233,29 +1126,26 @@ class TestMemoryTracking:
         assert labels == ["get_event"]
 
     def test_update_event(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.update_event.return_value = [_event(id="abc123")]
+        _fake_changes(monkeypatch)
         labels = _tracked_labels(monkeypatch)
 
-        server.update_event(_public_event(id="abc123"))
+        server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", summary="x"))])
 
         assert labels == ["update_event"]
 
     def test_create_event(self, monkeypatch):
-        reallocating_calendar = _fake_reallocating_calendar(monkeypatch)
-        reallocating_calendar.create_event.return_value = [_event(id="abc123")]
+        _fake_changes(monkeypatch)
         labels = _tracked_labels(monkeypatch)
 
-        server.create_event(_public_event())
+        server.create_event([_public_event(start=_at(14), end=_at(15))])
 
         assert labels == ["create_event"]
 
     def test_delete_event(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        client.update_event.return_value = _event(id="abc123", status="cancelled")
+        _fake_changes(monkeypatch)
         labels = _tracked_labels(monkeypatch)
 
-        server.delete_event("abc123")
+        server.delete_event([EventCancel(event_id="abc123", counts_against_follow_through=False)])
 
         assert labels == ["delete_event"]
 

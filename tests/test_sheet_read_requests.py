@@ -80,7 +80,7 @@ class _Server:
         # Memory diagnostics never touch Sheets, and take seconds.
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
-            "_calendar_client", "_reallocating_calendar", "_noted_time_sheet", "_compaction_journal",
+            "_calendar_client", "_noted_time_sheet", "_compaction_journal",
             "_note_compactor", "_recurrences", "_actions", "_people", "_locations", "_traits", "_trait_rollup", "_cancellations",
         ):
             monkeypatch.setattr(server, cached, None)
@@ -160,12 +160,14 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         # Events: the actions', people's and locations' tabs together.
         "list_events": lambda: server.list_events(NOW - timedelta(days=2), NOW),
         "get_event": lambda: server.get_event("walked"),
-        "update_event (facts)": lambda: server.update_event(with_facts),
-        "update_event": lambda: server.update_event(later_evening),
-        "create_event": lambda: server.create_event(
-            server.PublicEvent(summary="Stroll", start=NOW + timedelta(minutes=30), end=NOW + timedelta(hours=1))
+        "update_event (facts)": lambda: server.update_event(updates=[server.EventUpdate(event=with_facts)]),
+        "update_event": lambda: server.update_event(updates=[server.EventUpdate(event=later_evening)]),
+        "create_event": lambda: server.create_event([
+            server.PublicEvent(summary="Stroll", start=NOW + timedelta(days=3), end=NOW + timedelta(days=3, hours=1))
+        ]),
+        "delete_event": lambda: server.delete_event(
+            [server.EventCancel(event_id="walked", counts_against_follow_through=False)]
         ),
-        "delete_event": lambda: server.delete_event("walked"),
         # Notes, and the journal (the last compaction; any open one).
         "get_compaction_status": lambda: server.get_compaction_status(),
         "edit_note": lambda: server.edit_note(note_id, description="walked far"),

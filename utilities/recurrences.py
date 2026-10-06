@@ -64,8 +64,8 @@ rules a Repeat can say can be written. Splitting works on the strings
 themselves, so even a series made elsewhere, with rules a Repeat can't
 say, can be split.
 
-Edits to a series aren't reallocated (see utilities/reallocating_calendar.py):
-they change many days at once, and each day's reallocation happens when
+Edits to a series aren't checked for overlaps (see utilities/event_changes.py):
+they change many days at once, and each day's events are checked when
 its own events are next written.
 """
 
@@ -91,9 +91,6 @@ _EDITABLE = (
     "end",
     "description",
     "location",
-    "min_duration",
-    "is_fixed_duration",
-    "is_fixed_time",
     "priority",
     "action_ids",
 )

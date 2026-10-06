@@ -16,7 +16,7 @@ the glue between them:
   never written back as if it were. Its `action_priority` is filled in
   from all its actions alike: the highest (lowest-numbered) priority
   among them, each action's own or its nearest group's, so
-  `Event.effective_priority` -- what reallocation and compaction read --
+  `Event.effective_priority` -- what compaction and the time summaries read --
   falls back to it. The event's own priority is never touched.
 - **On write** (`create_event`/`update_event`), whenever `action_ids` is
   being written: `event_label_id` is the first action's label, if the

@@ -46,35 +46,31 @@ remove them.
 ## What happens to the rest of the calendar
 
 - The past is treated as certain. Every resulting past event -- decided,
-  or untouched and so on schedule -- becomes a *fact*, pinned
-  (`is_fixed_time`) so no later reallocation moves it, and *compacted*
-  (`Event.compacted_until`, its end). Facts may not overlap: if moving one
-  edge runs into another event, the plan is rejected naming the overlap,
-  and the decisions have to say which edge gives way. Planned end-of-day
-  sleep events are facts too (so a note can't silently eat into one),
-  just never pinned (unless a decision moves one).
+  or untouched and so on schedule -- becomes a *fact*, *compacted*
+  (`Event.compacted_until`, its end).
 - Only what's happened is settled. An event still going on at `now` is
   compacted up to `now` -- its start, and its lasting until now, are
-  fact -- but isn't pinned: it may run on past where it was planned to
-  end, and a later compaction says how far. It can't shrink below what's
-  happened (`min_duration`).
+  fact -- and may run on past where it was planned to end: a later
+  compaction says how far.
 - A later compaction keeps to what an earlier one settled: an event's
   start can't move, and its end can't come before its
   `compacted_until`, nor can it be cancelled or merged away. Its end can
   run later.
-- A `keep` that moves an event in the future is a direct reschedule: it's
-  pinned where it's put, the same as a past fact.
-- Everything else -- the future -- reflows around the facts using
-  `utilities/reallocation.py`, simulated in memory here.
+- A `keep` that moves an event in the future is a direct reschedule.
+- NOTHING IS MOVED TO MAKE ROOM. Every event a decision keeps or creates
+  must end after it starts and not overlap any other of the day's
+  events -- past or still to come -- or the plan is refused, naming every
+  problem, with the day as it would leave it (the same refusal as any
+  batch of event changes: see utilities/event_changes.py). The decisions
+  say what gives way: an overrun moves or shortens the next event, an
+  earlier bedtime ends or cancels what ran past it.
 - Every note that doesn't set an edge, and isn't listed in
   `ignore_notes`, has its text added to the description of the event it
   falls within, so it survives compaction.
 
-Moving the day's own end-of-day sleep event is the exception: it moves
-where the day ends instead of being placed within it, since nothing in
-the day comes after it to reflow into. Its end starts the next day, which
-is never adjusted -- only warned about, unless the next day is being
-compacted with it (`next_day_follows`). See `_end_day_at`. Cancelling it
+The day's own end-of-day sleep event ends the day, and its end starts
+the next one, which is never adjusted -- only warned about, unless the
+next day is being compacted with it (`next_day_follows`). Cancelling it
 -- a night without sleep -- makes the day run on to the next one's end.
 """
 
@@ -86,9 +82,9 @@ from datetime import datetime, timedelta
 from typing import Any, Literal
 
 from calendar_clients.google_calendar import MAX_DESCRIPTION_BYTES, Event
+from utilities.event_changes import ChangeError, Placed, Problem, overlap_problems, rejection
 from utilities.facts import Facts
 from utilities.compaction_timeline import Timeline, TimelineEvent, TimelineNote, build_timeline
-from utilities.reallocation import FixedTimeConflict, ReallocationOptions, reallocate_for_new_event
 
 DecisionAction = Literal["keep", "cancel", "create", "merge"]
 
@@ -131,6 +127,11 @@ class EventDecision:
     there (see utilities/facts.py), replacing its facts whole. For `keep`,
     `None` keeps them, and empty facts remove them."""
 
+    counts_against_follow_through: bool | None = None
+    """`cancel`: whether the user dropped it (it counts against the
+    follow-through of whoever it was planned with) or the plan changed.
+    `None`, from before cancels said, counts."""
+
     def to_json_dict(self) -> dict:
         return {
             key: (
@@ -154,6 +155,43 @@ class EventDecision:
         if "facts" in parsed:
             parsed["facts"] = facts_from_dict(parsed["facts"])
         return cls(**parsed)
+
+
+@dataclass(kw_only=True)
+class CompactionUpdate:
+    """A planned event that happened: an `update` of compact_notes -- see
+    `NoteCompactor`'s instructions. Edges stay as planned unless moved, to
+    a time or to a note's."""
+
+    event_id: str
+    summary: str | None = None
+    start: datetime | None = None
+    end: datetime | None = None
+    start_note: str | None = None
+    end_note: str | None = None
+    annotate: str | None = None
+    action_ids: list[str] | None = None
+    facts: Facts | None = None
+
+    def decision(self) -> EventDecision:
+        return EventDecision(action="keep", **vars(self))
+
+
+@dataclass(kw_only=True)
+class CompactionCreate:
+    """Something unplanned that happened: a `create` of compact_notes."""
+
+    summary: str
+    start: datetime | None = None
+    end: datetime | None = None
+    start_note: str | None = None
+    end_note: str | None = None
+    annotate: str | None = None
+    action_ids: list[str] | None = None
+    facts: Facts | None = None
+
+    def decision(self) -> EventDecision:
+        return EventDecision(action="create", **vars(self))
 
 
 def facts_dict(facts: Facts | None) -> dict[str, Any] | None:
@@ -189,8 +227,6 @@ class EventState:
     description: str | None = None
     location: str | None = None
     status: str | None = None
-    min_duration_minutes: int | None = None
-    is_fixed_time: bool | None = None
     priority: int | None = None
     event_label_id: str | None = None
     action_ids: list[str] | None = None
@@ -208,10 +244,6 @@ class EventState:
             description=event.description,
             location=event.location,
             status=event.status,
-            min_duration_minutes=(
-                int(event.min_duration.total_seconds() // 60) if event.min_duration else None
-            ),
-            is_fixed_time=event.is_fixed_time,
             priority=event.priority,
             event_label_id=event.event_label_id,
             action_ids=list(event.action_ids) if event.action_ids is not None else None,
@@ -228,12 +260,6 @@ class EventState:
             description=self.description,
             location=self.location,
             status=self.status,
-            min_duration=(
-                timedelta(minutes=self.min_duration_minutes)
-                if self.min_duration_minutes is not None
-                else None
-            ),
-            is_fixed_time=self.is_fixed_time,
             priority=self.priority,
             event_label_id=self.event_label_id,
             action_ids=list(self.action_ids) if self.action_ids is not None else None,
@@ -251,8 +277,9 @@ class EventState:
     @classmethod
     def from_json_dict(cls, data: dict) -> "EventState":
         parsed = dict(data)
-        # From goals, which actions replaced.
-        for retired in ("goal_ids", "facets"):
+        # From goals, which actions replaced, and from reallocation, which
+        # batches of changes did (see utilities/event_changes.py).
+        for retired in ("goal_ids", "facets", "min_duration_minutes", "is_fixed_time"):
             parsed.pop(retired, None)
         for key in ("start", "end", "compacted_until"):
             if key in parsed:
@@ -280,54 +307,18 @@ class CompactionPlan:
     timeline: Timeline | None = None
 
 
-class Problem(str):
-    """One thing wrong, as a message, tagged with the `category` of
-    mistake it is -- so a `CompactionError` made of several can say which
-    kinds it holds. It's still a `str`, so a list of them joins like any
-    other list of messages."""
-
-    category: str
-
-    def __new__(cls, category: str, message: str) -> "Problem":
-        problem = super().__new__(cls, message)
-        problem.category = category
-        return problem
-
-
-class CompactionError(ValueError):
+class CompactionError(ChangeError):
     """The decisions (or the calendar they were checked against) can't be
     turned into a plan. The message says what to fix, and lists the valid
     choices where there are any -- it's written to be read by the model
-    that produced the decisions.
-
-    `categories` names the kinds of mistake it holds ("overlap",
-    "unknown_note", ...), sorted, for the server to log every rejection by
-    -- so the logs show which instructions a model gets wrong."""
-
-    def __init__(self, message: str, *, category: str = "other") -> None:
-        super().__init__(message)
-        self.categories: list[str] = [category]
-
-    @classmethod
-    def of(cls, problems: list[str], category: str = "other") -> "CompactionError":
-        """One error for all of `problems`: each a `Problem` with its own
-        category, or a plain message that's `category`."""
-        error = cls("\n".join(problems), category=category)
-        error.categories = sorted({getattr(p, "category", category) for p in problems})
-        return error
-
-    @classmethod
-    def wrapping(cls, message: str, cause: "CompactionError") -> "CompactionError":
-        """`cause` reworded as `message`, keeping its categories."""
-        error = cls(message)
-        error.categories = list(cause.categories)
-        return error
+    that produced the decisions. Its `categories` are logged as any
+    refused change's are (see utilities/event_changes.py)."""
 
 
 @dataclass
 class _Fact:
     """An event whose resulting time is certain: it's placed exactly
-    there, and everything else reflows around it."""
+    there."""
 
     key: str
     start: datetime
@@ -356,7 +347,6 @@ def plan_compaction(
     *,
     ignore_notes: list[str] | None = None,
     day_start: datetime | None = None,
-    options: ReallocationOptions | None = None,
     names: dict[str, str] | None = None,
     previous_note: PlanNote | None = None,
     last_compaction: datetime | None = None,
@@ -381,7 +371,6 @@ def plan_compaction(
     Raises `CompactionError` (listing everything wrong at once) if the
     decisions are invalid or leave past events overlapping. Never mutates
     its arguments."""
-    options = options or ReallocationOptions()
     ignored = set(ignore_notes or [])
     problems: list[str] = []
     warnings: list[str] = []
@@ -417,9 +406,6 @@ def plan_compaction(
         if event.id in decided_ids or event.end > now:
             continue
         copy = copies[event.id]
-        if not event.is_end_of_day_sleep:
-            copy.is_fixed_time = True
-            copy.min_duration = copy.end - copy.start
         copy.compacted_until = copy.end
         facts.append(
             _Fact(
@@ -428,14 +414,11 @@ def plan_compaction(
                 end=copy.end,
                 event=copy,
                 base=event,
-                reason="happened as planned -- no note says otherwise -- so pinned in place",
+                reason="happened as planned -- no note says otherwise",
                 default=True,
             )
         )
     facts.sort(key=lambda f: (f.start, f.end))
-    _check_overlaps(facts, problems)
-    if problems:
-        raise CompactionError.of(problems, "overlap")
 
     for event_id, decision in touched.items():
         if decision.summary:
@@ -448,8 +431,7 @@ def plan_compaction(
     if problems:
         raise CompactionError.of(problems, "description_too_long")
 
-    simulated = _simulate(facts, copies, cancels, options, warnings, next_day_follows)
-    _check_compacted(events_by_id, copies, {f.base.id for f in facts if f.base and not f.default}, simulated)
+    simulated = _place(facts, copies, cancels, warnings, next_day_follows)
     for event in simulated.working:
         if event.status != "cancelled" and event.start < now < event.end:
             _in_progress(event, now)
@@ -626,14 +608,14 @@ def _resolve(
         if event_id in merges:
             reason = (
                 f"merged with {', '.join(repr(m.summary) for m in members[1:])} -- where one ended "
-                "and the next began isn't remembered -- and pinned in place"
+                "and the next began isn't remembered"
             )
         elif not changed:
-            reason = "happened as planned, and pinned in place"
+            reason = "happened as planned"
         elif start >= now:
-            reason = "moved as requested, and pinned in place"
+            reason = "moved as requested"
         else:
-            reason = "realigned to match the notes, and pinned in place"
+            reason = "realigned to match the notes"
         facts.append(
             _Fact(
                 key=event_id,
@@ -694,13 +676,9 @@ def _resolve(
 
 def _settle(event: Event, now: datetime) -> Event:
     """`event`, decided, as compaction settles it as of `now`: past, it's
-    pinned whole (`is_fixed_time`, all of it its `min_duration`) and
-    compacted to its end; in the future, it's a reschedule, pinned where
-    it's put. Still going on, it's left free to run on -- compacted up to
-    now (`_in_progress`) once the day around it is placed."""
-    if event.end <= now or event.start >= now:
-        event.is_fixed_time = True
-        event.min_duration = event.end - event.start
+    compacted to its end. Still going on, it's compacted up to now
+    (`_in_progress`) once the day around it is placed; in the future,
+    it's just where it's put."""
     if event.end <= now:
         event.compacted_until = event.end
     return event
@@ -711,57 +689,6 @@ def _in_progress(event: Event, now: datetime) -> None:
     lasting until now, are fact -- it can't shrink below that -- and
     where it ends is still a plan."""
     event.compacted_until = now
-    if event.min_duration is None or event.min_duration < now - event.start:
-        event.min_duration = now - event.start
-
-
-def _check_compacted(
-    events_by_id: dict[str, Event], copies: dict[str, Event], decided: set[str], simulated: "_Simulated"
-) -> None:
-    """Reflowing the day mustn't undo what an earlier compaction settled:
-    move an event's start, end it before its `compacted_until`, or
-    cancel it. (Decisions are checked as they're resolved.)"""
-    problems = []
-    for event_id, base in events_by_id.items():
-        if base.compacted_until is None or event_id in decided:
-            continue
-        copy = copies[event_id]
-        if event_id in simulated.reflow_cancelled or copy.start != base.start or copy.end < base.compacted_until:
-            problems.append(
-                Problem(
-                    "compacted",
-                    f"placing the day's events would move or cut short {base.summary!r} ({event_id}), which an "
-                    f"earlier compaction recorded from {base.start.isoformat()} until "
-                    f"{base.compacted_until.isoformat()}. Say where it ended with 'keep' (no earlier than "
-                    "that), or move whatever runs into it.",
-                )
-            )
-    if problems:
-        raise CompactionError.of(problems, "compacted")
-
-
-def _check_overlaps(facts: list[_Fact], problems: list[str]) -> None:
-    """Past events (and directly moved ones) are certain, so two of them
-    can't share time -- and which one gives way is for the decisions to
-    say, not for the planner to guess."""
-    for i, earlier in enumerate(facts):
-        for later in facts[i + 1 :]:
-            if later.start >= earlier.end:
-                continue
-            problems.append(
-                f"{_describe(earlier)} overlaps {_describe(later)}. Decide which gives way -- move "
-                "one of their edges with 'keep', cancel one, or (only if the user confirms they "
-                "don't remember where one ended and the other began) merge them -- and ask the "
-                "user if the notes don't say."
-            )
-
-
-def _describe(fact: _Fact) -> str:
-    how = "on schedule" if fact.default else "as decided"
-    return (
-        f"{fact.event.summary!r} ({fact.key}, {how}, {fact.start.isoformat()} to "
-        f"{fact.end.isoformat()})"
-    )
 
 
 def _annotate(
@@ -782,8 +709,8 @@ def _annotate(
     problem, not a warning: Calendar would silently cut it short."""
     anchors = {n.id for f in facts for n in (f.start_note, f.end_note) if n is not None}
     fact_ids = {f.base.id for f in facts if f.base}
-    # Where each candidate event ends up, as far as is known before the
-    # reflow: facts exactly, everything else where it is now.
+    # Where each candidate event ends up: facts exactly, everything else
+    # where it is.
     targets: list[tuple[datetime, datetime, str, Event]] = [
         (f.start, f.end, f.key, f.event) for f in facts
     ] + [
@@ -843,164 +770,56 @@ def _annotate(
     return annotated
 
 
-def _end_day_at(
-    fact: _Fact,
-    working: list[Event],
-    explicit_cancel: dict[str, str],
-    day_end_reasons: dict[str, str],
-    warnings: list[str],
-    next_day_follows: bool = False,
-) -> list[Event]:
-    """Move the day's end to where `fact` puts its end-of-day sleep event,
-    and return `working` with it there.
-
-    This isn't placed like any other fact (`reallocate_for_new_event`),
-    because that needs something after the placed event for the rest to
-    reflow into, and nothing in the day comes after its own sleep event
-    -- the day is cut off there (see `ReallocatingCalendar.
-    list_day_events`). It would also, given the chance, carry the rest of
-    an interrupted evening event over to after the sleep, into the next
-    day. So instead:
-
-    - a later bedtime just leaves the evening it frees up free;
-    - an earlier one shortens whatever runs past the new bedtime to end
-      there, and cancels what starts after it (or can't be shortened
-      that far without going under its `min_duration`); a fixed-time
-      event in the way is an error, the same as two facts overlapping;
-    - the sleep's end -- the start of the next day -- is moved as asked,
-      but nothing in the next day is adjusted for it: compacting one day
-      never changes the next. That gets a warning instead, since the
-      next day's first events may now overlap it -- unless the next day
-      is being compacted too (`next_day_follows`), starting from it.
-    """
-    sleep = fact.event
-    bedtime = fact.start
-    problems: list[str] = []
-    kept: list[Event] = []
-    for event in working:
-        if event.id == fact.base.id:
-            continue
-        if event.end <= bedtime:
-            kept.append(event)
-            continue
-        if event.is_fixed_time:
-            problems.append(
-                f"{sleep.summary!r} doesn't fit starting at {bedtime.isoformat()}: fixed-time "
-                f"{event.summary!r} ({event.start.isoformat()} to {event.end.isoformat()}) is in "
-                "the way and can't move. Start it later."
-            )
-            continue
-        if event.start < bedtime and bedtime - event.start >= (event.min_duration or timedelta(0)):
-            event.end = bedtime
-            if event.id is not None:
-                day_end_reasons[event.id] = f"shortened to end at the new bedtime, {bedtime.isoformat()}"
-            kept.append(event)
-        elif event.id is not None:
-            explicit_cancel[event.id] = f"doesn't fit before the new bedtime, {bedtime.isoformat()}"
-        # else: the unsaved remainder of a split event -- just never created.
-    if problems:
-        raise CompactionError.of(problems, "fixed_time_conflict")
-    if fact.end != fact.base.end and not next_day_follows:
-        warnings.append(
-            f"{sleep.summary!r} now ends at {fact.end.isoformat()} instead of "
-            f"{fact.base.end.isoformat()}. Compaction doesn't adjust the next day for that -- "
-            "check the next day's first events, and move them with update_event if they now overlap."
-        )
-    return sorted(kept + [sleep], key=lambda e: e.start)
-
-
-_SHORTEN_OR_MOVE = "Give it an earlier end or a later start with 'keep', or check the notes that bound it."
-
-
 @dataclass
 class _Simulated:
     working: list[Event]
     """The day as it ends up, including new (unsaved, id-less) events."""
 
-    reflow_cancelled: set[str]
-    day_end_reasons: dict[str, str]
 
 
-def _simulate(
+def _place(
     facts: list[_Fact],
     copies: dict[str, Event],
     cancels: dict[str, str],
-    options: ReallocationOptions,
     warnings: list[str],
     next_day_follows: bool = False,
 ) -> _Simulated:
-    """Place every decided fact into the day, reflowing the rest around
-    it, in memory. `copies` is updated in place to where each existing
-    event ends up; `cancels` gains anything a moved bedtime cancels."""
-    decided = [f for f in facts if not f.default]
-    base_ids = {f.base.id for f in decided if f.base}
-    working = sorted(
-        (copies[event_id] for event_id in copies if event_id not in base_ids and event_id not in cancels),
-        key=lambda e: e.start,
-    )
-    # The day's end is settled first, so every other fact reflows into the
-    # day as it will actually end -- e.g. an activity noted just before a
-    # later-than-planned bedtime, which would otherwise collide with the
-    # sleep event's old start.
-    day_end_reasons: dict[str, str] = {}
-    for fact in decided:
-        if fact.moves_day_end:
-            working = _end_day_at(fact, working, cancels, day_end_reasons, warnings, next_day_follows)
-    for fact in decided:
-        if fact.moves_day_end:
-            continue
-        # reallocate_for_new_event wants only the day *from* the new event's
-        # start onward (at most the first event may overlap that start), so
-        # whatever already ended before this fact -- including every
-        # earlier fact -- is set aside and can't be disturbed.
-        head = [e for e in working if e.end <= fact.start]
-        tail = [e for e in working if e.end > fact.start]
-        pinned = next((e for e in tail if e.is_fixed_time and e.start < fact.end), None)
-        if pinned is not None:
-            # Reflowing can never move a fixed-time event out of the way,
-            # so say so directly rather than let reallocation fail on it.
-            raise CompactionError(
-                f"{fact.event.summary!r} ({fact.start.isoformat()} to {fact.end.isoformat()}) "
-                f"doesn't fit: it overlaps fixed-time {pinned.summary!r} "
-                f"({pinned.start.isoformat()} to {pinned.end.isoformat()}), which can't move. "
-                f"{_SHORTEN_OR_MOVE} If a note shows when {pinned.summary!r} actually started or "
-                "ended, move it with 'keep' too.",
-                category="fixed_time_conflict",
-            )
-        try:
-            changed = reallocate_for_new_event(tail, fact.event, options)
-        except FixedTimeConflict as exc:
-            raise CompactionError(f"{exc} {_SHORTEN_OR_MOVE}", category="fixed_time_conflict") from exc
-        except ValueError as exc:
-            hint = (
-                " A day needs an event after the last noted time (normally the end-of-day sleep "
-                "event) for the rest to reflow into."
-                if not any(e.end > fact.end for e in tail)
-                else ""
-            )
-            raise CompactionError(
-                f"can't fit {fact.event.summary!r} ({fact.start.isoformat()} to "
-                f"{fact.end.isoformat()}) into the day: {exc}.{hint}",
-                category="reflow_failed",
-            ) from exc
-        known = {id(e) for e in tail}
-        alive = [e for e in tail if e.status != "cancelled"]
-        extra = [e for e in changed if id(e) not in known and e.status != "cancelled"]
-        working = head + sorted(alive + extra, key=lambda e: e.start)
-
+    """Every event where the decisions leave it: a decided one at its
+    decided times, a new one where it's created, the rest where they
+    were. Nothing is moved to make room: if an event a decision moves or
+    creates would overlap another, or take no time, the plan is refused,
+    naming every problem, with the day as it would leave it -- the same
+    refusal as any batch of event changes (see utilities/
+    event_changes.py), so the decisions can be put right at once."""
+    decided = {f.base.id: f for f in facts if f.base and not f.default}
+    # Every decided event answers for what it overlaps, moved or not: one
+    # an earlier day of the batch moved (a night that ran late) is already
+    # where it was put by the time this day reads it.
+    placed = [Placed(event=f.event, key=f.key, moved=True, asked=True) for f in facts if not f.default]
+    placed += [
+        Placed(event=copy, key=event_id)
+        for event_id, copy in copies.items()
+        if event_id not in decided and event_id not in cancels
+    ]
+    problems = overlap_problems(placed)
+    if problems:
+        raise CompactionError.wrapping(
+            str(
+                rejection(
+                    problems, placed,
+                    since=min(p.event.start for p in placed), until=max(p.event.end for p in placed),
+                )
+            ),
+            CompactionError.of(problems, "overlap"),
+        )
     for fact in facts:
-        if fact.event.status == "cancelled" or (fact.event.start, fact.event.end) != (fact.start, fact.end):
-            raise CompactionError(
-                f"{fact.event.summary!r} ({fact.start.isoformat()} to {fact.end.isoformat()}) "
-                "doesn't fit: the rest of the day can't be moved around it without moving it too. "
-                f"{_SHORTEN_OR_MOVE}",
-                category="reflow_failed",
+        if fact.moves_day_end and fact.end != fact.base.end and not next_day_follows:
+            warnings.append(
+                f"{fact.event.summary!r} now ends at {fact.end.isoformat()} instead of "
+                f"{fact.base.end.isoformat()}. Compaction doesn't adjust the next day for that -- "
+                "check the next day's first events, and move them with update_event if they now overlap."
             )
-    return _Simulated(
-        working=working,
-        reflow_cancelled={i for i, e in copies.items() if e.status == "cancelled" and i not in cancels},
-        day_end_reasons=day_end_reasons,
-    )
+    return _Simulated(working=[p.event for p in placed])
 
 
 def _changes(
@@ -1023,22 +842,10 @@ def _changes(
         if event_id in decided_by_base:
             fact = decided_by_base[event_id]
             after, reason = EventState.from_event(fact.event), fact.reason
-        elif event_id in simulated.reflow_cancelled:
-            changes.append(
-                CompactionChange(
-                    action="cancel",
-                    event_id=event_id,
-                    reason="no room was left for it once the actual events were placed",
-                    before=before,
-                )
-            )
-            continue
         else:
             after = EventState.from_event(copies[event_id])
             # How much of it is compacted is bookkeeping, not a reason.
-            settled = replace(
-                after, compacted_until=before.compacted_until, min_duration_minutes=before.min_duration_minutes
-            )
+            settled = replace(after, compacted_until=before.compacted_until)
             only_notes = replace(settled, description=before.description) == before
             only_actions = replace(settled, description=before.description, action_ids=before.action_ids) == before
             only_facts = (
@@ -1056,25 +863,15 @@ def _changes(
             elif only_facts:
                 reason = "recorded what happened at it (its facts)"
             else:
-                reason = simulated.day_end_reasons.get(event_id, "moved to make room for the actual events")
+                reason = "updated"
         if after != before:
             changes.append(
                 CompactionChange(action="update", event_id=event_id, reason=reason, before=before, after=after)
             )
-    fact_events = {id(f.event) for f in facts}
     for fact in facts:
         if fact.base is None:
             changes.append(
                 CompactionChange(action="create", reason=fact.reason, after=EventState.from_event(fact.event))
-            )
-    for event in simulated.working:
-        if event.id is None and id(event) not in fact_events:
-            changes.append(
-                CompactionChange(
-                    action="create",
-                    reason="the remainder of an event that an actual event split in two",
-                    after=EventState.from_event(event),
-                )
             )
 
     order = {"cancel": 0, "update": 1, "create": 2}
@@ -1131,9 +928,6 @@ def _timeline(
                 )
             )
             continue
-        if original.id in simulated.reflow_cancelled:
-            events.append(TimelineEvent(summary=original.summary or original.id, status="cancelled", **planned))
-            continue
         fact = decided_by_base.get(original.id)
         final = fact.event if fact else copies[original.id]
         if fact is None and original.start >= now and EventState.from_event(final) == EventState.from_event(original):
@@ -1144,7 +938,7 @@ def _timeline(
         elif original.id in default_ids:
             status = "on_schedule"
         else:
-            status = "planned" if same else "reflowed"
+            status = "planned"
         events.append(
             TimelineEvent(
                 summary=final.summary or original.id,
@@ -1160,7 +954,6 @@ def _timeline(
                 **planned,
             )
         )
-    fact_events = {id(f.event) for f in facts}
     for fact in facts:
         if fact.base is None:
             events.append(
@@ -1175,18 +968,6 @@ def _timeline(
                     new_actions=named(fact.event.action_ids),
                     **fact_fields(fact.event),
                     missing=missing(fact.event, fact.start),
-                )
-            )
-    for event in simulated.working:
-        if event.id is None and id(event) not in fact_events:
-            events.append(
-                TimelineEvent(
-                    summary=event.summary or "",
-                    status="new",
-                    start=event.start,
-                    end=event.end,
-                    actions=named(event.action_ids),
-                    missing=missing(event, event.start),
                 )
             )
 
