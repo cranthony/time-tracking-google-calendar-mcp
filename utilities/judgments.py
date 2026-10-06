@@ -65,8 +65,11 @@ INSTRUCTIONS = (
 
 JUDGING_GUIDE = (
     "JUDGMENTS complete a compaction, and they're yours to make, never the user's: once the user "
-    "approves the plan, apply it with `judgments` -- one for each entry in the dry run's "
-    "`judgments_due`, which lists, for each event, each person it was about and the parts to judge "
+    "approves the plan, apply it with `judgments` -- one for each entry in the `judgments_due` of "
+    "the dry run you're applying, the one the user approved. JUDGE ONLY THAT FINAL PLAN: each event "
+    "as it leaves it (its times, actions and facts in that dry run's timeline), never as first "
+    "planned or as an earlier dry run had it; a new dry run replaces the list, and created events' "
+    "ids change with it, so make the judgments only once the plan is approved. `judgments_due` lists, for each event, each person it was about and the parts to judge "
     "for them (\"<trait id>/<part key>\"). Each judgment's request_id is \"<event id>/<person id>/<trait "
     "id>/<part key>\"; its part is in `judging.parts` under \"<trait id>/<part key>@<person id>\" if "
     "there is one (that person's own), or else \"<trait id>/<part key>\". Answer the part's rubric "

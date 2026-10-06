@@ -1773,6 +1773,7 @@ class TestJudgedWhenApplied:
             "heard/judgment", "Heard", "with", "Were they heard?", {"0": "no", "1": "yes"}, ["person_notes"],
         )
         assert "JUDGMENTS complete a compaction" in context.judging.instructions
+        assert "JUDGE ONLY THAT FINAL PLAN" in context.judging.instructions
         assert "judging.instructions" in context.instructions
 
     def test_a_persons_own_parts_are_given_under_a_key_of_their_own(self):
