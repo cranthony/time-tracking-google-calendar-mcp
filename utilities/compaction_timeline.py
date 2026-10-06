@@ -34,7 +34,9 @@ has, `◇` for one it's being given (or, before anything is decided, one
 suggested for it), and each action's total time follows the events. Its
 facts (see utilities/facts.py) go on the lines after that -- where, with
 whom, for whom, then a line per person's note: `▸` for those it has,
-`▹` for those it's being given.
+`▹` for those it's being given. `⚠` marks a past event still missing
+its action or its location -- what's easy to miss among the rest -- and
+each day lists them again at its end, under `Missing:`.
 `✓` marks the latest note an earlier compaction already used, shown as
 context, and a `┄┄ last compaction` line marks when that compaction ran
 -- what came before it is already on the calendar. Long lines wrap,
@@ -53,6 +55,9 @@ import textwrap
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Literal
+
+TimelineGap = Literal["action", "location"]
+"""What a past event can be missing once this compaction is applied."""
 
 TimelineStatus = Literal["planned", "on_schedule", "adjusted", "reflowed", "new", "cancelled", "merged"]
 """What compaction did to an event:
@@ -82,6 +87,7 @@ _LEGEND = [
     "○ note not added   ✓ compacted",
     "◆ action   ◇ action being added",
     "▸ facts   ▹ facts being set",
+    "⚠ missing action or location",
     "+/− late/early   ⇢/⇠ moved",
 ]
 
@@ -137,6 +143,11 @@ class TimelineEvent:
 
     new_facts: bool = False
     """Whether this compaction sets `facts`."""
+
+    missing: list[TimelineGap] = field(default_factory=list)
+    """What it's still missing once this compaction is applied: set only
+    for past events the compaction records, since only those are judged
+    from their actions and location."""
 
 
 @dataclass(kw_only=True)
@@ -265,6 +276,11 @@ def render(timeline: Timeline, *, legend: bool = True) -> str:
         lines.append("")
         lines.append("Action time:")
         lines.extend(f"{duration:>7}  {action}" for action, duration in action_time)
+    if gaps := [e for e in live if e.missing]:
+        lines.append("")
+        lines.append("Missing:")
+        for event in gaps:
+            lines.extend(_wrap_plain(f"⚠ {event.summary}: {', '.join(event.missing)}", indent=4))
     if timeline.decided and legend:
         lines.append("")
         lines.extend(_legend(timeline.events))
@@ -282,6 +298,19 @@ def _wrap(prefix: str, text: str, indent: int) -> list[str]:
         break_on_hyphens=False,
     ) or [""]
     return [f"{prefix if i == 0 else ' ' * _GUTTER}{line}".rstrip() for i, line in enumerate(wrapped)]
+
+
+def _wrap_plain(text: str, *, indent: int) -> list[str]:
+    """`text` wrapped to `_WIDTH` with no gutter, two spaces in and its
+    continuation lines `indent` in."""
+    return textwrap.wrap(
+        text,
+        width=_WIDTH,
+        initial_indent="  ",
+        subsequent_indent=" " * indent,
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
 
 
 def _edges_set_elsewhere(note: TimelineNote, live: list[TimelineEvent], hm) -> list[str]:
@@ -314,6 +343,8 @@ def _edge_lines(moment, live, removed, here: set[str], hm) -> list[tuple[bool, s
         if actions := _action_tag(event):
             lines.append((False, f"    {actions}"))
         lines += [(False, f"    {'▹' if event.new_facts else '▸'} {fact}") for fact in event.facts]
+        if event.missing:
+            lines.append((False, f"    ⚠ no {', no '.join(event.missing)}"))
     for event in removed:
         if event.planned_start != moment:
             continue
@@ -397,5 +428,7 @@ def _display_tz(timeline: Timeline) -> tzinfo:
 
 
 def _legend(events: list[TimelineEvent]) -> list[str]:
-    """The legend, its facts line only when an event has facts."""
-    return [line for line in _LEGEND if not line.startswith("▸") or any(e.facts for e in events)]
+    """The legend, its facts line only when an event has facts and its
+    missing line only when an event is missing something."""
+    shown = {"▸": any(e.facts for e in events), "⚠": any(e.missing for e in events)}
+    return [line for line in _LEGEND if shown.get(line[0], True)]
