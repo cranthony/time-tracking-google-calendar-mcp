@@ -131,7 +131,8 @@ from utilities.compaction_journal import (
     PlannedDay,
 )
 from utilities.compaction_marker import CompactionMarker
-from utilities.compaction_timeline import Timeline, join_days
+from utilities.cancellations import Cancellations
+from utilities.compaction_timeline import Timeline, join_days, render
 from utilities.note_compaction import (
     CompactionChange,
     CompactionError,
@@ -567,6 +568,7 @@ class NoteCompactor:
         marker: CompactionMarker | None = None,
         judging: Judging | None = None,
         rollup: TraitRollup | None = None,
+        cancellations: Cancellations | None = None,
     ) -> None:
         """`calendar` reads the day's events (through the same
         action-aware view reallocation uses); `client` is what the planned
@@ -578,7 +580,11 @@ class NoteCompactor:
         makes and records the judgments that complete a compaction (see
         utilities/judgments.py), and `rollup`, if given, rolls the days a
         complete compaction settled up into trait scores (see
-        utilities/trait_rollup.py)."""
+        utilities/trait_rollup.py). `cancellations`, if given, records each
+        event a compaction cancels for the people it counts against in
+        follow-through, and the timeline lists them (see utilities/
+        cancellations.py)."""
+        self._cancellations = cancellations
         self._marker = marker
         self._judging = judging
         self._rollup = rollup
@@ -712,6 +718,8 @@ class NoteCompactor:
                 tabs += self._judging.whole_tabs
             if self._rollup is not None:
                 tabs += self._rollup.whole_tabs
+            if self._cancellations is not None:
+                tabs += self._cancellations.whole_tabs
         self._notes.prefetch(tabs)
 
     def _names(self, additions: Additions | None = None) -> dict[str, str]:
@@ -891,6 +899,7 @@ class NoteCompactor:
                 if step.status != "done":
                     self._apply_step(journal, step, refs)
                     self._journal.mark_step_done(step)
+            self._record_cancellations(journal)
             self._journal.set_status(journal, APPLIED)
             self._notes.mark_compacted(journal.note_ids, journal.id)
             self._journal.set_status(journal, STAMPED)
@@ -1397,6 +1406,7 @@ class NoteCompactor:
             next_day_follows=day.has_next,
         )
         self._check_before_window(day, plan)
+        self._show_follow_through(day, decisions, plan)
         labelled = [c for c in plan.changes if c.action == "create" and c.after.event_label_id is not None]
         if not labelled:
             return plan
@@ -1406,6 +1416,40 @@ class NoteCompactor:
             if change.after.event_label_id not in label_ids:
                 change.after.event_label_id = None
         return plan
+
+    def _show_follow_through(self, day: _Day, decisions: list[EventDecision], plan: CompactionPlan) -> None:
+        """Mark in `plan`'s timeline each event its decisions cancel ("it
+        didn't happen") that counts against someone's follow-through, with
+        who -- see utilities/cancellations.py."""
+        if self._cancellations is None or plan.timeline is None:
+            return
+        cancelled = {d.event_id for d in decisions if d.action == "cancel"}
+        events = {e.id: e for e in day.events if e.id in cancelled}
+        marked = False
+        for shown in plan.timeline.events:
+            event = events.get(shown.event_id)
+            if event is None:
+                continue
+            shown.follow_through = [
+                f"{m.person_name} ({', '.join(m.trait_names)})" for m in self._cancellations.matches(event)
+            ]
+            marked = marked or bool(shown.follow_through)
+        if marked:
+            plan.timeline.text = render(plan.timeline)
+
+    def _record_cancellations(self, journal: JournalCompaction) -> None:
+        """Record each event `journal`'s day cancelled with a 'cancel'
+        decision -- not a merge, nor one the reflow had no room for -- for
+        the people it counts against in follow-through, as it was planned.
+        Again, harmlessly, on a resumed commit."""
+        if self._cancellations is None:
+            return
+        cancelled = {d.event_id for d in journal.decisions if d.action == "cancel"}
+        for step in journal.steps:
+            if step.action == "cancel" and step.event_id in cancelled and step.before is not None:
+                self._cancellations.record(
+                    step.before.to_event(step.event_id), f"compaction {journal.batch_id}", at=self._clock()
+                )
 
     @staticmethod
     def _check_before_window(day: _Day, plan: CompactionPlan) -> None:

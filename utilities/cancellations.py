@@ -1,0 +1,214 @@
+"""Cancellations: the events the user cancelled -- said didn't happen, or
+dropped on purpose -- that count against someone's follow-through (see
+utilities/trait_scores.py).
+
+**What's recorded.** Only a deliberate cancellation: a compaction's
+`cancel` decision ("it didn't happen"), once its day is applied (see
+utilities/note_compactor.py), or `delete_event` asked to count it. A
+merge, an event a reflow had no room for, a deleted series, or a plan
+changed by hand isn't one. And only for the people a follow-through part
+of their traits matches, as the event was planned: for a part with the
+"with" engagement, the user and everyone the event's facts have there
+(`with_ids`); for "for", everyone it was for (`for_ids`); and either way,
+only an event of the part's `action`, if it names one. A cancellation no
+part matches isn't recorded at all.
+
+**Where they live.** The **Cancellations** tab of the calendar's metadata
+spreadsheet, one row per cancelled event per person (and engagement),
+read by header name (utilities/row_sheet.py) -- so a row recorded by
+mistake can be deleted by hand. Rows older than the trait scores are kept
+for, plus the longest a follow-through part looks back, are dropped as
+new ones are written.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+
+from calendar_clients.google_calendar import Event
+from calendar_clients.google_sheets import SheetsClient, TabRange
+from utilities import calendar_metadata_sheet
+from utilities.actions import Actions
+from utilities.facts import SELF_ID, Facts
+from utilities.people import People
+from utilities.row_sheet import RowSheet
+from utilities.trait_scores import of_action, traits_for
+from utilities.traits import Traits, part_keys, part_problems
+
+KEEP_DAYS = 400 + 90
+"""How long a cancellation is kept: as long as trait scores are (see
+utilities/trait_rollup.py), and a generous follow-through look-back
+before the oldest of them, so a rebuilt score still sees it."""
+
+
+@dataclass(kw_only=True)
+class Cancellation:
+    """One person's record of one event the user cancelled -- see the
+    module docstring."""
+
+    id: str | None = None
+    """"<event id>/<person id>/<engagement>"."""
+
+    event_id: str | None = None
+    person_id: str | None = None
+    engagement: str | None = None
+    """"with" (they were to be there) or "for" (it was to be done for
+    them while they weren't)."""
+
+    summary: str | None = None
+    start: str | None = None
+    end: str | None = None
+    """When it was planned, ISO 8601."""
+
+    action_ids: list[str] | None = None
+    parts: list[str] | None = None
+    """The follow-through parts it counted against when it was recorded,
+    "<trait id>/<part key>"."""
+
+    cancelled_at: str | None = None
+    source: str | None = None
+    """What cancelled it: "compaction <id>", or "delete_event"."""
+
+    def to_event(self) -> Event:
+        """The event as follow-through reads it (see utilities/
+        trait_scores.py): when it was planned, its actions, and its person
+        where their engagement looks for them."""
+        facts = (
+            Facts(for_ids=[self.person_id]) if self.engagement == "for"
+            else Facts(with_ids=[self.person_id]) if self.person_id != SELF_ID
+            else Facts()
+        )
+        return Event(
+            id=self.event_id,
+            summary=self.summary,
+            start=datetime.fromisoformat(self.start),
+            end=datetime.fromisoformat(self.end),
+            action_ids=list(self.action_ids or []),
+            facts=facts,
+            status="cancelled",
+        )
+
+
+@dataclass(kw_only=True)
+class FollowThroughMatch:
+    """A person a cancelled event counts against, and the follow-through
+    parts it counts against them under."""
+
+    person_id: str
+    person_name: str
+    engagement: str
+    parts: list[str]
+    """"<trait id>/<part key>"."""
+
+    trait_names: list[str]
+
+
+class Cancellations:
+    """A calendar's recorded cancellations -- see the module docstring."""
+
+    def __init__(self, sheet: RowSheet[Cancellation], people: People, traits: Traits, actions: Actions) -> None:
+        self._sheet = sheet
+        self._people = people
+        self._traits = traits
+        self._actions = actions
+
+    @staticmethod
+    def ensure(
+        sheets_client: SheetsClient, spreadsheet_id: str, people: People, traits: Traits, actions: Actions
+    ) -> "Cancellations":
+        """The calendar's cancellations, adding the Cancellations tab the
+        first time."""
+        sheet = RowSheet.ensure(
+            sheets_client,
+            spreadsheet_id,
+            role=calendar_metadata_sheet.CANCELLATIONS_SHEET_ROLE,
+            title=calendar_metadata_sheet.CANCELLATIONS_SHEET_TITLE,
+            row_type=Cancellation,
+            required=("id", "person_id"),
+        )
+        return Cancellations(sheet, people, traits, actions)
+
+    @property
+    def whole_tabs(self) -> list[TabRange]:
+        """Every tab matching and recording read, for `SheetsClient.prefetch`."""
+        return [self._sheet.whole_tab, self._traits.whole_tab, *self._people.whole_tabs, *self._actions.whole_tabs]
+
+    def prefetch(self, ranges: list[TabRange]) -> None:
+        self._sheet.prefetch(ranges)
+
+    def all(self) -> list[Cancellation]:
+        return self._sheet.read()
+
+    def matches(self, event: Event) -> list[FollowThroughMatch]:
+        """Who `event`, cancelled, counts against: each active person with
+        a follow-through part it matches (see the module docstring), and
+        those parts."""
+        traits = self._traits.all()
+        tree = self._actions.tree()
+        facts = event.facts or Facts()
+        found = []
+        for person in self._people.get_people():
+            by_engagement: dict[str, tuple[list[str], list[str]]] = {}
+            for trait, parts in traits_for(person, traits):
+                for part, key in zip(parts, part_keys(parts)):
+                    if not isinstance(part, dict) or part.get("kind") != "follow_through" or part_problems(part):
+                        continue
+                    engagement = part.get("engagement_type", "with")
+                    there = (
+                        person.id == SELF_ID or person.id in (facts.with_ids or ())
+                        if engagement == "with"
+                        else person.id in (facts.for_ids or ())
+                    )
+                    if not there or not of_action([event], part.get("action"), tree):
+                        continue
+                    keys, names = by_engagement.setdefault(engagement, ([], []))
+                    keys.append(f"{trait.id}/{key}")
+                    if (trait.name or trait.id) not in names:
+                        names.append(trait.name or trait.id)
+            found += [
+                FollowThroughMatch(
+                    person_id=person.id, person_name=person.name or person.id, engagement=engagement,
+                    parts=keys, trait_names=names,
+                )
+                for engagement, (keys, names) in by_engagement.items()
+            ]
+        return found
+
+    def record(self, event: Event, source: str, at: datetime | None = None) -> list[Cancellation]:
+        """Record `event` (as it was planned, before it was cancelled) as
+        cancelled for everyone it counts against (`matches`) -- again,
+        harmlessly, if it already is. Returns the rows written."""
+        at = at or datetime.now(timezone.utc)
+        rows = [
+            Cancellation(
+                id=f"{event.id}/{match.person_id}/{match.engagement}",
+                event_id=event.id,
+                person_id=match.person_id,
+                engagement=match.engagement,
+                summary=event.summary,
+                start=event.start.isoformat(),
+                end=event.end.isoformat(),
+                action_ids=list(event.action_ids or []),
+                parts=match.parts,
+                cancelled_at=at.isoformat(),
+                source=source,
+            )
+            for match in self.matches(event)
+        ]
+        if not rows:
+            return []
+        written = {r.id for r in rows}
+        oldest = at - timedelta(days=KEEP_DAYS)
+        kept = [r for r in self.all() if r.id not in written and _start(r) >= oldest]
+        self._sheet.write(sorted(kept + rows, key=lambda r: (r.start or "", r.id or "")))
+        return rows
+
+
+def _start(row: Cancellation) -> datetime:
+    try:
+        return datetime.fromisoformat(row.start)
+    except (TypeError, ValueError):
+        # A hand-edited row that can't be read: kept, rather than lost.
+        return datetime.max.replace(tzinfo=timezone.utc)
+

@@ -26,6 +26,7 @@ from utilities.note_compaction import (
 from tests.fake_labels import FakeLabelCalendar
 from utilities.actions import Action, Actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
+from utilities.cancellations import Cancellations
 from utilities.facts import Facts
 from utilities.judgments import Judging, Judgment
 from utilities.traits import Trait, Traits
@@ -97,6 +98,7 @@ class Setup:
         self.client = MagicMock()
         self.now = now
         self.judging = None
+        self.cancellations = None
         if traits is not None:
             trait_store = Traits.ensure(self.sheets, "s")
             trait_store._write(traits)
@@ -104,6 +106,7 @@ class Setup:
                 client=self.calendar, actions=self.actions, people=self.people, locations=self.locations,
                 traits=trait_store,
             )
+            self.cancellations = Cancellations.ensure(self.sheets, "s", self.people, trait_store, self.actions)
         self.compactor = NoteCompactor(
             calendar=self.calendar,
             client=self.client,
@@ -116,6 +119,7 @@ class Setup:
             marker=self.marker,
             judging=self.judging,
             rollup=rollup,
+            cancellations=self.cancellations,
         )
 
     @property
@@ -1466,7 +1470,7 @@ class TestSheetReadRequests:
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
             "_calendar_client", "_reallocating_calendar", "_actions", "_people", "_locations", "_traits",
-            "_noted_time_sheet", "_note_compactor",
+            "_noted_time_sheet", "_note_compactor", "_trait_rollup", "_cancellations",
         ):
             monkeypatch.setattr(server, cached, None)
         self.now = "09:10+1"
@@ -1909,3 +1913,51 @@ class TestStayingUpPastTheLastCompaction:
             ])
 
         assert "overlap" in excinfo.value.categories
+
+
+class TestFollowThrough:
+    """An event the user says didn't happen counts against the
+    follow-through of the people it was planned with: the timeline says so,
+    and applying it records it (see utilities/cancellations.py)."""
+
+    _TRAIT = Trait(id="reliable", name="Reliable", status="active", parts=[{"kind": "follow_through"}])
+
+    def _setup(self):
+        events = _day()
+        events[0] = replace(events[0], facts=Facts(with_ids=["sam"]))
+        return Setup(
+            [("09:05", "email")], events=events, people=[Person(id="sam", name="Sam", status="active")],
+            traits=[self._TRAIT],
+        )
+
+    def test_the_timeline_lists_whom_a_cancelled_event_counts_against(self):
+        setup = self._setup()
+
+        planned = setup.compactor.dry_run([EventDecision(action="cancel", event_id="e1")])
+
+        assert "Follow-through:\n  ✗ Email: Me (Reliable), Sam (Reliable)\n" in planned.timeline.text
+        assert "✗ counts against follow-through" in planned.timeline.text
+        (email,) = [e for e in planned.timeline.events if e.event_id == "e1"]
+        assert email.follow_through == ["Me (Reliable)", "Sam (Reliable)"]
+        assert setup.cancellations.all() == []  # Nothing's recorded until it's applied.
+
+    def test_applying_it_records_the_cancellation_for_each_of_them(self):
+        setup = self._setup()
+        planned = setup.compactor.dry_run([EventDecision(action="cancel", event_id="e1")])
+
+        applied = setup.compactor.commit(planned.compaction_id)
+
+        assert "Follow-through:" in applied.timeline.text
+        assert [(r.id, r.summary, r.source) for r in setup.cancellations.all()] == [
+            ("e1/sam/with", "Email", f"compaction {planned.compaction_id}"),
+            ("e1/self/with", "Email", f"compaction {planned.compaction_id}"),
+        ]
+
+    def test_a_merge_isnt_a_cancellation(self):
+        setup = self._setup()
+        planned = setup.compactor.dry_run([EventDecision(action="merge", event_id="e1", into="e2")])
+
+        setup.compactor.commit(planned.compaction_id)
+
+        assert "Follow-through:" not in planned.timeline.text
+        assert setup.cancellations.all() == []

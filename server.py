@@ -32,6 +32,7 @@ from config import (
     build_locations,
     build_noted_time_sheet,
     build_people,
+    build_cancellations,
     build_trait_rollup,
     build_traits,
     get_allowed_user_ids,
@@ -59,6 +60,7 @@ from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.facts import Facts, fact_problems
 from utilities.judgments import Judging, Judgment, JudgmentsDue, JudgmentsResult
 from utilities.trait_rollup import TraitRollup, TraitScoreRow
+from utilities.cancellations import Cancellations
 from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionError, EventDecision
@@ -147,9 +149,9 @@ class PublicEvent:
     tool result -- the agent has no way to know they exist, not just that
     their value is hidden.
 
-    is_cancelled only ever moves from False to True: setting it False has
-    no effect (see to_event), since there's no way to un-cancel a
-    cancelled event.
+    is_cancelled is read-only: update_event refuses to set it -- cancel
+    an event with delete_event, which says whether the cancellation counts
+    against follow-through.
 
     action_ids are what was done at the event (see get_actions), the
     first setting its label and color; setting them is how an event is
@@ -375,6 +377,7 @@ _actions: Actions | None = None
 _people: People | None = None
 _locations: Locations | None = None
 _trait_rollup: TraitRollup | None = None
+_cancellations: Cancellations | None = None
 
 
 def get_calendar_client() -> CalendarClient:
@@ -439,6 +442,18 @@ def get_location_store() -> Locations:
     return _locations
 
 
+def get_cancellation_store() -> Cancellations:
+    """Lazily construct and cache the Cancellations, the same way the
+    other get_* helpers cache theirs. Building it the first time adds the
+    Cancellations tab."""
+    global _cancellations
+    if _cancellations is None:
+        with WRITE_LOCK:
+            if _cancellations is None:
+                _cancellations = build_cancellations(get_action_store(), get_people_store(), get_trait_store())
+    return _cancellations
+
+
 def get_trait_rollup() -> TraitRollup:
     """Lazily construct and cache the TraitRollup, the same way the other
     get_* helpers cache theirs. Building it the first time adds the Trait
@@ -447,7 +462,9 @@ def get_trait_rollup() -> TraitRollup:
     if _trait_rollup is None:
         with WRITE_LOCK:
             if _trait_rollup is None:
-                _trait_rollup = build_trait_rollup(get_action_store(), get_people_store(), get_trait_store())
+                _trait_rollup = build_trait_rollup(
+                    get_action_store(), get_people_store(), get_trait_store(), cancellations=get_cancellation_store()
+                )
     return _trait_rollup
 
 
@@ -539,6 +556,7 @@ def get_note_compactor() -> NoteCompactor:
                         traits=get_trait_store(),
                     ),
                     rollup=get_trait_rollup(),
+                    cancellations=get_cancellation_store(),
                 )
     return _note_compactor
 
@@ -728,8 +746,14 @@ def update_event(
     event follow its actions' priority again; clearing min_duration lets
     it shrink to nothing). Set action_ids to change its actions ([] for
     none). Set facts to replace its facts whole (see list_events).
-    Returns the events affected by the update."""
+    Returns the events affected by the update. It can't cancel an event
+    (is_cancelled): use delete_event."""
     with track("update_event"), cached_reads():
+        if event.is_cancelled:
+            raise ToolError(
+                "update_event can't cancel an event: use delete_event, and say with "
+                "counts_against_follow_through whether the cancellation counts against follow-through"
+            )
         _prefetch_stores()
         _check_action_ids(event, existing=True)
         _check_facts(event)
@@ -833,12 +857,12 @@ def delete_recurrence(id: str, starting_at_event_id: str | None = None) -> list[
     The two leave different things behind. Deleting a series whole
     cancels each of its events, as delete_event does one: they stay on
     the calendar as cancelled events, hidden from the user and from
-    list_events, and each counts as a cancellation for follow_through
-    trait parts -- past events too, whose time is then no longer counted
+    list_events -- past events too, whose time is then no longer counted
     as spent. Deleting this and following leaves no
     cancelled events: the series' events from that one on are gone (one
     edited on its own goes by where the series first put it, even if
-    moved earlier), so follow_through doesn't count them at all. To stop
+    moved earlier). Neither counts against follow-through: only an event
+    the user cancelled does (see delete_event). To stop
     a series that's already begun -- one that won't happen any more,
     rather than one that shouldn't have been -- delete from its next
     event on."""
@@ -875,14 +899,27 @@ def create_event(event: PublicEvent, reallocate: bool = True) -> list[PublicEven
 
 @tool
 @writes
-def delete_event(id: str) -> list[PublicEvent]:
-    """Delete an event by its ID. Given one event of a recurring series,
-    deletes only that event; to delete the whole series, or an event and
-    the ones after it, use delete_recurrence. Returns the events affected
-    by the deletion."""
+def delete_event(id: str, counts_against_follow_through: bool = False) -> list[PublicEvent]:
+    """Delete (cancel) an event by its ID. Given one event of a recurring
+    series, deletes only that event; to delete the whole series, or an
+    event and the ones after it, use delete_recurrence. With
+    counts_against_follow_through, the cancellation is recorded against
+    the follow-through of each person a follow-through trait part matches
+    it for -- the user and everyone it was planned with (facts' with_ids),
+    or for (for_ids), if it's of the part's action -- as a commitment the
+    user dropped; by default it's just a change of plan, and counts
+    against no one. Returns the events affected by the deletion."""
     with track("delete_event"), cached_reads():
         _prefetch_stores()
+        before = None
+        if counts_against_follow_through:
+            store = get_cancellation_store()
+            _prefetch(store)
+            # Its actions as planned, inferred from its label if need be.
+            before = ActionCalendar(get_calendar_client(), get_action_store()).get_event(id)
         cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
+        if before is not None and before.status != "cancelled":
+            store.record(before, "delete_event")
         return _public_events([cancelled])
 
 
@@ -920,7 +957,10 @@ def get_traits(statuses: list[TraitStatus] | None = None) -> list[ListedTrait]:
     ({"kind": "count", "target": 1, "interval_days": 21, "zero_at_days":
     42, "noun": "visits"}), "duration" (with "target_min") and
     "follow_through" ("penalty", "recovery", "look_back_days"), as the
-    measures of the same kind. continuity, count, duration and
+    measures of the same kind -- follow_through counting the events the
+    user cancelled: said in compaction didn't happen, or deleted with
+    delete_event's counts_against_follow_through, never a plan merely
+    changed. continuity, count, duration and
     follow_through can take an "action" (an action or action group id) to
     count only its events. A person's traits can select which traits
     apply to them and give them their own parts for any (see

@@ -36,7 +36,10 @@ facts (see utilities/facts.py) go on the lines after that -- where, with
 whom, for whom, then a line per person's note: `▸` for those it has,
 `▹` for those it's being given. `⚠` marks a past event still missing
 its action or its location -- what's easy to miss among the rest -- and
-each day lists them again at its end, under `Missing:`.
+each day lists them again at its end, under `Missing:`. An event the
+user is cancelling that counts against someone's follow-through (see
+utilities/cancellations.py) is listed at the end of its day too, under
+`Follow-through:`, with `✗` and who it counts against.
 `✓` marks the latest note an earlier compaction already used, shown as
 context, and a `┄┄ last compaction` line marks when that compaction ran
 -- what came before it is already on the calendar. Long lines wrap,
@@ -88,6 +91,7 @@ _LEGEND = [
     "◆ action   ◇ action being added",
     "▸ facts   ▹ facts being set",
     "⚠ missing action or location",
+    "✗ counts against follow-through",
     "+/− late/early   ⇢/⇠ moved",
 ]
 
@@ -148,6 +152,10 @@ class TimelineEvent:
     """What it's still missing once this compaction is applied: set only
     for past events the compaction records, since only those are judged
     from their actions and location."""
+
+    follow_through: list[str] = field(default_factory=list)
+    """For an event the user is cancelling: each person it counts against
+    in a follow-through part, with the part's trait -- "Sam (Reliable)"."""
 
 
 @dataclass(kw_only=True)
@@ -281,6 +289,11 @@ def render(timeline: Timeline, *, legend: bool = True) -> str:
         lines.append("Missing:")
         for event in gaps:
             lines.extend(_wrap_plain(f"⚠ {event.summary}: {', '.join(event.missing)}", indent=4))
+    if dropped := [e for e in timeline.events if e.follow_through]:
+        lines.append("")
+        lines.append("Follow-through:")
+        for event in dropped:
+            lines.extend(_wrap_plain(f"✗ {event.summary}: {', '.join(event.follow_through)}", indent=4))
     if timeline.decided and legend:
         lines.append("")
         lines.extend(_legend(timeline.events))
@@ -428,7 +441,12 @@ def _display_tz(timeline: Timeline) -> tzinfo:
 
 
 def _legend(events: list[TimelineEvent]) -> list[str]:
-    """The legend, its facts line only when an event has facts and its
-    missing line only when an event is missing something."""
-    shown = {"▸": any(e.facts for e in events), "⚠": any(e.missing for e in events)}
+    """The legend, its facts line only when an event has facts, its
+    missing line only when an event is missing something, and its
+    follow-through line only when a cancellation counts against it."""
+    shown = {
+        "▸": any(e.facts for e in events),
+        "⚠": any(e.missing for e in events),
+        "✗": any(e.follow_through for e in events),
+    }
     return [line for line in _LEGEND if shown.get(line[0], True)]
