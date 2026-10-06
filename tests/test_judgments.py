@@ -31,7 +31,7 @@ _WITH_NOTES = {
     "kind": "judgment",
     "rubric": "Were they heard?",
     "ratings": {"0": "no", "1": "yes"},
-    "facts": ["person_notes", "general_notes"],
+    "facts": ["person_notes", "general_notes", "what_matters"],
 }
 _TRAITS = [
     Trait(id="adventurous", name="Adventurous", status="active", definition="New things together.", parts=[_NEW]),
@@ -67,7 +67,8 @@ def _judging(events, people=None, traits=_TRAITS) -> tuple[Judging, _Client]:
     stores = {name: MagicMock() for name in ("actions", "people", "locations", "traits")}
     stores["actions"].all.return_value = [Action(id="cook", name="Cook"), Action(id="hike", name="Hike")]
     stores["people"].all.return_value = people or [
-        Person(id="self", name="Me"), Person(id="sam", name="Sam", context="salsa"), Person(id="mom", name="Mom"),
+        Person(id="self", name="Me"), Person(id="sam", name="Sam", context="salsa", what_matters="- starts a new job"),
+        Person(id="mom", name="Mom"),
     ]
     stores["locations"].all.return_value = [Location(id="home", name="Home"), Location(id="peak", name="The peak")]
     stores["traits"].all.return_value = list(traits)
@@ -103,7 +104,9 @@ class TestRequests:
         new = by_id["e1/sam/adventurous/judgment"]
         assert new.facts["action"] == ["Hike"]
         assert new.facts["location"] == "The peak"
-        assert by_id["e1/sam/thoughtful/judgment"].facts == {"person_notes": "loved it", "general_notes": "Long climb"}
+        assert by_id["e1/sam/thoughtful/judgment"].facts == {
+            "person_notes": "loved it", "general_notes": "Long climb", "what_matters": "- starts a new job"
+        }
         # A "for" engagement's notes are the user's own.
         assert by_id["e1/mom/thoughtful/judgment#2"].facts == {"action": ["Hike"], "person_notes": "tired"}
         assert (new.ratings, new.engagement, new.trait_name) == (_NEW["ratings"], "with", "Adventurous")

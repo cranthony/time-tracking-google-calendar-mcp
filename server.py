@@ -835,9 +835,10 @@ def get_traits(statuses: list[TraitStatus] | None = None) -> list[ListedTrait]:
     adventurous"}), from the "facts" it names: "action" (what was done),
     "action_history" (what's been done with them before), "location",
     "location_history" (where they've been together before),
-    "general_notes" (the event's notes) and "person_notes" (the notes on
+    "general_notes" (the event's notes), "person_notes" (the notes on
     the person: the user's own for a "for" engagement, the other
-    person's for "with"), each a name or {"fact": "action_history",
+    person's for "with") and "what_matters" (what's important to the
+    person, as their what_matters says), each a name or {"fact": "action_history",
     "lookback_days": 90} (history facts look back 30 days by default);
     "continuity" (the last event ended within "last_within_days" of the
     day's end and the next starts within "next_within_days" after it,
