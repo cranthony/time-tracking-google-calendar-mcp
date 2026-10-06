@@ -40,8 +40,10 @@ Found (2026-10-05):
   cancelled the change fails instead, with a bare 400 "Bad Request" --
   the failure seen for real. Patches that leave its rules alone (summary,
   start/end, unchanged rules) work.
-- Importing "<base id>_R<time>@google.com" splits it again as Google
-  does: the "_R" series is ended at the local midnight before that
+- Importing "<base id>_R<time>@google.com" splits it again, leaving
+  just what Google's own "this and following" edit left on the real
+  series (what the UI calls to do that isn't known): the "_R" series is
+  ended at the local midnight before that
   time's day (UNTIL 23:59:59 the day before), and the rest is a new
   series "<base id>_R<time>" -- events after the time that were edited on
   their own move to it. Its private extended properties and color come
@@ -212,7 +214,7 @@ def _probe(service, calendar_id: str) -> None:
             edited,
         )
         attempt(
-            "g. import <base id>_R<3rd event> (as Google splits), then import it again",
+            "g. import <base id>_R<3rd event> (a split, as in the UI), then import it again",
             lambda r, cut: [import_split(r, _original_start(cut), colorId="5") for _ in range(2)],
             edited,
         )

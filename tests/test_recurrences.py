@@ -26,6 +26,9 @@ class FakeCalendar:
         self.failing: set[str] = set()
         """Ids whose updates fail, as Calendar's did ending a series it
         split itself."""
+        self.splits_on_import = True
+        """Whether importing "<id>_R<time>" splits series <id> (see
+        import_event): undocumented, so it might stop."""
 
     def get_event(self, event_id: str) -> Event:
         return replace(self.events[event_id])
@@ -62,6 +65,9 @@ class FakeCalendar:
             e for e in self.events.values()
             if (e.id == base or e.id.startswith(f"{base}_R")) and e.recurrence and e.start < event.start
         ]
+        if not self.splits_on_import:
+            self.events[event_id] = replace(event, id=event_id)
+            return replace(event, id=event_id)
         ended = max(parts, key=lambda e: e.start)
         midnight = datetime.combine(event.start.astimezone(NY).date(), datetime.min.time(), NY)
         until = (midnight - timedelta(seconds=1)).astimezone(ZoneInfo("UTC")).strftime("%Y%m%dT%H%M%SZ")
@@ -410,6 +416,24 @@ class TestSeriesSplitByGoogle:
             _recurrences(calendar).split("abc_20261026T130000Z")
 
         assert calendar.events[split_series_id("abc_R20261012T130000", _at(26))].status == "cancelled"
+
+    def test_an_import_that_doesnt_end_it_undoes_the_split(self):
+        calendar = FakeCalendar(_split_by_google(), _instance_of_google_split(26))
+        calendar.splits_on_import = False
+
+        with pytest.raises(SplitError, match="wasn't split .*didn't end series abc_R20261012T130000"):
+            _recurrences(calendar).split("abc_20261026T130000Z")
+
+        assert calendar.events[split_series_id("abc_R20261012T130000", _at(26))].status == "cancelled"
+        assert calendar.events["abc_R20261026T130000"].status == "cancelled"
+        assert calendar.events["abc_R20261012T130000"].recurrence == ["RRULE:FREQ=WEEKLY;BYDAY=MO"]
+
+    def test_a_delete_whose_import_doesnt_end_it_says_so(self):
+        calendar = FakeCalendar(_split_by_google(), _instance_of_google_split(26))
+        calendar.splits_on_import = False
+
+        with pytest.raises(SplitError, match="didn't end series"):
+            _recurrences(calendar).delete("abc_R20261012T130000", starting_at="abc_20261026T130000Z")
 
     def test_refuses_to_change_its_rules_whole(self):
         calendar = FakeCalendar(_split_by_google())

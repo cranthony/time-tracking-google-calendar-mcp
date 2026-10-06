@@ -892,8 +892,9 @@ class CalendarClient:
         another.
 
         A UID of the form "<series id>_R<time, UTC>@google.com" -- as in
-        "abc123_R20261019T223000@google.com" -- is how Calendar splits a
-        series itself, as its "this and following" edit does: the series
+        "abc123_R20261019T223000@google.com" -- makes Calendar split the
+        series itself, leaving what its "this and following" edit leaves
+        (undocumented, so check the result): the series
         `<series id>` (or its latest part, itself split that way, from
         before that time) is ended at the local midnight before that
         time's day, and the event made is the series' rest, with the id

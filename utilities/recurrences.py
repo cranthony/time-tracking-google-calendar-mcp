@@ -46,13 +46,17 @@ split from, "_R", and the time it was split at, in UTC. Google won't
 change such a series' rules: a patch to them deletes the series --
 cancels it, past events and all -- or fails ("Bad Request") if its first
 event is cancelled; nor will it move its start ("Invalid start time").
-So it's ended early the way Google itself splits a series -- importing
-an event with the iCalendar UID "abc123_R<time>@google.com" ends it at
-the local midnight before that time's day (so any of its events earlier
-that day go too) and makes the rest a new series, which is then
-cancelled at once, leaving none of its events, cancelled or not -- and
-changing its rules or start whole is refused: from a later event on, the
-copy split off is an ordinary series. Found with probes/series_splits.py.
+So it's ended early by importing an event with the iCalendar UID
+"abc123_R<time>@google.com". That isn't documented, but Calendar then
+splits the series itself, leaving just what its "this and following"
+edit leaves: the series ends at the local midnight before that time's
+day (so any of its events earlier that day go too), and the rest is a
+new series -- which is cancelled at once, leaving none of its events,
+cancelled or not. Since this relies on undocumented behavior, the series
+is read back afterwards, and if it doesn't end before the time, the
+split is undone like any that fails. Changing such a series' rules or
+start whole is refused: from a later event on, the copy split off is an
+ordinary series. Found with probes/series_splits.py.
 
 A series' rules reach this server's clients as a `Repeat` -- "every week
 on Mon and Wed, until Dec 31" -- rather than Google's strings, and only
@@ -299,10 +303,12 @@ class Recurrences:
 
         Google won't change the rules of a series it split itself
         ("<id>_R<time>"): any change deletes the series, or fails if its
-        first event is cancelled. So such a series is split again the way
-        Google does it, and the part from `at` on deleted -- leaving the
-        series ending at the local midnight before `at`'s day. See the
-        module docstring."""
+        first event is cancelled. So such a series is split again by an
+        import, which Calendar treats as its own "this and following"
+        edit, and the part from `at` on deleted -- leaving the series
+        ending at the local midnight before `at`'s day. That's
+        undocumented, so it's checked: raises SplitError if the series
+        doesn't end before `at` after all. See the module docstring."""
         if (google_split := _SPLIT_BY_GOOGLE.fullmatch(series.id)) is None:
             rules, index, parts = _rrule(series)
             return self._calendar.update_event(
@@ -321,7 +327,13 @@ class Recurrences:
             f"{google_split['base']}_R{at.astimezone(timezone.utc):%Y%m%dT%H%M%S}@google.com",
         )
         self._calendar.update_event(Event(id=rest.id, status="cancelled"))
-        return self._calendar.get_event(series.id)
+        ended = self._calendar.get_event(series.id)
+        if not _ends_before(ended, at):
+            raise SplitError(
+                f"Importing {google_split['base']}_R... didn't end series {series.id} before "
+                f"{at.isoformat()} (its rules are now {ended.recurrence}, and it's {ended.status})"
+            )
+        return ended
 
 
 def split_series_id(series_id: str, at: datetime) -> str:
@@ -339,6 +351,21 @@ def _rrule(series: Event) -> tuple[list[str], int, dict[str, str]]:
     if index is None:
         raise ValueError(f"Series {series.id} has no RRULE, so it can't be ended early")
     return rules, index, _rule_parts(rules[index])
+
+
+def _ends_before(series: Event, at: datetime) -> bool:
+    """Whether `series` is still going, with an RRULE whose UNTIL is
+    before `at`."""
+    if series.status == "cancelled":
+        return False
+    try:
+        _, _, parts = _rrule(series)
+    except ValueError:
+        return False
+    if "UNTIL" not in parts:
+        return False
+    until = _parse_until(parts["UNTIL"], at.tzinfo or timezone.utc)
+    return until < at if isinstance(until, datetime) else until < at.date()
 
 
 def _ending_before(parts: dict[str, str], at: datetime) -> dict[str, str]:
