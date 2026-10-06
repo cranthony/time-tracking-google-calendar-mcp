@@ -1001,6 +1001,16 @@ def _timeline(
         changed = bool(said) and (original is None or facts_dict(final.facts) != facts_dict(original.facts))
         return dict(facts=said, new_facts=changed)
 
+    def missing(final: Event, start: datetime) -> list[str]:
+        """What `final` lacks that its judgments need, if it's in the
+        past -- what compaction records."""
+        if start >= now:
+            return []
+        gaps = [] if final.action_ids else ["action"]
+        if not (final.facts and final.facts.location_id):
+            gaps.append("location")
+        return gaps
+
     decided_by_base = {f.base.id: f for f in facts if f.base and not f.default}
     default_ids = {f.base.id for f in facts if f.default}
     events: list[TimelineEvent] = []
@@ -1042,6 +1052,7 @@ def _timeline(
                 actions=named(final.action_ids),
                 new_actions=[n for n in named(final.action_ids) if n not in named(original.action_ids)],
                 **fact_fields(final, original),
+                missing=missing(final, final.start),
                 **planned,
             )
         )
@@ -1059,6 +1070,7 @@ def _timeline(
                     actions=named(fact.event.action_ids),
                     new_actions=named(fact.event.action_ids),
                     **fact_fields(fact.event),
+                    missing=missing(fact.event, fact.start),
                 )
             )
     for event in simulated.working:
@@ -1070,6 +1082,7 @@ def _timeline(
                     start=event.start,
                     end=event.end,
                     actions=named(event.action_ids),
+                    missing=missing(event, event.start),
                 )
             )
 

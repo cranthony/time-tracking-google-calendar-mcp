@@ -12,6 +12,7 @@ from utilities.note_compaction import (
     EventState,
     PlanNote,
     plan_compaction,
+    planned_timeline,
 )
 
 _NEXT_DAY = timedelta(days=1)
@@ -753,19 +754,55 @@ class TestTimeline:
 
         assert text.startswith(
             "17:00 ┌ Work\n"
+            "          ⚠ no action, no location\n"
             "18:15 ● Leaving for salsa early to prep\n"
             "     →├ Salsa prep · new\n"
+            "          ⚠ no action, no location\n"
             "18:30 ├ Google Salsa class\n"
+            "          ⚠ no action, no location\n"
             "19:00 ● Learned the cross-body lead\n"
             "        ↳ Google Salsa class\n"
             "19:30 ├ Dinner\n"
+            "          ⚠ no action, no location\n"
             "20:10 ● Done with dinner\n"
             "     →└ Dinner ends · +10m (was 20:00)\n"
             "     →├ Reading · +10m (was 20:00)\n"
+            "          ⚠ no action, no location\n"
             "20:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
             "21:00 └ Reading ends\n"
         )
         assert max(len(line) for line in text.splitlines()) <= 40
+
+    def test_flags_what_each_past_event_is_missing(self):
+        facts = Facts(location_id="home")
+        plan = _plan(
+            [],
+            [_keep("e1", action_ids=["g1"], facts=facts), _keep("e2", action_ids=["g1"]), _keep("e4", facts=facts)],
+            names={"g1": "Email", "home": "Home"},
+            now="12:30",
+        )
+
+        missing = {e.event_id: e.missing for e in plan.timeline.events}
+        assert missing["e1"] == []
+        assert missing["e2"] == ["location"]
+        assert missing["e3"] == ["action", "location"]
+        assert missing["e4"] == []  # still ahead: not recorded yet, so nothing to settle
+        text = plan.timeline.text
+        assert "├ Report\n          ◇ Email\n          ⚠ no location\n" in text
+        assert "Missing:\n  ⚠ Report: location\n  ⚠ Lunch: action, location\n" in text
+        assert "⚠ missing action or location" in text
+
+    def test_flags_nothing_once_every_past_event_is_settled(self):
+        facts = Facts(location_id="home")
+        plan = _plan([], [_keep(e, action_ids=["g1"], facts=facts) for e in ("e1", "e2", "e3")], now="12:30")
+
+        assert "⚠" not in plan.timeline.text
+
+    def test_flags_nothing_before_anything_is_decided(self):
+        timeline = planned_timeline([], _day(), time_at("12:30"))
+
+        assert all(e.missing == [] for e in timeline.events)
+        assert "⚠" not in timeline.text
 
     def test_wraps_a_long_note_under_its_text(self):
         plan = _plan([_note(1, "09:10", "finally got through the whole inbox after a long detour")], [])
