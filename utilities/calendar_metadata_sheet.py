@@ -154,8 +154,3 @@ CANCELLATIONS_SHEET_ROLE = "cancellations"
 CANCELLATIONS_SHEET_TITLE = "Cancellations"
 """See `utilities/cancellations.py` for the tab this identifies -- the
 events the user cancelled, per person, for follow-through."""
-
-TRAIT_SCORES_SHEET_ROLE = "trait-scores"
-TRAIT_SCORES_SHEET_TITLE = "Trait Scores"
-"""See `utilities/trait_rollup.py` for the tab this identifies -- each
-person's daily trait scores."""

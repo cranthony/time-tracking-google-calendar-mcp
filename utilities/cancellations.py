@@ -1,6 +1,6 @@
 """Cancellations: the events the user cancelled -- said didn't happen, or
-dropped on purpose -- that count against someone's follow-through (see
-utilities/trait_scores.py).
+dropped on purpose -- that count against someone's follow-through (a
+part of their traits; the client scores it).
 
 **What's recorded.** Only a deliberate cancellation: a compaction's
 `cancel` decision ("it didn't happen"), once its day is applied (see
@@ -16,30 +16,28 @@ part matches isn't recorded at all.
 **Where they live.** The **Cancellations** tab of the calendar's metadata
 spreadsheet, one row per cancelled event per person (and engagement),
 read by header name (utilities/row_sheet.py) -- so a row recorded by
-mistake can be deleted by hand. Rows older than the trait scores are kept
-for, plus the longest a follow-through part looks back, are dropped as
-new ones are written.
+mistake can be deleted by hand. Rows older than `KEEP_DAYS` are dropped
+as new ones are written.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from calendar_clients.google_calendar import Event
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
-from utilities.actions import Actions
+from utilities.actions import Actions, ActionTree
 from utilities.facts import SELF_ID, Facts
-from utilities.people import CancelledEvent, People
+from utilities.people import CancelledEvent, People, Person
 from utilities.row_sheet import RowSheet
-from utilities.trait_scores import of_action, traits_for
-from utilities.traits import Traits, part_keys, part_problems
+from utilities.traits import Trait, Traits, part_keys, part_problems
 
 KEEP_DAYS = 400 + 90
-"""How long a cancellation is kept: as long as trait scores are (see
-utilities/trait_rollup.py), and a generous follow-through look-back
-before the oldest of them, so a rebuilt score still sees it."""
+"""How long a cancellation is kept: 400 days of scores, and a generous
+follow-through look-back before the oldest of them."""
 
 
 @dataclass(kw_only=True)
@@ -71,8 +69,7 @@ class Cancellation:
     """What cancelled it: "compaction <id>", or "delete_event"."""
 
     def to_event(self) -> Event:
-        """The event as follow-through reads it (see utilities/
-        trait_scores.py): when it was planned, its actions, and its person
+        """The event as follow-through reads it: when it was planned, its actions, and its person
         where their engagement looks for them."""
         facts = (
             Facts(for_ids=[self.person_id]) if self.engagement == "for"
@@ -241,3 +238,29 @@ def _start(row: Cancellation) -> datetime:
         # A hand-edited row that can't be read: kept, rather than lost.
         return datetime.max.replace(tzinfo=timezone.utc)
 
+
+def traits_for(person: Person, traits: list[Trait]) -> list[tuple[Trait, list[dict[str, Any]]]]:
+    """The active traits that apply to `person` -- those their `traits`
+    select, by default all -- each with its parts for them (their own, if
+    they replace the trait's)."""
+    active = [t for t in traits if t.status == "active" and t.id]
+    spec = person.traits if isinstance(person.traits, dict) else {}
+    select = spec.get("select", "all")
+    overrides = spec.get("parts") if isinstance(spec.get("parts"), dict) else {}
+    chosen = active if select == "all" else [t for t in active if t.id in (select if isinstance(select, list) else [])]
+    return [(t, overrides.get(t.id) or t.parts or []) for t in chosen]
+
+
+def of_action(events: list[Event], action_id: str | None, tree: ActionTree | None) -> list[Event]:
+    """`events` of the action `action_id` -- or of any action in the group
+    it names -- or all of them without one."""
+    if not action_id:
+        return events
+
+    def matches(candidate: str) -> bool:
+        if candidate == action_id:
+            return True
+        action = tree.by_id.get(candidate) if tree is not None else None
+        return action is not None and any(getattr(g, "id", None) == action_id for g in tree.groups.chain(action)[1:])
+
+    return [e for e in events if any(matches(a) for a in e.action_ids or ())]

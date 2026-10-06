@@ -127,7 +127,7 @@ def _probe(service, calendar_id: str, pause: bool) -> None:
     found = events.list(calendarId=calendar_id, privateExtendedProperty="probe-goal=g1").execute()
     print(f"  matched: {[item['summary'] for item in found.get('items', [])]}")
 
-    print("6. Store a long description (reflection journals live there)")
+    print("6. Store a long description (event notes live there)")
     for length in (8_000, 32_000, 128_000):
         attempt(
             f"{length:,}-character description, length read back",
