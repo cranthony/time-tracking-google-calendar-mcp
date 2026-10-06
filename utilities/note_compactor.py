@@ -280,7 +280,8 @@ DECISION_GUIDE = (
     "Before the dry run, confirm with the user anything you couldn't settle from the notes -- who "
     "was there, where it was -- in a short list; after it, they confirm the whole plan. "
     "JUDGMENTS: once the user approves the plan, apply it with the judgments its dry run's "
-    "`judgments_due` lists -- see `judging.instructions` (none are due without `judging`). "
+    "`judgments_due` lists, judging the events as that final plan leaves them -- see "
+    "`judging.instructions` (none are due without `judging`). "
     "After every dry run, show the user the result's `timeline.text` verbatim in a code block "
     "(it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each "
     "event's actions and facts compactly, under it), then the new actions, people and locations "
@@ -830,7 +831,12 @@ class NoteCompactor:
                 + _APPROVAL_RULE
                 + f" Once they approve, apply it with compaction_id={compaction_id!r} and "
                 "dry_run=False"
-                + (f", giving the {len(due)} judgment(s) in `judgments_due` as `judgments`" if due else "")
+                + (
+                    f", giving the {len(due)} judgment(s) in `judgments_due` as `judgments` -- made then, "
+                    "of the events as this plan leaves them"
+                    if due
+                    else ""
+                )
                 + ". If they want something different, correct the decisions and call "
                 "compact_notes again (this plan is then replaced)."
                 + (f" (Replaced {superseded} earlier unapplied plan(s).)" if superseded else "")
