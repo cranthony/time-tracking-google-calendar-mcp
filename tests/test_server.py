@@ -831,6 +831,7 @@ class TestGetNoteCompactor:
         monkeypatch.setattr(server, "get_people_store", lambda: MagicMock())
         monkeypatch.setattr(server, "get_location_store", lambda: MagicMock())
         monkeypatch.setattr(server, "get_trait_store", lambda: MagicMock())
+        monkeypatch.setattr(server, "get_trait_rollup", lambda: MagicMock())
         built = []
         monkeypatch.setattr(server, "build_compaction_journal", lambda: built.append(1) or MagicMock())
 
@@ -1039,6 +1040,27 @@ class TestGetCompactionStatus:
         _fake_compactor(monkeypatch).judgments_due.return_value = None
 
         assert server.get_compaction_status() == server.CompactionStatus()
+
+
+class TestTraitScoreTools:
+    def test_get_trait_scores_delegates(self, monkeypatch):
+        rollup = MagicMock()
+        monkeypatch.setattr(server, "get_trait_rollup", lambda: rollup)
+
+        result = server.get_trait_scores("p1", date(2026, 10, 1), date(2026, 10, 5))
+
+        assert result is rollup.get.return_value
+        rollup.get.assert_called_once_with("p1", date(2026, 10, 1), date(2026, 10, 5))
+
+    def test_rebuild_rolls_up_every_day_in_the_span(self, monkeypatch):
+        rollup = MagicMock()
+        monkeypatch.setattr(server, "get_trait_rollup", lambda: rollup)
+
+        server.rebuild_trait_scores(date(2026, 9, 30), date(2026, 10, 2))
+
+        rollup.roll_up.assert_called_once_with([date(2026, 9, 30), date(2026, 10, 1), date(2026, 10, 2)])
+        with pytest.raises(ToolError, match="end is before start"):
+            server.rebuild_trait_scores(date(2026, 10, 2), date(2026, 10, 1))
 
 
 class TestJudgmentTools:
@@ -1403,6 +1425,7 @@ _READ_ONLY_TOOLS = {
     "get_locations",
     "get_location",
     "prepare_judgments",
+    "get_trait_scores",
 }
 
 

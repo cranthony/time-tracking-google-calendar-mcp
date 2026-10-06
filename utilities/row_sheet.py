@@ -80,7 +80,16 @@ class RowSheet(Generic[Row]):
     """Reads and writes one tab of `row_type` rows -- a keyword-only
     dataclass whose fields are the tab's columns, in order."""
 
-    def __init__(self, sheets_client: SheetsClient, spreadsheet_id: str, sheet_id: int, row_type: type[Row]) -> None:
+    def __init__(
+        self,
+        sheets_client: SheetsClient,
+        spreadsheet_id: str,
+        sheet_id: int,
+        row_type: type[Row],
+        required: tuple[str, ...] = ("id", "name"),
+    ) -> None:
+        """`required`: the columns the tab's header must have."""
+        self._required = required
         self._sheets_client = sheets_client
         self._spreadsheet_id = spreadsheet_id
         self._sheet_id = sheet_id
@@ -90,7 +99,14 @@ class RowSheet(Generic[Row]):
 
     @classmethod
     def ensure(
-        cls, sheets_client: SheetsClient, spreadsheet_id: str, *, role: str, title: str, row_type: type[Row]
+        cls,
+        sheets_client: SheetsClient,
+        spreadsheet_id: str,
+        *,
+        role: str,
+        title: str,
+        row_type: type[Row],
+        required: tuple[str, ...] = ("id", "name"),
     ) -> "RowSheet[Row]":
         """The tab tagged `role`, adding it (with just its header row) the
         first time."""
@@ -106,7 +122,7 @@ class RowSheet(Generic[Row]):
                     spreadsheet_id, new_id, _HEADER_RANGE, [header_row]
                 ),
             )
-        return cls(sheets_client, spreadsheet_id, sheet_id, row_type)
+        return cls(sheets_client, spreadsheet_id, sheet_id, row_type, required)
 
     @property
     def spreadsheet_id(self) -> str:
@@ -150,7 +166,7 @@ class RowSheet(Generic[Row]):
             self._spreadsheet_id, self._sheet_id, [_HEADER_RANGE, _DATA_RANGE]
         )
         header_row = [cell.strip() for cell in header[0]] if header else []
-        missing = [name for name in ("id", "name") if name not in header_row]
+        missing = [name for name in self._required if name not in header_row]
         if missing:
             raise ValueError(f"The {self._row_type.__name__} tab's header row is missing columns: {missing}")
         return header_row, rows

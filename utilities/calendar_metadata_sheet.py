@@ -149,3 +149,8 @@ LOCATIONS_SHEET_ROLE = "locations"
 LOCATIONS_SHEET_TITLE = "Locations"
 """See `utilities/locations.py`'s `Locations` for the tab this identifies
 -- the places events happen."""
+
+TRAIT_SCORES_SHEET_ROLE = "trait-scores"
+TRAIT_SCORES_SHEET_TITLE = "Trait Scores"
+"""See `utilities/trait_rollup.py` for the tab this identifies -- each
+person's daily trait scores."""
