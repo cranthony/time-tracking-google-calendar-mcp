@@ -54,6 +54,8 @@ from utilities.actions import (
     CreatedActionGroup,
     DeletedActionGroup,
     ListedAction,
+    PriorityColor,
+    PriorityColorChange,
 )
 from utilities.action_calendar import ActionCalendar, fill_in_from_actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
@@ -1211,6 +1213,37 @@ def create_action_group(group: ActionGroup) -> CreatedActionGroup:
         _prefetch_stores()
         try:
             return get_action_store().create_action_group(group)
+        except (ValueError, EventLabelConflictError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_priority_colors() -> list[PriorityColor]:
+    """Each priority's color, 0 to 3: an event with no action's label is
+    colored by its priority's label (priority 2's if it has none), and an
+    action or group with no color of its own (nor its groups') takes its
+    priority's. Each has its priority, color (#rrggbb) and label_id.
+    Read-only."""
+    with track("get_priority_colors"), cached_reads():
+        _prefetch_stores()
+        try:
+            return get_action_store().priority_colors()
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def update_priority_color(priority: int, color: str) -> PriorityColorChange:
+    """Change a priority's color (priority 0 to 3; color as #rrggbb): its
+    label's, so events colored by their priority change with it, and every
+    action's label that takes its color from that priority. Returns every
+    priority's color as colors, and as affected_actions, the actions
+    whose effective_color changed."""
+    with track("update_priority_color"), cached_reads():
+        _prefetch_stores()
+        try:
+            return get_action_store().set_priority_color(priority, color)
         except (ValueError, EventLabelConflictError) as exc:
             raise ToolError(str(exc)) from exc
 

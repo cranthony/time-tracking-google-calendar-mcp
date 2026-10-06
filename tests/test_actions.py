@@ -1,5 +1,7 @@
 import pytest
 
+from utilities import priority_labels
+
 from calendar_clients.google_calendar import EventLabel as RawEventLabel, EventLabelConflictError, color_for_priority
 from tests.fake_labels import FakeLabelCalendar
 from tests.fake_sheets import FakeSheets
@@ -9,6 +11,12 @@ from utilities.actions import Action, Actions
 
 _UNNAMED = RawEventLabel(id="default-1", background_color="#039be5")
 """One of Calendar's own unnamed labels, which actions always leave alone."""
+
+
+def _named(calendar):
+    """The calendar's named labels but the priorities' (see
+    utilities/priority_labels.py), which every sync keeps."""
+    return {i: label for i, label in calendar.named().items() if i not in priority_labels.LABEL_IDS}
 
 
 def _actions(calendar=None, sheets=None) -> tuple[Actions, FakeLabelCalendar, FakeSheets]:
@@ -60,7 +68,7 @@ class TestCreateAction:
         _create(actions, name="Walk", status="active", background_color="#222222")
 
         label_id = actions.all()[0].label_id
-        assert calendar.named() == {"other": ("Someone else's", "#111111"), label_id: ("Walk", "#222222")}
+        assert _named(calendar) == {"other": ("Someone else's", "#111111"), label_id: ("Walk", "#222222")}
         assert _UNNAMED in calendar.labels
 
     @pytest.mark.parametrize("name", ["walk", " WALK "])
@@ -96,22 +104,22 @@ class TestLabels:
         label_id = actions.all()[0].label_id
 
         actions.update_action(Action(id=walk, status="archived"))
-        assert calendar.named() == {}
+        assert _named(calendar) == {}
 
         actions.update_action(Action(id=walk, status="active"))
-        assert list(calendar.named()) == [label_id]
+        assert list(_named(calendar)) == [label_id]
 
     def test_active_actions_beyond_the_calendars_room_are_refused(self, monkeypatch):
-        monkeypatch.setattr(actions_module, "MAX_LABELS", 2)
-        actions, _, _ = _actions()  # The unnamed label takes one.
+        monkeypatch.setattr(actions_module, "MAX_LABELS", 6)
+        actions, _, _ = _actions()  # The unnamed label takes one, the priorities four.
         _create(actions, name="Walk", status="active")
 
         with pytest.raises(ValueError, match="at most 1 actions can be active"):
             _create(actions, name="Run", status="active")
 
     def test_proposed_actions_hold_labels_only_while_theres_room(self, monkeypatch):
-        monkeypatch.setattr(actions_module, "MAX_LABELS", 3)
-        actions, calendar, _ = _actions()  # The unnamed label takes one.
+        monkeypatch.setattr(actions_module, "MAX_LABELS", 7)
+        actions, calendar, _ = _actions()  # The unnamed label takes one, the priorities four.
         walk = _create(actions, name="Walk")
         run = _create(actions, name="Run")
         swim = _create(actions, name="Swim")
@@ -122,8 +130,8 @@ class TestLabels:
         # Activating Swim takes Run's label: active ones come first.
         changes = actions.update_action(Action(id=swim, status="active"))
         assert {(a.id, a.holds_label) for a in changes.changed} == {(swim, True), (run, False)}
-        assert {name for name, _ in calendar.named().values()} == {"Walk", "Swim"}
-        assert changes.label_slots_used == 3
+        assert {name for name, _ in _named(calendar).values()} == {"Walk", "Swim"}
+        assert changes.label_slots_used == 7
 
         # Archiving Walk gives Run its label back.
         changes = actions.update_action(Action(id=walk, status="archived"))
@@ -135,7 +143,7 @@ class TestLabels:
 
         actions.update_action(Action(id=walk, name="Stroll", priority=3))
 
-        assert list(calendar.named().values()) == [("Stroll", color_for_priority(3)[1])]
+        assert list(_named(calendar).values()) == [("Stroll", color_for_priority(3)[1])]
 
     def test_an_unchanged_label_isnt_rewritten(self):
         actions, calendar, _ = _actions()
@@ -242,7 +250,8 @@ class TestGetActions:
 
         listing = actions.get_actions()
 
-        assert (listing.label_slots_used, listing.label_slots_total) == (2, 200)
+        # Walk's, the unnamed label and the four priorities'.
+        assert (listing.label_slots_used, listing.label_slots_total) == (6, 200)
 
     def test_refuses_an_unknown_status(self):
         actions, _, _ = _actions()
@@ -304,7 +313,7 @@ class TestActionGroups:
         assert (action.path, action.effective_color, action.effective_priority) == (
             "Creative › Guitar › Play guitar", "#123456", 3
         )
-        assert list(calendar.named().values()) == [("Play guitar", "#123456")]
+        assert list(_named(calendar).values()) == [("Play guitar", "#123456")]
 
     def test_recoloring_a_group_recolors_its_actions_labels(self):
         actions, calendar, _ = _actions()
@@ -316,7 +325,7 @@ class TestActionGroups:
 
         assert [a.id for a in changes.affected_actions] == [play]
         assert changes.affected_actions[0].effective_color == "#654321"
-        assert ("Play guitar", "#654321") in calendar.named().values()
+        assert ("Play guitar", "#654321") in _named(calendar).values()
 
     def test_a_group_may_share_an_actions_name_but_not_another_groups(self):
         actions, _, _ = _actions()
@@ -391,7 +400,7 @@ class TestDeleteActionGroup:
         assert actions.get_action(play).group_id == creative
         assert actions.get_action(sing).group_id == creative
         assert {g.name for g in actions.get_action_groups()} == {"Creative", "Lessons"}
-        assert ("Play guitar", "#111111") in calendar.named().values()
+        assert ("Play guitar", "#111111") in _named(calendar).values()
 
     def test_a_top_level_groups_contents_move_to_the_top(self):
         actions, _, _ = _actions()
@@ -438,3 +447,46 @@ class TestActionTree:
             tree.check_action_ids([gone])
         with pytest.raises(ValueError, match=rf"no action with the id or name 'Cok'; did you mean {cook} \(Cook\)"):
             tree.check_action_ids(["Cok"])
+
+
+class TestPriorityColors:
+    def test_start_out_as_the_defaults_and_are_made_with_the_first_labels(self):
+        actions, calendar, _ = _actions()
+        assert [(c.priority, c.color) for c in actions.priority_colors()] == [
+            (p, color_for_priority(p)[1]) for p in priority_labels.PRIORITIES
+        ]
+
+        _create(actions, name="Walk", status="active")
+
+        named = calendar.named()
+        assert {i: named[i] for i in priority_labels.LABEL_IDS} == {
+            priority_labels.label_id(p): (f"Priority {p}", color_for_priority(p)[1]) for p in priority_labels.PRIORITIES
+        }
+
+    def test_recoloring_one_recolors_the_actions_that_take_its_color(self):
+        actions, calendar, _ = _actions()
+        walk = _create(actions, name="Walk", status="active", priority=1)
+        _create(actions, name="Run", status="active", priority=1, background_color="#222222")
+        _create(actions, name="Read", status="active", priority=3)
+
+        change = actions.set_priority_color(1, "#123456")
+
+        assert [c.color for c in change.colors if c.priority == 1] == ["#123456"]
+        assert [a.name for a in change.affected_actions] == ["Walk"]
+        assert change.affected_actions[0].effective_color == "#123456"
+        named = calendar.named()
+        assert named[priority_labels.label_id(1)] == ("Priority 1", "#123456")
+        assert named[next(a.label_id for a in actions.all() if a.id == walk)] == ("Walk", "#123456")
+        assert ("Run", "#222222") in named.values()
+        assert actions.get_action("Walk").effective_color == "#123456"
+
+    @pytest.mark.parametrize(
+        "priority, color, message",
+        [(4, "#123456", "no priority 4"), (1, "red", "#rrggbb"), (1, "#12345", "#rrggbb")],
+    )
+    def test_refuses_what_isnt_a_priority_or_color(self, priority, color, message):
+        actions, calendar, _ = _actions()
+
+        with pytest.raises(ValueError, match=message):
+            actions.set_priority_color(priority, color)
+        assert calendar.writes == 0

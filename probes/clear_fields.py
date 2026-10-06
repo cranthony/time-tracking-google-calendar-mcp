@@ -5,7 +5,7 @@ removes them.
 Event.to_api_body sends each cleared field as null in a patch: description
 and location as top-level fields, the app's own fields (priority,
 compacted_until, facts, judgments) as keys of extendedProperties.private,
-and colorId too for priority. Google documents
+and never colorId (see Event.to_api_body). Google documents
 patch as replacing only the fields it's given, but not, in so many words,
 that a null removes a top-level field, or that a null key of
 extendedProperties.private removes that key while the rest are kept.
@@ -32,8 +32,8 @@ Usage:
 
 Found (2026-10-04): every check passed.
 
-- A null top-level field in a patch removes it: description, location
-  and colorId (the event then shows the calendar's default color).
+- A null top-level field in a patch removes it: description and
+  location.
 - A null key of extendedProperties.private removes just that key; the
   others are kept, whether the patch sets them or leaves them out.
 - On a series' master, the clear reaches every instance; split first
@@ -122,13 +122,12 @@ def _probe(client: CalendarClient) -> None:
         )
     )
     before = _raw(client, full.id)
-    _check("set up with a colorId and all the app's fields", "colorId" in before and len(_private(before)) == 3, before)
+    _check("set up with all the app's fields and no colorId", "colorId" not in before and len(_private(before)) == 3, before)
     returned = client.update_event(Event(id=full.id, summary="Probe event (renamed)", cleared=CLEARABLE_EVENT_FIELDS))
     after = _raw(client, full.id)
     _check("summary renamed", after.get("summary") == "Probe event (renamed)", after.get("summary"))
     _check("description removed", not after.get("description"), after.get("description"))
     _check("location removed", not after.get("location"), after.get("location"))
-    _check("colorId removed (calendar default)", "colorId" not in after, after.get("colorId"))
     _check(
         "only action_ids left in extendedProperties.private",
         _private(after) == {_key("action_ids"): "actionA"},
@@ -152,12 +151,10 @@ def _probe(client: CalendarClient) -> None:
             priority=3,
         )
     )
-    color = _raw(client, partial.id).get("colorId")
     client.update_event(Event(id=partial.id, cleared=frozenset({"compacted_until"})))
     after = _raw(client, partial.id)
     _check("compacted_until removed", _key("compacted_until") not in _private(after), _private(after))
     _check("priority kept", _private(after).get(_key("priority")) == "3", _private(after))
-    _check("colorId kept", after.get("colorId") == color, (color, after.get("colorId")))
 
     recurrences = Recurrences(client, client.list_instances, client.get_time_zone)
 
@@ -184,17 +181,13 @@ def _probe(client: CalendarClient) -> None:
     recurrences.update(Event(id=whole.id, cleared=frozenset({"priority"})))
     master = _raw(client, whole.id)
     _check("series' priority removed", _key("priority") not in _private(master), _private(master))
-    _check("series' colorId removed", "colorId" not in master, master.get("colorId"))
     _check("series' location kept", master.get("location") == "Room 4", master.get("location"))
     items = instances(whole.id)
     _check(
-        f"all {len(items)} instances lost their priority and color, and kept the location",
+        f"all {len(items)} instances lost their priority, and kept the location",
         len(items) == 4
-        and all(
-            _key("priority") not in _private(i) and "colorId" not in i and i.get("location") == "Room 4"
-            for i in items
-        ),
-        [(_private(i), i.get("colorId"), i.get("location")) for i in items],
+        and all(_key("priority") not in _private(i) and i.get("location") == "Room 4" for i in items),
+        [(_private(i), i.get("location")) for i in items],
     )
 
     print("\n4. Clear another series' priority from its third event on")
@@ -205,11 +198,10 @@ def _probe(client: CalendarClient) -> None:
     )
     later_raw, earlier_raw = _raw(client, later.id), _raw(client, earlier.id)
     _check("later part's priority removed", _key("priority") not in _private(later_raw), _private(later_raw))
-    _check("later part's colorId removed", "colorId" not in later_raw, later_raw.get("colorId"))
     _check(
-        "earlier part kept its priority and colorId",
-        _private(earlier_raw).get(_key("priority")) == "1" and "colorId" in earlier_raw,
-        (_private(earlier_raw), earlier_raw.get("colorId")),
+        "earlier part kept its priority",
+        _private(earlier_raw).get(_key("priority")) == "1",
+        _private(earlier_raw),
     )
     _check(
         "2 events in each part",

@@ -69,10 +69,11 @@ def _with_calendar_metadata(description: str | None, key: str, value: str | None
 
 
 def color_for_priority(priority: int | None) -> tuple[str | None, str]:
-    """Returns both the colorId to be used in the calendar event, and
-    the hex code that can be used when assigning this priority to an
-    event label. The default calendar color isn't queryable by the API,
-    unfortunately, so we hack it and hard-code it here.
+    """Returns both the colorId that was once used for this priority (no
+    longer written: see `to_api_body`), and the hex code each priority's
+    label starts out in (see utilities/priority_labels.py). The default
+    calendar color isn't queryable by the API, unfortunately, so we hack
+    it and hard-code it here.
 
     Public (not prefixed with `_`) so that `utilities/actions.py` can use
     it to derive an action's label color from its priority -- something this
@@ -89,18 +90,6 @@ def color_for_priority(priority: int | None) -> tuple[str | None, str]:
     def _clamp(value: int | None, lower: int, upper: int) -> int | None:
         return min(upper, max(lower, value))
     return _PRIORITY_COLORS.get(_clamp(priority, 0, 3))
-
-def _color_id_for_priority(priority: int | None) -> str | None:
-    """Priorities are colored with the colorId field, to make them easily
-    visible on the calendar.  The colorId field is restricted to a fixed set
-    of 11 colors.
-
-    Note that event labels unlock the ability to specify our own colors.  The
-    priority field doesn't use this feature because we intend to use it for
-    a different categorization feature.  An event label's color supersedes a
-    color ID."""
-    return color_for_priority(priority)[0]
-
 
 def _event_label_version_kwargs(body: dict) -> dict:
     """The `eventLabelVersion=1` query parameter insert/patch must be
@@ -232,9 +221,9 @@ class Event:
     for more information."""
 
     priority: int | None = None
-    """This event's priority; lower values are higher priority. Also
-    determines the event's `colorId` -- see `to_api_body` and
-    `_PRIORITY_COLOR_IDS`."""
+    """This event's priority; lower values are higher priority. Without
+    an action's label, its label is its priority's (see utilities/
+    priority_labels.py)."""
 
     is_end_of_day_sleep: bool | None = None
     """If true, this event is the user's end-of-day sleep block. A marker
@@ -246,7 +235,8 @@ class Event:
     `EventLabel`/`CalendarClient.list_event_labels`) assigned to this
     event, if any -- a real top-level API field (`eventLabelId`), not an
     `extendedProperties.private` one like `priority`/etc
-    above. Its color supersedes `colorId` on the calendar.
+    above. Its color is the event's, unless the event has a `colorId` of
+    its own -- which wins; this app never writes one.
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#eventLabelId
     for more information.
 
@@ -387,11 +377,10 @@ class Event:
             body["status"] = self.status
         if self.event_label_id is not None:
             body["eventLabelId"] = self.event_label_id
-        if self.priority is not None:
-            # Color each event according to its priority.  Note that this
-            # might be a partial update, in which case a missing priority
-            # should mean "leave the color the same".
-            body["colorId"] = _color_id_for_priority(self.priority)
+        # colorId is never written: an event's own color overrides its
+        # label's (which carries its priority's -- utilities/
+        # priority_labels.py), and writing one, even to clear it, can
+        # drop the label.
         # recurring_event_id and original_start are deliberately never
         # sent: they're assigned by Google, not something a client sets. Nor is action_priority:
         # it belongs to the actions, not the event.
@@ -423,8 +412,6 @@ class Event:
                 private_properties.update(_write_chunks(name, None))
             else:
                 private_properties[f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}{name}"] = None
-        if "priority" in self.cleared:
-            body["colorId"] = None  # The calendar's default color.
         if private_properties:
             body["extendedProperties"] = {"private": private_properties}
 

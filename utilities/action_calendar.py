@@ -18,15 +18,20 @@ the glue between them:
   among them, each action's own or its nearest group's, so
   `Event.effective_priority` -- what compaction and the time summaries read --
   falls back to it. The event's own priority is never touched.
-- **On write** (`create_event`/`update_event`), whenever `action_ids` is
-  being written: `event_label_id` is the first action's label, if the
-  calendar has it (an active action always does; a proposed one does
-  while there's room -- see utilities/actions.py), or none. Calendar
-  rejects *inserting* an event with a label it doesn't have, so an
-  insert checks; an update keeps the event's label if it's already the
-  first action's own, since Calendar accepts re-sending an event's
+- **On write** (`create_event`/`update_event`), whenever an event is
+  inserted, or its `action_ids` or `priority` written: `event_label_id`
+  is the first action's label, if the calendar has it (an active action
+  always does; a proposed one does while there's room -- see
+  utilities/actions.py), or else its priority's (utilities/
+  priority_labels.py): its own priority's, or its actions', or the
+  default's. Calendar rejects *inserting* an event with a label it
+  doesn't have, so an insert checks, and the priority labels are made
+  before any is used; an update keeps the event's label if it's already
+  the first action's own, since Calendar accepts re-sending an event's
   existing label even after the label is removed, so an archived
-  action's events go back to its color if it's made active again.
+  action's events go back to its color if it's made active again. An
+  update that writes only a priority reads the event first, to keep an
+  action's label it has.
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ from dataclasses import replace
 from datetime import datetime
 
 from calendar_clients.google_calendar import CalendarClient, Event, EventLabel
+from utilities import priority_labels
 from utilities.actions import Actions, ActionTree
 
 
@@ -44,6 +50,7 @@ class ActionCalendar:
     def __init__(self, client: CalendarClient, actions: Actions) -> None:
         self._client = client
         self._actions = actions
+        self._priority_labels_ready = False
 
     def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:
         return fill_in_from_actions(self._client.list_events(time_min, time_max), self._actions.tree())
@@ -65,13 +72,52 @@ class ActionCalendar:
 
     def _with_label(self, event: Event, *, inserting: bool) -> Event:
         tree = self._actions.tree()
-        primary = tree.by_id.get(event.action_ids[0]) if event.action_ids and not event.actions_from_label else None
+        writes_actions = event.action_ids is not None and not event.actions_from_label
+        writes_priority = event.priority is not None or "priority" in event.cleared
+        if not (inserting or writes_actions or writes_priority):
+            return event
+        current = None
+        if not inserting and not writes_actions:
+            # Only its priority: the label it should have depends on its
+            # actions now, and the label it has.
+            current = fill_in_from_actions([self._client.get_event(event.id)], tree)[0]
+        doing = (
+            replace(event, action_ids=current.action_ids, event_label_id=current.event_label_id, actions_from_label=False)
+            if current is not None
+            else event
+        )
+        primary = tree.by_id.get(doing.action_ids[0]) if doing.action_ids else None
         held: set[str] | None = None
         if primary is not None and primary.status == "proposed" and primary.label_id:
             # Whether a proposed action holds its label depends on the room
             # left, so ask the calendar.
             held = {label.id for label in self._client.list_event_labels()[0]}
-        return with_action_label(event, tree, inserting=inserting, held=held)
+        if doing.action_ids is None:
+            # No actions: an insert keeps a label it's given; otherwise
+            # it's its priority's.
+            label = event.event_label_id if inserting else None
+        else:
+            label = with_action_label(doing, tree, inserting=inserting, held=held).event_label_id
+        if label:  # An action's.
+            if current is not None and label == current.event_label_id:
+                return event  # It has it already.
+            return replace(event, event_label_id=label)
+        return replace(event, event_label_id=self._priority_label(event, current, doing.action_ids, tree))
+
+    def _priority_label(self, event: Event, current: Event | None, action_ids, tree: ActionTree) -> str:
+        """The label of the priority `event` will have: its own, or else
+        its actions', or else the default -- see utilities/
+        priority_labels.py. Makes sure the calendar has the priority
+        labels first."""
+        if not self._priority_labels_ready:
+            self._actions.ensure_priority_labels()
+            self._priority_labels_ready = True
+        priority = event.priority
+        if priority is None and "priority" not in event.cleared and current is not None:
+            priority = current.priority
+        if priority is None:
+            priority = min((p for p in (tree.priority(a) for a in action_ids or ()) if p is not None), default=None)
+        return priority_labels.label_id(priority)
 
 
 def fill_in_from_actions(events: list[Event], tree: ActionTree) -> list[Event]:

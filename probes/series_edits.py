@@ -8,7 +8,7 @@ but not whether a later patch to the master still reaches the fields an
 exception didn't change, nor what a change to the master's times does to
 exceptions. update_recurrence (utilities/recurrences.py) depends on both:
 it patches the master with whichever fields it's given -- priority and
-goal_ids as private extended properties (priority also sets colorId, only
+goal_ids as private extended properties (priority once also set colorId, only
 to show it), times etc. This script asks the API directly, writing each
 field the way Event.to_api_body does.
 
@@ -62,7 +62,7 @@ from zoneinfo import ZoneInfo
 from googleapiclient.discovery import build
 
 from calendar_clients.google_auth import load_credentials
-from calendar_clients.google_calendar import _APP_EXTENDED_PROPERTY_KEY_PREFIX, _color_id_for_priority
+from calendar_clients.google_calendar import _APP_EXTENDED_PROPERTY_KEY_PREFIX
 from config import get_credentials_path, get_token_path
 
 _TIME_ZONE = "America/New_York"
@@ -98,13 +98,9 @@ def main() -> None:
 
 
 def _with_priority(priority: int, private: dict | None = None) -> dict:
-    """A body setting `priority` as the app does: the private property,
-    plus the colorId that shows it (see Event.to_api_body)."""
-    body = {"extendedProperties": {"private": {**(private or {}), _PRIORITY: str(priority)}}}
-    color_id = _color_id_for_priority(priority)
-    if color_id is not None:
-        body["colorId"] = color_id
-    return body
+    """A body setting `priority` as the app does: the private property
+    (no colorId -- see Event.to_api_body)."""
+    return {"extendedProperties": {"private": {**(private or {}), _PRIORITY: str(priority)}}}
 
 
 def _probe(service, calendar_id: str, pause: bool, raw: bool) -> None:

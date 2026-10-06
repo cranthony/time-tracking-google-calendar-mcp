@@ -373,14 +373,12 @@ class TestEvent:
 
         assert "colorId" not in event.to_api_body()
 
-    @pytest.mark.parametrize(
-        "priority,expected_color_id",
-        [(-1, "8"), (0, "8"), (1, "5"), (2, None), (3, "2"), (4, "2"), (5, "2")],
-    )
-    def test_to_api_body_sets_colorId_from_priority(self, priority, expected_color_id):
-        event = Event(id="abc123", priority=priority)
-
-        assert event.to_api_body()["colorId"] == expected_color_id
+    @pytest.mark.parametrize("priority", [-1, 0, 1, 2, 3, 5])
+    def test_to_api_body_never_writes_a_colorId(self, priority):
+        # An event's own color overrides its label's, and writing one --
+        # even clearing it -- can drop the label: see to_api_body.
+        assert "colorId" not in Event(id="abc123", priority=priority).to_api_body()
+        assert "colorId" not in Event(id="abc123", cleared=frozenset({"priority"})).to_api_body()
 
     def test_to_api_body_sends_cleared_fields_as_null(self):
         event = Event(id="abc123", summary="Focus", cleared=CLEARABLE_EVENT_FIELDS)
@@ -389,7 +387,6 @@ class TestEvent:
             "summary": "Focus",
             "description": None,
             "location": None,
-            "colorId": None,  # The calendar's default, rather than a priority's.
             "extendedProperties": {
                 "private": {
                     "cascading-time-tracker-priority": None,
