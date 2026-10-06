@@ -14,6 +14,7 @@ from calendar_clients.google_calendar import (
     EventLabel,
     EventLabelConflictError,
     TimeZoneNotSetError,
+    cached_calendar_listings,
 )
 from calendar_clients.write_lock import WriteLockNotHeldError
 from utilities.facts import Facts
@@ -1640,13 +1641,138 @@ class TestCalendarClientSideCalendarCalls:
         assert other._service is service
 
 
+def _day_listing_service() -> MagicMock:
+    """A service whose every listing answers the same three events, at 09,
+    11 and 13 o'clock on 1 January."""
+    service = MagicMock()
+    service.events.return_value.list.return_value.execute.return_value = {
+        "items": [
+            api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"),
+            api_event("2", "2026-01-01T11:00:00+00:00", "2026-01-01T12:00:00+00:00"),
+            api_event("3", "2026-01-01T13:00:00+00:00", "2026-01-01T14:00:00+00:00"),
+        ]
+    }
+    return service
+
+
+def _at(hour: int, minute: int = 0) -> datetime:
+    return datetime(2026, 1, 1, hour, minute, tzinfo=UTC)
+
+
+class TestCachedCalendarListings:
+    def test_a_listing_within_an_earlier_one_is_answered_from_it(self):
+        service = _day_listing_service()
+        client = make_client(service)
+
+        with cached_calendar_listings():
+            client.list_events(_at(0), _at(23))
+            events = client.list_events(_at(10, 30), _at(13))
+
+        # Calendar's own rule: ends after the start, starts before the end.
+        assert [e.id for e in events] == ["2"]
+        service.events.return_value.list.assert_called_once()
+
+    def test_an_edge_touching_the_range_is_left_out_as_calendar_does(self):
+        client = make_client(_day_listing_service())
+
+        with cached_calendar_listings():
+            client.list_events(_at(0), _at(23))
+            events = client.list_events(_at(10), _at(11))
+
+        assert events == []
+
+    def test_a_listing_past_the_earlier_one_lists_again(self):
+        service = _day_listing_service()
+        client = make_client(service)
+
+        with cached_calendar_listings():
+            client.list_events(_at(8), _at(12))
+            client.list_events(_at(8), _at(14))
+
+        assert service.events.return_value.list.call_count == 2
+
+    def test_cancelled_events_are_listed_apart(self):
+        service = _day_listing_service()
+        client = make_client(service)
+
+        with cached_calendar_listings():
+            client.list_events(_at(0), _at(23))
+            client.list_events(_at(0), _at(23), show_deleted=True)
+
+        assert service.events.return_value.list.call_count == 2
+
+    def test_another_calendar_lists_its_own(self):
+        service = _day_listing_service()
+        client = make_client(service)
+
+        with cached_calendar_listings():
+            client.list_events(_at(0), _at(23))
+            client.for_calendar("other-cal").list_events(_at(0), _at(23))
+
+        assert service.events.return_value.list.call_count == 2
+
+    def test_what_it_answers_is_a_copy(self):
+        client = make_client(_day_listing_service())
+
+        with cached_calendar_listings():
+            client.list_events(_at(0), _at(23))[0].summary = "changed"
+            client.list_events(_at(0), _at(23))[1].summary = "changed too"
+            events = client.list_events(_at(0), _at(23))
+
+        assert [e.summary for e in events] == ["Busy", "Busy", "Busy"]
+
+    @pytest.mark.parametrize(
+        "write",
+        [
+            lambda client: client.delete_event_resource("1"),
+            lambda client: client.delete_event("1"),
+            lambda client: client.upsert_event_resource("abcde", {"summary": "New"}),
+        ],
+    )
+    def test_any_write_forgets_every_listing(self, write):
+        service = _day_listing_service()
+        client = make_client(service)
+
+        with cached_calendar_listings():
+            client.list_events(_at(0), _at(23))
+            write(client)
+            client.list_events(_at(0), _at(23))
+
+        assert service.events.return_value.list.call_count == 2
+
+    def test_nothing_is_kept_outside_the_block_or_after_it(self):
+        service = _day_listing_service()
+        client = make_client(service)
+
+        client.list_events(_at(0), _at(23))
+        with cached_calendar_listings():
+            client.list_events(_at(0), _at(23))
+        client.list_events(_at(0), _at(23))
+
+        assert service.events.return_value.list.call_count == 3
+
+    def test_a_nested_block_shares_the_outer_ones(self):
+        service = _day_listing_service()
+        client = make_client(service)
+
+        with cached_calendar_listings():
+            client.list_events(_at(0), _at(23))
+            with cached_calendar_listings():
+                client.list_events(_at(9), _at(10))
+
+        service.events.return_value.list.assert_called_once()
+
+
 _CALENDAR_WRITES = [
     "create_calendar",
     "hide_calendar",
     "color_calendar",
     "set_time_zone",
     "upsert_event_resource",
+    "replace_event_resource",
+    "delete_event_resource",
     "create_event",
+    "import_event",
     "update_event",
     "delete_event",
     "create_event_label",

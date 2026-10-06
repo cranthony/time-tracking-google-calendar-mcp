@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import functools
 import logging
 import os
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Iterator
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal, ParamSpec, TypeVar
@@ -15,7 +16,13 @@ from mcp.server.mcpserver.exceptions import ToolError
 from starlette.middleware.cors import CORSMiddleware
 from starlette.types import ASGIApp
 
-from calendar_clients.google_calendar import CalendarClient, Event, EventLabelConflictError, TimeZoneNotSetError
+from calendar_clients.google_calendar import (
+    CalendarClient,
+    Event,
+    EventLabelConflictError,
+    TimeZoneNotSetError,
+    cached_calendar_listings,
+)
 from calendar_clients.google_sheets import cached_sheet_reads
 from calendar_clients.write_lock import WRITE_LOCK
 from config import (
@@ -587,6 +594,16 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
+@contextlib.contextmanager
+def cached_reads() -> Iterator[None]:
+    """What every tool call runs in: its spreadsheet reads
+    (`cached_sheet_reads`) and its calendar listings
+    (`cached_calendar_listings`) each answered from memory when they
+    repeat one already made in the same call."""
+    with cached_sheet_reads(), cached_calendar_listings():
+        yield
+
+
 def _prefetch(*tabs) -> None:
     """Read each of `tabs` -- objects for tabs of the calendar's metadata
     spreadsheet, with a `whole_tab` (or, for a store keeping two, its
@@ -651,7 +668,7 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
     PublicEvent). action_names, effective_priority, is_end_of_day_sleep,
     recurring_event_id and event_label_id are read-only: update_event and
     create_event ignore them."""
-    with track("list_events"), cached_sheet_reads():
+    with track("list_events"), cached_reads():
         _prefetch_stores()
         events = get_calendar_client().list_events(min_time, max_time)
         return _public_events([event for event in events if event.status != "cancelled"])
@@ -660,7 +677,7 @@ def list_events(min_time: datetime, max_time: datetime) -> list[PublicEvent]:
 @tool
 def get_event(id: str) -> PublicEvent:
     """Get a single event by its ID. See list_events for its fields."""
-    with track("get_event"), cached_sheet_reads():
+    with track("get_event"), cached_reads():
         _prefetch_stores()
         event = get_calendar_client().get_event(id)
         if event.status == "cancelled":
@@ -692,7 +709,7 @@ def update_event(
     it shrink to nothing). Set action_ids to change its actions ([] for
     none). Set facts to replace its facts whole (see list_events).
     Returns the events affected by the update."""
-    with track("update_event"), cached_sheet_reads():
+    with track("update_event"), cached_reads():
         _prefetch_stores()
         _check_action_ids(event, existing=True)
         _check_facts(event)
@@ -710,7 +727,7 @@ def get_recurrence(id: str) -> PublicRecurrence:
     """A recurring series, by its id or the id of any of its events (an
     event's recurring_event_id is its series' id). See PublicRecurrence
     for its fields."""
-    with track("get_recurrence"), cached_sheet_reads():
+    with track("get_recurrence"), cached_reads():
         _prefetch_stores()
         try:
             return _public_recurrences([get_recurrences().series(id)])[0]
@@ -749,7 +766,7 @@ def update_recurrence(
     A series split in Google Calendar itself (an id like
     "abc123_R20260915T223000") can't have its repeat or start changed
     whole -- Google refuses -- only from one of its later events on."""
-    with track("update_recurrence"), cached_sheet_reads():
+    with track("update_recurrence"), cached_reads():
         _prefetch_stores()
         _check_action_ids(recurrence, existing=True)
         try:
@@ -771,7 +788,7 @@ def split_recurrence(event_id: str) -> list[PublicRecurrence]:
     If the series can't be ended, the copy is cancelled again and the
     error says so. Returns the series from the event on, then the one before it (none if
     it was the series' first event, which leaves nothing to split)."""
-    with track("split_recurrence"), cached_sheet_reads():
+    with track("split_recurrence"), cached_reads():
         _prefetch_stores()
         try:
             earlier, later = get_recurrences().split(event_id)
@@ -805,7 +822,7 @@ def delete_recurrence(id: str, starting_at_event_id: str | None = None) -> list[
     a series that's already begun -- one that won't happen any more,
     rather than one that shouldn't have been -- delete from its next
     event on."""
-    with track("delete_recurrence"), cached_sheet_reads():
+    with track("delete_recurrence"), cached_reads():
         _prefetch_stores()
         try:
             left = get_recurrences().delete(id, starting_at_event_id)
@@ -822,7 +839,7 @@ def create_event(event: PublicEvent, reallocate: bool = True) -> list[PublicEven
     room. With reallocate false, it's created only if nothing else has to
     change: otherwise nothing is written, and the error lists what would
     have changed. Returns the events affected by the creation."""
-    with track("create_event"), cached_sheet_reads():
+    with track("create_event"), cached_reads():
         _prefetch_stores()
         _check_action_ids(event)
         _check_facts(event)
@@ -843,7 +860,7 @@ def delete_event(id: str) -> list[PublicEvent]:
     deletes only that event; to delete the whole series, or an event and
     the ones after it, use delete_recurrence. Returns the events affected
     by the deletion."""
-    with track("delete_event"), cached_sheet_reads():
+    with track("delete_event"), cached_reads():
         _prefetch_stores()
         cancelled = get_calendar_client().update_event(Event(id=id, status="cancelled"))
         return _public_events([cancelled])
@@ -889,7 +906,7 @@ def get_traits(statuses: list[TraitStatus] | None = None) -> list[ListedTrait]:
     apply to them and give them their own parts for any (see
     create_person). problems lists anything wrong with a trait edited by
     hand; a bad part isn't rated. Read-only."""
-    with track("get_traits"), cached_sheet_reads():
+    with track("get_traits"), cached_reads():
         try:
             return get_trait_store().get_traits(statuses)
         except ValueError as exc:
@@ -907,7 +924,7 @@ def create_trait(trait: Trait) -> Trait:
     naming it. A trait with a part that isn't well formed is refused,
     saying what's wrong. It applies to every person whose traits don't
     select others. Returns the trait as created."""
-    with track("create_trait"), cached_sheet_reads():
+    with track("create_trait"), cached_reads():
         try:
             return get_trait_store().create_trait(trait)
         except ValueError as exc:
@@ -930,7 +947,7 @@ def update_trait(trait: Trait, clear_fields: list[TraitField] | None = None) -> 
     trait rather than delete it, so its history stays readable. Checked as
     for create_trait. Ratings already recorded aren't changed. Returns the
     trait as updated."""
-    with track("update_trait"), cached_sheet_reads():
+    with track("update_trait"), cached_reads():
         try:
             return get_trait_store().update_trait(trait, clear_fields or ())
         except ValueError as exc:
@@ -949,7 +966,7 @@ def get_actions(statuses: list[ActionStatus] | None = None) -> ActionList:
     nearest group's) and whether it holds_label: active actions always hold one of the calendar's event
     labels, and proposed ones do while there's room. Also how many of the
     calendar's label slots are in use. Read-only."""
-    with track("get_actions"), cached_sheet_reads():
+    with track("get_actions"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().get_actions(statuses)
@@ -962,7 +979,7 @@ def get_action(id_or_name: str) -> ListedAction:
     """One action, by its id or else its name (ignoring case), as
     get_actions lists it. If there's none, the error suggests close
     matches. Read-only."""
-    with track("get_action"), cached_sheet_reads():
+    with track("get_action"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().get_action(id_or_name)
@@ -986,7 +1003,7 @@ def create_action(action: Action) -> CreatedAction:
     action's id as created_id, and, as changed, the new action (plus any
     proposed action that lost its label to make room), with
     label_slots_used of label_slots_total."""
-    with track("create_action"), cached_sheet_reads():
+    with track("create_action"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().create_action(action)
@@ -1012,7 +1029,7 @@ def update_action(action: Action, clear_fields: list[ActionField] | None = None)
     Returns, as changed, the action as updated, plus any proposed action
     that gained or lost its label as a result, with label_slots_used of
     label_slots_total."""
-    with track("update_action"), cached_sheet_reads():
+    with track("update_action"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().update_action(action, clear_fields or ())
@@ -1031,7 +1048,7 @@ def get_action_groups() -> list[ListedActionGroup]:
     Guitar") and its effective_color and effective_priority (its own, or
     else its nearest enclosing group's), which its actions and groups
     inherit when they don't set their own. Read-only."""
-    with track("get_action_groups"), cached_sheet_reads():
+    with track("get_action_groups"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().get_action_groups()
@@ -1044,7 +1061,7 @@ def get_action_group(id_or_name: str) -> ListedActionGroup:
     """One action group, by its id or else its name (ignoring case), as
     get_action_groups lists it. If there's none, the error suggests close
     matches. Read-only."""
-    with track("get_action_group"), cached_sheet_reads():
+    with track("get_action_group"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().get_action_group(id_or_name)
@@ -1062,7 +1079,7 @@ def create_action_group(group: ActionGroup) -> CreatedActionGroup:
     id is assigned. Put actions in it with update_action's group_id.
     Returns the new group's id as created_id, and as changed, the group
     with its path and what it inherits."""
-    with track("create_action_group"), cached_sheet_reads():
+    with track("create_action_group"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().create_action_group(group)
@@ -1086,7 +1103,7 @@ def update_action_group(group: ActionGroup, clear_fields: list[ActionGroupField]
     Returns, as changed, the group as updated, and as affected_actions,
     every action whose path, effective_color or effective_priority
     changed as a result."""
-    with track("update_action_group"), cached_sheet_reads():
+    with track("update_action_group"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().update_action_group(group, clear_fields or ())
@@ -1102,7 +1119,7 @@ def delete_action_group(group_id: str) -> DeletedActionGroup:
     top level, if it was top-level). Returns the group as it was
     (deleted), as changed, the groups moved up out of it, and as
     affected_actions, every action moved or recolored as a result."""
-    with track("delete_action_group"), cached_sheet_reads():
+    with track("delete_action_group"), cached_reads():
         _prefetch_stores()
         try:
             return get_action_store().delete_action_group(group_id)
@@ -1121,7 +1138,7 @@ def get_people(statuses: list[PersonStatus] | None = None) -> list[ListedPerson]
     which traits apply to them, and their own parts for any (see
     create_person; without it, every active trait applies as get_traits
     has it). Read-only."""
-    with track("get_people"), cached_sheet_reads():
+    with track("get_people"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().get_people(statuses)
@@ -1135,7 +1152,7 @@ def get_person(id_or_name: str) -> ListedPerson:
     case), as get_people lists them. If several share the name, the error
     lists them with their contexts; if there's none, it suggests close
     matches. Read-only."""
-    with track("get_person"), cached_sheet_reads():
+    with track("get_person"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().get_person(id_or_name)
@@ -1158,7 +1175,7 @@ def create_person(person: Person) -> CreatedPerson:
     "interval_days": 21, "noun": "visits"}]}}. Active unless given a
     status. id is assigned. Returns the person and their id as
     created_id."""
-    with track("create_person"), cached_sheet_reads():
+    with track("create_person"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().create_person(person)
@@ -1180,7 +1197,7 @@ def update_person(person: Person, clear_fields: list[PersonField] | None = None)
     create_person). Omitted properties keep their
     value; list one in clear_fields to blank it instead. Returns the
     person as updated."""
-    with track("update_person"), cached_sheet_reads():
+    with track("update_person"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().update_person(person, clear_fields or ())
@@ -1193,7 +1210,7 @@ def get_circles() -> list[ListedCircle]:
     """Every circle: a group people belong to ("Close friends",
     "Family"), a person belonging to any number of them. Each has an id,
     name, note and member_ids (the people in it). Read-only."""
-    with track("get_circles"), cached_sheet_reads():
+    with track("get_circles"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().get_circles()
@@ -1205,7 +1222,7 @@ def get_circles() -> list[ListedCircle]:
 def get_circle(id_or_name: str) -> ListedCircle:
     """One circle, by id or else by name (ignoring case), as get_circles
     lists it. Read-only."""
-    with track("get_circle"), cached_sheet_reads():
+    with track("get_circle"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().get_circle(id_or_name)
@@ -1220,7 +1237,7 @@ def create_circle(circle: Circle) -> CreatedCircle:
     share it) and optionally a note. id is assigned. Put people in it with
     update_person's circles. Returns the circle and its id as
     created_id."""
-    with track("create_circle"), cached_sheet_reads():
+    with track("create_circle"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().create_circle(circle)
@@ -1236,7 +1253,7 @@ CircleField = Literal["note"]
 @writes
 def update_circle(circle: Circle, clear_fields: list[CircleField] | None = None) -> ListedCircle:
     """Rename a circle or change its note, by id. Returns it as updated."""
-    with track("update_circle"), cached_sheet_reads():
+    with track("update_circle"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().update_circle(circle, clear_fields or ())
@@ -1250,7 +1267,7 @@ def delete_circle(circle_id: str) -> DeletedCircle:
     """Delete a circle, by id. Its people aren't deleted: they just leave
     it. Returns the circle as it was, and the ids of the people who
     left."""
-    with track("delete_circle"), cached_sheet_reads():
+    with track("delete_circle"), cached_reads():
         _prefetch_stores()
         try:
             return get_people_store().delete_circle(circle_id)
@@ -1263,7 +1280,7 @@ def get_locations() -> list[Location]:
     """Every location: a place the user's events happen ("Home", "Salsa
     studio"), each with an id, a name and a hint for recognizing when an
     event or note refers to it. Read-only."""
-    with track("get_locations"), cached_sheet_reads():
+    with track("get_locations"), cached_reads():
         try:
             return get_location_store().all()
         except ValueError as exc:
@@ -1274,7 +1291,7 @@ def get_locations() -> list[Location]:
 def get_location(id_or_name: str) -> Location:
     """One location, by id or else by name (ignoring case). If there's
     none, the error suggests close matches. Read-only."""
-    with track("get_location"), cached_sheet_reads():
+    with track("get_location"), cached_reads():
         try:
             return get_location_store().get_location(id_or_name)
         except ValueError as exc:
@@ -1288,7 +1305,7 @@ def create_location(location: Location) -> CreatedLocation:
     recognizing when an event or note refers to it -- other names for it,
     an address, what happens there ("the apartment; 'home', 'my place'").
     id is assigned. Returns the location and its id as created_id."""
-    with track("create_location"), cached_sheet_reads():
+    with track("create_location"), cached_reads():
         try:
             return get_location_store().create_location(location)
         except ValueError as exc:
@@ -1305,7 +1322,7 @@ def update_location(location: Location, clear_fields: list[LocationField] | None
     """Rename a location or change its hint, by id. Omitted properties keep
     their value; list hint in clear_fields to blank it. Returns it as
     updated."""
-    with track("update_location"), cached_sheet_reads():
+    with track("update_location"), cached_reads():
         try:
             return get_location_store().update_location(location, clear_fields or ())
         except ValueError as exc:
@@ -1316,7 +1333,7 @@ def update_location(location: Location, clear_fields: list[LocationField] | None
 @writes
 def delete_location(location_id: str) -> Location:
     """Delete a location, by id. Returns it as it was."""
-    with track("delete_location"), cached_sheet_reads():
+    with track("delete_location"), cached_reads():
         try:
             return get_location_store().delete_location(location_id)
         except ValueError as exc:
@@ -1342,7 +1359,7 @@ def get_compaction_status() -> CompactionStatus:
     """When notes were last compacted into the calendar, the latest note
     compacted, and whether that compaction still has judgments to make.
     Read-only."""
-    with track("get_compaction_status"), cached_sheet_reads():
+    with track("get_compaction_status"), cached_reads():
         # The notes, the journal, and what judging reads, together.
         get_note_compactor().prefetch()
         _notes, latest = get_noted_time_sheet().read_with_latest_compacted()
@@ -1363,7 +1380,7 @@ def note(noted_time: NotedTime) -> NoteWithId:
     """Record a new time note -- a timestamp, with an optional
     description of what it marks. Returns the note as recorded, with the
     id edit_note/delete_note refer to it by."""
-    with track("note"), cached_sheet_reads():
+    with track("note"), cached_reads():
         # compaction_id is set only by compaction, never by a caller.
         recorded = replace(noted_time, compaction_id=None)
         return get_noted_time_sheet().append(recorded).with_id()
@@ -1377,7 +1394,7 @@ def get_notes(include_compacted: bool = False) -> list[NoteWithId]:
     only -- may span many days. To compact notes, use prepare_compaction
     instead; it returns just the notes for the current round, which is
     what compact_notes expects."""
-    with track("get_notes"), cached_sheet_reads():
+    with track("get_notes"), cached_reads():
         notes = get_noted_time_sheet().read_with_rows(include_compacted=include_compacted)
         return [n.with_id() for n in sorted(notes, key=lambda n: n.note.timestamp)]
 
@@ -1394,7 +1411,7 @@ def edit_note(
     Compacted notes can't be changed (edit the calendar event they became
     instead). If a dry-run plan included this note, run a new dry run
     afterward -- that plan can no longer be committed."""
-    with track("edit_note"), cached_sheet_reads():
+    with track("edit_note"), cached_reads():
         try:
             return get_note_compactor().edit_note(
                 note_id, timestamp=timestamp, description=description
@@ -1410,7 +1427,7 @@ def delete_note(note_id: str) -> NotedTime:
     prepare_compaction), returning what it was. Other notes' ids are
     unaffected. Compacted notes can't be deleted. If a dry-run plan
     included this note, run a new dry run afterward."""
-    with track("delete_note"), cached_sheet_reads():
+    with track("delete_note"), cached_reads():
         try:
             return get_note_compactor().delete_note(note_id)
         except CompactionError as exc:
@@ -1434,7 +1451,7 @@ def prepare_compaction() -> CompactionContext:
     (`locations`), to settle the facts from. judgments_pending names the
     last compaction if its judgments aren't all made: make them first
     (prepare_judgments, record_judgments). Read-only."""
-    with track("prepare_compaction"), cached_sheet_reads():
+    with track("prepare_compaction"), cached_reads():
         return get_note_compactor().prepare()
 
 
@@ -1498,7 +1515,7 @@ def compact_notes(
     right away, without asking the user, and record them with
     record_judgments. The compaction isn't complete until they're all
     recorded."""
-    with track("compact_notes"), cached_sheet_reads():
+    with track("compact_notes"), cached_reads():
         compactor = get_note_compactor()
         try:
             if compaction_id is None:
@@ -1528,7 +1545,7 @@ def prepare_judgments(compaction_id: str | None = None, redo: bool = False) -> J
     judge it in. Only those not made yet -- or with redo, all of them,
     each with the judgment already made, to redo one with more context.
     Read-only."""
-    with track("prepare_judgments"), cached_sheet_reads():
+    with track("prepare_judgments"), cached_reads():
         compactor = get_note_compactor()
         compactor.prefetch()
         try:
@@ -1551,7 +1568,7 @@ def record_judgments(compaction_id: str, judgments: list[Judgment]) -> Judgments
     replaces the earlier one. Returns how many were recorded, the ids of
     any requests still to judge, and whether that completes the
     compaction."""
-    with track("record_judgments"), cached_sheet_reads():
+    with track("record_judgments"), cached_reads():
         compactor = get_note_compactor()
         compactor.prefetch()
         try:
@@ -1573,7 +1590,7 @@ def get_trait_scores(
     follow_through over the person's events -- see get_traits). A day is
     rolled up once a compaction that settled it is complete; days without
     a row haven't been (see rebuild_trait_scores). Read-only."""
-    with track("get_trait_scores"), cached_sheet_reads():
+    with track("get_trait_scores"), cached_reads():
         return get_trait_rollup().get(person_id, start, end)
 
 
@@ -1584,7 +1601,7 @@ def rebuild_trait_scores(start: date, end: date) -> list[TraitScoreRow]:
     start to end inclusive that's over -- to backfill days from before
     scores were kept, or after a judgment was redone or a trait changed.
     Replaces those days' rows; returns them."""
-    with track("rebuild_trait_scores"), cached_sheet_reads():
+    with track("rebuild_trait_scores"), cached_reads():
         if end < start:
             raise ToolError("end is before start")
         days = [start + timedelta(days=n) for n in range((end - start).days + 1)]
@@ -1598,7 +1615,7 @@ def abandon_compaction(compaction_id: str) -> CompactionResult:
     longer want). Steps it already applied stay applied; its notes stay
     uncompacted (except those of days it had already finished), so a new
     compaction can be planned."""
-    with track("abandon_compaction"), cached_sheet_reads():
+    with track("abandon_compaction"), cached_reads():
         try:
             return get_note_compactor().abandon(compaction_id)
         except CompactionError as exc:
@@ -1615,7 +1632,7 @@ def set_time_zone(time_zone: str) -> str:
     UTC, with a "Z"), or when they say they've moved or are travelling.
     Events keep their moments; only how they're shown changes. Returns
     the zone set."""
-    with track("set_time_zone"), cached_sheet_reads():
+    with track("set_time_zone"), cached_reads():
         try:
             zone = get_calendar_client().set_time_zone(time_zone)
         except ValueError as exc:
