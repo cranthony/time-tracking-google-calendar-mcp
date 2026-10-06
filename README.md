@@ -237,7 +237,7 @@ Both the Noted Times and Compactions tabs only ever grow, so each keeps itself u
 
 Actions replaced goals: an action is a verb for what the user is doing in a moment ("play guitar", "eat a meal"), and events are tagged with them. Groups roll actions up ("Creative" → "Guitar" → "play guitar") for targets and finding one's way around, but aren't actions themselves: no event can be tagged with one, and actions are always the leaves.
 
-- **Each action reserves one event label.** Active actions always hold theirs; proposed ones (made by the assistant and not yet reviewed) hold theirs while there's room among the calendar's 200; archived and deleted ones don't, and get the same label back if they're made active again. A label is named after its action and colored with its own `background_color`, else its nearest group's, else its priority's color (its own or inherited); that's its `effective_color`, and the priority its events take is its `effective_priority`. Labels that aren't any action's — Calendar's own unnamed ones, and the labels of the goals actions replaced — are left alone. A change that would need more labels than the calendar has room for for its active actions is refused before anything is written.
+- **Each action reserves one event label.** Active actions always hold theirs; proposed ones (made by the assistant and not yet reviewed) hold theirs while there's room among the calendar's 200; archived and deleted ones don't, and get the same label back if they're made active again. A label is named after its action and colored with its own `background_color`, else its nearest group's, else its priority's color (its own or inherited, from the [priority labels](#event-colors)); that's its `effective_color`, and the priority its events take is its `effective_priority`. Labels that aren't any action's — Calendar's own unnamed ones, and the labels of the goals actions replaced — are left alone, but for the four [priority labels](#event-colors). A change that would need more labels than the calendar has room for for its active actions is refused before anything is written.
 - **Events do actions.** `Event.action_ids` (a private extended property) records which; the first decides the event's label (`utilities/action_calendar.py`). Calendar rejects *inserting* an event with a label it doesn't have, but accepts re-sending one an existing event already has, so an update keeps an archived action's own label on an event that already carries it. An event never given actions but carrying an action's label (one picked in Calendar, say) is read as doing that action.
 - **Priority is inherited.** An action without its own priority takes its nearest group's, and an event without its own takes the highest (lowest-numbered) among its actions'. `Event.action_priority` holds what it inherits (filled in on read, never written), and `effective_priority` — what compaction and the time summaries read — combines the two.
 - **Names are unique**, ignoring case: among actions (whatever their status) and, separately, among groups — an action may share a group's name. Deleting a group moves its actions and groups up into its own enclosing group.
@@ -264,16 +264,20 @@ How the user wants to be with people (and with themselves): Thoughtful, Reliable
 
 ## Event colors
 
-[`Event.to_api_body()`](calendar_clients/google_calendar.py) (used by every path that writes an event — the MCP tools, `calendar_cli.py` and compaction, all via `CalendarClient.create_event`/`update_event`) automatically sets `colorId` from the event's `priority`, so priority is visible at a glance in the Google Calendar UI without a separate step:
+An event's color is its label's. An event doing actions gets its first action's label (see [Actions](#actions) above); one without an action's label gets its priority's: four labels, "Priority 0" to "Priority 3", reserved for that ([`utilities/priority_labels.py`](utilities/priority_labels.py)) -- its own priority's, or else its actions', or else priority 2's. They have fixed ids, are made the first time they're needed, and count against the calendar's 200 labels. They start out as:
 
-| Priority | Color | `colorId` |
-| --- | --- | --- |
-| <=0 | Graphite (gray) | `"8"` |
-| 1 | Banana (yellow) | `"5"` |
-| 2 | the calendar's default color | unset |
-| >=3 | Sage (soft green) | `"2"` |
+| Priority | Color |
+| --- | --- |
+| <=0 | `#e1e1e1` (gray) |
+| 1 | `#fbd75b` (yellow) |
+| 2 (and none) | `#a4bdfc` (the calendar's default blue) |
+| >=3 | `#7ae7bf` (soft green) |
 
-Note that calendar colors are superseded by the colors corresponding to the event's label. `event_label_id` (the API's own `eventLabelId` field) is derived from the event's actions (see [Actions](#actions) above) and is read-only to the MCP tools; `calendar_cli.py`'s `update_properties` can still set it directly (`event_label_id=<label-id>`). Calendar itself tolerates an existing event pointing at a label that's since been removed (it keeps the id, and the event can still be updated), but it rejects *inserting* an event with one. So a created event's label always follows its actions, and one a compaction plan creates that names a removed label quietly drops it rather than failing the whole commit. A `create` decision in compaction naming an unknown label fails its dry run. Updating an event doesn't check its label.
+**`get_priority_colors()`** lists them; **`update_priority_color(priority, color)`** recolors one, and with it every action's label that takes its color from that priority (an action or group with no color of its own, nor its groups'), returning those actions as `affected_actions`.
+
+The server never writes an event's own `colorId`: it overrides the label's color, and writing one -- even clearing it -- can drop the event's label.
+
+`event_label_id` (the API's own `eventLabelId` field) is derived from the event's actions (see [Actions](#actions) above) and is read-only to the MCP tools; `calendar_cli.py`'s `update_properties` can still set it directly (`event_label_id=<label-id>`). Calendar itself tolerates an existing event pointing at a label that's since been removed (it keeps the id, and the event can still be updated), but it rejects *inserting* an event with one. So a created event's label always follows its actions, and one a compaction plan creates that names a removed label quietly drops it rather than failing the whole commit. A `create` decision in compaction naming an unknown label fails its dry run. Updating an event doesn't check its label.
 
 ## Google OAuth credentials
 

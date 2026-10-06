@@ -44,6 +44,7 @@ from utilities.action_groups import (
     find as find_group,
     group_problems,
 )
+from utilities import priority_labels
 from utilities.row_sheet import RowSheet, check_clear, new_id, updated
 
 ActionStatus = Literal["proposed", "active", "archived", "deleted"]
@@ -190,6 +191,30 @@ class CreatedActionGroup(ActionGroupChanges):
 
 
 @dataclass(kw_only=True)
+class PriorityColor:
+    """One priority's color: its label's (see utilities/priority_labels.py)."""
+
+    priority: int
+    color: str
+    label_id: str
+
+
+@dataclass(kw_only=True)
+class PriorityColorChange:
+    """What changing a priority's color returns."""
+
+    colors: list[PriorityColor]
+    """Every priority's color, as it is now."""
+
+    affected_actions: list[ListedAction]
+    """Actions whose label color changed with it: those with no color of
+    their own, or their groups', at that priority."""
+
+    label_slots_used: int
+    label_slots_total: int = MAX_LABELS
+
+
+@dataclass(kw_only=True)
 class DeletedActionGroup(ActionGroupChanges):
     deleted: ActionGroup
     """The group as it was."""
@@ -297,8 +322,9 @@ class Actions:
     def get_actions(self, statuses: Collection[str] | None = None) -> ActionList:
         """The actions with any of `statuses` (by default DEFAULT_STATUSES)."""
         statuses = _check_statuses(statuses)
-        actions, tree = self.all(), self.groups()
+        actions = self.all()
         raw_labels, _etag = self._calendar_client.list_event_labels()
+        tree = GroupTree(self.groups().groups, priority_labels.palette(raw_labels))
         holders = _label_holders(actions, raw_labels)
         return ActionList(
             actions=[_listed(a, tree, holders) for a in actions if a.status in statuses],
@@ -310,17 +336,56 @@ class Actions:
         actions = self.all()
         action = find(actions, id_or_name)
         raw_labels, _etag = self._calendar_client.list_event_labels()
-        return _listed(action, self.groups(), _label_holders(actions, raw_labels))
+        tree = GroupTree(self.groups().groups, priority_labels.palette(raw_labels))
+        return _listed(action, tree, _label_holders(actions, raw_labels))
 
     def get_action_groups(self) -> list[ListedActionGroup]:
         """Every group, enclosing groups before the ones inside them."""
-        tree = self.groups()
+        tree = self._painted_groups()
         return [tree.listed(g) for g in tree.ordered()]
 
     def get_action_group(self, id_or_name: str) -> ListedActionGroup:
         """The group with this id, or else this name (ignoring case)."""
-        tree = self.groups()
+        tree = self._painted_groups()
         return tree.listed(find_group(tree.groups, id_or_name))
+
+    def _painted_groups(self) -> GroupTree:
+        """The groups, with the priority palette."""
+        raw_labels, _etag = self._calendar_client.list_event_labels()
+        return GroupTree(self.groups().groups, priority_labels.palette(raw_labels))
+
+    # -- priority colors ----------------------------------------------------
+
+    def priority_colors(self) -> list[PriorityColor]:
+        """Each priority's color (see utilities/priority_labels.py)."""
+        raw_labels, _etag = self._calendar_client.list_event_labels()
+        return _priority_colors(priority_labels.palette(raw_labels))
+
+    def set_priority_color(self, priority: int, color: str) -> PriorityColorChange:
+        """Recolor `priority`'s label, and with it every action's label that
+        takes its color from that priority."""
+        if priority not in priority_labels.PRIORITIES:
+            raise ValueError(f"There's no priority {priority!r}: priorities are {', '.join(map(str, priority_labels.PRIORITIES))}")
+        if problem := priority_labels.color_problem(color):
+            raise ValueError(problem)
+        actions, groups = self.all(), self.groups().groups
+        changes = self._commit(
+            actions, actions, groups, groups, write_actions=False, write_groups=False,
+            priority_colors={priority: color},
+        )
+        return PriorityColorChange(
+            colors=self.priority_colors(),
+            affected_actions=changes.affected_actions,
+            label_slots_used=changes.label_slots_used,
+        )
+
+    def ensure_priority_labels(self) -> None:
+        """Add any priority label the calendar doesn't have yet, so events
+        can be given it."""
+        raw_labels, etag = self._calendar_client.list_event_labels()
+        held = {label.id for label in raw_labels}
+        if not set(priority_labels.LABEL_IDS) <= held:
+            self._calendar_client.replace_event_labels(priority_labels.with_priority_labels(raw_labels), etag)
 
     # -- writing actions ----------------------------------------------------
 
@@ -425,21 +490,26 @@ class Actions:
         write_groups: bool = True,
         changed_actions: Collection[str] = (),
         changed_groups: Collection[str] = (),
+        priority_colors: dict[int, str] | None = None,
     ) -> ActionGroupChanges:
         """Validate the actions and groups after a change, write them, then
         make the calendar's labels match. Everything that can be refused is
         checked before anything is written. Reports as changed the groups
         in `changed_groups` and any new one; as affected, the actions in
         `changed_actions`, any new one, and any other whose placement or
-        label changed."""
+        label changed. `priority_colors` recolors those priorities' labels
+        (see utilities/priority_labels.py), and so every action label that
+        takes its color from them."""
         problems = group_problems(groups_after) + action_problems(actions_after, groups_after)
         if problems:
             raise ValueError("; ".join(problems))
-        tree_before, tree_after = GroupTree(groups_before), GroupTree(groups_after)
         raw_labels, etag = self._calendar_client.list_event_labels()
+        palette_before = priority_labels.palette(raw_labels)
+        tree_before = GroupTree(groups_before, palette_before)
+        tree_after = GroupTree(groups_after, {**palette_before, **(priority_colors or {})})
         held_before = _label_holders(actions_before, raw_labels)
         holders = _label_holders(actions_after, raw_labels)
-        desired = _desired_labels(actions_after, tree_after, raw_labels, holders)
+        desired = _desired_labels(actions_after, tree_after, raw_labels, holders, priority_colors)
         if write_groups:
             self._group_sheet.write(groups_after)
         if write_actions:
@@ -542,10 +612,16 @@ def _listed(action: Action, tree: GroupTree, holders: Collection[str]) -> Listed
     )
 
 
-def _foreign(actions: list[Action], raw_labels: list[RawEventLabel]) -> list[RawEventLabel]:
-    """The calendar's labels that aren't any action's: always left alone."""
+def _foreign(
+    actions: list[Action], raw_labels: list[RawEventLabel], priority_colors: dict[int, str] | None = None
+) -> list[RawEventLabel]:
+    """The calendar's labels that aren't any action's: left alone -- but for
+    the priority labels (utilities/priority_labels.py), each always among
+    them, added if it's missing, recolored as `priority_colors` says."""
     ours = {a.label_id for a in actions if a.label_id}
-    return [label for label in raw_labels if label.id not in ours]
+    return priority_labels.with_priority_labels(
+        [label for label in raw_labels if label.id not in ours], priority_colors
+    )
 
 
 def _label_holders(actions: list[Action], raw_labels: list[RawEventLabel]) -> set[str]:
@@ -562,11 +638,15 @@ def _label_holders(actions: list[Action], raw_labels: list[RawEventLabel]) -> se
 
 
 def _desired_labels(
-    actions: list[Action], tree: GroupTree, raw_labels: list[RawEventLabel], holders: set[str]
+    actions: list[Action],
+    tree: GroupTree,
+    raw_labels: list[RawEventLabel],
+    holders: set[str],
+    priority_colors: dict[int, str] | None = None,
 ) -> list[RawEventLabel]:
     """The calendar's labels as they should be; ValueError if the active
     actions need more than there's room for."""
-    foreign = _foreign(actions, raw_labels)
+    foreign = _foreign(actions, raw_labels, priority_colors)
     active = sum(1 for a in actions if a.status == "active")
     if len(foreign) + active > MAX_LABELS:
         raise ValueError(
@@ -581,6 +661,13 @@ def _desired_labels(
 
 def _slots_used(actions: list[Action], raw_labels: list[RawEventLabel], holders: set[str]) -> int:
     return len(_foreign(actions, raw_labels)) + len(holders)
+
+
+def _priority_colors(palette: dict[int, str]) -> list[PriorityColor]:
+    return [
+        PriorityColor(priority=p, color=palette[p], label_id=priority_labels.label_id(p))
+        for p in priority_labels.PRIORITIES
+    ]
 
 
 def _check_statuses(statuses: Collection[str] | None) -> tuple[str, ...]:

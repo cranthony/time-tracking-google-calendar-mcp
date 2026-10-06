@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 from calendar_clients.google_calendar import Event, EventLabel
+from utilities import priority_labels
 from utilities.action_calendar import ActionCalendar, fill_in_from_actions, with_action_label
 from utilities.action_groups import ActionGroup, GroupTree
 from utilities.actions import Action, ActionTree
@@ -92,3 +93,66 @@ class TestActionCalendar:
 
         assert calendar.create_event(_event(action_ids=["idea"])).event_label_id == "l-idea"
         client.list_event_labels.assert_called_once()
+
+
+class TestPriorityLabels:
+    """An event with no action's label takes its priority's (see
+    utilities/priority_labels.py)."""
+
+    def _calendar(self, current=None):
+        client = MagicMock()
+        client.create_event.side_effect = lambda event: event
+        client.update_event.side_effect = lambda event: event
+        client.get_event.return_value = current or _event()
+        actions = MagicMock()
+        actions.tree.return_value = _tree()
+        return ActionCalendar(client, actions), client, actions
+
+    def test_an_event_without_actions_takes_its_priority_label(self):
+        calendar, _, actions = self._calendar()
+
+        assert calendar.create_event(_event(priority=1)).event_label_id == priority_labels.label_id(1)
+        actions.ensure_priority_labels.assert_called_once()  # Made before any is used.
+
+    def test_without_a_priority_it_takes_the_default_ones(self):
+        calendar, _, _ = self._calendar()
+
+        assert calendar.create_event(_event()).event_label_id == priority_labels.label_id(2)
+
+    def test_an_action_that_doesnt_hold_a_label_gives_its_priority(self):
+        calendar, client, _ = self._calendar()
+        client.list_event_labels.return_value = ([], "etag")  # No room for Juggle's.
+
+        assert calendar.create_event(_event(action_ids=["idea"])).event_label_id == priority_labels.label_id(3)
+
+    def test_clearing_its_actions_gives_it_its_priority_label(self):
+        calendar, _, _ = self._calendar()
+
+        assert calendar.update_event(_event(action_ids=[], priority=0)).event_label_id == priority_labels.label_id(0)
+
+    def test_a_new_priority_relabels_an_event_without_an_actions_label(self):
+        calendar, client, _ = self._calendar(current=_event(event_label_id=priority_labels.label_id(2)))
+
+        sent = calendar.update_event(Event(id="e1", priority=0))
+
+        assert sent.event_label_id == priority_labels.label_id(0)
+        client.get_event.assert_called_once_with("e1")
+
+    def test_a_new_priority_keeps_an_actions_label(self):
+        calendar, _, _ = self._calendar(current=_event(action_ids=["cook"], event_label_id="l-cook"))
+
+        sent = calendar.update_event(Event(id="e1", priority=0))
+
+        assert sent.event_label_id is None  # Not written: it keeps l-cook.
+
+    def test_one_inferred_from_its_label_keeps_it_too(self):
+        calendar, _, _ = self._calendar(current=_event(event_label_id="l-cook"))
+
+        assert calendar.update_event(Event(id="e1", priority=0)).event_label_id is None
+
+    def test_an_update_writing_neither_actions_nor_a_priority_is_untouched(self):
+        calendar, client, actions = self._calendar()
+
+        assert calendar.update_event(Event(id="e1", summary="Renamed")).event_label_id is None
+        client.get_event.assert_not_called()
+        actions.ensure_priority_labels.assert_not_called()

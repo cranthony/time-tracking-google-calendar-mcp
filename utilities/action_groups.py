@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from calendar_clients.google_calendar import color_for_priority
+from utilities.priority_labels import clamp
 
 MAX_NAME_LENGTH = 50
 
@@ -80,11 +81,14 @@ class Placed(Protocol):
 
 
 class GroupTree:
-    """Read-only lookups over one snapshot of the groups."""
+    """Read-only lookups over one snapshot of the groups -- and, if given,
+    the priority palette (utilities/priority_labels.py) that colors what
+    has no color of its own."""
 
-    def __init__(self, groups: list[ActionGroup]) -> None:
+    def __init__(self, groups: list[ActionGroup], palette: dict[int, str] | None = None) -> None:
         self.groups = groups
         self.by_id = {g.id: g for g in groups if g.id}
+        self.palette = palette or {}
 
     def chain(self, item: Placed) -> list[Placed]:
         """`item` and the groups it's inside, nearest first (stopping at a
@@ -103,9 +107,12 @@ class GroupTree:
         return next((i.priority for i in self.chain(item) if i.priority is not None), None)
 
     def color(self, item: Placed) -> str:
+        """Its own background_color, or its nearest group's, or else its
+        priority's, from the palette."""
+        priority = self.priority(item)
         return next(
             (i.background_color for i in self.chain(item) if i.background_color),
-            color_for_priority(self.priority(item))[1],
+            self.palette.get(clamp(priority)) or color_for_priority(priority)[1],
         )
 
     def listed(self, group: ActionGroup) -> ListedActionGroup:

@@ -888,7 +888,11 @@ class TestActionTools:
         server.create_action_group(ActionGroup(name="Creative"))
         server.update_action_group(ActionGroup(id="g1"), clear_fields=["group_id"])
         server.delete_action_group("g1")
+        server.get_priority_colors()
+        server.update_priority_color(1, "#123456")
 
+        actions.priority_colors.assert_called_once_with()
+        actions.set_priority_color.assert_called_once_with(1, "#123456")
         actions.get_action_groups.assert_called_once_with()
         actions.get_action_group.assert_called_once_with("Creative")
         actions.create_action_group.assert_called_once_with(ActionGroup(name="Creative"))
@@ -1407,6 +1411,7 @@ _READ_ONLY_TOOLS = {
     "get_action",
     "get_action_groups",
     "get_action_group",
+    "get_priority_colors",
     "get_people",
     "get_person",
     "get_circles",
