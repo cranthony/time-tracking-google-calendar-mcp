@@ -2379,6 +2379,32 @@ class TestProposalNotes:
         assert self._note(proposal, setup.note_id(2)).event_id == "e2"
         assert self._event(proposal, "e2").description == "Notes:\n- 09:05 email\n- 10:20 report"
 
+    def test_annotating_an_edge_note_adds_it_to_its_event_and_keeps_the_edge(self):
+        setup = _standard()
+        p = setup.compactor.dry_run(setup.email_then_report()).proposal_id
+        before = self._note(setup.compactor.get_proposal(), setup.note_id(2))
+        assert (before.use, before.event_id, before.edge_of) == ("edge", "e1", "e1")
+
+        proposal = setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate")])
+
+        email = self._note(proposal, setup.note_id(2))
+        assert (email.use, email.event_id, email.edge_of, email.decided_by) == ("annotates", "e1", "e1", "user")
+        email_event = self._event(proposal, "e1")
+        assert (email_event.start, email_event.description) == (time_at("09:05"), "Notes:\n- 09:05 email")
+
+    def test_an_edge_note_added_to_another_event_still_sets_its_edge(self):
+        setup = _standard()
+        p = setup.compactor.dry_run(setup.email_then_report()).proposal_id
+
+        proposal = setup.compactor.amend(
+            p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate", event_id="e2")]
+        )
+
+        email = self._note(proposal, setup.note_id(2))
+        assert (email.use, email.event_id, email.edge_of) == ("annotates", "e2", "e1")
+        assert self._event(proposal, "e1").start == time_at("09:05")
+        assert self._event(proposal, "e2").description == "Notes:\n- 09:05 email"
+
     def test_as_planned_puts_a_note_back_as_claude_had_it(self):
         setup, p = self._ignoring_the_email_note()
         setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate")])

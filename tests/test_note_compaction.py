@@ -421,6 +421,21 @@ class TestNotesAddedToEvents:
         assert (email.start, email.description) == (time_at("09:20"), "Notes:\n- 09:20 started late")
         assert plan.note_uses == {"n1": ("annotates", "e1")}
 
+    def test_an_edge_note_given_no_event_is_added_to_the_one_whose_edge_it_sets(self):
+        plan = _plan(
+            [_note(1, "09:50", "done with email")], [_keep("e1", end_note="n1")], note_targets={"n1": None}
+        )
+
+        assert _by_event(plan)["e1"].after.description == "Notes:\n- 09:50 done with email"
+        assert "e2" not in _by_event(plan)
+        assert (plan.note_uses, plan.note_edges) == ({"n1": ("annotates", "e1")}, {"n1": "e1"})
+
+    def test_an_edge_note_isnt_added_to_anything_unless_its_given_an_event(self):
+        plan = _plan([_note(1, "09:50", "done with email")], [_keep("e1", end_note="n1")])
+
+        assert _by_event(plan)["e1"].after.description is None
+        assert (plan.note_uses, plan.note_edges) == ({"n1": ("edge", "e1")}, {"n1": "e1"})
+
     def test_a_note_whose_event_is_cancelled_goes_where_it_falls(self):
         plan = _plan(
             [_note(1, "09:20", "phone rang")], [EventDecision(action="cancel", event_id="e2")],

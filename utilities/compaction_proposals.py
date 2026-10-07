@@ -223,7 +223,12 @@ class ProposalNote:
     or is `unused` (no text, or no event to add it to)."""
 
     event_id: str | None = None
-    """The event (id, or key) it's an edge of, or is added to."""
+    """The event (id, or key) it's added to -- or, for an `edge`, whose
+    edge it sets."""
+
+    edge_of: str | None = None
+    """The event (id, or key) whose start or end it sets, if it sets one
+    -- whether or not it's also added to an event."""
 
     decided_by: Literal["claude", "user"] | None = None
     """Who said what it's for -- `None` for a note just added where it
@@ -322,8 +327,9 @@ class Merged:
     """Edits naming an event (or key, or note) that isn't there."""
 
     ignore_notes: list[str] = field(default_factory=list)
-    note_targets: dict[str, str] = field(default_factory=dict)
-    """Note id -> the event (id, or key) it's added to."""
+    note_targets: dict[str, str | None] = field(default_factory=dict)
+    """Note id -> the event (id, or key) it's added to; `None` for where
+    it falls, or the event whose edge it sets."""
 
     notes_decided_by: dict[str, Literal["claude", "user"]] = field(default_factory=dict)
 
@@ -439,7 +445,9 @@ def merge(
             ignore.discard(note)
             target = edit.edit.get("event_id")
             if target is None:
-                targets.pop(note, None)
+                # Where it falls -- or, for a note that sets an edge, with
+                # that event, which it otherwise isn't.
+                targets[note] = None
             else:
                 target = aliases.get(target, target)
                 creating = target in keyed and keyed[target].action == "create"

@@ -970,7 +970,7 @@ class NoteCompactor:
         those to add to a particular event (`note_targets`)."""
         pending = list(decisions)
         ignoring = list(ignore_notes or [])
-        targeting = dict(note_targets or {})
+        targeting: dict[str, str | None] = dict(note_targets or {})
 
         def night(event_id: str, index: int) -> EventDecision | None:
             return next((d for d in pending if d.event_id == event_id), None)
@@ -2399,6 +2399,7 @@ def _proposal_notes(walked: list[_Walked], merged) -> list[ProposalNote]:
     for w in walked:
         for note in w.day.notes:
             use, event = w.plan.note_uses.get(note.id, ("unused", None))
+            edge = w.plan.note_edges.get(note.id)
             decided_by = merged.notes_decided_by.get(note.id)
             if decided_by is None and use == "edge":
                 decided_by = merged.decided_by.get(event)
@@ -2409,6 +2410,7 @@ def _proposal_notes(walked: list[_Walked], merged) -> list[ProposalNote]:
                     description=note.note.description,
                     use=use,
                     event_id=event if event is None or not event.startswith("new:") else None,
+                    edge_of=edge if edge is None or not edge.startswith("new:") else None,
                     decided_by=decided_by,
                 )
             )

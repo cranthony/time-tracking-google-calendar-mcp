@@ -86,7 +86,8 @@ class TestMerge:
         merged = merge(_P, [], edits, claude_ignore=[n1], claude_targets={n2: "e1"})
 
         assert merged.ignore_notes == [n3]
-        assert merged.note_targets == {n2: "e1"}
+        # n1: where it falls (or, were it an edge, with its event).
+        assert merged.note_targets == {n1: None, n2: "e1"}
         assert merged.notes_decided_by == {n1: "user", n2: "claude", n3: "user"}
 
     def test_a_note_edit_naming_a_note_or_event_that_isnt_there_is_unknown(self):

@@ -59,9 +59,12 @@ Notes work the same way. A note that doesn't set an edge has its text
 added to the event it falls within, unless Claude ignores it
 (`ignore_notes`) or adds it to another event (`annotate_notes`). The
 user's note edits override either, note by note -- `annotate` (where it
-falls, or with a named event, even one it sets an edge of) or `ignore`
--- and `as_planned` on a note puts it back as Claude had it. A note's
-text is never added to a description twice.
+falls, or with a named event) or `ignore` -- and `as_planned` on a note
+puts it back as Claude had it. A note that sets an event's start or end
+isn't added to any description unless annotated: with the event named,
+or, naming none, with the event whose edge it sets. Note edits never
+touch an edge: only an event edit moves one. A note's text is never
+added to a description twice.
 
 ## Contract
 
@@ -123,9 +126,10 @@ as it is now:
   Claude).
 - `notes`: `id`, `timestamp`, `description`, `use` (`edge`, `annotates`,
   `ignored`, or `unused` -- no text, or no event to add it to),
-  `event_id` (the event, or key, it's an edge of or added to) and
-  `decided_by` (`claude`, `user`, or none for a note just added where
-  it falls).
+  `event_id` (the event, or key, it's added to -- for an `edge`, whose
+  edge it sets), `edge_of` (the event whose start or end it sets, if
+  any, annotated or not) and `decided_by` (`claude`, `user`, or none
+  for a note just added where it falls).
 - `changes` (the calendar writes), `warnings`, `timeline`, `additions`.
 - `user_edits`: the ledger (`id`, `edit`, `status` `active`,
   `inapplicable` or `replaced`, `created`, `base_revision`).
