@@ -64,7 +64,7 @@ from utilities.judgments import Judging, Judgment, JudgmentsDue, JudgmentsResult
 from utilities import event_changes
 from utilities.cancellations import Cancellations
 from utilities.event_changes import Cancel, ChangeError, EventChanges, Shift
-from utilities.habits import CreatedHabit, Habit, Habits, HabitStatus, ListedHabit, action_scopes
+from utilities.habits import CreatedHabit, Habit, Habits, HabitStatus, ListedHabit, action_scopes, subject_id
 from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision, NoteAnnotation
@@ -426,11 +426,20 @@ def get_habit_store() -> Habits:
     return _habits
 
 
-def _prefetch_habits() -> None:
+def _prefetch_habits(*, cancellations: bool = False) -> None:
     """The habits', actions' and traits' tabs, in one request: what the
     habit tools read (a habit's action and traits are checked, and its
-    action pathed)."""
-    _prefetch(get_habit_store(), get_action_store(), get_trait_store())
+    action pathed) -- and, `cancellations`, the Cancellations tab, and
+    what it reads, for listing them."""
+    tabs = [get_habit_store(), get_action_store(), get_trait_store()]
+    _prefetch(*tabs, *([get_cancellation_store()] if cancellations else []))
+
+
+def _habits_with_cancellations(habits: list[ListedHabit]) -> list[ListedHabit]:
+    """`habits`, each with the events the user cancelled that count
+    against its follow-through."""
+    by_subject = get_cancellation_store().by_person()
+    return [replace(h, cancelled_events=by_subject.get(subject_id(h.id), [])) for h in habits]
 
 
 def get_event_changes() -> EventChanges:
@@ -448,7 +457,9 @@ def get_cancellation_store() -> Cancellations:
     if _cancellations is None:
         with WRITE_LOCK:
             if _cancellations is None:
-                _cancellations = build_cancellations(get_action_store(), get_people_store(), get_trait_store())
+                _cancellations = build_cancellations(
+                    get_action_store(), get_people_store(), get_trait_store(), habits=get_habit_store()
+                )
     return _cancellations
 
 
@@ -536,6 +547,7 @@ def get_note_compactor() -> NoteCompactor:
                         people=get_people_store(),
                         locations=get_location_store(),
                         traits=get_trait_store(),
+                        habits=get_habit_store(),
                     ),
                     cancellations=get_cancellation_store(),
                 )
@@ -1614,11 +1626,14 @@ def get_habits(statuses: list[HabitStatus] | None = None) -> list[ListedHabit]:
     say which apply (by default every active one) and give it its own
     parts -- its own rubrics -- for any (see create_habit). Each has an
     id, name, status and note (what it's for, and what doing it well
-    looks like). Read-only."""
+    looks like). Each also has cancelled_events: the events the user
+    cancelled that count against its follow-through, newest first, as a
+    person's (see get_people). Its events' judgments are kept under
+    "habit:<id>", as a person's are under their id. Read-only."""
     with track("get_habits"), cached_reads():
-        _prefetch_habits()
+        _prefetch_habits(cancellations=True)
         try:
-            return get_habit_store().get_habits(statuses)
+            return _habits_with_cancellations(get_habit_store().get_habits(statuses))
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
@@ -1629,9 +1644,9 @@ def get_habit(id_or_name: str) -> ListedHabit:
     lists it, whatever its status. If there's none, the error suggests
     close matches. Read-only."""
     with track("get_habit"), cached_reads():
-        _prefetch_habits()
+        _prefetch_habits(cancellations=True)
         try:
-            return get_habit_store().get_habit(id_or_name)
+            return _habits_with_cancellations([get_habit_store().get_habit(id_or_name)])[0]
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 

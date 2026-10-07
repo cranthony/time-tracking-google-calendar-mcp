@@ -6,7 +6,10 @@ was about -- the user ("self") and everyone there with them for a
 trait's "with" judgment parts, and everyone it was done for for its
 "for" parts -- against every judgment part of the traits that apply to
 that person (utilities/traits.py; a person's own `traits` choose them,
-and can replace a trait's parts). Each judgment is one **request**: the
+and can replace a trait's parts). It's judged, too, for each of the
+user's habits it's in the scope of (utilities/habits.py) -- by its
+action, or its action's group -- for their "with" parts, as a person
+is: a habit goes by `habit:<id>` where a person goes by their id. Each judgment is one **request**: the
 rubric, the scale of ratings, and the facts the part names, resolved
 for that event and person -- its actions, where it was, their history
 together over the part's lookback, the event's notes, the notes on the
@@ -40,8 +43,10 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from calendar_clients.google_calendar import Event
-from utilities.actions import Actions
+from utilities.actions import Actions, ActionTree
+from utilities.cancellations import of_action
 from utilities.facts import SELF_ID
+from utilities.habits import Habits, subject_id
 from utilities.locations import Locations
 from utilities.people import People, Person
 from utilities.traits import Trait, Traits, fact_lookbacks, judgment_scale, part_keys, part_problems
@@ -59,7 +64,9 @@ INSTRUCTIONS = (
     "\"for\" part for someone it was done for while they weren't -- from what the timeline, the "
     "people's what_matters and `history` (what each person did and where over the days before) "
     "show, choosing one of its ratings (the number), with one succinct line of reasoning that "
-    "names the fact it rests on. Where they don't say, rate what they do show rather than guess -- "
+    "names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person "
+    "there, for how the event went as practice of that habit, its note in what_matters. Where "
+    "they don't say, rate what they do show rather than guess -- "
     "a judgment can be redone later. Record them all with record_judgments(compaction_id, "
     "judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the "
     "compaction isn't complete until every one is. Don't show the user the judgments unless they "
@@ -205,22 +212,55 @@ class Judging:
         people: People,
         locations: Locations,
         traits: Traits,
+        habits: Habits | None = None,
         list_events: Callable[[datetime, datetime], list[Event]] | None = None,
     ) -> None:
         """`client` reads and writes the events (`get_event`/`update_event`);
-        `list_events` reads their history (by default, `client`'s)."""
+        `list_events` reads their history (by default, `client`'s).
+        Without `habits`, only people are judged for."""
         self._client = client
         self._actions = actions
         self._people = people
         self._locations = locations
         self._traits = traits
+        self._habits = habits
         self._list_events = list_events or client.list_events
 
     @property
     def whole_tabs(self):
         """The tabs judging reads that compaction doesn't already (the
-        Traits tab), for `SheetsClient.prefetch`."""
-        return [self._traits.whole_tab]
+        Traits tab, and the Habits tab), for `SheetsClient.prefetch`."""
+        return [self._traits.whole_tab, *([self._habits.whole_tab] if self._habits else [])]
+
+    def _subjects(self) -> tuple[dict[str, Person], dict[str, str]]:
+        """Everyone and everything an event can be judged for, by id --
+        each person (self included, row or not), and each active habit as
+        a person-like subject under `habit:<id>`, its note standing in
+        for what matters to it -- and each habit's scope, its action or
+        group, by that id."""
+        people = {p.id: p for p in self._people.all() if p.id}
+        people.setdefault(SELF_ID, Person(id=SELF_ID, name="Me"))
+        scopes: dict[str, str] = {}
+        for habit in self._habits.all() if self._habits else []:
+            if habit.status != "active" or not habit.id or not habit.action_id:
+                continue
+            key = subject_id(habit.id)
+            people[key] = Person(id=key, name=habit.name or habit.id, what_matters=habit.note, traits=habit.traits)
+            scopes[key] = habit.action_id
+        return people, scopes
+
+    @staticmethod
+    def _part_of(scopes: dict[str, str], tree: ActionTree | None) -> Callable[[Event, str], bool]:
+        """Whether a subject took part in an event: the user always did; a
+        habit if the event's in its scope; anyone else if it was with or
+        for them."""
+
+        def part_of(event: Event, subject: str) -> bool:
+            if subject in scopes:
+                return bool(of_action([event], scopes[subject], tree))
+            return _with(event, subject)
+
+        return part_of
 
     def requests(
         self, event_ids: list[str], span: tuple[datetime, datetime], *, include_judged: bool = False
@@ -246,15 +286,23 @@ class Judging:
         given whole (as a plan would leave them), with the `history` the
         judgments' facts look back over."""
         traits = self._active_traits()
-        people = {p.id: p for p in self._people.all() if p.id}
         events = [e for e in events if _judgeable(e)]
         if not events:
             return []
+        people, scopes = self._subjects()
+        tree = self._actions.tree() if scopes else None
+        part_of = self._part_of(scopes, tree)
         names = self._names(people)
         requests = []
         for event in sorted(events, key=lambda e: e.start):
             facts = event.facts
-            about = [(SELF_ID, "with"), *((p, "with") for p in facts.with_ids or ()), *((p, "for") for p in facts.for_ids or ())]
+            about = [
+                (SELF_ID, "with"),
+                *((p, "with") for p in facts.with_ids or ()),
+                *((p, "for") for p in facts.for_ids or ()),
+                # A habit is always "with": the user was there.
+                *((h, "with") for h in scopes if part_of(event, h)),
+            ]
             for person_id, engagement in about:
                 person = people.get(person_id) or Person(id=person_id, name=person_id)
                 for trait, parts in _traits_for(person, traits):
@@ -265,7 +313,10 @@ class Judging:
                         if current is not None and not include_judged:
                             continue
                         requests.append(
-                            self._request(event, person, engagement, trait, part, key, history, names, current)
+                            self._request(
+                                event, person, engagement, trait, part, key, history, names, current, part_of,
+                                habit=person_id in scopes,
+                            )
                         )
         return requests
 
@@ -289,7 +340,7 @@ class Judging:
         return max(
             (
                 days
-                for person in self._people.all()
+                for person in self._subjects()[0].values()
                 for _trait, parts in _traits_for(person, traits)
                 for part in parts
                 if _is_judgment(part)
@@ -323,10 +374,10 @@ class Judging:
         their own -- and what each person did and where over the days
         their parts look back from `before` (one listing)."""
         traits = self._active_traits()
-        people = [p for p in self._people.all() if p.id]
-        if not any(p.id == SELF_ID for p in people):
-            people.insert(0, Person(id=SELF_ID, name="Me"))
-        names = self._names({p.id: p for p in people})
+        subjects, scopes = self._subjects()
+        people = list(subjects.values())
+        part_of = self._part_of(scopes, self._actions.tree() if scopes else None)
+        names = self._names(subjects)
         parts: dict[str, JudgmentPart] = {}
         looks: dict[str, int] = {}
         for person in people:
@@ -362,7 +413,7 @@ class Judging:
             for person_id, days in looks.items():
                 if not days:
                     continue
-                past = [e for e in listed if e.start >= before - timedelta(days=days) and _with(e, person_id)]
+                past = [e for e in listed if e.start >= before - timedelta(days=days) and part_of(e, person_id)]
                 actions = Counter(names.get(a, a) for e in past for a in e.action_ids or ())
                 locations = Counter(
                     names.get(e.facts.location_id, e.facts.location_id) for e in past if e.facts.location_id
@@ -392,6 +443,9 @@ class Judging:
         history: list[Event],
         names: dict[str, str],
         current: dict[str, Any] | None,
+        part_of: Callable[[Event, str], bool],
+        *,
+        habit: bool = False,
     ) -> JudgmentRequest:
         facts = event.facts
         resolved: dict[str, Any] = {}
@@ -404,8 +458,8 @@ class Judging:
                 resolved[fact] = event.description
             elif fact == "person_notes":
                 # A "for" engagement's notes are the user's own: the person
-                # wasn't there.
-                about = person.id if engagement == "with" else SELF_ID
+                # wasn't there. So are a habit's: it's the user's.
+                about = person.id if engagement == "with" and not habit else SELF_ID
                 resolved[fact] = (facts.notes or {}).get(about)
             elif fact == "what_matters":
                 resolved[fact] = person.what_matters
@@ -413,7 +467,7 @@ class Judging:
                 since = event.start - timedelta(days=days)
                 past = [
                     e for e in history
-                    if since <= e.start < event.start and e.id != event.id and _with(e, person.id)
+                    if since <= e.start < event.start and e.id != event.id and part_of(e, person.id)
                 ]
                 if fact == "action_history":
                     counted = Counter(names.get(a, a) for e in past for a in e.action_ids or ())
@@ -425,7 +479,8 @@ class Judging:
                 }
         who = "the user themself" if person.id == SELF_ID else f"{person.name} (one person{', ' + person.context if person.context else ''})"
         how = (
-            f"{who}, who was there" if engagement == "with"
+            f"the user, as practice of their habit \"{person.name}\"" if habit
+            else f"{who}, who was there" if engagement == "with"
             else f"{who}, for whom the user did this while they weren't there"
         )
         return JudgmentRequest(
