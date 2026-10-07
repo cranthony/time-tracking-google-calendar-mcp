@@ -453,6 +453,8 @@ def merge(
     unknown: list[UserEdit] = []
     note_edits: list[UserEdit] = []
     settled_refs: dict[str, AdditionSettled] = {}
+    described: dict[str, int] = {}
+    """Event -> the user's last edit giving its whole description."""
     for edit in sorted((e for e in edits if e.status == "active"), key=lambda e: e.seq):
         action = edit.edit.get("action")
         if action == "note" or (action == "as_planned" and is_note_id(edit.event_id)):
@@ -497,6 +499,8 @@ def merge(
                 decided_by[target] = "user"
             continue
         given = edit_decision(edit)
+        if given.description is not None:
+            described[target] = edit.seq
         if existing is not None and existing.action in ("keep", "create"):
             keyed[target] = _overlay(existing, given)
         else:
@@ -524,6 +528,10 @@ def merge(
             targets.pop(note, None)
         else:
             ignore.discard(note)
+            # Annotated after a description left it out: it's back.
+            for name, decision in list(keyed.items()):
+                if note in (decision.dropped_notes or ()) and described.get(name, edit.seq) < edit.seq:
+                    keyed[name] = replace(decision, dropped_notes=[n for n in decision.dropped_notes if n != note])
             target = edit.edit.get("event_id")
             if target is None:
                 # Where it falls -- or, for a note that sets an edge, with
@@ -571,7 +579,10 @@ def _overlay(under: EventDecision, over: EventDecision) -> EventDecision:
         if getattr(over, note) is not None and getattr(over, time) is None:
             changes[time] = None
     if over.description is not None:
-        changes["annotate"] = None  # A whole description is the last word.
+        # The user's own description: no annotate text, and what it
+        # leaves out is its own.
+        changes["annotate"] = None
+        changes["dropped_notes"] = over.dropped_notes
     return replace(under, **changes)
 
 

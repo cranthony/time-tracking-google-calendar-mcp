@@ -1368,6 +1368,23 @@ class NoteCompactor:
                     creating[choice.ref].edit["id"] = self._create_addition(item, choice)
         merged, walked = planned(new_edits)
         additions = _unsettled(claude_additions, merged.settled)
+        # What a description just written leaves out, it leaves out for
+        # good; notes added later go below it.
+        kept_out = {note: key for w in walked for note, key in w.plan.kept_out.items()}
+        left_out: dict[str, list[str]] = {}
+        for edit in new_edits:
+            if edit.edit.get("description") is not None and edit.edit.get("action") in ("keep", "create"):
+                described = edit.id if edit.edit["action"] == "create" else edit.event_id
+                left_out[described] = sorted(n for n, key in kept_out.items() if key == described)
+                edit.edit["dropped_notes"] = left_out[described]
+        for w in walked:
+            # As the revision's decisions are journaled too.
+            w.decisions = [
+                replace(d, dropped_notes=left_out[d.key or d.event_id])
+                if d.description is not None and d.dropped_notes is None and (d.key or d.event_id) in left_out
+                else d
+                for d in w.decisions
+            ]
         outcomes = _outcomes(walked)
         new_meta = replace(
             meta,

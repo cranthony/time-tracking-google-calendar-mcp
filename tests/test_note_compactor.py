@@ -2664,6 +2664,57 @@ class TestEditingAProposalsEventFields:
         assert self._event(proposal, "e1").description == "Inbox zero\n\nNotes:\n- 09:05 email"
         assert self._note(proposal, setup.note_id(2)).use == "annotates"
 
+    def test_a_note_counts_as_kept_only_by_its_exact_line(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e1", description="Cleared my email backlog")])
+
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+        assert [e.edit["dropped_notes"] for e in proposal.user_edits] == [[setup.note_id(2)]]
+
+    def test_a_note_annotated_after_the_description_is_added_below_it(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero")])
+
+        proposal = setup.compactor.amend(p, 2, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate")])
+
+        assert self._event(proposal, "e1").description == "Inbox zero\n\nNotes:\n- 09:05 email"
+        assert self._note(proposal, setup.note_id(2)).use == "annotates"
+
+    def test_a_note_written_later_is_added_below_it_and_the_left_out_one_stays_out(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero")])
+        setup.append_note("09:30", "phone rang")
+
+        proposal = setup.compactor.get_proposal()
+
+        assert self._event(proposal, "e1").description == "Inbox zero\n\nNotes:\n- 09:30 phone rang"
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+        # Confirming plans it again with the new note, to confirm that.
+        result = setup.compactor.confirm(p, 2)
+        assert result.status == "rechecked"
+        assert self._event(result.proposal, "e1").description == "Inbox zero\n\nNotes:\n- 09:30 phone rang"
+
+    def test_an_explicit_note_edit_in_the_same_call_wins(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(
+            p, 1, [_keep("e1", description="Inbox zero\n\nNotes:\n- 09:05 email")],
+            notes=[NoteEdit(note_id=setup.note_id(2), use="ignore")],
+        )
+
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+
+    def test_what_it_left_out_stays_out_through_claudes_revisions(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero")])
+
+        setup.compactor.dry_run([], proposal_id=p, revision=2)
+
+        proposal = setup.compactor.get_proposal()
+        assert self._event(proposal, "e1").description == "Inbox zero"
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+
     def test_it_replaces_claudes_annotate_text_too(self):
         setup, p = self._proposed([_keep("e1", annotate="mostly replies")])
 

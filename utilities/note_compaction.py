@@ -123,9 +123,16 @@ class EventDecision:
     """`keep`/`create`: extra text for the event's description."""
 
     description: str | None = None
-    """`keep`/`create`: the event's whole description, as given -- the
-    final word: no notes or `annotate` text are added to it ("" clears
-    it). For the user's edits (see utilities/compaction_proposals.py)."""
+    """`keep`/`create`: the event's whole description, as given ("" clears
+    it): no `annotate` text is added to it, nor the notes it left out
+    (`dropped_notes`). For the user's edits (see utilities/
+    compaction_proposals.py)."""
+
+    dropped_notes: list[str] | None = None
+    """With `description`: the notes that would have been added to the
+    event whose lines it doesn't have -- left out for good. Other notes
+    are added below it. `None` (an edit just made): every note whose line
+    it doesn't have is left out, and which is recorded here."""
 
     location: str | None = None
     """`keep`/`create`: the event's free-text location ("" clears it)."""
@@ -340,6 +347,10 @@ class CompactionPlan:
     """Each note that sets an edge -> that event (id, or key), whether or
     not it's also added to one."""
 
+    kept_out: dict[str, str] = field(default_factory=dict)
+    """Each note left out of an event whose description an edit gives
+    (see `EventDecision.dropped_notes`) -> that event (id, or key)."""
+
 
 @dataclass(kw_only=True)
 class NoteAnnotation:
@@ -383,7 +394,10 @@ class _Fact:
     annotations: list[str] = field(default_factory=list)
 
     fixed_description: bool = False
-    """Its decision gives its whole description: nothing's added to it."""
+    """Its decision gives its whole description (see
+    `EventDecision.description`)."""
+
+    dropped_notes: list[str] | None = None
 
     created_key: str | None = None
     """For a create: its decision's `key`, if it has one."""
@@ -517,7 +531,8 @@ def plan_compaction(
         else:
             note_uses[note.id] = ("unused", None)
     return CompactionPlan(
-        changes=changes, warnings=warnings, timeline=timeline, note_uses=note_uses, note_edges=edges
+        changes=changes, warnings=warnings, timeline=timeline, note_uses=note_uses, note_edges=edges,
+        kept_out=kept_out,
     )
 
 
@@ -718,6 +733,7 @@ def _resolve(
                 moves_day_end=closing is not None and event_id == closing.id,
                 annotations=[decision.annotate.strip()] if (decision.annotate or "").strip() else [],
                 fixed_description=decision.description is not None,
+                dropped_notes=decision.dropped_notes,
             )
         )
 
@@ -761,6 +777,7 @@ def _resolve(
                 end_note=end_note,
                 annotations=[decision.annotate.strip()] if (decision.annotate or "").strip() else [],
                 fixed_description=decision.description is not None,
+                dropped_notes=decision.dropped_notes,
             )
         )
     return facts, cancels, merged_into, touched
@@ -787,16 +804,18 @@ def _annotate(
     warnings: list[str],
     problems: list[str],
     note_targets: dict[str, str | None] | None = None,
-) -> tuple[dict[str, str], dict[str, str], set[str]]:
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Add every note that doesn't set an edge (and isn't ignored), and
     every `annotate`, to the description of the event it belongs to: the
     one `note_targets` names for it (edge or not), or else the one it
     falls within -- except that an edge note is added only if
     `note_targets` has it, to the event whose edge it sets if it names
     none. Returns note id -> the title of the event it was added to,
-    and note id -> that event's id (or key) -- and the notes that went to
-    an event whose description its decision gives whole, which nothing's
-    added to (a note whose text it has counts as added).
+    and note id -> that event's id (or key) -- and the notes left out of
+    an event whose description its decision gives (see
+    `EventDecision.description`) -> that event: a note whose line it has
+    exactly counts as added; one it left out stays out; any other is
+    added below it.
 
     A description that would grow past `MAX_DESCRIPTION_BYTES` is a
     problem, not a warning: Calendar would silently cut it short."""
@@ -819,10 +838,12 @@ def _annotate(
     note_ids: dict[str, list[str]] = {}
     annotated: dict[str, str] = {}
     annotated_keys: dict[str, str] = {}
-    fixed = {f.key for f in facts if f.fixed_description} | {
-        event_id for event_id, decision in touched.items() if decision.description is not None
-    }
-    kept_out: set[str] = set()
+    dropped_for: dict[str, list[str] | None] = {f.key: f.dropped_notes for f in facts if f.fixed_description}
+    dropped_for.update(
+        (event_id, decision.dropped_notes) for event_id, decision in touched.items() if decision.description is not None
+    )
+    fixed = set(dropped_for)
+    kept_out: dict[str, str] = {}
     for note in ordered:
         text = (note.description or "").strip()
         target = note_targets.get(note.id)
@@ -853,12 +874,16 @@ def _annotate(
             )
             continue
         if hit[2] in fixed:
-            if text not in (hit[3].description or ""):
-                kept_out.add(note.id)
+            line = f"- {note.timestamp.astimezone(hit[3].start.tzinfo).strftime('%H:%M')} {text}"
+            if line in (hit[3].description or "").splitlines():
+                annotated[note.id] = hit[3].summary or hit[2]
+                annotated_keys[note.id] = hit[2]
                 continue
-            annotated[note.id] = hit[3].summary or hit[2]
-            annotated_keys[note.id] = hit[2]
-            continue
+            dropped = dropped_for[hit[2]]
+            if dropped is None or note.id in dropped:
+                kept_out[note.id] = hit[2]
+                continue
+            # A note the description wasn't written without: added below it.
         lines.setdefault(hit[2], []).append((note.timestamp, text))
         events[hit[2]] = hit[3]
         note_ids.setdefault(hit[2], []).append(note.id)

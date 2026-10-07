@@ -175,10 +175,15 @@ context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the 
   history. The response
   returns the current revision and the refused edits.
 - A `description` is the event's whole description, as the user wrote
-  it from what `get_proposal` shows, notes and all: no notes or
-  `annotate` text are added to it, and it replaces Claude's `annotate`.
-  A note whose text it has counts as added; one whose text it dropped,
-  as ignored. `location` and `priority` set the event's own;
+  it from what `get_proposal` shows, notes and all. It replaces
+  Claude's `annotate`. A note counts as added only if the description
+  has its line exactly (`- HH:MM text`); a note whose line it doesn't
+  have, when it's written, is left out for good (the edit records it,
+  `dropped_notes`). Notes added later -- written since, sent to the
+  event, or annotated by the user after the edit -- go below it, in its
+  `Notes:` section. An explicit note edit wins over the description:
+  annotating a left-out note after it brings it back, and one ignored
+  in the same call stays ignored, whatever the text says. `location` and `priority` set the event's own;
   `clear_fields` clears a description, location or facts, but not a
   priority. Refused: `is_cancelled` (that's `cancels`), `judgments`,
   and an update without an id.
