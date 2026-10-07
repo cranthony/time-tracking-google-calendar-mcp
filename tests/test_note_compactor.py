@@ -14,7 +14,16 @@ from calendar_clients.google_sheets import SheetsClient
 from tests.event_time_helpers import event_at, time_at
 from tests.fake_sheets import FakeSheets, FakeSheetsService
 from utilities import calendar_metadata_sheet
-from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
+from utilities.compaction_journal import (
+    ABANDONED,
+    APPLYING,
+    FAILED,
+    PLANNED,
+    PROPOSED,
+    STAMPED,
+    SUPERSEDED,
+    CompactionJournal,
+)
 from utilities import note_compactor
 from utilities.note_compaction import (
     CompactionChange,
@@ -221,11 +230,17 @@ class TestPrepare:
         assert [n.id for n in context.notes] == [setup.note_id(2), setup.note_id(3)]
         assert context.remaining_note_count == 1
 
-    def test_the_effective_now_never_passes_the_end_of_the_day(self):
+    def test_the_days_run_on_to_now_each_ending_with_its_night(self):
         setup = _standard()
         setup.now = "12:00+1"
 
-        assert setup.compactor.prepare().now == time_at("07:00+1")
+        context = setup.compactor.prepare()
+
+        assert [(d.compaction_window_start, d.day_end) for d in context.days] == [
+            (time_at("09:05"), time_at("07:00+1")),
+            (time_at("07:00+1"), time_at("07:00+1") + timedelta(days=1)),
+        ]
+        assert context.now == time_at("12:00+1")
 
     def test_skips_compacted_notes(self):
         setup = _standard()
@@ -298,9 +313,9 @@ class TestTheCompactionWindow:
         ]
         assert [e.id for e in context.events] == ["r0", "s0", "gr", "w1", "w2", "s1"]
 
-    def test_a_compaction_more_than_a_day_before_the_notes_does_not_reach_back_to_it(self):
-        # Notes two days on: the days in between, with no notes, aren't
-        # compacted -- the batch starts at the notes, as it always has.
+    def test_the_days_between_the_last_compaction_and_the_notes_are_proposed_too(self):
+        # Notes two days on: the days in between, with no notes, are still
+        # confirmed -- as planned, unless the user says otherwise.
         setup = self._setup()
         self._stamp_a_compaction_at(setup, "19:45")
         later = time_at("09:05+1") + timedelta(days=2)
@@ -309,7 +324,9 @@ class TestTheCompactionWindow:
 
         context = setup.compactor.prepare()
 
-        assert context.compaction_window_start == later
+        assert context.compaction_window_start == time_at("19:45")
+        assert [d.note_ids for d in context.days][-1] == [setup.note_id(2)]
+        assert all(d.note_ids == [] for d in context.days[:-1])
 
     def test_a_later_compaction_the_same_day_starts_the_window_there(self):
         # Compacted at 10:05, just after work ended -- so work is offered
@@ -428,26 +445,23 @@ class TestDryRun:
 
         result = setup.compactor.dry_run(setup.email_then_report())
 
-        assert result.status == "planned"
-        assert result.compaction_id
+        assert result.status == "proposed"
+        assert (result.revision, result.compaction_id) == (1, f"{result.proposal_id}r1")
         assert {c.event_id for c in result.changes} == {"e1", "e2"}
-        assert setup.journal.load(result.compaction_id).status == PLANNED
+        assert setup.journal.load(result.compaction_id).status == PROPOSED
         setup.client.update_event.assert_not_called()
         setup.client.create_event.assert_not_called()
         assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
 
-    def test_tells_the_model_to_wait_for_explicit_approval_before_applying(self):
-        # The server can't tell whether the user replied, so both the
-        # instructions and the dry run's own message have to say it.
+    def test_tells_the_model_only_the_user_confirms_it(self):
         setup = _standard()
 
         context = setup.compactor.prepare()
         result = setup.compactor.dry_run(setup.email_then_report())
 
         for text in (context.instructions, result.message):
-            assert "STOP and wait for the user's reply" in text
-            assert "explicitly approved this plan after seeing it" in text
-            assert "isn't approval" in text
+            assert "Nothing is applied until the user confirms it, in the app" in text
+            assert "confirm_proposal isn't yours to call" in text
 
     def test_returns_the_resulting_timeline_to_show_the_user(self):
         setup = _standard()
@@ -508,31 +522,42 @@ class TestDryRun:
         with pytest.raises(CompactionError, match=f"compaction {first.compaction_id} is applying"):
             setup.compactor.dry_run(setup.email_then_report())
 
-    def test_a_planned_compaction_does_not_block_a_new_one_but_is_replaced_by_it(self):
+    def test_with_a_proposal_open_a_new_one_is_refused_but_it_can_be_revised(self):
         setup = _standard()
         first = setup.compactor.dry_run(setup.email_then_report())
 
-        second = setup.compactor.dry_run(setup.email_then_report())
+        with pytest.raises(CompactionError, match=f"proposal {first.proposal_id} is open"):
+            setup.compactor.dry_run(setup.email_then_report())
+        second = setup.compactor.dry_run(
+            setup.email_then_report(), proposal_id=first.proposal_id, revision=1
+        )
 
-        assert second.status == "planned"
-        assert second.compaction_id != first.compaction_id
-        assert setup.journal.load(first.compaction_id).status == ABANDONED
-        assert setup.journal.load(second.compaction_id).status == PLANNED
-        assert "Replaced 1 earlier unapplied plan" in second.message
+        assert (second.status, second.proposal_id, second.revision) == ("proposed", first.proposal_id, 2)
+        assert setup.journal.load(first.compaction_id).status == SUPERSEDED
+        assert setup.journal.load(second.compaction_id).status == PROPOSED
 
-    def test_a_replaced_plan_can_no_longer_be_committed(self):
+    def test_a_plan_from_before_proposals_is_replaced_by_a_new_proposal(self):
+        setup = _standard()
+        setup.journal.start("old", now=time_at("11:00"), note_ids=[], decisions=[], plan=CompactionPlan(changes=[]))
+
+        result = setup.compactor.dry_run(setup.email_then_report())
+
+        assert setup.journal.load("old").status == ABANDONED
+        assert "Replaced 1 unapplied plan" in result.message
+
+    def test_a_superseded_revision_can_no_longer_be_committed(self):
         setup = _standard()
         first = setup.compactor.dry_run(setup.email_then_report())
-        setup.compactor.dry_run(setup.email_then_report())
+        setup.compactor.dry_run(setup.email_then_report(), proposal_id=first.proposal_id, revision=1)
 
-        with pytest.raises(CompactionError, match="abandoned"):
+        with pytest.raises(CompactionError, match="superseded"):
             setup.compactor.commit(first.compaction_id)
 
         setup.client.update_event.assert_not_called()
 
     def test_a_rejected_plan_can_be_redone_with_corrected_decisions(self):
         setup = _standard()
-        setup.compactor.dry_run(setup.email_then_report())
+        first = setup.compactor.dry_run(setup.email_then_report())
 
         # The user says the report never happened -- redo it without
         # touching the calendar or calling prepare again.
@@ -540,7 +565,9 @@ class TestDryRun:
             [
                 EventDecision(action="keep", event_id="e1", start_note=setup.note_id(2), end_note=setup.note_id(3)),
                 EventDecision(action="cancel", event_id="e2"),
-            ]
+            ],
+            proposal_id=first.proposal_id,
+            revision=1,
         )
 
         by_event = {c.event_id: c for c in revised.changes}
@@ -553,18 +580,20 @@ class TestDryRun:
         first = setup.compactor.dry_run(setup.email_then_report())
 
         with pytest.raises(CompactionError):
-            setup.compactor.dry_run([EventDecision(action="keep", event_id="nope")])
+            setup.compactor.dry_run(
+                [EventDecision(action="keep", event_id="nope")], proposal_id=first.proposal_id, revision=1
+            )
 
-        assert setup.journal.load(first.compaction_id).status == PLANNED
+        assert setup.journal.load(first.compaction_id).status == PROPOSED
 
     def test_a_rejected_plan_can_be_redone_with_a_rename_and_a_note(self):
         setup = _standard()
-        setup.compactor.dry_run(setup.email_then_report())
+        first = setup.compactor.dry_run(setup.email_then_report())
 
         decisions = setup.email_then_report()
         decisions[0].summary = "Deep work"
         decisions[0].annotate = "phone rang"
-        revised = setup.compactor.dry_run(decisions)
+        revised = setup.compactor.dry_run(decisions, proposal_id=first.proposal_id, revision=1)
 
         email = next(c for c in revised.changes if c.event_id == "e1")
         assert email.after.summary == "Deep work"
@@ -742,15 +771,19 @@ class TestResume:
         assert setup.compactor.commit(planned.compaction_id).status == "applied"
 
 
-class TestDescribeAndAbandon:
-    def test_describing_returns_the_stored_plan_without_applying_it(self):
+class TestGetProposalAndAbandon:
+    def test_getting_the_proposal_returns_its_current_revision_without_applying_it(self):
         setup = _standard()
         planned = setup.compactor.dry_run(setup.email_then_report())
 
-        described = setup.compactor.describe(planned.compaction_id)
+        proposal = setup.compactor.get_proposal()
 
-        assert described.compaction_id == planned.compaction_id
-        assert described.changes == planned.changes
+        assert (proposal.id, proposal.revision, proposal.state) == (planned.proposal_id, 1, "awaiting_review")
+        assert proposal.changes == planned.changes
+        email = next(e for e in proposal.events if e.id == "e1")
+        assert (email.status, email.decided_by) == ("adjusted", "claude")
+        assert (email.start, email.planned_start) == (time_at("09:05"), time_at("09:00"))
+        assert next(e for e in proposal.events if e.id == "e3").status == "planned"
         setup.client.update_event.assert_not_called()
 
     def test_abandoning_leaves_the_notes_uncompacted_and_unblocks_a_new_compaction(self):
@@ -762,7 +795,7 @@ class TestDescribeAndAbandon:
 
         assert result.status == "abandoned"
         assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
-        assert setup.compactor.dry_run(setup.email_then_report()).status == "planned"
+        assert setup.compactor.dry_run(setup.email_then_report()).status == "proposed"
 
     def test_a_finished_compaction_cannot_be_abandoned(self):
         setup = _standard()
@@ -795,16 +828,16 @@ class TestDayByDay:
             event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
             event_at("07:00+1-07:30+1", id="gr1", summary="Getting Ready", priority=2),
         ]
-        setup = Setup([("09:05", "email")], events=events, now="08:00+1")
+        setup = Setup([("09:05", "email")], events=events, now="07:10+1")
         planned = setup.compactor.dry_run([])
         setup.compactor.commit(planned.compaction_id)
-        assert setup.journal.last_stamped_now() == time_at("07:00+1")
+        assert setup.journal.last_stamped_now() == time_at("07:10+1")
         setup.append_note("08:15+1", "left for work")
         setup.now = "08:30+1"
 
         context = setup.compactor.prepare()
 
-        assert context.compaction_window_start == time_at("07:00+1")
+        assert context.compaction_window_start == time_at("07:10+1")
         assert [e.id for e in context.events][:2] == ["s1", "gr1"]
 
 
@@ -878,7 +911,7 @@ class TestSeveralDays:
 
         days = setup.journal.load_batch(planned.compaction_id)
         assert [d.id for d in days] == [planned.compaction_id, f"{planned.compaction_id}d2"]
-        assert {d.status for d in days} == {PLANNED}
+        assert {d.status for d in days} == {PROPOSED}
         changes = {c.event_id: c for c in planned.changes}
         assert changes["s1"].after.end == time_at("08:30+1")
         assert changes["w1"].after.start == time_at("09:00+1")
@@ -1041,15 +1074,17 @@ class TestSeveralDays:
 
         setup.client.update_event.assert_not_called()
 
-    def test_describing_a_batch_lists_its_days(self):
+    def test_getting_a_proposal_over_two_days_shows_both(self):
         setup = self._setup()
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
 
-        described = setup.compactor.describe(planned.compaction_id)
+        proposal = setup.compactor.get_proposal()
 
-        assert described.status == "planned"
-        assert described.changes == planned.changes
-        assert "covers 2 days" in described.message
+        assert proposal.changes == planned.changes
+        assert proposal.timeline.text.count("━━ ") == 2
+        night = next(e for e in proposal.events if e.id == "s1")
+        assert (night.status, night.end, night.is_end_of_day_sleep) == ("adjusted", time_at("08:30+1"), True)
+        assert [n.id for n in proposal.notes] == [setup.note_id(2), setup.note_id(3), setup.note_id(4)]
 
     def test_an_open_batch_is_reported_by_its_own_id(self):
         setup = self._setup()
@@ -1098,7 +1133,7 @@ class TestSleepingIn:
             event_at("08:00+1-12:00+1", id="w1", summary="Work", priority=3),
             event_at("22:00+1-23:30+1", id="s2", summary="Sleep", priority=0, is_end_of_day_sleep=True),
         ]
-        setup = Setup([("09:05", "email")], events=events, now="08:00+1")
+        setup = Setup([("09:05", "email")], events=events, now="07:00+1")
         planned = setup.compactor.dry_run([])
         setup.compactor.commit(planned.compaction_id)
         setup.client.reset_mock()
@@ -1223,7 +1258,7 @@ class TestMovingFutureEvents:
         planned = setup.compactor.dry_run(setup.email_then_report() + [bedtime])
         setup.compactor.commit(planned.compaction_id)
 
-        assert planned.status == "planned"
+        assert planned.status == "proposed"
         assert any("doesn't adjust the next day" in w for w in planned.warnings)
         patch = next(
             c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "s1"
@@ -1444,7 +1479,7 @@ class TestSheetReadRequests:
 
     def _round(self, service, note_at, now):
         """One round of MCP tool calls: note, prepare_compaction,
-        compact_notes (dry run), compact_notes (apply). Returns each
+        compact_notes (proposing), confirm_proposal. Returns each
         call's read requests."""
         self.now = now
         counts = {}
@@ -1458,7 +1493,7 @@ class TestSheetReadRequests:
         call("note", lambda: server.note(NotedTime(timestamp=time_at(note_at), description="note")))
         call("prepare_compaction", server.prepare_compaction)
         plan = call("compact_notes dry run", lambda: server.compact_notes())
-        call("compact_notes apply", lambda: server.compact_notes(compaction_id=plan.compaction_id, dry_run=False))
+        call("confirm_proposal", lambda: server.confirm_proposal(plan.proposal_id, plan.revision))
         return counts
 
     def test_a_typical_round_of_compaction_makes_no_more_read_requests_than_this(self, monkeypatch):
@@ -1476,7 +1511,7 @@ class TestSheetReadRequests:
             "note": 1,
             "prepare_compaction": 1,
             "compact_notes dry run": 1,
-            "compact_notes apply": 1,
+            "confirm_proposal": 1,
         }
 
 

@@ -67,6 +67,7 @@ from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision
 from utilities.compaction_journal import CompactionJournal
+from utilities.compaction_proposals import Feedback, FeedbackReply, Proposal, ProposalResult, ProposalSummary
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.people import (
@@ -1521,12 +1522,15 @@ class CompactionStatus:
     """The last compaction's id, if its judgments aren't all made yet:
     it isn't complete until they are (see prepare_judgments)."""
 
+    proposal: ProposalSummary | None = None
+    """The open proposal, if there is one (see get_proposal)."""
+
 
 @tool
 def get_compaction_status() -> CompactionStatus:
     """When notes were last compacted into the calendar, the latest note
-    compacted, and whether that compaction still has judgments to make.
-    Read-only."""
+    compacted, whether that compaction still has judgments to make, and
+    the open proposal, if any. Read-only."""
     with track("get_compaction_status"), cached_reads():
         # The notes, the journal, and what judging reads, together.
         get_note_compactor().prefetch()
@@ -1539,6 +1543,7 @@ def get_compaction_status() -> CompactionStatus:
             last_compaction=get_compaction_journal().last_stamped_now(),
             latest_compacted_note=latest,
             judgments_pending=due.compaction_id if due is not None and due.events else None,
+            proposal=get_note_compactor().proposal_summary(),
         )
 
 
@@ -1577,8 +1582,8 @@ def edit_note(
     left out keeps its current value; an empty description clears it.
     Returns the edited note -- if the timestamp changed, so did its id.
     Compacted notes can't be changed (edit the calendar event they became
-    instead). If a dry-run plan included this note, run a new dry run
-    afterward -- that plan can no longer be committed."""
+    instead). A proposal that included this note is planned again when
+    it's confirmed."""
     with track("edit_note"), cached_reads():
         try:
             return get_note_compactor().edit_note(
@@ -1593,8 +1598,8 @@ def edit_note(
 def delete_note(note_id: str) -> NotedTime:
     """Delete an uncompacted note (by its id, from get_notes or
     prepare_compaction), returning what it was. Other notes' ids are
-    unaffected. Compacted notes can't be deleted. If a dry-run plan
-    included this note, run a new dry run afterward."""
+    unaffected. Compacted notes can't be deleted. A proposal that included
+    this note is planned again when it's confirmed."""
     with track("delete_note"), cached_reads():
         try:
             return get_note_compactor().delete_note(note_id)
@@ -1605,19 +1610,22 @@ def delete_note(note_id: str) -> NotedTime:
 @tool
 @writes
 def prepare_compaction() -> CompactionContext:
-    """Step 1 of compacting notes into the calendar. Returns every day of
-    uncompacted notes up to now (each note with an id and the planned
-    events nearest it; at most a week -- `remaining_note_count` says how
-    many are left for another round), those days' planned events, a
-    `timeline` showing the two side by side, day by day, and
-    instructions. Compare the notes to the plan, decide which events the
-    notes show happened differently, and the facts of each past event --
-    its actions, where it was, who was there, who it was for, and a note
-    on each person there -- then call compact_notes with those decisions.
-    Also every action an event can be given (`actions`, their groups left
-    out), every person (`people`, the user as "self") and every location
-    (`locations`), to settle the facts from. judgments_pending names the
-    last compaction if its judgments aren't all made: make them first
+    """Step 1 of compacting notes into the calendar: proposing what
+    happened since the last compaction, for the user to confirm. Returns
+    every day from the last compaction up to now (at most a week), notes
+    or not -- each uncompacted note with an id and the planned events
+    nearest it (`remaining_note_count` says how many are left for another
+    round) -- those days' planned events, a `timeline` showing the two
+    side by side, day by day, and instructions. Compare the notes to the
+    plan, decide which events the notes show happened differently, and
+    the facts of each past event -- its actions, where it was, who was
+    there, who it was for, and a note on each person there -- then call
+    compact_notes with those decisions. Also every action an event can be
+    given (`actions`, their groups left out), every person (`people`, the
+    user as "self") and every location (`locations`), to settle the facts
+    from. `proposal` is the open proposal, if there is one: revise or
+    extend it (see the instructions). judgments_pending names the last
+    compaction if its judgments aren't all made: make them first
     (prepare_judgments, record_judgments). Read-only."""
     with track("prepare_compaction"), cached_reads():
         return get_note_compactor().prepare()
@@ -1630,33 +1638,43 @@ def compact_notes(
     creates: list[CompactionCreate] | None = None,
     cancels: list[EventCancel] | None = None,
     ignore_notes: list[str] | None = None,
-    compaction_id: str | None = None,
-    dry_run: bool = True,
+    proposal_id: str | None = None,
+    revision: int | None = None,
+    replies: list[FeedbackReply] | None = None,
     new_actions: list[NewAction] | None = None,
     new_people: list[NewPerson] | None = None,
     new_locations: list[NewLocation] | None = None,
 ) -> CompactionResult:
-    """Steps 2 and 3 of compacting notes: realign each day's events to
-    its notes and turn that into calendar changes, the past becoming
-    fact. Each day is planned on its own, after the day before it, and
-    never moves the next day's start; one call covers them all.
+    """Step 2 of compacting notes: propose what happened -- each day's
+    events realigned to its notes, and the calendar changes that makes --
+    for the user to review and confirm in the app. Nothing on the calendar
+    changes, and you can't apply it: only the user's confirmation does.
+    Each day is planned on its own, after the day before it, and never
+    moves the next day's start; one call covers them all, to now.
 
-    Step 2: call with what the notes show happened differently from the
-    plan, as update_event takes a batch (see prepare_compaction's
-    instructions): `updates` (events that happened, with edges moved to a
-    time or a note's, renamed, annotated, their actions and facts set),
-    `creates` (something unplanned that happened) and `cancels` (what
-    didn't happen, each saying whether it counts against follow-through:
-    the user dropped it, or the plan changed). Any past event you don't
-    mention is recorded as on schedule. Notes that don't set an event edge
-    are added to the event they fall within, except those in
-    `ignore_notes`. new_actions, new_people and new_locations add what
-    isn't there yet, each with a `ref` ("new:ukulele") the updates and
-    creates use in place of its id; they're created when the plan is
-    applied. dry_run=True (the default) changes nothing: you get the
-    proposed changes, a compaction_id, the additions, and a `timeline` of
-    the notes beside the resulting events, each with its actions and
-    facts -- show its `text` to the user in a code block.
+    Call with what the notes show happened differently from the plan, as
+    update_event takes a batch (see prepare_compaction's instructions):
+    `updates` (events that happened, with edges moved to a time or a
+    note's, renamed, annotated, their actions and facts set), `creates`
+    (something unplanned that happened) and `cancels` (what didn't happen,
+    each saying whether it counts against follow-through: the user
+    dropped it, or the plan changed). Any past event you don't mention is
+    recorded as on schedule. Notes that don't set an event edge are added
+    to the event they fall within, except those in `ignore_notes`.
+    new_actions, new_people and new_locations add what isn't there yet,
+    each with a `ref` ("new:ukulele") the updates and creates use in
+    place of its id; they're created when it's applied. You get the
+    proposal's id and revision, the proposed changes, the additions, and
+    a `timeline` of the notes beside the resulting events, each with its
+    actions and facts -- in a conversation, show its `text` to the user in
+    a code block.
+
+    With a proposal open (prepare_compaction's `proposal`), every call
+    revises or extends it: pass its `proposal_id` and the `revision` you
+    started from, send all your decisions again (each create with the
+    `key` it was given), and answer every open feedback item in
+    `replies`. The user's own edits are laid over your decisions by the
+    server; never send them.
 
     NOTHING IS MOVED TO MAKE ROOM: every event you update or create must
     end after it starts and must not overlap any other event -- past or
@@ -1675,49 +1693,143 @@ def compact_notes(
     bedtime, and if the wake-up time does change, the plan warns; tell the
     user. Cancelling a night (no sleep) makes its two days one.
 
-    Step 3: only after the user has explicitly approved this specific plan,
-    having seen it -- never in the same turn as the dry run, and a request
-    to compact made before they saw the plan isn't approval -- call with
-    that compaction_id and dry_run=False to apply it. If that fails
-    partway, calling it again resumes exactly where it stopped -- the plan
-    is already approved, so that needs no new approval. Days are applied in
-    order, each one's notes marked compacted once it's done. With a compaction_id and
-    dry_run=True you just get that compaction's stored plan back.
-
-    Step 4: once it's applied, the result has the plan's final `timeline`
-    and, beside it, its `judgments`: each event it settled, with the
-    people it was about and the parts to judge for each of them, then
-    each part's rubric and ratings once, and each person's recent
-    history. Judge every one yourself, right away, without asking the
-    user, of the events as that timeline shows them, and record them
-    with record_judgments. The compaction isn't complete until they're
-    all recorded."""
+    Once the user confirms it and it's applied, make its judgments with
+    prepare_judgments and record_judgments: the compaction isn't complete
+    until they're all recorded."""
     with track("compact_notes"), cached_reads():
         compactor = get_note_compactor()
         try:
-            if compaction_id is None:
-                if not dry_run:
-                    raise CompactionError(
-                        "run a dry run first (updates, creates and cancels, dry_run=True) and pass its compaction_id",
-                        category="no_dry_run",
+            decisions = [
+                *(u.decision() for u in updates or ()),
+                *(c.decision() for c in creates or ()),
+                *(
+                    EventDecision(
+                        action="cancel", event_id=c.event_id,
+                        counts_against_follow_through=c.counts_against_follow_through,
                     )
-                decisions = [
-                    *(u.decision() for u in updates or ()),
-                    *(c.decision() for c in creates or ()),
-                    *(
-                        EventDecision(
-                            action="cancel", event_id=c.event_id,
-                            counts_against_follow_through=c.counts_against_follow_through,
-                        )
-                        for c in cancels or ()
-                    ),
-                ]
-                return compactor.dry_run(decisions, ignore_notes, new_actions, new_people, new_locations)
-            if dry_run:
-                return compactor.describe(compaction_id)
-            return compactor.commit(compaction_id)
+                    for c in cancels or ()
+                ),
+            ]
+            return compactor.dry_run(
+                decisions, ignore_notes, new_actions, new_people, new_locations,
+                proposal_id=proposal_id, revision=revision, replies=replies,
+            )
         except CompactionError as exc:
             raise _rejected("compact_notes", exc) from exc
+
+
+@tool
+def get_proposal(proposal_id: str | None = None, since_revision: int | None = None) -> Proposal:
+    """The open proposal (or the one named) -- its current revision,
+    planned again on the calendar as it is now: its window (`window_start`
+    to `through`), `state`, every event of its days as it leaves them
+    (`events`, each with its id -- or a new event's key -- its times, what
+    it was planned as, and who decided it), the notes, the calendar writes
+    it makes, its `timeline`, the user's edits and the feedback with any
+    replies. With since_revision, `changed_since` lists the events whose
+    outcome changed after it. Read-only."""
+    with track("get_proposal"), cached_reads():
+        try:
+            return get_note_compactor().get_proposal(proposal_id, since_revision)
+        except CompactionError as exc:
+            raise _rejected("get_proposal", exc) from exc
+
+
+@tool
+@writes
+def amend_proposal(
+    proposal_id: str,
+    revision: int,
+    updates: list[CompactionUpdate] | None = None,
+    creates: list[CompactionCreate] | None = None,
+    cancels: list[EventCancel] | None = None,
+    as_planned: list[str] | None = None,
+) -> Proposal:
+    """The user's edits to the open proposal, from the app: `updates`,
+    `creates` and `cancels` as compact_notes takes them (an update's
+    event_id may be a new event's key), and `as_planned` -- events (or
+    keys) whose decisions to clear. `revision` is the one the user was
+    looking at. They're laid over the current revision as a new one,
+    which is returned, with `replaced`: the events whose newer change by
+    Claude they overrode. Refused, changing nothing, if one names an
+    event that isn't in the proposal, or the result overlaps, or changes
+    history; nothing is moved to make room."""
+    with track("amend_proposal"), cached_reads():
+        try:
+            decisions = [
+                *(u.decision() for u in updates or ()),
+                *(replace(c, key=None).decision() for c in creates or ()),
+                *(
+                    EventDecision(
+                        action="cancel", event_id=c.event_id,
+                        counts_against_follow_through=c.counts_against_follow_through,
+                    )
+                    for c in cancels or ()
+                ),
+            ]
+            return get_note_compactor().amend(proposal_id, revision, decisions, as_planned)
+        except CompactionError as exc:
+            raise _rejected("amend_proposal", exc) from exc
+
+
+@tool
+@writes
+def add_proposal_note(
+    proposal_id: str, text: str, event_id: str | None = None, at: datetime | None = None
+) -> Feedback:
+    """A note from the user for Claude on the open proposal, about an
+    event (or a new event's key) or a time, if it's about one. Claude
+    answers it with a revised proposal; until then, the proposal can't be
+    confirmed. Returns it, with its id."""
+    with track("add_proposal_note"), cached_reads():
+        try:
+            return get_note_compactor().add_note(proposal_id, text, event_id, at)
+        except CompactionError as exc:
+            raise _rejected("add_proposal_note", exc) from exc
+
+
+@tool
+@writes
+def withdraw_proposal_note(feedback_id: str) -> Feedback:
+    """Take back an open note for Claude (by its id). One already
+    answered can't be."""
+    with track("withdraw_proposal_note"), cached_reads():
+        try:
+            return get_note_compactor().withdraw_note(feedback_id)
+        except CompactionError as exc:
+            raise _rejected("withdraw_proposal_note", exc) from exc
+
+
+@tool
+@writes
+def confirm_proposal(proposal_id: str, revision: int) -> ProposalResult:
+    """For the app: the user confirms the open proposal's current
+    revision -- the one they reviewed -- as what happened, and it's
+    applied. Not for Claude: only the user confirms. Refused while
+    feedback is waiting for Claude, or if `revision` isn't the current
+    one. If the notes or calendar changed since, it's planned again as a
+    new revision to confirm instead (`rechecked`); if it no longer plans
+    at all, it's handed to Claude (`needs_claude`)."""
+    with track("confirm_proposal"), cached_reads():
+        try:
+            return get_note_compactor().confirm(proposal_id, revision)
+        except CompactionError as exc:
+            raise _rejected("confirm_proposal", exc) from exc
+
+
+@tool
+@writes
+def finish_proposal(proposal_id: str) -> ProposalResult:
+    """Finish applying a confirmed proposal that stopped partway: what was
+    done stays done, and the rest is applied. It was confirmed, so this
+    needs no new approval. If a change can never be made (its event is
+    gone), what's left is proposed again as a new revision for the user
+    to confirm (`rebuilt`)."""
+    with track("finish_proposal"), cached_reads():
+        try:
+            return get_note_compactor().finish(proposal_id)
+        except CompactionError as exc:
+            raise _rejected("finish_proposal", exc) from exc
 
 
 @tool
@@ -1766,14 +1878,14 @@ def record_judgments(compaction_id: str, judgments: list[Judgment]) -> Judgments
 
 @tool
 @writes
-def abandon_compaction(compaction_id: str) -> CompactionResult:
-    """Give up on a compaction that can't be finished (or that you no
-    longer want). Steps it already applied stay applied; its notes stay
+def abandon_compaction(proposal_id: str) -> CompactionResult:
+    """Give up on a proposal (or a compaction from before proposals, by
+    its id). Changes it already applied stay applied; its notes stay
     uncompacted (except those of days it had already finished), so a new
-    compaction can be planned."""
+    one can be proposed."""
     with track("abandon_compaction"), cached_reads():
         try:
-            return get_note_compactor().abandon(compaction_id)
+            return get_note_compactor().abandon(proposal_id)
         except CompactionError as exc:
             raise _rejected("abandon_compaction", exc) from exc
 

@@ -133,6 +133,10 @@ class EventDecision:
     follow-through of whoever it was planned with) or the plan changed.
     `None`, from before cancels said, counts."""
 
+    key: str | None = None
+    """`create`: what a proposal calls the event before it exists, so an
+    edit can name it (see utilities/compaction_proposals.py)."""
+
     def to_json_dict(self) -> dict:
         return {
             key: (
@@ -190,6 +194,9 @@ class CompactionCreate:
     annotate: str | None = None
     action_ids: list[str] | None = None
     facts: Facts | None = None
+    key: str | None = None
+    """The key a proposal already knows this event by, to keep it (see
+    utilities/compaction_proposals.py); a new one is given otherwise."""
 
     def decision(self) -> EventDecision:
         return EventDecision(action="create", **vars(self))
@@ -294,6 +301,9 @@ class CompactionChange:
     event_id: str | None = None
     """`None` for a `create` (the event doesn't exist yet)."""
 
+    key: str | None = None
+    """For a `create`: its decision's key, if it has one."""
+
     before: EventState | None = None
     after: EventState | None = None
 
@@ -335,6 +345,9 @@ class _Fact:
     """A move of the day's own end-of-day sleep event -- see `_end_day_at`."""
 
     annotations: list[str] = field(default_factory=list)
+
+    created_key: str | None = None
+    """For a create: its decision's `key`, if it has one."""
 
 
 def plan_compaction(
@@ -655,7 +668,8 @@ def _resolve(
             continue
         facts.append(
             _Fact(
-                key=f"new:{number}",
+                key=decision.key or f"new:{number}",
+                created_key=decision.key,
                 start=start,
                 end=end,
                 event=Event(
@@ -738,7 +752,17 @@ def _annotate(
         formatted = [
             f"- {moment.astimezone(event.start.tzinfo).strftime('%H:%M')} {text}" for moment, text in timed
         ] + [f"- {text}" for moment, text in entries if moment is None]
-        prefix = f"{event.description}\n\nNotes:\n" if event.description else "Notes:\n"
+        # A line the description already has isn't added again: replaying a
+        # proposal whose notes were partly written (see utilities/
+        # compaction_proposals.py) mustn't repeat them.
+        existing = (event.description or "").splitlines()
+        formatted = [line for line in formatted if line not in existing]
+        if not formatted:
+            continue
+        if "Notes:" in existing:
+            prefix = f"{event.description}\n"
+        else:
+            prefix = f"{event.description}\n\nNotes:\n" if event.description else "Notes:\n"
         event.description = prefix + "\n".join(formatted)
         size = len(event.description.encode("utf-8"))
         if size > MAX_DESCRIPTION_BYTES:
@@ -853,7 +877,9 @@ def _changes(
     for fact in facts:
         if fact.base is None:
             changes.append(
-                CompactionChange(action="create", reason=fact.reason, after=EventState.from_event(fact.event))
+                CompactionChange(
+                    action="create", reason=fact.reason, key=fact.created_key, after=EventState.from_event(fact.event)
+                )
             )
 
     order = {"cancel": 0, "update": 1, "create": 2}
@@ -942,6 +968,7 @@ def _timeline(
                 TimelineEvent(
                     summary=fact.event.summary,
                     status="new",
+                    event_id=fact.created_key,
                     start=fact.start,
                     end=fact.end,
                     start_note=fact.start_note.id if fact.start_note else None,
