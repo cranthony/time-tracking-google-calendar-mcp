@@ -1373,6 +1373,49 @@ class TestPublicRecurrence:
         changes, starting_at, _ = recurrences.update.call_args.args
         assert (changes.cleared, starting_at) == ({"priority"}, "s1_x")
 
+    def test_shows_a_series_facts(self):
+        series = Event(
+            id="s1",
+            summary="Standup",
+            start=datetime(2026, 10, 5, 13, tzinfo=timezone.utc),
+            end=datetime(2026, 10, 5, 14, tzinfo=timezone.utc),
+            time_zone="America/New_York",
+            recurrence=["RRULE:FREQ=WEEKLY;BYDAY=MO"],
+            facts=Facts(with_ids=["sam"], location_id="home"),
+        )
+
+        public = server.PublicRecurrence.from_event(series, ActionTree([], GroupTree([])))
+
+        assert public.facts == Facts(with_ids=["sam"], location_id="home")
+
+    def _fake_people_and_places(self, monkeypatch):
+        people, locations = MagicMock(), MagicMock()
+        people.all.return_value = [Person(id="self", name="Me"), Person(id="sam", name="Sam")]
+        locations.all.return_value = [Location(id="home", name="Home")]
+        monkeypatch.setattr(server, "get_people_store", lambda: people)
+        monkeypatch.setattr(server, "get_location_store", lambda: locations)
+
+    def test_update_recurrence_sets_facts_normalized(self, monkeypatch):
+        recurrences = MagicMock()
+        recurrences.update.return_value = []
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+        self._fake_people_and_places(monkeypatch)
+
+        server.update_recurrence(server.PublicRecurrence(id="s1", facts=Facts(with_ids=[" sam"], location_id="home")))
+
+        changes, _, _ = recurrences.update.call_args.args
+        assert changes.facts == Facts(with_ids=["sam"], location_id="home")
+
+    def test_update_recurrence_refuses_facts_naming_no_one_before_writing(self, monkeypatch):
+        recurrences = MagicMock()
+        monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)
+        self._fake_people_and_places(monkeypatch)
+
+        with pytest.raises(ToolError, match=r"Its facts name \['p9'\], who aren't people"):
+            server.update_recurrence(server.PublicRecurrence(id="s1", facts=Facts(for_ids=["p9"])), "s1_x")
+
+        recurrences.update.assert_not_called()
+
     def test_update_recurrence_refuses_a_bad_clear_before_splitting(self, monkeypatch):
         recurrences = MagicMock()
         monkeypatch.setattr(server, "get_recurrences", lambda: recurrences)

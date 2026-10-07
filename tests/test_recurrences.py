@@ -7,6 +7,7 @@ import pytest
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import Event
+from utilities.facts import Facts
 from utilities.recurrences import NthWeekday, Recurrences, Repeat, SplitError, describe_rules, split_series_id
 
 NY = ZoneInfo("America/New_York")
@@ -162,6 +163,13 @@ class TestUpdate:
         )
 
         assert (updated.summary, updated.priority, updated.location) == ("Team standup", None, "Room 4")
+
+    def test_writes_facts_to_the_series(self):
+        calendar = FakeCalendar(_weekly())
+
+        (updated,) = _recurrences(calendar).update(Event(id="series1", facts=Facts(with_ids=["sam"])))
+
+        assert updated.facts == Facts(with_ids=["sam"])
 
     def test_this_and_following_clears_fields_on_the_later_part_only(self):
         calendar = FakeCalendar(replace(_weekly(), priority=1), _instance(19))

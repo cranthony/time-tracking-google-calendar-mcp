@@ -93,6 +93,7 @@ _EDITABLE = (
     "location",
     "priority",
     "action_ids",
+    "facts",
 )
 """The fields of a series that `Recurrences.update` writes (its rules
 are written from the `Repeat` passed alongside)."""
