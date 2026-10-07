@@ -46,7 +46,7 @@ from calendar_clients.google_calendar import Event
 from utilities.actions import Actions, ActionTree
 from utilities.cancellations import of_action
 from utilities.facts import SELF_ID
-from utilities.habits import Habits, subject_id
+from utilities.habits import Habit, Habits, find as find_habit, subject_id
 from utilities.locations import Locations
 from utilities.people import People, Person
 from utilities.traits import Trait, Traits, fact_lookbacks, judgment_scale, part_keys, part_problems
@@ -72,6 +72,29 @@ INSTRUCTIONS = (
     "compaction isn't complete until every one is. Don't show the user the judgments unless they "
     "ask."
 )
+
+
+BACKFILL_INSTRUCTIONS = (
+    "JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, "
+    "the judgments of its settled events -- already compacted -- since `since`. `events` lists "
+    "each, with the parts to judge for the habit (\"<trait id>/<part key>\"); `parts` gives each "
+    "part's rubric and ratings once (\"...@habit:<id>\" for the habit's own), and `history` what "
+    "the user did and where in its scope over the days before. Judge each event as it is on the "
+    "calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, "
+    "its note in what_matters, choosing one of the part's ratings (the number), with one succinct "
+    "line of reasoning that names the fact it rests on. Record them all with "
+    "record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would "
+    "go -- each with request_id \"<event id>/habit:<id>/<trait id>/<part key>\". With `current`, "
+    "they're being redone: rate them afresh. Don't show the user the judgments unless they ask."
+)
+
+SCORE_DAYS = 7
+"""The days of scores the app shows: a backfill reaches this far back
+past the longest a habit's judgment parts average over."""
+
+DEFAULT_WINDOW_DAYS = 30
+"""How far back a judgment part averages over unless it says
+(`window_days`), as the app scores it."""
 
 
 @dataclass(kw_only=True)
@@ -190,6 +213,31 @@ class JudgmentsDue:
 
 
 @dataclass(kw_only=True)
+class HabitJudgmentsDue:
+    """The judgments a backfill of one habit calls for: its settled events
+    in scope since `since`, until where history ends (`until`) -- those
+    not judged yet, or all of them, being redone -- each part, and its
+    history, given once."""
+
+    backfill_id: str
+    """What record_judgments takes in place of a compaction's id:
+    "habit:<habit id>@<since>"."""
+
+    habit_id: str
+    habit_name: str
+    since: datetime
+    until: datetime
+    events: list[EventJudgmentsDue]
+    parts: list[JudgmentPart]
+    history: dict[str, PersonHistory]
+    instructions: str = BACKFILL_INSTRUCTIONS
+
+    @property
+    def count(self) -> int:
+        return sum(len(parts) for event in self.events for parts in event.people.values())
+
+
+@dataclass(kw_only=True)
 class JudgmentsResult:
     compaction_id: str
     recorded: int
@@ -279,12 +327,50 @@ class Judging:
         events = [e for e in listed if e.id in wanted]
         return self.requests_for(events, [e for e in listed if e.facts is not None], include_judged=include_judged)
 
+    def habit(self, id_or_name: str) -> Habit:
+        """The active habit with this id, or else this name; ValueError if
+        there's none -- only an active habit is judged."""
+        habit = find_habit(self._habits.all() if self._habits else [], id_or_name)
+        if habit.status != "active":
+            raise ValueError(f"{habit.name!r} ({habit.id}) is {habit.status}: only an active habit is judged")
+        return habit
+
+    def backfill_days(self, habit: Habit) -> int:
+        """How far back a backfill of `habit` reaches by default: the most
+        days its judgment parts average over, and the days of scores
+        shown."""
+        traits = self._active_traits()
+        windows = [
+            int(part.get("window_days") or DEFAULT_WINDOW_DAYS)
+            for _trait, parts in _traits_for(Person(id=subject_id(habit.id), traits=habit.traits), traits)
+            for part in parts
+            if _is_judgment(part)
+        ]
+        return max(windows, default=DEFAULT_WINDOW_DAYS) + SCORE_DAYS
+
+    def habit_requests(
+        self, habit: Habit, since: datetime, until: datetime, *, include_judged: bool = False
+    ) -> list[JudgmentRequest]:
+        """Every judgment `habit` calls for on its settled events in scope
+        from `since` to `until` -- only those not made yet unless
+        `include_judged` -- read in one listing with their history."""
+        listed = [
+            e for e in self._list_events(since - timedelta(days=self.lookback()), until)
+            if e.status != "cancelled"
+        ]
+        events = [e for e in listed if since <= e.start < until]
+        return self.requests_for(
+            events, [e for e in listed if e.facts is not None], include_judged=include_judged,
+            only=subject_id(habit.id),
+        )
+
     def requests_for(
-        self, events: list[Event], history: list[Event], *, include_judged: bool = False
+        self, events: list[Event], history: list[Event], *, include_judged: bool = False, only: str | None = None
     ) -> list[JudgmentRequest]:
         """Every judgment `events` call for, as `requests` -- for events
         given whole (as a plan would leave them), with the `history` the
-        judgments' facts look back over."""
+        judgments' facts look back over -- or, `only`, just those for that
+        person or habit."""
         traits = self._active_traits()
         events = [e for e in events if _judgeable(e)]
         if not events:
@@ -304,6 +390,8 @@ class Judging:
                 *((h, "with") for h in scopes if part_of(event, h)),
             ]
             for person_id, engagement in about:
+                if only is not None and person_id != only:
+                    continue
                 person = people.get(person_id) or Person(id=person_id, name=person_id)
                 for trait, parts in _traits_for(person, traits):
                     for part, key in zip(parts, part_keys(parts)):

@@ -1,8 +1,8 @@
 # Habits
 
-Status: being built. 1. the habits store and tools (done); 2. habits
-as judgment and cancellation subjects (this change); 3. backfilling a
-habit's judgments.
+Status: built in the server: 1. the habits store and tools; 2. habits
+as judgment and cancellation subjects; 3. backfilling a habit's
+judgments. The app's side is in progress.
 
 A **habit** is something the user wants to do well -- "Practice guitar",
 "Cook" -- rated by traits, as a person is. It belongs to the user (self),
@@ -68,20 +68,24 @@ other habits can still be written.
   compaction timeline's `Follow-through:` list, and a proposal's
   `follow_through`, name it "the <name> habit".
 
-## 3. Backfilling (after that)
+## 3. Backfilling
 
 A habit made, or given a new rubric, has no judgments on events already
 compacted. Backfilling them is manual, never automatic:
 
-- `prepare_habit_judgments(habit_id, since?, redo = false)` returns a
-  `backfill_id`, and the judgments due for that habit on its settled,
-  in-scope events since `since` (by default, as far back as its judgment
-  parts look, plus the week of scores shown), in `prepare_judgments`'s
-  layout. Without `redo` it leaves out what's judged already; with it,
+- `prepare_habit_judgments(habit_id, since?, redo = false)` (by id or
+  name; an active habit) returns a `backfill_id` (`habit:<id>@<since>`),
+  and the judgments due for that habit on its settled, in-scope events
+  from `since` until where history ends (the last compaction), by
+  default as far back as its judgment parts average over (`window_days`,
+  30 unless said) plus the week of scores shown, in `prepare_judgments`'s
+  layout. Read-only. Without `redo` it leaves out what's judged already; with it,
   each comes with its `current` judgment, to judge again.
-- `record_judgments(id, judgments)` takes the `backfill_id` (as it takes
-  a compaction's id), checks each judgment against that request, and
-  writes it, replacing any earlier one.
+- `record_judgments(compaction_id, judgments)` takes the `backfill_id`
+  in place of a compaction's id, works out the backfill's requests again
+  (judged ones included, so a redo's are accepted), checks each judgment
+  against them, and writes it, replacing any earlier one. Nothing about
+  a backfill is stored: its id says all it is.
 
 It's a tool of its own rather than an argument of `prepare_judgments`:
 that one is the last step of a compaction, which isn't complete until

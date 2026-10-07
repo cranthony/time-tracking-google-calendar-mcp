@@ -40,6 +40,7 @@ from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.compaction_proposals import AdditionChoice, AdditionSettled, FeedbackReply, NoteEdit
 from utilities.cancellations import Cancellations
 from utilities.facts import Facts
+from utilities.habits import Habit, Habits
 from utilities.judgments import Judging, Judgment
 from utilities.traits import Trait, Traits
 from utilities.locations import Location, Locations
@@ -1471,7 +1472,7 @@ class TestSheetReadRequests:
         monkeypatch.setattr(server, "track", lambda label: contextlib.nullcontext())
         for cached in (
             "_calendar_client", "_actions", "_people", "_locations", "_traits",
-            "_noted_time_sheet", "_note_compactor", "_cancellations",
+            "_noted_time_sheet", "_note_compactor", "_cancellations", "_habits",
         ):
             monkeypatch.setattr(server, cached, None)
         self.now = "09:10+1"
@@ -1786,6 +1787,84 @@ class TestJudgments:
 
         with pytest.raises(CompactionError, match="hasn't been applied"):
             setup.compactor.judgments_due(planned.compaction_id)
+
+
+class TestHabitBackfill:
+    """A habit's judgments of its settled events, backfilled by hand: from
+    prepare_habit_judgments to record_judgments, by the backfill's id."""
+
+    def _setup(self, status="active"):
+        setup, applied = TestJudgments()._applied()
+        # Email, and Lunch after the compaction, are both in the habit's
+        # scope; only Email is settled.
+        setup.actions._sheet.write([_action("mail", "Do email")])
+        setup.calendar.events[0] = replace(setup.calendar.events[0], action_ids=["mail"])
+        setup.calendar.events[2] = replace(
+            setup.calendar.events[2], action_ids=["mail"], facts=Facts(notes={"self": "late"})
+        )
+        habits = Habits.ensure(setup.sheets, "s")
+        habits._sheet.write([Habit(id="inbox", name="Inbox", action_id="mail", status=status)])
+        setup.judging._habits = habits
+        return setup
+
+    def test_gives_a_backfill_of_its_settled_events_in_scope_and_records_them_by_its_id(self):
+        setup = self._setup()
+
+        due = setup.compactor.habit_judgments_due("Inbox")
+
+        assert due.backfill_id == f"habit:inbox@{due.since.isoformat()}"
+        assert due.until == time_at("11:30")
+        assert due.since == due.until - timedelta(days=30 + 7)
+        assert [(e.event_id, e.people) for e in due.events] == [("e1", {"habit:inbox": ["heard/judgment"]})]
+        assert "backfill" in due.instructions
+
+        result = setup.compactor.record_judgments(
+            due.backfill_id,
+            [Judgment(request_id="e1/habit:inbox/heard/judgment", rating=1, reasoning="Cleared it calmly.")],
+        )
+
+        assert (result.complete, result.remaining) == (True, [])
+        assert setup.calendar.events[0].judgments["habit:inbox"]["heard"]["judgment"]["rating"] == 1
+        assert setup.compactor.habit_judgments_due("inbox").events == []
+
+    def test_redone_with_the_judgments_made(self):
+        setup = self._setup()
+        due = setup.compactor.habit_judgments_due("inbox")
+        setup.compactor.record_judgments(
+            due.backfill_id, [Judgment(request_id="e1/habit:inbox/heard/judgment", rating=1, reasoning="Calm.")]
+        )
+
+        redo = setup.compactor.habit_judgments_due("inbox", redo=True)
+        setup.compactor.record_judgments(
+            redo.backfill_id, [Judgment(request_id="e1/habit:inbox/heard/judgment", rating=0, reasoning="Rushed.")]
+        )
+
+        (event,) = redo.events
+        assert event.current == {"habit:inbox": {"heard/judgment": {"rating": 1, "reasoning": "Calm."}}}
+        assert setup.calendar.events[0].judgments["habit:inbox"]["heard"]["judgment"]["reasoning"] == "Rushed."
+
+    def test_from_when_its_asked(self):
+        setup = self._setup()
+
+        # After Email started: nothing settled since.
+        assert setup.compactor.habit_judgments_due("inbox", since=time_at("09:30")).events == []
+
+    def test_only_an_active_habit_and_one_there(self):
+        setup = self._setup(status="archived")
+
+        with pytest.raises(CompactionError, match="is archived: only an active habit is judged"):
+            setup.compactor.habit_judgments_due("inbox")
+        with pytest.raises(CompactionError, match="There's no habit with the id or name 'nope'"):
+            setup.compactor.habit_judgments_due("nope")
+
+    def test_a_judgment_that_isnt_the_backfills_is_refused(self):
+        setup = self._setup()
+        due = setup.compactor.habit_judgments_due("inbox")
+
+        with pytest.raises(CompactionError, match="isn't one of"):
+            setup.compactor.record_judgments(
+                due.backfill_id, [Judgment(request_id="e1/sam/heard/judgment", rating=1, reasoning="x")]
+            )
 
 
 class TestStayingUpPastTheLastCompaction:

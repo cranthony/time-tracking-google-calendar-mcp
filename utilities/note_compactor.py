@@ -121,7 +121,15 @@ from utilities.compaction_additions import (
     resolve,
 )
 from utilities.facts import SELF_ID, Facts, fact_problems
-from utilities.judgments import Judging, Judgment, JudgmentRequest, JudgmentsDue, JudgmentsResult
+from utilities.habits import SUBJECT_PREFIX, Habit, subject_id
+from utilities.judgments import (
+    HabitJudgmentsDue,
+    Judging,
+    Judgment,
+    JudgmentRequest,
+    JudgmentsDue,
+    JudgmentsResult,
+)
 from utilities.locations import Locations
 from utilities.people import People
 from utilities.compaction_journal import (
@@ -1868,9 +1876,78 @@ class NoteCompactor:
             )
         return self._judging.requests(*_judged_events(days), include_judged=redo)
 
+    def habit_judgments_due(
+        self, habit_id: str, since: datetime | None = None, *, redo: bool = False
+    ) -> HabitJudgmentsDue:
+        """A backfill of the habit `habit_id`'s judgments (by id or name):
+        those its settled events in scope since `since` call for -- by
+        default as far back as its judgment parts average over, and the
+        days of scores shown -- until where history ends; only those not
+        made yet, or with `redo`, all of them, each with the one made
+        already."""
+        habit, since, until = self._backfill(habit_id, since)
+        backfill_id = f"{subject_id(habit.id)}@{since.isoformat()}"
+        requests = self._judging.habit_requests(habit, since, until, include_judged=redo)
+        due = self._judging.due(backfill_id, requests)
+        return HabitJudgmentsDue(
+            backfill_id=backfill_id, habit_id=habit.id, habit_name=habit.name or habit.id, since=since,
+            until=until, events=due.events, parts=due.parts, history=due.history,
+        )
+
+    def _backfill(self, habit_id: str, since: datetime | None) -> tuple[Habit, datetime, datetime]:
+        """The habit a backfill is of, from when, and until when: where
+        history ends now."""
+        if self._judging is None:
+            raise CompactionError("this calendar has no traits to judge", category="no_traits")
+        try:
+            habit = self._judging.habit(habit_id)
+        except ValueError as exc:
+            raise CompactionError(str(exc), category="unknown_habit") from exc
+        until = self._journal.last_stamped_now()
+        if until is None:
+            raise CompactionError("nothing's been compacted yet, so there's nothing settled to judge", category="not_applied")
+        since = since or until - timedelta(days=self._judging.backfill_days(habit))
+        if since.tzinfo is None:
+            raise CompactionError("give `since` with its UTC offset", category="judgment")
+        return habit, since, until
+
+    def _record_backfill(self, backfill_id: str, judgments: list[Judgment]) -> JudgmentsResult:
+        """Record `judgments` from the backfill `backfill_id`
+        ("habit:<id>@<since>"); whether any are still to make."""
+        habit_part, _, since_part = backfill_id.partition("@")
+        try:
+            since = datetime.fromisoformat(since_part)
+        except ValueError:
+            raise CompactionError(
+                f"{backfill_id!r} isn't a backfill_id (prepare_habit_judgments gives one)", category="judgment"
+            ) from None
+        habit, since, until = self._backfill(habit_part.removeprefix(SUBJECT_PREFIX), since)
+        try:
+            recorded = self._judging.record(
+                self._judging.habit_requests(habit, since, until, include_judged=True), judgments
+            )
+        except ValueError as exc:
+            raise CompactionError(str(exc), category="judgment") from exc
+        remaining = [r.id for r in self._judging.habit_requests(habit, since, until)]
+        return JudgmentsResult(
+            compaction_id=backfill_id,
+            recorded=recorded,
+            remaining=remaining,
+            complete=not remaining,
+            message=(
+                f"recorded {recorded} judgment(s); the backfill of {habit.name!r} is complete" if not remaining
+                else f"recorded {recorded} judgment(s); {len(remaining)} still to make for {habit.name!r} "
+                "(see `remaining`)"
+            ),
+        )
+
     def record_judgments(self, compaction_id: str, judgments: list[Judgment]) -> JudgmentsResult:
         """Record `judgments` on the compaction's events; whether that
-        completes it."""
+        completes it. Given a habit backfill's id in place of a
+        compaction's, on that habit's events (see
+        `habit_judgments_due`)."""
+        if compaction_id.startswith(SUBJECT_PREFIX):
+            return self._record_backfill(compaction_id, judgments)
         if self._judging is None:
             raise CompactionError("this calendar has no traits to judge", category="no_traits")
         days = self._journal.load_batch(compaction_id)
