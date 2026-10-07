@@ -1340,37 +1340,19 @@ class TestDeleteRecurrence:
 
 
 class TestSetTimeZone:
-    def _fake_marker(self, monkeypatch) -> MagicMock:
-        marker = MagicMock()
-        monkeypatch.setattr(server, "CompactionMarker", lambda client: marker)
-        return marker
-
-    def test_sets_both_calendars_time_zones(self, monkeypatch):
+    def test_sets_the_calendars_time_zone(self, monkeypatch):
         client = _fake_client(monkeypatch)
         client.set_time_zone.return_value = ZoneInfo("America/New_York")
-        marker = self._fake_marker(monkeypatch)
 
         assert server.set_time_zone("America/New_York") == "America/New_York"
 
         client.set_time_zone.assert_called_once_with("America/New_York")
-        marker.calendar.assert_called_once_with(create=False)
-        marker.calendar.return_value.set_time_zone.assert_called_once_with("America/New_York")
-
-    def test_without_a_compactions_calendar_sets_only_the_main_one(self, monkeypatch):
-        client = _fake_client(monkeypatch)
-        client.set_time_zone.return_value = ZoneInfo("America/New_York")
-        self._fake_marker(monkeypatch).calendar.return_value = None
-
-        assert server.set_time_zone("America/New_York") == "America/New_York"
 
     def test_reports_a_bad_name_as_a_tool_error(self, monkeypatch):
         _fake_client(monkeypatch).set_time_zone.side_effect = ValueError("'Nowhere' isn't a time zone")
-        marker = self._fake_marker(monkeypatch)
 
         with pytest.raises(ToolError, match="isn't a time zone"):
             server.set_time_zone("Nowhere")
-
-        marker.calendar.assert_not_called()
 
     def test_any_tool_without_one_asks_for_it_to_be_set_then_retried(self, monkeypatch):
         compactor = MagicMock()
