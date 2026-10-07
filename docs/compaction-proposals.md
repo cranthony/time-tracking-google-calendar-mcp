@@ -1,6 +1,6 @@
 # Compaction proposals
 
-Status: design, not built.
+Status: being built (server: `claude/compaction-proposals`).
 
 A compaction becomes a **proposal** the user confirms: "this is what
 happened from `from` to `through`." Claude prepares it; the user reviews
@@ -32,6 +32,15 @@ conversation with Claude can do any of these sooner.
 - **Feedback**: a note from the user for Claude to act on, kept per
   proposal. The server adds its own when it needs Claude (a failed
   recheck or apply).
+- **Key**: the id of an event a proposal creates, which doesn't exist
+  until it's applied: `<proposal>c<n>` for Claude's creates,
+  `<proposal>u<n>` (its ledger entry's id) for the user's. Edits and
+  `as_planned` name a created event by its key, as they name others by
+  event id. Claude keeps a create's key by sending it back.
+- **Ids**: a proposal's id is 12 hex digits; a revision's is
+  `<proposal>r<n>`, its later days `<proposal>r<n>d2`, and so on;
+  feedback `<proposal>f<n>`. Only `0-9a-v`: created events' Calendar ids
+  are made from the revision's.
 
 ## How a revision is built
 
@@ -56,22 +65,28 @@ rules below say what happens then. A refused call writes nothing.
 ### `prepare_compaction` (Claude; read-only)
 
 - Returns the window from the last applied `through` to now, with or
-  without notes, and its events and timeline as today.
-- With a proposal open, also returns its current revision: Claude's
-  decisions, the user ledger, every feedback item with its id and
-  status, and `user_seq` (the last ledger entry included).
+  without notes, and its events and timeline as today. At most a week:
+  a longer gap takes more than one proposal.
+- With a proposal open, also returns `proposal`: its current revision's
+  Claude decisions (`updates`, `creates` with their keys, `cancels`,
+  `ignore_notes`), the user ledger, every feedback item, and `user_seq`
+  (the last ledger entry included).
 
 ### `compact_notes` (Claude; plans only)
 
-Proposes, revises or extends. Takes Claude's decisions, `proposal_id`
-and `revision` (when one is open), and `replies` (feedback id -> text).
+Proposes, revises or extends: `compact_notes(updates, creates, cancels,
+ignore_notes, proposal_id?, revision?, replies?, new_actions?,
+new_people?, new_locations?)`. `replies` is `[{feedback_id, reply}]`.
+Each call sends all of Claude's decisions, planned to now; a create
+with a `key` keeps it.
 
 - `dry_run=False` is removed: Claude can't apply anything.
 - With no proposal open, starts one (revision 1). With one open, a call
   without its `proposal_id` is refused.
 - Refused while the proposal is applying.
-- Every feedback item open at Claude's starting revision needs a reply.
-  Items withdrawn since are ignored; items added since stay open.
+- Every feedback item open and added before Claude's starting revision
+  was written needs a reply. Replies to items withdrawn since are
+  ignored; items added since may be answered, or stay open.
 - Claude's decisions can't override a user entry, except on an event
   named by a feedback item this call answers, and then only entries up
   to its starting revision's `user_seq`. A newer user entry stands, and
@@ -81,14 +96,38 @@ and `revision` (when one is open), and `replies` (feedback id -> text).
 
 ### `get_proposal` (app, Claude; read-only)
 
-The current revision: window, status, timeline, calendar writes,
-ledger, feedback with replies, and the events changed since any earlier
-revision the caller names (the union of each revision's `changed`).
+`get_proposal(proposal_id?, since_revision?)`: the current revision of
+the open proposal (or the one named), planned again from the calendar
+as it is now:
+
+- `id`, `revision`, `state` (`awaiting_review`, `awaiting_claude`,
+  `applying`, `applied`, `abandoned`), `window_start`, `through`, `by`,
+  `reason`, `created`.
+- `events`: every event of its days, as the revision leaves them: `id`
+  (event id or key), `summary`, `start`, `end`, `description`,
+  `action_ids`, `facts`, `status` (`on_schedule`, `adjusted`, `new`,
+  `cancelled`, `merged`, `planned` -- the future, untouched),
+  `planned_start`/`planned_end`, `decided_by` (`claude`, `user` or
+  none), `history_until`, `is_end_of_day_sleep`. `None`, with `problem`
+  saying why, when it no longer plans (confirming then hands it to
+  Claude).
+- `notes` (id, time, text), `changes` (the calendar writes), `warnings`,
+  `timeline`, `additions`.
+- `user_edits`: the ledger (`id`, `edit`, `status` `active`,
+  `inapplicable` or `replaced`, `created`, `base_revision`).
+- `feedback`: `id`, `text`, `event_id`, `at`, `by` (`user`/`server`),
+  `created`, `status` (`open`, `answered`, `withdrawn`), `reply`,
+  `answered_in`.
+- `changed_since`: with `since_revision`, the ids and keys whose outcome
+  changed after it (the union of each later revision's `changed`).
 
 ### `amend_proposal` (app)
 
-Takes `proposal_id`, `revision`, and `updates`/`creates`/`cancels`
-(as `compact_notes` takes them) and `as_planned` (event ids).
+`amend_proposal(proposal_id, revision, updates?, creates?, cancels?,
+as_planned?)`: `updates`/`creates`/`cancels` as `compact_notes` takes
+them (an update's `event_id` may be a key), `as_planned` event ids or
+keys. Returns the new revision, as `get_proposal` does, with
+`replaced`: the ids of events whose newer Claude change it overrode.
 
 - Appends one ledger entry per edit and writes a new revision with
   `by: user`, built on the current revision.
@@ -109,7 +148,7 @@ Takes `proposal_id`, `revision`, and `updates`/`creates`/`cancels`
 ### `add_proposal_note` / `withdraw_proposal_note` (app)
 
 - `add_proposal_note(proposal_id, text, event_id?, at?)` returns the
-  feedback id, `<proposal>-f<n>`.
+  feedback item, its id `<proposal>f<n>`.
 - `withdraw_proposal_note(feedback_id)`: open -> withdrawn; already
   withdrawn -> no change, success; answered -> refused, naming the
   revision that answered it; unknown, or the proposal finished ->
@@ -117,7 +156,8 @@ Takes `proposal_id`, `revision`, and `updates`/`creates`/`cancels`
 
 ### `confirm_proposal` (app only)
 
-Takes `proposal_id` and `revision`.
+`confirm_proposal(proposal_id, revision)` returns `{status, message,
+proposal}`, `status` one of `applied`, `rechecked`, `needs_claude`.
 
 - Refused unless `revision` is current and no feedback is open.
 - Rechecks: plans the revision again on the calendar as it is now.
@@ -130,7 +170,10 @@ Takes `proposal_id` and `revision`.
   to Claude in Claude's connector settings -- for conversations and the
   routine alike.
 
-### Finishing an apply (app, Claude)
+### `finish_proposal` (app, Claude)
+
+`finish_proposal(proposal_id)` returns as `confirm_proposal` does
+(`applied`, or `rebuilt`).
 
 - A confirmed revision that stopped partway is resumed: writes already
   done are skipped. It was approved when confirmed, so finishing needs
@@ -145,18 +188,24 @@ Takes `proposal_id` and `revision`.
   | Decision | Write done | Write not done |
   |---|---|---|
   | Update | Already matches: no write | Planned again |
-  | Create | Becomes a keep of the event it created | Stays a create |
-  | Cancel | Kept, marked done; follow-through still recorded on apply | Stays a cancel |
+  | Create | Dropped: the event exists as decided; edits naming its key follow it to the created event | Stays a create |
+  | Cancel | Dropped; its follow-through is recorded when the apply fails | Stays a cancel |
   | Names an event that's gone | Dropped; listed in the feedback | Dropped; listed in the feedback |
 
   A user entry naming an event that's gone stays in the ledger, marked
-  inapplicable.
+  inapplicable. A note is never added to an event's description twice,
+  so replaying a revision whose notes were partly written is safe.
 
-### Unchanged
+### Others
 
-`abandon_compaction` (abandons the open proposal), `record_judgments`
-(after apply), and `update_event` (history ends at the last applied
-`through`) work as today.
+- `abandon_compaction(proposal_id)` abandons the proposal. Writes
+  already made stay.
+- `get_compaction_status` adds `proposal`: the open one's `id`,
+  `revision`, `state`, `window_start`, `through` and `open_feedback`
+  (a count). `last_compaction` is the last applied `through`.
+- `prepare_judgments`/`record_judgments` (after apply) and
+  `update_event` (history ends at the last applied `through`) work as
+  today.
 
 ## Journal rows
 
@@ -168,11 +217,11 @@ compaction_id | step | kind | event_id | before | after | status | detail
 
 | `kind` | `compaction_id` | `step` | Other columns |
 |---|---|---|---|
-| `compaction` | revision-day id: `<proposal>-r<n>`, then `-r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings`, `ignore_notes`, `batch`/`day`, `additions`) plus `proposal`, `revision`, `from`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision) |
+| `compaction` | revision-day id: `<proposal>r<n>`, then `<proposal>r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings`, `ignore_notes`, `batch`/`day`, `additions`) plus `proposal`, `revision`, `from`, `created`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision) |
 | `decision` | revision-day id | 0 | Claude's decision, as JSON in `before`; `event_id` repeats its event |
-| `update`/`create`/`cancel` | revision-day id | 1… | One calendar write: the event's state `before` and `after`, `pending`/`done`, reason in `detail` |
-| `user_decision` | proposal id | n (id `<proposal>-u<n>`) | The edit as JSON in `before` (a decision, or `as_planned`); `status` `active` or `inapplicable`; `detail`: when, and the revision it started from |
-| `feedback` | proposal id | n (id `<proposal>-f<n>`) | `before`: text, `at`, author (`user`/`server`), when; `after`: reply and answering revision; `status` `open`, `answered` or `withdrawn` |
+| `update`/`create`/`cancel` | revision-day id | 1… | One calendar write: `event_id` (a create's key, for a create), the event's state `before` and `after`, `pending`/`done`, reason in `detail` |
+| `user_decision` | proposal id | n (id `<proposal>u<n>`) | The edit as JSON in `before` (a decision, or `as_planned`); `status` `active`, `inapplicable`, or `replaced` (by Claude answering the user's feedback on that event); `detail`: when, and the revision it started from |
+| `feedback` | proposal id | n (id `<proposal>f<n>`) | `before`: text, `at`, author (`user`/`server`), when; `after`: reply and answering revision; `status` `open`, `answered` or `withdrawn` |
 
 `compaction` row statuses:
 
