@@ -128,7 +128,7 @@ as it is now:
   `reason`, `created`.
 - `events`: every event of its days, as the revision leaves them: `id`
   (event id or key), `summary`, `start`, `end`, `description`,
-  `action_ids`, `facts`, `status` (`on_schedule`, `adjusted`, `new`,
+  `location`, `priority`, `action_ids`, `facts`, `status` (`on_schedule`, `adjusted`, `new`,
   `cancelled`, `merged`, `planned` -- the future, untouched),
   `planned_start`/`planned_end`, `decided_by` (`claude`, `user` or
   none), `history_until`, `is_end_of_day_sleep`, and for a cancelled
@@ -157,7 +157,9 @@ as it is now:
 
 `amend_proposal(proposal_id, revision, updates?, creates?, cancels?,
 as_planned?, notes?, additions?)`: `updates`/`creates`/`cancels` as
-`compact_notes` takes them (an update's `event_id` may be a key);
+update_event takes them -- an update is `{event, clear_fields?}` (the
+event's id may be a key), a create an event -- each update and create
+also taking `start_note`/`end_note` (a note that sets that edge);
 `notes` is `[{note_id, use: annotate | ignore, event_id?}]`;
 `additions` is `[{ref, use: create | existing | drop, id?, name?,
 context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the new revision, as `get_proposal` does, with
@@ -172,6 +174,14 @@ context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the 
   description too long, if the result overlaps, or if it changes
   history. The response
   returns the current revision and the refused edits.
+- A `description` is the event's whole description, as the user wrote
+  it from what `get_proposal` shows, notes and all: no notes or
+  `annotate` text are added to it, and it replaces Claude's `annotate`.
+  A note whose text it has counts as added; one whose text it dropped,
+  as ignored. `location` and `priority` set the event's own;
+  `clear_fields` clears a description, location or facts, but not a
+  priority. Refused: `is_cancelled` (that's `cancels`), `judgments`,
+  and an update without an id.
 - An addition the user creates is created once the revision is known
   to plan, so a refused amend creates nothing. One settled with a ref
   the proposal doesn't add, an `existing` id that isn't there, or an

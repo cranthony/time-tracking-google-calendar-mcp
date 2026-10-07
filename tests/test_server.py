@@ -16,7 +16,7 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 import server
-from server import EventCancel, EventShift, EventUpdate
+from server import EventCancel, EventShift, EventUpdate, ProposalCreate, ProposalUpdate
 from utilities.note_compaction import CompactionCreate, CompactionUpdate
 from tests.test_event_changes import FakeCalendar
 from utilities.event_changes import EventChanges
@@ -782,15 +782,23 @@ class TestProposalTools:
         assert server.get_proposal(since_revision=2) is compactor.get_proposal.return_value
         compactor.get_proposal.assert_called_once_with(None, 2)
 
-    def test_amend_proposal_passes_the_users_edits_as_decisions(self, monkeypatch):
+    def test_amend_proposal_takes_the_event_tools_types(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
         end = datetime(2026, 1, 1, 12, 15, tzinfo=UTC)
 
         result = server.amend_proposal(
             "0123456789ab",
             2,
-            updates=[CompactionUpdate(event_id="e1", end=end)],
-            creates=[CompactionCreate(summary="Walk", start=end, end=end + timedelta(hours=1), key="sneaky")],
+            updates=[
+                ProposalUpdate(
+                    event=PublicEvent(id="e1", end=end, description="Inbox zero\n\nNotes:\n- 09:05 email", priority=1),
+                    clear_fields=["location"],
+                    start_note="n2",
+                )
+            ],
+            creates=[
+                ProposalCreate(summary="Walk", start=end, end=end + timedelta(hours=1), location="the park")
+            ],
             cancels=[EventCancel(event_id="e2", counts_against_follow_through=True)],
             as_planned=["e3"],
             notes=[NoteEdit(note_id="2026-01-01T09:05:00+00:00#2", use="ignore")],
@@ -801,15 +809,48 @@ class TestProposalTools:
             "0123456789ab",
             2,
             [
-                EventDecision(action="keep", event_id="e1", end=end),
-                # The user's creates get keys of their own.
-                EventDecision(action="create", summary="Walk", start=end, end=end + timedelta(hours=1)),
+                EventDecision(
+                    action="keep", event_id="e1", end=end, start_note="n2",
+                    description="Inbox zero\n\nNotes:\n- 09:05 email", location="", priority=1,
+                ),
+                EventDecision(action="create", summary="Walk", start=end, end=end + timedelta(hours=1), location="the park"),
                 EventDecision(action="cancel", event_id="e2", counts_against_follow_through=True),
             ],
             ["e3"],
             [NoteEdit(note_id="2026-01-01T09:05:00+00:00#2", use="ignore")],
             None,
         )
+
+    def test_clearing_a_description_or_facts_sends_them_empty(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        server.amend_proposal(
+            "0123456789ab", 2, updates=[ProposalUpdate(event=PublicEvent(id="e1"), clear_fields=["description", "facts"])]
+        )
+
+        (decision,) = compactor.amend.call_args.args[2]
+        assert (decision.description, decision.facts) == ("", Facts())
+
+    @pytest.mark.parametrize(
+        "update, message",
+        [
+            (ProposalUpdate(event=PublicEvent(id="e1", is_cancelled=True)), "put it in `cancels`"),
+            (ProposalUpdate(event=PublicEvent(id="e1", judgments={})), "judgments are made once"),
+            (ProposalUpdate(event=PublicEvent(id="e1"), clear_fields=["priority"]), "can't clear an event's priority"),
+            (ProposalUpdate(event=PublicEvent(summary="x")), "needs the event's id"),
+            (
+                ProposalUpdate(event=PublicEvent(id="e1", description="x"), clear_fields=["description"]),
+                "description: set or cleared, not both",
+            ),
+        ],
+    )
+    def test_amend_proposal_refuses_what_a_proposal_cant_take(self, monkeypatch, update, message):
+        compactor = _fake_compactor(monkeypatch)
+
+        with pytest.raises(ToolError, match=message):
+            server.amend_proposal("0123456789ab", 2, updates=[update])
+
+        compactor.amend.assert_not_called()
 
     def test_notes_for_claude_delegate(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)

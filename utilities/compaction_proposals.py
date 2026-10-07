@@ -52,7 +52,10 @@ ProposalState = Literal["awaiting_review", "awaiting_claude", "applying", "appli
 EditStatus = Literal["active", "inapplicable", "replaced"]
 FeedbackStatus = Literal["open", "answered", "withdrawn"]
 
-_EDIT_FIELDS = ("summary", "start", "end", "start_note", "end_note", "annotate", "action_ids", "facts")
+_EDIT_FIELDS = (
+    "summary", "start", "end", "start_note", "end_note", "annotate", "action_ids", "facts",
+    "description", "location", "priority",
+)
 
 
 def new_proposal_id(hex_id: str) -> str:
@@ -240,6 +243,13 @@ class ProposalEvent:
     """Where it is on the calendar now; `None` for a new one."""
 
     description: str | None = None
+    """What it'll be written with: its own description and the notes
+    added to it."""
+
+    location: str | None = None
+    priority: int | None = None
+    """Its own priority, if it has one."""
+
     action_ids: list[str] | None = None
     facts: Facts | None = None
     decided_by: Literal["claude", "user"] | None = None
@@ -560,6 +570,8 @@ def _overlay(under: EventDecision, over: EventDecision) -> EventDecision:
             changes[note] = None
         if getattr(over, note) is not None and getattr(over, time) is None:
             changes[time] = None
+    if over.description is not None:
+        changes["annotate"] = None  # A whole description is the last word.
     return replace(under, **changes)
 
 
