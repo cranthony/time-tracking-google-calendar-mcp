@@ -64,7 +64,7 @@ class FakeCalendar:
         self.events[index] = replace(self.events[index], judgments=event.judgments)
         return event
 
-    def list_events(self, time_min, time_max, show_deleted=False):
+    def list_events(self, time_min, time_max):
         # Like the Calendar API: everything overlapping the range.
         return sorted(
             (replace(e) for e in self.events if e.end > time_min and e.start < time_max),

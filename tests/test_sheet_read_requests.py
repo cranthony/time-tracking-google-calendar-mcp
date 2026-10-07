@@ -53,7 +53,7 @@ class _ProductionCalendar(FakeLabelCalendar):
     def get_time_zone(self):
         return TZ
 
-    def list_events(self, time_min, time_max, *, show_deleted=False):
+    def list_events(self, time_min, time_max):
         return [e for e in self.events if e.end > time_min and e.start < time_max]
 
     def get_event(self, event_id):

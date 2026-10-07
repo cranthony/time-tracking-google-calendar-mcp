@@ -3,16 +3,27 @@ events, and what's kept on them.
 
 Google's docs say events.list leaves cancelled events out unless asked
 for them with showDeleted, and that a cancelled event is only guaranteed
-to keep its `id`. The follow_through measure (utilities/goal_health.py)
-depends on both: it lists with showDeleted, and needs a cancelled event's
-start and goal_ids (or label) to tell when it was and whose it was. This
-script asks the API directly.
+to keep its `id`. The server once read cancelled events this way, to tell
+when each was and whose it was (its start, and its action_ids or label);
+it no longer does -- CalendarClient.list_events never asks for them, and
+the events that count against someone are recorded in the Cancellations
+tab when they're cancelled (utilities/cancellations.py). This script is
+kept for reference.
+
+What it found:
+- Without showDeleted, no cancelled event is listed.
+- With it, a cancelled event is listed with status "cancelled", usually
+  keeping its summary, start, end and label.
+- But an instance a series edit took away comes back as just
+  "CANCELLED", with no times or label -- some keeping only
+  originalStartTime (and recurringEventId), some not even that, so
+  there's nothing to place them by.
 
 It lists the configured calendar's events (GOOGLE_CALENDAR_ID) over the
-last --days days twice, without showDeleted (as list_events always has)
-and with it, and prints how many cancelled events each returned and, for
-each cancelled one, which of the fields follow_through needs it kept. It
-only reads: nothing is written.
+last --days days twice, without showDeleted (as list_events does) and
+with it, and prints how many cancelled events each returned and, for
+each cancelled one, which fields it kept. It only reads: nothing is
+written.
 
 Usage:
     python -m probes.cancelled_events [--days 14] [--raw]
@@ -33,8 +44,8 @@ from config import get_calendar_id, get_credentials_path, get_token_path
 
 _FIELDS = ("summary", "start", "end", "originalStartTime", "recurringEventId", "eventLabelId")
 
-_GOAL_IDS = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}goal_ids"
-"""The private extended property an event's goal ids are kept in."""
+_ACTION_IDS = f"{_APP_EXTENDED_PROPERTY_KEY_PREFIX}action_ids"
+"""The private extended property an event's action ids are kept in."""
 
 
 def main() -> None:
@@ -59,22 +70,22 @@ def main() -> None:
     series: dict[str, dict | None] = {}
     for event in cancelled:
         private = event.get("extendedProperties", {}).get("private", {})
-        kept = [f for f in _FIELDS if f in event] + (["goal_ids"] if _GOAL_IDS in private else [])
-        missing = [f for f in ("summary", "start", "end", "goal_ids") if f not in kept]
+        kept = [f for f in _FIELDS if f in event] + (["action_ids"] if _ACTION_IDS in private else [])
+        missing = [f for f in ("summary", "start", "end", "action_ids") if f not in kept]
         when = (event.get("start") or event.get("originalStartTime") or {}).get("dateTime", "?")
         listed = "also listed without showDeleted" if any(e.get("id") == event.get("id") for e in plain) else ""
         print(f"- {when}  {event.get('summary', '(no summary)')!r}  id={event.get('id')}  {listed}")
         print(f"    kept: {', '.join(kept) or 'nothing but its id'}")
         if missing:
             print(f"    missing: {', '.join(missing)}")
-        if private.get(_GOAL_IDS):
-            print(f"    goal_ids: {private[_GOAL_IDS]}")
+        if private.get(_ACTION_IDS):
+            print(f"    action_ids: {private[_ACTION_IDS]}")
         elif series_id := event.get("recurringEventId"):
             if series_id not in series:
                 series[series_id] = _get(service, calendar_id, series_id)
             master = series[series_id]
-            master_goals = (master or {}).get("extendedProperties", {}).get("private", {}).get(_GOAL_IDS)
-            print(f"    its series' goal_ids: {master_goals or '(none)'}" if master else "    its series is gone")
+            master_actions = (master or {}).get("extendedProperties", {}).get("private", {}).get(_ACTION_IDS)
+            print(f"    its series' action_ids: {master_actions or '(none)'}" if master else "    its series is gone")
         if args.raw:
             print("    " + json.dumps(event, indent=2).replace("\n", "\n    "))
 
@@ -91,7 +102,7 @@ def _get(service, calendar_id: str, event_id: str) -> dict | None:
 
 def _list(service, calendar_id: str, start: datetime, end: datetime, *, show_deleted: bool) -> list[dict]:
     """Every event from `start` to `end`, the way CalendarClient.list_events
-    asks for them, following nextPageToken."""
+    asks for them (but for showDeleted), following nextPageToken."""
     items: list[dict] = []
     page_token = None
     while True:
