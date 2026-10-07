@@ -7,7 +7,10 @@ from utilities.note_compaction import CompactionPlan, EventDecision
 _P = "0123456789ab"
 
 
-def _edit(seq, event_id, status="active", **edit):
+def _edit(seq, event_id, status="active", target=None, **edit):
+    """`target`: a note edit's event."""
+    if target is not None:
+        edit["event_id"] = target
     return UserEdit(
         id=f"{_P}u{seq}", seq=seq, event_id=event_id, edit=edit, status=status,
         created=time_at("11:00"), base_revision=1,
@@ -70,6 +73,40 @@ class TestMerge:
         merged = merge(_P, [], [_edit(1, f"{_P}c1", action="keep", summary="Long walk")], aliases={f"{_P}c1": "cmpx"})
 
         assert _by(merged)["cmpx"].summary == "Long walk"
+
+    def test_the_users_note_edits_override_claudes_and_as_planned_restores_them(self):
+        n1, n2, n3 = "t#1", "t#2", "t#3"
+        edits = [
+            _edit(1, n1, action="note", use="annotate"),
+            _edit(2, n2, action="note", use="annotate", target="e2"),
+            _edit(3, n3, action="note", use="ignore"),
+            _edit(4, n2, action="as_planned"),
+        ]
+
+        merged = merge(_P, [], edits, claude_ignore=[n1], claude_targets={n2: "e1"})
+
+        assert merged.ignore_notes == [n3]
+        assert merged.note_targets == {n2: "e1"}
+        assert merged.notes_decided_by == {n1: "user", n2: "claude", n3: "user"}
+
+    def test_a_note_edit_naming_a_note_or_event_that_isnt_there_is_unknown(self):
+        edits = [
+            _edit(1, "t#9", action="note", use="ignore"),
+            _edit(2, "t#1", action="note", use="annotate", target="gone"),
+        ]
+
+        merged = merge(_P, [], edits, known_ids={"e1"}, known_notes={"t#1"})
+
+        assert [e.seq for e in merged.unknown] == [1, 2]
+        assert merged.note_targets == {}
+
+    def test_a_note_left_with_a_create_the_user_cancelled_goes_where_it_falls(self):
+        walk = EventDecision(action="create", summary="Walk", key=f"{_P}c1")
+        edits = [_edit(1, f"{_P}c1", action="cancel")]
+
+        merged = merge(_P, [walk], edits, claude_targets={"t#1": f"{_P}c1"})
+
+        assert merged.note_targets == {}
 
     def test_ids(self):
         assert is_key(_P, f"{_P}c12") and is_key(_P, f"{_P}u3")

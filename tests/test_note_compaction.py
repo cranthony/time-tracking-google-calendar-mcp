@@ -405,6 +405,50 @@ class TestNotesAddedToEvents:
             "Inbox zero\n\nNotes:\n- 09:20 phone rang\n- 09:40 back to it"
         )
 
+    def test_a_note_can_go_with_another_event_than_the_one_it_falls_within(self):
+        plan = _plan([_note(1, "09:20", "notes for the report")], [], note_targets={"n1": "e2"})
+
+        assert "e1" not in _by_event(plan)
+        assert _by_event(plan)["e2"].after.description == "Notes:\n- 09:20 notes for the report"
+        assert plan.note_uses == {"n1": ("annotates", "e2")}
+
+    def test_a_note_that_sets_an_edge_is_added_too_when_its_given_an_event(self):
+        plan = _plan(
+            [_note(1, "09:20", "started late")], [_keep("e1", start_note="n1")], note_targets={"n1": "e1"}
+        )
+
+        email = _by_event(plan)["e1"].after
+        assert (email.start, email.description) == (time_at("09:20"), "Notes:\n- 09:20 started late")
+        assert plan.note_uses == {"n1": ("annotates", "e1")}
+
+    def test_a_note_whose_event_is_cancelled_goes_where_it_falls(self):
+        plan = _plan(
+            [_note(1, "09:20", "phone rang")], [EventDecision(action="cancel", event_id="e2")],
+            note_targets={"n1": "e2"},
+        )
+
+        assert _by_event(plan)["e1"].after.description == "Notes:\n- 09:20 phone rang"
+        assert any("which is cancelled" in w for w in plan.warnings)
+
+    def test_a_note_for_an_event_that_isnt_there_is_refused(self):
+        with pytest.raises(CompactionError, match="can't go with 'nope'"):
+            _plan([_note(1, "09:20", "phone rang")], [], note_targets={"n1": "nope"})
+
+    def test_a_note_cant_be_both_ignored_and_given_an_event(self):
+        with pytest.raises(CompactionError, match="both ignored and added"):
+            _plan([_note(1, "09:20", "phone rang")], [], ignore_notes=["n1"], note_targets={"n1": "e2"})
+
+    def test_the_plan_says_what_each_note_is_for(self):
+        plan = _plan(
+            [_note(1, "09:05", "started"), _note(2, "09:20", "phone rang"), _note(3, "09:40", "aside"), _note(4, "09:50")],
+            [_keep("e1", start_note="n1")],
+            ignore_notes=["n3"],
+        )
+
+        assert plan.note_uses == {
+            "n1": ("edge", "e1"), "n2": ("annotates", "e1"), "n3": ("ignored", None), "n4": ("unused", None),
+        }
+
     def test_a_created_event_keeps_its_key(self):
         plan = _plan(
             [], [EventDecision(action="create", summary="Walk", start=time_at("11:00"), end=time_at("11:20"), key="k1")]

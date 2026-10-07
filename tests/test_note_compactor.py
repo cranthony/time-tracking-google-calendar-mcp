@@ -31,11 +31,12 @@ from utilities.note_compaction import (
     CompactionPlan,
     EventDecision,
     EventState,
+    NoteAnnotation,
 )
 from tests.fake_labels import FakeLabelCalendar
 from utilities.actions import Action, Actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
-from utilities.compaction_proposals import FeedbackReply
+from utilities.compaction_proposals import FeedbackReply, NoteEdit
 from utilities.cancellations import Cancellations
 from utilities.facts import Facts
 from utilities.judgments import Judging, Judgment
@@ -2330,3 +2331,118 @@ class TestProposals:
             False, False, True, True, True, True,
         ]
         assert setup.journal.revision_meta(p, 1).revision == 1
+
+
+class TestProposalNotes:
+    """What notes are for: Claude ignores a note, or adds it to a
+    particular event; the user's note edits override that."""
+
+    def _ignoring_the_email_note(self):
+        setup = _standard()
+        result = setup.compactor.dry_run([], ignore_notes=[setup.note_id(2)])
+        return setup, result.proposal_id
+
+    @staticmethod
+    def _note(proposal, note_id):
+        return next(n for n in proposal.notes if n.id == note_id)
+
+    @staticmethod
+    def _event(proposal, event_id):
+        return next(e for e in proposal.events if e.id == event_id)
+
+    def test_the_proposal_says_what_each_note_is_for_and_who_said_so(self):
+        setup, p = self._ignoring_the_email_note()
+
+        proposal = setup.compactor.get_proposal()
+
+        email, report = self._note(proposal, setup.note_id(2)), self._note(proposal, setup.note_id(3))
+        assert (email.use, email.event_id, email.decided_by) == ("ignored", None, "claude")
+        assert (report.use, report.event_id, report.decided_by) == ("annotates", "e2", None)
+
+    def test_the_user_annotates_a_note_claude_ignored(self):
+        setup, p = self._ignoring_the_email_note()
+
+        proposal = setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate")])
+
+        email = self._note(proposal, setup.note_id(2))
+        assert (email.use, email.event_id, email.decided_by) == ("annotates", "e1", "user")
+        assert self._event(proposal, "e1").description == "Notes:\n- 09:05 email"
+        assert [e.edit for e in proposal.user_edits] == [{"action": "note", "use": "annotate"}]
+
+    def test_the_user_adds_a_note_to_another_event(self):
+        setup, p = self._ignoring_the_email_note()
+
+        proposal = setup.compactor.amend(
+            p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate", event_id="e2")]
+        )
+
+        assert self._note(proposal, setup.note_id(2)).event_id == "e2"
+        assert self._event(proposal, "e2").description == "Notes:\n- 09:05 email\n- 10:20 report"
+
+    def test_as_planned_puts_a_note_back_as_claude_had_it(self):
+        setup, p = self._ignoring_the_email_note()
+        setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate")])
+
+        proposal = setup.compactor.amend(p, 2, [], as_planned=[setup.note_id(2)])
+
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+
+    def test_claudes_revision_keeps_the_users_note_edits(self):
+        setup, p = self._ignoring_the_email_note()
+        setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate")])
+
+        setup.compactor.dry_run([], ignore_notes=[setup.note_id(2)], proposal_id=p, revision=2)
+
+        assert self._note(setup.compactor.get_proposal(), setup.note_id(2)).use == "annotates"
+        assert setup.compactor.prepare().proposal.ignore_notes == [setup.note_id(2)]
+
+    def test_a_note_edit_naming_a_note_or_event_that_isnt_there_is_refused(self):
+        setup, p = self._ignoring_the_email_note()
+
+        with pytest.raises(CompactionError, match="aren't in the proposal"):
+            setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id="2026-01-01T08:00:00+00:00#9", use="ignore")])
+        with pytest.raises(CompactionError, match="aren't in the proposal"):
+            setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate", event_id="nope")])
+        assert setup.journal.user_edits(p) == []
+
+    def test_claude_adds_a_note_to_a_particular_event(self):
+        setup = _standard()
+
+        result = setup.compactor.dry_run([], annotate_notes=[NoteAnnotation(note_id=setup.note_id(2), event_id="e2")])
+
+        assert next(c for c in result.changes if c.event_id == "e2").after.description == (
+            "Notes:\n- 09:05 email\n- 10:20 report"
+        )
+        context = setup.compactor.prepare().proposal
+        assert context.annotate_notes == [{"note_id": setup.note_id(2), "event_id": "e2"}]
+        email = self._note(setup.compactor.get_proposal(), setup.note_id(2))
+        assert (email.use, email.decided_by) == ("annotates", "claude")
+
+    def test_claude_may_change_a_users_note_edit_answering_feedback_about_the_note(self):
+        setup, p = self._ignoring_the_email_note()
+        setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate")])
+        setup.now = "11:31"
+        item = setup.compactor.add_note(p, "put this with the report", note_id=setup.note_id(2))
+        setup.now = "11:32"
+
+        setup.compactor.dry_run(
+            [],
+            annotate_notes=[NoteAnnotation(note_id=setup.note_id(2), event_id="e2")],
+            proposal_id=p,
+            revision=2,
+            replies=[FeedbackReply(feedback_id=item.id, reply="Moved it to the report")],
+        )
+
+        proposal = setup.compactor.get_proposal()
+        assert self._note(proposal, setup.note_id(2)).event_id == "e2"
+        assert [e.status for e in proposal.user_edits] == ["replaced"]
+        assert proposal.feedback[0].note_id == setup.note_id(2)
+
+    def test_confirming_writes_the_note_where_the_user_put_it(self):
+        setup, p = self._ignoring_the_email_note()
+        setup.compactor.amend(p, 1, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate", event_id="e2")])
+
+        assert setup.compactor.confirm(p, 2).status == "applied"
+
+        patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
+        assert patches["e2"].description == "Notes:\n- 09:05 email\n- 10:20 report"

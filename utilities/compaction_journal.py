@@ -15,8 +15,9 @@ Layout: one row per fact, all in the same eight columns --
 
 - `kind == "compaction"` (step 0): the compaction itself. `status` is
   where it is in its life (see below); `detail` is JSON with `now`, the
-  ids of the notes it consumes, the ids of notes it was told to ignore,
-  and any planner warnings -- and, for the second and later days of a
+  ids of the notes it consumes, the ids of notes it was told to ignore
+  (and, in `note_targets`, the events notes go with instead of the ones
+  they fall within), and any planner warnings -- and, for the second and later days of a
   batch, the `batch` (the first day's id) and which `day` of it it is.
   The batch's first day also keeps any `additions`: the actions, people
   and locations the plan adds, each with the `ref` its decisions name it
@@ -177,6 +178,14 @@ class RevisionMeta:
     """The highest number in a key Claude's creates were given."""
 
     claude_decisions: list[EventDecision] = field(default_factory=list)
+    claude_ignore_notes: list[str] | None = None
+    """The notes Claude ignored -- `None` for a revision from before
+    these were kept apart from the user's (its days' `ignore_notes`)."""
+
+    claude_note_targets: dict[str, str] = field(default_factory=dict)
+    """The notes Claude added to a particular event: note -> event (id,
+    or key)."""
+
     aliases: dict[str, str] = field(default_factory=dict)
     """Keys of events already created (by an apply that then failed) ->
     their ids."""
@@ -201,6 +210,8 @@ class RevisionMeta:
             "changed": self.changed,
             "outcomes": self.outcomes,
             "key_seq": self.key_seq,
+            **({"claude_ignore_notes": self.claude_ignore_notes} if self.claude_ignore_notes is not None else {}),
+            **({"claude_note_targets": self.claude_note_targets} if self.claude_note_targets else {}),
             **({"aliases": self.aliases} if self.aliases else {}),
             **({"settled": self.settled} if self.settled else {}),
             **({"judge_also": self.judge_also} if self.judge_also else {}),
@@ -221,6 +232,8 @@ class RevisionMeta:
             outcomes=detail.get("outcomes", {}),
             key_seq=detail.get("key_seq", 0),
             claude_decisions=claude_decisions,
+            claude_ignore_notes=detail.get("claude_ignore_notes"),
+            claude_note_targets=detail.get("claude_note_targets", {}),
             aliases=detail.get("aliases", {}),
             settled=detail.get("settled", []),
             judge_also=detail.get("judge_also", []),
@@ -237,6 +250,10 @@ class JournalCompaction:
     decisions: list[EventDecision]
     ignore_notes: list[str] = field(default_factory=list)
     steps: list[JournalStep] = field(default_factory=list)
+    note_targets: dict[str, str] = field(default_factory=dict)
+    """Notes added to a particular event (id, or key) rather than the
+    one they fall within."""
+
     row: int = 0
     batch: str | None = None
     """The id of the batch's first day, for the second and later days of a
@@ -279,6 +296,7 @@ class PlannedDay:
     plan: CompactionPlan
     ignore_notes: list[str] = field(default_factory=list)
     additions: dict[str, list[dict]] = field(default_factory=dict)
+    note_targets: dict[str, str] = field(default_factory=dict)
 
 
 class CompactionJournal:
@@ -365,6 +383,8 @@ class CompactionJournal:
                 detail.update(batch=batch, day=number)
             if day.additions:
                 detail["additions"] = day.additions
+            if day.note_targets:
+                detail["note_targets"] = day.note_targets
             if meta is not None:
                 detail.update(meta.to_detail() if number == 1 else {"proposal": meta.proposal, "revision": meta.revision})
             rows.append([day.compaction_id, "0", "compaction", "", "", "", status, json.dumps(detail)])
@@ -457,6 +477,7 @@ class CompactionJournal:
                             seq=int(row[1]),
                             text=note["text"],
                             event_id=row[3] or None,
+                            note_id=note.get("note_id"),
                             at=datetime.fromisoformat(note["at"]) if note.get("at") else None,
                             by=note.get("by", "user"),
                             created=datetime.fromisoformat(note["created"]),
@@ -551,6 +572,7 @@ class CompactionJournal:
                     warnings=detail.get("warnings", []),
                     decisions=[],
                     ignore_notes=detail.get("ignore_notes", []),
+                    note_targets=detail.get("note_targets", {}),
                     row=sheet_row,
                     batch=detail.get("batch"),
                     day=detail.get("day", 1),
@@ -781,4 +803,6 @@ def _feedback_row(feedback: Feedback, proposal: str) -> list[str]:
     note = {"text": feedback.text, "by": feedback.by, "created": feedback.created.isoformat()}
     if feedback.at is not None:
         note["at"] = feedback.at.isoformat()
+    if feedback.note_id is not None:
+        note["note_id"] = feedback.note_id
     return [proposal, str(feedback.seq), FEEDBACK, feedback.event_id or "", json.dumps(note), "", feedback.status, ""]

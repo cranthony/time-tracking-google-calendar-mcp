@@ -22,6 +22,11 @@ user's edits and every revision lays all of them on top, no revision
 can leave one out. Events a proposal creates have no id until it's
 applied, so they're named by a *key*: `<proposal>c<n>` for Claude's,
 the edit's own id (`<proposal>u<n>`) for the user's.
+
+Notes work the same way. Claude says which to ignore and which to add to
+a particular event (rather than the one they fall within); the user's
+note edits (`NoteEdit`) override that, note by note, and `as_planned`
+on a note puts it back as Claude had it.
 """
 
 from __future__ import annotations
@@ -33,7 +38,7 @@ from typing import Any, Literal
 
 from utilities.compaction_timeline import Timeline
 from utilities.facts import Facts
-from utilities.note_compaction import CompactionChange, EventDecision
+from utilities.note_compaction import CompactionChange, EventDecision, NoteUse
 
 ProposalState = Literal["awaiting_review", "awaiting_claude", "applying", "applied", "abandoned"]
 EditStatus = Literal["active", "inapplicable", "replaced"]
@@ -67,6 +72,12 @@ def feedback_id(proposal: str, seq: int) -> str:
     return f"{proposal}f{seq}"
 
 
+def is_note_id(name: str | None) -> bool:
+    """Whether `name` is a note's id (`<timestamp>#<row>`) rather than an
+    event's or a key."""
+    return name is not None and "#" in name
+
+
 def is_key(proposal: str, name: str | None) -> bool:
     """Whether `name` is a key of `proposal`'s -- a created event's -- and
     not an event id."""
@@ -94,12 +105,13 @@ class UserEdit:
 
     seq: int
     event_id: str | None
-    """The event (or key) it edits; `None` for a create."""
+    """The event (or key, or note) it edits; `None` for a create."""
 
     edit: dict[str, Any]
     """What it says, as a decision's JSON: `action` is `keep`, `create`,
     `cancel` or `as_planned`, with the fields a decision of that kind
-    takes."""
+    takes -- or `note`, with `use` (`annotate` or `ignore`) and, to add
+    the note to a particular event, its `event_id`."""
 
     status: EditStatus = "active"
     """`inapplicable`: the event it names is gone. `replaced`: Claude
@@ -123,6 +135,9 @@ class Feedback:
     event_id: str | None = None
     """The event (or key) it's about, if it's about one."""
 
+    note_id: str | None = None
+    """The note it's about, if it's about one."""
+
     at: datetime | None = None
     """The time it's about, if it's about one."""
 
@@ -138,6 +153,24 @@ class Feedback:
     superseded_by: list[str] | None = None
     """User edits made after Claude's answer started, which stand over
     what it did to the event."""
+
+
+@dataclass(kw_only=True)
+class NoteEdit:
+    """The user's say on what a note is for: `annotate` -- add it to the
+    event it falls within, or to `event_id` (an event's id, or a created
+    one's key) -- or `ignore` it."""
+
+    note_id: str
+    use: Literal["annotate", "ignore"]
+    event_id: str | None = None
+
+    def edit(self) -> dict[str, Any]:
+        return {
+            "action": "note",
+            "use": self.use,
+            **({"event_id": self.event_id} if self.event_id is not None else {}),
+        }
 
 
 @dataclass(kw_only=True)
@@ -184,6 +217,17 @@ class ProposalNote:
     id: str
     timestamp: datetime
     description: str | None = None
+    use: NoteUse = "unused"
+    """What the revision does with it: sets an `edge` of an event,
+    `annotates` one (its text added to the description), is `ignored`,
+    or is `unused` (no text, or no event to add it to)."""
+
+    event_id: str | None = None
+    """The event (id, or key) it's an edge of, or is added to."""
+
+    decided_by: Literal["claude", "user"] | None = None
+    """Who said what it's for -- `None` for a note just added where it
+    falls."""
 
 
 @dataclass(kw_only=True)
@@ -263,6 +307,9 @@ class ProposalContext:
 
     cancels: list[dict] = field(default_factory=list)
     ignore_notes: list[str] = field(default_factory=list)
+    annotate_notes: list[dict] = field(default_factory=list)
+    """Your notes added to a particular event: {note_id, event_id}."""
+
     user_edits: list[UserEdit] = field(default_factory=list)
     feedback: list[Feedback] = field(default_factory=list)
 
@@ -272,7 +319,13 @@ class Merged:
     decisions: list[EventDecision]
     decided_by: dict[str, Literal["claude", "user"]]
     unknown: list[UserEdit]
-    """Edits naming an event (or key) that isn't there."""
+    """Edits naming an event (or key, or note) that isn't there."""
+
+    ignore_notes: list[str] = field(default_factory=list)
+    note_targets: dict[str, str] = field(default_factory=dict)
+    """Note id -> the event (id, or key) it's added to."""
+
+    notes_decided_by: dict[str, Literal["claude", "user"]] = field(default_factory=dict)
 
 
 def edit_decision(edit: UserEdit) -> EventDecision:
@@ -293,14 +346,23 @@ def merge(
     known_ids: set[str] | None = None,
     aliases: dict[str, str] | None = None,
     settled: set[str] | frozenset[str] = frozenset(),
+    claude_ignore: list[str] | tuple = (),
+    claude_targets: dict[str, str] | None = None,
+    known_notes: set[str] | None = None,
 ) -> Merged:
-    """The decisions a revision is planned with: `claude`'s, with every
-    active edit in `edits` on top, in order (see the module docstring).
-    `known_ids`, if given, are the event ids an edit may name (a key is
-    known if a decision creates it). `aliases` map the keys of events
-    already created to their ids; edits of `settled` events (cancelled
-    already) are skipped."""
+    """The decisions a revision is planned with -- `claude`'s, with every
+    active edit in `edits` on top, in order -- and what it does with the
+    notes: `claude_ignore` and `claude_targets` (note -> event), with the
+    user's note edits on top (see the module docstring). `known_ids`, if
+    given, are the event ids an edit may name (a key is known if a
+    decision creates it), and `known_notes` the notes. `aliases` map the
+    keys of events already created to their ids; edits of `settled`
+    events (cancelled already) are skipped."""
     aliases = aliases or {}
+    claude_targets = {n: aliases.get(e, e) for n, e in (claude_targets or {}).items()}
+    ignore = set(claude_ignore)
+    targets = dict(claude_targets)
+    notes_by: dict[str, Literal["claude", "user"]] = {n: "claude" for n in ignore | set(targets)}
     keyed: dict[str, EventDecision] = {}
     decided_by: dict[str, Literal["claude", "user"]] = {}
     for decision in claude:
@@ -311,8 +373,12 @@ def merge(
         keyed[name] = decision
         decided_by[name] = "claude"
     unknown: list[UserEdit] = []
+    note_edits: list[UserEdit] = []
     for edit in sorted((e for e in edits if e.status == "active"), key=lambda e: e.seq):
         action = edit.edit.get("action")
+        if action == "note" or (action == "as_planned" and is_note_id(edit.event_id)):
+            note_edits.append(edit)
+            continue
         if action == "create":
             keyed[edit.id] = edit_decision(edit)
             decided_by[edit.id] = "user"
@@ -349,7 +415,55 @@ def merge(
         else:
             keyed[target] = replace(given, event_id=target)
         decided_by[target] = "user"
-    return Merged(decisions=list(keyed.values()), decided_by=decided_by, unknown=unknown)
+
+    for edit in note_edits:
+        note = edit.event_id
+        if known_notes is not None and note not in known_notes:
+            unknown.append(edit)
+            continue
+        if edit.edit["action"] == "as_planned":
+            ignore.discard(note)
+            targets.pop(note, None)
+            notes_by.pop(note, None)
+            if note in claude_ignore:
+                ignore.add(note)
+            if note in claude_targets:
+                targets[note] = claude_targets[note]
+            if note in ignore or note in targets:
+                notes_by[note] = "claude"
+            continue
+        if edit.edit["use"] == "ignore":
+            ignore.add(note)
+            targets.pop(note, None)
+        else:
+            ignore.discard(note)
+            target = edit.edit.get("event_id")
+            if target is None:
+                targets.pop(note, None)
+            else:
+                target = aliases.get(target, target)
+                creating = target in keyed and keyed[target].action == "create"
+                if not creating and (
+                    is_key(proposal, target) or (known_ids is not None and target not in known_ids)
+                ):
+                    unknown.append(edit)
+                    continue
+                targets[note] = target
+        notes_by[note] = "user"
+    # A note left with an event a later edit took away (a create the
+    # user cancelled) goes back to where it falls.
+    creates = {k for k, d in keyed.items() if d.action == "create"}
+    for note, target in list(targets.items()):
+        if is_key(proposal, target) and target not in creates:
+            del targets[note]
+    return Merged(
+        decisions=list(keyed.values()),
+        decided_by=decided_by,
+        unknown=unknown,
+        ignore_notes=sorted(ignore),
+        note_targets=targets,
+        notes_decided_by=notes_by,
+    )
 
 
 def _overlay(under: EventDecision, over: EventDecision) -> EventDecision:
