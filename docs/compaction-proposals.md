@@ -97,7 +97,13 @@ Takes `proposal_id`, `revision`, and `updates`/`creates`/`cancels`
 - Refused as a whole if an edit names an event outside the window or
   gone, if the result overlaps, or if it changes history. The response
   returns the current revision and the refused edits.
-- Can't add actions, people or locations: that's feedback.
+- Edits set actions and facts (location, people, notes on people) as
+  `compact_notes` does, naming existing ones by id. A new action,
+  person or location is created first (`create_action`,
+  `create_person`, `create_location`), then named; the `new:` refs of
+  `new_actions` and the like are only for Claude's additions, created on
+  apply. An edit naming one that's been deleted is refused like any
+  invalid edit.
 - Refused while the proposal is applying.
 
 ### `add_proposal_note` / `withdraw_proposal_note` (app)
@@ -120,8 +126,9 @@ Takes `proposal_id` and `revision`.
   - Different writes: writes a new revision (`recheck`) to confirm
     again.
   - Can't be planned: adds server feedback for Claude.
-- Only the app can call it. How it's limited to the app is open (see
-  below).
+- Only the app calls it. It's a tool of its own so the user can deny it
+  to Claude in Claude's connector settings -- for conversations and the
+  routine alike.
 
 ### Finishing an apply (app, Claude)
 
@@ -207,8 +214,3 @@ Superseded rows are safe to delete because they were never applied, and
 nothing reads them: revisions are built from the current one and the
 ledger, override checks use `user_seq`, stale confirms need only the
 revision number, and "changed since" uses the kept `changed` lists.
-
-## Open
-
-- How `confirm_proposal` is limited to the app: the OAuth client id in
-  the app's token, if it identifies the app.
