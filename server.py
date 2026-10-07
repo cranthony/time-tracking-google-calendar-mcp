@@ -68,6 +68,7 @@ from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision, NoteAnnotation
 from utilities.compaction_journal import CompactionJournal
 from utilities.compaction_proposals import (
+    AdditionChoice,
     Feedback,
     FeedbackReply,
     NoteEdit,
@@ -1755,13 +1756,20 @@ def amend_proposal(
     cancels: list[EventCancel] | None = None,
     as_planned: list[str] | None = None,
     notes: list[NoteEdit] | None = None,
+    additions: list[AdditionChoice] | None = None,
 ) -> Proposal:
     """The user's edits to the open proposal, from the app: `updates`,
     `creates` and `cancels` as compact_notes takes them (an update's
     event_id may be a new event's key); `notes`, what notes are for --
     each annotating the event it falls within, or the one named
-    (`event_id`), or ignored; and `as_planned` -- events (or keys) whose
-    decisions to clear, and notes to leave as Claude had them.
+    (`event_id`), or ignored; `additions`, settling an action, person or
+    location the proposal adds (by its ref) now, without confirming the
+    rest -- `create` it (with its name, a person's context or a
+    location's hint corrected), say it's one that's `existing` (its id),
+    or `drop` it from the events; and `as_planned` -- events (or keys)
+    whose decisions to clear, notes to leave as Claude had them, and refs
+    to leave unsettled. One created stays, whatever becomes of the
+    proposal.
     `revision` is the one the user was looking at. They're laid over the current revision as a new one,
     which is returned, with `replaced`: the events whose newer change by
     Claude they overrode. Refused, changing nothing, if one names an
@@ -1781,7 +1789,7 @@ def amend_proposal(
                     for c in cancels or ()
                 ),
             ]
-            return get_note_compactor().amend(proposal_id, revision, decisions, as_planned, notes)
+            return get_note_compactor().amend(proposal_id, revision, decisions, as_planned, notes, additions)
         except CompactionError as exc:
             raise _rejected("amend_proposal", exc) from exc
 

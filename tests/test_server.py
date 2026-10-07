@@ -808,6 +808,7 @@ class TestProposalTools:
             ],
             ["e3"],
             [NoteEdit(note_id="2026-01-01T09:05:00+00:00#2", use="ignore")],
+            None,
         )
 
     def test_notes_for_claude_delegate(self, monkeypatch):

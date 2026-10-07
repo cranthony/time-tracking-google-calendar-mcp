@@ -66,6 +66,16 @@ or, naming none, with the event whose edge it sets. Note edits never
 touch an edge: only an event edit moves one. A note's text is never
 added to a description twice.
 
+The actions, people and locations Claude's decisions add (by `new:`
+ref) are created only when the proposal is applied. The user can settle
+one sooner, without confirming the rest: `create` it now (with its name,
+a person's context or a location's hint corrected), say it's one
+that's `existing`, or `drop` it. Every revision from then on names it by
+its id, or leaves it out of the events' actions and facts, wherever the
+decisions named its ref; Claude may keep sending the ref, and isn't
+refused for one the user created. `as_planned` on a ref unsettles it.
+One created stays, whatever becomes of the proposal.
+
 ## Contract
 
 Every write names the revision it started from (`revision`). Writes
@@ -132,7 +142,9 @@ as it is now:
   edge it sets), `edge_of` (the event whose start or end it sets, if
   any, annotated or not) and `decided_by` (`claude`, `user`, or none
   for a note just added where it falls).
-- `changes` (the calendar writes), `warnings`, `timeline`, `additions`.
+- `changes` (the calendar writes), `warnings`, `timeline`, `additions`
+  (those still to create on apply) and `settled_additions` (`ref`,
+  `use`, `id`: those the user settled).
 - `user_edits`: the ledger (`id`, `edit`, `status` `active`,
   `inapplicable` or `replaced`, `created`, `base_revision`).
 - `feedback`: `id`, `text`, `event_id`, `note_id`, `at`, `by` (`user`/`server`),
@@ -144,10 +156,11 @@ as it is now:
 ### `amend_proposal` (app)
 
 `amend_proposal(proposal_id, revision, updates?, creates?, cancels?,
-as_planned?, notes?)`: `updates`/`creates`/`cancels` as `compact_notes`
-takes them (an update's `event_id` may be a key); `notes` is
-`[{note_id, use: annotate | ignore, event_id?}]`; `as_planned` event
-ids, keys or note ids. Returns the new revision, as `get_proposal` does, with
+as_planned?, notes?, additions?)`: `updates`/`creates`/`cancels` as
+`compact_notes` takes them (an update's `event_id` may be a key);
+`notes` is `[{note_id, use: annotate | ignore, event_id?}]`;
+`additions` is `[{ref, use: create | existing | drop, id?, name?,
+context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the new revision, as `get_proposal` does, with
 `replaced`: the ids of events whose newer Claude change it overrode.
 
 - Appends one ledger entry per edit and writes a new revision with
@@ -159,6 +172,10 @@ ids, keys or note ids. Returns the new revision, as `get_proposal` does, with
   description too long, if the result overlaps, or if it changes
   history. The response
   returns the current revision and the refused edits.
+- An addition the user creates is created once the revision is known
+  to plan, so a refused amend creates nothing. One settled with a ref
+  the proposal doesn't add, an `existing` id that isn't there, or an
+  id with any other use, is refused.
 - Edits set actions and facts (location, people, notes on people) as
   `compact_notes` does, naming existing ones by id. A new action,
   person or location is created first (`create_action`,
@@ -241,11 +258,11 @@ compaction_id | step | kind | event_id | before | after | status | detail
 
 | `kind` | `compaction_id` | `step` | Other columns |
 |---|---|---|---|
-| `compaction` | revision-day id: `<proposal>r<n>`, then `<proposal>r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings`, `ignore_notes`, `note_targets` (note -> event), `batch`/`day`, `additions`) plus `proposal`, `revision`, `from`, `created`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision), `claude_ignore_notes` and `claude_note_targets` (Claude's own, before the user's note edits) |
+| `compaction` | revision-day id: `<proposal>r<n>`, then `<proposal>r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings`, `ignore_notes`, `note_targets` (note -> event), `batch`/`day`, `additions`) plus `proposal`, `revision`, `from`, `created`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision), `claude_ignore_notes`, `claude_note_targets` and `claude_additions` (Claude's own, before the user's note edits and settled additions; the first day's `additions` are those left to create) |
 | `decision` | revision-day id | 0 | A decision the day was planned with -- Claude's and the user's merged -- as JSON in `before`; `event_id` repeats its event |
 | `claude_decision` | revision's first day | 0 | One of Claude's own decisions, as JSON in `before`: what the next revision starts from |
 | `update`/`create`/`cancel` | revision-day id | 1… | One calendar write: `event_id` (a create's key, for a create), the event's state `before` and `after`, `pending`/`done`, reason in `detail` |
-| `user_decision` | proposal id | n (id `<proposal>u<n>`) | The edit as JSON in `before` (a decision, `as_planned`, or a `note` edit, whose `event_id` column holds the note's id); `status` `active`, `inapplicable`, or `replaced` (by Claude answering the user's feedback on that event); `detail`: when, and the revision it started from |
+| `user_decision` | proposal id | n (id `<proposal>u<n>`) | The edit as JSON in `before` (a decision, `as_planned`, a `note` edit, whose `event_id` column holds the note's id, or an `addition`, whose `event_id` column holds its ref); `status` `active`, `inapplicable`, or `replaced` (by Claude answering the user's feedback on that event); `detail`: when, and the revision it started from |
 | `feedback` | proposal id | n (id `<proposal>f<n>`) | `before`: text, `at`, `note_id`, author (`user`/`server`), when; `after`: reply and answering revision; `status` `open`, `answered` or `withdrawn` |
 
 `compaction` row statuses:

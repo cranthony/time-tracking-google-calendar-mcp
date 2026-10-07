@@ -186,6 +186,11 @@ class RevisionMeta:
     """The notes Claude added to a particular event: note -> event (id,
     or key)."""
 
+    claude_additions: dict[str, list[dict]] | None = None
+    """What Claude's decisions add, by ref, including those the user has
+    settled since (the first day's `additions` are those left to create)
+    -- `None` for a revision from before they were kept apart."""
+
     aliases: dict[str, str] = field(default_factory=dict)
     """Keys of events already created (by an apply that then failed) ->
     their ids."""
@@ -212,6 +217,7 @@ class RevisionMeta:
             "key_seq": self.key_seq,
             **({"claude_ignore_notes": self.claude_ignore_notes} if self.claude_ignore_notes is not None else {}),
             **({"claude_note_targets": self.claude_note_targets} if self.claude_note_targets else {}),
+            **({"claude_additions": self.claude_additions} if self.claude_additions is not None else {}),
             **({"aliases": self.aliases} if self.aliases else {}),
             **({"settled": self.settled} if self.settled else {}),
             **({"judge_also": self.judge_also} if self.judge_also else {}),
@@ -234,6 +240,7 @@ class RevisionMeta:
             claude_decisions=claude_decisions,
             claude_ignore_notes=detail.get("claude_ignore_notes"),
             claude_note_targets=detail.get("claude_note_targets", {}),
+            claude_additions=detail.get("claude_additions"),
             aliases=detail.get("aliases", {}),
             settled=detail.get("settled", []),
             judge_also=detail.get("judge_also", []),

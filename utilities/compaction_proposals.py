@@ -27,6 +27,13 @@ Notes work the same way. Claude says which to ignore and which to add to
 a particular event (rather than the one they fall within); the user's
 note edits (`NoteEdit`) override that, note by note, and `as_planned`
 on a note puts it back as Claude had it.
+
+So do the actions, people and locations Claude's decisions add (see
+utilities/compaction_additions.py), which are only created when the
+proposal is applied. The user can settle one sooner (`AdditionChoice`):
+create it now, say it's one already there, or drop it -- and every
+revision from then on names it by its id, or leaves it out, wherever
+the decisions named its ref. `as_planned` on a ref puts it back.
 """
 
 from __future__ import annotations
@@ -37,6 +44,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from utilities.compaction_timeline import Timeline
+from utilities.compaction_additions import REF_PREFIX
 from utilities.facts import Facts
 from utilities.note_compaction import CompactionChange, EventDecision, NoteUse
 
@@ -76,6 +84,11 @@ def is_note_id(name: str | None) -> bool:
     """Whether `name` is a note's id (`<timestamp>#<row>`) rather than an
     event's or a key."""
     return name is not None and "#" in name
+
+
+def is_ref(name: str | None) -> bool:
+    """Whether `name` is an addition's ref ("new:ukulele")."""
+    return name is not None and name.startswith(REF_PREFIX)
 
 
 def is_key(proposal: str, name: str | None) -> bool:
@@ -171,6 +184,31 @@ class NoteEdit:
             "use": self.use,
             **({"event_id": self.event_id} if self.event_id is not None else {}),
         }
+
+
+@dataclass(kw_only=True)
+class AdditionChoice:
+    """The user's say on an action, person or location Claude's decisions
+    add (by its `ref`): `create` it now -- with any of `name`, `context`
+    (a person's) and `hint` (a location's) corrected -- say it's one
+    that's `existing` (its `id`), or `drop` it from the events."""
+
+    ref: str
+    use: Literal["create", "existing", "drop"]
+    id: str | None = None
+    name: str | None = None
+    context: str | None = None
+    hint: str | None = None
+
+
+@dataclass(kw_only=True)
+class AdditionSettled:
+    """An addition the user settled, as a proposal shows it: its `id`, or
+    `None` if they dropped it."""
+
+    ref: str
+    use: Literal["create", "existing", "drop"]
+    id: str | None = None
 
 
 @dataclass(kw_only=True)
@@ -270,7 +308,10 @@ class Proposal:
     timeline: Timeline | None = None
     additions: dict[str, list[dict]] | None = None
     """Actions, people and locations Claude's decisions add, created when
-    it's applied."""
+    it's applied -- those the user hasn't settled yet."""
+
+    settled_additions: list[AdditionSettled] = field(default_factory=list)
+    """Those the user settled: created, found, or dropped."""
 
     user_edits: list[UserEdit] = field(default_factory=list)
     feedback: list[Feedback] = field(default_factory=list)
@@ -325,6 +366,15 @@ class ProposalContext:
     annotate_notes: list[dict] = field(default_factory=list)
     """Your notes added to a particular event: {note_id, event_id}."""
 
+    new_actions: list[dict] = field(default_factory=list)
+    new_people: list[dict] = field(default_factory=list)
+    new_locations: list[dict] = field(default_factory=list)
+    """What your decisions add, by ref: send them again with them."""
+
+    settled_additions: list[AdditionSettled] = field(default_factory=list)
+    """Those of them the user settled -- created, found, or dropped: from
+    now on, name each by its `id`, or leave it out."""
+
     user_edits: list[UserEdit] = field(default_factory=list)
     feedback: list[Feedback] = field(default_factory=list)
 
@@ -342,6 +392,8 @@ class Merged:
     it falls, or the event whose edge it sets."""
 
     notes_decided_by: dict[str, Literal["claude", "user"]] = field(default_factory=dict)
+    settled: dict[str, AdditionSettled] = field(default_factory=dict)
+    """Additions the user settled, by ref."""
 
 
 def edit_decision(edit: UserEdit) -> EventDecision:
@@ -390,10 +442,19 @@ def merge(
         decided_by[name] = "claude"
     unknown: list[UserEdit] = []
     note_edits: list[UserEdit] = []
+    settled_refs: dict[str, AdditionSettled] = {}
     for edit in sorted((e for e in edits if e.status == "active"), key=lambda e: e.seq):
         action = edit.edit.get("action")
         if action == "note" or (action == "as_planned" and is_note_id(edit.event_id)):
             note_edits.append(edit)
+            continue
+        if action == "addition":
+            settled_refs[edit.event_id] = AdditionSettled(
+                ref=edit.event_id, use=edit.edit["use"], id=edit.edit.get("id")
+            )
+            continue
+        if action == "as_planned" and is_ref(edit.event_id):
+            settled_refs.pop(edit.event_id, None)
             continue
         if action == "create":
             keyed[edit.id] = edit_decision(edit)
@@ -481,6 +542,7 @@ def merge(
         ignore_notes=sorted(ignore),
         note_targets=targets,
         notes_decided_by=notes_by,
+        settled=settled_refs,
     )
 
 
@@ -520,3 +582,39 @@ def decision_shape(decision: EventDecision) -> tuple[str, dict]:
         }
     data.pop("into", None)
     return "updates", data
+
+
+def settle_refs(decision: EventDecision, settled: dict[str, AdditionSettled]) -> EventDecision:
+    """`decision` with every ref the user settled replaced by its id -- or,
+    dropped, left out -- in its actions and facts."""
+    ids = {ref: choice.id for ref, choice in settled.items()}
+    if not ids:
+        return decision
+
+    def named(values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        # One that's someone already named there is named once.
+        return list(dict.fromkeys(ids.get(v, v) for v in values if ids.get(v, v) is not None))
+
+    def noted(notes: dict[str, str]) -> dict[str, str]:
+        # A note on someone who already has one keeps theirs.
+        kept: dict[str, str] = {}
+        for person, note in notes.items():
+            target = ids.get(person, person)
+            if target is not None and target not in kept:
+                kept[target] = notes.get(target, note)
+        return kept
+
+    changes: dict[str, Any] = {}
+    if decision.action_ids is not None:
+        changes["action_ids"] = named(decision.action_ids)
+    facts = decision.facts
+    if facts is not None:
+        changes["facts"] = Facts(
+            location_id=ids.get(facts.location_id, facts.location_id) if facts.location_id else facts.location_id,
+            with_ids=named(facts.with_ids),
+            for_ids=named(facts.for_ids),
+            notes=noted(facts.notes) if facts.notes is not None else None,
+        )
+    return replace(decision, **changes)

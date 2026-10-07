@@ -141,6 +141,7 @@ from utilities.compaction_journal import (
     RevisionMeta,
 )
 from utilities.compaction_proposals import (
+    AdditionChoice,
     Feedback,
     FeedbackReply,
     NoteEdit,
@@ -161,6 +162,7 @@ from utilities.compaction_proposals import (
     merge,
     new_proposal_id,
     revision_id,
+    settle_refs,
     split_feedback_id,
 )
 from utilities.cancellations import Cancellations
@@ -337,7 +339,9 @@ DECISION_GUIDE = (
     "so the user's edits of it follow it -- changed as the notes and the feedback say, planned to "
     "now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never "
     "send them, and don't fight them -- that includes what they said a note is for (an edit with "
-    "action `note`). Answer every open feedback item (`proposal.feedback`, "
+    "action `note`), and the additions they settled (`proposal.settled_additions`: created, found "
+    "among those there, or dropped -- name each by its `id` from then on, or leave it out; send "
+    "`proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, "
     "status open) in `replies`, saying what you changed, or asking what they meant if you can't "
     "tell; to change an event (or a note) the user edited, the feedback you answer has to be about "
     "that event (`event_id`) or note (`note_id`). " + _APPROVAL_RULE
@@ -847,11 +851,9 @@ class NoteCompactor:
                 f"there's no open proposal {proposal_id!r}" + (f"; the open one is {open_id}" if open_id else ""),
                 category="unknown_proposal",
             )
-        additions = Additions(actions=new_actions or [], people=new_people or [], locations=new_locations or [])
-        problems = check_additions(additions, self._actions, self._people, self._locations)
-        if problems:
-            raise CompactionError.of(problems, "additions")
-        decisions = self._checked_facts(decisions, additions)
+        claude_additions = Additions(
+            actions=new_actions or [], people=new_people or [], locations=new_locations or []
+        )
         claude_targets = _note_targets(annotate_notes or [])
         now = self._clock()
         current: list[JournalCompaction] | None = None
@@ -868,9 +870,17 @@ class NoteCompactor:
             base_meta = self._base(proposal, meta, revision)
             edit_rows = self._journal.user_edits(proposal)
             feedback_rows = self._journal.feedback(proposal)
-        decisions, key_seq = _keyed(proposal, decisions, meta)
         answered, replaced = self._answers(proposal, replies or [], feedback_rows, edit_rows, base_meta)
         edits = [e for row, e in edit_rows if row not in replaced]
+        # What the user settled of what's added is neither checked nor
+        # created again; the decisions name it by its id from here.
+        settled_additions = merge(proposal, [], edits).settled
+        additions = _unsettled(claude_additions, settled_additions)
+        problems = check_additions(additions, self._actions, self._people, self._locations)
+        if problems:
+            raise CompactionError.of(problems, "additions")
+        decisions = self._checked_facts(decisions, claude_additions, settled=set(settled_additions))
+        decisions, key_seq = _keyed(proposal, decisions, meta)
         aliases = meta.aliases if meta else {}
         settled = set(meta.settled) if meta else set()
         merged = merge(
@@ -879,7 +889,7 @@ class NoteCompactor:
             known_notes=self._uncompacted_notes(now),
         )
         walked, remaining = self._plan_walk(
-            merged.decisions, merged.ignore_notes, additions, now, note_targets=merged.note_targets
+            _settled(merged), merged.ignore_notes, additions, now, note_targets=merged.note_targets
         )
         if not walked or (meta is None and not _has_anything(walked)):
             return CompactionResult(
@@ -904,6 +914,7 @@ class NoteCompactor:
             claude_decisions=decisions,
             claude_ignore_notes=sorted(set(ignore_notes or [])),
             claude_note_targets=claude_targets,
+            claude_additions=claude_additions.to_json_dict(),
             aliases=aliases,
             settled=sorted(settled),
             judge_also=meta.judge_also if meta else [],
@@ -1133,6 +1144,8 @@ class NoteCompactor:
         current = self._current(proposal)
         meta = current[0].meta
         feedback = [f for _, f in self._journal.feedback(proposal)]
+        edits = [e for _, e in self._journal.user_edits(proposal)]
+        claude_additions = _claude_additions(current)
         shapes: dict[str, list[dict]] = {"updates": [], "creates": [], "cancels": []}
         for decision in meta.claude_decisions:
             kind, shape = decision_shape(decision)
@@ -1145,7 +1158,11 @@ class NoteCompactor:
             **shapes,
             ignore_notes=_claude_ignore(current),
             annotate_notes=[{"note_id": n, "event_id": e} for n, e in meta.claude_note_targets.items()],
-            user_edits=[e for _, e in self._journal.user_edits(proposal)],
+            new_actions=claude_additions.get("actions", []),
+            new_people=claude_additions.get("people", []),
+            new_locations=claude_additions.get("locations", []),
+            settled_additions=list(merge(proposal, [], edits).settled.values()),
+            user_edits=edits,
             feedback=feedback,
         )
 
@@ -1231,6 +1248,7 @@ class NoteCompactor:
             )
             view.events = _proposal_events(walked, merged.decided_by)
             view.notes = _proposal_notes(walked, merged)
+            view.settled_additions = list(merged.settled.values())
             view.changes = [c for w in walked for c in w.plan.changes]
             view.timeline = join_days([(w.day.day_start, w.plan.timeline) for w in walked])
         if since_revision is not None:
@@ -1249,11 +1267,14 @@ class NoteCompactor:
         decisions: list[EventDecision],
         as_planned: list[str] | None = None,
         notes: list[NoteEdit] | None = None,
+        additions: list[AdditionChoice] | None = None,
     ) -> Proposal:
         """amend_proposal: the user's `decisions`, `notes` (what notes are
-        for) and `as_planned` events and notes (whose decisions they
-        clear), laid over the open proposal as a new revision -- see
-        utilities/compaction_proposals.py."""
+        for), `additions` (what's added, settled now) and `as_planned`
+        events, notes and refs (whose decisions they clear), laid over the
+        open proposal as a new revision -- see utilities/
+        compaction_proposals.py. An addition the user creates is created
+        right away, once the revision is known to plan."""
         self._prefetch()
         self._journal.garbage_collect()
         current = self._open(proposal_id)
@@ -1263,9 +1284,10 @@ class NoteCompactor:
                 f"proposal {proposal_id} is being applied; it can't be changed now", category="applying"
             )
         self._base(proposal_id, meta, revision)
-        additions = Additions.from_json_dict(current[0].additions)
-        decisions = self._checked_facts(decisions, additions)
+        claude_additions = Additions.from_json_dict(_claude_additions(current))
         edit_rows = self._journal.user_edits(proposal_id)
+        known_settled = merge(proposal_id, [], [e for _, e in edit_rows]).settled
+        decisions = self._checked_facts(decisions, claude_additions, settled=set(known_settled))
         seq = max((e.seq for _, e in edit_rows), default=0)
         now = self._clock()
         new_edits: list[UserEdit] = []
@@ -1289,6 +1311,16 @@ class NoteCompactor:
                     created=now, base_revision=revision,
                 )
             )
+        choices = self._addition_choices(claude_additions, additions or [])
+        for choice, _item in choices:
+            seq += 1
+            new_edits.append(
+                UserEdit(
+                    id=edit_id(proposal_id, seq), seq=seq, event_id=choice.ref,
+                    edit={"action": "addition", "use": choice.use, **({"id": choice.id} if choice.id else {})},
+                    created=now, base_revision=revision,
+                )
+            )
         for name in as_planned or ():
             seq += 1
             new_edits.append(
@@ -1300,28 +1332,42 @@ class NoteCompactor:
         if not new_edits:
             raise CompactionError("there's nothing to amend", category="empty")
         through = current[-1].now
-        merged = merge(
-            proposal_id,
-            meta.claude_decisions,
-            [e for _, e in edit_rows] + new_edits,
-            known_ids=self._known_ids(through),
-            aliases=meta.aliases,
-            settled=set(meta.settled),
-            claude_ignore=_claude_ignore(current),
-            claude_targets=meta.claude_note_targets,
-            known_notes={n for d in current for n in d.note_ids},
-        )
-        unknown_new = [e for e in merged.unknown if e in new_edits]
-        if unknown_new:
-            raise CompactionError(
-                "these edits name events or notes that aren't in the proposal: "
-                + ", ".join(repr(e.event_id or e.edit.get("event_id")) for e in unknown_new),
-                category="unknown_event",
+
+        def planned(edits: list[UserEdit]):
+            merged = merge(
+                proposal_id,
+                meta.claude_decisions,
+                [e for _, e in edit_rows] + edits,
+                known_ids=self._known_ids(through),
+                aliases=meta.aliases,
+                settled=set(meta.settled),
+                claude_ignore=_claude_ignore(current),
+                claude_targets=meta.claude_note_targets,
+                known_notes={n for d in current for n in d.note_ids},
             )
-        walked, _remaining = self._plan_walk(
-            merged.decisions, merged.ignore_notes, additions, through,
-            note_targets=merged.note_targets, max_days=len(current),
-        )
+            unknown_new = [e for e in merged.unknown if e in edits]
+            if unknown_new:
+                raise CompactionError(
+                    "these edits name events or notes that aren't in the proposal: "
+                    + ", ".join(repr(e.event_id or e.edit.get("event_id")) for e in unknown_new),
+                    category="unknown_event",
+                )
+            walked, _remaining = self._plan_walk(
+                _settled(merged), merged.ignore_notes, _unsettled(claude_additions, merged.settled), through,
+                note_targets=merged.note_targets, max_days=len(current),
+            )
+            return merged, walked
+
+        creating = {e.event_id: e for e in new_edits if e.edit.get("action") == "addition" and e.edit["use"] == "create"}
+        if creating:
+            # Planned first without them, so nothing's created for a
+            # revision that's then refused.
+            planned([e for e in new_edits if e.event_id not in creating])
+            for choice, item in choices:
+                if choice.use == "create":
+                    creating[choice.ref].edit["id"] = self._create_addition(item, choice)
+        merged, walked = planned(new_edits)
+        additions = _unsettled(claude_additions, merged.settled)
         outcomes = _outcomes(walked)
         new_meta = replace(
             meta,
@@ -1334,6 +1380,7 @@ class NoteCompactor:
             reason="user edit",
             changed=_changed(meta.outcomes, outcomes),
             outcomes=outcomes,
+            claude_additions=claude_additions.to_json_dict(),
         )
         replaced = self._replaced(proposal_id, meta, revision, new_edits)
         self._write_revision(walked, new_meta, additions, current, edits=new_edits)
@@ -1342,6 +1389,58 @@ class NoteCompactor:
             if edit.id in unknown:
                 self._journal.set_user_edit_status(row, "inapplicable")
         return self._view(self._current(proposal_id), walked, replaced=replaced)
+
+    def _addition_choices(
+        self, additions: Additions, choices: list[AdditionChoice]
+    ) -> list[tuple[AdditionChoice, NewAction | NewPerson | NewLocation]]:
+        """Each of the user's `choices` with the addition it settles.
+        CompactionError if one names a ref the proposal doesn't add, or an
+        existing one that isn't there."""
+        added: dict[str, tuple[str, NewAction | NewPerson | NewLocation]] = {
+            **{a.ref: ("action", a) for a in additions.actions},
+            **{p.ref: ("person", p) for p in additions.people},
+            **{loc.ref: ("location", loc) for loc in additions.locations},
+        }
+        there = {
+            "action": {a.id for a in self._actions.all()} if self._actions is not None else set(),
+            "person": {p.id for p in self._people.all()} if self._people is not None else set(),
+            "location": {loc.id for loc in self._locations.all()} if self._locations is not None else set(),
+        }
+        problems, found = [], []
+        for choice in choices:
+            if choice.ref not in added:
+                problems.append(f"additions: {choice.ref!r} isn't something the proposal adds")
+                continue
+            kind, item = added[choice.ref]
+            if choice.use == "existing" and choice.id not in there[kind]:
+                problems.append(f"additions: {choice.ref} -- there's no {kind} {choice.id!r}")
+                continue
+            if choice.use != "existing" and choice.id is not None:
+                problems.append(f"additions: {choice.ref} -- only 'existing' takes an id")
+                continue
+            found.append((choice, item))
+        if problems:
+            raise CompactionError.of(problems, "additions")
+        return found
+
+    def _create_addition(self, item: NewAction | NewPerson | NewLocation, choice: AdditionChoice) -> str:
+        """Create `item` now, as the user corrected it -- or find the one
+        by its name already there -- and return its id. A new action is
+        active: the user approved it."""
+        corrected = {
+            name: value
+            for name, value in (("name", choice.name), ("context", choice.context), ("hint", choice.hint))
+            if value is not None and hasattr(item, name)
+        }
+        item = replace(item, **corrected)
+        if isinstance(item, NewAction):
+            item = replace(item, status="active")
+        single = Additions(
+            actions=[item] if isinstance(item, NewAction) else [],
+            people=[item] if isinstance(item, NewPerson) else [],
+            locations=[item] if isinstance(item, NewLocation) else [],
+        )
+        return create_additions(single, self._actions, self._people, self._locations)[item.ref]
 
     def _replaced(
         self, proposal: str, meta: RevisionMeta, base: int, edits: list[UserEdit]
@@ -1597,10 +1696,10 @@ class NoteCompactor:
             if edit.id in inapplicable:
                 self._journal.set_user_edit_status(row, "inapplicable")
         stopped = f"applying revision {meta.revision} stopped: {error}"
-        additions = Additions.from_json_dict(days[0].additions)
+        additions = _unsettled(Additions.from_json_dict(_claude_additions(days)), merged.settled)
         try:
             walked, _remaining = self._plan_walk(
-                merged.decisions, merged.ignore_notes, additions, through,
+                _settled(merged), merged.ignore_notes, additions, through,
                 note_targets=merged.note_targets, max_days=len(unfinished),
             )
         except CompactionError as exc:
@@ -1788,14 +1887,16 @@ class NoteCompactor:
             return None
         return compaction_id if due else None
 
-    def _checked_facts(self, decisions: list[EventDecision], additions: Additions) -> list[EventDecision]:
+    def _checked_facts(
+        self, decisions: list[EventDecision], additions: Additions, *, settled: set[str] = frozenset()
+    ) -> list[EventDecision]:
         """`decisions` with their facts normalized; CompactionError if any
         aren't well formed, or name people or locations that aren't there
         (or being added)."""
         people = {p.id for p in self._people.all()} if self._people is not None else None
         locations = {loc.id for loc in self._locations.all()} if self._locations is not None else None
-        new_people = {p.ref for p in additions.people}
-        new_locations = {loc.ref for loc in additions.locations}
+        new_people = {p.ref for p in additions.people} | settled
+        new_locations = {loc.ref for loc in additions.locations} | settled
         checked, problems = [], []
         for number, decision in enumerate(decisions, start=1):
             if decision.facts is not None:
@@ -2381,6 +2482,31 @@ def _note_targets(annotations: list[NoteAnnotation]) -> dict[str, str]:
             category="malformed_decision",
         )
     return targets
+
+
+def _claude_additions(days: list[JournalCompaction]) -> dict[str, list[dict]]:
+    """What Claude's decisions in a revision add, as JSON -- for one from
+    before they were kept apart from what's left to create, its first
+    day's `additions`."""
+    meta = days[0].meta
+    if meta is not None and meta.claude_additions is not None:
+        return meta.claude_additions
+    return days[0].additions or {}
+
+
+def _unsettled(additions: Additions, settled: dict) -> Additions:
+    """`additions` but those the user settled."""
+    return Additions(
+        actions=[a for a in additions.actions if a.ref not in settled],
+        people=[p for p in additions.people if p.ref not in settled],
+        locations=[loc for loc in additions.locations if loc.ref not in settled],
+    )
+
+
+def _settled(merged) -> list[EventDecision]:
+    """`merged`'s decisions naming what the user settled of what's added
+    by its id -- or leaving it out."""
+    return [settle_refs(d, merged.settled) for d in merged.decisions]
 
 
 def _claude_ignore(days: list[JournalCompaction]) -> list[str]:
