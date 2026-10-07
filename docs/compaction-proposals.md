@@ -1,6 +1,6 @@
 # Compaction proposals
 
-Status: being built (server: `claude/compaction-proposals`).
+Status: built in the server; the app's side is in progress.
 
 A compaction becomes a **proposal** the user confirms: "this is what
 happened from `from` to `through`." Claude prepares it; the user reviews
@@ -180,9 +180,10 @@ proposal}`, `status` one of `applied`, `rechecked`, `needs_claude`.
   no new approval, and Claude may do it.
 - A write that can never succeed (Calendar: not found, gone) marks the
   revision `failed`, and the server writes a new revision (`apply
-  failed`) with server feedback listing what couldn't carry over, for
-  the user to confirm again. Days already applied stay applied; the
-  new revision's `from` is where they end.
+  failed`), its first warning saying what stopped it and what couldn't
+  carry over, for the user to confirm again. If what's left can't be
+  planned, server feedback hands it to Claude instead. Days already
+  applied stay applied; the new revision's `from` is where they end.
 - The new revision replays the decisions on the calendar as it is now:
 
   | Decision | Write done | Write not done |
@@ -218,7 +219,8 @@ compaction_id | step | kind | event_id | before | after | status | detail
 | `kind` | `compaction_id` | `step` | Other columns |
 |---|---|---|---|
 | `compaction` | revision-day id: `<proposal>r<n>`, then `<proposal>r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings`, `ignore_notes`, `batch`/`day`, `additions`) plus `proposal`, `revision`, `from`, `created`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision) |
-| `decision` | revision-day id | 0 | Claude's decision, as JSON in `before`; `event_id` repeats its event |
+| `decision` | revision-day id | 0 | A decision the day was planned with -- Claude's and the user's merged -- as JSON in `before`; `event_id` repeats its event |
+| `claude_decision` | revision's first day | 0 | One of Claude's own decisions, as JSON in `before`: what the next revision starts from |
 | `update`/`create`/`cancel` | revision-day id | 1… | One calendar write: `event_id` (a create's key, for a create), the event's state `before` and `after`, `pending`/`done`, reason in `detail` |
 | `user_decision` | proposal id | n (id `<proposal>u<n>`) | The edit as JSON in `before` (a decision, or `as_planned`); `status` `active`, `inapplicable`, or `replaced` (by Claude answering the user's feedback on that event); `detail`: when, and the revision it started from |
 | `feedback` | proposal id | n (id `<proposal>f<n>`) | `before`: text, `at`, author (`user`/`server`), when; `after`: reply and answering revision; `status` `open`, `answered` or `withdrawn` |
@@ -241,9 +243,9 @@ is open, otherwise awaiting review.
 
 ## Garbage collection
 
-Runs whenever a revision is written, and deletes rows anywhere in the
-tab (several ranges in one request, bottom first), not only from the
-top. Every id lives in a row's own cells, so deleting rows never changes
+Runs as each compaction step starts (before it reads, so nothing it
+deletes is read again), and deletes rows anywhere in the tab, bottom
+first, not only from the top. Every id lives in a row's own cells, so deleting rows never changes
 one.
 
 Kept:

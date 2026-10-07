@@ -394,6 +394,26 @@ class TestNotesAddedToEvents:
             "Inbox zero\n\nNotes:\n- 09:20 phone rang\n- mostly replies"
         )
 
+    def test_a_note_already_in_the_description_isnt_added_again(self):
+        # As when a proposal whose notes were partly written is replayed.
+        day = _day()
+        day[0].description = "Inbox zero\n\nNotes:\n- 09:20 phone rang"
+
+        plan = _plan([_note(1, "09:20", "phone rang"), _note(2, "09:40", "back to it")], [], day)
+
+        assert _by_event(plan)["e1"].after.description == (
+            "Inbox zero\n\nNotes:\n- 09:20 phone rang\n- 09:40 back to it"
+        )
+
+    def test_a_created_event_keeps_its_key(self):
+        plan = _plan(
+            [], [EventDecision(action="create", summary="Walk", start=time_at("11:00"), end=time_at("11:20"), key="k1")]
+        )
+
+        (create,) = [c for c in plan.changes if c.action == "create"]
+        assert create.key == "k1"
+        assert next(e for e in plan.timeline.events if e.status == "new").event_id == "k1"
+
     def test_notes_that_would_overflow_a_description_are_refused_naming_them(self):
         # Calendar silently cuts a description past MAX_DESCRIPTION_BYTES.
         day = _day()

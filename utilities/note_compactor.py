@@ -3,23 +3,30 @@
 (utilities/note_compaction.py) and the write-ahead journal
 (utilities/compaction_journal.py) together.
 
-The flow, as the MCP tools expose it:
+A compaction is a *proposal* the user confirms (see utilities/
+compaction_proposals.py, and docs/compaction-proposals.md for the
+contract). The flow, as the MCP tools expose it:
 
-1. `prepare` -- read-only. Hands the client every day of uncompacted
-   notes up to now (each note with a stable id and a shortlist of nearby
-   planned events), those days' planned events, and the two side by side
-   as a `Timeline` (see utilities/compaction_timeline.py). The client
-   compares them and decides, event by event, what the notes show
+1. `prepare` -- read-only. Hands the client every day from the last
+   compaction up to now, notes or not (each uncompacted note with a
+   stable id and a shortlist of nearby planned events), those days'
+   planned events, the two side by side as a `Timeline` (see utilities/
+   compaction_timeline.py), and the open proposal, if there is one. The
+   client compares them and decides, event by event, what the notes show
    happened differently.
-2. `dry_run` -- validates the client's decisions and writes the plan to
-   the journal as `planned`, returning it (and a compaction id, and the
-   resulting timeline) for review. Nothing on the calendar changes.
-3. `commit` -- applies a `planned` compaction after checking the notes and
-   calendar still match what was previewed, journaling each step as it
+2. `dry_run` (compact_notes) -- validates the client's decisions, lays
+   the user's edits over them, and writes the plan to the journal as a
+   proposal's revision, returning it (and the resulting timeline).
+   Nothing on the calendar changes. The user reviews it in the app:
+   `amend` (their edits), `add_note`/`withdraw_note` (feedback for the
+   client, answered by its next revision), `get_proposal`.
+3. `confirm` -- the user's alone: plans the revision again, and if
+   nothing changed, applies it (`commit`), journaling each step as it
    goes, and stamping each day's notes as compacted once that day's steps
-   are done. If it dies partway it can simply be called again: the
-   journal remembers exactly what was approved and how far it got. A
-   compaction that can't be finished can be `abandon`ed.
+   are done. If it dies partway, `finish` resumes it: the journal
+   remembers exactly what was confirmed and how far it got. A write that
+   can never succeed proposes what's left of it again (`_rebuild`). A
+   proposal can be `abandon`ed.
 4. `record_judgments` -- the facts written, the client judges the traits
    of each event's people (see utilities/judgments.py). Nothing about
    judging is sent before the user approves the plan: the commit hands
@@ -29,14 +36,15 @@ The flow, as the MCP tools expose it:
    they're all judged. `judgments_due` hands them over again -- to
    finish, or redo.
 
-A day at a time, all at once: one compaction takes on every day of
-uncompacted notes up to now (at most `_MAX_DAYS`, oldest first), but
-plans each day on its own, and the user reviews them together. A day is
-the one the oldest of the notes left falls in: it starts when the last
-end-of-day sleep event that began before that note ends (or at the note,
-if it's earlier -- a note written before the planned wake-up time), and
-runs to the end of the next end-of-day sleep event after that (or 24
-hours, if there isn't one). Each day after the first is planned as if the
+A day at a time, all at once: one compaction takes on every day from
+the last compaction up to now (at most `_MAX_DAYS`, oldest first), notes
+or not, but plans each day on its own, and the user reviews them
+together. The first day is the one the last compaction ran in (before
+there's been one, the one the oldest note falls in, or today): it starts
+when the last end-of-day sleep event that began before then ends (or at
+the note, if it's earlier -- a note written before the planned wake-up
+time), and runs to the end of the next end-of-day sleep event after that
+(or 24 hours, if there isn't one). Each day after the first is planned as if the
 one before it had already been compacted: it starts where that one ended
 (its `now`), against the calendar as that one's plan would leave it
 (`_PlannedCalendar`). A day before the last is wholly past, so its plan
@@ -46,9 +54,9 @@ whole, by the earlier day, and its end is the border between them (see
 `_cut`): a note the decisions use to end it -- woke early, or slept in
 -- moves the border to it, taking every note up to it into the earlier
 day, and the later day starts there. After a late wake-up, the later day
-still starts at the planned one, and is compacted even without notes of
-its own, so the morning the night now runs over is settled there: past
-events under it, and later ones it reaches, are overlaps to resolve.
+still starts at the planned one, so the morning the night now runs over
+is settled there: past events under it, and later ones it reaches, are
+overlaps to resolve.
 A cancelled night -- no sleep -- makes the two days one long one. In the journal, each day is a compaction of
 its own, applied and stamped in order, and together they're a *batch*
 under the first day's id (see utilities/compaction_journal.py) -- the
@@ -59,12 +67,8 @@ A day can take several compactions, so the events offered -- the
 *compaction window* -- start at the later of the day's start and the last
 *stamped* compaction's `now` (or, for a later day of a batch, the day
 before it's): whatever an earlier compaction already
-settled isn't offered again. Nor is anything after it skipped: when the
-last compaction ran before the night that ends its day (in the evening,
-before bed), that day isn't over, so the batch starts with it, at the
-last compaction -- even if its oldest note was written during that night
-(the user stayed up), or the morning after it (that day's evening and
-night are settled first, notes or not). See `_anchor`. The one event that ended within `_LOOKBACK`
+settled isn't offered again. Nor is anything after it skipped: a day
+with no notes is confirmed as planned. The one event that ended within `_LOOKBACK`
 before the compaction window starts is offered too, so an event the last
 compaction closed off at "now" (or the night's sleep) can still be
 stretched. The latest compacted note, however long ago it was written,
@@ -265,8 +269,8 @@ DECISION_GUIDE = (
     "longer before the window it was written, the less it says about how the window began. The "
     "timeline shows it too (✓), and when the last compaction ran, both as context. "
     "COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at "
-    "`now`, except for later events near a note (one may be what a note starts early) and, after "
-    "a dry run, later events the plan changes. "
+    "`now`, except for later events near a note (one may be what a note starts early) and, once "
+    "proposed, later events the plan changes. "
     "An update that moves a future event reschedules it -- for 'move lunch later and adjust the "
     "afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep "
     "event works differently: moving its start moves bedtime (an earlier one needs whatever runs "
@@ -303,9 +307,10 @@ DECISION_GUIDE = (
     "aren't judgments: you don't know the traits, so just record what happened. Facts replace an "
     "event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. "
     "In the timeline, ▸ marks facts an event has and ▹ ones it's being given. "
-    "After a dry run, ⚠ marks a past event still missing its action or location (listed again "
-    "under `Missing:` at the end of the day): settle it from the notes and run again, or, if they "
-    "don't say, ask the user. "
+    "Once proposed, ⚠ marks a past event still missing its action or location (listed again "
+    "under `Missing:` at the end of the day): settle it from the notes and propose again, or, if "
+    "they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the "
+    "user to settle in review. "
     "NEW actions, people and locations: when an event's action, a person or a place isn't in the "
     "lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a "
     "`ref` starting \"new:\" (\"new:ukulele\") that your updates and creates use wherever its id would go -- "
@@ -313,8 +318,9 @@ DECISION_GUIDE = (
     "confirms them with it. A new action is a verb phrase, its status active (the user approves "
     "it with the plan); a new person needs a context when their name is taken; a new location "
     "needs a hint. Check the lists first: don't add one that's already there under another name. "
-    "Before the dry run, confirm with the user anything you couldn't settle from the notes -- who "
-    "was there, where it was -- in a short list; after it, they confirm the whole plan. "
+    "In a conversation, confirm with the user anything you couldn't settle from the notes -- who "
+    "was there, where it was -- in a short list before proposing; with no one to ask, propose what "
+    "the notes do say. The user confirms the whole proposal, in the app. "
     "In a conversation, after every compact_notes show the user the result's `timeline.text` "
     "verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen "
     "it -- it shows each event's actions and facts compactly, under it), then the new actions, "
@@ -488,7 +494,7 @@ class CompactionResult:
     changes: list[CompactionChange] = None  # type: ignore[assignment]
     warnings: list[str] = None  # type: ignore[assignment]
     timeline: Timeline | None = None
-    """For a dry run: the notes beside the events as they'd end up -- show
+    """Once proposed: the notes beside the events as they'd end up -- show
     this to the user (see `DECISION_GUIDE`)."""
 
     additions: dict[str, list[dict]] | None = None
@@ -1307,9 +1313,12 @@ class NoteCompactor:
         if base == meta.revision:
             return []
         try:
-            then = self._journal.load(revision_id(proposal, base)).meta.claude_decisions
+            then = self._journal.load(revision_id(proposal, base))
         except CompactionError:
             return []
+        if not (then.decisions or then.steps or then.meta.claude_decisions):
+            return []  # Garbage collection kept only its first row.
+        then = then.meta.claude_decisions
 
         def by_event(decisions: list[EventDecision]) -> dict[str, dict]:
             return {(d.key or d.event_id): d.to_json_dict() for d in decisions}
@@ -1324,7 +1333,8 @@ class NoteCompactor:
     ) -> Feedback:
         """add_proposal_note: feedback for Claude on the open proposal."""
         self._prefetch(facts=False)
-        self._open(proposal_id)
+        if any(d.status in OPEN_STATUSES for d in self._open(proposal_id)):
+            raise CompactionError(f"proposal {proposal_id} is being applied", category="applying")
         if not text.strip():
             raise CompactionError("the note is empty", category="empty")
         seq = max((f.seq for _, f in self._journal.feedback(proposal_id)), default=0) + 1
