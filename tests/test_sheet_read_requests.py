@@ -34,6 +34,7 @@ from tests.fake_sheets import FakeSheets, FakeSheetsService
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
 from utilities.facts import Facts
+from utilities.habits import Habit
 from utilities.locations import Location
 from utilities.noted_time_sheet import NotedTime
 from utilities.people import Circle, Person
@@ -82,6 +83,7 @@ class _Server:
         for cached in (
             "_calendar_client", "_noted_time_sheet", "_compaction_journal",
             "_note_compactor", "_recurrences", "_actions", "_people", "_locations", "_traits", "_cancellations",
+            "_habits",
         ):
             monkeypatch.setattr(server, cached, None)
         self._fill()
@@ -95,6 +97,7 @@ class _Server:
         self.family = server.create_circle(Circle(name="Family")).created_id
         self.sam = server.create_person(Person(name="Sam", circles=[self.family])).created_id
         self.home = server.create_location(Location(name="Home")).created_id
+        self.outside = server.create_habit(Habit(name="Outside", action_id=self.outdoors)).created_id
         evening = (NOW - timedelta(days=1)).replace(hour=18, minute=0)
         self.calendar.events.append(
             Event(
@@ -157,6 +160,11 @@ def test_every_tool_reads_the_spreadsheet_in_one_request(tools):
         "get_location": lambda: server.get_location("home"),
         "create_location": lambda: server.create_location(Location(name="Studio")),
         "update_location": lambda: server.update_location(Location(id=tools.home, hint="the apartment")),
+        # Habits, with the actions and traits they're checked against.
+        "get_habits": lambda: server.get_habits(),
+        "get_habit": lambda: server.get_habit("outside"),
+        "create_habit": lambda: server.create_habit(Habit(name="Walks", action_id=tools.walk)),
+        "update_habit": lambda: server.update_habit(Habit(id=tools.outside, traits={"select": "all"})),
         # Events: the actions', people's and locations' tabs together.
         "list_events": lambda: server.list_events(NOW - timedelta(days=2), NOW),
         "get_event": lambda: server.get_event("walked"),

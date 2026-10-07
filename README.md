@@ -107,6 +107,10 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `create_location` | `(location: Location) -> CreatedLocation` |
 | `update_location` | `(location: Location, clear_fields: list[LocationField] \| None) -> Location` |
 | `delete_location` | `(location_id: str) -> Location` |
+| `get_habits` | `(statuses: list[HabitStatus] \| None) -> list[ListedHabit]` |
+| `get_habit` | `(id_or_name: str) -> ListedHabit` |
+| `create_habit` | `(habit: Habit) -> CreatedHabit` |
+| `update_habit` | `(habit: Habit, clear_fields: list[HabitField] \| None) -> ListedHabit` |
 | `get_traits` | `(statuses: list[TraitStatus] \| None) -> list[ListedTrait]` |
 | `create_trait` | `(trait: Trait) -> Trait` |
 | `update_trait` | `(trait: Trait, clear_fields: list[TraitField] \| None) -> Trait` |
@@ -142,7 +146,7 @@ Every event tool's `PublicEvent`s also carry a read-only `effective_priority`: t
 
 Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
 
-The action, group, people, circle, location and trait tools manage what events are tagged with and what traits are read from — see [Actions](#actions), [People, circles and locations](#people-circles-and-locations) and [Traits](#traits) below. Each kind has tools to list them all, get one by id or name (suggesting close matches when there's none), create one (returning the new id as `created_id`) and update one (whichever fields are given are set, and those in `clear_fields` blanked; ids never change). Action groups, circles and locations have no status, so they have delete tools; actions and people are archived or deleted by status instead, so events naming them still make sense.
+The action, group, people, circle, location, habit and trait tools manage what events are tagged with and what traits are read from — see [Actions](#actions), [People, circles and locations](#people-circles-and-locations) and [Traits](#traits) below. Each kind has tools to list them all, get one by id or name (suggesting close matches when there's none), create one (returning the new id as `created_id`) and update one (whichever fields are given are set, and those in `clear_fields` blanked; ids never change). Action groups, circles and locations have no status, so they have delete tools; actions, people and habits are archived or deleted by status instead, so events naming them still make sense.
 
 The `note` tool records a new time note (`utilities/noted_time_sheet.py`'s `NotedTime`: a required `timestamp`, and an optional free-text `description` of what it marks) by appending it to this calendar's noted-times tab (via `NotedTimeSheet.append`, which writes only the new row — see [Calendar metadata sheets](#calendar-metadata-sheets) below), returning the note as recorded along with its id (`NoteWithId`: the note's timestamp and sheet row together, e.g. `2026-01-01T09:05:00+00:00#5`). A caller can't set a note's `compaction_id`; only compaction does. `get_notes` lists the notes that haven't been compacted yet, sorted by timestamp and each with its id (or all of them with `include_compacted`).
 
@@ -250,6 +254,7 @@ Actions replaced goals: an action is a verb for what the user is doing in a mome
 - **Circles** are groups people belong to ("Family"), a person belonging to any number; names are unique. Deleting a circle takes its people out of it.
 - **Follow-through counts what the user cancelled**, not what's cancelled on the calendar (a deleted series, a reshuffled plan, a merge). A cancellation is recorded ([`utilities/cancellations.py`](utilities/cancellations.py)) in the **Cancellations** tab, one row per person per event, when a compaction's `cancel` decision (it didn't happen) is applied, or `delete_event` is called with `counts_against_follow_through` — and only for the people a follow-through part matches, as the event was planned: the user and everyone it was with (`with_ids`) for a `with` part, everyone it was for (`for_ids`) for a `for` part, and only an event of the part's `action`, if it has one. The compaction timeline lists each such cancellation at the end of its day, under `Follow-through:` (`✗`, with whom it counts against). A row recorded by mistake can be deleted from the tab by hand; rows are kept for 490 days. `get_people` and `get_person` return each person with theirs (`cancelled_events`, newest first).
 - **Locations** are where events happen: a unique name and a `hint` for recognizing when an event or note refers to it.
+- **Habits** ([`utilities/habits.py`](utilities/habits.py); the design is in [`docs/habits.md`](docs/habits.md)) are what the user wants to do well, rated by traits as a person is: a unique name, the action or action group whose events they're about (`action_id` — only the user's events with that action, or any action under that group, are in scope, as the actions and groups are when it's used), a status (`active`, `archived` or `deleted`), a `note` (what it's for, and what doing it well looks like) and `traits`, as a person's: every active trait by default, and their own parts — their own rubrics — for any. They live in the **Habits** tab. Judging their events and recording their cancellations come next.
 
 ## Traits
 
