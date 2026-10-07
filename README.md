@@ -118,7 +118,7 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `prepare_compaction` | `() -> CompactionContext` |
 | `compact_notes` | `(updates: list[CompactionUpdate] \| None, creates: list[CompactionCreate] \| None, cancels: list[EventCancel] \| None, ignore_notes: list[str] \| None, proposal_id: str \| None, revision: int \| None, replies: list[FeedbackReply] \| None, new_actions: list[NewAction] \| None, new_people: list[NewPerson] \| None, new_locations: list[NewLocation] \| None, annotate_notes: list[NoteAnnotation] \| None) -> CompactionResult` |
 | `get_proposal` | `(proposal_id: str \| None, since_revision: int \| None) -> Proposal` |
-| `amend_proposal` | `(proposal_id: str, revision: int, updates: list[CompactionUpdate] \| None, creates: list[CompactionCreate] \| None, cancels: list[EventCancel] \| None, as_planned: list[str] \| None, notes: list[NoteEdit] \| None, additions: list[AdditionChoice] \| None) -> Proposal` |
+| `amend_proposal` | `(proposal_id: str, revision: int, updates: list[ProposalUpdate] \| None, creates: list[ProposalCreate] \| None, cancels: list[EventCancel] \| None, as_planned: list[str] \| None, notes: list[NoteEdit] \| None, additions: list[AdditionChoice] \| None) -> Proposal` |
 | `add_proposal_note` | `(proposal_id: str, text: str, event_id: str \| None, at: datetime \| None, note_id: str \| None) -> Feedback` |
 | `withdraw_proposal_note` | `(feedback_id: str) -> Feedback` |
 | `confirm_proposal` | `(proposal_id: str, revision: int) -> ProposalResult` |

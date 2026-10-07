@@ -122,6 +122,24 @@ class EventDecision:
     annotate: str | None = None
     """`keep`/`create`: extra text for the event's description."""
 
+    description: str | None = None
+    """`keep`/`create`: the event's whole description, as given ("" clears
+    it): no `annotate` text is added to it, nor the notes it left out
+    (`dropped_notes`). For the user's edits (see utilities/
+    compaction_proposals.py)."""
+
+    dropped_notes: list[str] | None = None
+    """With `description`: the notes that would have been added to the
+    event whose lines it doesn't have -- left out for good. Other notes
+    are added below it. `None` (an edit just made): every note whose line
+    it doesn't have is left out, and which is recorded here."""
+
+    location: str | None = None
+    """`keep`/`create`: the event's free-text location ("" clears it)."""
+
+    priority: int | None = None
+    """`keep`/`create`: the event's own priority."""
+
     action_ids: list[str] | None = None
     """`keep`/`create`: what was done at it, the first action setting its
     color. For `keep`, `None` keeps its actions and `[]` clears them."""
@@ -329,6 +347,10 @@ class CompactionPlan:
     """Each note that sets an edge -> that event (id, or key), whether or
     not it's also added to one."""
 
+    kept_out: dict[str, str] = field(default_factory=dict)
+    """Each note left out of an event whose description an edit gives
+    (see `EventDecision.dropped_notes`) -> that event (id, or key)."""
+
 
 @dataclass(kw_only=True)
 class NoteAnnotation:
@@ -370,6 +392,12 @@ class _Fact:
     """A move of the day's own end-of-day sleep event -- see `_end_day_at`."""
 
     annotations: list[str] = field(default_factory=list)
+
+    fixed_description: bool = False
+    """Its decision gives its whole description (see
+    `EventDecision.description`)."""
+
+    dropped_notes: list[str] | None = None
 
     created_key: str | None = None
     """For a create: its decision's `key`, if it has one."""
@@ -476,7 +504,8 @@ def plan_compaction(
             copies[event_id].action_ids = list(decision.action_ids)
         if decision.facts is not None:
             copies[event_id].facts = decision.facts
-    annotated, annotated_keys = _annotate(
+        _set_fields(copies[event_id], decision)
+    annotated, annotated_keys, kept_out = _annotate(
         ordered, ignored, facts, touched, copies, cancels, warnings, problems, note_targets
     )
     if problems:
@@ -497,12 +526,13 @@ def plan_compaction(
             note_uses[note.id] = ("annotates", annotated_keys[note.id])
         elif note.id in edges:
             note_uses[note.id] = ("edge", edges[note.id])
-        elif note.id in ignored:
+        elif note.id in ignored or note.id in kept_out:
             note_uses[note.id] = ("ignored", None)
         else:
             note_uses[note.id] = ("unused", None)
     return CompactionPlan(
-        changes=changes, warnings=warnings, timeline=timeline, note_uses=note_uses, note_edges=edges
+        changes=changes, warnings=warnings, timeline=timeline, note_uses=note_uses, note_edges=edges,
+        kept_out=kept_out,
     )
 
 
@@ -564,9 +594,13 @@ def _resolve(
         if decision.event_id in by_event:
             problems.append(Problem("duplicate_decision", f"{label}: event {decision.event_id} has more than one decision"))
             continue
-        if decision.action != "keep" and (moves or decision.summary or decision.annotate or decision.facts):
+        if decision.action != "keep" and (
+            moves or decision.summary or decision.annotate or decision.facts
+            or decision.description is not None or decision.location is not None or decision.priority is not None
+        ):
             problems.append(
-                f"{label}: times, notes, summary, annotate and facts only go with 'keep' or 'create'"
+                f"{label}: times, notes, summary, annotate, description, location, priority and facts only go "
+                "with 'keep' or 'create'"
             )
             continue
         if decision.action == "merge":
@@ -673,6 +707,7 @@ def _resolve(
             event.action_ids = list(decision.action_ids)
         if decision.facts is not None:
             event.facts = decision.facts
+        _set_fields(event, decision)
         event.start, event.end = start, end
         if event_id in merges:
             reason = (
@@ -697,6 +732,8 @@ def _resolve(
                 end_note=end_note,
                 moves_day_end=closing is not None and event_id == closing.id,
                 annotations=[decision.annotate.strip()] if (decision.annotate or "").strip() else [],
+                fixed_description=decision.description is not None,
+                dropped_notes=decision.dropped_notes,
             )
         )
 
@@ -730,15 +767,31 @@ def _resolve(
                     end=end,
                     action_ids=list(decision.action_ids) if decision.action_ids is not None else None,
                     facts=decision.facts,
+                    description=decision.description or None,
+                    location=decision.location or None,
+                    priority=decision.priority,
                 ),
                 base=None,
                 reason="something the notes show happened that wasn't planned",
                 start_note=start_note,
                 end_note=end_note,
                 annotations=[decision.annotate.strip()] if (decision.annotate or "").strip() else [],
+                fixed_description=decision.description is not None,
+                dropped_notes=decision.dropped_notes,
             )
         )
     return facts, cancels, merged_into, touched
+
+
+def _set_fields(event: Event, decision: EventDecision) -> None:
+    """Give `event` the description, location and priority `decision`
+    sets, if any ("" clears a description or location)."""
+    if decision.description is not None:
+        event.description = decision.description
+    if decision.location is not None:
+        event.location = decision.location
+    if decision.priority is not None:
+        event.priority = decision.priority
 
 
 def _annotate(
@@ -751,14 +804,18 @@ def _annotate(
     warnings: list[str],
     problems: list[str],
     note_targets: dict[str, str | None] | None = None,
-) -> tuple[dict[str, str], dict[str, str]]:
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Add every note that doesn't set an edge (and isn't ignored), and
     every `annotate`, to the description of the event it belongs to: the
     one `note_targets` names for it (edge or not), or else the one it
     falls within -- except that an edge note is added only if
     `note_targets` has it, to the event whose edge it sets if it names
-    none. Returns note id -> the title of the event it was added
-    to, and note id -> that event's id (or key).
+    none. Returns note id -> the title of the event it was added to,
+    and note id -> that event's id (or key) -- and the notes left out of
+    an event whose description its decision gives (see
+    `EventDecision.description`) -> that event: a note whose line it has
+    exactly counts as added; one it left out stays out; any other is
+    added below it.
 
     A description that would grow past `MAX_DESCRIPTION_BYTES` is a
     problem, not a warning: Calendar would silently cut it short."""
@@ -781,6 +838,12 @@ def _annotate(
     note_ids: dict[str, list[str]] = {}
     annotated: dict[str, str] = {}
     annotated_keys: dict[str, str] = {}
+    dropped_for: dict[str, list[str] | None] = {f.key: f.dropped_notes for f in facts if f.fixed_description}
+    dropped_for.update(
+        (event_id, decision.dropped_notes) for event_id, decision in touched.items() if decision.description is not None
+    )
+    fixed = set(dropped_for)
+    kept_out: dict[str, str] = {}
     for note in ordered:
         text = (note.description or "").strip()
         target = note_targets.get(note.id)
@@ -810,17 +873,28 @@ def _annotate(
                 "added anywhere"
             )
             continue
+        if hit[2] in fixed:
+            line = f"- {note.timestamp.astimezone(hit[3].start.tzinfo).strftime('%H:%M')} {text}"
+            if line in (hit[3].description or "").splitlines():
+                annotated[note.id] = hit[3].summary or hit[2]
+                annotated_keys[note.id] = hit[2]
+                continue
+            dropped = dropped_for[hit[2]]
+            if dropped is None or note.id in dropped:
+                kept_out[note.id] = hit[2]
+                continue
+            # A note the description wasn't written without: added below it.
         lines.setdefault(hit[2], []).append((note.timestamp, text))
         events[hit[2]] = hit[3]
         note_ids.setdefault(hit[2], []).append(note.id)
         annotated[note.id] = hit[3].summary or hit[2]
         annotated_keys[note.id] = hit[2]
     for fact in facts:
-        for text in fact.annotations:
+        for text in fact.annotations if fact.key not in fixed else ():
             lines.setdefault(fact.key, []).append((None, text))
             events[fact.key] = fact.event
     for event_id, decision in touched.items():
-        if (decision.annotate or "").strip():
+        if (decision.annotate or "").strip() and event_id not in fixed:
             lines.setdefault(event_id, []).append((None, decision.annotate.strip()))
             events[event_id] = copies[event_id]
 
@@ -853,7 +927,15 @@ def _annotate(
                 f"added, over the {MAX_DESCRIPTION_BYTES} Calendar keeps (it silently cuts the rest)"
                 + (f"; {' or '.join(fixes)}" if fixes else "")
             )
-    return annotated, annotated_keys
+    for key in fixed:
+        event = by_key[key][3] if key in by_key else copies.get(key)
+        size = len((event.description or "").encode("utf-8")) if event is not None else 0
+        if size > MAX_DESCRIPTION_BYTES:
+            problems.append(
+                f"the description of {event.summary or key!r} is {size} bytes, over the {MAX_DESCRIPTION_BYTES} "
+                "Calendar keeps (it silently cuts the rest): shorten it"
+            )
+    return annotated, annotated_keys, kept_out
 
 
 @dataclass

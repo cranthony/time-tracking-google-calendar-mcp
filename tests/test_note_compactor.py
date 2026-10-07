@@ -2627,3 +2627,123 @@ class TestSettlingAdditions:
             )
 
         assert [person.name for person in setup.people.all()] == ["Me", "Sam"]
+
+
+class TestEditingAProposalsEventFields:
+    """The user sets an event's whole description, its location or its
+    priority in a proposal, as update_event would on the calendar."""
+
+    def _proposed(self, decisions=None):
+        setup = _standard()
+        result = setup.compactor.dry_run(decisions or [])
+        return setup, result.proposal_id
+
+    @staticmethod
+    def _event(proposal, event_id):
+        return next(e for e in proposal.events if e.id == event_id)
+
+    @staticmethod
+    def _note(proposal, note_id):
+        return next(n for n in proposal.notes if n.id == note_id)
+
+    def test_a_description_the_user_writes_is_the_last_word(self):
+        setup, p = self._proposed()
+        assert self._event(setup.compactor.get_proposal(), "e1").description == "Notes:\n- 09:05 email"
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero")])
+
+        assert self._event(proposal, "e1").description == "Inbox zero"
+        email = self._note(proposal, setup.note_id(2))
+        assert (email.use, email.decided_by) == ("ignored", None)
+
+    def test_a_note_the_users_description_keeps_still_counts_as_added(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero\n\nNotes:\n- 09:05 email")])
+
+        assert self._event(proposal, "e1").description == "Inbox zero\n\nNotes:\n- 09:05 email"
+        assert self._note(proposal, setup.note_id(2)).use == "annotates"
+
+    def test_a_note_counts_as_kept_only_by_its_exact_line(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e1", description="Cleared my email backlog")])
+
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+        assert [e.edit["dropped_notes"] for e in proposal.user_edits] == [[setup.note_id(2)]]
+
+    def test_a_note_annotated_after_the_description_is_added_below_it(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero")])
+
+        proposal = setup.compactor.amend(p, 2, [], notes=[NoteEdit(note_id=setup.note_id(2), use="annotate")])
+
+        assert self._event(proposal, "e1").description == "Inbox zero\n\nNotes:\n- 09:05 email"
+        assert self._note(proposal, setup.note_id(2)).use == "annotates"
+
+    def test_a_note_written_later_is_added_below_it_and_the_left_out_one_stays_out(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero")])
+        setup.append_note("09:30", "phone rang")
+
+        proposal = setup.compactor.get_proposal()
+
+        assert self._event(proposal, "e1").description == "Inbox zero\n\nNotes:\n- 09:30 phone rang"
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+        # Confirming plans it again with the new note, to confirm that.
+        result = setup.compactor.confirm(p, 2)
+        assert result.status == "rechecked"
+        assert self._event(result.proposal, "e1").description == "Inbox zero\n\nNotes:\n- 09:30 phone rang"
+
+    def test_an_explicit_note_edit_in_the_same_call_wins(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(
+            p, 1, [_keep("e1", description="Inbox zero\n\nNotes:\n- 09:05 email")],
+            notes=[NoteEdit(note_id=setup.note_id(2), use="ignore")],
+        )
+
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+
+    def test_what_it_left_out_stays_out_through_claudes_revisions(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero")])
+
+        setup.compactor.dry_run([], proposal_id=p, revision=2)
+
+        proposal = setup.compactor.get_proposal()
+        assert self._event(proposal, "e1").description == "Inbox zero"
+        assert self._note(proposal, setup.note_id(2)).use == "ignored"
+
+    def test_it_replaces_claudes_annotate_text_too(self):
+        setup, p = self._proposed([_keep("e1", annotate="mostly replies")])
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e1", description="Inbox zero")])
+
+        assert self._event(proposal, "e1").description == "Inbox zero"
+
+    def test_location_and_priority_are_set_and_written_on_confirming(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e2", location="Office", priority=3)])
+
+        report = self._event(proposal, "e2")
+        assert (report.location, report.priority) == ("Office", 3)
+        assert setup.compactor.confirm(p, 2).status == "applied"
+        patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
+        assert (patches["e2"].location, patches["e2"].priority) == ("Office", 3)
+
+    def test_a_description_too_long_for_calendar_is_refused(self):
+        setup, p = self._proposed()
+
+        with pytest.raises(CompactionError, match="over the 8192 Calendar keeps"):
+            setup.compactor.amend(p, 1, [_keep("e1", description="x" * 9000)])
+
+    def test_a_cleared_description_is_written_empty(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", description="")])
+
+        setup.compactor.confirm(p, 2)
+
+        patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
+        assert patches["e1"].description == ""

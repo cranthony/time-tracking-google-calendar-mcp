@@ -52,7 +52,10 @@ ProposalState = Literal["awaiting_review", "awaiting_claude", "applying", "appli
 EditStatus = Literal["active", "inapplicable", "replaced"]
 FeedbackStatus = Literal["open", "answered", "withdrawn"]
 
-_EDIT_FIELDS = ("summary", "start", "end", "start_note", "end_note", "annotate", "action_ids", "facts")
+_EDIT_FIELDS = (
+    "summary", "start", "end", "start_note", "end_note", "annotate", "action_ids", "facts",
+    "description", "location", "priority",
+)
 
 
 def new_proposal_id(hex_id: str) -> str:
@@ -240,6 +243,13 @@ class ProposalEvent:
     """Where it is on the calendar now; `None` for a new one."""
 
     description: str | None = None
+    """What it'll be written with: its own description and the notes
+    added to it."""
+
+    location: str | None = None
+    priority: int | None = None
+    """Its own priority, if it has one."""
+
     action_ids: list[str] | None = None
     facts: Facts | None = None
     decided_by: Literal["claude", "user"] | None = None
@@ -443,6 +453,8 @@ def merge(
     unknown: list[UserEdit] = []
     note_edits: list[UserEdit] = []
     settled_refs: dict[str, AdditionSettled] = {}
+    described: dict[str, int] = {}
+    """Event -> the user's last edit giving its whole description."""
     for edit in sorted((e for e in edits if e.status == "active"), key=lambda e: e.seq):
         action = edit.edit.get("action")
         if action == "note" or (action == "as_planned" and is_note_id(edit.event_id)):
@@ -487,6 +499,8 @@ def merge(
                 decided_by[target] = "user"
             continue
         given = edit_decision(edit)
+        if given.description is not None:
+            described[target] = edit.seq
         if existing is not None and existing.action in ("keep", "create"):
             keyed[target] = _overlay(existing, given)
         else:
@@ -514,6 +528,10 @@ def merge(
             targets.pop(note, None)
         else:
             ignore.discard(note)
+            # Annotated after a description left it out: it's back.
+            for name, decision in list(keyed.items()):
+                if note in (decision.dropped_notes or ()) and described.get(name, edit.seq) < edit.seq:
+                    keyed[name] = replace(decision, dropped_notes=[n for n in decision.dropped_notes if n != note])
             target = edit.edit.get("event_id")
             if target is None:
                 # Where it falls -- or, for a note that sets an edge, with
@@ -560,6 +578,11 @@ def _overlay(under: EventDecision, over: EventDecision) -> EventDecision:
             changes[note] = None
         if getattr(over, note) is not None and getattr(over, time) is None:
             changes[time] = None
+    if over.description is not None:
+        # The user's own description: no annotate text, and what it
+        # leaves out is its own.
+        changes["annotate"] = None
+        changes["dropped_notes"] = over.dropped_notes
     return replace(under, **changes)
 
 

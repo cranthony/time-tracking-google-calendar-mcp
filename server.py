@@ -701,6 +701,68 @@ class EventCancel:
 
 
 @dataclass(kw_only=True)
+class ProposalUpdate(EventUpdate):
+    """An edit of one of a proposal's events, as update_event takes one --
+    `event` (its id, or a new event's key, and the fields to set) and
+    `clear_fields` -- plus `start_note`/`end_note`: a note that sets that
+    edge, at its time."""
+
+    start_note: str | None = None
+    end_note: str | None = None
+
+
+@dataclass(kw_only=True)
+class ProposalCreate(PublicEvent):
+    """An event to add to a proposal, as create_event takes one, plus
+    `start_note`/`end_note`: a note that sets that edge, at its time."""
+
+    start_note: str | None = None
+    end_note: str | None = None
+
+
+def _proposal_decision(
+    event: PublicEvent,
+    action: str,
+    *,
+    start_note: str | None,
+    end_note: str | None,
+    clear_fields: Collection[str] = (),
+) -> EventDecision:
+    """An `amend_proposal` update or create, as the decision it makes. Its
+    description is the event's whole description, notes and all: none are
+    added to it. CompactionError for what a proposal can't take."""
+    problems = []
+    if event.is_cancelled:
+        problems.append("to cancel an event, put it in `cancels`")
+    if event.judgments is not None or "judgments" in clear_fields:
+        problems.append("judgments are made once a proposal's applied: leave them out")
+    if "priority" in clear_fields:
+        problems.append("a proposal can't clear an event's priority: set one")
+    if action == "keep" and not event.id:
+        problems.append("an update needs the event's id (or a new event's key)")
+    both = sorted(set(clear_fields) & {f for f in ("description", "location", "facts") if getattr(event, f) is not None})
+    if both:
+        problems.append(f"{', '.join(both)}: set or cleared, not both")
+    if problems:
+        raise CompactionError.of([f"{event.id or event.summary!r}: {p}" for p in problems], "malformed_decision")
+    return EventDecision(
+        action=action,
+        event_id=event.id if action == "keep" else None,
+        summary=event.summary,
+        start=event.start,
+        end=event.end,
+        start_note=start_note,
+        end_note=end_note,
+        # Inferred actions, sent back, aren't the event's to store.
+        action_ids=None if event.actions_from_label else event.action_ids,
+        facts=Facts() if "facts" in clear_fields else event.facts,
+        description="" if "description" in clear_fields else event.description,
+        location="" if "location" in clear_fields else event.location,
+        priority=event.priority,
+    )
+
+
+@dataclass(kw_only=True)
 class EventShift:
     """Events to move together by `minutes` (later if positive, earlier if
     negative), keeping their lengths."""
@@ -1751,16 +1813,19 @@ def get_proposal(proposal_id: str | None = None, since_revision: int | None = No
 def amend_proposal(
     proposal_id: str,
     revision: int,
-    updates: list[CompactionUpdate] | None = None,
-    creates: list[CompactionCreate] | None = None,
+    updates: list[ProposalUpdate] | None = None,
+    creates: list[ProposalCreate] | None = None,
     cancels: list[EventCancel] | None = None,
     as_planned: list[str] | None = None,
     notes: list[NoteEdit] | None = None,
     additions: list[AdditionChoice] | None = None,
 ) -> Proposal:
     """The user's edits to the open proposal, from the app: `updates`,
-    `creates` and `cancels` as compact_notes takes them (an update's
-    event_id may be a new event's key); `notes`, what notes are for --
+    `creates` and `cancels` as update_event takes them (an update's id may
+    be a new event's key), each update and create also taking a
+    `start_note`/`end_note` that sets that edge. A description given is
+    the event's whole description, notes and all -- as the proposal
+    shows it, edited: no notes are added to it. `notes`, what notes are for --
     each annotating the event it falls within, or the one named
     (`event_id`), or ignored; `additions`, settling an action, person or
     location the proposal adds (by its ref) now, without confirming the
@@ -1779,8 +1844,17 @@ def amend_proposal(
     with track("amend_proposal"), cached_reads():
         try:
             decisions = [
-                *(u.decision() for u in updates or ()),
-                *(replace(c, key=None).decision() for c in creates or ()),
+                *(
+                    _proposal_decision(
+                        u.event, "keep", start_note=u.start_note, end_note=u.end_note,
+                        clear_fields=u.clear_fields or (),
+                    )
+                    for u in updates or ()
+                ),
+                *(
+                    _proposal_decision(c, "create", start_note=c.start_note, end_note=c.end_note)
+                    for c in creates or ()
+                ),
                 *(
                     EventDecision(
                         action="cancel", event_id=c.event_id,
