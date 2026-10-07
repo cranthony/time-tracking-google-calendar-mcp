@@ -121,7 +121,9 @@ as it is now:
   `action_ids`, `facts`, `status` (`on_schedule`, `adjusted`, `new`,
   `cancelled`, `merged`, `planned` -- the future, untouched),
   `planned_start`/`planned_end`, `decided_by` (`claude`, `user` or
-  none), `history_until`, `is_end_of_day_sleep`. `None`, with `problem`
+  none), `history_until`, `is_end_of_day_sleep`, and for a cancelled
+  one `counts_against_follow_through` and `follow_through` (who it
+  counts against; to flip it, cancel it again). `None`, with `problem`
   saying why, when it no longer plans (confirming then hands it to
   Claude).
 - `notes`: `id`, `timestamp`, `description`, `use` (`edge`, `annotates`,

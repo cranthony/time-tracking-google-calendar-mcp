@@ -2467,6 +2467,9 @@ def _proposal_events(walked: list[_Walked], decided_by: dict[str, str]) -> list:
         day = w.day
         changes = {c.event_id: c for c in w.plan.changes if c.event_id}
         merged = {d.event_id for d in w.decisions if d.action == "merge"}
+        cancels = {d.event_id: d for d in w.decisions if d.action == "cancel"}
+        # Who each cancel counts against: the plan's timeline has it.
+        against = {t.event_id: t.follow_through for t in w.plan.timeline.events if t.event_id} if w.plan.timeline else {}
         for event in day.events:
             if not event.id or event.id.startswith("planned"):
                 continue
@@ -2482,7 +2485,13 @@ def _proposal_events(walked: list[_Walked], decided_by: dict[str, str]) -> list:
                 status = "on_schedule"
             else:
                 status = "planned"
+            counts = None
+            if status == "cancelled":
+                # A cancel from before cancels said whether they counted, counts.
+                counts = event.id not in cancels or cancels[event.id].counts_against_follow_through is not False
             out[event.id] = ProposalEvent(
+                counts_against_follow_through=counts,
+                follow_through=list(against.get(event.id, [])) if counts else [],
                 id=event.id,
                 summary=state.summary,
                 start=state.start,

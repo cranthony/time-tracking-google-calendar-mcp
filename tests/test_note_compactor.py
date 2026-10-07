@@ -1921,6 +1921,25 @@ class TestFollowThrough:
         assert "Follow-through:" not in planned.timeline.text
         assert setup.cancellations.all() == []
 
+    def test_the_proposal_tells_the_app_whether_a_cancel_counts_and_against_whom(self):
+        setup = self._setup()
+        planned = setup.compactor.dry_run([EventDecision(action="cancel", event_id="e1")])
+
+        email = next(e for e in setup.compactor.get_proposal().events if e.id == "e1")
+
+        assert (email.status, email.counts_against_follow_through) == ("cancelled", True)
+        assert email.follow_through == ["Me (Reliable)", "Sam (Reliable)"]
+        report = next(e for e in setup.compactor.get_proposal().events if e.id == "e2")
+        assert (report.counts_against_follow_through, report.follow_through) == (None, [])
+
+        # The user flips it by cancelling it again.
+        flipped = setup.compactor.amend(
+            planned.proposal_id, 1, [EventDecision(action="cancel", event_id="e1", counts_against_follow_through=False)]
+        )
+
+        email = next(e for e in flipped.events if e.id == "e1")
+        assert (email.counts_against_follow_through, email.follow_through, email.decided_by) == (False, [], "user")
+
     def test_a_merge_isnt_a_cancellation(self):
         setup = self._setup()
         planned = setup.compactor.dry_run([EventDecision(action="merge", event_id="e1", into="e2")])
