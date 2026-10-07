@@ -116,16 +116,9 @@ class Setup:
             actions=self.actions,
             people=self.people,
             locations=self.locations,
-            marker=self.marker,
             judging=self.judging,
             cancellations=self.cancellations,
         )
-
-    @property
-    def marker(self):
-        if not hasattr(self, "_marker"):
-            self._marker = MagicMock()
-        return self._marker
 
     def append_note(self, at, description=None):
         self.notes.append(NotedTime(timestamp=time_at(at), description=description))
@@ -662,37 +655,6 @@ class TestCommit:
         assert again.status == "already_compacted"
         assert setup.client.update_event.call_count == calls
 
-    def test_moves_the_last_compaction_marker_to_its_time_once_stamped(self):
-        setup = _standard()
-        planned = setup.compactor.dry_run(setup.email_then_report())
-        setup.marker.mark.assert_not_called()  # Not for a dry run.
-
-        setup.compactor.commit(planned.compaction_id)
-
-        setup.marker.mark.assert_called_once_with(time_at("11:30"))
-
-    def test_a_marker_that_cant_be_moved_doesnt_fail_the_compaction(self):
-        setup = _standard()
-        setup.marker.mark.side_effect = RuntimeError("calendar unavailable")
-        planned = setup.compactor.dry_run(setup.email_then_report())
-
-        result = setup.compactor.commit(planned.compaction_id)
-
-        assert result.status == "applied"
-        assert any("couldn't move the last-compaction marker" in w for w in result.warnings)
-        assert setup.journal.load(planned.compaction_id).status == "stamped"
-
-    def test_committing_again_moves_the_marker_again(self):
-        setup = _standard()
-        planned = setup.compactor.dry_run(setup.email_then_report())
-        setup.marker.mark.side_effect = [RuntimeError("down"), None]
-        setup.compactor.commit(planned.compaction_id)
-
-        again = setup.compactor.commit(planned.compaction_id)
-
-        assert again.warnings == []
-        assert setup.marker.mark.call_args_list[-1].args == (time_at("11:30"),)
-
     def test_refuses_when_a_note_was_added_after_the_preview(self):
         setup = _standard()
         planned = setup.compactor.dry_run(setup.email_then_report())
@@ -1033,7 +995,6 @@ class TestSeveralDays:
         assert setup.journal.last_stamped_now() == time_at("09:00+1")
         patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
         assert patches["s1"].end == time_at("08:30+1")
-        setup.marker.mark.assert_called_once_with(time_at("09:00+1"))
 
     def _fail_on_the_second_day(self, setup):
         def update(event):

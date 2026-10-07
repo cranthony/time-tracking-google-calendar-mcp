@@ -67,7 +67,6 @@ from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision
 from utilities.compaction_journal import CompactionJournal
-from utilities.compaction_marker import CompactionMarker
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.people import (
@@ -496,8 +495,6 @@ def get_note_compactor() -> NoteCompactor:
                     locations=get_location_store(),
                     notes=get_noted_time_sheet(),
                     journal=get_compaction_journal(),
-                    # A red event in Google Calendar, at the last compaction.
-                    marker=CompactionMarker(get_calendar_client()),
                     judging=Judging(
                         client=ActionCalendar(get_calendar_client(), get_action_store()),
                         actions=get_action_store(),
@@ -1796,10 +1793,6 @@ def set_time_zone(time_zone: str) -> str:
             zone = get_calendar_client().set_time_zone(time_zone)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
-        # Keep the Compactions calendar's days the same as the main one's.
-        compactions = CompactionMarker(get_calendar_client()).calendar(create=False)
-        if compactions is not None:
-            compactions.set_time_zone(zone.key)
         return zone.key
 
 
