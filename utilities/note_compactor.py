@@ -143,6 +143,7 @@ from utilities.compaction_journal import (
 from utilities.compaction_proposals import (
     Feedback,
     FeedbackReply,
+    NoteEdit,
     Proposal,
     ProposalContext,
     ProposalEvent,
@@ -170,6 +171,7 @@ from utilities.note_compaction import (
     CompactionPlan,
     EventDecision,
     EventState,
+    NoteAnnotation,
     PlanNote,
     Problem,
     facts_from_dict,
@@ -248,7 +250,9 @@ DECISION_GUIDE = (
     "don't say which gives way). A call that breaks this changes nothing, and lists every problem "
     "and the day as it would leave it, so fix them all at once. "
     "Every note you don't use as a start_note/end_note has its text added to the description of the "
-    "event it falls within; list any that shouldn't be in `ignore_notes`. Use only note ids from "
+    "event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with "
+    "another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` "
+    "from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from "
     "`notes` (only this round's -- a longer backlog than this takes another round, see "
     "`remaining_note_count`) and event ids from `events`. "
     "`events` may start with one that ended just before `compaction_window_start` (usually last "
@@ -332,10 +336,11 @@ DECISION_GUIDE = (
     "`proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` "
     "so the user's edits of it follow it -- changed as the notes and the feedback say, planned to "
     "now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never "
-    "send them, and don't fight them. Answer every open feedback item (`proposal.feedback`, "
+    "send them, and don't fight them -- that includes what they said a note is for (an edit with "
+    "action `note`). Answer every open feedback item (`proposal.feedback`, "
     "status open) in `replies`, saying what you changed, or asking what they meant if you can't "
-    "tell; to change an event the user edited, the feedback you answer has to be about that "
-    "event. " + _APPROVAL_RULE
+    "tell; to change an event (or a note) the user edited, the feedback you answer has to be about "
+    "that event (`event_id`) or note (`note_id`). " + _APPROVAL_RULE
 )
 
 
@@ -564,6 +569,7 @@ class _Walked:
     plan: CompactionPlan | None = None
     decisions: list[EventDecision] = field(default_factory=list)
     ignore_notes: list[str] = field(default_factory=list)
+    note_targets: dict[str, str] = field(default_factory=dict)
 
 
 _STATE_FIELDS = (
@@ -813,15 +819,17 @@ class NoteCompactor:
         proposal_id: str | None = None,
         revision: int | None = None,
         replies: list[FeedbackReply] | None = None,
+        annotate_notes: list[NoteAnnotation] | None = None,
     ) -> CompactionResult:
         """compact_notes: propose what happened, from the last compaction to
         now -- or, with the open proposal's `proposal_id` and the
         `revision` Claude started from, revise or extend it (see utilities/
         compaction_proposals.py). Nothing on the calendar changes.
         `decisions` are all of Claude's; `replies` answer the user's
-        feedback. `new_actions`, `new_people` and `new_locations`: what
-        it adds when it's applied, which its decisions name by their refs
-        (see utilities/compaction_additions.py)."""
+        feedback, and `annotate_notes` add notes to particular events.
+        `new_actions`, `new_people` and `new_locations`: what it adds when
+        it's applied, which its decisions name by their refs (see
+        utilities/compaction_additions.py)."""
         self._prefetch()
         # First: anything read after it deletes is read again.
         self._journal.garbage_collect()
@@ -844,6 +852,7 @@ class NoteCompactor:
         if problems:
             raise CompactionError.of(problems, "additions")
         decisions = self._checked_facts(decisions, additions)
+        claude_targets = _note_targets(annotate_notes or [])
         now = self._clock()
         current: list[JournalCompaction] | None = None
         edit_rows: list[tuple[int, UserEdit]] = []
@@ -864,8 +873,14 @@ class NoteCompactor:
         edits = [e for row, e in edit_rows if row not in replaced]
         aliases = meta.aliases if meta else {}
         settled = set(meta.settled) if meta else set()
-        merged = merge(proposal, decisions, edits, known_ids=self._known_ids(now), aliases=aliases, settled=settled)
-        walked, remaining = self._plan_walk(merged.decisions, ignore_notes, additions, now)
+        merged = merge(
+            proposal, decisions, edits, known_ids=self._known_ids(now), aliases=aliases, settled=settled,
+            claude_ignore=list(ignore_notes or []), claude_targets=claude_targets,
+            known_notes=self._uncompacted_notes(now),
+        )
+        walked, remaining = self._plan_walk(
+            merged.decisions, merged.ignore_notes, additions, now, note_targets=merged.note_targets
+        )
         if not walked or (meta is None and not _has_anything(walked)):
             return CompactionResult(
                 status="nothing_to_compact",
@@ -887,6 +902,8 @@ class NoteCompactor:
             outcomes=outcomes,
             key_seq=key_seq,
             claude_decisions=decisions,
+            claude_ignore_notes=sorted(set(ignore_notes or [])),
+            claude_note_targets=claude_targets,
             aliases=aliases,
             settled=sorted(settled),
             judge_also=meta.judge_also if meta else [],
@@ -945,12 +962,15 @@ class NoteCompactor:
         additions: Additions,
         now: datetime,
         *,
+        note_targets: dict[str, str] | None = None,
         max_days: int = _MAX_DAYS,
     ) -> tuple[list[_Walked], int]:
         """Walk the days up to `now`, planning each with its share of
-        `decisions` (see `_decisions_for`)."""
+        `decisions` (see `_decisions_for`), of the notes to ignore and of
+        those to add to a particular event (`note_targets`)."""
         pending = list(decisions)
         ignoring = list(ignore_notes or [])
+        targeting: dict[str, str | None] = dict(note_targets or {})
 
         def night(event_id: str, index: int) -> EventDecision | None:
             return next((d for d in pending if d.event_id == event_id), None)
@@ -962,12 +982,15 @@ class NoteCompactor:
                 note_ids = {n.id for n in day.notes}
                 ignored = [i for i in ignoring if not day.has_next or i in note_ids]
                 ignoring[:] = [i for i in ignoring if i not in ignored]
-                plan = self._plan(day, mine, ignored, additions)
+                targets = {n: e for n, e in targeting.items() if not day.has_next or n in note_ids}
+                for note in targets:
+                    del targeting[note]
+                plan = self._plan(day, mine, ignored, additions, targets)
             except CompactionError as exc:
                 raise CompactionError.wrapping(f"{label}: {exc}" if label else str(exc), exc) from exc
             if label:
                 plan.warnings = [f"{label}: {w}" for w in plan.warnings]
-            return _Walked(day=day, plan=plan, decisions=mine, ignore_notes=ignored)
+            return _Walked(day=day, plan=plan, decisions=mine, ignore_notes=ignored, note_targets=targets)
 
         return self._walk(now, plan_day, night, max_days=max_days)
 
@@ -992,6 +1015,7 @@ class NoteCompactor:
                     ignore_notes=w.ignore_notes,
                     plan=w.plan,
                     additions=additions.to_json_dict() if number == 1 else {},
+                    note_targets=w.note_targets,
                 )
                 for number, w in enumerate(walked, start=1)
             ],
@@ -1080,7 +1104,7 @@ class NoteCompactor:
                 )
         if problems:
             raise CompactionError.of(problems, "feedback")
-        about = {item.event_id for _, item in answered if item.event_id}
+        about = {name for _, item in answered for name in (item.event_id, item.note_id) if name}
         replaced = {
             row for row, edit in edit_rows
             if edit.status == "active" and edit.event_id in about and base is not None and edit.seq <= base.user_seq
@@ -1119,7 +1143,8 @@ class NoteCompactor:
             state=_state(current, feedback),
             user_seq=meta.user_seq,
             **shapes,
-            ignore_notes=sorted({i for d in current for i in d.ignore_notes}),
+            ignore_notes=_claude_ignore(current),
+            annotate_notes=[{"note_id": n, "event_id": e} for n, e in meta.claude_note_targets.items()],
             user_edits=[e for _, e in self._journal.user_edits(proposal)],
             feedback=feedback,
         )
@@ -1200,13 +1225,12 @@ class NoteCompactor:
                 view.problem = f"it no longer plans against the calendar: {walked}"
         else:
             included = [e for e in edits if e.seq <= meta.user_seq]
-            decided_by = merge(proposal, meta.claude_decisions, included, aliases=meta.aliases).decided_by
-            view.events = _proposal_events(walked, decided_by)
-            view.notes = [
-                ProposalNote(id=n.id, timestamp=n.note.timestamp, description=n.note.description)
-                for w in walked
-                for n in w.day.notes
-            ]
+            merged = merge(
+                proposal, meta.claude_decisions, included, aliases=meta.aliases,
+                claude_ignore=_claude_ignore(current), claude_targets=meta.claude_note_targets,
+            )
+            view.events = _proposal_events(walked, merged.decided_by)
+            view.notes = _proposal_notes(walked, merged)
             view.changes = [c for w in walked for c in w.plan.changes]
             view.timeline = join_days([(w.day.day_start, w.plan.timeline) for w in walked])
         if since_revision is not None:
@@ -1224,10 +1248,12 @@ class NoteCompactor:
         revision: int,
         decisions: list[EventDecision],
         as_planned: list[str] | None = None,
+        notes: list[NoteEdit] | None = None,
     ) -> Proposal:
-        """amend_proposal: the user's `decisions` (and `as_planned` events,
-        whose decisions they clear), laid over the open proposal as a new
-        revision -- see utilities/compaction_proposals.py."""
+        """amend_proposal: the user's `decisions`, `notes` (what notes are
+        for) and `as_planned` events and notes (whose decisions they
+        clear), laid over the open proposal as a new revision -- see
+        utilities/compaction_proposals.py."""
         self._prefetch()
         self._journal.garbage_collect()
         current = self._open(proposal_id)
@@ -1255,6 +1281,14 @@ class NoteCompactor:
                     base_revision=revision,
                 )
             )
+        for note in notes or ():
+            seq += 1
+            new_edits.append(
+                UserEdit(
+                    id=edit_id(proposal_id, seq), seq=seq, event_id=note.note_id, edit=note.edit(),
+                    created=now, base_revision=revision,
+                )
+            )
         for name in as_planned or ():
             seq += 1
             new_edits.append(
@@ -1273,16 +1307,21 @@ class NoteCompactor:
             known_ids=self._known_ids(through),
             aliases=meta.aliases,
             settled=set(meta.settled),
+            claude_ignore=_claude_ignore(current),
+            claude_targets=meta.claude_note_targets,
+            known_notes={n for d in current for n in d.note_ids},
         )
         unknown_new = [e for e in merged.unknown if e in new_edits]
         if unknown_new:
             raise CompactionError(
-                "these edits name events that aren't in the proposal: "
-                + ", ".join(repr(e.event_id) for e in unknown_new),
+                "these edits name events or notes that aren't in the proposal: "
+                + ", ".join(repr(e.event_id or e.edit.get("event_id")) for e in unknown_new),
                 category="unknown_event",
             )
-        ignore = sorted({i for d in current for i in d.ignore_notes})
-        walked, _remaining = self._plan_walk(merged.decisions, ignore, additions, through, max_days=len(current))
+        walked, _remaining = self._plan_walk(
+            merged.decisions, merged.ignore_notes, additions, through,
+            note_targets=merged.note_targets, max_days=len(current),
+        )
         outcomes = _outcomes(walked)
         new_meta = replace(
             meta,
@@ -1329,9 +1368,15 @@ class NoteCompactor:
         )
 
     def add_note(
-        self, proposal_id: str, text: str, event_id: str | None = None, at: datetime | None = None
+        self,
+        proposal_id: str,
+        text: str,
+        event_id: str | None = None,
+        at: datetime | None = None,
+        note_id: str | None = None,
     ) -> Feedback:
-        """add_proposal_note: feedback for Claude on the open proposal."""
+        """add_proposal_note: feedback for Claude on the open proposal --
+        about an event, a time or a note, if about one."""
         self._prefetch(facts=False)
         if any(d.status in OPEN_STATUSES for d in self._open(proposal_id)):
             raise CompactionError(f"proposal {proposal_id} is being applied", category="applying")
@@ -1343,12 +1388,18 @@ class NoteCompactor:
             seq=seq,
             text=text.strip(),
             event_id=event_id,
+            note_id=note_id,
             at=at,
             by="user",
             created=self._clock(),
         )
         self._journal.add_feedback(item, proposal_id)
         return item
+
+    def _uncompacted_notes(self, now: datetime) -> set[str]:
+        """The ids of the notes a proposal up to `now` may name."""
+        sheet_notes, _latest = self._notes.read_with_latest_compacted()
+        return {n.id for n in sheet_notes if n.note.timestamp <= now}
 
     def withdraw_note(self, feedback: str) -> Feedback:
         """withdraw_proposal_note: take back an open feedback item."""
@@ -1538,7 +1589,8 @@ class NoteCompactor:
         edit_rows = self._journal.user_edits(proposal)
         merged = merge(
             proposal, carried, [e for _, e in edit_rows], known_ids=known, aliases=aliases,
-            settled=settled | history,
+            settled=settled | history, claude_ignore=_claude_ignore(days),
+            claude_targets=meta.claude_note_targets, known_notes=self._uncompacted_notes(through),
         )
         inapplicable = {e.id for e in merged.unknown}
         for row, edit in edit_rows:
@@ -1546,9 +1598,11 @@ class NoteCompactor:
                 self._journal.set_user_edit_status(row, "inapplicable")
         stopped = f"applying revision {meta.revision} stopped: {error}"
         additions = Additions.from_json_dict(days[0].additions)
-        ignore = sorted({i for d in unfinished for i in d.ignore_notes})
         try:
-            walked, _remaining = self._plan_walk(merged.decisions, ignore, additions, through, max_days=len(unfinished))
+            walked, _remaining = self._plan_walk(
+                merged.decisions, merged.ignore_notes, additions, through,
+                note_targets=merged.note_targets, max_days=len(unfinished),
+            )
         except CompactionError as exc:
             return self._needs_claude(proposal, days, f"{stopped}. What's left of it couldn't be planned again: {exc}")
         left_out = sorted(set(dropped) | {e.event_id for e in merged.unknown if e.event_id})
@@ -2048,10 +2102,16 @@ class NoteCompactor:
             journal = days[min(index, len(days) - 1)]
             if strict and {n.id for n in day.notes} != set(journal.note_ids):
                 raise stale
-            plan = self._plan(day, journal.decisions, journal.ignore_notes, Additions.from_json_dict(days[0].additions))
+            plan = self._plan(
+                day, journal.decisions, journal.ignore_notes, Additions.from_json_dict(days[0].additions),
+                journal.note_targets,
+            )
             if strict and comparable(plan.changes) != comparable(journal.changes()):
                 raise stale
-            return _Walked(day=day, plan=plan, decisions=journal.decisions, ignore_notes=journal.ignore_notes)
+            return _Walked(
+                day=day, plan=plan, decisions=journal.decisions, ignore_notes=journal.ignore_notes,
+                note_targets=journal.note_targets,
+            )
 
         walked, _remaining = self._walk(days[-1].now, plan_day, night, max_days=len(days))
         if strict and len(walked) != len(days):
@@ -2059,7 +2119,12 @@ class NoteCompactor:
         return walked
 
     def _plan(
-        self, day: _Day, decisions: list[EventDecision], ignore_notes: list[str] | None, additions: Additions
+        self,
+        day: _Day,
+        decisions: list[EventDecision],
+        ignore_notes: list[str] | None,
+        additions: Additions,
+        note_targets: dict[str, str] | None = None,
     ) -> CompactionPlan:
         """`plan_compaction` for `day`, with the decisions' actions checked
         (a ref to a new action in `additions` included), and created
@@ -2105,6 +2170,7 @@ class NoteCompactor:
             last_compaction=day.last_compaction,
             next_day_follows=day.has_next,
             history_until=day.history_until,
+            note_targets=note_targets,
         )
         self._check_before_window(day, plan)
         self._show_follow_through(day, decisions, plan)
@@ -2298,6 +2364,57 @@ def _keyed(
     if problems:
         raise CompactionError.of(problems, "unknown_key")
     return keyed, key_seq
+
+
+def _note_targets(annotations: list[NoteAnnotation]) -> dict[str, str]:
+    """`annotate_notes` as note -> event; CompactionError for a note given
+    twice."""
+    targets: dict[str, str] = {}
+    twice = []
+    for annotation in annotations:
+        if annotation.note_id in targets:
+            twice.append(annotation.note_id)
+        targets[annotation.note_id] = annotation.event_id
+    if twice:
+        raise CompactionError(
+            f"annotate_notes: each note goes with one event -- {', '.join(twice)} are given more than once",
+            category="malformed_decision",
+        )
+    return targets
+
+
+def _claude_ignore(days: list[JournalCompaction]) -> list[str]:
+    """The notes Claude ignored in a revision -- for one from before they
+    were kept apart from the user's, every day's."""
+    meta = days[0].meta
+    if meta is not None and meta.claude_ignore_notes is not None:
+        return list(meta.claude_ignore_notes)
+    return sorted({i for d in days for i in d.ignore_notes})
+
+
+def _proposal_notes(walked: list[_Walked], merged) -> list[ProposalNote]:
+    """Each of `walked`'s notes, with what its plan does with it and who
+    said so -- see `ProposalNote`."""
+    notes = []
+    for w in walked:
+        for note in w.day.notes:
+            use, event = w.plan.note_uses.get(note.id, ("unused", None))
+            edge = w.plan.note_edges.get(note.id)
+            decided_by = merged.notes_decided_by.get(note.id)
+            if decided_by is None and use == "edge":
+                decided_by = merged.decided_by.get(event)
+            notes.append(
+                ProposalNote(
+                    id=note.id,
+                    timestamp=note.note.timestamp,
+                    description=note.note.description,
+                    use=use,
+                    event_id=event if event is None or not event.startswith("new:") else None,
+                    edge_of=edge if edge is None or not edge.startswith("new:") else None,
+                    decided_by=decided_by,
+                )
+            )
+    return notes
 
 
 def _has_anything(walked: list[_Walked]) -> bool:

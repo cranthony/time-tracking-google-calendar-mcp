@@ -67,7 +67,10 @@ remove them.
   earlier bedtime ends or cancels what ran past it.
 - Every note that doesn't set an edge, and isn't listed in
   `ignore_notes`, has its text added to the description of the event it
-  falls within, so it survives compaction.
+  falls within, so it survives compaction -- or, if `note_targets` names
+  one for it, to that event instead. A note that sets an edge is only
+  added to an event if `note_targets` has it: to the one it names, or,
+  if it names none, to the one whose edge it sets.
 
 The day's own end-of-day sleep event ends the day, and its end starts
 the next one, which is never adjusted -- only warned about, unless the
@@ -308,11 +311,33 @@ class CompactionChange:
     after: EventState | None = None
 
 
+NoteUse = Literal["edge", "annotates", "ignored", "unused"]
+
+
 @dataclass(kw_only=True)
 class CompactionPlan:
     changes: list[CompactionChange]
     warnings: list[str] = field(default_factory=list)
     timeline: Timeline | None = None
+    note_uses: dict[str, tuple[NoteUse, str | None]] = field(default_factory=dict)
+    """Each note's id -> what the plan does with it, and the event (id,
+    or a created one's key) it's used with: the one it `annotates`, or
+    an `edge` it sets (and isn't added to anything); `ignored`, or
+    `unused` (no text, or no event to add it to)."""
+
+    note_edges: dict[str, str] = field(default_factory=dict)
+    """Each note that sets an edge -> that event (id, or key), whether or
+    not it's also added to one."""
+
+
+@dataclass(kw_only=True)
+class NoteAnnotation:
+    """A note to add to a particular event, rather than the one it falls
+    within: an `annotate_notes` entry of compact_notes."""
+
+    note_id: str
+    event_id: str
+    """An event's id, or a created event's key."""
 
 
 class CompactionError(ChangeError):
@@ -363,6 +388,7 @@ def plan_compaction(
     last_compaction: datetime | None = None,
     next_day_follows: bool = False,
     history_until: datetime | None = None,
+    note_targets: dict[str, str | None] | None = None,
 ) -> CompactionPlan:
     """Plan the calendar changes that `decisions` (what the notes show
     happened, event by event) imply for `day_events`, as of `now`.
@@ -380,11 +406,16 @@ def plan_compaction(
     note) and `last_compaction` (when that compaction ran) are only shown
     in the timeline, as context. `history_until` is where what an earlier
     compaction settled ends -- its `now` (see the module docstring).
+    `note_targets` (a note's id -> an event's id, or a created one's key)
+    adds those notes to those events, wherever they fall; one naming none
+    (`None`) adds its note where it falls -- or, if it sets an edge, to
+    that event.
 
     Raises `CompactionError` (listing everything wrong at once) if the
     decisions are invalid or leave past events overlapping. Never mutates
     its arguments."""
     ignored = set(ignore_notes or [])
+    note_targets = dict(note_targets or {})
     problems: list[str] = []
     warnings: list[str] = []
 
@@ -397,6 +428,12 @@ def plan_compaction(
         problems.append(
             Problem("unknown_note", f"ignore_notes: {note_id!r} isn't one of this round's notes; {_valid_notes(notes)}")
         )
+    for note_id in sorted(set(note_targets) - set(notes_by_id)):
+        problems.append(
+            Problem("unknown_note", f"annotate_notes: {note_id!r} isn't one of this round's notes; {_valid_notes(notes)}")
+        )
+    for note_id in sorted(set(note_targets) & ignored):
+        problems.append(f"note {note_id} can't be both ignored and added to an event")
 
     live = sorted(
         (e for e in day_events if e.id and e.status != "cancelled"), key=lambda e: e.start
@@ -439,7 +476,9 @@ def plan_compaction(
             copies[event_id].action_ids = list(decision.action_ids)
         if decision.facts is not None:
             copies[event_id].facts = decision.facts
-    annotated = _annotate(ordered, ignored, facts, touched, copies, cancels, warnings, problems)
+    annotated, annotated_keys = _annotate(
+        ordered, ignored, facts, touched, copies, cancels, warnings, problems, note_targets
+    )
     if problems:
         raise CompactionError.of(problems, "description_too_long")
 
@@ -451,7 +490,20 @@ def plan_compaction(
         ordered, ignored, facts, live, copies, cancels, merged_into, annotated, simulated, now, names or {}
     )
     timeline = _with_context(timeline, previous_note, last_compaction)
-    return CompactionPlan(changes=changes, warnings=warnings, timeline=timeline)
+    edges = {n.id: f.key for f in facts for n in (f.start_note, f.end_note) if n is not None}
+    note_uses: dict[str, tuple[NoteUse, str | None]] = {}
+    for note in ordered:
+        if note.id in annotated_keys:
+            note_uses[note.id] = ("annotates", annotated_keys[note.id])
+        elif note.id in edges:
+            note_uses[note.id] = ("edge", edges[note.id])
+        elif note.id in ignored:
+            note_uses[note.id] = ("ignored", None)
+        else:
+            note_uses[note.id] = ("unused", None)
+    return CompactionPlan(
+        changes=changes, warnings=warnings, timeline=timeline, note_uses=note_uses, note_edges=edges
+    )
 
 
 def _valid_notes(notes: list[PlanNote]) -> str:
@@ -698,10 +750,15 @@ def _annotate(
     cancels: dict[str, str],
     warnings: list[str],
     problems: list[str],
-) -> dict[str, str]:
+    note_targets: dict[str, str | None] | None = None,
+) -> tuple[dict[str, str], dict[str, str]]:
     """Add every note that doesn't set an edge (and isn't ignored), and
-    every `annotate`, to the description of the event it belongs to.
-    Returns note id -> the title of the event it was added to.
+    every `annotate`, to the description of the event it belongs to: the
+    one `note_targets` names for it (edge or not), or else the one it
+    falls within -- except that an edge note is added only if
+    `note_targets` has it, to the event whose edge it sets if it names
+    none. Returns note id -> the title of the event it was added
+    to, and note id -> that event's id (or key).
 
     A description that would grow past `MAX_DESCRIPTION_BYTES` is a
     problem, not a warning: Calendar would silently cut it short."""
@@ -716,15 +773,35 @@ def _annotate(
         for event_id, e in copies.items()
         if event_id not in fact_ids and event_id not in cancels
     ]
+    by_key = {t[2]: t for t in targets}
+    edge_of = {n.id: f.key for f in facts for n in (f.start_note, f.end_note) if n is not None}
+    note_targets = note_targets or {}
     lines: dict[str, list[tuple[datetime | None, str]]] = {}
     events: dict[str, Event] = {}
     note_ids: dict[str, list[str]] = {}
     annotated: dict[str, str] = {}
+    annotated_keys: dict[str, str] = {}
     for note in ordered:
         text = (note.description or "").strip()
-        if note.id in anchors or note.id in ignored or not text:
+        target = note_targets.get(note.id)
+        if (note.id in anchors and note.id not in note_targets) or note.id in ignored or not text:
             continue
-        hit = next((t for t in targets if t[0] <= note.timestamp < t[1]), None) or next(
+        if target is None and note.id in anchors:
+            target = edge_of[note.id]
+        hit = None
+        if target is not None:
+            hit = by_key.get(target)
+            if hit is None and target in cancels:
+                warnings.append(
+                    f"note {note.id} ({text!r}) was to go with {target}, which is cancelled, so it was added "
+                    "where it falls instead"
+                )
+            elif hit is None:
+                problems.append(
+                    Problem("unknown_event", f"note {note.id} ({text!r}) can't go with {target!r}: it isn't one of this day's events")
+                )
+                continue
+        hit = hit or next((t for t in targets if t[0] <= note.timestamp < t[1]), None) or next(
             (t for t in targets if t[0] < note.timestamp <= t[1]), None
         )
         if hit is None:
@@ -737,6 +814,7 @@ def _annotate(
         events[hit[2]] = hit[3]
         note_ids.setdefault(hit[2], []).append(note.id)
         annotated[note.id] = hit[3].summary or hit[2]
+        annotated_keys[note.id] = hit[2]
     for fact in facts:
         for text in fact.annotations:
             lines.setdefault(fact.key, []).append((None, text))
@@ -775,7 +853,7 @@ def _annotate(
                 f"added, over the {MAX_DESCRIPTION_BYTES} Calendar keeps (it silently cuts the rest)"
                 + (f"; {' or '.join(fixes)}" if fixes else "")
             )
-    return annotated
+    return annotated, annotated_keys
 
 
 @dataclass

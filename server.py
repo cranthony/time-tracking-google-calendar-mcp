@@ -65,9 +65,16 @@ from utilities.cancellations import Cancellations
 from utilities.event_changes import Cancel, ChangeError, EventChanges, Shift
 from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
-from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision
+from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision, NoteAnnotation
 from utilities.compaction_journal import CompactionJournal
-from utilities.compaction_proposals import Feedback, FeedbackReply, Proposal, ProposalResult, ProposalSummary
+from utilities.compaction_proposals import (
+    Feedback,
+    FeedbackReply,
+    NoteEdit,
+    Proposal,
+    ProposalResult,
+    ProposalSummary,
+)
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
 from utilities.people import (
@@ -1644,6 +1651,7 @@ def compact_notes(
     new_actions: list[NewAction] | None = None,
     new_people: list[NewPerson] | None = None,
     new_locations: list[NewLocation] | None = None,
+    annotate_notes: list[NoteAnnotation] | None = None,
 ) -> CompactionResult:
     """Step 2 of compacting notes: propose what happened -- each day's
     events realigned to its notes, and the calendar changes that makes --
@@ -1660,7 +1668,9 @@ def compact_notes(
     each saying whether it counts against follow-through: the user
     dropped it, or the plan changed). Any past event you don't mention is
     recorded as on schedule. Notes that don't set an event edge are added
-    to the event they fall within, except those in `ignore_notes`.
+    to the event they fall within, except those in `ignore_notes` -- and
+    those in `annotate_notes`, added to the event they name (an event's
+    id, or a create's key from the open proposal) instead.
     new_actions, new_people and new_locations add what isn't there yet,
     each with a `ref` ("new:ukulele") the updates and creates use in
     place of its id; they're created when it's applied. You get the
@@ -1673,8 +1683,8 @@ def compact_notes(
     revises or extends it: pass its `proposal_id` and the `revision` you
     started from, send all your decisions again (each create with the
     `key` it was given), and answer every open feedback item in
-    `replies`. The user's own edits are laid over your decisions by the
-    server; never send them.
+    `replies`. The user's own edits -- of events, and of what notes are
+    for -- are laid over your decisions by the server; never send them.
 
     NOTHING IS MOVED TO MAKE ROOM: every event you update or create must
     end after it starts and must not overlap any other event -- past or
@@ -1712,7 +1722,7 @@ def compact_notes(
             ]
             return compactor.dry_run(
                 decisions, ignore_notes, new_actions, new_people, new_locations,
-                proposal_id=proposal_id, revision=revision, replies=replies,
+                proposal_id=proposal_id, revision=revision, replies=replies, annotate_notes=annotate_notes,
             )
         except CompactionError as exc:
             raise _rejected("compact_notes", exc) from exc
@@ -1744,16 +1754,20 @@ def amend_proposal(
     creates: list[CompactionCreate] | None = None,
     cancels: list[EventCancel] | None = None,
     as_planned: list[str] | None = None,
+    notes: list[NoteEdit] | None = None,
 ) -> Proposal:
     """The user's edits to the open proposal, from the app: `updates`,
     `creates` and `cancels` as compact_notes takes them (an update's
-    event_id may be a new event's key), and `as_planned` -- events (or
-    keys) whose decisions to clear. `revision` is the one the user was
-    looking at. They're laid over the current revision as a new one,
+    event_id may be a new event's key); `notes`, what notes are for --
+    each annotating the event it falls within, or the one named
+    (`event_id`), or ignored; and `as_planned` -- events (or keys) whose
+    decisions to clear, and notes to leave as Claude had them.
+    `revision` is the one the user was looking at. They're laid over the current revision as a new one,
     which is returned, with `replaced`: the events whose newer change by
     Claude they overrode. Refused, changing nothing, if one names an
-    event that isn't in the proposal, or the result overlaps, or changes
-    history; nothing is moved to make room."""
+    event or a note that isn't in the proposal, adds a note to an event
+    of another day, or the result overlaps, or changes history; nothing
+    is moved to make room."""
     with track("amend_proposal"), cached_reads():
         try:
             decisions = [
@@ -1767,7 +1781,7 @@ def amend_proposal(
                     for c in cancels or ()
                 ),
             ]
-            return get_note_compactor().amend(proposal_id, revision, decisions, as_planned)
+            return get_note_compactor().amend(proposal_id, revision, decisions, as_planned, notes)
         except CompactionError as exc:
             raise _rejected("amend_proposal", exc) from exc
 
@@ -1775,15 +1789,20 @@ def amend_proposal(
 @tool
 @writes
 def add_proposal_note(
-    proposal_id: str, text: str, event_id: str | None = None, at: datetime | None = None
+    proposal_id: str,
+    text: str,
+    event_id: str | None = None,
+    at: datetime | None = None,
+    note_id: str | None = None,
 ) -> Feedback:
     """A note from the user for Claude on the open proposal, about an
-    event (or a new event's key) or a time, if it's about one. Claude
-    answers it with a revised proposal; until then, the proposal can't be
-    confirmed. Returns it, with its id."""
+    event (or a new event's key), a time or a time note, if it's about
+    one. Claude answers it with a revised proposal -- and may then change
+    what the user edited of that event or note; until then, the proposal
+    can't be confirmed. Returns it, with its id."""
     with track("add_proposal_note"), cached_reads():
         try:
-            return get_note_compactor().add_note(proposal_id, text, event_id, at)
+            return get_note_compactor().add_note(proposal_id, text, event_id, at, note_id)
         except CompactionError as exc:
             raise _rejected("add_proposal_note", exc) from exc
 

@@ -32,7 +32,7 @@ from utilities.action_calendar import ActionCalendar
 from utilities.action_groups import GroupTree
 from utilities.actions import ActionTree
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
-from utilities.compaction_proposals import FeedbackReply
+from utilities.compaction_proposals import FeedbackReply, NoteEdit
 from utilities.facts import Facts
 from utilities.judgments import Judgment, JudgmentsDue
 from utilities.note_compaction import CompactionError, EventDecision, Problem
@@ -713,7 +713,7 @@ class TestCompactNotes:
                 EventDecision(action="create", summary="Walk", start_note="n1", end_note="n2"),
                 EventDecision(action="cancel", event_id="e2", counts_against_follow_through=False),
             ],
-            None, None, None, None, proposal_id=None, revision=None, replies=None,
+            None, None, None, None, proposal_id=None, revision=None, replies=None, annotate_notes=None,
         )
 
     def test_a_dry_run_passes_ignored_notes_through(self, monkeypatch):
@@ -722,7 +722,7 @@ class TestCompactNotes:
         server.compact_notes(updates=[CompactionUpdate(event_id="e1")], ignore_notes=["n2"])
 
         compactor.dry_run.assert_called_once_with(
-            [EventDecision(action="keep", event_id="e1")], ["n2"], None, None, None, proposal_id=None, revision=None, replies=None
+            [EventDecision(action="keep", event_id="e1")], ["n2"], None, None, None, proposal_id=None, revision=None, replies=None, annotate_notes=None
         )
 
     def test_a_dry_run_with_no_decisions_records_everything_as_on_schedule(self, monkeypatch):
@@ -730,7 +730,7 @@ class TestCompactNotes:
 
         server.compact_notes()
 
-        compactor.dry_run.assert_called_once_with([], None, None, None, None, proposal_id=None, revision=None, replies=None)
+        compactor.dry_run.assert_called_once_with([], None, None, None, None, proposal_id=None, revision=None, replies=None, annotate_notes=None)
 
     def test_a_dry_run_passes_what_it_adds_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -740,7 +740,7 @@ class TestCompactNotes:
 
         server.compact_notes(new_actions=new_actions, new_people=new_people, new_locations=new_locations)
 
-        compactor.dry_run.assert_called_once_with([], None, new_actions, new_people, new_locations, proposal_id=None, revision=None, replies=None)
+        compactor.dry_run.assert_called_once_with([], None, new_actions, new_people, new_locations, proposal_id=None, revision=None, replies=None, annotate_notes=None)
 
     def test_revising_a_proposal_passes_it_and_the_replies_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -749,7 +749,7 @@ class TestCompactNotes:
         server.compact_notes(proposal_id="0123456789ab", revision=3, replies=replies)
 
         compactor.dry_run.assert_called_once_with(
-            [], None, None, None, None, proposal_id="0123456789ab", revision=3, replies=replies
+            [], None, None, None, None, proposal_id="0123456789ab", revision=3, replies=replies, annotate_notes=None
         )
 
     def test_compaction_errors_become_tool_errors(self, monkeypatch):
@@ -793,6 +793,7 @@ class TestProposalTools:
             creates=[CompactionCreate(summary="Walk", start=end, end=end + timedelta(hours=1), key="sneaky")],
             cancels=[EventCancel(event_id="e2", counts_against_follow_through=True)],
             as_planned=["e3"],
+            notes=[NoteEdit(note_id="2026-01-01T09:05:00+00:00#2", use="ignore")],
         )
 
         assert result is compactor.amend.return_value
@@ -806,13 +807,14 @@ class TestProposalTools:
                 EventDecision(action="cancel", event_id="e2", counts_against_follow_through=True),
             ],
             ["e3"],
+            [NoteEdit(note_id="2026-01-01T09:05:00+00:00#2", use="ignore")],
         )
 
     def test_notes_for_claude_delegate(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
 
         assert server.add_proposal_note("0123456789ab", "it was a walk", "e1") is compactor.add_note.return_value
-        compactor.add_note.assert_called_once_with("0123456789ab", "it was a walk", "e1", None)
+        compactor.add_note.assert_called_once_with("0123456789ab", "it was a walk", "e1", None, None)
         assert server.withdraw_proposal_note("0123456789abf1") is compactor.withdraw_note.return_value
         compactor.withdraw_note.assert_called_once_with("0123456789abf1")
 
