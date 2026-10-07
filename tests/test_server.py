@@ -79,13 +79,16 @@ def _no_actions(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _no_people_or_locations(monkeypatch):
-    """Event tools read people and locations too (for facts): faked here as
-    there being none but the user, the same way as `_no_actions`."""
-    people, locations = MagicMock(), MagicMock()
+    """Event tools read people and locations too (for facts), and judging
+    and cancelling read habits: faked here as there being none but the
+    user, the same way as `_no_actions`."""
+    people, locations, habits = MagicMock(), MagicMock(), MagicMock()
     people.all.return_value = [Person(id="self", name="Me")]
     locations.all.return_value = []
+    habits.all.return_value = []
     monkeypatch.setattr(server, "_people", people)
     monkeypatch.setattr(server, "_locations", locations)
+    monkeypatch.setattr(server, "_habits", habits)
 
 
 def _fake_actions(monkeypatch, *actions: Action) -> MagicMock:
@@ -1471,6 +1474,7 @@ _READ_ONLY_TOOLS = {
     "get_habits",
     "get_habit",
     "prepare_judgments",
+    "prepare_habit_judgments",
 }
 
 

@@ -60,7 +60,7 @@ from utilities.actions import (
 from utilities.action_calendar import ActionCalendar, fill_in_from_actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
 from utilities.facts import Facts, fact_problems
-from utilities.judgments import Judging, Judgment, JudgmentsDue, JudgmentsResult
+from utilities.judgments import HabitJudgmentsDue, Judging, Judgment, JudgmentsDue, JudgmentsResult
 from utilities import event_changes
 from utilities.cancellations import Cancellations
 from utilities.event_changes import Cancel, ChangeError, EventChanges, Shift
@@ -2073,16 +2073,42 @@ def prepare_judgments(compaction_id: str | None = None, redo: bool = False) -> J
 
 
 @tool
+def prepare_habit_judgments(
+    habit_id: str, since: datetime | None = None, redo: bool = False
+) -> HabitJudgmentsDue:
+    """A backfill of one habit's judgments (by id or name): for a habit
+    just made, or given a new rubric, whose settled events -- already
+    compacted -- aren't judged for it yet. Only when the user asks for
+    one: it's never part of a compaction. Gives a backfill_id, then, as
+    prepare_judgments does, each of its events in scope since `since`
+    (by default as far back as its judgment parts average over, and a
+    week of scores) until where history ends, with the parts to judge
+    for it; each part once; and its history. Only those not judged yet --
+    or with redo, all of them, each with the judgment already made
+    (`current`), to judge again. Make them yourself and record them with
+    record_judgments(backfill_id, judgments). Read-only."""
+    with track("prepare_habit_judgments"), cached_reads():
+        compactor = get_note_compactor()
+        compactor.prefetch()
+        try:
+            return compactor.habit_judgments_due(habit_id, since, redo=redo)
+        except CompactionError as exc:
+            raise _rejected("prepare_habit_judgments", exc) from exc
+
+
+@tool
 @writes
 def record_judgments(compaction_id: str, judgments: list[Judgment]) -> JudgmentsResult:
     """Record judgments of a compaction's events (see prepare_judgments, and
-    the `judgments` an applied compaction returns): each a request_id, a
-    rating from that request's ratings, and one succinct line of
-    reasoning. Make them yourself, never asking the user. They're kept on
-    the events, by person, trait and part; a judgment recorded again
-    replaces the earlier one. Returns how many were recorded, the ids of
-    any requests still to judge, and whether that completes the
-    compaction."""
+    the `judgments` an applied compaction returns) -- or, given a habit
+    backfill's backfill_id as compaction_id, of that habit's events (see
+    prepare_habit_judgments): each a request_id, a rating from that
+    request's ratings, and one succinct line of reasoning. Make them
+    yourself, never asking the user. They're kept on the events, by
+    person (or habit), trait and part; a judgment recorded again replaces
+    the earlier one. Returns how many were recorded, the ids of any
+    requests still to judge, and whether that completes the compaction
+    (or the backfill)."""
     with track("record_judgments"), cached_reads():
         compactor = get_note_compactor()
         compactor.prefetch()
