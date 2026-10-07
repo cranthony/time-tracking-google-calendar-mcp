@@ -46,16 +46,17 @@ remove them.
 ## What happens to the rest of the calendar
 
 - The past is treated as certain. Every resulting past event -- decided,
-  or untouched and so on schedule -- becomes a *fact*, *compacted*
-  (`Event.compacted_until`, its end).
+  or untouched and so on schedule -- becomes a *fact*: once the
+  compaction is stamped, everything before its `now` is history. Nothing
+  is written on an event to say so; it's what it would leave unchanged.
 - Only what's happened is settled. An event still going on at `now` is
-  compacted up to `now` -- its start, and its lasting until now, are
+  settled up to `now` -- its start, and its lasting until now, are
   fact -- and may run on past where it was planned to end: a later
   compaction says how far.
-- A later compaction keeps to what an earlier one settled: an event's
-  start can't move, and its end can't come before its
-  `compacted_until`, nor can it be cancelled or merged away. Its end can
-  run later.
+- A later compaction keeps to what an earlier one settled
+  (`history_until`, its `now`): an event that started before then can't
+  have its start moved, end before then, or be cancelled or merged
+  away. Its end can run later.
 - A `keep` that moves an event in the future is a direct reschedule.
 - NOTHING IS MOVED TO MAKE ROOM. Every event a decision keeps or creates
   must end after it starts and not overlap any other of the day's
@@ -233,8 +234,6 @@ class EventState:
     facts: dict[str, Any] | None = None
     """As stored on the event (see utilities/facts.py); `None` for none."""
 
-    compacted_until: datetime | None = None
-
     @classmethod
     def from_event(cls, event: Event) -> "EventState":
         return cls(
@@ -248,7 +247,6 @@ class EventState:
             event_label_id=event.event_label_id,
             action_ids=list(event.action_ids) if event.action_ids is not None else None,
             facts=facts_dict(event.facts),
-            compacted_until=event.compacted_until,
         )
 
     def to_event(self, event_id: str | None = None) -> Event:
@@ -264,7 +262,6 @@ class EventState:
             event_label_id=self.event_label_id,
             action_ids=list(self.action_ids) if self.action_ids is not None else None,
             facts=facts_from_dict(self.facts) if self.facts is not None else None,
-            compacted_until=self.compacted_until,
         )
 
     def to_json_dict(self) -> dict:
@@ -277,11 +274,12 @@ class EventState:
     @classmethod
     def from_json_dict(cls, data: dict) -> "EventState":
         parsed = dict(data)
-        # From goals, which actions replaced, and from reallocation, which
-        # batches of changes did (see utilities/event_changes.py).
-        for retired in ("goal_ids", "facets", "min_duration_minutes", "is_fixed_time"):
+        # From goals, which actions replaced; from reallocation, which
+        # batches of changes did (see utilities/event_changes.py); and from
+        # marking each event compacted, which the last compaction's time did.
+        for retired in ("goal_ids", "facets", "min_duration_minutes", "is_fixed_time", "compacted_until"):
             parsed.pop(retired, None)
-        for key in ("start", "end", "compacted_until"):
+        for key in ("start", "end"):
             if key in parsed:
                 parsed[key] = datetime.fromisoformat(parsed[key])
         return cls(**parsed)
@@ -351,6 +349,7 @@ def plan_compaction(
     previous_note: PlanNote | None = None,
     last_compaction: datetime | None = None,
     next_day_follows: bool = False,
+    history_until: datetime | None = None,
 ) -> CompactionPlan:
     """Plan the calendar changes that `decisions` (what the notes show
     happened, event by event) imply for `day_events`, as of `now`.
@@ -366,7 +365,8 @@ def plan_compaction(
     `names` (an action's, person's or location's id -> its name) labels
     events' actions and facts in the timeline. `previous_note` (an already-compacted
     note) and `last_compaction` (when that compaction ran) are only shown
-    in the timeline, as context.
+    in the timeline, as context. `history_until` is where what an earlier
+    compaction settled ends -- its `now` (see the module docstring).
 
     Raises `CompactionError` (listing everything wrong at once) if the
     decisions are invalid or leave past events overlapping. Never mutates
@@ -396,7 +396,7 @@ def plan_compaction(
         (e for e in sleeps if (day_start is None or e.start > day_start) and e.id not in sleepless), None
     )
 
-    resolved = _resolve(decisions, notes, notes_by_id, events_by_id, closing, now, problems)
+    resolved = _resolve(decisions, notes, notes_by_id, events_by_id, closing, now, problems, history_until)
     if problems:
         raise CompactionError.of(problems, "malformed_decision")
     facts, cancels, merged_into, touched = resolved
@@ -406,7 +406,6 @@ def plan_compaction(
         if event.id in decided_ids or event.end > now:
             continue
         copy = copies[event.id]
-        copy.compacted_until = copy.end
         facts.append(
             _Fact(
                 key=event.id,
@@ -431,10 +430,7 @@ def plan_compaction(
     if problems:
         raise CompactionError.of(problems, "description_too_long")
 
-    simulated = _place(facts, copies, cancels, warnings, next_day_follows)
-    for event in simulated.working:
-        if event.status != "cancelled" and event.start < now < event.end:
-            _in_progress(event, now)
+    simulated = _place(facts, copies, cancels, warnings, next_day_follows, history_until)
     changes = _changes(facts, events_by_id, copies, cancels, simulated)
     if not changes:
         warnings.append("nothing on the calendar needs to change")
@@ -457,6 +453,7 @@ def _resolve(
     closing: Event | None,
     now: datetime,
     problems: list[str],
+    history_until: datetime | None = None,
 ) -> tuple[list[_Fact], dict[str, str], dict[str, str], dict[str, EventDecision]]:
     """Validate `decisions` and turn them into facts (events whose time is
     now certain), cancellations (id -> reason), merges (merged id -> the
@@ -536,8 +533,15 @@ def _resolve(
     cancels: dict[str, str] = {}
     merged_into: dict[str, str] = {}
     touched: dict[str, EventDecision] = {}
+    def settled(event: Event) -> datetime | None:
+        """How long an earlier compaction recorded `event` going on, if it
+        started before `history_until`."""
+        if history_until is None or event.start >= history_until:
+            return None
+        return min(event.end, history_until)
+
     for event_id, decision in by_event.items():
-        compacted = events_by_id[event_id].compacted_until
+        compacted = settled(events_by_id[event_id])
         if decision.action in ("cancel", "merge") and compacted is not None:
             problems.append(
                 Problem(
@@ -570,7 +574,8 @@ def _resolve(
                 "which isn't a positive length")
             )
             continue
-        if base.compacted_until is not None and start != base.start:
+        compacted = settled(base)
+        if compacted is not None and start != base.start:
             problems.append(
                 Problem(
                     "compacted",
@@ -580,12 +585,12 @@ def _resolve(
                 )
             )
             continue
-        if base.compacted_until is not None and end < base.compacted_until:
+        if compacted is not None and end < compacted:
             problems.append(
                 Problem(
                     "compacted",
                     f"{label}: {base.summary!r} can't end at {end.isoformat()}: an earlier compaction recorded "
-                    f"it going on until {base.compacted_until.isoformat()}, so it ends then or later.",
+                    f"it going on until {compacted.isoformat()}, so it ends then or later.",
                 )
             )
             continue
@@ -604,7 +609,6 @@ def _resolve(
         if decision.facts is not None:
             event.facts = decision.facts
         event.start, event.end = start, end
-        _settle(event, now)
         if event_id in merges:
             reason = (
                 f"merged with {', '.join(repr(m.summary) for m in members[1:])} -- where one ended "
@@ -654,15 +658,12 @@ def _resolve(
                 key=f"new:{number}",
                 start=start,
                 end=end,
-                event=_settle(
-                    Event(
-                        summary=decision.summary.strip(),
-                        start=start,
-                        end=end,
-                        action_ids=list(decision.action_ids) if decision.action_ids is not None else None,
-                        facts=decision.facts,
-                    ),
-                    now,
+                event=Event(
+                    summary=decision.summary.strip(),
+                    start=start,
+                    end=end,
+                    action_ids=list(decision.action_ids) if decision.action_ids is not None else None,
+                    facts=decision.facts,
                 ),
                 base=None,
                 reason="something the notes show happened that wasn't planned",
@@ -672,23 +673,6 @@ def _resolve(
             )
         )
     return facts, cancels, merged_into, touched
-
-
-def _settle(event: Event, now: datetime) -> Event:
-    """`event`, decided, as compaction settles it as of `now`: past, it's
-    compacted to its end. Still going on, it's compacted up to now
-    (`_in_progress`) once the day around it is placed; in the future,
-    it's just where it's put."""
-    if event.end <= now:
-        event.compacted_until = event.end
-    return event
-
-
-def _in_progress(event: Event, now: datetime) -> None:
-    """Compact `event`, going on at `now`, up to now: its start, and its
-    lasting until now, are fact -- it can't shrink below that -- and
-    where it ends is still a plan."""
-    event.compacted_until = now
 
 
 def _annotate(
@@ -783,6 +767,7 @@ def _place(
     cancels: dict[str, str],
     warnings: list[str],
     next_day_follows: bool = False,
+    history_until: datetime | None = None,
 ) -> _Simulated:
     """Every event where the decisions leave it: a decided one at its
     decided times, a new one where it's created, the rest where they
@@ -808,6 +793,7 @@ def _place(
                 rejection(
                     problems, placed,
                     since=min(p.event.start for p in placed), until=max(p.event.end for p in placed),
+                    history_until=history_until,
                 )
             ),
             CompactionError.of(problems, "overlap"),
@@ -844,18 +830,14 @@ def _changes(
             after, reason = EventState.from_event(fact.event), fact.reason
         else:
             after = EventState.from_event(copies[event_id])
-            # How much of it is compacted is bookkeeping, not a reason.
-            settled = replace(after, compacted_until=before.compacted_until)
-            only_notes = replace(settled, description=before.description) == before
-            only_actions = replace(settled, description=before.description, action_ids=before.action_ids) == before
+            only_notes = replace(after, description=before.description) == before
+            only_actions = replace(after, description=before.description, action_ids=before.action_ids) == before
             only_facts = (
-                replace(settled, description=before.description, action_ids=before.action_ids, facts=before.facts)
+                replace(after, description=before.description, action_ids=before.action_ids, facts=before.facts)
                 == before
             )
             if event_id in default_ids:
                 reason = next(f.reason for f in facts if f.default and f.base.id == event_id)
-            elif settled == before:
-                reason = "compacted up to now: it's still going on, so where it ends is still a plan"
             elif only_notes:
                 reason = "added the notes that fall during it"
             elif only_actions:

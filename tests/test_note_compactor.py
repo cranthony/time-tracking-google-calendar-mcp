@@ -330,8 +330,9 @@ class TestTheCompactionWindow:
         assert [e.id for e in context.events] == ["w1", "w2", "s1"]
 
     def test_the_event_just_before_the_window_can_be_stretched(self):
+        # Compacted as work ended: the email after it hadn't started yet.
         setup = self._setup(note_at="10:20+1")
-        self._stamp_a_compaction_at(setup, "10:05+1")
+        self._stamp_a_compaction_at(setup, "10:00+1")
 
         result = setup.compactor.dry_run(
             [
@@ -467,14 +468,16 @@ class TestDryRun:
         assert "└ Email ends · +20m (was 10:00)" in result.timeline.text
 
     def test_with_no_decisions_every_past_event_is_recorded_on_schedule(self):
+        # Where they were planned, with their notes added -- nothing more:
+        # the compaction's own time says they're settled.
         setup = _standard()
 
         result = setup.compactor.dry_run([])
 
         by_event = {c.event_id: c for c in result.changes}
         assert set(by_event) == {"e1", "e2"}
-        assert by_event["e1"].after.compacted_until is not None
-        assert (by_event["e1"].after.start, by_event["e1"].after.end) == (time_at("09:00"), time_at("10:00"))
+        for change in by_event.values():
+            assert replace(change.after, description=change.before.description) == change.before
 
     def test_journals_the_decisions_and_ignored_notes(self):
         setup = _standard()
@@ -586,7 +589,6 @@ class TestCommit:
         assert result.status == "applied"
         patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
         assert (patches["e1"].start, patches["e1"].end) == (time_at("09:05"), time_at("10:20"))
-        assert patches["e1"].compacted_until is not None
         # Only what changed: the report still ended as planned.
         assert (patches["e2"].start, patches["e2"].end) == (time_at("10:20"), None)
         journal = setup.journal.load(planned.compaction_id)
@@ -607,7 +609,6 @@ class TestCommit:
             c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "e1"
         )
         assert patch.summary is None and patch.description is None
-        assert patch.compacted_until is not None
 
     def test_cancelled_events_are_patched_to_cancelled(self):
         setup = Setup([("09:00", None), ("09:30", None)])
@@ -1015,8 +1016,9 @@ class TestSeveralDays:
         assert day.note_ids == [setup.note_id(2), setup.note_id(3), setup.note_id(4)]
         assert day.now == time_at("09:00+1")
         assert [c.event_id for c in day.changes() if c.action == "cancel"] == ["s1"]
-        # The next morning is part of the same day: settled as planned.
-        assert next(c for c in day.changes() if c.event_id == "gr1").after.compacted_until
+        # The next morning is part of the same day: settled as planned, so
+        # nothing to write.
+        assert "gr1" not in {c.event_id for c in day.changes()}
         assert "━━ " not in planned.timeline.text
 
     def test_committing_applies_and_stamps_a_day_at_a_time(self):
@@ -1788,18 +1790,15 @@ class TestJudgments:
 
 
 class TestStayingUpPastTheLastCompaction:
-    """The night that prompted `compacted_until`: compacted at 00:32 while
+    """The night that prompted settling up to the last compaction: compacted at 00:32 while
     work ran on (planned to 00:47, then getting ready for bed and sleep
     from 01:17), the next notes came at 01:56 and 02:55 -- during the
     planned night, but the user hadn't gone to bed."""
 
     def _events(self):
-        work = event_at("23:07-00:47+1", id="work", summary="Working", priority=2)
-        work.compacted_until = time_at("00:32+1")
         return [
-            event_at("22:22-23:07", id="dinner", summary="Dinner", priority=2,
-                     compacted_until=time_at("23:07")),
-            work,
+            event_at("22:22-23:07", id="dinner", summary="Dinner", priority=2),
+            event_at("23:07-00:47+1", id="work", summary="Working", priority=2),
             event_at("00:47+1-01:17+1", id="gr", summary="Get ready for bed", priority=2),
             event_at("01:17+1-07:00+1", id="s0", summary="Sleep", priority=0, is_end_of_day_sleep=True),
             event_at("07:00+1-08:00+1", id="up", summary="Get up", priority=2),
@@ -1830,7 +1829,8 @@ class TestStayingUpPastTheLastCompaction:
         # after it, are offered -- and the work says how far it's settled.
         offered = {e.id: e for e in context.events}
         assert {"work", "gr", "s0"} <= set(offered)
-        assert offered["work"].compacted_until == time_at("00:32+1")
+        assert offered["work"].history_until == time_at("00:32+1")
+        assert offered["gr"].history_until is None
 
     def test_the_work_runs_on_and_bedtime_moves_with_it(self):
         setup = self._setup()
@@ -1844,7 +1844,6 @@ class TestStayingUpPastTheLastCompaction:
 
         changes = {c.event_id: c for c in planned.changes if c.event_id}
         assert (changes["work"].after.start, changes["work"].after.end) == (time_at("23:07"), time_at("02:55+1"))
-        assert changes["work"].after.compacted_until == time_at("02:55+1")
         assert changes["gr"].action == "cancel"
         assert (changes["s0"].after.start, changes["s0"].after.end) == (time_at("03:10+1"), time_at("07:00+1"))
 
@@ -1950,7 +1949,11 @@ class TestPrioritiesKept:
         planned = self._setup().compactor.dry_run([])
 
         changes = {c.event_id: c for c in planned.changes if c.event_id}
+        # Written even though it happened as planned.
         assert changes["e1"].after.priority == 1
-        assert changes["e2"].after.priority == 3
+        assert (changes["e1"].before.start, changes["e1"].before.end) == (
+            changes["e1"].after.start, changes["e1"].after.end
+        )
+        assert "e2" not in changes  # Its own priority: nothing to write.
         # Lunch, still to come, keeps following its actions.
         assert "e3" not in changes or changes["e3"].after.priority is None

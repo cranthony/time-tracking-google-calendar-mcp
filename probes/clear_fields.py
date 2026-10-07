@@ -4,7 +4,7 @@ removes them.
 
 Event.to_api_body sends each cleared field as null in a patch: description
 and location as top-level fields, the app's own fields (priority,
-compacted_until, facts, judgments) as keys of extendedProperties.private,
+facts, judgments) as keys of extendedProperties.private,
 and never colorId (see Event.to_api_body). Google documents
 patch as replacing only the fields it's given, but not, in so many words,
 that a null removes a top-level field, or that a null key of
@@ -17,8 +17,8 @@ allows that), then:
 
 1. creates an event with clearable fields set, plus action_ids, and
    clears them all while renaming it;
-2. creates an event with a priority and a compacted_until, and clears only
-   the compacted_until;
+2. creates an event with a priority and judgments, and clears only the
+   judgments;
 3. creates a daily series with a priority and a location, and clears its
    priority, checking the series and each of its instances;
 4. clears another series' priority from its third event on ("this and
@@ -116,13 +116,12 @@ def _probe(client: CalendarClient) -> None:
             time_zone=_TIME_ZONE,
             description="a description",
             location="a location",
-            compacted_until=nine + timedelta(minutes=30),
             priority=1,
             action_ids=["actionA"],
         )
     )
     before = _raw(client, full.id)
-    _check("set up with all the app's fields and no colorId", "colorId" not in before and len(_private(before)) == 3, before)
+    _check("set up with all the app's fields and no colorId", "colorId" not in before and len(_private(before)) == 2, before)
     returned = client.update_event(Event(id=full.id, summary="Probe event (renamed)", cleared=CLEARABLE_EVENT_FIELDS))
     after = _raw(client, full.id)
     _check("summary renamed", after.get("summary") == "Probe event (renamed)", after.get("summary"))
@@ -140,20 +139,20 @@ def _probe(client: CalendarClient) -> None:
         returned,
     )
 
-    print("\n2. Clear only an event's compacted_until")
+    print("\n2. Clear only an event's judgments")
     partial = client.create_event(
         Event(
             summary="Probe partial",
             start=nine + timedelta(hours=2),
             end=nine + timedelta(hours=3),
             time_zone=_TIME_ZONE,
-            compacted_until=nine + timedelta(hours=2, minutes=20),
+            judgments={"self": {"t1": {"p1": {"rating": 1, "scale": 3, "reasoning": "Fine."}}}},
             priority=3,
         )
     )
-    client.update_event(Event(id=partial.id, cleared=frozenset({"compacted_until"})))
+    client.update_event(Event(id=partial.id, cleared=frozenset({"judgments"})))
     after = _raw(client, partial.id)
-    _check("compacted_until removed", _key("compacted_until") not in _private(after), _private(after))
+    _check("judgments removed", _key("judgments") not in _private(after), _private(after))
     _check("priority kept", _private(after).get(_key("priority")) == "3", _private(after))
 
     recurrences = Recurrences(client, client.list_instances, client.get_time_zone)

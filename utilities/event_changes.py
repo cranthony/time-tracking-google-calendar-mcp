@@ -19,11 +19,12 @@ follow-through -- see utilities/cancellations.py), and shifts: several
 events moved by the same amount, which become updates of each. An event
 appears in at most one of them.
 
-**History.** An event compaction settled (`Event.compacted_until`) can't
-be changed or cancelled unless the batch says history may be changed
-(`allow_compacted`) -- except an event still going on when it was
-compacted, which may still run on: an update that only moves its end, to
-no earlier than its `compacted_until`.
+**History.** Everything before the last compaction (`history_until`, its
+`now`) is history: an event that started before then can't be changed or
+cancelled, and no event can be created, or moved, to start before then,
+unless the batch says history may be changed (`allow_compacted`) --
+except an event still going on then, which may still run on: an update
+that only moves its end, to no earlier than `history_until`.
 """
 
 from __future__ import annotations
@@ -148,10 +149,18 @@ def overlap_problems(placed: list[Placed], *, describe=None) -> list[Problem]:
     return problems
 
 
-def rejection(problems: list[str], listing: list[Placed], *, since: datetime, until: datetime) -> ChangeError:
+def rejection(
+    problems: list[str],
+    listing: list[Placed],
+    *,
+    since: datetime,
+    until: datetime,
+    history_until: datetime | None = None,
+) -> ChangeError:
     """The refusal of a batch with `problems`: the rule, every problem, and
     `listing` -- the events from `since` to `until`, as the batch would
-    leave them, those it names starred -- so a valid batch can be sent at
+    leave them, those it names starred, and those that started before
+    `history_until` marked history -- so a valid batch can be sent at
     once (see the module docstring)."""
     tz = since.tzinfo
 
@@ -167,8 +176,8 @@ def rejection(problems: list[str], listing: list[Placed], *, since: datetime, un
         notes = []
         if p.event.is_end_of_day_sleep:
             notes.append("end of day")
-        if p.event.compacted_until is not None:
-            notes.append(f"compacted until {hm(p.event.compacted_until)}")
+        if history_until is not None and p.event.start < history_until:
+            notes.append(f"history until {hm(min(p.event.end, history_until))}")
         lines.append(
             f"  {hm(p.event.start)}–{hm(p.event.end)}  {p.event.summary or '(no title)'}{' *' if p.asked else ''}"
             f"  {p.event.id or p.key}" + (f"  ({', '.join(notes)})" if notes else "")
@@ -229,10 +238,13 @@ class EventChanges:
         cancels: Iterable[Cancel] = (),
         shifts: Iterable[Shift] = (),
         *,
+        history_until: datetime | None = None,
         allow_compacted: bool = False,
     ) -> Batch:
         """The batch these make, checked -- or ChangeError, naming every
-        problem, before anything's written."""
+        problem, before anything's written. `history_until`: the last
+        compaction's `now` (see the module docstring)."""
+        guarded = history_until if not allow_compacted else None
         updates, creates, cancels, shifts = list(updates), list(creates), list(cancels), list(shifts)
         problems: list[str] = []
         named: dict[str, str] = {}
@@ -279,8 +291,11 @@ class EventChanges:
             if before is None:
                 continue
             after = _patched(before, patch)
-            if before.compacted_until is not None and not allow_compacted and not _only_runs_on(before, after):
-                problems.append(_compacted(before, "changed"))
+            if guarded is not None and before.start < guarded and not _only_runs_on(before, after, guarded):
+                problems.append(_history(before, "changed", guarded))
+                continue
+            if guarded is not None and before.start >= guarded and after.start < guarded:
+                problems.append(_into_history(after, "moved", guarded))
                 continue
             changes.append(
                 Change(
@@ -294,8 +309,8 @@ class EventChanges:
             before = load(cancel.event_id)
             if before is None:
                 continue
-            if before.compacted_until is not None and not allow_compacted:
-                problems.append(_compacted(before, "cancelled"))
+            if guarded is not None and before.start < guarded:
+                problems.append(_history(before, "cancelled", guarded))
                 continue
             changes.append(
                 Change(action="cancel", before=before, counts_against_follow_through=cancel.counts_against_follow_through)
@@ -303,6 +318,9 @@ class EventChanges:
         for number, event in enumerate(creates, start=1):
             if event.start is None or event.end is None:
                 problems.append(Problem("malformed_change", f"new event {number} ({event.summary!r}) needs a start and an end"))
+                continue
+            if guarded is not None and event.start < guarded:
+                problems.append(_into_history(event, "created", guarded))
                 continue
             changes.append(Change(action="create", after=replace(event, id=None)))
         if problems:
@@ -338,7 +356,7 @@ class EventChanges:
                 placed.append(Placed(event=change.after, key=change.before.id, moved=change.moved, asked=True))
         problems = overlap_problems(placed)
         if problems:
-            raise rejection(problems, placed, since=since, until=until)
+            raise rejection(problems, placed, since=since, until=until, history_until=history_until)
         batch.listing, batch.since, batch.until = placed, since, until
         return batch
 
@@ -411,22 +429,29 @@ def _patched(before: Event, patch: Event) -> Event:
     return after
 
 
-def _only_runs_on(before: Event, after: Event) -> bool:
-    """Whether `after` only lets `before`, an event compacted while it was
-    going on, run on: its end moved, to no earlier than what was settled."""
-    if before.compacted_until is None or before.compacted_until >= before.end:
+def _only_runs_on(before: Event, after: Event, history_until: datetime) -> bool:
+    """Whether `after` only lets `before`, an event going on at
+    `history_until`, run on: its end moved, to no earlier than then."""
+    if before.end <= history_until:
         return False
-    return (
-        replace(after, end=before.end) == before
-        and after.end >= before.compacted_until
+    return replace(after, end=before.end) == before and after.end >= history_until
+
+
+_APPROVAL = "unless the user has explicitly approved changing history (allow_compacted_changes)"
+
+
+def _history(event: Event, how: str, history_until: datetime) -> Problem:
+    return Problem(
+        "compacted",
+        f"{event.summary!r} ({event.id}) is history -- it started before the last compaction, at "
+        f"{history_until.isoformat()} -- so it can't be {how} {_APPROVAL}. An event still going on then may "
+        "run on: move only its end, to no earlier than that.",
     )
 
 
-def _compacted(event: Event, how: str) -> Problem:
+def _into_history(event: Event, how: str, history_until: datetime) -> Problem:
     return Problem(
         "compacted",
-        f"{event.summary!r} ({event.id}) is history -- compaction settled it until "
-        f"{event.compacted_until.isoformat()} -- so it can't be {how} unless the user has explicitly approved "
-        "changing history (allow_compacted_changes). An event still going on may run on: move only its end, "
-        "to no earlier than that.",
+        f"{event.summary!r} can't be {how} to start at {event.start.isoformat()}: everything before the last "
+        f"compaction, at {history_until.isoformat()}, is history, so it can't start before then {_APPROVAL}.",
     )

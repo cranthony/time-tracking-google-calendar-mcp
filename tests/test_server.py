@@ -153,12 +153,11 @@ class TestPublicEvent:
         # is_cancelled has no Event equivalent -- it's derived from the
         # hidden status field, not a field PublicEvent passes through.
         # Likewise effective_priority and action_names, derived from the
-        # event's actions. And compacted, from compacted_until.
+        # event's actions.
         event_derived_fields = field_names - {
             "is_cancelled",
             "effective_priority",
             "action_names",
-            "compacted",
         }
         assert event_derived_fields == {
             f.name for f in dataclasses.fields(Event)
@@ -371,15 +370,19 @@ class TestGetEvent:
         assert result.priority is None
 
 
-def _fake_changes(monkeypatch, events=None):
+def _fake_changes(monkeypatch, events=None, last_compaction=None):
     """The event tools' batches checked and written against a fake calendar
-    (tests/test_event_changes.py's), with a fake Cancellations."""
+    (tests/test_event_changes.py's), with a fake Cancellations, and the
+    last compaction at `last_compaction`."""
     calendar = FakeCalendar(events if events is not None else [_event(id="abc123"), _event(
         id="def456", start=datetime(2026, 1, 1, 10, 0, tzinfo=UTC), end=datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
     )])
     cancellations = MagicMock()
     monkeypatch.setattr(server, "get_cancellation_store", lambda: cancellations)
     monkeypatch.setattr(server, "get_event_changes", lambda: EventChanges(calendar, cancellations))
+    journal = MagicMock()
+    journal.last_stamped_now.return_value = last_compaction
+    monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
     return calendar, cancellations
 
 
@@ -452,7 +455,7 @@ class TestUpdateEvent:
         assert calendar.written == []
 
     def test_history_is_changed_only_when_allowed(self, monkeypatch):
-        calendar, _ = _fake_changes(monkeypatch, [_event(id="abc123", compacted_until=_at(10))])
+        calendar, _ = _fake_changes(monkeypatch, [_event(id="abc123")], last_compaction=_at(10))
 
         with pytest.raises(ToolError, match="is history"):
             server.update_event(updates=[EventUpdate(event=PublicEvent(id="abc123", summary="Renamed"))])
