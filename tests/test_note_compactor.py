@@ -32,11 +32,12 @@ from utilities.note_compaction import (
     EventDecision,
     EventState,
     NoteAnnotation,
+    facts_from_dict,
 )
 from tests.fake_labels import FakeLabelCalendar
 from utilities.actions import Action, Actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
-from utilities.compaction_proposals import FeedbackReply, NoteEdit
+from utilities.compaction_proposals import AdditionChoice, AdditionSettled, FeedbackReply, NoteEdit
 from utilities.cancellations import Cancellations
 from utilities.facts import Facts
 from utilities.judgments import Judging, Judgment
@@ -2491,3 +2492,138 @@ class TestProposalNotes:
 
         patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
         assert patches["e2"].description == "Notes:\n- 09:05 email\n- 10:20 report"
+
+
+class TestSettlingAdditions:
+    """The user settles what a proposal adds -- create it now, say it's
+    one already there, or drop it -- without confirming the rest."""
+
+    def _proposed(self):
+        setup = Setup(
+            [("09:00", None), ("09:30", None)],
+            people=[Person(id="sam", name="Sam", status="active")],
+        )
+        decisions = setup.coffee_instead_of_email()
+        decisions[0].action_ids = ["new:coffee"]
+        decisions[0].facts = Facts(
+            location_id="new:cafe", with_ids=["sam", "new:alex"], notes={"sam": "tired", "new:alex": "new in town"}
+        )
+        self.decisions = decisions
+        self.additions = dict(
+            new_actions=[NewAction(ref="new:coffee", name="Drink coffee")],
+            new_people=[NewPerson(ref="new:alex", name="Alex", context="Sam's friend")],
+            new_locations=[NewLocation(ref="new:cafe", name="Corner cafe", hint="the cafe on Main")],
+        )
+        result = setup.compactor.dry_run(decisions, **self.additions)
+        self.key = next(c.key for c in result.changes if c.action == "create")
+        return setup, result.proposal_id
+
+    def _coffee(self, proposal):
+        return next(e for e in proposal.events if e.id == self.key)
+
+    def test_creating_a_person_now_names_them_by_id_from_then_on(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(
+            p, 1, [], additions=[AdditionChoice(ref="new:alex", use="create", context="Sam's college friend")]
+        )
+
+        alex = setup.people.get_person("alex")
+        assert (alex.context, alex.status) == ("Sam's college friend", "active")
+        assert proposal.settled_additions == [AdditionSettled(ref="new:alex", use="create", id=alex.id)]
+        assert "people" not in (proposal.additions or {})
+        facts = self._coffee(proposal).facts
+        assert facts.with_ids == ["sam", alex.id]
+        assert facts.notes == {"sam": "tired", alex.id: "new in town"}
+        setup.client.create_event.assert_not_called()
+
+    def test_one_already_there_is_named_by_its_id(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [], additions=[AdditionChoice(ref="new:alex", use="existing", id="sam")])
+
+        facts = self._coffee(proposal).facts
+        # Sam was there already, and keeps their own note.
+        assert (facts.with_ids, facts.notes) == (["sam"], {"sam": "tired"})
+        assert [p.name for p in setup.people.all() if p.name == "Alex"] == []
+
+    def test_a_dropped_one_is_left_out_of_the_events(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [], additions=[AdditionChoice(ref="new:cafe", use="drop")])
+
+        assert self._coffee(proposal).facts.location_id is None
+        assert "locations" not in (proposal.additions or {})
+        assert proposal.settled_additions == [AdditionSettled(ref="new:cafe", use="drop")]
+
+    def test_an_action_approved_now_is_created_active(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [], additions=[AdditionChoice(ref="new:coffee", use="create")])
+
+        (coffee,) = setup.actions.all()
+        assert (coffee.name, coffee.status) == ("Drink coffee", "active")
+        assert self._coffee(proposal).action_ids == [coffee.id]
+
+    def test_claudes_revision_keeps_what_the_user_settled(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [], additions=[AdditionChoice(ref="new:alex", use="create")])
+        alex = setup.people.get_person("alex")
+
+        context = setup.compactor.prepare().proposal
+        assert [n["ref"] for n in context.new_people] == ["new:alex"]
+        assert context.settled_additions == [AdditionSettled(ref="new:alex", use="create", id=alex.id)]
+        # Claude sends it all again: Alex isn't refused as already there.
+        revised = setup.compactor.dry_run(self.decisions, proposal_id=p, revision=2, **self.additions)
+
+        created = next(c for c in revised.changes if c.action == "create")
+        assert facts_from_dict(created.after.facts).with_ids == ["sam", alex.id]
+        assert "people" not in (revised.additions or {})
+
+    def test_confirming_creates_only_whats_left(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [], additions=[AdditionChoice(ref="new:alex", use="create")])
+
+        assert setup.compactor.confirm(p, 2).status == "applied"
+
+        assert [person.name for person in setup.people.all()].count("Alex") == 1
+        assert [a.name for a in setup.actions.all()] == ["Drink coffee"]
+        created = setup.client.create_event.call_args.args[0]
+        assert created.facts.with_ids == ["sam", setup.people.get_person("alex").id]
+
+    def test_as_planned_on_a_ref_leaves_it_unsettled(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [], additions=[AdditionChoice(ref="new:cafe", use="drop")])
+
+        proposal = setup.compactor.amend(p, 2, [], as_planned=["new:cafe"])
+
+        assert proposal.settled_additions == []
+        assert [loc["ref"] for loc in proposal.additions["locations"]] == ["new:cafe"]
+        assert self._coffee(proposal).facts.location_id == "new:cafe"
+
+    @pytest.mark.parametrize(
+        "choice, message",
+        [
+            (AdditionChoice(ref="new:nobody", use="drop"), "isn't something the proposal adds"),
+            (AdditionChoice(ref="new:alex", use="existing", id="nope"), "there's no person 'nope'"),
+            (AdditionChoice(ref="new:alex", use="create", id="sam"), "only 'existing' takes an id"),
+        ],
+    )
+    def test_a_choice_that_cant_be_made_is_refused(self, choice, message):
+        setup, p = self._proposed()
+
+        with pytest.raises(CompactionError, match=message):
+            setup.compactor.amend(p, 1, [], additions=[choice])
+
+        assert setup.journal.user_edits(p) == []
+
+    def test_nothing_is_created_for_an_amend_thats_refused(self):
+        setup, p = self._proposed()
+
+        with pytest.raises(CompactionError):
+            setup.compactor.amend(
+                p, 1, [EventDecision(action="keep", event_id="nope", summary="x")],
+                additions=[AdditionChoice(ref="new:alex", use="create")],
+            )
+
+        assert [person.name for person in setup.people.all()] == ["Me", "Sam"]
