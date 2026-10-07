@@ -150,6 +150,11 @@ LOCATIONS_SHEET_TITLE = "Locations"
 """See `utilities/locations.py`'s `Locations` for the tab this identifies
 -- the places events happen."""
 
+HABITS_SHEET_ROLE = "habits"
+HABITS_SHEET_TITLE = "Habits"
+"""See `utilities/habits.py`'s `Habits` for the tab this identifies -- the
+user's habits, each scoped to an action or group."""
+
 CANCELLATIONS_SHEET_ROLE = "cancellations"
 CANCELLATIONS_SHEET_TITLE = "Cancellations"
 """See `utilities/cancellations.py` for the tab this identifies -- the

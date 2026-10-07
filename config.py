@@ -13,6 +13,7 @@ from utilities import calendar_metadata_sheet
 from utilities.actions import Actions
 from utilities.cancellations import Cancellations
 from utilities.compaction_journal import CompactionJournal
+from utilities.habits import Habits
 from utilities.locations import Locations
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.people import People
@@ -241,6 +242,24 @@ def build_people(
         calendar_client, sheets_client
     )
     return People.ensure(sheets_client, spreadsheet_id, trait_ids)
+
+
+def build_habits(
+    calendar_id: str | None = None,
+    *,
+    scopes: Callable[[], dict[str, str]] | None = None,
+    trait_ids: Callable[[], Collection[str]] | None = None,
+) -> Habits:
+    """Construct a Habits from environment configuration (and a local .env
+    file, if present). See `_build_calendar_and_sheets_clients` for
+    `calendar_id`. Constructing this ensures the calendar has a metadata
+    spreadsheet and a Habits tab -- see `Habits.ensure`, which also says
+    what `scopes` and `trait_ids` are for."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return Habits.ensure(sheets_client, spreadsheet_id, scopes, trait_ids)
 
 
 def build_locations(calendar_id: str | None = None) -> Locations:

@@ -29,6 +29,7 @@ from config import (
     build_actions,
     build_calendar_client,
     build_compaction_journal,
+    build_habits,
     build_locations,
     build_noted_time_sheet,
     build_people,
@@ -63,6 +64,7 @@ from utilities.judgments import Judging, Judgment, JudgmentsDue, JudgmentsResult
 from utilities import event_changes
 from utilities.cancellations import Cancellations
 from utilities.event_changes import Cancel, ChangeError, EventChanges, Shift
+from utilities.habits import CreatedHabit, Habit, Habits, HabitStatus, ListedHabit, action_scopes
 from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision, NoteAnnotation
@@ -356,6 +358,7 @@ _traits: Traits | None = None
 _actions: Actions | None = None
 _people: People | None = None
 _locations: Locations | None = None
+_habits: Habits | None = None
 _cancellations: Cancellations | None = None
 
 
@@ -405,6 +408,29 @@ def get_location_store() -> Locations:
             if _locations is None:
                 _locations = build_locations()
     return _locations
+
+
+def get_habit_store() -> Habits:
+    """Lazily construct and cache the Habits, the same way the other get_*
+    helpers cache theirs. Building it the first time adds the Habits tab.
+    A habit's action_id is checked against the actions and groups, and
+    its traits against the Traits tab."""
+    global _habits
+    if _habits is None:
+        with WRITE_LOCK:
+            if _habits is None:
+                _habits = build_habits(
+                    scopes=lambda: action_scopes(get_action_store().all(), get_action_store().groups()),
+                    trait_ids=lambda: [t.id for t in get_trait_store().all()],
+                )
+    return _habits
+
+
+def _prefetch_habits() -> None:
+    """The habits', actions' and traits' tabs, in one request: what the
+    habit tools read (a habit's action and traits are checked, and its
+    action pathed)."""
+    _prefetch(get_habit_store(), get_action_store(), get_trait_store())
 
 
 def get_event_changes() -> EventChanges:
@@ -1575,6 +1601,80 @@ def delete_location(location_id: str) -> Location:
     with track("delete_location"), cached_reads():
         try:
             return get_location_store().delete_location(location_id)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_habits(statuses: list[HabitStatus] | None = None) -> list[ListedHabit]:
+    """The user's habits: by default the active ones, not archived (set
+    aside) or deleted ones. Each is about the user's events with one
+    action, or with any action under one action group (action_id, with
+    its action_path), and is rated by traits as a person is: its traits
+    say which apply (by default every active one) and give it its own
+    parts -- its own rubrics -- for any (see create_habit). Each has an
+    id, name, status and note (what it's for, and what doing it well
+    looks like). Read-only."""
+    with track("get_habits"), cached_reads():
+        _prefetch_habits()
+        try:
+            return get_habit_store().get_habits(statuses)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+def get_habit(id_or_name: str) -> ListedHabit:
+    """One habit, by id or else by name (ignoring case), as get_habits
+    lists it, whatever its status. If there's none, the error suggests
+    close matches. Read-only."""
+    with track("get_habit"), cached_reads():
+        _prefetch_habits()
+        try:
+            return get_habit_store().get_habit(id_or_name)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+@tool
+@writes
+def create_habit(habit: Habit) -> CreatedHabit:
+    """Add a habit: a name (unique among habits), the action or action
+    group whose events it's about (action_id: an action's or a group's
+    id; only events with that action, or any action under that group,
+    count toward it), and optionally a note (what it's for, and what
+    doing it well looks like -- context for judging its events) and
+    traits: {"select": "all" or [trait ids], "parts": {trait id:
+    [parts]}}, both optional, as a person's (see create_person) -- the
+    traits that apply to it (by default every active one), and parts
+    replacing a trait's for it alone, a more specific rubric, say. It's
+    always "with": judgment parts for those an event was done "for"
+    don't apply to it. Active unless given a status. id is assigned.
+    Returns the habit and its id as created_id."""
+    with track("create_habit"), cached_reads():
+        _prefetch_habits()
+        try:
+            return get_habit_store().create_habit(habit)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+
+HabitField = Literal["note", "traits"]
+"""Every Habit field update_habit can clear."""
+
+
+@tool
+@writes
+def update_habit(habit: Habit, clear_fields: list[HabitField] | None = None) -> ListedHabit:
+    """Update a habit by id: its name, action_id (an action's or a
+    group's), status (active; archived, set aside; or deleted, shouldn't
+    have existed), note or traits (replaced whole; see create_habit).
+    Omitted properties keep their value; list one in clear_fields to
+    blank it instead. Returns the habit as updated."""
+    with track("update_habit"), cached_reads():
+        _prefetch_habits()
+        try:
+            return get_habit_store().update_habit(habit, clear_fields or ())
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 

@@ -1468,6 +1468,8 @@ _READ_ONLY_TOOLS = {
     "get_circle",
     "get_locations",
     "get_location",
+    "get_habits",
+    "get_habit",
     "prepare_judgments",
 }
 
