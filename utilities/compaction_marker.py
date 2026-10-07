@@ -5,8 +5,7 @@ how far it's settled fact.
 It lives on a small calendar of its own, "Compactions", which the app
 creates the first time it's needed (in the main calendar's time zone,
 shown in the same red) and records on the main calendar with
-`set_calendar_metadata`, as utilities/goal_health.py does the Goal Health
-calendar. Nothing that reads events -- listing them, compacting,
+`set_calendar_metadata`. Nothing that reads events -- listing them, compacting,
 changing events, counting actions' time, reflecting -- reads that calendar, so
 the marker is never among them, and the main calendar's events never
 overlap it.
