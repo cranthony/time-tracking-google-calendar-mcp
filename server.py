@@ -287,6 +287,8 @@ class PublicRecurrence:
     and apply to every event in the series except where one was edited
     on its own -- until the series is next edited, which resets them
     (see update_recurrence). actions_from_label is as for PublicEvent.
+    facts are those of every event in it: usually who it's with or for,
+    and where (location_id) -- set them to replace them whole.
 
     schedule, action_names, event_label_id and effective_priority are
     read-only: update_recurrence ignores them, as it does time_zone."""
@@ -306,6 +308,7 @@ class PublicRecurrence:
     actions_from_label: bool = False
     event_label_id: str | None = None
     effective_priority: int | None = None
+    facts: Facts | None = None
 
     @classmethod
     def from_event(cls, event: Event, tree: ActionTree) -> "PublicRecurrence":
@@ -329,6 +332,7 @@ class PublicRecurrence:
             actions_from_label=event.actions_from_label,
             event_label_id=event.event_label_id,
             effective_priority=event.effective_priority,
+            facts=event.facts,
         )
 
     def to_event(self, clear_fields: Collection[str] = ()) -> Event:
@@ -342,6 +346,7 @@ class PublicRecurrence:
             location=self.location,
             priority=self.priority,
             action_ids=None if self.actions_from_label else self.action_ids,
+            facts=self.facts.normalized() if self.facts is not None else None,
             cleared=frozenset(clear_fields),
         )
 
@@ -597,7 +602,7 @@ def _check_action_ids(event: PublicEvent | PublicRecurrence, *, existing: bool =
         raise ToolError(str(exc)) from exc
 
 
-def _check_facts(event: PublicEvent) -> None:
+def _check_facts(event: PublicEvent | PublicRecurrence) -> None:
     """Refuse facts that aren't well formed (see utilities/facts.py), or
     that name people or a location that aren't there."""
     if event.facts is None:
@@ -936,6 +941,7 @@ def update_recurrence(
     with track("update_recurrence"), cached_reads():
         _prefetch_stores()
         _check_action_ids(recurrence, existing=True)
+        _check_facts(recurrence)
         try:
             updated = get_recurrences().update(
                 recurrence.to_event(clear_fields or ()), starting_at_event_id, recurrence.repeat
