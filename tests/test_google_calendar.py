@@ -702,29 +702,6 @@ class TestCalendarClientListEvents:
         assert (first["eventId"], first["showDeleted"], first["timeMax"]) == ("s", True, "2026-01-19T00:00:00+00:00")
         assert instances.call_args_list[1].kwargs["pageToken"] == "page-2"
 
-    def test_list_events_with_show_deleted_includes_cancelled_events(self):
-        service = MagicMock()
-        service.events.return_value.list.return_value.execute.return_value = {
-            "items": [
-                {**api_event("1", "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00"), "status": "cancelled"},
-                # A cancelled instance kept only its original start; one kept nothing to place it by.
-                {
-                    "id": "2", "status": "cancelled", "recurringEventId": "s",
-                    "originalStartTime": {"dateTime": "2026-01-01T11:00:00+00:00"},
-                },
-                {"id": "3", "status": "cancelled"},
-            ]
-        }
-        client = make_client(service)
-
-        events = client.list_events(
-            datetime(2026, 1, 1, 0, 0, tzinfo=UTC), datetime(2026, 1, 2, 0, 0, tzinfo=UTC), show_deleted=True
-        )
-
-        assert [(e.id, e.status) for e in events] == [("1", "cancelled"), ("2", "cancelled")]
-        assert events[1].start == events[1].end == datetime(2026, 1, 1, 11, 0, tzinfo=UTC)
-        assert service.events.return_value.list.call_args.kwargs["showDeleted"] is True
-
     def test_list_events_returns_empty_list_when_no_items(self):
         service = MagicMock()
         service.events.return_value.list.return_value.execute.return_value = {}
@@ -1386,44 +1363,6 @@ class TestCalendarClientEventLabelEtagGuard:
 
 
 class TestCalendarClientSideCalendarCalls:
-    """The raw calls utilities/compaction_marker.py makes for its own
-    calendar."""
-
-    def test_upsert_inserts_with_the_given_id(self):
-        service = MagicMock()
-        service.events.return_value.insert.return_value.execute.return_value = {"id": "abc"}
-
-        result = make_client(service).upsert_event_resource("abc", {"summary": "x"})
-
-        assert result == {"id": "abc"}
-        service.events.return_value.insert.assert_called_once_with(
-            calendarId=TEST_CALENDAR_ID, body={"summary": "x", "id": "abc"}
-        )
-        service.events.return_value.patch.assert_not_called()
-
-    def test_upsert_overwrites_an_event_that_already_exists(self):
-        service = MagicMock()
-        service.events.return_value.insert.return_value.execute.side_effect = HttpError(
-            MagicMock(status=409), b"duplicate"
-        )
-        service.events.return_value.patch.return_value.execute.return_value = {"id": "abc", "summary": "y"}
-
-        result = make_client(service).upsert_event_resource("abc", {"summary": "y"})
-
-        assert result["summary"] == "y"
-        service.events.return_value.patch.assert_called_once_with(
-            calendarId=TEST_CALENDAR_ID, eventId="abc", body={"summary": "y"}
-        )
-
-    def test_upsert_raises_other_errors(self):
-        service = MagicMock()
-        service.events.return_value.insert.return_value.execute.side_effect = HttpError(
-            MagicMock(status=500), b"boom"
-        )
-
-        with pytest.raises(HttpError):
-            make_client(service).upsert_event_resource("abc", {})
-
     def test_lists_raw_events_by_private_property_across_pages(self):
         service = MagicMock()
         service.events.return_value.list.return_value.execute.side_effect = [
@@ -1499,38 +1438,6 @@ class TestCalendarClientSideCalendarCalls:
 
         assert make_client(service).hide_calendar("cal") is False
 
-    def test_colors_a_calendar_in_the_users_list(self):
-        service = MagicMock()
-
-        assert make_client(service).color_calendar("cal", "#d50000") is True
-        service.calendarList.return_value.patch.assert_called_once_with(
-            calendarId="cal",
-            colorRgbFormat=True,
-            body={"backgroundColor": "#d50000", "foregroundColor": "#ffffff"},
-        )
-
-    def test_coloring_a_calendar_is_best_effort(self):
-        service = MagicMock()
-        service.calendarList.return_value.patch.return_value.execute.side_effect = HttpError(
-            MagicMock(status=403), b"insufficient scope"
-        )
-
-        assert make_client(service).color_calendar("cal", "#d50000") is False
-
-    def test_lists_every_event_on_a_calendar_across_pages(self):
-        service = MagicMock()
-        service.events.return_value.list.return_value.execute.side_effect = [
-            {"items": [{"id": "1"}], "nextPageToken": "p2"},
-            {"items": [{"id": "2"}]},
-        ]
-
-        items = make_client(service).list_all_event_resources()
-
-        assert [i["id"] for i in items] == ["1", "2"]
-        calls = service.events.return_value.list.call_args_list
-        assert "timeMin" not in calls[0].kwargs
-        assert calls[1].kwargs["pageToken"] == "p2"
-
     def test_for_calendar_shares_the_service(self):
         service = MagicMock()
 
@@ -1590,16 +1497,6 @@ class TestCachedCalendarListings:
 
         assert service.events.return_value.list.call_count == 2
 
-    def test_cancelled_events_are_listed_apart(self):
-        service = _day_listing_service()
-        client = make_client(service)
-
-        with cached_calendar_listings():
-            client.list_events(_at(0), _at(23))
-            client.list_events(_at(0), _at(23), show_deleted=True)
-
-        assert service.events.return_value.list.call_count == 2
-
     def test_another_calendar_lists_its_own(self):
         service = _day_listing_service()
         client = make_client(service)
@@ -1625,7 +1522,6 @@ class TestCachedCalendarListings:
         [
             lambda client: client.delete_event_resource("1"),
             lambda client: client.delete_event("1"),
-            lambda client: client.upsert_event_resource("abcde", {"summary": "New"}),
         ],
     )
     def test_any_write_forgets_every_listing(self, write):
@@ -1665,9 +1561,7 @@ class TestCachedCalendarListings:
 _CALENDAR_WRITES = [
     "create_calendar",
     "hide_calendar",
-    "color_calendar",
     "set_time_zone",
-    "upsert_event_resource",
     "replace_event_resource",
     "delete_event_resource",
     "create_event",

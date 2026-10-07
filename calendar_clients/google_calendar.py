@@ -179,11 +179,9 @@ class Event:
 
     status: str | None = None
     """One of "confirmed", "tentative", or "cancelled". A cancelled event
-    is left out of `list_events` unless it's asked for them
-    (`show_deleted`); it's then returned with this status, usually keeping
-    its summary, times and label -- but an instance a series edit took
-    away comes back as just "CANCELLED", with neither. An instance of a recurring event should never be deleted --
-    set its status to "cancelled" instead.
+    is left out of `list_events` (see probes/cancelled_events.py for what
+    Calendar keeps on one). An instance of a recurring event should never
+    be deleted -- set its status to "cancelled" instead.
     See https://developers.google.com/workspace/calendar/api/v3/reference/events#status
     for more information."""
 
@@ -614,7 +612,6 @@ class _Listing:
     calendar_id: str
     time_min: datetime
     time_max: datetime
-    show_deleted: bool
     events: tuple[Event, ...]
 
 
@@ -624,9 +621,9 @@ _listings: ContextVar[list[_Listing] | None] = ContextVar("_listings", default=N
 @contextlib.contextmanager
 def cached_calendar_listings() -> Iterator[None]:
     """Within this block, a `CalendarClient.list_events` that falls within
-    one made earlier (same calendar, a range inside the earlier one's, and
-    the same `show_deleted`) is answered from memory, filtered to its own
-    range, instead of listing again -- on any `CalendarClient`. Any write
+    one made earlier (same calendar, and a range inside the earlier one's)
+    is answered from memory, filtered to its own range, instead of listing
+    again -- on any `CalendarClient`. Any write
     through any of them forgets every listing first, so a listing always
     sees this process's own writes.
 
@@ -645,16 +642,13 @@ def cached_calendar_listings() -> Iterator[None]:
         _listings.reset(token)
 
 
-def _cached_listing(
-    calendar_id: str, time_min: datetime, time_max: datetime, show_deleted: bool
-) -> list[Event] | None:
+def _cached_listing(calendar_id: str, time_min: datetime, time_max: datetime) -> list[Event] | None:
     """The events an earlier listing covering `time_min`..`time_max` holds
     in that range -- copies, so a caller changing one changes nothing
     cached -- or `None` if there's no such listing."""
     for listing in _listings.get() or ():
         if (
             listing.calendar_id == calendar_id
-            and listing.show_deleted == show_deleted
             and listing.time_min <= time_min
             and time_max <= listing.time_max
         ):
@@ -737,40 +731,6 @@ class CalendarClient:
         except HttpError:
             return False
 
-    @_writes
-    def color_calendar(self, calendar_id: str, background_color: str) -> bool:
-        """Best effort: show `calendar_id` in `background_color` ("#rrggbb")
-        in the user's calendar list in Google Calendar, with white text.
-        Returns whether that worked, as for `hide_calendar`."""
-        try:
-            self._service.calendarList().patch(
-                calendarId=calendar_id,
-                colorRgbFormat=True,
-                body={"backgroundColor": background_color, "foregroundColor": "#ffffff"},
-            ).execute()
-            return True
-        except HttpError:
-            return False
-
-    def list_all_event_resources(self) -> list[dict]:
-        """Every event on this calendar, whenever it is, as the API's own
-        dicts -- a recurring series as one -- following `nextPageToken`.
-        For a calendar that holds only a few (see utilities/
-        compaction_marker.py), not the main one."""
-        items: list[dict] = []
-        page_token: str | None = None
-        while True:
-            kwargs = {"pageToken": page_token} if page_token else {}
-            response = (
-                self._service.events()
-                .list(calendarId=self._calendar_id, maxResults=_LIST_PAGE_SIZE, **kwargs)
-                .execute()
-            )
-            items.extend(response.get("items", []))
-            page_token = response.get("nextPageToken")
-            if not page_token:
-                return items
-
     def get_time_zone(self) -> ZoneInfo:
         """This calendar's own time zone (fetched once, then remembered) --
         what its days, weeks and months are counted in. Raises
@@ -829,23 +789,11 @@ class CalendarClient:
                 return items
 
     @_writes
-    def upsert_event_resource(self, event_id: str, body: dict) -> dict:
-        """Create the event `event_id` from the API dict `body`, or, if one
-        with that id already exists, overwrite it with `body` -- so a
-        caller-chosen id (5-1024 characters of a-v and 0-9) makes writing
-        the same thing twice harmless."""
-        try:
-            return self._service.events().insert(calendarId=self._calendar_id, body={**body, "id": event_id}).execute()
-        except HttpError as exc:
-            if exc.resp.status != 409:
-                raise
-        return self._service.events().patch(calendarId=self._calendar_id, eventId=event_id, body=body).execute()
-
-    @_writes
     def replace_event_resource(self, event_id: str, body: dict) -> dict:
-        """Like `upsert_event_resource`, but an existing event is replaced
-        by `body` in full (an update, not a patch), so no field or
-        extended property it no longer has is left behind -- and, given
+        """Create the event `event_id` from the API dict `body`, or, if one
+        with that id already exists, replace it with `body` in full (an
+        update, not a patch), so no field or extended property it no
+        longer has is left behind -- and, given
         "status": "confirmed", one deleted before comes back."""
         try:
             return self._service.events().insert(calendarId=self._calendar_id, body={**body, "id": event_id}).execute()
@@ -881,25 +829,21 @@ class CalendarClient:
         service = build_service("calendar", "v3", credentials=creds)
         return cls(service, calendar_id=calendar_id)
 
-    def list_events(self, time_min: datetime, time_max: datetime, *, show_deleted: bool = False) -> list[Event]:
-        """Every event between `time_min` and `time_max`, following
-        `nextPageToken` until the last page -- Calendar returns at most
-        `_LIST_PAGE_SIZE` events per page (250 if asked for nothing), so a
-        week or more of events can span several. With `show_deleted`,
-        cancelled events too (Calendar leaves them out otherwise) -- but
-        not one that's kept no start at all.
+    def list_events(self, time_min: datetime, time_max: datetime) -> list[Event]:
+        """Every event between `time_min` and `time_max`, cancelled ones
+        left out, following `nextPageToken` until the last page -- Calendar
+        returns at most `_LIST_PAGE_SIZE` events per page (250 if asked for
+        nothing), so a week or more of events can span several.
 
         Inside `cached_calendar_listings`, a range an earlier listing
         covers is answered from it."""
-        cached = _cached_listing(self._calendar_id, time_min, time_max, show_deleted)
+        cached = _cached_listing(self._calendar_id, time_min, time_max)
         if cached is not None:
             return cached
         events: list[Event] = []
         page_token: str | None = None
         while True:
             page_kwargs = {"pageToken": page_token} if page_token else {}
-            if show_deleted:
-                page_kwargs["showDeleted"] = True
             response = (
                 self._service.events()
                 .list(
@@ -913,16 +857,10 @@ class CalendarClient:
                 )
                 .execute()
             )
-            events.extend(
-                Event.from_api(item)
-                for item in response.get("items", [])
-                if "start" in item or "originalStartTime" in item
-            )
+            events.extend(Event.from_api(item) for item in response.get("items", []))
             page_token = response.get("nextPageToken")
             if not page_token:
-                _remember_listing(
-                    _Listing(self._calendar_id, time_min, time_max, show_deleted, tuple(copy.deepcopy(events)))
-                )
+                _remember_listing(_Listing(self._calendar_id, time_min, time_max, tuple(copy.deepcopy(events))))
                 return events
 
     def get_event(self, event_id: str) -> Event:
