@@ -3,11 +3,11 @@ metadata spreadsheet (see utilities/calendar_metadata_sheet.py).
 
 Compacting notes is a series of calendar writes that can die halfway, and
 the model's interpretation of the notes (its decisions) exists only in a
-conversation. So before anything is applied, the whole approved plan --
-the decisions, and every step with its before/after state -- is written
+conversation. So before anything is applied, the whole plan -- the
+decisions, and every step with its before/after state -- is written
 here, and each step is checked off as it's applied. That makes it possible
-to finish exactly the plan that was approved after a failure, and leaves a
-before-state record of every change.
+to finish exactly the plan that was confirmed after a failure, and leaves
+a before-state record of every change.
 
 Layout: one row per fact, all in the same eight columns --
 
@@ -21,14 +21,26 @@ Layout: one row per fact, all in the same eight columns --
   The batch's first day also keeps any `additions`: the actions, people
   and locations the plan adds, each with the `ref` its decisions name it
   by ({"actions": [...], "people": [...], "locations": [...]}), created
-  before that day's steps.
-- `kind == "decision"`: one per `EventDecision`, as JSON in `before`
-  (`event_id` repeats its event id, if it has one, for reading the tab by
-  hand). Rows of the retired `disposition` kind, from before decisions
-  replaced them, are skipped.
+  before that day's steps. A proposal's revision adds its own fields
+  (`RevisionMeta`): every day says which `proposal` and `revision`, and
+  the first day the rest.
+- `kind == "decision"`: one per `EventDecision` the day was planned with
+  -- for a revision, Claude's and the user's merged (see utilities/
+  compaction_proposals.py) -- as JSON in `before` (`event_id` repeats its
+  event id, if it has one, for reading the tab by hand). Rows of the
+  retired `disposition` kind, from before decisions replaced them, are
+  skipped.
+- `kind == "claude_decision"`: a revision's own decisions from Claude,
+  on its first day: what the next revision starts from.
 - `kind` in `update`/`create`/`cancel`: one calendar change (`step` is
   1-based, in the order they're applied). `status` is `pending` or `done`;
-  `detail` is the human-readable reason.
+  `detail` is the human-readable reason. A create's `event_id` is its
+  key, if it has one.
+- `kind == "user_decision"` and `kind == "feedback"`: a proposal's user
+  edits and feedback, under the proposal's own id (not a revision's),
+  `step` numbering them: see `UserEdit` and `Feedback` in utilities/
+  compaction_proposals.py. The edit or the note is JSON in `before`;
+  feedback's answer in `after`; `status` is theirs.
 
 One row per step (rather than one JSON cell for the whole plan) keeps every
 cell far below Sheets' 50,000-character limit even for a busy day.
@@ -38,12 +50,15 @@ A compaction covers one day. Several days compacted together are a
 id doubling as the batch's (so a one-day batch is just a compaction), and
 the rest `<batch>d<day>`. Each day's compaction moves through the
 statuses below on its own, in order, so a batch applied partway has its
-earlier days finished and stamped.
+earlier days finished and stamped. A proposal's revision is a batch,
+its id `<proposal>r<revision>`.
 
-A compaction's status moves `planned` -> `applying` -> `applied` ->
+A compaction's status moves `proposed` -> `applying` -> `applied` ->
 `stamped` (its notes marked compacted -- the terminal state), or to
-`abandoned`. `applying` and `applied` are the "open" states: a new
-compaction is refused while one exists, so it has to be resumed or
+`superseded` (a newer revision replaced it), `failed` (a write that
+can't succeed stopped it) or `abandoned`. `planned` is a dry run's from
+before proposals. `applying` and `applied` are the "open" states: a new
+compaction is refused while one exists, so it has to be finished or
 abandoned first.
 
 Everything here reads the whole tab, in one range (`_read_rows`): every
@@ -58,15 +73,13 @@ hints instead cost extra requests to confirm the hints, while saving only
 rows -- which `garbage_collect` keeps few.
 
 `garbage_collect` keeps this from growing forever by physically deleting
-old, fully-finished compaction blocks from the top once the tab passes
-`_MAX_ROWS`, so the full read stays small. It never deletes a compaction that's still open or merely
-planned, and never deletes the most recently *stamped* one, since
-`last_stamped_now` depends on it. Deleting shifts every row below up, so
-row numbers -- including a compaction's own, and every note id it
-recorded -- stop being permanent once this runs; anything holding an
-older row number finds out the same way it already would if the sheet
-had simply changed underneath it (`NoteCompactor`'s "changed since
-preview" check), never silently.
+rows -- anywhere in the tab, bottom first -- that nothing needs any more
+(see there). Deleting shifts every row below up, so row numbers --
+including a compaction's own, and every note id it recorded -- stop
+being permanent once this runs; anything holding an older row number
+finds out the same way it already would if the sheet had simply changed
+underneath it (`NoteCompactor`'s "changed since preview" check), never
+silently. Every id is kept in a row's own cells, so none changes.
 """
 
 from __future__ import annotations
@@ -77,6 +90,7 @@ from datetime import datetime
 
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
+from utilities.compaction_proposals import Feedback, UserEdit
 from utilities.note_compaction import (
     CompactionChange,
     CompactionError,
@@ -86,11 +100,18 @@ from utilities.note_compaction import (
 )
 
 PLANNED = "planned"
+PROPOSED = "proposed"
+SUPERSEDED = "superseded"
 APPLYING = "applying"
 APPLIED = "applied"
 STAMPED = "stamped"
+FAILED = "failed"
 ABANDONED = "abandoned"
 OPEN_STATUSES = (APPLYING, APPLIED)
+
+USER_EDIT = "user_decision"
+FEEDBACK = "feedback"
+CLAUDE_DECISION = "claude_decision"
 
 _HEADER = ["compaction_id", "step", "kind", "event_id", "before", "after", "status", "detail"]
 _HEADER_RANGE = "A1:H1"
@@ -99,12 +120,17 @@ _FIRST_DATA_ROW = 2
 _STATUS_COLUMN = "G"
 
 _MAX_ROWS = 100
-"""garbage_collect kicks in once this tab has more data rows than this."""
+"""garbage_collect deletes finished compactions once this tab has more
+data rows than this."""
 
 _TRIM_TO_ROWS = 50
 """What garbage_collect trims this tab's data rows down to once it kicks
 in -- well under `_MAX_ROWS`, not just back to it, so it doesn't kick in
 again on the very next append."""
+
+_WHOLE_SUPERSEDED = 3
+"""How many of an open proposal's latest superseded revisions are kept
+whole, for debugging; of older ones, only their `compaction` rows."""
 
 
 @dataclass
@@ -117,6 +143,88 @@ class JournalStep:
     status: str
     reason: str
     row: int
+    key: str | None = None
+    """A create's key, if it has one."""
+
+
+@dataclass(kw_only=True)
+class RevisionMeta:
+    """What a proposal's revision adds to its first day's `detail` (every
+    day gets `proposal` and `revision`) -- see utilities/
+    compaction_proposals.py."""
+
+    proposal: str
+    revision: int
+    window_start: datetime
+    created: datetime
+    base: int | None
+    """The revision whoever made it started from."""
+
+    user_seq: int
+    """The last user edit it includes."""
+
+    by: str
+    reason: str
+    changed: list[str] = field(default_factory=list)
+    """Events (ids and keys) whose outcome differs from the revision
+    before it."""
+
+    outcomes: dict[str, str] = field(default_factory=dict)
+    """Each event it changes (id or key) -> a digest of the change, to
+    tell what the next revision changed."""
+
+    key_seq: int = 0
+    """The highest number in a key Claude's creates were given."""
+
+    claude_decisions: list[EventDecision] = field(default_factory=list)
+    aliases: dict[str, str] = field(default_factory=dict)
+    """Keys of events already created (by an apply that then failed) ->
+    their ids."""
+
+    settled: list[str] = field(default_factory=list)
+    """Events already cancelled by an apply that then failed."""
+
+    judge_also: list[list] = field(default_factory=list)
+    """[event id, start, end] of events an apply that then failed already
+    gave facts: judged with this revision's."""
+
+    def to_detail(self) -> dict:
+        return {
+            "proposal": self.proposal,
+            "revision": self.revision,
+            "from": self.window_start.isoformat(),
+            "created": self.created.isoformat(),
+            "base": self.base,
+            "user_seq": self.user_seq,
+            "by": self.by,
+            "reason": self.reason,
+            "changed": self.changed,
+            "outcomes": self.outcomes,
+            "key_seq": self.key_seq,
+            **({"aliases": self.aliases} if self.aliases else {}),
+            **({"settled": self.settled} if self.settled else {}),
+            **({"judge_also": self.judge_also} if self.judge_also else {}),
+        }
+
+    @classmethod
+    def from_detail(cls, detail: dict, claude_decisions: list[EventDecision]) -> "RevisionMeta":
+        return cls(
+            proposal=detail["proposal"],
+            revision=detail["revision"],
+            window_start=datetime.fromisoformat(detail["from"]),
+            created=datetime.fromisoformat(detail["created"]),
+            base=detail.get("base"),
+            user_seq=detail.get("user_seq", 0),
+            by=detail.get("by", "claude"),
+            reason=detail.get("reason", ""),
+            changed=detail.get("changed", []),
+            outcomes=detail.get("outcomes", {}),
+            key_seq=detail.get("key_seq", 0),
+            claude_decisions=claude_decisions,
+            aliases=detail.get("aliases", {}),
+            settled=detail.get("settled", []),
+            judge_also=detail.get("judge_also", []),
+        )
 
 
 @dataclass
@@ -139,6 +247,12 @@ class JournalCompaction:
     """The actions, people and locations the plan adds -- see the module
     docstring."""
 
+    proposal: str | None = None
+    revision: int = 0
+    meta: RevisionMeta | None = None
+    """For a revision's first day: what the revision adds -- see
+    `RevisionMeta`."""
+
     @property
     def batch_id(self) -> str:
         """The id of the batch this day belongs to: what the MCP tools
@@ -148,7 +262,7 @@ class JournalCompaction:
     def changes(self) -> list[CompactionChange]:
         return [
             CompactionChange(
-                action=s.action, reason=s.reason, event_id=s.event_id, before=s.before, after=s.after
+                action=s.action, reason=s.reason, event_id=s.event_id, key=s.key, before=s.before, after=s.after
             )
             for s in self.steps
         ]
@@ -224,13 +338,22 @@ class CompactionJournal:
             ]
         )
 
-    def start_batch(self, days: list[PlannedDay]) -> None:
-        """Record a new `planned` batch, a compaction per day (the first
-        day's id is the batch's): for each, the compaction row, one row
-        per decision, and one `pending` row per step -- all in one write,
-        so a crash can't leave half a plan recorded."""
+    def start_batch(
+        self,
+        days: list[PlannedDay],
+        meta: RevisionMeta | None = None,
+        *,
+        edits: list[UserEdit] = (),
+    ) -> None:
+        """Record a new batch, a compaction per day (the first day's id is
+        the batch's): for each, the compaction row, one row per decision,
+        and one `pending` row per step -- all in one write, so a crash
+        can't leave half a plan recorded. With `meta`, it's a proposal's
+        revision (`proposed`), and the user `edits` it's the first to
+        include are recorded with it; without, a `planned` dry run."""
         batch = days[0].compaction_id
-        rows: list[list[str]] = []
+        status = PROPOSED if meta is not None else PLANNED
+        rows: list[list[str]] = [_edit_row(edit) for edit in edits]
         for number, day in enumerate(days, start=1):
             detail = {
                 "now": day.now.isoformat(),
@@ -242,7 +365,14 @@ class CompactionJournal:
                 detail.update(batch=batch, day=number)
             if day.additions:
                 detail["additions"] = day.additions
-            rows.append([day.compaction_id, "0", "compaction", "", "", "", PLANNED, json.dumps(detail)])
+            if meta is not None:
+                detail.update(meta.to_detail() if number == 1 else {"proposal": meta.proposal, "revision": meta.revision})
+            rows.append([day.compaction_id, "0", "compaction", "", "", "", status, json.dumps(detail)])
+            if meta is not None and number == 1:
+                rows += [
+                    [day.compaction_id, "0", CLAUDE_DECISION, d.event_id or d.key or "", json.dumps(d.to_json_dict()), "", "", ""]
+                    for d in meta.claude_decisions
+                ]
             for decision in day.decisions:
                 rows.append(
                     [
@@ -262,68 +392,140 @@ class CompactionJournal:
                         day.compaction_id,
                         str(step),
                         change.action,
-                        change.event_id or "",
+                        change.event_id or change.key or "",
                         json.dumps(change.before.to_json_dict()) if change.before else "",
                         json.dumps(change.after.to_json_dict()) if change.after else "",
                         "pending",
                         change.reason,
                     ]
                 )
+        self._append(rows)
+
+    def _append(self, rows: list[list[str]]) -> None:
+        if not rows:
+            return
         first_row = _FIRST_DATA_ROW + len(self._read_rows())
         self._sheets_client.write_rows_in_sheet(
             self._spreadsheet_id, self._sheet_id, f"A{first_row}:H", rows
         )
 
-    def garbage_collect(self) -> None:
-        """Delete old, fully-finished compaction blocks from the top of
-        this tab once it's grown past `_MAX_ROWS` data rows -- see the
-        module docstring. Groups rows into blocks by their
-        `compaction_id` column (each `start` always writes one
-        contiguous block, and blocks are never reordered afterward), then
-        deletes a prefix of them: every block up to, but never including,
-        the most recently *stamped* one or the first block that isn't
-        `stamped`/`abandoned`, whichever comes first, stopping as soon as
-        it's down to `_TRIM_TO_ROWS` data rows (or there's nothing left
-        it can safely delete)."""
-        all_rows = self._read_rows()
-        data_rows = len(all_rows)
-        if data_rows <= _MAX_ROWS:
-            return
-        excess = data_rows - _TRIM_TO_ROWS
-        blocks: list[list] = []  # [compaction_id, status_of_its_compaction_row, row_count]
-        for row in all_rows:
-            compaction_id = row[0]
-            if not compaction_id:
-                continue
-            if not blocks or blocks[-1][0] != compaction_id:
-                blocks.append([compaction_id, None, 0])
-            if row[2] == "compaction":
-                blocks[-1][1] = row[6]
-            blocks[-1][2] += 1
+    # -- proposals: user edits and feedback ------------------------------------
 
-        last_stamped_index = None
-        for i, (_, status, _) in enumerate(blocks):
-            if status == STAMPED:
-                last_stamped_index = i
+    def add_user_edits(self, edits: list[UserEdit]) -> None:
+        self._append([_edit_row(edit) for edit in edits])
 
-        deletable_rows = 0
-        deletable_blocks = 0
-        for i, (_, status, count) in enumerate(blocks):
-            if i == last_stamped_index or status not in (STAMPED, ABANDONED):
-                break
-            deletable_rows += count
-            deletable_blocks += 1
-            if deletable_rows >= excess:
-                break
+    def user_edits(self, proposal: str) -> list[tuple[int, UserEdit]]:
+        """`proposal`'s user edits, in order, each with its sheet row."""
+        found = []
+        for offset, row in enumerate(self._read_rows()):
+            if row[0] == proposal and row[2] == USER_EDIT:
+                detail = json.loads(row[7] or "{}")
+                found.append(
+                    (
+                        _FIRST_DATA_ROW + offset,
+                        UserEdit(
+                            id=f"{proposal}u{row[1]}",
+                            seq=int(row[1]),
+                            event_id=row[3] or None,
+                            edit=json.loads(row[4]),
+                            status=row[6] or "active",
+                            created=datetime.fromisoformat(detail["created"]),
+                            base_revision=detail.get("base", 0),
+                        ),
+                    )
+                )
+        return sorted(found, key=lambda pair: pair[1].seq)
 
-        if deletable_blocks == 0:
-            return
-        self._sheets_client.delete_rows(
+    def set_user_edit_status(self, row: int, status: str) -> None:
+        self._write_status(row, status)
+
+    def add_feedback(self, feedback: Feedback, proposal: str) -> None:
+        self._append([_feedback_row(feedback, proposal)])
+
+    def feedback(self, proposal: str) -> list[tuple[int, Feedback]]:
+        """`proposal`'s feedback, in order, each with its sheet row."""
+        found = []
+        for offset, row in enumerate(self._read_rows()):
+            if row[0] == proposal and row[2] == FEEDBACK:
+                note = json.loads(row[4])
+                answer = json.loads(row[5]) if row[5] else {}
+                found.append(
+                    (
+                        _FIRST_DATA_ROW + offset,
+                        Feedback(
+                            id=f"{proposal}f{row[1]}",
+                            seq=int(row[1]),
+                            text=note["text"],
+                            event_id=row[3] or None,
+                            at=datetime.fromisoformat(note["at"]) if note.get("at") else None,
+                            by=note.get("by", "user"),
+                            created=datetime.fromisoformat(note["created"]),
+                            status=row[6] or "open",
+                            reply=answer.get("reply"),
+                            answered_in=answer.get("revision"),
+                            superseded_by=answer.get("superseded_by"),
+                        ),
+                    )
+                )
+        return sorted(found, key=lambda pair: pair[1].seq)
+
+    def update_feedback(self, row: int, feedback: Feedback) -> None:
+        """Write `feedback`'s answer and status into its row."""
+        answer = {"reply": feedback.reply, "revision": feedback.answered_in}
+        if feedback.superseded_by:
+            answer["superseded_by"] = feedback.superseded_by
+        self._sheets_client.write_rows_in_sheet(
             self._spreadsheet_id,
             self._sheet_id,
-            start_row=_FIRST_DATA_ROW,
-            end_row=_FIRST_DATA_ROW + deletable_rows - 1,
-            keep_at_least=calendar_metadata_sheet.MIN_TAB_ROWS,
+            f"F{row}:G{row}",
+            [[json.dumps(answer) if feedback.reply is not None else "", feedback.status]],
+        )
+
+    # -- proposals: revisions --------------------------------------------------
+
+    def revisions(self, proposal: str) -> list[tuple[int, str, str]]:
+        """(revision, its first day's id, that day's status) of each of
+        `proposal`'s revisions still in the journal, oldest first."""
+        found = []
+        for row in self._read_rows():
+            if row[2] != "compaction" or not row[7]:
+                continue
+            detail = json.loads(row[7])
+            if detail.get("proposal") == proposal and not detail.get("batch"):
+                found.append((detail["revision"], row[0], row[6]))
+        return sorted(found)
+
+    def revision_meta(self, proposal: str, revision: int) -> RevisionMeta | None:
+        """`RevisionMeta` of one of `proposal`'s revisions -- kept as long
+        as the proposal's open, even once the revision's other rows are
+        gone -- or `None`."""
+        for row in self._read_rows():
+            if row[2] != "compaction" or not row[7]:
+                continue
+            detail = json.loads(row[7])
+            if detail.get("proposal") == proposal and detail.get("revision") == revision and not detail.get("batch"):
+                return RevisionMeta.from_detail(detail, [])
+        return None
+
+    def open_proposal(self) -> str | None:
+        """The id of the proposal still open -- some day of its newest
+        revision neither stamped nor abandoned -- if there is one."""
+        statuses: dict[tuple[str, int], set[str]] = {}
+        for row in self._read_rows():
+            if row[2] != "compaction" or not row[7]:
+                continue
+            detail = json.loads(row[7])
+            if detail.get("proposal") is not None:
+                statuses.setdefault((detail["proposal"], detail["revision"]), set()).add(row[6])
+        latest: dict[str, int] = {}
+        for proposal, revision in statuses:
+            latest[proposal] = max(latest.get(proposal, 0), revision)
+        return next(
+            (
+                proposal for proposal, revision in latest.items()
+                if statuses[(proposal, revision)] - {STAMPED, ABANDONED, SUPERSEDED}
+            ),
+            None,
         )
 
     def load(self, compaction_id: str) -> JournalCompaction:
@@ -331,7 +533,9 @@ class CompactionJournal:
         resume it. Raises `CompactionError` if there isn't one."""
         compaction: JournalCompaction | None = None
         decisions: list[EventDecision] = []
+        claude: list[EventDecision] = []
         steps: list[JournalStep] = []
+        detail: dict = {}
         for offset, row in enumerate(self._read_rows()):
             if row[0] != compaction_id:
                 continue
@@ -351,28 +555,36 @@ class CompactionJournal:
                     batch=detail.get("batch"),
                     day=detail.get("day", 1),
                     additions=detail.get("additions", {}),
+                    proposal=detail.get("proposal"),
+                    revision=detail.get("revision", 0),
                 )
             elif kind == "decision":
                 decisions.append(EventDecision.from_json_dict(json.loads(row[4])))
-            elif kind == "disposition":
+            elif kind == CLAUDE_DECISION:
+                claude.append(EventDecision.from_json_dict(json.loads(row[4])))
+            elif kind in ("disposition", USER_EDIT, FEEDBACK):
                 continue
             else:
+                create = kind == "create"
                 steps.append(
                     JournalStep(
                         step=int(row[1]),
                         action=kind,
-                        event_id=row[3] or None,
+                        event_id=None if create else row[3] or None,
                         before=EventState.from_json_dict(json.loads(row[4])) if row[4] else None,
                         after=EventState.from_json_dict(json.loads(row[5])) if row[5] else None,
                         status=row[6],
                         reason=row[7],
                         row=sheet_row,
+                        key=(row[3] or None) if create else None,
                     )
                 )
         if compaction is None:
             raise CompactionError(f"there's no compaction with id {compaction_id!r}", category="unknown_compaction")
         compaction.decisions = decisions
         compaction.steps = sorted(steps, key=lambda s: s.step)
+        if compaction.proposal is not None and compaction.day == 1:
+            compaction.meta = RevisionMeta.from_detail(detail, claude)
         return compaction
 
     def load_batch(self, batch_id: str) -> list[JournalCompaction]:
@@ -400,10 +612,10 @@ class CompactionJournal:
         return self.compactions_with_status(*OPEN_STATUSES)
 
     def last_stamped_now(self) -> datetime | None:
-        """The `now` of the most recently stamped compaction, or `None` if
-        none has ever been stamped. The next compaction window starts here
-        (unless its day starts later), so it never re-offers a calendar
-        range that's already been settled."""
+        """The `now` of the most recently stamped compaction -- for a
+        proposal, its `through` -- or `None` if none has ever been
+        stamped. Everything before it is history: the next compaction
+        window starts here."""
         latest: datetime | None = None
         for row in self._read_rows():
             if row[2] != "compaction" or row[6] != STAMPED:
@@ -434,6 +646,105 @@ class CompactionJournal:
         self._write_status(step.row, "done")
         step.status = "done"
 
+    def garbage_collect(self) -> None:
+        """Delete rows nothing needs any more, anywhere in the tab, bottom
+        first:
+
+        - Of an open proposal's superseded revisions, all but the newest
+          `_WHOLE_SUPERSEDED` lose every row but their `compaction` ones
+          (whose `changed` lists still say what each revision changed).
+        - Once the tab has more than `_MAX_ROWS` data rows, whole
+          finished blocks go, oldest first, until it's down to
+          `_TRIM_TO_ROWS`: a stamped, abandoned or superseded compaction
+          (or a failed one, its proposal finished), and a finished
+          proposal's edits and feedback. Never the most recently stamped
+          batch, which `last_stamped_now` depends on, nor anything of an
+          open proposal or a compaction still planned or open.
+
+        Superseded revisions were never applied, and nothing reads them
+        once a newer one exists, so they're safe to delete."""
+        rows = self._read_rows()
+        details = [json.loads(row[7]) if row[2] == "compaction" and row[7] else {} for row in rows]
+        batch_of = {row[0]: details[i].get("batch") or row[0] for i, row in enumerate(rows) if row[2] == "compaction"}
+        status_of = {row[0]: row[6] for row in rows if row[2] == "compaction"}
+        proposal_of = {row[0]: details[i].get("proposal") for i, row in enumerate(rows) if row[2] == "compaction"}
+        open_proposal = self.open_proposal()
+        # The latest stamped by position: the journal's written in order.
+        last_stamped = next(
+            (batch_of[row[0]] for row in reversed(rows) if row[2] == "compaction" and row[6] == STAMPED), None
+        )
+
+        doomed: set[int] = set()
+        if open_proposal is not None:
+            superseded = sorted(
+                {
+                    (details[i]["revision"], batch_of[row[0]])
+                    for i, row in enumerate(rows)
+                    if row[2] == "compaction" and proposal_of.get(row[0]) == open_proposal
+                    and status_of[row[0]] == SUPERSEDED
+                },
+                reverse=True,
+            )
+            trimmed = {batch for _, batch in superseded[_WHOLE_SUPERSEDED:]}
+            doomed |= {
+                i for i, row in enumerate(rows)
+                if row[2] != "compaction" and batch_of.get(row[0]) in trimmed
+            }
+
+        if len(rows) - len(doomed) > _MAX_ROWS:
+            excess = len(rows) - len(doomed) - _TRIM_TO_ROWS
+
+            def finished(compaction_id: str) -> bool:
+                if batch_of[compaction_id] == last_stamped:
+                    return False
+                proposal = proposal_of.get(compaction_id)
+                if proposal is not None and proposal == open_proposal:
+                    return False
+                status = status_of[compaction_id]
+                return status in (STAMPED, ABANDONED, SUPERSEDED) or (status == FAILED and proposal is not None)
+
+            # Units of rows that go together: each compaction's block, and
+            # each proposal's edits and feedback.
+            units: dict[str, list[int]] = {}
+            for i, row in enumerate(rows):
+                if not row[0]:
+                    continue
+                unit = f"ledger:{row[0]}" if row[2] in (USER_EDIT, FEEDBACK) else row[0]
+                units.setdefault(unit, []).append(i)
+            proposals_finished = {
+                p for p in set(proposal_of.values()) if p is not None and p != open_proposal
+            }
+            freed = 0
+            for unit, indices in sorted(units.items(), key=lambda item: item[1][0]):
+                if freed >= excess:
+                    break
+                if unit.startswith("ledger:"):
+                    if unit.removeprefix("ledger:") not in proposals_finished:
+                        continue
+                elif unit not in status_of or not finished(unit):
+                    continue
+                fresh = [i for i in indices if i not in doomed]
+                doomed |= set(fresh)
+                freed += len(fresh)
+
+        if not doomed:
+            return
+        # Contiguous runs, deleted bottom first so the rows above don't move.
+        runs: list[list[int]] = []
+        for i in sorted(doomed):
+            if runs and runs[-1][1] == i - 1:
+                runs[-1][1] = i
+            else:
+                runs.append([i, i])
+        for start, end in reversed(runs):
+            self._sheets_client.delete_rows(
+                self._spreadsheet_id,
+                self._sheet_id,
+                start_row=_FIRST_DATA_ROW + start,
+                end_row=_FIRST_DATA_ROW + end,
+                keep_at_least=calendar_metadata_sheet.MIN_TAB_ROWS,
+            )
+
     def _write_status(self, row: int, status: str) -> None:
         self._sheets_client.write_rows_in_sheet(
             self._spreadsheet_id,
@@ -450,3 +761,24 @@ class CompactionJournal:
             self._spreadsheet_id, self._sheet_id, _DATA_RANGE
         )
         return [list(row) + [""] * (len(_HEADER) - len(row)) for row in rows]
+
+
+def _edit_row(edit: UserEdit) -> list[str]:
+    proposal = edit.id[: -len(f"u{edit.seq}")]
+    return [
+        proposal,
+        str(edit.seq),
+        USER_EDIT,
+        edit.event_id or "",
+        json.dumps(edit.edit),
+        "",
+        edit.status,
+        json.dumps({"created": edit.created.isoformat(), "base": edit.base_revision}),
+    ]
+
+
+def _feedback_row(feedback: Feedback, proposal: str) -> list[str]:
+    note = {"text": feedback.text, "by": feedback.by, "created": feedback.created.isoformat()}
+    if feedback.at is not None:
+        note["at"] = feedback.at.isoformat()
+    return [proposal, str(feedback.seq), FEEDBACK, feedback.event_id or "", json.dumps(note), "", feedback.status, ""]

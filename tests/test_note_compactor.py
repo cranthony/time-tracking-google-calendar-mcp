@@ -14,7 +14,16 @@ from calendar_clients.google_sheets import SheetsClient
 from tests.event_time_helpers import event_at, time_at
 from tests.fake_sheets import FakeSheets, FakeSheetsService
 from utilities import calendar_metadata_sheet
-from utilities.compaction_journal import ABANDONED, APPLYING, PLANNED, STAMPED, CompactionJournal
+from utilities.compaction_journal import (
+    ABANDONED,
+    APPLYING,
+    FAILED,
+    PLANNED,
+    PROPOSED,
+    STAMPED,
+    SUPERSEDED,
+    CompactionJournal,
+)
 from utilities import note_compactor
 from utilities.note_compaction import (
     CompactionChange,
@@ -26,6 +35,7 @@ from utilities.note_compaction import (
 from tests.fake_labels import FakeLabelCalendar
 from utilities.actions import Action, Actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
+from utilities.compaction_proposals import FeedbackReply
 from utilities.cancellations import Cancellations
 from utilities.facts import Facts
 from utilities.judgments import Judging, Judgment
@@ -221,11 +231,17 @@ class TestPrepare:
         assert [n.id for n in context.notes] == [setup.note_id(2), setup.note_id(3)]
         assert context.remaining_note_count == 1
 
-    def test_the_effective_now_never_passes_the_end_of_the_day(self):
+    def test_the_days_run_on_to_now_each_ending_with_its_night(self):
         setup = _standard()
         setup.now = "12:00+1"
 
-        assert setup.compactor.prepare().now == time_at("07:00+1")
+        context = setup.compactor.prepare()
+
+        assert [(d.compaction_window_start, d.day_end) for d in context.days] == [
+            (time_at("09:05"), time_at("07:00+1")),
+            (time_at("07:00+1"), time_at("07:00+1") + timedelta(days=1)),
+        ]
+        assert context.now == time_at("12:00+1")
 
     def test_skips_compacted_notes(self):
         setup = _standard()
@@ -298,9 +314,9 @@ class TestTheCompactionWindow:
         ]
         assert [e.id for e in context.events] == ["r0", "s0", "gr", "w1", "w2", "s1"]
 
-    def test_a_compaction_more_than_a_day_before_the_notes_does_not_reach_back_to_it(self):
-        # Notes two days on: the days in between, with no notes, aren't
-        # compacted -- the batch starts at the notes, as it always has.
+    def test_the_days_between_the_last_compaction_and_the_notes_are_proposed_too(self):
+        # Notes two days on: the days in between, with no notes, are still
+        # confirmed -- as planned, unless the user says otherwise.
         setup = self._setup()
         self._stamp_a_compaction_at(setup, "19:45")
         later = time_at("09:05+1") + timedelta(days=2)
@@ -309,7 +325,9 @@ class TestTheCompactionWindow:
 
         context = setup.compactor.prepare()
 
-        assert context.compaction_window_start == later
+        assert context.compaction_window_start == time_at("19:45")
+        assert [d.note_ids for d in context.days][-1] == [setup.note_id(2)]
+        assert all(d.note_ids == [] for d in context.days[:-1])
 
     def test_a_later_compaction_the_same_day_starts_the_window_there(self):
         # Compacted at 10:05, just after work ended -- so work is offered
@@ -428,26 +446,23 @@ class TestDryRun:
 
         result = setup.compactor.dry_run(setup.email_then_report())
 
-        assert result.status == "planned"
-        assert result.compaction_id
+        assert result.status == "proposed"
+        assert (result.revision, result.compaction_id) == (1, f"{result.proposal_id}r1")
         assert {c.event_id for c in result.changes} == {"e1", "e2"}
-        assert setup.journal.load(result.compaction_id).status == PLANNED
+        assert setup.journal.load(result.compaction_id).status == PROPOSED
         setup.client.update_event.assert_not_called()
         setup.client.create_event.assert_not_called()
         assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
 
-    def test_tells_the_model_to_wait_for_explicit_approval_before_applying(self):
-        # The server can't tell whether the user replied, so both the
-        # instructions and the dry run's own message have to say it.
+    def test_tells_the_model_only_the_user_confirms_it(self):
         setup = _standard()
 
         context = setup.compactor.prepare()
         result = setup.compactor.dry_run(setup.email_then_report())
 
         for text in (context.instructions, result.message):
-            assert "STOP and wait for the user's reply" in text
-            assert "explicitly approved this plan after seeing it" in text
-            assert "isn't approval" in text
+            assert "Nothing is applied until the user confirms it, in the app" in text
+            assert "confirm_proposal isn't yours to call" in text
 
     def test_returns_the_resulting_timeline_to_show_the_user(self):
         setup = _standard()
@@ -508,31 +523,42 @@ class TestDryRun:
         with pytest.raises(CompactionError, match=f"compaction {first.compaction_id} is applying"):
             setup.compactor.dry_run(setup.email_then_report())
 
-    def test_a_planned_compaction_does_not_block_a_new_one_but_is_replaced_by_it(self):
+    def test_with_a_proposal_open_a_new_one_is_refused_but_it_can_be_revised(self):
         setup = _standard()
         first = setup.compactor.dry_run(setup.email_then_report())
 
-        second = setup.compactor.dry_run(setup.email_then_report())
+        with pytest.raises(CompactionError, match=f"proposal {first.proposal_id} is open"):
+            setup.compactor.dry_run(setup.email_then_report())
+        second = setup.compactor.dry_run(
+            setup.email_then_report(), proposal_id=first.proposal_id, revision=1
+        )
 
-        assert second.status == "planned"
-        assert second.compaction_id != first.compaction_id
-        assert setup.journal.load(first.compaction_id).status == ABANDONED
-        assert setup.journal.load(second.compaction_id).status == PLANNED
-        assert "Replaced 1 earlier unapplied plan" in second.message
+        assert (second.status, second.proposal_id, second.revision) == ("proposed", first.proposal_id, 2)
+        assert setup.journal.load(first.compaction_id).status == SUPERSEDED
+        assert setup.journal.load(second.compaction_id).status == PROPOSED
 
-    def test_a_replaced_plan_can_no_longer_be_committed(self):
+    def test_a_plan_from_before_proposals_is_replaced_by_a_new_proposal(self):
+        setup = _standard()
+        setup.journal.start("old", now=time_at("11:00"), note_ids=[], decisions=[], plan=CompactionPlan(changes=[]))
+
+        result = setup.compactor.dry_run(setup.email_then_report())
+
+        assert setup.journal.load("old").status == ABANDONED
+        assert "Replaced 1 unapplied plan" in result.message
+
+    def test_a_superseded_revision_can_no_longer_be_committed(self):
         setup = _standard()
         first = setup.compactor.dry_run(setup.email_then_report())
-        setup.compactor.dry_run(setup.email_then_report())
+        setup.compactor.dry_run(setup.email_then_report(), proposal_id=first.proposal_id, revision=1)
 
-        with pytest.raises(CompactionError, match="abandoned"):
+        with pytest.raises(CompactionError, match="superseded"):
             setup.compactor.commit(first.compaction_id)
 
         setup.client.update_event.assert_not_called()
 
     def test_a_rejected_plan_can_be_redone_with_corrected_decisions(self):
         setup = _standard()
-        setup.compactor.dry_run(setup.email_then_report())
+        first = setup.compactor.dry_run(setup.email_then_report())
 
         # The user says the report never happened -- redo it without
         # touching the calendar or calling prepare again.
@@ -540,7 +566,9 @@ class TestDryRun:
             [
                 EventDecision(action="keep", event_id="e1", start_note=setup.note_id(2), end_note=setup.note_id(3)),
                 EventDecision(action="cancel", event_id="e2"),
-            ]
+            ],
+            proposal_id=first.proposal_id,
+            revision=1,
         )
 
         by_event = {c.event_id: c for c in revised.changes}
@@ -553,18 +581,20 @@ class TestDryRun:
         first = setup.compactor.dry_run(setup.email_then_report())
 
         with pytest.raises(CompactionError):
-            setup.compactor.dry_run([EventDecision(action="keep", event_id="nope")])
+            setup.compactor.dry_run(
+                [EventDecision(action="keep", event_id="nope")], proposal_id=first.proposal_id, revision=1
+            )
 
-        assert setup.journal.load(first.compaction_id).status == PLANNED
+        assert setup.journal.load(first.compaction_id).status == PROPOSED
 
     def test_a_rejected_plan_can_be_redone_with_a_rename_and_a_note(self):
         setup = _standard()
-        setup.compactor.dry_run(setup.email_then_report())
+        first = setup.compactor.dry_run(setup.email_then_report())
 
         decisions = setup.email_then_report()
         decisions[0].summary = "Deep work"
         decisions[0].annotate = "phone rang"
-        revised = setup.compactor.dry_run(decisions)
+        revised = setup.compactor.dry_run(decisions, proposal_id=first.proposal_id, revision=1)
 
         email = next(c for c in revised.changes if c.event_id == "e1")
         assert email.after.summary == "Deep work"
@@ -742,15 +772,19 @@ class TestResume:
         assert setup.compactor.commit(planned.compaction_id).status == "applied"
 
 
-class TestDescribeAndAbandon:
-    def test_describing_returns_the_stored_plan_without_applying_it(self):
+class TestGetProposalAndAbandon:
+    def test_getting_the_proposal_returns_its_current_revision_without_applying_it(self):
         setup = _standard()
         planned = setup.compactor.dry_run(setup.email_then_report())
 
-        described = setup.compactor.describe(planned.compaction_id)
+        proposal = setup.compactor.get_proposal()
 
-        assert described.compaction_id == planned.compaction_id
-        assert described.changes == planned.changes
+        assert (proposal.id, proposal.revision, proposal.state) == (planned.proposal_id, 1, "awaiting_review")
+        assert proposal.changes == planned.changes
+        email = next(e for e in proposal.events if e.id == "e1")
+        assert (email.status, email.decided_by) == ("adjusted", "claude")
+        assert (email.start, email.planned_start) == (time_at("09:05"), time_at("09:00"))
+        assert next(e for e in proposal.events if e.id == "e3").status == "planned"
         setup.client.update_event.assert_not_called()
 
     def test_abandoning_leaves_the_notes_uncompacted_and_unblocks_a_new_compaction(self):
@@ -762,7 +796,7 @@ class TestDescribeAndAbandon:
 
         assert result.status == "abandoned"
         assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(2), setup.note_id(3)]
-        assert setup.compactor.dry_run(setup.email_then_report()).status == "planned"
+        assert setup.compactor.dry_run(setup.email_then_report()).status == "proposed"
 
     def test_a_finished_compaction_cannot_be_abandoned(self):
         setup = _standard()
@@ -795,16 +829,16 @@ class TestDayByDay:
             event_at("20:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
             event_at("07:00+1-07:30+1", id="gr1", summary="Getting Ready", priority=2),
         ]
-        setup = Setup([("09:05", "email")], events=events, now="08:00+1")
+        setup = Setup([("09:05", "email")], events=events, now="07:10+1")
         planned = setup.compactor.dry_run([])
         setup.compactor.commit(planned.compaction_id)
-        assert setup.journal.last_stamped_now() == time_at("07:00+1")
+        assert setup.journal.last_stamped_now() == time_at("07:10+1")
         setup.append_note("08:15+1", "left for work")
         setup.now = "08:30+1"
 
         context = setup.compactor.prepare()
 
-        assert context.compaction_window_start == time_at("07:00+1")
+        assert context.compaction_window_start == time_at("07:10+1")
         assert [e.id for e in context.events][:2] == ["s1", "gr1"]
 
 
@@ -878,7 +912,7 @@ class TestSeveralDays:
 
         days = setup.journal.load_batch(planned.compaction_id)
         assert [d.id for d in days] == [planned.compaction_id, f"{planned.compaction_id}d2"]
-        assert {d.status for d in days} == {PLANNED}
+        assert {d.status for d in days} == {PROPOSED}
         changes = {c.event_id: c for c in planned.changes}
         assert changes["s1"].after.end == time_at("08:30+1")
         assert changes["w1"].after.start == time_at("09:00+1")
@@ -1041,15 +1075,17 @@ class TestSeveralDays:
 
         setup.client.update_event.assert_not_called()
 
-    def test_describing_a_batch_lists_its_days(self):
+    def test_getting_a_proposal_over_two_days_shows_both(self):
         setup = self._setup()
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
 
-        described = setup.compactor.describe(planned.compaction_id)
+        proposal = setup.compactor.get_proposal()
 
-        assert described.status == "planned"
-        assert described.changes == planned.changes
-        assert "covers 2 days" in described.message
+        assert proposal.changes == planned.changes
+        assert proposal.timeline.text.count("━━ ") == 2
+        night = next(e for e in proposal.events if e.id == "s1")
+        assert (night.status, night.end, night.is_end_of_day_sleep) == ("adjusted", time_at("08:30+1"), True)
+        assert [n.id for n in proposal.notes] == [setup.note_id(2), setup.note_id(3), setup.note_id(4)]
 
     def test_an_open_batch_is_reported_by_its_own_id(self):
         setup = self._setup()
@@ -1098,7 +1134,7 @@ class TestSleepingIn:
             event_at("08:00+1-12:00+1", id="w1", summary="Work", priority=3),
             event_at("22:00+1-23:30+1", id="s2", summary="Sleep", priority=0, is_end_of_day_sleep=True),
         ]
-        setup = Setup([("09:05", "email")], events=events, now="08:00+1")
+        setup = Setup([("09:05", "email")], events=events, now="07:00+1")
         planned = setup.compactor.dry_run([])
         setup.compactor.commit(planned.compaction_id)
         setup.client.reset_mock()
@@ -1223,7 +1259,7 @@ class TestMovingFutureEvents:
         planned = setup.compactor.dry_run(setup.email_then_report() + [bedtime])
         setup.compactor.commit(planned.compaction_id)
 
-        assert planned.status == "planned"
+        assert planned.status == "proposed"
         assert any("doesn't adjust the next day" in w for w in planned.warnings)
         patch = next(
             c.args[0] for c in setup.client.update_event.call_args_list if c.args[0].id == "s1"
@@ -1444,7 +1480,7 @@ class TestSheetReadRequests:
 
     def _round(self, service, note_at, now):
         """One round of MCP tool calls: note, prepare_compaction,
-        compact_notes (dry run), compact_notes (apply). Returns each
+        compact_notes (proposing), confirm_proposal. Returns each
         call's read requests."""
         self.now = now
         counts = {}
@@ -1458,7 +1494,7 @@ class TestSheetReadRequests:
         call("note", lambda: server.note(NotedTime(timestamp=time_at(note_at), description="note")))
         call("prepare_compaction", server.prepare_compaction)
         plan = call("compact_notes dry run", lambda: server.compact_notes())
-        call("compact_notes apply", lambda: server.compact_notes(compaction_id=plan.compaction_id, dry_run=False))
+        call("confirm_proposal", lambda: server.confirm_proposal(plan.proposal_id, plan.revision))
         return counts
 
     def test_a_typical_round_of_compaction_makes_no_more_read_requests_than_this(self, monkeypatch):
@@ -1476,7 +1512,7 @@ class TestSheetReadRequests:
             "note": 1,
             "prepare_compaction": 1,
             "compact_notes dry run": 1,
-            "compact_notes apply": 1,
+            "confirm_proposal": 1,
         }
 
 
@@ -1918,3 +1954,379 @@ class TestPrioritiesKept:
         assert "e2" not in changes  # Its own priority: nothing to write.
         # Lunch, still to come, keeps following its actions.
         assert "e3" not in changes or changes["e3"].after.priority is None
+
+
+def _http_error(status):
+    return HttpError(MagicMock(status=status), b"error")
+
+
+def _keep(event_id, **fields):
+    return EventDecision(action="keep", event_id=event_id, **fields)
+
+
+class TestProposals:
+    """A proposal: Claude proposes, the user edits it, leaves feedback or
+    confirms it -- see docs/compaction-proposals.md."""
+
+    def _proposed(self, decisions=None):
+        setup = _standard()
+        result = setup.compactor.dry_run(decisions if decisions is not None else setup.email_then_report())
+        return setup, result.proposal_id
+
+    @staticmethod
+    def _event(proposal, event_id):
+        return next(e for e in proposal.events if e.id == event_id)
+
+    @staticmethod
+    def _renamed(setup, event_index, summary):
+        decisions = setup.email_then_report()
+        decisions[event_index].summary = summary
+        return decisions
+
+    def test_a_day_that_went_to_plan_is_proposed_without_notes(self):
+        setup = Setup([])
+        setup.journal.start("prev", now=time_at("08:00"), note_ids=[], decisions=[], plan=CompactionPlan(changes=[]))
+        setup.journal.set_status(setup.journal.load("prev"), STAMPED)
+
+        assert setup.compactor.dry_run([]).status == "proposed"
+
+        proposal = setup.compactor.get_proposal()
+        assert (proposal.window_start, proposal.through) == (time_at("08:00"), time_at("11:30"))
+        assert [(e.id, e.status) for e in proposal.events if e.id.startswith("e")] == [
+            ("e1", "on_schedule"), ("e2", "on_schedule"), ("e3", "planned"),
+        ]
+
+    def test_prepare_hands_claude_the_open_proposal(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+
+        context = setup.compactor.prepare().proposal
+
+        assert (context.id, context.revision, context.state, context.user_seq) == (p, 2, "awaiting_review", 1)
+        assert [u["event_id"] for u in context.updates] == ["e1", "e2"]
+        assert [e.edit for e in context.user_edits] == [{"action": "keep", "event_id": "e1", "summary": "Inbox"}]
+
+    def test_the_status_summarizes_the_open_proposal(self):
+        setup, p = self._proposed()
+        setup.compactor.add_note(p, "one thing")
+
+        summary = setup.compactor.proposal_summary()
+
+        assert (summary.id, summary.revision, summary.state, summary.open_feedback) == (p, 1, "awaiting_claude", 1)
+        assert summary.through == time_at("11:30")
+
+    # -- the user's edits ------------------------------------------------------
+
+    def test_an_edit_is_laid_over_claudes_decisions_field_by_field(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+
+        assert (proposal.revision, proposal.by, proposal.reason) == (2, "user", "user edit")
+        email = self._event(proposal, "e1")
+        assert (email.summary, email.start, email.end, email.decided_by) == (
+            "Inbox", time_at("09:05"), time_at("10:20"), "user"
+        )
+        assert [(e.id, e.event_id, e.status, e.base_revision) for e in proposal.user_edits] == [
+            (f"{p}u1", "e1", "active", 1)
+        ]
+        assert setup.journal.load(f"{p}r1").status == SUPERSEDED
+        setup.client.update_event.assert_not_called()
+
+    def test_an_edit_that_overlaps_is_refused_and_writes_nothing(self):
+        setup, p = self._proposed()
+
+        with pytest.raises(CompactionError, match="overlaps"):
+            setup.compactor.amend(p, 1, [_keep("e1", end=time_at("10:40"))])
+
+        assert setup.journal.revisions(p) == [(1, f"{p}r1", PROPOSED)]
+        assert setup.journal.user_edits(p) == []
+
+    def test_an_edit_of_an_event_not_in_the_proposal_is_refused(self):
+        setup, p = self._proposed()
+
+        with pytest.raises(CompactionError, match="'nope'"):
+            setup.compactor.amend(p, 1, [_keep("nope", summary="Something")])
+
+    def test_as_planned_clears_claudes_decision(self):
+        setup, p = self._proposed()
+
+        proposal = setup.compactor.amend(p, 1, [], as_planned=["e1"])
+
+        email = self._event(proposal, "e1")
+        assert (email.start, email.end, email.status, email.decided_by) == (
+            time_at("09:00"), time_at("10:00"), "on_schedule", None
+        )
+
+    def test_the_user_adds_an_event_and_edits_it_by_its_key(self):
+        setup, p = self._proposed()
+        walk = EventDecision(action="create", summary="Walk", start=time_at("11:00"), end=time_at("11:20"))
+
+        first = setup.compactor.amend(p, 1, [walk])
+        second = setup.compactor.amend(p, 2, [_keep(f"{p}u1", end=time_at("11:25"))])
+
+        assert (self._event(first, f"{p}u1").status, self._event(first, f"{p}u1").decided_by) == ("new", "user")
+        assert self._event(second, f"{p}u1").end == time_at("11:25")
+
+    def test_the_user_edits_claudes_new_event_by_its_key_and_it_follows_the_key(self):
+        setup = _standard()
+        walk = EventDecision(action="create", summary="Walk", start=time_at("11:00"), end=time_at("11:20"))
+        result = setup.compactor.dry_run(setup.email_then_report() + [walk])
+        p = result.proposal_id
+        key = f"{p}c1"
+        assert [c.key for c in result.changes if c.action == "create"] == [key]
+
+        proposal = setup.compactor.amend(p, 1, [_keep(key, summary="Long walk", end=time_at("11:25"))])
+
+        assert (self._event(proposal, key).summary, self._event(proposal, key).end) == (
+            "Long walk", time_at("11:25")
+        )
+        # Claude keeps it by sending its key back; the user's edit follows.
+        assert setup.compactor.prepare().proposal.creates[0]["key"] == key
+        revised = setup.compactor.dry_run(
+            setup.email_then_report() + [replace(walk, key=key)], proposal_id=p, revision=2
+        )
+        (created,) = [c for c in revised.changes if c.action == "create"]
+        assert (created.key, created.after.summary) == (key, "Long walk")
+
+    def test_a_key_that_isnt_the_proposals_is_refused(self):
+        setup, p = self._proposed()
+        walk = EventDecision(
+            action="create", summary="Walk", start=time_at("11:00"), end=time_at("11:20"), key=f"{p}c9"
+        )
+
+        with pytest.raises(CompactionError, match="isn't one of proposal"):
+            setup.compactor.dry_run([walk], proposal_id=p, revision=1)
+
+    def test_an_edit_from_an_older_revision_lands_on_the_current_one(self):
+        setup, p = self._proposed()
+        # Claude renames the report meanwhile.
+        setup.compactor.dry_run(self._renamed(setup, 1, "Quarterly report"), proposal_id=p, revision=1)
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e2", summary="Report draft"), _keep("e1", summary="Inbox")])
+
+        assert proposal.revision == 3
+        assert (self._event(proposal, "e1").summary, self._event(proposal, "e2").summary) == (
+            "Inbox", "Report draft"
+        )
+        assert proposal.replaced == ["e2"]
+
+    def test_claudes_revision_keeps_the_users_edits(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+
+        # Claude started from revision 1, before the edit.
+        result = setup.compactor.dry_run(self._renamed(setup, 0, "Mail"), proposal_id=p, revision=1)
+
+        assert next(c for c in result.changes if c.event_id == "e1").after.summary == "Inbox"
+
+    def test_changed_since_an_earlier_revision(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+        setup.compactor.amend(p, 2, [_keep("e2", summary="Draft")])
+
+        assert setup.compactor.get_proposal(since_revision=1).changed_since == ["e1", "e2"]
+        assert setup.compactor.get_proposal(since_revision=2).changed_since == ["e2"]
+
+    # -- feedback ---------------------------------------------------------------
+
+    def test_feedback_waits_for_claude_and_blocks_confirming(self):
+        setup, p = self._proposed()
+
+        item = setup.compactor.add_note(p, "the report was a draft", event_id="e2")
+
+        assert (item.id, item.status, item.by) == (f"{p}f1", "open", "user")
+        assert setup.compactor.get_proposal().state == "awaiting_claude"
+        with pytest.raises(CompactionError, match="waiting for Claude"):
+            setup.compactor.confirm(p, 1)
+
+    def test_claude_answers_the_feedback_it_saw_with_a_revision(self):
+        setup, p = self._proposed()
+        setup.now = "11:31"
+        item = setup.compactor.add_note(p, "call the report a draft", event_id="e2")
+        setup.now = "11:32"
+        setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])  # Written after the note.
+        decisions = self._renamed(setup, 1, "Report draft")
+
+        with pytest.raises(CompactionError, match=f"answer every open feedback item.*{item.id}"):
+            setup.compactor.dry_run(decisions, proposal_id=p, revision=2)
+        setup.compactor.dry_run(
+            decisions, proposal_id=p, revision=2, replies=[FeedbackReply(feedback_id=item.id, reply="Renamed it")]
+        )
+
+        proposal = setup.compactor.get_proposal()
+        assert (proposal.revision, proposal.reason, proposal.state) == (3, "revised for notes", "awaiting_review")
+        assert [(f.status, f.reply, f.answered_in) for f in proposal.feedback] == [("answered", "Renamed it", 3)]
+        assert self._event(proposal, "e2").summary == "Report draft"
+
+    def test_feedback_added_after_claude_began_may_stay_open(self):
+        setup, p = self._proposed()
+        setup.now = "11:31"
+        setup.compactor.add_note(p, "one more thing")
+
+        result = setup.compactor.dry_run(setup.email_then_report(), proposal_id=p, revision=1)
+
+        assert "came in after your revision began" in result.message
+        assert setup.compactor.get_proposal().state == "awaiting_claude"
+
+    def test_a_note_can_be_withdrawn_but_not_once_answered(self):
+        setup, p = self._proposed()
+        first = setup.compactor.add_note(p, "never mind")
+        assert setup.compactor.withdraw_note(first.id).status == "withdrawn"
+        assert setup.compactor.withdraw_note(first.id).status == "withdrawn"
+        setup.now = "11:31"
+        second = setup.compactor.add_note(p, "rename the report")
+        setup.compactor.dry_run(
+            setup.email_then_report(), proposal_id=p, revision=1,
+            replies=[FeedbackReply(feedback_id=second.id, reply="Kept it, it was the report")],
+        )
+
+        with pytest.raises(CompactionError, match="already answered, in revision 2"):
+            setup.compactor.withdraw_note(second.id)
+        assert setup.compactor.get_proposal().state == "awaiting_review"
+
+    def test_claude_overrides_a_users_edit_only_answering_feedback_about_it(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+        decisions = self._renamed(setup, 0, "Mail")
+        setup.compactor.dry_run(decisions, proposal_id=p, revision=2)
+        assert self._event(setup.compactor.get_proposal(), "e1").summary == "Inbox"
+        setup.now = "11:31"
+        item = setup.compactor.add_note(p, "actually, call it Mail", event_id="e1")
+        setup.now = "11:32"
+
+        setup.compactor.dry_run(
+            decisions, proposal_id=p, revision=3, replies=[FeedbackReply(feedback_id=item.id, reply="Renamed it")]
+        )
+
+        proposal = setup.compactor.get_proposal()
+        assert self._event(proposal, "e1").summary == "Mail"
+        assert [e.status for e in proposal.user_edits] == ["replaced"]
+
+    def test_a_users_edit_made_after_claude_began_stands_over_its_answer(self):
+        setup, p = self._proposed()
+        setup.now = "11:31"
+        item = setup.compactor.add_note(p, "call the email Mail", event_id="e1")
+        setup.now = "11:32"
+        setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+
+        # Claude started from revision 1, before the edit.
+        setup.compactor.dry_run(
+            self._renamed(setup, 0, "Mail"), proposal_id=p, revision=1,
+            replies=[FeedbackReply(feedback_id=item.id, reply="Renamed it")],
+        )
+
+        proposal = setup.compactor.get_proposal()
+        assert self._event(proposal, "e1").summary == "Inbox"
+        assert proposal.feedback[0].superseded_by == [f"{p}u1"]
+        assert [e.status for e in proposal.user_edits] == ["active"]
+
+    # -- confirming ---------------------------------------------------------------
+
+    def test_confirming_applies_it_and_history_runs_to_its_through(self):
+        setup, p = self._proposed()
+
+        result = setup.compactor.confirm(p, 1)
+
+        assert (result.status, result.proposal.state) == ("applied", "applied")
+        assert {c.args[0].id for c in setup.client.update_event.call_args_list} >= {"e1", "e2"}
+        assert setup.journal.last_stamped_now() == time_at("11:30")
+        assert setup.notes.read_with_rows() == []
+        assert setup.journal.open_proposal() is None
+
+    def test_only_the_current_revision_can_be_confirmed(self):
+        setup, p = self._proposed()
+        setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+
+        with pytest.raises(CompactionError, match="isn't proposal .* current one"):
+            setup.compactor.confirm(p, 1)
+
+        setup.client.update_event.assert_not_called()
+
+    def test_a_change_since_it_was_proposed_makes_a_revision_to_confirm_again(self):
+        setup, p = self._proposed()
+        setup.append_note("10:40", "phone rang")
+
+        result = setup.compactor.confirm(p, 1)
+
+        assert result.status == "rechecked"
+        assert (result.proposal.revision, result.proposal.by, result.proposal.reason) == (2, "server", "recheck")
+        assert result.proposal.changed_since == ["e2"]
+        setup.client.update_event.assert_not_called()
+        assert setup.compactor.confirm(p, 2).status == "applied"
+
+    def test_one_that_no_longer_plans_is_handed_to_claude(self):
+        setup, p = self._proposed()
+        setup.calendar.events.append(event_at("10:30-10:50", id="x1", summary="Call", priority=2))
+
+        result = setup.compactor.confirm(p, 1)
+
+        assert (result.status, result.proposal.state) == ("needs_claude", "awaiting_claude")
+        assert [f.by for f in result.proposal.feedback] == ["server"]
+        setup.client.update_event.assert_not_called()
+
+    def test_an_apply_that_stops_partway_is_finished_later(self):
+        setup, p = self._proposed()
+        calls = []
+
+        def update(event):
+            calls.append(event.id)
+            if len(calls) == 2:
+                raise _http_error(500)
+
+        setup.client.update_event.side_effect = update
+
+        with pytest.raises(CompactionError, match="finish_proposal"):
+            setup.compactor.confirm(p, 1)
+        assert setup.compactor.proposal_summary().state == "applying"
+        with pytest.raises(CompactionError, match="being applied"):
+            setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+        setup.client.update_event.side_effect = None
+
+        assert setup.compactor.finish(p).status == "applied"
+        assert setup.journal.open_proposal() is None
+
+    def test_a_write_that_can_never_succeed_proposes_whats_left(self):
+        setup, p = self._proposed()
+
+        def update(event):
+            if event.id == "e2":
+                # Deleted meanwhile.
+                setup.calendar.events = [e for e in setup.calendar.events if e.id != "e2"]
+                raise _http_error(404)
+
+        setup.client.update_event.side_effect = update
+
+        result = setup.compactor.confirm(p, 1)
+
+        assert result.status == "rebuilt"
+        assert setup.journal.load(f"{p}r1").status == FAILED
+        proposal = result.proposal
+        assert (proposal.revision, proposal.by, proposal.reason, proposal.state) == (
+            2, "server", "apply failed", "awaiting_review"
+        )
+        assert "e2" not in {e.id for e in proposal.events}
+        assert "leaving out what was about e2" in proposal.warnings[0]
+        assert setup.compactor.confirm(p, 2).status == "applied"
+
+    def test_a_proposal_can_be_abandoned(self):
+        setup, p = self._proposed()
+
+        assert setup.compactor.abandon(p).status == "abandoned"
+
+        assert setup.journal.open_proposal() is None
+        assert setup.compactor.dry_run(setup.email_then_report()).proposal_id != p
+
+    def test_only_the_last_few_superseded_revisions_are_kept_whole(self):
+        setup, p = self._proposed()
+        for revision in range(1, 6):
+            setup.compactor.dry_run(setup.email_then_report(), proposal_id=p, revision=revision)
+
+        setup.journal.garbage_collect()
+
+        # 1-5 superseded, 6 current: the newest three superseded kept whole,
+        # the rest only their compaction rows.
+        assert [bool(setup.journal.load(f"{p}r{n}").steps) for n in range(1, 7)] == [
+            False, False, True, True, True, True,
+        ]
+        assert setup.journal.revision_meta(p, 1).revision == 1

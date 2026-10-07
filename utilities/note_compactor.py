@@ -3,23 +3,30 @@
 (utilities/note_compaction.py) and the write-ahead journal
 (utilities/compaction_journal.py) together.
 
-The flow, as the MCP tools expose it:
+A compaction is a *proposal* the user confirms (see utilities/
+compaction_proposals.py, and docs/compaction-proposals.md for the
+contract). The flow, as the MCP tools expose it:
 
-1. `prepare` -- read-only. Hands the client every day of uncompacted
-   notes up to now (each note with a stable id and a shortlist of nearby
-   planned events), those days' planned events, and the two side by side
-   as a `Timeline` (see utilities/compaction_timeline.py). The client
-   compares them and decides, event by event, what the notes show
+1. `prepare` -- read-only. Hands the client every day from the last
+   compaction up to now, notes or not (each uncompacted note with a
+   stable id and a shortlist of nearby planned events), those days'
+   planned events, the two side by side as a `Timeline` (see utilities/
+   compaction_timeline.py), and the open proposal, if there is one. The
+   client compares them and decides, event by event, what the notes show
    happened differently.
-2. `dry_run` -- validates the client's decisions and writes the plan to
-   the journal as `planned`, returning it (and a compaction id, and the
-   resulting timeline) for review. Nothing on the calendar changes.
-3. `commit` -- applies a `planned` compaction after checking the notes and
-   calendar still match what was previewed, journaling each step as it
+2. `dry_run` (compact_notes) -- validates the client's decisions, lays
+   the user's edits over them, and writes the plan to the journal as a
+   proposal's revision, returning it (and the resulting timeline).
+   Nothing on the calendar changes. The user reviews it in the app:
+   `amend` (their edits), `add_note`/`withdraw_note` (feedback for the
+   client, answered by its next revision), `get_proposal`.
+3. `confirm` -- the user's alone: plans the revision again, and if
+   nothing changed, applies it (`commit`), journaling each step as it
    goes, and stamping each day's notes as compacted once that day's steps
-   are done. If it dies partway it can simply be called again: the
-   journal remembers exactly what was approved and how far it got. A
-   compaction that can't be finished can be `abandon`ed.
+   are done. If it dies partway, `finish` resumes it: the journal
+   remembers exactly what was confirmed and how far it got. A write that
+   can never succeed proposes what's left of it again (`_rebuild`). A
+   proposal can be `abandon`ed.
 4. `record_judgments` -- the facts written, the client judges the traits
    of each event's people (see utilities/judgments.py). Nothing about
    judging is sent before the user approves the plan: the commit hands
@@ -29,14 +36,15 @@ The flow, as the MCP tools expose it:
    they're all judged. `judgments_due` hands them over again -- to
    finish, or redo.
 
-A day at a time, all at once: one compaction takes on every day of
-uncompacted notes up to now (at most `_MAX_DAYS`, oldest first), but
-plans each day on its own, and the user reviews them together. A day is
-the one the oldest of the notes left falls in: it starts when the last
-end-of-day sleep event that began before that note ends (or at the note,
-if it's earlier -- a note written before the planned wake-up time), and
-runs to the end of the next end-of-day sleep event after that (or 24
-hours, if there isn't one). Each day after the first is planned as if the
+A day at a time, all at once: one compaction takes on every day from
+the last compaction up to now (at most `_MAX_DAYS`, oldest first), notes
+or not, but plans each day on its own, and the user reviews them
+together. The first day is the one the last compaction ran in (before
+there's been one, the one the oldest note falls in, or today): it starts
+when the last end-of-day sleep event that began before then ends (or at
+the note, if it's earlier -- a note written before the planned wake-up
+time), and runs to the end of the next end-of-day sleep event after that
+(or 24 hours, if there isn't one). Each day after the first is planned as if the
 one before it had already been compacted: it starts where that one ended
 (its `now`), against the calendar as that one's plan would leave it
 (`_PlannedCalendar`). A day before the last is wholly past, so its plan
@@ -46,9 +54,9 @@ whole, by the earlier day, and its end is the border between them (see
 `_cut`): a note the decisions use to end it -- woke early, or slept in
 -- moves the border to it, taking every note up to it into the earlier
 day, and the later day starts there. After a late wake-up, the later day
-still starts at the planned one, and is compacted even without notes of
-its own, so the morning the night now runs over is settled there: past
-events under it, and later ones it reaches, are overlaps to resolve.
+still starts at the planned one, so the morning the night now runs over
+is settled there: past events under it, and later ones it reaches, are
+overlaps to resolve.
 A cancelled night -- no sleep -- makes the two days one long one. In the journal, each day is a compaction of
 its own, applied and stamped in order, and together they're a *batch*
 under the first day's id (see utilities/compaction_journal.py) -- the
@@ -59,12 +67,8 @@ A day can take several compactions, so the events offered -- the
 *compaction window* -- start at the later of the day's start and the last
 *stamped* compaction's `now` (or, for a later day of a batch, the day
 before it's): whatever an earlier compaction already
-settled isn't offered again. Nor is anything after it skipped: when the
-last compaction ran before the night that ends its day (in the evening,
-before bed), that day isn't over, so the batch starts with it, at the
-last compaction -- even if its oldest note was written during that night
-(the user stayed up), or the morning after it (that day's evening and
-night are settled first, notes or not). See `_anchor`. The one event that ended within `_LOOKBACK`
+settled isn't offered again. Nor is anything after it skipped: a day
+with no notes is confirmed as planned. The one event that ended within `_LOOKBACK`
 before the compaction window starts is offered too, so an event the last
 compaction closed off at "now" (or the night's sleep) can still be
 stretched. The latest compacted note, however long ago it was written,
@@ -93,6 +97,8 @@ numbers and ids.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import uuid
 from collections.abc import Callable
@@ -122,12 +128,39 @@ from utilities.compaction_journal import (
     ABANDONED,
     APPLIED,
     APPLYING,
+    FAILED,
+    OPEN_STATUSES,
     PLANNED,
+    PROPOSED,
     STAMPED,
+    SUPERSEDED,
     CompactionJournal,
     JournalCompaction,
     JournalStep,
     PlannedDay,
+    RevisionMeta,
+)
+from utilities.compaction_proposals import (
+    Feedback,
+    FeedbackReply,
+    Proposal,
+    ProposalContext,
+    ProposalEvent,
+    ProposalNote,
+    ProposalResult,
+    ProposalState,
+    ProposalSummary,
+    UserEdit,
+    claude_key,
+    claude_key_number,
+    decision_shape,
+    edit_id,
+    edit_json,
+    feedback_id,
+    merge,
+    new_proposal_id,
+    revision_id,
+    split_feedback_id,
 )
 from utilities.cancellations import Cancellations
 from utilities.compaction_timeline import Timeline, join_days, render
@@ -162,11 +195,6 @@ _LOOKBACK = timedelta(minutes=15)
 """How long before the compaction window starts an event may have ended
 and still be offered (only the latest one) -- see the module docstring."""
 
-_ADJACENT = timedelta(hours=48)
-"""The longest the oldest note may come after the last compaction for
-the batch to start at the last compaction, not the note: no more than
-the day after the night after it -- see `NoteCompactor._anchor`."""
-
 _PREFETCH_BEFORE = timedelta(hours=24) + _LOOKBACK
 _PREFETCH_AFTER = timedelta(hours=48)
 """What `NoteCompactor._walk` lists up front, around its notes: from the
@@ -176,13 +204,11 @@ days past now (where the last day ends, unless more than one night in a
 row is cancelled -- a listing past it just isn't answered from this)."""
 
 _APPROVAL_RULE = (
-    "Then STOP and wait for the user's reply. Only call compact_notes with dry_run=False once the "
-    "user has explicitly approved this plan after seeing it -- never in the same turn as the dry "
-    "run. A request to compact made before they saw the plan (\"compact my notes\") isn't approval "
-    "of it."
+    "Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to "
+    "call). If they ask you for changes, make them with compact_notes again, passing proposal_id "
+    "and the revision you started from."
 )
-"""Repeated wherever a model is told what to do after a dry run: the
-server can't tell whether the user replied, so this rests on the model."""
+"""Repeated wherever a model is told what to do after proposing."""
 
 DECISION_GUIDE = (
     "`timeline` shows the notes beside the planned events -- for every day of notes up to now, each "
@@ -243,8 +269,8 @@ DECISION_GUIDE = (
     "longer before the window it was written, the less it says about how the window began. The "
     "timeline shows it too (✓), and when the last compaction ran, both as context. "
     "COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at "
-    "`now`, except for later events near a note (one may be what a note starts early) and, after "
-    "a dry run, later events the plan changes. "
+    "`now`, except for later events near a note (one may be what a note starts early) and, once "
+    "proposed, later events the plan changes. "
     "An update that moves a future event reschedules it -- for 'move lunch later and adjust the "
     "afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep "
     "event works differently: moving its start moves bedtime (an earlier one needs whatever runs "
@@ -281,9 +307,10 @@ DECISION_GUIDE = (
     "aren't judgments: you don't know the traits, so just record what happened. Facts replace an "
     "event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. "
     "In the timeline, ▸ marks facts an event has and ▹ ones it's being given. "
-    "After a dry run, ⚠ marks a past event still missing its action or location (listed again "
-    "under `Missing:` at the end of the day): settle it from the notes and run again, or, if they "
-    "don't say, ask the user. "
+    "Once proposed, ⚠ marks a past event still missing its action or location (listed again "
+    "under `Missing:` at the end of the day): settle it from the notes and propose again, or, if "
+    "they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the "
+    "user to settle in review. "
     "NEW actions, people and locations: when an event's action, a person or a place isn't in the "
     "lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a "
     "`ref` starting \"new:\" (\"new:ukulele\") that your updates and creates use wherever its id would go -- "
@@ -291,12 +318,24 @@ DECISION_GUIDE = (
     "confirms them with it. A new action is a verb phrase, its status active (the user approves "
     "it with the plan); a new person needs a context when their name is taken; a new location "
     "needs a hint. Check the lists first: don't add one that's already there under another name. "
-    "Before the dry run, confirm with the user anything you couldn't settle from the notes -- who "
-    "was there, where it was -- in a short list; after it, they confirm the whole plan. "
-    "After every dry run, show the user the result's `timeline.text` verbatim in a code block "
-    "(it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each "
-    "event's actions and facts compactly, under it), then the new actions, people and locations "
-    "it adds, and the warnings, asking whether to apply it or what to change. " + _APPROVAL_RULE
+    "In a conversation, confirm with the user anything you couldn't settle from the notes -- who "
+    "was there, where it was -- in a short list before proposing; with no one to ask, propose what "
+    "the notes do say. The user confirms the whole proposal, in the app. "
+    "In a conversation, after every compact_notes show the user the result's `timeline.text` "
+    "verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen "
+    "it -- it shows each event's actions and facts compactly, under it), then the new actions, "
+    "people and locations it adds, and the warnings. "
+    "PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of "
+    "the open one) for the user to review in the app, where they confirm it, edit it, or leave "
+    "you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass "
+    "its proposal_id and the revision you started from, and send ALL your decisions again -- "
+    "`proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` "
+    "so the user's edits of it follow it -- changed as the notes and the feedback say, planned to "
+    "now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never "
+    "send them, and don't fight them. Answer every open feedback item (`proposal.feedback`, "
+    "status open) in `replies`, saying what you changed, or asking what they meant if you can't "
+    "tell; to change an event the user edited, the feedback you answer has to be about that "
+    "event. " + _APPROVAL_RULE
 )
 
 
@@ -431,6 +470,10 @@ class CompactionContext:
     """The latest already-compacted note, however long ago it was
     written -- see the module docstring."""
 
+    proposal: ProposalContext | None = None
+    """The open proposal, to revise or extend: your decisions in it, the
+    user's edits and their feedback (see `DECISION_GUIDE`)."""
+
     instructions: str = DECISION_GUIDE
 
 
@@ -438,6 +481,7 @@ class CompactionContext:
 class CompactionResult:
     status: Literal[
         "planned",
+        "proposed",
         "applied",
         "already_compacted",
         "abandoned",
@@ -445,10 +489,12 @@ class CompactionResult:
     ]
     message: str
     compaction_id: str | None = None
+    proposal_id: str | None = None
+    revision: int | None = None
     changes: list[CompactionChange] = None  # type: ignore[assignment]
     warnings: list[str] = None  # type: ignore[assignment]
     timeline: Timeline | None = None
-    """For a dry run: the notes beside the events as they'd end up -- show
+    """Once proposed: the notes beside the events as they'd end up -- show
     this to the user (see `DECISION_GUIDE`)."""
 
     additions: dict[str, list[dict]] | None = None
@@ -602,9 +648,12 @@ class NoteCompactor:
         self._journal.garbage_collect()
         open_ids = self._journal.open_compactions()
         open_id = self._journal.load(open_ids[0][0]).batch_id if open_ids else None
+        proposal = self._proposal_context()
         walked, remaining = self._walk(self._clock())
         if not walked:
-            return CompactionContext(notes=[], events=[], open_compaction=open_id, judgments_pending=pending)
+            return CompactionContext(
+                notes=[], events=[], open_compaction=open_id, judgments_pending=pending, proposal=proposal
+            )
         days = [w.day for w in walked]
         tree = self._actions.tree() if self._actions else None
         names = self._names()
@@ -695,6 +744,7 @@ class NoteCompactor:
                 timestamp=previous_note.timestamp, description=previous_note.description
             ) if previous_note is not None else None,
             judgments_pending=pending,
+            proposal=proposal,
         )
 
     def prefetch(self) -> None:
@@ -759,17 +809,146 @@ class NoteCompactor:
         new_actions: list[NewAction] | None = None,
         new_people: list[NewPerson] | None = None,
         new_locations: list[NewLocation] | None = None,
+        *,
+        proposal_id: str | None = None,
+        revision: int | None = None,
+        replies: list[FeedbackReply] | None = None,
     ) -> CompactionResult:
-        """`new_actions`, `new_people` and `new_locations`: what the plan
-        adds when it's applied, which its decisions name by their refs
+        """compact_notes: propose what happened, from the last compaction to
+        now -- or, with the open proposal's `proposal_id` and the
+        `revision` Claude started from, revise or extend it (see utilities/
+        compaction_proposals.py). Nothing on the calendar changes.
+        `decisions` are all of Claude's; `replies` answer the user's
+        feedback. `new_actions`, `new_people` and `new_locations`: what
+        it adds when it's applied, which its decisions name by their refs
         (see utilities/compaction_additions.py)."""
         self._prefetch()
+        # First: anything read after it deletes is read again.
+        self._journal.garbage_collect()
         self._require_no_open_compaction()
+        open_id = self._journal.open_proposal()
+        if open_id is not None and proposal_id is None:
+            raise CompactionError(
+                f"proposal {open_id} is open: revise or extend it -- compact_notes with "
+                f"proposal_id={open_id!r} and the revision you started from (prepare_compaction's "
+                "`proposal` shows it)",
+                category="open_proposal",
+            )
+        if proposal_id is not None and proposal_id != open_id:
+            raise CompactionError(
+                f"there's no open proposal {proposal_id!r}" + (f"; the open one is {open_id}" if open_id else ""),
+                category="unknown_proposal",
+            )
         additions = Additions(actions=new_actions or [], people=new_people or [], locations=new_locations or [])
         problems = check_additions(additions, self._actions, self._people, self._locations)
         if problems:
             raise CompactionError.of(problems, "additions")
         decisions = self._checked_facts(decisions, additions)
+        now = self._clock()
+        current: list[JournalCompaction] | None = None
+        edit_rows: list[tuple[int, UserEdit]] = []
+        feedback_rows: list[tuple[int, Feedback]] = []
+        base_meta: RevisionMeta | None = None
+        if open_id is None:
+            proposal = new_proposal_id(uuid.uuid4().hex)
+            meta = None
+        else:
+            proposal = open_id
+            current = self._current(proposal)
+            meta = current[0].meta
+            base_meta = self._base(proposal, meta, revision)
+            edit_rows = self._journal.user_edits(proposal)
+            feedback_rows = self._journal.feedback(proposal)
+        decisions, key_seq = _keyed(proposal, decisions, meta)
+        answered, replaced = self._answers(proposal, replies or [], feedback_rows, edit_rows, base_meta)
+        edits = [e for row, e in edit_rows if row not in replaced]
+        aliases = meta.aliases if meta else {}
+        settled = set(meta.settled) if meta else set()
+        merged = merge(proposal, decisions, edits, known_ids=self._known_ids(now), aliases=aliases, settled=settled)
+        walked, remaining = self._plan_walk(merged.decisions, ignore_notes, additions, now)
+        if not walked or (meta is None and not _has_anything(walked)):
+            return CompactionResult(
+                status="nothing_to_compact",
+                message="nothing has happened to compact since the last compaction",
+            )
+        superseded = self._supersede_planned()
+        revision_number = meta.revision + 1 if meta else 1
+        outcomes = _outcomes(walked)
+        new_meta = RevisionMeta(
+            proposal=proposal,
+            revision=revision_number,
+            window_start=walked[0].day.compaction_window_start,
+            created=now,
+            base=revision,
+            user_seq=max((e.seq for _, e in edit_rows), default=0),
+            by="claude",
+            reason="proposed" if meta is None else "revised for notes" if answered else "extended",
+            changed=_changed(meta.outcomes if meta else None, outcomes),
+            outcomes=outcomes,
+            key_seq=key_seq,
+            claude_decisions=decisions,
+            aliases=aliases,
+            settled=sorted(settled),
+            judge_also=meta.judge_also if meta else [],
+        )
+        self._write_revision(walked, new_meta, additions, current)
+        newer = {e.event_id: e.id for _, e in edit_rows if base_meta is not None and e.seq > base_meta.user_seq}
+        for row, item in answered:
+            if item.event_id in newer:
+                item.superseded_by = [newer[item.event_id]]
+            item.answered_in = revision_number
+            self._journal.update_feedback(row, item)
+        for row in replaced:
+            self._journal.set_user_edit_status(row, "replaced")
+        unknown = {e.id for e in merged.unknown}
+        for row, edit in edit_rows:
+            if edit.id in unknown and row not in replaced:
+                self._journal.set_user_edit_status(row, "inapplicable")
+        changes = [c for w in walked for c in w.plan.changes]
+        note_count = sum(len(w.day.notes) for w in walked)
+        days = f" over {len(walked)} days" if len(walked) > 1 else ""
+        still_open = [f for _, f in feedback_rows if f.status == "open" and f.id not in {i.id for _, i in answered}]
+        return CompactionResult(
+            status="proposed",
+            compaction_id=revision_id(proposal, revision_number),
+            proposal_id=proposal,
+            revision=revision_number,
+            changes=changes,
+            warnings=[warning for w in walked for warning in w.plan.warnings],
+            timeline=join_days([(w.day.day_start, w.plan.timeline) for w in walked]),
+            additions=additions.to_json_dict() or None,
+            message=(
+                f"proposal {proposal} revision {revision_number}: {len(changes)} calendar change(s) for "
+                f"{note_count} note(s){days}, through {walked[-1].day.now.isoformat()}; nothing has been "
+                "changed yet. In a conversation, show the user `timeline.text` in a code block (see the "
+                "instructions from prepare_compaction) and the warnings. "
+                + _APPROVAL_RULE
+                + (f" (Replaced {superseded} unapplied plan(s) from before proposals.)" if superseded else "")
+                + (
+                    f" {len(still_open)} feedback item(s) came in after your revision began and are still "
+                    "open: prepare_compaction again and answer them."
+                    if still_open
+                    else ""
+                )
+                + (
+                    f" {remaining} later note(s) aren't part of it: they'll be in the next proposal."
+                    if remaining
+                    else ""
+                )
+            ),
+        )
+
+    def _plan_walk(
+        self,
+        decisions: list[EventDecision],
+        ignore_notes: list[str] | None,
+        additions: Additions,
+        now: datetime,
+        *,
+        max_days: int = _MAX_DAYS,
+    ) -> tuple[list[_Walked], int]:
+        """Walk the days up to `now`, planning each with its share of
+        `decisions` (see `_decisions_for`)."""
         pending = list(decisions)
         ignoring = list(ignore_notes or [])
 
@@ -790,15 +969,23 @@ class NoteCompactor:
                 plan.warnings = [f"{label}: {w}" for w in plan.warnings]
             return _Walked(day=day, plan=plan, decisions=mine, ignore_notes=ignored)
 
-        walked, remaining = self._walk(self._clock(), plan_day, night)
-        if not walked:
-            return CompactionResult(status="nothing_to_compact", message="there are no uncompacted notes")
-        superseded = self._supersede_planned()
-        compaction_id = uuid.uuid4().hex[:12]
+        return self._walk(now, plan_day, night, max_days=max_days)
+
+    def _write_revision(
+        self,
+        walked: list[_Walked],
+        meta: RevisionMeta,
+        additions: Additions,
+        previous: list[JournalCompaction] | None,
+        edits: list[UserEdit] = (),
+    ) -> None:
+        """Journal `walked` as `meta`'s revision -- with the user `edits`
+        it's the first to include -- and supersede the one it replaces."""
+        batch = revision_id(meta.proposal, meta.revision)
         self._journal.start_batch(
             [
                 PlannedDay(
-                    compaction_id=_day_id(compaction_id, number),
+                    compaction_id=_day_id(batch, number),
                     now=w.day.now,
                     note_ids=[n.id for n in w.day.notes],
                     decisions=w.decisions,
@@ -807,64 +994,620 @@ class NoteCompactor:
                     additions=additions.to_json_dict() if number == 1 else {},
                 )
                 for number, w in enumerate(walked, start=1)
-            ]
+            ],
+            meta,
+            edits=list(edits),
         )
-        changes = [c for w in walked for c in w.plan.changes]
-        note_count = sum(len(w.day.notes) for w in walked)
-        days = f" over {len(walked)} days" if len(walked) > 1 else ""
-        return CompactionResult(
-            status="planned",
-            compaction_id=compaction_id,
-            changes=changes,
-            warnings=[warning for w in walked for warning in w.plan.warnings],
-            timeline=join_days([(w.day.day_start, w.plan.timeline) for w in walked]),
-            additions=additions.to_json_dict() or None,
-            message=(
-                f"{len(changes)} calendar change(s) planned for {note_count} note(s){days}; "
-                "nothing has been changed yet. Show the user `timeline.text` in a code block (see the "
-                "instructions from prepare_compaction) and the warnings. "
-                + _APPROVAL_RULE
-                + f" Once they approve, apply it with compaction_id={compaction_id!r} and "
-                "dry_run=False. If they want something different, correct the decisions and call "
-                "compact_notes again (this plan is then replaced)."
-                + (f" (Replaced {superseded} earlier unapplied plan(s).)" if superseded else "")
-                + (
-                    f" {remaining} later note(s) aren't part of it: compact them next."
-                    if remaining
-                    else ""
+        for day in previous or ():
+            if day.status in (PROPOSED, PLANNED):
+                self._journal.set_status(day, SUPERSEDED)
+
+    def _current(self, proposal: str) -> list[JournalCompaction]:
+        """Every day of `proposal`'s newest revision."""
+        revisions = self._journal.revisions(proposal)
+        if not revisions:
+            raise CompactionError(f"there's no proposal {proposal!r}", category="unknown_proposal")
+        return self._journal.load_batch(revisions[-1][1])
+
+    def _open(self, proposal_id: str) -> list[JournalCompaction]:
+        """The open proposal `proposal_id`'s newest revision, refused if it
+        isn't the open one."""
+        open_id = self._journal.open_proposal()
+        if proposal_id != open_id:
+            raise CompactionError(
+                f"proposal {proposal_id!r} isn't open"
+                + (f"; the open one is {open_id}" if open_id else "; there's no open proposal"),
+                category="unknown_proposal",
+            )
+        return self._current(proposal_id)
+
+    def _base(self, proposal: str, meta: RevisionMeta, revision: int | None) -> RevisionMeta:
+        """The revision a change to `proposal` started from, refused unless
+        it's one of its revisions."""
+        if revision is None or not 1 <= revision <= meta.revision:
+            raise CompactionError(
+                f"say which revision of proposal {proposal} you started from (revision=, 1 to "
+                f"{meta.revision}; the current one is {meta.revision})",
+                category="stale_revision",
+            )
+        base = meta if revision == meta.revision else self._journal.revision_meta(proposal, revision)
+        if base is None:
+            raise CompactionError(
+                f"revision {revision} of proposal {proposal} is gone: prepare again", category="stale_revision"
+            )
+        return base
+
+    def _answers(
+        self,
+        proposal: str,
+        replies: list[FeedbackReply],
+        feedback_rows: list[tuple[int, Feedback]],
+        edit_rows: list[tuple[int, UserEdit]],
+        base: RevisionMeta | None,
+    ) -> tuple[list[tuple[int, Feedback]], set[int]]:
+        """The feedback `replies` answer (each with its row, answered), and
+        the rows of the user edits they replace: those of an event an
+        answered item is about, up to the starting revision's `user_seq`.
+        Refused if an item open since before the starting revision was
+        written goes unanswered, or a reply names one that isn't open."""
+        by_id = {f.id: (row, f) for row, f in feedback_rows}
+        problems = []
+        answered: list[tuple[int, Feedback]] = []
+        for reply in replies:
+            found = by_id.get(reply.feedback_id)
+            if found is None:
+                problems.append(f"replies: {reply.feedback_id!r} isn't feedback on proposal {proposal}")
+                continue
+            row, item = found
+            if item.status == "withdrawn":
+                continue  # The user took it back meanwhile.
+            if item.status != "open":
+                problems.append(f"replies: {item.id} is already {item.status}")
+                continue
+            if not reply.reply.strip():
+                problems.append(f"replies: the reply to {item.id} is empty")
+                continue
+            answered.append((row, replace(item, status="answered", reply=reply.reply.strip())))
+        if base is not None:
+            done = {item.id for _, item in answered}
+            missed = [
+                f.id for _, f in feedback_rows
+                if f.status == "open" and f.created < base.created and f.id not in done
+            ]
+            if missed:
+                problems.append(
+                    f"answer every open feedback item in `replies` -- these aren't: {', '.join(missed)}"
                 )
+        if problems:
+            raise CompactionError.of(problems, "feedback")
+        about = {item.event_id for _, item in answered if item.event_id}
+        replaced = {
+            row for row, edit in edit_rows
+            if edit.status == "active" and edit.event_id in about and base is not None and edit.seq <= base.user_seq
+        }
+        return answered, replaced
+
+    def _known_ids(self, now: datetime) -> set[str]:
+        """The ids of the events a proposal up to `now` may name: those in
+        the stretch `_walk` lists (so this listing answers its own)."""
+        sheet_notes, _latest = self._notes.read_with_latest_compacted()
+        times = [n.note.timestamp for n in sheet_notes if n.note.timestamp <= now]
+        last_stamped = self._journal.last_stamped_now()
+        anchor = last_stamped if last_stamped is not None else (None if times else now)
+        oldest = min([anchor, *times] if anchor is not None else times)
+        return {
+            e.id
+            for e in self._calendar.list_events(oldest - _PREFETCH_BEFORE, now + _PREFETCH_AFTER)
+            if e.id and e.status != "cancelled"
+        }
+
+    def _proposal_context(self) -> ProposalContext | None:
+        """The open proposal, for `prepare` -- see `ProposalContext`."""
+        proposal = self._journal.open_proposal()
+        if proposal is None:
+            return None
+        current = self._current(proposal)
+        meta = current[0].meta
+        feedback = [f for _, f in self._journal.feedback(proposal)]
+        shapes: dict[str, list[dict]] = {"updates": [], "creates": [], "cancels": []}
+        for decision in meta.claude_decisions:
+            kind, shape = decision_shape(decision)
+            shapes[kind].append(shape)
+        return ProposalContext(
+            id=proposal,
+            revision=meta.revision,
+            state=_state(current, feedback),
+            user_seq=meta.user_seq,
+            **shapes,
+            ignore_notes=sorted({i for d in current for i in d.ignore_notes}),
+            user_edits=[e for _, e in self._journal.user_edits(proposal)],
+            feedback=feedback,
+        )
+
+    def proposal_summary(self) -> ProposalSummary | None:
+        """The open proposal, for get_compaction_status."""
+        proposal = self._journal.open_proposal()
+        if proposal is None:
+            return None
+        current = self._current(proposal)
+        meta = current[0].meta
+        feedback = [f for _, f in self._journal.feedback(proposal)]
+        return ProposalSummary(
+            id=proposal,
+            revision=meta.revision,
+            state=_state(current, feedback),
+            window_start=meta.window_start,
+            through=current[-1].now,
+            open_feedback=sum(1 for f in feedback if f.status == "open"),
+        )
+
+    def get_proposal(self, proposal_id: str | None = None, since_revision: int | None = None) -> Proposal:
+        """The current revision of `proposal_id` (by default the open
+        proposal), planned again on the calendar as it is now -- see
+        `Proposal`."""
+        self._prefetch()
+        proposal = proposal_id or self._journal.open_proposal()
+        if proposal is None:
+            raise CompactionError("there's no open proposal", category="unknown_proposal")
+        current = self._current(proposal)
+        return self._view(current, self._replanned(current), since_revision=since_revision)
+
+    def _replanned(self, current: list[JournalCompaction]) -> list[_Walked] | CompactionError:
+        """`current` planned again, for showing -- or why it can't be. An
+        applied or abandoned revision isn't: the calendar's moved on."""
+        if any(d.status in (STAMPED, ABANDONED, *OPEN_STATUSES) for d in current):
+            return CompactionError("it's been applied or abandoned", category="finished")
+        try:
+            return self._replan(current, strict=False)
+        except CompactionError as exc:
+            return exc
+
+    def _view(
+        self,
+        current: list[JournalCompaction],
+        walked: list[_Walked] | CompactionError,
+        *,
+        since_revision: int | None = None,
+        replaced: list[str] | None = None,
+        edits: list[UserEdit] | None = None,
+        feedback: list[Feedback] | None = None,
+    ) -> Proposal:
+        meta = current[0].meta
+        proposal = meta.proposal
+        if edits is None:
+            edits = [e for _, e in self._journal.user_edits(proposal)]
+        if feedback is None:
+            feedback = [f for _, f in self._journal.feedback(proposal)]
+        state = _state(current, feedback)
+        view = Proposal(
+            id=proposal,
+            revision=meta.revision,
+            state=state,
+            window_start=meta.window_start,
+            through=current[-1].now,
+            by=meta.by,
+            reason=meta.reason,
+            created=meta.created,
+            warnings=[w for d in current for w in d.warnings],
+            additions=current[0].additions or None,
+            user_edits=edits,
+            feedback=feedback,
+            replaced=replaced,
+        )
+        if isinstance(walked, CompactionError):
+            view.changes = [c for d in current for c in d.changes()]
+            if state in ("awaiting_review", "awaiting_claude"):
+                view.problem = f"it no longer plans against the calendar: {walked}"
+        else:
+            included = [e for e in edits if e.seq <= meta.user_seq]
+            decided_by = merge(proposal, meta.claude_decisions, included, aliases=meta.aliases).decided_by
+            view.events = _proposal_events(walked, decided_by)
+            view.notes = [
+                ProposalNote(id=n.id, timestamp=n.note.timestamp, description=n.note.description)
+                for w in walked
+                for n in w.day.notes
+            ]
+            view.changes = [c for w in walked for c in w.plan.changes]
+            view.timeline = join_days([(w.day.day_start, w.plan.timeline) for w in walked])
+        if since_revision is not None:
+            changed: set[str] = set()
+            for number in range(since_revision + 1, meta.revision + 1):
+                later = meta if number == meta.revision else self._journal.revision_meta(proposal, number)
+                if later is not None:
+                    changed |= set(later.changed)
+            view.changed_since = sorted(changed)
+        return view
+
+    def amend(
+        self,
+        proposal_id: str,
+        revision: int,
+        decisions: list[EventDecision],
+        as_planned: list[str] | None = None,
+    ) -> Proposal:
+        """amend_proposal: the user's `decisions` (and `as_planned` events,
+        whose decisions they clear), laid over the open proposal as a new
+        revision -- see utilities/compaction_proposals.py."""
+        self._prefetch()
+        self._journal.garbage_collect()
+        current = self._open(proposal_id)
+        meta = current[0].meta
+        if any(d.status in OPEN_STATUSES for d in current):
+            raise CompactionError(
+                f"proposal {proposal_id} is being applied; it can't be changed now", category="applying"
+            )
+        self._base(proposal_id, meta, revision)
+        additions = Additions.from_json_dict(current[0].additions)
+        decisions = self._checked_facts(decisions, additions)
+        edit_rows = self._journal.user_edits(proposal_id)
+        seq = max((e.seq for _, e in edit_rows), default=0)
+        now = self._clock()
+        new_edits: list[UserEdit] = []
+        for decision in decisions:
+            seq += 1
+            new_edits.append(
+                UserEdit(
+                    id=edit_id(proposal_id, seq),
+                    seq=seq,
+                    event_id=decision.event_id if decision.action != "create" else None,
+                    edit=edit_json(decision),
+                    created=now,
+                    base_revision=revision,
+                )
+            )
+        for name in as_planned or ():
+            seq += 1
+            new_edits.append(
+                UserEdit(
+                    id=edit_id(proposal_id, seq), seq=seq, event_id=name, edit={"action": "as_planned"},
+                    created=now, base_revision=revision,
+                )
+            )
+        if not new_edits:
+            raise CompactionError("there's nothing to amend", category="empty")
+        through = current[-1].now
+        merged = merge(
+            proposal_id,
+            meta.claude_decisions,
+            [e for _, e in edit_rows] + new_edits,
+            known_ids=self._known_ids(through),
+            aliases=meta.aliases,
+            settled=set(meta.settled),
+        )
+        unknown_new = [e for e in merged.unknown if e in new_edits]
+        if unknown_new:
+            raise CompactionError(
+                "these edits name events that aren't in the proposal: "
+                + ", ".join(repr(e.event_id) for e in unknown_new),
+                category="unknown_event",
+            )
+        ignore = sorted({i for d in current for i in d.ignore_notes})
+        walked, _remaining = self._plan_walk(merged.decisions, ignore, additions, through, max_days=len(current))
+        outcomes = _outcomes(walked)
+        new_meta = replace(
+            meta,
+            revision=meta.revision + 1,
+            window_start=walked[0].day.compaction_window_start,
+            created=now,
+            base=revision,
+            user_seq=seq,
+            by="user",
+            reason="user edit",
+            changed=_changed(meta.outcomes, outcomes),
+            outcomes=outcomes,
+        )
+        replaced = self._replaced(proposal_id, meta, revision, new_edits)
+        self._write_revision(walked, new_meta, additions, current, edits=new_edits)
+        unknown = {e.id for e in merged.unknown}
+        for row, edit in edit_rows:
+            if edit.id in unknown:
+                self._journal.set_user_edit_status(row, "inapplicable")
+        return self._view(self._current(proposal_id), walked, replaced=replaced)
+
+    def _replaced(
+        self, proposal: str, meta: RevisionMeta, base: int, edits: list[UserEdit]
+    ) -> list[str]:
+        """The events `edits` name whose decision by Claude changed after
+        revision `base`, the one the user was looking at -- as far as the
+        journal still says."""
+        if base == meta.revision:
+            return []
+        try:
+            then = self._journal.load(revision_id(proposal, base))
+        except CompactionError:
+            return []
+        if not (then.decisions or then.steps or then.meta.claude_decisions):
+            return []  # Garbage collection kept only its first row.
+        then = then.meta.claude_decisions
+
+        def by_event(decisions: list[EventDecision]) -> dict[str, dict]:
+            return {(d.key or d.event_id): d.to_json_dict() for d in decisions}
+
+        before, now = by_event(then), by_event(meta.claude_decisions)
+        return sorted(
+            {e.event_id for e in edits if e.event_id and before.get(e.event_id) != now.get(e.event_id)}
+        )
+
+    def add_note(
+        self, proposal_id: str, text: str, event_id: str | None = None, at: datetime | None = None
+    ) -> Feedback:
+        """add_proposal_note: feedback for Claude on the open proposal."""
+        self._prefetch(facts=False)
+        if any(d.status in OPEN_STATUSES for d in self._open(proposal_id)):
+            raise CompactionError(f"proposal {proposal_id} is being applied", category="applying")
+        if not text.strip():
+            raise CompactionError("the note is empty", category="empty")
+        seq = max((f.seq for _, f in self._journal.feedback(proposal_id)), default=0) + 1
+        item = Feedback(
+            id=feedback_id(proposal_id, seq),
+            seq=seq,
+            text=text.strip(),
+            event_id=event_id,
+            at=at,
+            by="user",
+            created=self._clock(),
+        )
+        self._journal.add_feedback(item, proposal_id)
+        return item
+
+    def withdraw_note(self, feedback: str) -> Feedback:
+        """withdraw_proposal_note: take back an open feedback item."""
+        self._prefetch(facts=False)
+        parts = split_feedback_id(feedback)
+        if parts is None:
+            raise CompactionError(f"{feedback!r} isn't a feedback id", category="unknown_feedback")
+        proposal, _seq = parts
+        found = next(((row, f) for row, f in self._journal.feedback(proposal) if f.id == feedback), None)
+        if found is None:
+            raise CompactionError(f"there's no feedback {feedback!r}", category="unknown_feedback")
+        row, item = found
+        if item.status == "withdrawn":
+            return item
+        if item.status == "answered":
+            raise CompactionError(
+                f"{feedback} was already answered, in revision {item.answered_in}: see the reply",
+                category="answered",
+            )
+        self._open(proposal)
+        item = replace(item, status="withdrawn")
+        self._journal.update_feedback(row, item)
+        return item
+
+    def confirm(self, proposal_id: str, revision: int) -> ProposalResult:
+        """confirm_proposal: apply the open proposal's current revision,
+        after checking it still plans the same on the calendar as it is
+        now -- see docs/compaction-proposals.md."""
+        self._prefetch()
+        current = self._open(proposal_id)
+        meta = current[0].meta
+        if any(d.status in OPEN_STATUSES for d in current):
+            raise CompactionError(
+                f"proposal {proposal_id} is already being applied: finish it with finish_proposal",
+                category="applying",
+            )
+        if revision != meta.revision:
+            raise CompactionError(
+                f"revision {revision} isn't proposal {proposal_id}'s current one ({meta.revision}): review "
+                "that, and confirm it",
+                category="stale_revision",
+            )
+        feedback = [f for _, f in self._journal.feedback(proposal_id)]
+        waiting = [f.id for f in feedback if f.status == "open"]
+        if waiting:
+            raise CompactionError(
+                f"feedback is waiting for Claude ({', '.join(waiting)}): wait for the revision that "
+                "answers it, or withdraw it",
+                category="feedback_open",
+            )
+        if current[0].status != PROPOSED:
+            raise CompactionError(f"proposal {proposal_id} needs Claude first", category="needs_claude")
+        self._require_no_open_compaction()
+        self._journal.garbage_collect()
+        current = self._current(proposal_id)
+        try:
+            self._replan(current, strict=True)
+        except CompactionError as exc:
+            if "stale" not in exc.categories:
+                return self._needs_claude(proposal_id, current, f"it no longer plans: {exc}")
+            try:
+                walked = self._replan(current, strict=False)
+            except CompactionError as replanned:
+                return self._needs_claude(proposal_id, current, f"it no longer plans: {replanned}")
+            outcomes = _outcomes(walked)
+            new_meta = replace(
+                meta,
+                revision=meta.revision + 1,
+                window_start=walked[0].day.compaction_window_start,
+                created=self._clock(),
+                base=meta.revision,
+                by="server",
+                reason="recheck",
+                changed=_changed(meta.outcomes, outcomes),
+                outcomes=outcomes,
+            )
+            self._write_revision(walked, new_meta, Additions.from_json_dict(current[0].additions), current)
+            return ProposalResult(
+                status="rechecked",
+                message=(
+                    f"the notes or calendar changed since revision {revision}, so it was planned again as "
+                    f"revision {new_meta.revision}: review what changed, and confirm that"
+                ),
+                proposal=self._view(self._current(proposal_id), walked, since_revision=revision),
+            )
+        return self._apply(proposal_id, current, feedback)
+
+    def finish(self, proposal_id: str) -> ProposalResult:
+        """finish_proposal: resume applying a confirmed proposal that
+        stopped partway. It was confirmed, so this needs no new approval."""
+        self._prefetch()
+        current = self._current(proposal_id)
+        statuses = {d.status for d in current}
+        if statuses == {STAMPED}:
+            return ProposalResult(
+                status="applied",
+                message=f"proposal {proposal_id} was already applied",
+                proposal=self._view(current, CompactionError("applied", category="finished")),
+            )
+        if not statuses & set(OPEN_STATUSES):
+            raise CompactionError(
+                f"proposal {proposal_id} hasn't been confirmed, so there's nothing to finish",
+                category="not_confirmed",
+            )
+        return self._apply(proposal_id, current)
+
+    def _apply(
+        self, proposal: str, current: list[JournalCompaction], feedback: list[Feedback] | None = None
+    ) -> ProposalResult:
+        """Apply (or resume applying) `current`, the confirmed revision: a
+        write that can never succeed rebuilds what's left as a new
+        revision (`_rebuild`); any other failure leaves it to resume. What
+        the result shows is read first: after the writes, reading again
+        would be another request."""
+        edits = [e for _, e in self._journal.user_edits(proposal)]
+        if feedback is None:
+            feedback = [f for _, f in self._journal.feedback(proposal)]
+        try:
+            result = self.commit(current[0].batch_id, verify=False)
+        except HttpError as exc:
+            if exc.resp.status in (404, 410):
+                return self._rebuild(proposal, current[0].batch_id, exc)
+            raise CompactionError(
+                f"applying proposal {proposal} stopped partway ({exc}); what's done stays done -- finish it "
+                "with finish_proposal",
+                category="apply_stopped",
+            ) from exc
+        judging = " Claude makes its judgments next (prepare_judgments)." if result.judgments else ""
+        for day in current:
+            day.status = STAMPED
+        return ProposalResult(
+            status="applied",
+            message=result.message.split(". The compaction isn't complete yet")[0] + "." + judging,
+            proposal=self._view(
+                current, CompactionError("applied", category="finished"), edits=edits, feedback=feedback
             ),
         )
 
-    def describe(self, compaction_id: str) -> CompactionResult:
-        """The stored plan for `compaction_id`, without doing anything."""
-        days = self._journal.load_batch(compaction_id)
-        statuses = {d.status for d in days}
-        if statuses == {STAMPED}:
-            status = "already_compacted"
-        elif ABANDONED in statuses:
-            status = "abandoned"
-        else:
-            status = "planned"
-        if len(days) == 1:
-            message = f"compaction {compaction_id} is {days[0].status}"
-        else:
-            message = f"compaction {compaction_id} covers {len(days)} days: " + ", ".join(
-                f"day {d.day} {d.status}" for d in days
-            )
-        return CompactionResult(
-            status=status,
-            compaction_id=compaction_id,
-            changes=[c for d in days for c in d.changes()],
-            warnings=[w for d in days for w in d.warnings],
-            message=message,
+    def _rebuild(self, proposal: str, batch: str, error: HttpError) -> ProposalResult:
+        """After a write that can never succeed: mark the revision's
+        unfinished days failed, and propose what's left of it as a new
+        revision for the user to confirm -- its decisions replayed on the
+        calendar as it is now (see docs/compaction-proposals.md)."""
+        days = self._journal.load_batch(batch)
+        meta = days[0].meta
+        unfinished = [d for d in days if d.status != STAMPED]
+        failed = unfinished[0]
+        self._record_cancellations(failed, only_done=True)
+        aliases = dict(meta.aliases)
+        settled = set(meta.settled)
+        judge_also = list(meta.judge_also)
+        for day in days:
+            if day.status == STAMPED:
+                ids, _span = _judged_events([day])
+                judge_also += [[i, None, None] for i in ids]
+        for step in failed.steps:
+            if step.status != "done":
+                continue
+            if step.action == "create" and step.key:
+                aliases[step.key] = _new_event_id(failed.id, step.step)
+            elif step.action == "cancel" and step.event_id:
+                settled.add(step.event_id)
+            if step.action != "cancel" and step.after is not None and step.after.facts:
+                judge_also.append(
+                    [step.event_id if step.action == "update" else _new_event_id(failed.id, step.step), None, None]
+                )
+        for day in unfinished:
+            self._journal.set_status(day, FAILED)
+        history = {
+            name for day in days if day.status == STAMPED for d in day.decisions
+            for name in (d.event_id, d.key) if name
+        }
+        through = days[-1].now
+        known = self._known_ids(through)
+        carried: list[EventDecision] = []
+        dropped: list[str] = []
+        for decision in meta.claude_decisions:
+            if decision.action == "create":
+                if decision.key not in aliases:
+                    carried.append(decision)
+            elif decision.event_id in settled or decision.event_id in history:
+                continue
+            elif decision.event_id not in known:
+                dropped.append(decision.event_id)
+            else:
+                carried.append(decision)
+        edit_rows = self._journal.user_edits(proposal)
+        merged = merge(
+            proposal, carried, [e for _, e in edit_rows], known_ids=known, aliases=aliases,
+            settled=settled | history,
+        )
+        inapplicable = {e.id for e in merged.unknown}
+        for row, edit in edit_rows:
+            if edit.id in inapplicable:
+                self._journal.set_user_edit_status(row, "inapplicable")
+        stopped = f"applying revision {meta.revision} stopped: {error}"
+        additions = Additions.from_json_dict(days[0].additions)
+        ignore = sorted({i for d in unfinished for i in d.ignore_notes})
+        try:
+            walked, _remaining = self._plan_walk(merged.decisions, ignore, additions, through, max_days=len(unfinished))
+        except CompactionError as exc:
+            return self._needs_claude(proposal, days, f"{stopped}. What's left of it couldn't be planned again: {exc}")
+        left_out = sorted(set(dropped) | {e.event_id for e in merged.unknown if e.event_id})
+        walked[0].plan.warnings.insert(
+            0,
+            f"{stopped}. What it wrote before then stays; this is what's left of it"
+            + (f" -- leaving out what was about {', '.join(left_out)}, which is gone" if left_out else "")
+            + ".",
+        )
+        outcomes = _outcomes(walked)
+        new_meta = replace(
+            meta,
+            revision=meta.revision + 1,
+            window_start=walked[0].day.compaction_window_start,
+            created=self._clock(),
+            base=meta.revision,
+            by="server",
+            reason="apply failed",
+            changed=_changed(meta.outcomes, outcomes),
+            outcomes=outcomes,
+            claude_decisions=carried,
+            aliases=aliases,
+            settled=sorted(settled | history),
+            judge_also=judge_also,
+        )
+        self._write_revision(walked, new_meta, additions, None)
+        return ProposalResult(
+            status="rebuilt",
+            message=f"{stopped}; what's left of it is revision {new_meta.revision}, to review and confirm",
+            proposal=self._view(self._current(proposal), walked),
         )
 
-    def commit(self, compaction_id: str) -> CompactionResult:
+    def _needs_claude(self, proposal: str, current: list[JournalCompaction], why: str) -> ProposalResult:
+        """Hand the proposal to Claude: feedback from the server saying
+        `why`, which blocks confirming until a revision answers it."""
+        rows = self._journal.feedback(proposal)
+        seq = max((f.seq for _, f in rows), default=0) + 1
+        self._journal.add_feedback(
+            Feedback(
+                id=feedback_id(proposal, seq),
+                seq=seq,
+                text=f"Revision {current[0].meta.revision} {why}",
+                by="server",
+                created=self._clock(),
+            ),
+            proposal,
+        )
+        return ProposalResult(
+            status="needs_claude",
+            message=f"proposal {proposal} {why}. It's waiting for Claude to revise it.",
+            proposal=self._view(self._current(proposal), CompactionError(why, category="needs_claude")),
+        )
+
+    def commit(self, compaction_id: str, *, verify: bool = True) -> CompactionResult:
         """Apply the batch `compaction_id` a day at a time: each day's steps,
         then its notes stamped, before the next day's. Hands back its final
-        timeline (unless it's resumed partway) and the judgments it calls
-        for, to make of the events as that timeline shows them."""
+        timeline (unless it's resumed partway, or not `verify`ing -- see
+        `confirm`, which checks it first) and the judgments it calls for,
+        to make of the events as that timeline shows them."""
         self._prefetch()
         days = self._journal.load_batch(compaction_id)
         changes = [c for d in days for c in d.changes()]
@@ -877,14 +1620,21 @@ class NoteCompactor:
             )
         if any(d.status == ABANDONED for d in days):
             raise CompactionError(f"compaction {compaction_id} was abandoned; run a new dry run", category="abandoned")
+        if any(d.status in (SUPERSEDED, FAILED) for d in days):
+            raise CompactionError(
+                f"compaction {compaction_id} was {'superseded by a newer revision' if days[0].status == SUPERSEDED else 'stopped by a write that failed'}",
+                category="superseded",
+            )
         pending = [d for d in days if d.status != STAMPED]
         timeline = None
-        if pending[0].status == PLANNED:
+        if pending[0].status in (PLANNED, PROPOSED):
             self._require_no_open_compaction()
-            timeline = self._verify_unchanged(pending)
+            if verify:
+                walked = self._replan(pending, strict=True)
+                timeline = join_days([(w.day.day_start, w.plan.timeline) for w in walked])
         refs: dict[str, str] | None = None
         for journal in pending:
-            if journal.status == PLANNED:
+            if journal.status in (PLANNED, PROPOSED):
                 self._journal.set_status(journal, APPLYING)
             if refs is None:
                 # Created (or found, on a resumed commit) before any step
@@ -1029,7 +1779,12 @@ class NoteCompactor:
         return delete_note(self._notes, self._journal, note_id)
 
     def abandon(self, compaction_id: str) -> CompactionResult:
-        days = self._journal.load_batch(compaction_id)
+        """Abandon a proposal (by its id) -- its current revision -- or a
+        compaction from before proposals (by its batch id)."""
+        if self._journal.revisions(compaction_id):
+            days = self._current(compaction_id)
+        else:
+            days = self._journal.load_batch(compaction_id)
         if all(d.status == STAMPED for d in days):
             raise CompactionError(
                 f"compaction {compaction_id} is already complete; there's nothing to abandon", category="already_complete"
@@ -1061,10 +1816,11 @@ class NoteCompactor:
         *,
         max_days: int = _MAX_DAYS,
     ) -> tuple[list[_Walked], int]:
-        """The days of uncompacted notes up to `now`, oldest first -- at
-        most `max_days` of them -- and how many uncompacted notes are left
-        after them. Each day after the first starts where the one before
-        it ends, as if that one had been compacted (see the module
+        """The days from the last compaction (or, before there's been one,
+        the oldest uncompacted note's) up to `now`, oldest first, notes or
+        not -- at most `max_days` of them -- and how many uncompacted notes
+        are left after them. Each day after the first starts where the one
+        before it ends, as if that one had been compacted (see the module
         docstring). `plan_day` (the day, and which it is, from 0) plans
         each day as it's reached; the days after it are then read as that
         plan would leave the calendar. `night` (a sleep event's id, and
@@ -1079,14 +1835,18 @@ class NoteCompactor:
         window_start: datetime | None = None
         night_before: Event | None = None
         earlier: dict[str, datetime] = {}
-        if not notes:
+        # The first day is the one the last compaction ran in -- it's
+        # settled up to then -- or, before there's been one, the oldest
+        # note's, or today's.
+        anchor = last_stamped if last_stamped is not None else (None if notes else now)
+        if anchor is not None and anchor >= now:
             return walked, len(sheet_notes)
+        oldest = min([anchor, *times.values()] if anchor is not None else times.values())
         # Every day below lists a stretch of this, several times over as
         # its night is decided (see `_cut`): one listing of it all first,
         # so inside a tool call they're each answered from it (see
         # `cached_calendar_listings`).
-        self._calendar.list_events(min(times.values()) - _PREFETCH_BEFORE, now + _PREFETCH_AFTER)
-        anchor = self._anchor(min(times.values()), last_stamped, calendar)
+        self._calendar.list_events(oldest - _PREFETCH_BEFORE, now + _PREFETCH_AFTER)
         history_until = last_stamped
         while True:
             day = self._cut(
@@ -1108,10 +1868,10 @@ class NoteCompactor:
             in_day = {n.id for n in day.notes}
             notes = [n for n in notes if n.id not in in_day]
             # After a late wake-up, the next day's morning is under the
-            # night now: it's compacted too, notes or not, to settle that.
+            # night now: it starts at the planned wake-up, to settle that.
             planned_end = day.closing.end if day.closing is not None else day.day_end
             overslept = day.day_end > planned_end and planned_end < now
-            day.has_next = (bool(notes) or overslept) and day.now < now and len(walked) + 1 < max_days
+            day.has_next = day.now < now and len(walked) + 1 < max_days
             day.night_before = night_before
             day.earlier_notes = dict(earlier)
             day.history_until = history_until
@@ -1128,32 +1888,6 @@ class NoteCompactor:
             night_before = day.closing if overslept else None
             earlier.update((n.id, n.note.timestamp) for n in day.notes)
         return walked, len(sheet_notes) - sum(len(w.day.notes) for w in walked)
-
-    @staticmethod
-    def _anchor(oldest: datetime, last_stamped: datetime | None, calendar: _PlannedCalendar) -> datetime | None:
-        """Where to find a batch's first day, if not at its `oldest` note: at
-        the last compaction (`last_stamped`), when that ran before the night
-        that ends its day -- that day isn't over, so nothing after the last
-        compaction is skipped -- and the oldest note is no later than the
-        day after that night: written during it (the user stayed up), or
-        the next morning (the evening and night are settled first). `None`
-        to find it at the oldest note, as when the note's on the same day,
-        or the last compaction ran during the night, or long before."""
-        if last_stamped is None or oldest - last_stamped > _ADJACENT:
-            return None
-        nights = sorted(
-            (
-                e for e in calendar.list_events(last_stamped, oldest + timedelta(seconds=1))
-                if e.is_end_of_day_sleep and e.status != "cancelled"
-            ),
-            key=lambda e: e.start,
-        )
-        night = next((e for e in nights if e.end > last_stamped), None)
-        if night is None or night.start <= last_stamped or oldest < night.start:
-            return None
-        if any(e.start > night.start for e in nights):
-            return None  # The note's later than the day after the night.
-        return last_stamped
 
     @staticmethod
     def _cut(
@@ -1201,7 +1935,7 @@ class NoteCompactor:
         anchor: datetime | None = None,
     ) -> _Day:
         """The day the oldest of `notes` falls in -- or, with none, the one
-        `window_start` does, or with an `anchor` (see `_anchor`), the one
+        `window_start` does, or with an `anchor` (see `_walk`), the one
         that does -- with its notes. Its
         compaction window starts at `window_start`, if given, or else no
         earlier than `last_stamped`. `first`: whether it's the batch's
@@ -1286,16 +2020,16 @@ class NoteCompactor:
             compaction_id, status = open_compactions[0]
             batch_id = self._journal.load(compaction_id).batch_id
             raise CompactionError(
-                f"compaction {batch_id} is {status} -- finish it with compact_notes("
-                f"compaction_id={batch_id!r}, dry_run=False), or abandon it with "
-                "abandon_compaction, before starting another",
+                f"compaction {batch_id} is {status} -- finish it with finish_proposal, or abandon it "
+                "with abandon_compaction, before starting another",
                 category="open_compaction",
             )
 
-    def _verify_unchanged(self, days: list[JournalCompaction]) -> Timeline:
+    def _replan(self, days: list[JournalCompaction], *, strict: bool) -> list[_Walked]:
         """Plan `days` -- a batch's days not yet applied -- again, each with
-        its own decisions, and check they come out as they did when they
-        were previewed. Returns their timeline, as planned."""
+        its own decisions, as of the batch's `now`. `strict`: check they
+        come out as they did when they were previewed (CompactionError,
+        "stale", if not)."""
         stale = CompactionError(
             f"the notes or calendar changed since compaction {days[0].batch_id} was previewed; "
             "run a new dry run",
@@ -1303,7 +2037,7 @@ class NoteCompactor:
         )
 
         def comparable(changes: list[CompactionChange]) -> list[tuple]:
-            return [(c.action, c.event_id, c.before, c.after) for c in changes]
+            return [(c.action, c.event_id, c.key, c.before, c.after) for c in changes]
 
         def night(event_id: str, index: int) -> EventDecision | None:
             if index >= len(days):
@@ -1311,18 +2045,18 @@ class NoteCompactor:
             return next((d for d in days[index].decisions if d.event_id == event_id), None)
 
         def plan_day(day: _Day, index: int) -> _Walked:
-            journal = days[index]
-            if {n.id for n in day.notes} != set(journal.note_ids):
+            journal = days[min(index, len(days) - 1)]
+            if strict and {n.id for n in day.notes} != set(journal.note_ids):
                 raise stale
             plan = self._plan(day, journal.decisions, journal.ignore_notes, Additions.from_json_dict(days[0].additions))
-            if comparable(plan.changes) != comparable(journal.changes()):
+            if strict and comparable(plan.changes) != comparable(journal.changes()):
                 raise stale
-            return _Walked(day=day, plan=plan)
+            return _Walked(day=day, plan=plan, decisions=journal.decisions, ignore_notes=journal.ignore_notes)
 
         walked, _remaining = self._walk(days[-1].now, plan_day, night, max_days=len(days))
-        if len(walked) != len(days):
+        if strict and len(walked) != len(days):
             raise stale
-        return join_days([(w.day.day_start, w.plan.timeline) for w in walked])
+        return walked
 
     def _plan(
         self, day: _Day, decisions: list[EventDecision], ignore_notes: list[str] | None, additions: Additions
@@ -1406,11 +2140,12 @@ class NoteCompactor:
         if marked:
             plan.timeline.text = render(plan.timeline)
 
-    def _record_cancellations(self, journal: JournalCompaction) -> None:
+    def _record_cancellations(self, journal: JournalCompaction, *, only_done: bool = False) -> None:
         """Record each event `journal`'s day cancelled with a 'cancel'
         decision that counts -- not one that doesn't, nor a merge -- for
         the people it counts against in follow-through, as it was planned.
-        Again, harmlessly, on a resumed commit."""
+        Again, harmlessly, on a resumed commit. `only_done`: just those
+        already cancelled, for an apply that failed partway."""
         if self._cancellations is None:
             return
         # A cancel from before cancels said whether they counted, counted.
@@ -1419,6 +2154,8 @@ class NoteCompactor:
             if d.action == "cancel" and d.counts_against_follow_through is not False
         }
         for step in journal.steps:
+            if only_done and step.status != "done":
+                continue
             if step.action == "cancel" and step.event_id in cancelled and step.before is not None:
                 self._cancellations.record(
                     step.before.to_event(step.event_id), f"compaction {journal.batch_id}", at=self._clock()
@@ -1507,8 +2244,7 @@ def _require_not_being_applied(journal: CompactionJournal, note_id: str) -> None
             batch_id = compaction.batch_id
             raise CompactionError(
                 f"note {note_id!r} is part of compaction {batch_id}, which is {status} -- "
-                f"finish it with compact_notes(compaction_id={batch_id!r}, dry_run=False), or "
-                "abandon it with abandon_compaction, first",
+                "finish it with finish_proposal, or abandon it with abandon_compaction, first",
                 category="note_in_compaction",
             )
 
@@ -1524,9 +2260,146 @@ def _judged_events(days: list[JournalCompaction]) -> tuple[list[str], tuple[date
                 continue
             ids.append(step.event_id if step.action == "update" else _new_event_id(day.id, step.step))
             spans.append((step.after.start, step.after.end))
+    # What an apply of an earlier revision gave facts before it failed.
+    meta = days[0].meta
+    for event_id, _start, _end in meta.judge_also if meta is not None else ():
+        if event_id not in ids:
+            ids.append(event_id)
     if not spans:
-        return [], (days[0].now, days[0].now)
+        return ids, (days[0].now, days[0].now)
     return ids, (min(s for s, _ in spans), max(e for _, e in spans))
+
+
+def _keyed(
+    proposal: str, decisions: list[EventDecision], meta: RevisionMeta | None
+) -> tuple[list[EventDecision], int]:
+    """`decisions` with a key on every create -- one it kept, or a new
+    one -- and the highest key number given. CompactionError for a key
+    that isn't one of `proposal`'s (or is given twice)."""
+    key_seq = meta.key_seq if meta is not None else 0
+    problems, seen, keyed = [], set(), []
+    for decision in decisions:
+        if decision.action != "create":
+            keyed.append(replace(decision, key=None))
+            continue
+        if decision.key is not None:
+            number = claude_key_number(proposal, decision.key)
+            if number is None or number > key_seq or decision.key in seen:
+                problems.append(
+                    f"create {decision.summary!r}: {decision.key!r} isn't one of proposal {proposal}'s keys "
+                    "(keep only those prepare_compaction gave; leave it out for something new)"
+                )
+                continue
+            seen.add(decision.key)
+            keyed.append(decision)
+            continue
+        key_seq += 1
+        keyed.append(replace(decision, key=claude_key(proposal, key_seq)))
+    if problems:
+        raise CompactionError.of(problems, "unknown_key")
+    return keyed, key_seq
+
+
+def _has_anything(walked: list[_Walked]) -> bool:
+    """Whether there's anything in `walked`'s days to confirm: a note, or
+    an event that happened after the last compaction."""
+    return any(w.day.notes for w in walked) or any(
+        e.start < w.day.now and e.end > w.day.compaction_window_start for w in walked for e in w.day.events
+    )
+
+
+def _outcomes(walked: list[_Walked]) -> dict[str, str]:
+    """Each event a plan changes (id, or a create's key) -> a digest of
+    how -- see `RevisionMeta.outcomes`."""
+    outcomes: dict[str, str] = {}
+    for w in walked:
+        for change in w.plan.changes:
+            name = change.event_id or change.key
+            if name is None:
+                continue
+            digest = json.dumps([change.action, change.after.to_json_dict() if change.after else None], sort_keys=True)
+            outcomes[name] = hashlib.sha1(digest.encode("utf-8")).hexdigest()[:10]
+    return outcomes
+
+
+def _changed(before: dict[str, str] | None, after: dict[str, str]) -> list[str]:
+    if before is None:
+        return []
+    return sorted(name for name in set(before) | set(after) if before.get(name) != after.get(name))
+
+
+def _state(days: list[JournalCompaction], feedback: list[Feedback]) -> ProposalState:
+    statuses = {d.status for d in days}
+    if statuses == {STAMPED}:
+        return "applied"
+    if statuses & set(OPEN_STATUSES):
+        return "applying"
+    if ABANDONED in statuses:
+        return "abandoned"
+    if FAILED in statuses or any(f.status == "open" for f in feedback):
+        return "awaiting_claude"
+    return "awaiting_review"
+
+
+def _proposal_events(walked: list[_Walked], decided_by: dict[str, str]) -> list:
+    """Every event of `walked`'s days as their plans leave them -- see
+    `ProposalEvent`. An event shown by an earlier day (a night, say) keeps
+    that day's view unless a later day changes it."""
+    out: dict[str, ProposalEvent] = {}
+    for w in walked:
+        day = w.day
+        changes = {c.event_id: c for c in w.plan.changes if c.event_id}
+        merged = {d.event_id for d in w.decisions if d.action == "merge"}
+        for event in day.events:
+            if not event.id or event.id.startswith("planned"):
+                continue
+            change = changes.get(event.id)
+            if event.id in out and change is None:
+                continue
+            state = change.after if change is not None and change.action == "update" else EventState.from_event(event)
+            if change is not None and change.action == "cancel":
+                status = "merged" if event.id in merged else "cancelled"
+            elif (state.start, state.end) != (event.start, event.end):
+                status = "adjusted"
+            elif event.start < day.now:
+                status = "on_schedule"
+            else:
+                status = "planned"
+            out[event.id] = ProposalEvent(
+                id=event.id,
+                summary=state.summary,
+                start=state.start,
+                end=state.end,
+                status=status,
+                planned_start=event.start,
+                planned_end=event.end,
+                description=state.description,
+                action_ids=state.action_ids,
+                facts=facts_from_dict(state.facts) if state.facts is not None else None,
+                decided_by=decided_by.get(event.id),
+                history_until=(
+                    min(event.end, day.history_until)
+                    if day.history_until is not None and event.start < day.history_until
+                    else None
+                ),
+                is_end_of_day_sleep=bool(event.is_end_of_day_sleep),
+            )
+        for change in w.plan.changes:
+            if change.action != "create" or change.after is None:
+                continue
+            name = change.key or f"new{len(out) + 1}"
+            out[name] = ProposalEvent(
+                id=name,
+                summary=change.after.summary,
+                start=change.after.start,
+                end=change.after.end,
+                status="new",
+                description=change.after.description,
+                action_ids=change.after.action_ids,
+                facts=facts_from_dict(change.after.facts) if change.after.facts is not None else None,
+                decided_by=decided_by.get(change.key) if change.key else None,
+            )
+    return sorted(out.values(), key=lambda e: (e.start or e.planned_start, e.id))
 
 
 def _decisions_for(

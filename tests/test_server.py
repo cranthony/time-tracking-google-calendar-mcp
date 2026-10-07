@@ -3,7 +3,7 @@ import dataclasses
 import logging
 import threading
 import typing
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -32,6 +32,7 @@ from utilities.action_calendar import ActionCalendar
 from utilities.action_groups import GroupTree
 from utilities.actions import ActionTree
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
+from utilities.compaction_proposals import FeedbackReply
 from utilities.facts import Facts
 from utilities.judgments import Judgment, JudgmentsDue
 from utilities.note_compaction import CompactionError, EventDecision, Problem
@@ -712,7 +713,7 @@ class TestCompactNotes:
                 EventDecision(action="create", summary="Walk", start_note="n1", end_note="n2"),
                 EventDecision(action="cancel", event_id="e2", counts_against_follow_through=False),
             ],
-            None, None, None, None,
+            None, None, None, None, proposal_id=None, revision=None, replies=None,
         )
 
     def test_a_dry_run_passes_ignored_notes_through(self, monkeypatch):
@@ -720,14 +721,16 @@ class TestCompactNotes:
 
         server.compact_notes(updates=[CompactionUpdate(event_id="e1")], ignore_notes=["n2"])
 
-        compactor.dry_run.assert_called_once_with([EventDecision(action="keep", event_id="e1")], ["n2"], None, None, None)
+        compactor.dry_run.assert_called_once_with(
+            [EventDecision(action="keep", event_id="e1")], ["n2"], None, None, None, proposal_id=None, revision=None, replies=None
+        )
 
     def test_a_dry_run_with_no_decisions_records_everything_as_on_schedule(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
 
         server.compact_notes()
 
-        compactor.dry_run.assert_called_once_with([], None, None, None, None)
+        compactor.dry_run.assert_called_once_with([], None, None, None, None, proposal_id=None, revision=None, replies=None)
 
     def test_a_dry_run_passes_what_it_adds_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -737,38 +740,24 @@ class TestCompactNotes:
 
         server.compact_notes(new_actions=new_actions, new_people=new_people, new_locations=new_locations)
 
-        compactor.dry_run.assert_called_once_with([], None, new_actions, new_people, new_locations)
+        compactor.dry_run.assert_called_once_with([], None, new_actions, new_people, new_locations, proposal_id=None, revision=None, replies=None)
 
-    def test_a_dry_run_with_a_compaction_id_describes_the_stored_plan(self, monkeypatch):
+    def test_revising_a_proposal_passes_it_and_the_replies_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
+        replies = [FeedbackReply(feedback_id="0123456789abf1", reply="Moved the walk to 18:00")]
 
-        result = server.compact_notes(compaction_id="abc")
+        server.compact_notes(proposal_id="0123456789ab", revision=3, replies=replies)
 
-        assert result is compactor.describe.return_value
-        compactor.describe.assert_called_once_with("abc")
-
-    def test_committing_applies_the_stored_plan(self, monkeypatch):
-        compactor = _fake_compactor(monkeypatch)
-
-        result = server.compact_notes(compaction_id="abc", dry_run=False)
-
-        assert result is compactor.commit.return_value
-        compactor.commit.assert_called_once_with("abc")
-
-    def test_committing_without_a_dry_run_first_is_refused(self, monkeypatch):
-        compactor = _fake_compactor(monkeypatch)
-
-        with pytest.raises(ToolError, match="dry run first"):
-            server.compact_notes(updates=[], dry_run=False)
-
-        compactor.commit.assert_not_called()
+        compactor.dry_run.assert_called_once_with(
+            [], None, None, None, None, proposal_id="0123456789ab", revision=3, replies=replies
+        )
 
     def test_compaction_errors_become_tool_errors(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
-        compactor.commit.side_effect = CompactionError("the notes changed")
+        compactor.dry_run.side_effect = CompactionError("the notes changed")
 
         with pytest.raises(ToolError, match="the notes changed"):
-            server.compact_notes(compaction_id="abc", dry_run=False)
+            server.compact_notes()
 
     def test_a_rejection_is_logged_with_its_categories(self, monkeypatch, caplog):
         compactor = _fake_compactor(monkeypatch)
@@ -784,13 +773,63 @@ class TestCompactNotes:
             "'A' overlaps 'B' | 'n9' isn't a note"
         ]
 
-    def test_committing_without_a_dry_run_is_logged_as_such(self, monkeypatch, caplog):
-        _fake_compactor(monkeypatch)
 
-        with caplog.at_level(logging.WARNING, logger="server"), pytest.raises(ToolError):
-            server.compact_notes(dry_run=False)
 
-        assert "categories=no_dry_run" in caplog.text
+class TestProposalTools:
+    def test_get_proposal_delegates(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        assert server.get_proposal(since_revision=2) is compactor.get_proposal.return_value
+        compactor.get_proposal.assert_called_once_with(None, 2)
+
+    def test_amend_proposal_passes_the_users_edits_as_decisions(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        end = datetime(2026, 1, 1, 12, 15, tzinfo=UTC)
+
+        result = server.amend_proposal(
+            "0123456789ab",
+            2,
+            updates=[CompactionUpdate(event_id="e1", end=end)],
+            creates=[CompactionCreate(summary="Walk", start=end, end=end + timedelta(hours=1), key="sneaky")],
+            cancels=[EventCancel(event_id="e2", counts_against_follow_through=True)],
+            as_planned=["e3"],
+        )
+
+        assert result is compactor.amend.return_value
+        compactor.amend.assert_called_once_with(
+            "0123456789ab",
+            2,
+            [
+                EventDecision(action="keep", event_id="e1", end=end),
+                # The user's creates get keys of their own.
+                EventDecision(action="create", summary="Walk", start=end, end=end + timedelta(hours=1)),
+                EventDecision(action="cancel", event_id="e2", counts_against_follow_through=True),
+            ],
+            ["e3"],
+        )
+
+    def test_notes_for_claude_delegate(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        assert server.add_proposal_note("0123456789ab", "it was a walk", "e1") is compactor.add_note.return_value
+        compactor.add_note.assert_called_once_with("0123456789ab", "it was a walk", "e1", None)
+        assert server.withdraw_proposal_note("0123456789abf1") is compactor.withdraw_note.return_value
+        compactor.withdraw_note.assert_called_once_with("0123456789abf1")
+
+    def test_confirming_and_finishing_delegate(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+
+        assert server.confirm_proposal("0123456789ab", 4) is compactor.confirm.return_value
+        compactor.confirm.assert_called_once_with("0123456789ab", 4)
+        assert server.finish_proposal("0123456789ab") is compactor.finish.return_value
+        compactor.finish.assert_called_once_with("0123456789ab")
+
+    def test_their_errors_become_tool_errors(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        compactor.confirm.side_effect = CompactionError("feedback is waiting for Claude", category="feedback_open")
+
+        with pytest.raises(ToolError, match="feedback is waiting for Claude"):
+            server.confirm_proposal("0123456789ab", 4)
 
 
 class TestAbandonCompaction:
@@ -1019,6 +1058,7 @@ class TestGetCompactionStatus:
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: notes)
         compactor = _fake_compactor(monkeypatch)
         compactor.judgments_due.return_value = JudgmentsDue(compaction_id="c1", events=[MagicMock()], parts=[], history={})
+        compactor.proposal_summary.return_value = None
 
         status = server.get_compaction_status()
 
@@ -1035,7 +1075,9 @@ class TestGetCompactionStatus:
         notes.read_with_latest_compacted.return_value = ([], None)
         monkeypatch.setattr(server, "get_compaction_journal", lambda: journal)
         monkeypatch.setattr(server, "get_noted_time_sheet", lambda: notes)
-        _fake_compactor(monkeypatch).judgments_due.return_value = None
+        compactor = _fake_compactor(monkeypatch)
+        compactor.judgments_due.return_value = None
+        compactor.proposal_summary.return_value = None
 
         assert server.get_compaction_status() == server.CompactionStatus()
 
@@ -1368,6 +1410,7 @@ _READ_ONLY_TOOLS = {
     "get_event",
     "get_recurrence",
     "get_compaction_status",
+    "get_proposal",
     "get_notes",
     "get_traits",
     "get_actions",
