@@ -4,9 +4,11 @@ from calendar_clients.google_calendar import Event
 from tests.fake_labels import FakeLabelCalendar
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet
+from utilities.action_groups import ActionGroup
 from utilities.actions import Action, Actions
 from utilities.cancellations import KEEP_DAYS, Cancellations
 from utilities.facts import Facts
+from utilities.habits import Habit, Habits
 from utilities.people import People, Person
 from utilities.traits import Trait, Traits
 
@@ -119,3 +121,59 @@ def test_by_person_gives_each_persons_cancellations_newest_first():
     late = by_person["sam"][0]
     assert (late.start, late.engagement, late.source, late.cancelled_at) == (_AT, "with", "compaction abc", _AT)
     assert [c.event_id for c in by_person["self"]] == ["late", "early"]
+
+
+def _with_habits(parts, habits, people=()):
+    """`_store`, with `habits` in a Habits tab, and the actions in groups."""
+    store, sheets = _store(parts, people)
+    actions = store._actions
+    actions._group_sheet.write([ActionGroup(id="body", name="Body")])
+    actions._sheet.write([
+        Action(id="gym", name="Work out", status="active", label_id="label-gym", group_id="body"),
+        Action(id="eat", name="Eat", status="active", label_id="label-eat"),
+    ])
+    habit_store = Habits.ensure(sheets, "s")
+    habit_store._sheet.write(list(habits))
+    store._habits = habit_store
+    return store, sheets
+
+
+def test_a_habit_counts_a_cancel_in_its_scope_under_its_id():
+    store, _ = _with_habits(
+        [{"kind": "follow_through"}],
+        [
+            Habit(id="fit", name="Fitness", action_id="body", status="active"),
+            Habit(id="food", name="Eating well", action_id="eat", status="active"),
+            Habit(id="old", name="Old", action_id="gym", status="archived"),
+        ],
+    )
+
+    matches = store.matches(_event(action_ids=["gym"]))
+
+    assert [(m.person_id, m.person_name, m.engagement, m.parts) for m in matches] == [
+        ("self", "Me", "with", ["reliable/follow_through"]),
+        ("habit:fit", "the Fitness habit", "with", ["reliable/follow_through"]),
+    ]
+
+
+def test_a_habits_for_parts_and_parts_of_other_actions_dont_count():
+    store, _ = _with_habits(
+        [{"kind": "follow_through", "engagement_type": "for"}, {"kind": "follow_through", "action": "eat"}],
+        [Habit(id="fit", name="Fitness", action_id="body", status="active")],
+    )
+
+    assert [m.person_id for m in store.matches(_event(action_ids=["gym"]))] == []
+
+
+def test_a_habits_cancellations_are_recorded_and_listed_under_its_id():
+    store, _ = _with_habits(
+        [{"kind": "follow_through"}], [Habit(id="fit", name="Fitness", action_id="body", status="active")]
+    )
+
+    store.record(_event(), "delete_event", at=_AT)
+
+    (row,) = store.by_person()["habit:fit"]
+    assert (row.event_id, row.engagement, row.parts) == ("c1", "with", ["reliable/follow_through"])
+    habit_row = next(r for r in store.all() if r.person_id == "habit:fit")
+    # As follow-through reads it: the user's, with no one in its facts.
+    assert habit_row.to_event().facts == Facts()

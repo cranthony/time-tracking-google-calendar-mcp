@@ -162,7 +162,7 @@ def _build_calendar_and_sheets_clients(
 
 
 def build_cancellations(
-    actions: Actions, people: People, traits: Traits, calendar_id: str | None = None
+    actions: Actions, people: People, traits: Traits, calendar_id: str | None = None, habits: Habits | None = None
 ) -> Cancellations:
     """Construct a Cancellations over the given stores, from environment
     configuration (and a local .env file, if present). See
@@ -173,7 +173,7 @@ def build_cancellations(
     spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
         calendar_client, sheets_client
     )
-    return Cancellations.ensure(sheets_client, spreadsheet_id, people, traits, actions)
+    return Cancellations.ensure(sheets_client, spreadsheet_id, people, traits, actions, habits)
 
 
 def build_traits(calendar_id: str | None = None) -> Traits:

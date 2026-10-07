@@ -1,8 +1,8 @@
 # Habits
 
-Status: being built. 1. the habits store and tools (this change); 2.
-habits as judgment and cancellation subjects; 3. backfilling a habit's
-judgments.
+Status: being built. 1. the habits store and tools (done); 2. habits
+as judgment and cancellation subjects (this change); 3. backfilling a
+habit's judgments.
 
 A **habit** is something the user wants to do well -- "Practice guitar",
 "Cook" -- rated by traits, as a person is. It belongs to the user (self),
@@ -49,7 +49,7 @@ action (not a deleted one) or a group. One whose action or group is
 deleted later is left as it is -- it just has nothing in scope -- and
 other habits can still be written.
 
-## 2. Judgments and cancellations (next)
+## 2. Judgments and cancellations
 
 - **Judging.** `prepare_judgments` adds each active habit with an event
   in scope to that event's subjects, engagement "with", with the judgment
@@ -64,7 +64,9 @@ other habits can still be written.
   active habit whose follow-through part it matches, as the event was
   planned -- the same rule as for people -- one row per habit, under
   `habit:<id>`. `get_habits` and `get_habit` return each habit's
-  `cancelled_events`, as the people tools return a person's.
+  `cancelled_events`, as the people tools return a person's. The
+  compaction timeline's `Follow-through:` list, and a proposal's
+  `follow_through`, name it "the <name> habit".
 
 ## 3. Backfilling (after that)
 

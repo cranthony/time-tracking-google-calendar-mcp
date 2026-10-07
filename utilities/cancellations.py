@@ -10,8 +10,10 @@ changed by hand isn't one. And only for the people a follow-through part
 of their traits matches, as the event was planned: for a part with the
 "with" engagement, the user and everyone the event's facts have there
 (`with_ids`); for "for", everyone it was for (`for_ids`); and either way,
-only an event of the part's `action`, if it names one. A cancellation no
-part matches isn't recorded at all.
+only an event of the part's `action`, if it names one. The user's habits
+(utilities/habits.py) are matched as the user is, for an event in their
+scope, by their "with" parts, under `habit:<id>`. A cancellation no part
+matches isn't recorded at all.
 
 **Where they live.** The **Cancellations** tab of the calendar's metadata
 spreadsheet, one row per cancelled event per person (and engagement),
@@ -31,6 +33,7 @@ from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 from utilities.actions import Actions, ActionTree
 from utilities.facts import SELF_ID, Facts
+from utilities.habits import SUBJECT_PREFIX, Habits, subject_id
 from utilities.people import CancelledEvent, People, Person
 from utilities.row_sheet import RowSheet
 from utilities.traits import Trait, Traits, part_keys, part_problems
@@ -73,8 +76,9 @@ class Cancellation:
         where their engagement looks for them."""
         facts = (
             Facts(for_ids=[self.person_id]) if self.engagement == "for"
-            else Facts(with_ids=[self.person_id]) if self.person_id != SELF_ID
-            else Facts()
+            # The user's, or one of their habits'.
+            else Facts() if self.person_id == SELF_ID or (self.person_id or "").startswith(SUBJECT_PREFIX)
+            else Facts(with_ids=[self.person_id])
         )
         return Event(
             id=self.event_id,
@@ -104,15 +108,28 @@ class FollowThroughMatch:
 class Cancellations:
     """A calendar's recorded cancellations -- see the module docstring."""
 
-    def __init__(self, sheet: RowSheet[Cancellation], people: People, traits: Traits, actions: Actions) -> None:
+    def __init__(
+        self,
+        sheet: RowSheet[Cancellation],
+        people: People,
+        traits: Traits,
+        actions: Actions,
+        habits: Habits | None = None,
+    ) -> None:
         self._sheet = sheet
         self._people = people
         self._traits = traits
         self._actions = actions
+        self._habits = habits
 
     @staticmethod
     def ensure(
-        sheets_client: SheetsClient, spreadsheet_id: str, people: People, traits: Traits, actions: Actions
+        sheets_client: SheetsClient,
+        spreadsheet_id: str,
+        people: People,
+        traits: Traits,
+        actions: Actions,
+        habits: Habits | None = None,
     ) -> "Cancellations":
         """The calendar's cancellations, adding the Cancellations tab the
         first time."""
@@ -124,12 +141,15 @@ class Cancellations:
             row_type=Cancellation,
             required=("id", "person_id"),
         )
-        return Cancellations(sheet, people, traits, actions)
+        return Cancellations(sheet, people, traits, actions, habits)
 
     @property
     def whole_tabs(self) -> list[TabRange]:
         """Every tab matching and recording read, for `SheetsClient.prefetch`."""
-        return [self._sheet.whole_tab, self._traits.whole_tab, *self._people.whole_tabs, *self._actions.whole_tabs]
+        return [
+            self._sheet.whole_tab, self._traits.whole_tab, *self._people.whole_tabs, *self._actions.whole_tabs,
+            *([self._habits.whole_tab] if self._habits else []),
+        ]
 
     def prefetch(self, ranges: list[TabRange]) -> None:
         self._sheet.prefetch(ranges)
@@ -138,7 +158,8 @@ class Cancellations:
         return self._sheet.read()
 
     def by_person(self) -> dict[str, list[CancelledEvent]]:
-        """Each person's recorded cancellations, newest first."""
+        """Each person's recorded cancellations, newest first -- and each
+        habit's, under `habit:<id>`."""
         found: dict[str, list[CancelledEvent]] = {}
         for row in sorted(self.all(), key=_start, reverse=True):
             if row.person_id:
@@ -159,8 +180,8 @@ class Cancellations:
 
     def matches(self, event: Event) -> list[FollowThroughMatch]:
         """Who `event`, cancelled, counts against: each active person with
-        a follow-through part it matches (see the module docstring), and
-        those parts."""
+        a follow-through part it matches (see the module docstring) -- and
+        each active habit, for an event in its scope -- and those parts."""
         traits = self._traits.all()
         tree = self._actions.tree()
         facts = event.facts or Facts()
@@ -190,6 +211,27 @@ class Cancellations:
                 )
                 for engagement, (keys, names) in by_engagement.items()
             ]
+        for habit in self._habits.all() if self._habits else []:
+            if habit.status != "active" or not habit.id or not of_action([event], habit.action_id, tree):
+                continue
+            keys, names = [], []
+            for trait, parts in traits_for(Person(id=subject_id(habit.id), traits=habit.traits), traits):
+                for part, key in zip(parts, part_keys(parts)):
+                    if not isinstance(part, dict) or part.get("kind") != "follow_through" or part_problems(part):
+                        continue
+                    # Always "with"; a part's own action narrows its scope.
+                    if part.get("engagement_type", "with") != "with" or not of_action([event], part.get("action"), tree):
+                        continue
+                    keys.append(f"{trait.id}/{key}")
+                    if (trait.name or trait.id) not in names:
+                        names.append(trait.name or trait.id)
+            if keys:
+                found.append(
+                    FollowThroughMatch(
+                        person_id=subject_id(habit.id), person_name=f"the {habit.name} habit", engagement="with",
+                        parts=keys, trait_names=names,
+                    )
+                )
         return found
 
     def record(self, event: Event, source: str, at: datetime | None = None) -> list[Cancellation]:

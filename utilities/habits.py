@@ -32,6 +32,7 @@ from typing import Any, Literal
 
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
+from utilities.people import CancelledEvent
 from utilities.row_sheet import RowSheet, check_clear, new_id, updated
 from utilities.traits import person_traits_problems
 
@@ -93,6 +94,11 @@ class ListedHabit(Habit):
     action_path: str | None = None
     """Its action's or group's name, under its groups: "Creative ›
     Guitar"."""
+
+    cancelled_events: list[CancelledEvent] | None = None
+    """The events the user cancelled that count against its
+    follow-through, newest first (see utilities/cancellations.py), as a
+    person's do."""
 
 
 @dataclass(kw_only=True)

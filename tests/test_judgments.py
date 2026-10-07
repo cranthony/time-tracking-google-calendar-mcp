@@ -5,8 +5,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from calendar_clients.google_calendar import Event
-from utilities.actions import Action
+from utilities.action_groups import ActionGroup, GroupTree
+from utilities.actions import Action, ActionTree
 from utilities.facts import Facts
+from utilities.habits import Habit
 from utilities.judgments import Judging, Judgment
 from utilities.locations import Location
 from utilities.people import Person
@@ -214,3 +216,85 @@ class TestRecord:
         with pytest.raises(ValueError, match=problem.replace("(", r"\(").replace(")", r"\)")):
             judging.record(requests, [Judgment(request_id="e1/self/adventurous/judgment", rating=1, reasoning="ok"), judgment])
         assert client.updates == []
+
+
+class TestHabits:
+    """A habit is judged as a person there is, under `habit:<id>`, for an
+    event in its scope: its action, or under its group."""
+
+    @staticmethod
+    def _judging(events, habits, actions=None, traits=_TRAITS):
+        judging, client = _judging(events, traits=traits)
+        actions = actions or [
+            Action(id="cook", name="Cook", group_id="food"),
+            Action(id="hike", name="Hike", group_id="outdoors"),
+        ]
+        judging._actions.all.return_value = actions
+        judging._actions.tree.return_value = ActionTree(
+            actions, GroupTree([ActionGroup(id="outdoors", name="Outdoors"), ActionGroup(id="food", name="Food")])
+        )
+        judging._habits = MagicMock()
+        judging._habits.all.return_value = habits
+        return judging, client
+
+    def test_judged_for_an_event_in_scope_by_its_group_or_its_action_but_not_out_of_it(self):
+        judging, _ = self._judging(
+            [_TONIGHT],
+            [
+                Habit(id="out", name="Get outside", action_id="outdoors", status="active"),
+                Habit(id="hik", name="Hiking", action_id="hike", status="active"),
+                Habit(id="ckg", name="Cooking", action_id="cook", status="active"),
+                Habit(id="old", name="Old", action_id="hike", status="archived"),
+            ],
+        )
+
+        ids = [r.id for r in judging.requests(["e1"], _SPAN)]
+
+        assert "e1/habit:out/adventurous/judgment" in ids
+        assert "e1/habit:hik/thoughtful/judgment" in ids
+        assert not [i for i in ids if "habit:ckg" in i or "habit:old" in i]
+        # Always "with": never a "for" part.
+        assert not [i for i in ids if i.startswith("e1/habit:") and i.endswith("#2")]
+
+    def test_its_own_rubric_its_note_and_the_users_notes(self):
+        own = {**_WITH_NOTES, "rubric": "Did you pace yourself?"}
+        judging, _ = self._judging(
+            [_TONIGHT],
+            [
+                Habit(
+                    id="hik", name="Hiking", action_id="hike", status="active", note="Steady, not fast",
+                    traits={"select": ["thoughtful"], "parts": {"thoughtful": [own]}},
+                )
+            ],
+        )
+
+        (request,) = [r for r in judging.requests(["e1"], _SPAN) if r.person_id == "habit:hik"]
+
+        assert request.rubric == "Did you pace yourself?"
+        assert request.facts == {
+            "person_notes": "tired", "general_notes": "Long climb", "what_matters": "Steady, not fast",
+        }
+        assert 'their habit "Hiking"' in request.framing
+
+    def test_its_history_is_its_events_in_scope(self):
+        before = _event("e0", days_ago=3, action_ids=["hike"], facts=Facts(location_id="peak"))
+        cooked = _event("c0", days_ago=2, action_ids=["cook"], facts=Facts(location_id="home"))
+        judging, _ = self._judging(
+            [before, cooked, _TONIGHT], [Habit(id="out", name="Get outside", action_id="outdoors", status="active")]
+        )
+
+        by_id = {r.id: r for r in judging.requests(["e1"], _SPAN)}
+
+        assert by_id["e1/habit:out/adventurous/judgment"].facts["action_history"] == {
+            "days": 30, "times": {"Hike": 1},
+        }
+
+    def test_recorded_on_the_event_under_its_id(self):
+        judging, client = self._judging([_TONIGHT], [Habit(id="hik", name="Hiking", action_id="hike", status="active")])
+        requests = judging.requests(["e1"], _SPAN)
+
+        judging.record(requests, [Judgment(request_id="e1/habit:hik/adventurous/judgment", rating=1, reasoning="A new trail")])
+
+        assert client.events["e1"].judgments["habit:hik"] == {
+            "adventurous": {"judgment": {"rating": 1, "scale": 3, "reasoning": "A new trail"}}
+        }
