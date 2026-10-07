@@ -731,40 +731,6 @@ class CalendarClient:
         except HttpError:
             return False
 
-    @_writes
-    def color_calendar(self, calendar_id: str, background_color: str) -> bool:
-        """Best effort: show `calendar_id` in `background_color` ("#rrggbb")
-        in the user's calendar list in Google Calendar, with white text.
-        Returns whether that worked, as for `hide_calendar`."""
-        try:
-            self._service.calendarList().patch(
-                calendarId=calendar_id,
-                colorRgbFormat=True,
-                body={"backgroundColor": background_color, "foregroundColor": "#ffffff"},
-            ).execute()
-            return True
-        except HttpError:
-            return False
-
-    def list_all_event_resources(self) -> list[dict]:
-        """Every event on this calendar, whenever it is, as the API's own
-        dicts -- a recurring series as one -- following `nextPageToken`.
-        For a calendar that holds only a few (see utilities/
-        compaction_marker.py), not the main one."""
-        items: list[dict] = []
-        page_token: str | None = None
-        while True:
-            kwargs = {"pageToken": page_token} if page_token else {}
-            response = (
-                self._service.events()
-                .list(calendarId=self._calendar_id, maxResults=_LIST_PAGE_SIZE, **kwargs)
-                .execute()
-            )
-            items.extend(response.get("items", []))
-            page_token = response.get("nextPageToken")
-            if not page_token:
-                return items
-
     def get_time_zone(self) -> ZoneInfo:
         """This calendar's own time zone (fetched once, then remembered) --
         what its days, weeks and months are counted in. Raises
@@ -823,23 +789,11 @@ class CalendarClient:
                 return items
 
     @_writes
-    def upsert_event_resource(self, event_id: str, body: dict) -> dict:
-        """Create the event `event_id` from the API dict `body`, or, if one
-        with that id already exists, overwrite it with `body` -- so a
-        caller-chosen id (5-1024 characters of a-v and 0-9) makes writing
-        the same thing twice harmless."""
-        try:
-            return self._service.events().insert(calendarId=self._calendar_id, body={**body, "id": event_id}).execute()
-        except HttpError as exc:
-            if exc.resp.status != 409:
-                raise
-        return self._service.events().patch(calendarId=self._calendar_id, eventId=event_id, body=body).execute()
-
-    @_writes
     def replace_event_resource(self, event_id: str, body: dict) -> dict:
-        """Like `upsert_event_resource`, but an existing event is replaced
-        by `body` in full (an update, not a patch), so no field or
-        extended property it no longer has is left behind -- and, given
+        """Create the event `event_id` from the API dict `body`, or, if one
+        with that id already exists, replace it with `body` in full (an
+        update, not a patch), so no field or extended property it no
+        longer has is left behind -- and, given
         "status": "confirmed", one deleted before comes back."""
         try:
             return self._service.events().insert(calendarId=self._calendar_id, body={**body, "id": event_id}).execute()

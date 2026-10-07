@@ -129,7 +129,6 @@ from utilities.compaction_journal import (
     JournalStep,
     PlannedDay,
 )
-from utilities.compaction_marker import CompactionMarker
 from utilities.cancellations import Cancellations
 from utilities.compaction_timeline import Timeline, join_days, render
 from utilities.note_compaction import (
@@ -572,7 +571,6 @@ class NoteCompactor:
         actions: Actions | None = None,
         people: People | None = None,
         locations: Locations | None = None,
-        marker: CompactionMarker | None = None,
         judging: Judging | None = None,
         cancellations: Cancellations | None = None,
     ) -> None:
@@ -581,15 +579,12 @@ class NoteCompactor:
         changes are written through (an ActionCalendar, so each event's
         label follows its actions). `actions`, `people` and `locations`
         are what events' actions and facts name, and what a plan can add
-        to. `marker`, if given, is moved to each compaction once it's
-        stamped (see utilities/compaction_marker.py). `judging`, if given,
-        makes and records the judgments that complete a compaction (see
-        utilities/judgments.py). `cancellations`, if given, records each
-        event a compaction cancels for the people it counts against in
-        follow-through, and the timeline lists them (see utilities/
-        cancellations.py)."""
+        to. `judging`, if given, makes and records the judgments that
+        complete a compaction (see utilities/judgments.py).
+        `cancellations`, if given, records each event a compaction cancels
+        for the people it counts against in follow-through, and the
+        timeline lists them (see utilities/cancellations.py)."""
         self._cancellations = cancellations
-        self._marker = marker
         self._judging = judging
         self._calendar = calendar
         self._client = client
@@ -874,13 +869,10 @@ class NoteCompactor:
         days = self._journal.load_batch(compaction_id)
         changes = [c for d in days for c in d.changes()]
         if all(d.status == STAMPED for d in days):
-            # Again, in case moving it failed the first time.
-            last = self._journal.last_stamped_now()
             return CompactionResult(
                 status="already_compacted",
                 compaction_id=compaction_id,
                 changes=changes,
-                warnings=self._move_marker(last) if last is not None else [],
                 message=f"compaction {compaction_id} was already applied and its notes stamped",
             )
         if any(d.status == ABANDONED for d in days):
@@ -909,7 +901,7 @@ class NoteCompactor:
             self._journal.set_status(journal, STAMPED)
         steps = sum(len(d.steps) for d in days)
         notes = sum(len(d.note_ids) for d in days)
-        warnings = [w for d in days for w in d.warnings] + self._move_marker(days[-1].now)
+        warnings = [w for d in days for w in d.warnings]
         # The days as loaded, not read again after all that writing.
         due = self._due(compaction_id, days, redo=False) if self._judging is not None else None
         message = f"applied {steps} change(s) and marked {notes} note(s) compacted"
@@ -1023,19 +1015,6 @@ class NoteCompactor:
         if problems:
             raise CompactionError.of(problems, "facts")
         return checked
-
-    def _move_marker(self, at: datetime) -> list[str]:
-        """Move the last-compaction marker to `at`, if there's a marker;
-        a warning to report if that failed. Best effort: the compaction
-        itself is done either way, and the next one moves it again."""
-        if self._marker is None:
-            return []
-        try:
-            self._marker.mark(at)
-        except Exception as exc:  # Any failure: the compaction mustn't fail with it.
-            logger.warning("Couldn't move the compaction marker", exc_info=True)
-            return [f"couldn't move the last-compaction marker in Google Calendar ({exc}); the next compaction will"]
-        return []
 
     def edit_note(
         self, note_id: str, *, timestamp: datetime | None = None, description: str | None = None
