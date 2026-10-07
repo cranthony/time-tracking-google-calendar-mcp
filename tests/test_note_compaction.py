@@ -79,24 +79,16 @@ def _plan(notes, decisions, day=None, now="11:30", **kwargs):
 
 
 class TestSilenceMeansOnSchedule:
-    def test_past_events_nobody_mentions_are_compacted_where_they_were_planned(self):
+    def test_past_events_nobody_mentions_are_left_where_they_were_planned(self):
+        # Nothing is written to say they're settled: the compaction's own
+        # time says it, once it's stamped.
         plan = _plan([], [])
 
-        changes = _by_event(plan)
-        assert set(changes) == {"e1", "e2"}
-        assert _span(changes["e1"].after) == (time_at("09:00"), time_at("10:00"))
-        assert changes["e1"].after.compacted_until == time_at("10:00")
-        assert "as planned" in changes["e1"].reason
+        assert _by_event(plan) == {}
+        assert plan.warnings == ["nothing on the calendar needs to change"]
 
-    def test_a_past_event_is_compacted_to_its_end(self):
-        assert _by_event(_plan([], []))["e1"].after.compacted_until == time_at("10:00")
-
-    def test_an_event_still_in_progress_is_compacted_up_to_now_but_left_free_to_run_on(self):
-        change = _by_event(_plan([], [], now="10:30"))["e2"]
-
-        assert _span(change.after) == (time_at("10:00"), time_at("11:00"))
-        assert change.after.compacted_until == time_at("10:30")
-        assert "still going on" in change.reason
+    def test_an_event_still_in_progress_is_left_free_to_run_on(self):
+        assert _by_event(_plan([], [], now="10:30")) == {}
 
     def test_an_end_note_for_one_event_does_not_merge_it_with_the_one_before(self):
         # Only dinner's end was noted: the class and dinner's start still
@@ -113,48 +105,41 @@ class TestSilenceMeansOnSchedule:
         )
 
         changes = _by_event(plan)
-        assert _span(changes["salsa"].after) == (time_at("18:30"), time_at("19:30"))
-        assert changes["salsa"].after.summary == "Google Salsa class"
+        assert "salsa" not in changes  # As planned: nothing to write.
         assert _span(changes["dinner"].after) == (time_at("19:30"), time_at("20:10"))
         assert _span(changes["read"].after) == (time_at("20:10"), time_at("21:00"))
         assert not any(c.action == "cancel" for c in plan.changes)
         [created] = [c for c in plan.changes if c.action == "create"]
         assert _span(created.after) == (time_at("18:15"), time_at("18:30"))
 
-    def test_the_end_of_day_sleep_event_is_never_pinned(self):
-        plan = _plan([], [], now="07:00+1")
-
-        after = _by_event(plan)["s1"].after
-        assert after.compacted_until == time_at("07:00+1")
-
-
 class TestCompacted:
     """Only what's happened is settled; and what an earlier compaction
     settled, a later one keeps to."""
 
-    def test_a_decided_event_still_going_on_is_compacted_to_now_not_pinned(self):
-        plan = _plan([], [EventDecision(action="create", summary="Coffee", start=time_at("11:00"), end=time_at("11:50"))])
-
-        (created,) = [c for c in plan.changes if c.action == "create"]
-        assert created.after.compacted_until == time_at("11:30")
-
-    def test_a_future_reschedule_is_not_compacted(self):
-        plan = _plan([], [_keep("e3", start=time_at("12:30"), end=time_at("13:30"))])
-
-        after = _by_event(plan)["e3"].after
-        assert after.compacted_until is None
-
     def test_an_earlier_compactions_event_may_run_on(self):
-        day = _day()
-        day[1].compacted_until = time_at("10:30")
-
-        plan = _plan([_note(1, "11:10")], [_keep("e2", end_note="n1")], day)
+        # The last compaction ran at 10:30, while e2 was going on.
+        plan = _plan([_note(1, "11:10")], [_keep("e2", end_note="n1")], history_until=time_at("10:30"))
 
         assert _span(_by_event(plan)["e2"].after) == (time_at("10:00"), time_at("11:10"))
 
+    @pytest.mark.parametrize(
+        "decision, message",
+        [
+            (_keep("e2", end=time_at("10:20")), "going on until"),
+            (_keep("e2", start=time_at("10:05")), "its start can't move"),
+            (EventDecision(action="cancel", event_id="e2"), "can't be cancelled"),
+            (EventDecision(action="cancel", event_id="e1"), "can't be cancelled"),
+        ],
+    )
+    def test_but_keeps_what_it_settled(self, decision, message):
+        with pytest.raises(CompactionError, match=message) as excinfo:
+            _plan([], [decision], history_until=time_at("10:30"))
+
+        assert excinfo.value.categories == ["compacted"]
+
 
 class TestKeep:
-    def test_notes_set_the_edges_they_mark_and_the_result_is_compacted(self):
+    def test_notes_set_the_edges_they_mark(self):
         plan = _plan(
             [_note(1, "09:05"), _note(2, "10:20")],
             [_keep("e1", start_note="n1", end_note="n2"), _keep("e2", start_note="n2")],
@@ -162,7 +147,6 @@ class TestKeep:
 
         changes = _by_event(plan)
         assert _span(changes["e1"].after) == (time_at("09:05"), time_at("10:20"))
-        assert changes["e1"].after.compacted_until == time_at("10:20")
         assert "realigned" in changes["e1"].reason
         # An edge left out stays as planned.
         assert _span(changes["e2"].after) == (time_at("10:20"), time_at("11:00"))
@@ -285,7 +269,7 @@ class TestCancelCreateAndMerge:
         assert change.action == "cancel"
         assert "didn't happen" in change.reason
 
-    def test_create_makes_a_compacted_new_event(self):
+    def test_create_makes_a_new_event(self):
         plan = _plan(
             [_note(1, "11:05", "coffee"), _note(2, "11:20")],
             [EventDecision(action="create", summary="Coffee", start_note="n1", end_note="n2", action_ids=["g1"])],
@@ -293,7 +277,6 @@ class TestCancelCreateAndMerge:
 
         [created] = [c for c in plan.changes if c.action == "create"]
         assert _span(created.after) == (time_at("11:05"), time_at("11:20"))
-        assert created.after.compacted_until == time_at("11:20")
         assert created.after.action_ids == ["g1"]
         # Its anchoring note's text isn't added to it -- it set its edge.
         assert created.after.description is None
@@ -443,7 +426,7 @@ class TestNotesAddedToEvents:
     def test_ignored_notes_are_not_added(self):
         plan = _plan([_note(1, "09:20", "phone rang")], [], ignore_notes=["n1"])
 
-        assert _by_event(plan)["e1"].after.description is None
+        assert "e1" not in _by_event(plan)
         assert plan.timeline.notes[0].ignored is True
 
     def test_a_note_outside_every_event_is_reported(self):
@@ -842,7 +825,6 @@ class TestEventState:
                 "09:00-10:00",
                 summary="Email",
                 description="d",
-                compacted_until=time_at("09:30"),
                 priority=2,
             )
         )
@@ -855,7 +837,15 @@ class TestEventState:
         assert "description" not in state.to_json_dict()
 
     def test_to_event_builds_an_event_with_the_given_id(self):
-        event = EventState.from_event(event_at("09:00-10:00", compacted_until=time_at("09:30"))).to_event("x1")
+        event = EventState.from_event(event_at("09:00-10:00", priority=1)).to_event("x1")
 
         assert event.id == "x1"
-        assert event.compacted_until == time_at("09:30")
+        assert event.priority == 1
+
+    def test_reads_a_journal_written_when_events_were_marked_compacted(self):
+        state = EventState.from_json_dict(
+            {"start": "2026-01-01T09:00:00+00:00", "end": "2026-01-01T10:00:00+00:00",
+             "compacted_until": "2026-01-01T10:00:00+00:00"}
+        )
+
+        assert state.end == time_at("10:00")

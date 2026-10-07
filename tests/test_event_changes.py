@@ -200,11 +200,9 @@ class TestCancels:
 
 
 class TestHistory:
-    def _compacted(self):
-        events = _day()
-        events[0] = replace(events[0], compacted_until=time_at("10:00"))  # Email, over.
-        events[1] = replace(events[1], compacted_until=time_at("10:30"))  # Report, compacted while going on.
-        return events
+    # The last compaction ran at 10:30: Email (over by then) and Report
+    # (still going on) are history.
+    _UNTIL = time_at("10:30")
 
     @pytest.mark.parametrize(
         "batch",
@@ -215,28 +213,51 @@ class TestHistory:
             {"shifts": [Shift(event_ids=["email"], minutes=-10)]},
         ],
     )
-    def test_compacted_events_cant_be_changed(self, batch):
-        changes, _ = _changes(self._compacted())
+    def test_what_started_before_the_last_compaction_cant_be_changed(self, batch):
+        changes, _ = _changes(_day())
 
         with pytest.raises(ChangeError, match="is history") as excinfo:
-            changes.check(**batch)
+            changes.check(**batch, history_until=self._UNTIL)
+
+        assert excinfo.value.categories == ["compacted"]
+
+    @pytest.mark.parametrize(
+        "batch",
+        [
+            {"creates": [Event(summary="Nap", start=time_at("08:00"), end=time_at("08:30"))]},
+            {"updates": [_move("lunch", "08:00", "08:30")]},
+        ],
+    )
+    def test_nothing_can_be_put_before_it(self, batch):
+        changes, _ = _changes(_day())
+
+        with pytest.raises(ChangeError, match="can't start before then") as excinfo:
+            changes.check(**batch, history_until=self._UNTIL)
 
         assert excinfo.value.categories == ["compacted"]
 
     def test_unless_the_user_has_approved_changing_history(self):
-        changes, calendar = _changes(self._compacted())
+        changes, calendar = _changes(_day())
 
-        changes.apply(changes.check(updates=[Event(id="email", summary="Inbox")], allow_compacted=True), "update_event")
+        changes.apply(
+            changes.check(updates=[Event(id="email", summary="Inbox")], history_until=self._UNTIL, allow_compacted=True),
+            "update_event",
+        )
 
         assert calendar.events["email"].summary == "Inbox"
 
     def test_an_event_still_going_on_may_run_on(self):
-        changes, _ = _changes(self._compacted())
+        changes, _ = _changes(_day())
 
-        changes.check(updates=[Event(id="report", end=time_at("10:45"))])
+        changes.check(updates=[Event(id="report", end=time_at("10:45"))], history_until=self._UNTIL)
 
         with pytest.raises(ChangeError, match="is history"):
-            changes.check(updates=[Event(id="report", end=time_at("10:20"))])
+            changes.check(updates=[Event(id="report", end=time_at("10:20"))], history_until=self._UNTIL)
+
+    def test_without_a_compaction_nothing_is_history(self):
+        changes, _ = _changes(_day())
+
+        changes.check(updates=[Event(id="email", summary="Inbox")])
 
 
 def test_a_new_event_needs_a_start_and_an_end():

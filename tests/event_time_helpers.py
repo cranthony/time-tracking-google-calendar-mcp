@@ -37,7 +37,7 @@ def event_at(time_range: str, **overrides) -> Event:
     "HH:MM-HH:MM+1" if the end time falls on the day after `DAY` -- so a
     test's events can be read at a glance instead of full `datetime(...)`
     calls. Any other `Event` field (`id`, `summary`, `priority`,
-    `compacted_until`, `status`, ...) can be set via keyword argument, the
+    `facts`, `status`, ...) can be set via keyword argument, the
     same as constructing `Event` directly; `summary` defaults to `"Event"`
     if not given."""
     start_str, _, end_str = time_range.partition("-")

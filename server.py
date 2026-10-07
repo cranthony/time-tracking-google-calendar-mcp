@@ -195,12 +195,8 @@ class PublicEvent:
     "scale", "reasoning"}}}}. Set them to overwrite a rating by hand
     (replacing them whole), or clear them.
 
-    compacted_until is how much of the event compaction has settled as
-    fact (the time of the compaction that recorded it, or its end if it
-    was over by then): its start, and its lasting until then, can't be
-    changed by a later compaction. compacted is read-only: whether all
-    of it is settled. Set compacted_until, or clear it, only to correct
-    what a compaction recorded."""
+    Everything before the last compaction (get_compaction_status's
+    last_compaction) is history: see update_event."""
 
     id: str | None = None
     summary: str | None = None
@@ -219,8 +215,6 @@ class PublicEvent:
     recurring_event_id: str | None = None
     facts: Facts | None = None
     judgments: dict[str, Any] | None = None
-    compacted_until: datetime | None = None
-    compacted: bool = False
 
     @classmethod
     def from_event(cls, event: Event, tree: ActionTree | None = None) -> "PublicEvent":
@@ -246,8 +240,6 @@ class PublicEvent:
             recurring_event_id=event.recurring_event_id,
             facts=event.facts,
             judgments=event.judgments,
-            compacted_until=event.compacted_until,
-            compacted=event.compacted,
         )
 
     def to_event(self, clear_fields: Collection[str] = ()) -> Event:
@@ -266,7 +258,6 @@ class PublicEvent:
             status="cancelled" if self.is_cancelled else None,
             facts=self.facts.normalized() if self.facts is not None else None,
             judgments=self.judgments,
-            compacted_until=self.compacted_until,
             cleared=frozenset(clear_fields),
         )
 
@@ -680,7 +671,6 @@ EventField = Literal[
     "priority",
     "facts",
     "judgments",
-    "compacted_until",
 ]
 """Every event field update_event and update_recurrence can clear (see
 calendar_clients/google_calendar.py's CLEARABLE_EVENT_FIELDS)."""
@@ -756,16 +746,18 @@ def update_event(
     every problem and the events around them, to send a valid call at
     once.
 
-    An event compaction settled (compacted_until) is history: it can't be
-    changed or cancelled unless allow_compacted_changes is set -- ONLY set
-    it when the user has explicitly approved changing history -- except
-    that an event still going on may run on (an update moving only its
-    end, to no earlier than its compacted_until). dry_run checks the batch
+    Everything before the last compaction (get_compaction_status's
+    last_compaction) is history: an event that started before it can't be
+    changed or cancelled, and no event can be created, or moved, to start
+    before it, unless allow_compacted_changes is set -- ONLY set it when
+    the user has explicitly approved changing history -- except that an
+    event still going on then may run on (an update moving only its end,
+    to no earlier than the last compaction). dry_run checks the batch
     and returns what it would do without changing anything. Returns the
     events changed, and a timeline of them beside the events around
     them."""
     with track("update_event"), cached_reads():
-        _prefetch_people()
+        _prefetch_for_changes()
         for update in updates or ():
             if update.event.is_cancelled:
                 raise ToolError(
@@ -902,7 +894,9 @@ def delete_recurrence(id: str, starting_at_event_id: str | None = None) -> list[
 
 @tool
 @writes
-def create_event(events: list[PublicEvent], dry_run: bool = False) -> EventChangesResult:
+def create_event(
+    events: list[PublicEvent], allow_compacted_changes: bool = False, dry_run: bool = False
+) -> EventChangesResult:
     """Create new events, as one batch, optionally with actions
     (action_ids, the first setting its color) and facts. update_event
     takes creates too, beside updates and cancels, for a change that
@@ -916,15 +910,23 @@ def create_event(events: list[PublicEvent], dry_run: bool = False) -> EventChang
     every problem and the events around them, to send a valid call at
     once.
 
-    dry_run checks them and returns what it would do without changing
-    anything. Returns the events created, and a timeline of them beside
+    An event can't be created to start before the last compaction
+    (get_compaction_status's last_compaction): that's history, unless
+    allow_compacted_changes is set -- ONLY set it when the user has
+    explicitly approved changing history. dry_run checks them and returns
+    what it would do without changing anything. Returns the events created, and a timeline of them beside
     the events around them."""
     with track("create_event"), cached_reads():
-        _prefetch_people()
+        _prefetch_for_changes()
         for event in events:
             _check_action_ids(event)
             _check_facts(event)
-        return _change_events("create_event", creates=[e.to_event() for e in events], dry_run=dry_run)
+        return _change_events(
+            "create_event",
+            creates=[e.to_event() for e in events],
+            allow_compacted=allow_compacted_changes,
+            dry_run=dry_run,
+        )
 
 @tool
 @writes
@@ -939,14 +941,15 @@ def delete_event(
     person a follow-through trait part matches it for -- the user and
     everyone it was planned with (facts' with_ids), or for (for_ids), if
     it's of the part's action -- as a commitment the user dropped; false
-    is just a change of plan, and counts against no one. An event
-    compaction settled (compacted_until) is history, and can't be
-    cancelled unless allow_compacted_changes is set -- ONLY set it when
-    the user has explicitly approved changing history. dry_run returns
+    is just a change of plan, and counts against no one. An event that
+    started before the last compaction (get_compaction_status's
+    last_compaction) is history, and can't be cancelled unless
+    allow_compacted_changes is set -- ONLY set it when the user has
+    explicitly approved changing history. dry_run returns
     what it would do without changing anything. Returns the events
     cancelled."""
     with track("delete_event"), cached_reads():
-        _prefetch_people()
+        _prefetch_for_changes()
         return _change_events(
             "delete_event",
             cancels=[Cancel(event_id=c.event_id, counts_against_follow_through=c.counts_against_follow_through) for c in cancels],
@@ -960,7 +963,7 @@ def _change_events(tool_name: str, *, dry_run: bool = False, **batch) -> EventCh
     write it."""
     changes = get_event_changes()
     try:
-        checked = changes.check(**batch)
+        checked = changes.check(**batch, history_until=get_compaction_journal().last_stamped_now())
     except ChangeError as exc:
         raise _rejected(tool_name, exc) from exc
     drawn = event_changes.timeline(checked)
@@ -1310,6 +1313,15 @@ def get_person(id_or_name: str) -> ListedPerson:
 def _prefetch_people() -> None:
     """`_prefetch_stores`, and the Cancellations tab, in one request."""
     _prefetch(get_action_store(), get_people_store(), get_location_store(), get_cancellation_store())
+
+
+def _prefetch_for_changes() -> None:
+    """`_prefetch_people`, and the compaction journal -- where history ends
+    (see utilities/event_changes.py) -- in one request."""
+    _prefetch(
+        get_action_store(), get_people_store(), get_location_store(), get_cancellation_store(),
+        get_compaction_journal(),
+    )
 
 
 def _with_cancellations(people: list[ListedPerson]) -> list[ListedPerson]:

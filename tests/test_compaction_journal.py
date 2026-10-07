@@ -32,7 +32,7 @@ def _journal(sheets=None):
 def _plan():
     before = EventState.from_event(event_at("09:00-10:00", summary="Email", priority=2))
     after = EventState.from_event(
-        event_at("09:05-10:20", summary="Email", priority=2, compacted_until=time_at("10:20"))
+        event_at("09:05-10:20", summary="Email", priority=2)
     )
     return CompactionPlan(
         changes=[

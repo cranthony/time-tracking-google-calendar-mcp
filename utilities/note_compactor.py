@@ -137,6 +137,7 @@ from utilities.note_compaction import (
     CompactionError,
     CompactionPlan,
     EventDecision,
+    EventState,
     PlanNote,
     Problem,
     facts_from_dict,
@@ -228,7 +229,7 @@ DECISION_GUIDE = (
     "`events` may start with one that ended just before `compaction_window_start` (usually last "
     "night's sleep); if a note shows it actually ran later -- the user slept in -- move its end "
     "with an update, and say when whatever it now overlaps happened. "
-    "An event with `compacted_until` was settled by an earlier compaction up to then -- usually one "
+    "An event with `history_until` was settled by an earlier compaction up to then -- usually one "
     "still going on when it ran: its start, and its lasting until then, are fact, so keep its start, "
     "end it no earlier (it may well have run later), and don't cancel it; compact_notes "
     "refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next "
@@ -337,9 +338,10 @@ class ContextEvent:
     """Where, who with, who for, and notes on each person there, if
     they've been recorded (see utilities/facts.py)."""
 
-    compacted_until: datetime | None = None
-    """How much of it an earlier compaction settled: its start, and its
-    lasting until this, can't change (see `DECISION_GUIDE`)."""
+    history_until: datetime | None = None
+    """How much of it an earlier compaction settled, if it started before
+    that one's `now`: its start, and its lasting until this, can't change
+    (see `DECISION_GUIDE`)."""
 
 
 @dataclass(kw_only=True)
@@ -483,6 +485,11 @@ class _Day:
     """The last stamped compaction's `now`, if there's been one -- for
     the batch's first day only, as context."""
 
+    history_until: datetime | None = None
+    """Where what's settled already ends: the last stamped compaction's
+    `now` for the batch's first day, and where the day before it ends
+    for each after it (see utilities/note_compaction.py)."""
+
     closing: Event | None = None
     """The day's own end-of-day sleep event, the night it ends with, if
     it has one."""
@@ -516,7 +523,7 @@ class _Walked:
 
 _STATE_FIELDS = (
     "summary", "start", "end", "description", "location", "status",
-    "priority", "event_label_id", "action_ids", "facts", "compacted_until",
+    "priority", "event_label_id", "action_ids", "facts",
 )
 
 
@@ -638,7 +645,11 @@ class NoteCompactor:
                         suggested_action_ids=suggested.get(e.id),
                         priority=e.effective_priority,
                         facts=e.facts,
-                        compacted_until=e.compacted_until,
+                        history_until=(
+                            min(e.end, day.history_until)
+                            if day.history_until is not None and e.start < day.history_until
+                            else None
+                        ),
                     )
             timelines.append(
                 (
@@ -1097,6 +1108,7 @@ class NoteCompactor:
         # `cached_calendar_listings`).
         self._calendar.list_events(min(times.values()) - _PREFETCH_BEFORE, now + _PREFETCH_AFTER)
         anchor = self._anchor(min(times.values()), last_stamped, calendar)
+        history_until = last_stamped
         while True:
             day = self._cut(
                 lambda sleepless, border: self._day(
@@ -1123,6 +1135,7 @@ class NoteCompactor:
             day.has_next = (bool(notes) or overslept) and day.now < now and len(walked) + 1 < max_days
             day.night_before = night_before
             day.earlier_notes = dict(earlier)
+            day.history_until = history_until
             walked.append(plan_day(day, len(walked)) if plan_day else _Walked(day=day))
             if not day.has_next:
                 break
@@ -1132,6 +1145,7 @@ class NoteCompactor:
             # After a late wake-up the next day starts at the planned one,
             # so the events the night now runs over are its to settle.
             window_start = min(day.day_end, planned_end)
+            history_until = window_start
             night_before = day.closing if overslept else None
             earlier.update((n.id, n.note.timestamp) for n in day.notes)
         return walked, len(sheet_notes) - sum(len(w.day.notes) for w in walked)
@@ -1377,11 +1391,12 @@ class NoteCompactor:
             previous_note=_latest_compacted(day),
             last_compaction=day.last_compaction,
             next_day_follows=day.has_next,
+            history_until=day.history_until,
         )
         self._check_before_window(day, plan)
         self._show_follow_through(day, decisions, plan)
         if tree is not None:
-            _keep_priorities(plan, tree)
+            _keep_priorities(plan, tree, day)
         labelled = [c for c in plan.changes if c.action == "create" and c.after.event_label_id is not None]
         if not labelled:
             return plan
@@ -1638,19 +1653,38 @@ def _title_key(summary: str) -> str:
     return " ".join(summary.casefold().split())
 
 
-def _keep_priorities(plan: CompactionPlan, tree: ActionTree) -> None:
-    """Give each event `plan` compacts the priority its actions give it now
-    -- the highest (lowest-numbered) of theirs -- as its own, unless it has
-    one: actions' priorities change often, and what happened keeps the
-    priority it had (see Event.action_priority). An event whose actions
-    give none is left without."""
+def _keep_priorities(plan: CompactionPlan, tree: ActionTree, day: _Day) -> None:
+    """Give each event `plan` settles -- each that started before `day`'s
+    `now`, changed or not -- the priority its actions give it now (the
+    highest, lowest-numbered, of theirs) as its own, unless it has one:
+    actions' priorities change often, and what happened keeps the priority
+    it had (see Event.action_priority). An event whose actions give none
+    is left without."""
+
+    def kept(state: EventState) -> int | None:
+        if state.start is None or state.start >= day.now or state.priority is not None:
+            return None
+        return min((p for p in (tree.priority(a) for a in state.action_ids or ()) if p is not None), default=None)
+
+    changed = set()
     for change in plan.changes:
-        after = change.after
-        if change.action == "cancel" or after is None or after.compacted_until is None or after.priority is not None:
+        changed.add(change.event_id)
+        if change.action != "cancel" and change.after is not None and (priority := kept(change.after)) is not None:
+            change.after.priority = priority
+    for event in day.events:
+        if not event.id or event.id in changed or event.status == "cancelled":
             continue
-        priorities = [p for p in (tree.priority(a) for a in after.action_ids or ()) if p is not None]
-        if priorities:
-            after.priority = min(priorities)
+        before = EventState.from_event(event)
+        if (priority := kept(before)) is not None:
+            plan.changes.append(
+                CompactionChange(
+                    action="update",
+                    event_id=event.id,
+                    reason="kept the priority its actions give it, as its own",
+                    before=before,
+                    after=replace(before, priority=priority),
+                )
+            )
 
 
 def _new_event_id(compaction_id: str, step: int) -> str:
@@ -1665,7 +1699,7 @@ def _patch_for(step: JournalStep) -> Event:
     before, after = step.before, step.after
     patch = Event(id=step.event_id)
     for name in (
-        "summary", "start", "end", "description", "location", "priority", "event_label_id", "action_ids", "compacted_until",
+        "summary", "start", "end", "description", "location", "priority", "event_label_id", "action_ids",
     ):
         value = getattr(after, name)
         if value is not None and value != getattr(before, name):
