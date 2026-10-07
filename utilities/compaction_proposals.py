@@ -210,6 +210,16 @@ class ProposalEvent:
     proposal's window: its start, and its lasting until then."""
 
     is_end_of_day_sleep: bool = False
+    counts_against_follow_through: bool | None = None
+    """For a cancelled one: whether its cancel counts against the
+    follow-through of whoever it was planned with (the user dropped it),
+    or not (the plan changed). To flip it, cancel it again with the
+    other value."""
+
+    follow_through: list[str] = field(default_factory=list)
+    """For a cancel that counts: each person it counts against in a
+    follow-through part, with the part's trait -- "‹person› (Reliable)".
+    Empty if no one's follow-through tracks it."""
 
 
 @dataclass(kw_only=True)
