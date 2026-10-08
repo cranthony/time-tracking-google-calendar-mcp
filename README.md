@@ -115,6 +115,8 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `create_trait` | `(trait: Trait) -> Trait` |
 | `update_trait` | `(trait: Trait, clear_fields: list[TraitField] \| None) -> Trait` |
 | `get_compaction_status` | `() -> CompactionStatus` |
+| `get_compaction_schedule_hints` | `() -> CompactionScheduleHints` |
+| `set_compaction_schedule_hints` | `(hints: list[ScheduleHint]) -> CompactionScheduleHints` |
 | `note` | `(noted_time: NotedTime) -> NoteWithId` |
 | `get_notes` | `(include_compacted: bool = False) -> list[NoteWithId]` |
 | `edit_note` | `(note_id: str, timestamp: datetime \| None, description: str \| None) -> NoteWithId` |
@@ -228,6 +230,7 @@ Each calendar this app manages has one shared **calendar metadata spreadsheet** 
 
 - **Actions** and **Action Groups**, **People** and **Circles**, **Locations** — one row per item, read by header name (so you can reorder columns or add your own; see [Actions](#actions) and [People, circles and locations](#people-circles-and-locations) below). Ids are short and assigned; a list or object (a person's circles, their traits) is JSON in its cell.
 - **Traits** — one row per trait: id, name, status, definition and parts (JSON). See [Traits](#traits) below.
+- **Compaction Schedule** — when the user's scheduled routines (compacting notes, answering the notes left on a proposal) usually run: one row per hint, its `time` ("HH:MM", 24-hour, in the calendar's time zone) and an optional `label` ([`utilities/compaction_schedule.py`](utilities/compaction_schedule.py)). Nothing runs at them: a routine sets them with `set_compaction_schedule_hints`, the whole list at once, and the user's app reads them with `get_compaction_schedule_hints` to fetch soon after each, so it has what the routine made. They can be edited here by hand too.
 - **Noted Times** — time notes: three columns, **Timestamp**, **Description** (optional) and **Compaction ID** (blank until the note has been compacted; see [Compacting notes](#compacting-notes)). A note's id is its timestamp and row together, and stamping a note verifies its row still holds that timestamp — which also catches a row shifted by garbage collection (below), not just a hand edit.
 - **Compactions** — the write-ahead journal of note compactions: one row per fact (each proposal's revisions, each decision, each calendar change with its before/after state and whether it's been applied, and the user's edits and feedback). See `utilities/compaction_journal.py` and [docs/compaction-proposals.md](docs/compaction-proposals.md).
 

@@ -155,6 +155,11 @@ HABITS_SHEET_TITLE = "Habits"
 """See `utilities/habits.py`'s `Habits` for the tab this identifies -- the
 user's habits, each scoped to an action or group."""
 
+COMPACTION_SCHEDULE_SHEET_ROLE = "compaction-schedule"
+COMPACTION_SCHEDULE_SHEET_TITLE = "Compaction Schedule"
+"""See `utilities/compaction_schedule.py` for the tab this identifies --
+when the user's scheduled routines run, as hints for their app."""
+
 CANCELLATIONS_SHEET_ROLE = "cancellations"
 CANCELLATIONS_SHEET_TITLE = "Cancellations"
 """See `utilities/cancellations.py` for the tab this identifies -- the

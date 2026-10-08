@@ -14,6 +14,7 @@ from utilities.actions import Actions
 from utilities.cancellations import Cancellations
 from utilities.compaction_journal import CompactionJournal
 from utilities.habits import Habits
+from utilities.compaction_schedule import CompactionSchedule
 from utilities.locations import Locations
 from utilities.noted_time_sheet import NotedTimeSheet
 from utilities.people import People
@@ -260,6 +261,19 @@ def build_habits(
         calendar_client, sheets_client
     )
     return Habits.ensure(sheets_client, spreadsheet_id, scopes, trait_ids)
+
+
+def build_compaction_schedule(calendar_id: str | None = None) -> CompactionSchedule:
+    """Construct a CompactionSchedule from environment configuration (and
+    a local .env file, if present). See `_build_calendar_and_sheets_clients`
+    for `calendar_id`. Constructing this ensures the calendar has a
+    metadata spreadsheet and a Compaction Schedule tab -- see
+    `CompactionSchedule.ensure`."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return CompactionSchedule.ensure(sheets_client, spreadsheet_id)
 
 
 def build_locations(calendar_id: str | None = None) -> Locations:

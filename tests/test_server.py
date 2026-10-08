@@ -41,6 +41,7 @@ from utilities.recurrences import Repeat
 from utilities.traits import SEED_TRAITS, Trait
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
+from utilities.compaction_schedule import ScheduleHint
 from utilities.locations import Location
 from utilities.people import CancelledEvent, Circle, ListedPerson, Person
 
@@ -1068,6 +1069,45 @@ class TestPeopleTools:
             server.create_person(Person(name="Sam"))
 
 
+class TestCompactionScheduleTools:
+    def test_give_the_hints_with_the_calendars_time_zone(self, monkeypatch):
+        from zoneinfo import ZoneInfo
+
+        schedule, calendar = MagicMock(), MagicMock()
+        hints = [ScheduleHint(id="h1", time="07:30", label="Morning compaction")]
+        schedule.all.return_value = hints
+        schedule.set_hints.return_value = hints
+        calendar.get_time_zone.return_value = ZoneInfo("America/New_York")
+        monkeypatch.setattr(server, "get_compaction_schedule_store", lambda: schedule)
+        monkeypatch.setattr(server, "get_calendar_client", lambda: calendar)
+
+        got = server.get_compaction_schedule_hints()
+        saved = server.set_compaction_schedule_hints([ScheduleHint(time="7:30", label="Morning compaction")])
+
+        assert got.hints == hints and got.time_zone == "America/New_York"
+        assert saved.hints == hints
+        schedule.set_hints.assert_called_once_with([ScheduleHint(time="7:30", label="Morning compaction")])
+
+    def test_without_a_time_zone_say_so(self, monkeypatch):
+        from calendar_clients.google_calendar import TimeZoneNotSetError
+
+        schedule, calendar = MagicMock(), MagicMock()
+        schedule.all.return_value = []
+        calendar.get_time_zone.side_effect = TimeZoneNotSetError("none")
+        monkeypatch.setattr(server, "get_compaction_schedule_store", lambda: schedule)
+        monkeypatch.setattr(server, "get_calendar_client", lambda: calendar)
+
+        assert server.get_compaction_schedule_hints().time_zone is None
+
+    def test_wrap_errors(self, monkeypatch):
+        schedule = MagicMock()
+        schedule.set_hints.side_effect = ValueError("'7' isn't a time of day")
+        monkeypatch.setattr(server, "get_compaction_schedule_store", lambda: schedule)
+
+        with pytest.raises(ToolError, match="isn't a time of day"):
+            server.set_compaction_schedule_hints([ScheduleHint(time="7")])
+
+
 class TestLocationTools:
     def test_delegate_to_the_store(self, monkeypatch):
         locations = MagicMock()
@@ -1516,6 +1556,7 @@ _READ_ONLY_TOOLS = {
     "get_location",
     "get_habits",
     "get_habit",
+    "get_compaction_schedule_hints",
     "prepare_judgments",
     "prepare_habit_judgments",
 }
