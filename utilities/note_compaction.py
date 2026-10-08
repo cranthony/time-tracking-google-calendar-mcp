@@ -417,6 +417,8 @@ def plan_compaction(
     next_day_follows: bool = False,
     history_until: datetime | None = None,
     note_targets: dict[str, str | None] | None = None,
+    closing_id: str | None = None,
+    nights: set[str] | None = None,
 ) -> CompactionPlan:
     """Plan the calendar changes that `decisions` (what the notes show
     happened, event by event) imply for `day_events`, as of `now`.
@@ -437,7 +439,11 @@ def plan_compaction(
     `note_targets` (a note's id -> an event's id, or a created one's key)
     adds those notes to those events, wherever they fall; one naming none
     (`None`) adds its note where it falls -- or, if it sets an edge, to
-    that event.
+    that event. `closing_id`, if given, is the end-of-day sleep event the
+    span ends with -- the one moving which moves the next day's start --
+    in place of the first after `day_start`; and `nights`, every one of
+    its own nights, none of which can be merged (by default, just that
+    one).
 
     Raises `CompactionError` (listing everything wrong at once) if the
     decisions are invalid or leave past events overlapping. Never mutates
@@ -470,11 +476,17 @@ def plan_compaction(
     copies = {e.id: replace(e) for e in live}
     sleeps = [e for e in live if e.is_end_of_day_sleep]
     sleepless = {d.event_id for d in decisions if d.action == "cancel"}
-    closing = next(
-        (e for e in sleeps if (day_start is None or e.start > day_start) and e.id not in sleepless), None
-    )
+    if closing_id is not None:
+        closing = events_by_id.get(closing_id)
+    else:
+        closing = next(
+            (e for e in sleeps if (day_start is None or e.start > day_start) and e.id not in sleepless), None
+        )
+    unmergeable = set(nights or ()) | ({closing.id} if closing is not None else set())
 
-    resolved = _resolve(decisions, notes, notes_by_id, events_by_id, closing, now, problems, history_until)
+    resolved = _resolve(
+        decisions, notes, notes_by_id, events_by_id, closing, now, problems, history_until, unmergeable
+    )
     if problems:
         raise CompactionError.of(problems, "malformed_decision")
     facts, cancels, merged_into, touched = resolved
@@ -549,6 +561,7 @@ def _resolve(
     now: datetime,
     problems: list[str],
     history_until: datetime | None = None,
+    unmergeable: set[str] | None = None,
 ) -> tuple[list[_Fact], dict[str, str], dict[str, str], dict[str, EventDecision]]:
     """Validate `decisions` and turn them into facts (events whose time is
     now certain), cancellations (id -> reason), merges (merged id -> the
@@ -607,7 +620,8 @@ def _resolve(
             if decision.into not in events_by_id or decision.into == decision.event_id:
                 problems.append(f"{label}: 'into' must be the id of another of this day's events; {valid_events}")
                 continue
-            if closing is not None and closing.id in (decision.event_id, decision.into):
+            nights = unmergeable if unmergeable is not None else {closing.id} if closing is not None else set()
+            if nights & {decision.event_id, decision.into}:
                 problems.append(f"{label}: the end-of-day sleep event can't be merged")
                 continue
         elif decision.into is not None:

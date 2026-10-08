@@ -38,7 +38,8 @@ conversation with Claude can do any of these sooner.
   `as_planned` name a created event by its key, as they name others by
   event id. Claude keeps a create's key by sending it back.
 - **Ids**: a proposal's id is 12 hex digits; a revision's is
-  `<proposal>r<n>`, its later days `<proposal>r<n>d2`, and so on;
+  `<proposal>r<n>` (one journaled before revisions were one span has
+  its later days `<proposal>r<n>d2`, and so on);
   feedback `<proposal>f<n>`. Only `0-9a-v`: created events' Calendar ids
   are made from the revision's.
 

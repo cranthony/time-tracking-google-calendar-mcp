@@ -46,10 +46,12 @@ Layout: one row per fact, all in the same eight columns --
 One row per step (rather than one JSON cell for the whole plan) keeps every
 cell far below Sheets' 50,000-character limit even for a busy day.
 
-A compaction covers one day. Several days compacted together are a
-*batch*: one compaction per day, written in one block, the first day's
-id doubling as the batch's (so a one-day batch is just a compaction), and
-the rest `<batch>d<day>`. Each day's compaction moves through the
+A compaction covers one span: every day since the last, planned as one
+(see utilities/note_compactor.py). Before, several days compacted
+together were a *batch*: one compaction per day, written in one block,
+the first day's id doubling as the batch's (so a one-day batch is just a
+compaction), and the rest `<batch>d<day>` -- still read, so a batch
+journaled then can be finished. A span is a batch of one. Each day's compaction moves through the
 statuses below on its own, in order, so a batch applied partway has its
 earlier days finished and stamped. A proposal's revision is a batch,
 its id `<proposal>r<revision>`.
