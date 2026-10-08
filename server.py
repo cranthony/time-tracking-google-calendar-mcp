@@ -30,6 +30,7 @@ from config import (
     build_calendar_client,
     build_compaction_journal,
     build_habits,
+    build_compaction_schedule,
     build_locations,
     build_noted_time_sheet,
     build_people,
@@ -65,6 +66,7 @@ from utilities import event_changes
 from utilities.cancellations import Cancellations
 from utilities.event_changes import Cancel, ChangeError, EventChanges, Shift
 from utilities.habits import CreatedHabit, Habit, Habits, HabitStatus, ListedHabit, action_scopes, subject_id
+from utilities.compaction_schedule import CompactionSchedule, CompactionScheduleHints, ScheduleHint
 from utilities.locations import CreatedLocation, Location, Locations
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision, NoteAnnotation
@@ -364,6 +366,7 @@ _actions: Actions | None = None
 _people: People | None = None
 _locations: Locations | None = None
 _habits: Habits | None = None
+_compaction_schedule: CompactionSchedule | None = None
 _cancellations: Cancellations | None = None
 
 
@@ -413,6 +416,18 @@ def get_location_store() -> Locations:
             if _locations is None:
                 _locations = build_locations()
     return _locations
+
+
+def get_compaction_schedule_store() -> CompactionSchedule:
+    """Lazily construct and cache the CompactionSchedule, the same way
+    the other get_* helpers cache theirs. Building it the first time adds
+    the Compaction Schedule tab."""
+    global _compaction_schedule
+    if _compaction_schedule is None:
+        with WRITE_LOCK:
+            if _compaction_schedule is None:
+                _compaction_schedule = build_compaction_schedule()
+    return _compaction_schedule
 
 
 def get_habit_store() -> Habits:
@@ -2136,6 +2151,51 @@ def abandon_compaction(proposal_id: str) -> CompactionResult:
             return get_note_compactor().abandon(proposal_id)
         except CompactionError as exc:
             raise _rejected("abandon_compaction", exc) from exc
+
+
+def _schedule_time_zone() -> str | None:
+    """The calendar's time zone, which schedule hints are in; None if it
+    has none."""
+    try:
+        return get_calendar_client().get_time_zone().key
+    except TimeZoneNotSetError:
+        return None
+
+
+@tool
+def get_compaction_schedule_hints() -> CompactionScheduleHints:
+    """When the user's scheduled routines usually run -- the ones that
+    compact notes into a proposal, and answer the notes left on it: each
+    a time of day ("07:30", 24-hour, in the calendar's time_zone, given
+    too) with an optional label ("Morning compaction"), earliest first.
+    They're hints: nothing runs at them. The user's app fetches what a
+    routine made a while after each, so it has it to show. Read-only."""
+    with track("get_compaction_schedule_hints"), cached_reads():
+        try:
+            hints = get_compaction_schedule_store().all()
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return CompactionScheduleHints(hints=hints, time_zone=_schedule_time_zone())
+
+
+@tool
+@writes
+def set_compaction_schedule_hints(hints: list[ScheduleHint]) -> CompactionScheduleHints:
+    """Say when the user's scheduled routines run, replacing the hints
+    whole: each a time of day ("HH:MM", 24-hour, in the calendar's time
+    zone -- see get_compaction_schedule_hints) and an optional label
+    ("Morning compaction"). A scheduled routine that compacts notes into a
+    proposal, or answers the notes left on one, should keep these up to
+    date, its own time among them, so the user's app fetches what it made
+    soon after it runs; the app can't change them. Keep the other hints
+    there: get them first, and send them back with yours. Times are
+    unique; an empty list clears them. Returns them as saved."""
+    with track("set_compaction_schedule_hints"), cached_reads():
+        try:
+            saved = get_compaction_schedule_store().set_hints(hints)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        return CompactionScheduleHints(hints=saved, time_zone=_schedule_time_zone())
 
 
 @tool
