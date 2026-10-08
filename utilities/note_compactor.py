@@ -909,6 +909,7 @@ class NoteCompactor:
             aliases=aliases,
             settled=sorted(settled),
             judge_also=meta.judge_also if meta else [],
+            claude_through=walked[-1].day.now,
         )
         self._write_revision(walked, new_meta, additions, current)
         newer = {e.event_id: e.id for _, e in edit_rows if base_meta is not None and e.seq > base_meta.user_seq}
@@ -1219,6 +1220,7 @@ class NoteCompactor:
             state=state,
             window_start=meta.window_start,
             through=current[-1].now,
+            claude_through=meta.claude_through or current[-1].now,
             by=meta.by,
             reason=meta.reason,
             created=meta.created,
@@ -1260,13 +1262,17 @@ class NoteCompactor:
         as_planned: list[str] | None = None,
         notes: list[NoteEdit] | None = None,
         additions: list[AdditionChoice] | None = None,
+        through: datetime | None = None,
     ) -> Proposal:
         """amend_proposal: the user's `decisions`, `notes` (what notes are
         for), `additions` (what's added, settled now) and `as_planned`
         events, notes and refs (whose decisions they clear), laid over the
         open proposal as a new revision -- see utilities/
         compaction_proposals.py. An addition the user creates is created
-        right away, once the revision is known to plan."""
+        right away, once the revision is known to plan. `through`, if
+        later than the proposal's, extends it there -- no later than now --
+        each note it takes in added to the event it falls within, unless
+        `notes` says otherwise; it can't be made earlier."""
         self._prefetch()
         self._journal.garbage_collect()
         current = self._open(proposal_id)
@@ -1321,9 +1327,39 @@ class NoteCompactor:
                     created=now, base_revision=revision,
                 )
             )
-        if not new_edits:
+        # Extended: the notes it takes in, each added where it falls --
+        # unless the user says otherwise, now or already.
+        before = current[-1].now
+        if through is not None and through < before:
+            raise CompactionError(
+                f"proposal {proposal_id} runs to {before.isoformat()}: it can only be extended, not cut "
+                "short",
+                category="not_extended",
+            )
+        if through is not None and through > now:
+            raise CompactionError(
+                f"proposal {proposal_id} can't be extended past now ({now.isoformat()})", category="future"
+            )
+        extended = through is not None and through > before
+        taken_in: list[str] = []
+        if extended:
+            said = {n.note_id for n in notes or ()} | {e.event_id for _, e in edit_rows if e.edit.get("action") == "note"}
+            sheet_notes, _latest = self._notes.read_with_latest_compacted()
+            taken_in = [n.id for n in sheet_notes if before < n.note.timestamp <= through]
+            for note_id in taken_in:
+                if note_id in said:
+                    continue
+                seq += 1
+                new_edits.append(
+                    UserEdit(
+                        id=edit_id(proposal_id, seq), seq=seq, event_id=note_id,
+                        edit=NoteEdit(note_id=note_id, use="annotate").edit(), created=now,
+                        base_revision=revision,
+                    )
+                )
+        if not new_edits and not extended:
             raise CompactionError("there's nothing to amend", category="empty")
-        through = current[-1].now
+        through = through if extended else before
 
         def planned(edits: list[UserEdit]):
             merged = merge(
@@ -1335,7 +1371,7 @@ class NoteCompactor:
                 settled=set(meta.settled),
                 claude_ignore=_claude_ignore(current),
                 claude_targets=meta.claude_note_targets,
-                known_notes={n for d in current for n in d.note_ids},
+                known_notes={n for d in current for n in d.note_ids} | set(taken_in),
             )
             unknown_new = [e for e in merged.unknown if e in edits]
             if unknown_new:

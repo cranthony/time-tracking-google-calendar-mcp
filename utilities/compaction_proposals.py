@@ -305,6 +305,11 @@ class Proposal:
     by: Literal["claude", "user", "server"]
     reason: str
     created: datetime
+    claude_through: datetime | None = None
+    """Where Claude's own revision of it runs to: from there to `through`,
+    the user extended it, its notes added where they fall unless the user
+    said otherwise."""
+
     events: list[ProposalEvent] | None = None
     """Every event of its days, as it leaves them. `None` when it no
     longer plans against the calendar (see `problem`)."""

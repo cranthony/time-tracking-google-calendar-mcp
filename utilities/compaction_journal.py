@@ -204,6 +204,12 @@ class RevisionMeta:
     """[event id, start, end] of events an apply that then failed already
     gave facts: judged with this revision's."""
 
+    claude_through: datetime | None = None
+    """Where Claude's last revision of it ran to: past it, up to the
+    revision's own `now`, the user extended it (`amend_proposal`'s
+    `through`). `None` for a revision from before it was kept -- one
+    that wasn't extended."""
+
     def to_detail(self) -> dict:
         return {
             "proposal": self.proposal,
@@ -223,6 +229,7 @@ class RevisionMeta:
             **({"aliases": self.aliases} if self.aliases else {}),
             **({"settled": self.settled} if self.settled else {}),
             **({"judge_also": self.judge_also} if self.judge_also else {}),
+            **({"claude_through": self.claude_through.isoformat()} if self.claude_through else {}),
         }
 
     @classmethod
@@ -246,6 +253,9 @@ class RevisionMeta:
             aliases=detail.get("aliases", {}),
             settled=detail.get("settled", []),
             judge_also=detail.get("judge_also", []),
+            claude_through=(
+                datetime.fromisoformat(detail["claude_through"]) if detail.get("claude_through") else None
+            ),
         )
 
 

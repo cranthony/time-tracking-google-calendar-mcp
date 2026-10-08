@@ -2483,6 +2483,75 @@ class TestProposals:
         assert setup.journal.revision_meta(p, 1).revision == 1
 
 
+class TestExtendingAProposal:
+    """The user extends the open proposal past where Claude's revision ran
+    to: the notes it takes in are added where they fall."""
+
+    def _extendable(self):
+        setup = _standard()
+        p = setup.compactor.dry_run(setup.email_then_report()).proposal_id
+        # Later, a note after the proposal's end.
+        setup.append_note("12:05", "lunch")
+        setup.now = "12:30"
+        return setup, p
+
+    @staticmethod
+    def _note(proposal, note_id):
+        return next(n for n in proposal.notes if n.id == note_id)
+
+    def test_it_runs_on_and_takes_in_the_notes_there(self):
+        setup, p = self._extendable()
+
+        proposal = setup.compactor.amend(p, 1, [], through=time_at("12:15"))
+
+        assert (proposal.through, proposal.claude_through) == (time_at("12:15"), time_at("11:30"))
+        lunch = self._note(proposal, setup.note_id(4))
+        assert (lunch.use, lunch.event_id, lunch.decided_by) == ("annotates", "e3", "user")
+        assert [(e.event_id, e.edit) for e in proposal.user_edits] == [
+            (setup.note_id(4), {"action": "note", "use": "annotate"})
+        ]
+        # Kept as the revision's end, as it's planned again.
+        again = setup.compactor.get_proposal()
+        assert (again.through, again.claude_through) == (time_at("12:15"), time_at("11:30"))
+
+    def test_a_note_the_user_says_otherwise_about_is_left_as_they_say(self):
+        setup, p = self._extendable()
+
+        proposal = setup.compactor.amend(
+            p, 1, [], notes=[NoteEdit(note_id=setup.note_id(4), use="ignore")], through=time_at("12:15")
+        )
+
+        assert self._note(proposal, setup.note_id(4)).use == "ignored"
+
+    def test_with_no_notes_there_it_still_runs_on(self):
+        setup = _standard()
+        p = setup.compactor.dry_run(setup.email_then_report()).proposal_id
+        setup.now = "12:30"
+
+        proposal = setup.compactor.amend(p, 1, [], through=time_at("12:15"))
+
+        assert proposal.through == time_at("12:15")
+        assert proposal.user_edits == []
+
+    def test_it_can_only_be_extended_and_never_past_now(self):
+        setup, p = self._extendable()
+
+        with pytest.raises(CompactionError, match="only be extended"):
+            setup.compactor.amend(p, 1, [], through=time_at("11:00"))
+        with pytest.raises(CompactionError, match="past now"):
+            setup.compactor.amend(p, 1, [], through=time_at("13:00"))
+        assert setup.journal.revisions(p) == [(1, f"{p}r1", PROPOSED)]
+
+    def test_claudes_next_revision_runs_to_now(self):
+        setup, p = self._extendable()
+        setup.compactor.amend(p, 1, [], through=time_at("12:15"))
+
+        setup.compactor.dry_run(setup.email_then_report(), proposal_id=p, revision=2)
+
+        proposal = setup.compactor.get_proposal()
+        assert proposal.through == proposal.claude_through == time_at("12:30")
+
+
 class TestProposalNotes:
     """What notes are for: Claude ignores a note, or adds it to a
     particular event; the user's note edits override that."""
