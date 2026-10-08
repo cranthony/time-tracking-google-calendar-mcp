@@ -1856,8 +1856,8 @@ def compact_notes(
     events realigned to its notes, and the calendar changes that makes --
     for the user to review and confirm in the app. Nothing on the calendar
     changes, and you can't apply it: only the user's confirmation does.
-    Each day is planned on its own, after the day before it, and never
-    moves the next day's start; one call covers them all, to now.
+    Every day since the last compaction is planned together, as one span;
+    one call covers them all, to now.
 
     Call with what the notes show happened differently from the plan, as
     update_event takes a batch (see prepare_compaction's instructions):
@@ -1895,12 +1895,12 @@ def compact_notes(
     An update that moves a future event reschedules it. Moving the
     end-of-day sleep event moves where the day ends: an earlier bedtime
     needs whatever runs past it shortened or cancelled too, a later one
-    leaves the evening free. Its end (the wake-up time) is the border with the next day: a
-    note ending it moves the border there. If that day is being compacted
-    too, its morning is settled against the night; if not, compaction
-    never adjusts the next day -- so move only its start to change only the
-    bedtime, and if the wake-up time does change, the plan warns; tell the
-    user. Cancelling a night (no sleep) makes its two days one.
+    leaves the evening free. Its end is the wake-up time: a later one has
+    to move, shorten or cancel the morning events it now runs over, even
+    those after now, in the same call. Otherwise compaction never adjusts
+    what's past the last night -- so move only its start to change only
+    the bedtime, and if the wake-up time does change, the plan warns; tell
+    the user.
 
     Once the user confirms it and it's applied, make its judgments with
     prepare_judgments and record_judgments: the compaction isn't complete

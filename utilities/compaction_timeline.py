@@ -223,6 +223,40 @@ def join_days(days: list[tuple[datetime, Timeline]]) -> Timeline:
     return joined
 
 
+def split_days(timeline: Timeline, starts: list[datetime]) -> list[tuple[datetime, Timeline]]:
+    """`timeline` -- a span's -- cut into its days, each starting at one
+    of `starts` (in order; the first, the span's), to `join_days`: each
+    note in the day it was written in, and each event in the day it
+    starts in (or, removed, was to start in). Each day's `now` is the
+    span's, and only the first has the last compaction."""
+    if len(starts) < 2:
+        return [(starts[0], timeline)] if starts else [(timeline.now, timeline)]
+
+    def day_of(moment: datetime) -> int:
+        return max((i for i, start in enumerate(starts) if moment >= start), default=0)
+
+    notes: list[list[TimelineNote]] = [[] for _ in starts]
+    events: list[list[TimelineEvent]] = [[] for _ in starts]
+    for note in timeline.notes:
+        notes[day_of(note.time)].append(note)
+    for event in timeline.events:
+        events[day_of(event.start or event.planned_start)].append(event)
+    return [
+        (
+            start,
+            build_timeline(
+                notes[i],
+                events[i],
+                timeline.now,
+                decided=timeline.decided,
+                last_compaction=timeline.last_compaction if i == 0 else None,
+            ),
+        )
+        for i, start in enumerate(starts)
+        if i == 0 or notes[i] or events[i]
+    ]
+
+
 def render(timeline: Timeline, *, legend: bool = True) -> str:
     tz = _display_tz(timeline)
 

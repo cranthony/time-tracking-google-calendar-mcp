@@ -821,9 +821,9 @@ class TestDayByDay:
         context = setup.compactor.prepare()
 
         assert context.notes == []
+        # One compaction for both days.
         assert {n.note.compaction_id for n in setup.notes.read_with_rows(include_compacted=True)} == {
             planned.compaction_id,
-            f"{planned.compaction_id}d2",
         }
 
     def test_the_next_days_compaction_window_starts_where_the_last_one_left_off(self):
@@ -908,14 +908,13 @@ class TestSeveralDays:
         assert text.index("━━ Fri 02 Jan") < text.index("● finally up")
         assert text.count("┄┄ now") == 1
 
-    def test_a_dry_run_plans_and_journals_each_day_as_its_own_compaction(self):
+    def test_a_dry_run_plans_and_journals_the_days_as_one_compaction(self):
         setup = self._setup()
 
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
 
-        days = setup.journal.load_batch(planned.compaction_id)
-        assert [d.id for d in days] == [planned.compaction_id, f"{planned.compaction_id}d2"]
-        assert {d.status for d in days} == {PROPOSED}
+        (day,) = setup.journal.load_batch(planned.compaction_id)
+        assert (day.id, day.status) == (planned.compaction_id, PROPOSED)
         changes = {c.event_id: c for c in planned.changes}
         assert changes["s1"].after.end == time_at("08:30+1")
         assert changes["w1"].after.start == time_at("09:00+1")
@@ -923,26 +922,26 @@ class TestSeveralDays:
         assert planned.timeline.text.count("→ note above set this edge") == 1
         assert "over 2 days" in planned.message
 
-    def test_the_note_ending_the_night_is_the_border_between_the_days(self):
+    def test_the_note_ending_the_night_ends_it_and_starts_the_morning(self):
         setup = self._setup()
 
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
 
-        first, second = setup.journal.load_batch(planned.compaction_id)
-        # "finally up" ends the night, so it's the first day's, however
-        # late; the second day starts there.
-        assert [first.note_ids, second.note_ids] == [[setup.note_id(2), setup.note_id(3)], [setup.note_id(4)]]
-        assert first.now == time_at("08:30+1")
-        # The second day still uses it to start getting ready, at its time.
-        getting_ready = next(d for d in second.decisions if d.event_id == "gr1")
-        assert (getting_ready.start, getting_ready.start_note) == (time_at("08:30+1"), None)
-        # The next day is being compacted too, so there's nothing to warn of.
+        (day,) = setup.journal.load_batch(planned.compaction_id)
+        assert day.note_ids == [setup.note_id(2), setup.note_id(3), setup.note_id(4)]
+        assert day.now == time_at("09:00+1")
+        # "finally up" ends the night, and starts getting ready.
+        getting_ready = next(d for d in day.decisions if d.event_id == "gr1")
+        assert getting_ready.start_note == setup.note_id(3)
+        changes = {c.event_id: c for c in planned.changes}
+        assert changes["gr1"].after.start == time_at("08:30+1")
+        # The next day is in the span too, so there's nothing to warn of.
         assert not any("now ends at" in w for w in planned.warnings)
 
     def test_a_later_wake_up_is_checked_against_the_mornings_events(self):
         setup = self._setup()
 
-        with pytest.raises(CompactionError, match="(?s)^Fri 02 Jan: .*'Sleep'.*overlaps 'Getting Ready'"):
+        with pytest.raises(CompactionError, match="(?s)'Sleep'.*overlaps 'Getting Ready'"):
             setup.compactor.dry_run(
                 [EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3))]
             )
@@ -952,50 +951,46 @@ class TestSeveralDays:
 
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
 
-        first, second = setup.journal.load_batch(planned.compaction_id)
-        assert [first.note_ids, second.note_ids] == [[setup.note_id(2), setup.note_id(3)], []]
-        assert [d.event_id for d in second.decisions] == ["gr1", "w1"]
+        (day,) = setup.journal.load_batch(planned.compaction_id)
+        assert day.note_ids == [setup.note_id(2), setup.note_id(3)]
+        assert [d.event_id for d in day.decisions] == ["e1", "s1", "gr1", "w1"]
         assert setup.compactor.commit(planned.compaction_id).status == "applied"
         assert setup.notes.read_with_rows() == []
 
-    def test_an_early_wake_up_starts_the_next_day_there(self):
+    def test_an_early_wake_up_ends_the_night_there(self):
         setup = self._setup(notes=(("09:05", "email"), ("05:30+1", "woke up early"), ("07:30+1", "breakfast")))
 
         planned = setup.compactor.dry_run(
             [EventDecision(action="keep", event_id="s1", end_note=setup.note_id(3))]
         )
 
-        first, second = setup.journal.load_batch(planned.compaction_id)
-        assert [first.note_ids, second.note_ids] == [[setup.note_id(2), setup.note_id(3)], [setup.note_id(4)]]
-        assert first.now == time_at("05:30+1")
-        assert next(c for c in first.changes() if c.event_id == "s1").after.end == time_at("05:30+1")
+        (day,) = setup.journal.load_batch(planned.compaction_id)
+        assert day.note_ids == [setup.note_id(2), setup.note_id(3), setup.note_id(4)]
+        assert next(c for c in day.changes() if c.event_id == "s1").after.end == time_at("05:30+1")
         assert planned.warnings == []
 
-    def test_a_note_in_the_night_that_doesnt_end_it_leaves_the_border_where_it_was(self):
+    def test_a_note_in_the_night_that_doesnt_end_it_leaves_it_as_it_was(self):
         setup = self._setup(notes=(("09:05", "email"), ("03:00+1", "can't sleep"), ("07:30+1", "breakfast")))
 
         planned = setup.compactor.dry_run([])
 
-        first, second = setup.journal.load_batch(planned.compaction_id)
-        assert first.now == time_at("07:00+1")
-        assert [first.note_ids, second.note_ids] == [[setup.note_id(2), setup.note_id(3)], [setup.note_id(4)]]
-        night = next(c for c in first.changes() if c.event_id == "s1")
+        (day,) = setup.journal.load_batch(planned.compaction_id)
+        assert day.note_ids == [setup.note_id(2), setup.note_id(3), setup.note_id(4)]
+        night = next(c for c in day.changes() if c.event_id == "s1")
         assert night.after.end == time_at("07:00+1")
         assert "can't sleep" in night.after.description
 
-    def test_the_night_is_decided_once_with_the_day_before_it(self):
+    def test_the_night_is_decided_once(self):
         setup = self._setup()
         decisions = self._late_wake_up(setup)
         decisions[1].start = time_at("21:00")
 
         planned = setup.compactor.dry_run(decisions)
 
-        first, second = setup.journal.load_batch(planned.compaction_id)
-        assert [d.event_id for d in first.decisions] == ["e1", "s1"]
-        assert "s1" not in [d.event_id for d in second.decisions]
-        night = next(c for c in first.changes() if c.event_id == "s1")
+        (day,) = setup.journal.load_batch(planned.compaction_id)
+        assert [d.event_id for d in day.decisions] == ["e1", "s1", "gr1", "w1"]
+        (night,) = [c for c in day.changes() if c.event_id == "s1"]
         assert (night.after.start, night.after.end) == (time_at("21:00"), time_at("08:30+1"))
-        assert not any(c.event_id == "s1" for c in second.changes())
 
     def test_a_second_decision_on_the_night_is_refused(self):
         setup = self._setup()
@@ -1003,7 +998,7 @@ class TestSeveralDays:
             EventDecision(action="keep", event_id="s1", annotate="slept badly")
         ]
 
-        with pytest.raises(CompactionError, match="^Thu 01 Jan: .*event s1 has more than one decision"):
+        with pytest.raises(CompactionError, match="event s1 has more than one decision"):
             setup.compactor.dry_run(decisions)
 
     def test_a_night_without_sleep_makes_one_long_day(self):
@@ -1020,7 +1015,7 @@ class TestSeveralDays:
         assert "gr1" not in {c.event_id for c in day.changes()}
         assert "━━ " not in planned.timeline.text
 
-    def test_committing_applies_and_stamps_a_day_at_a_time(self):
+    def test_committing_applies_and_stamps_the_days(self):
         setup = self._setup()
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
 
@@ -1040,22 +1035,23 @@ class TestSeveralDays:
 
         setup.client.update_event.side_effect = update
 
-    def test_a_failure_on_a_later_day_leaves_the_earlier_days_done_and_resumes(self):
+    def test_a_failure_partway_resumes_where_it_stopped(self):
         setup = self._setup()
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
         self._fail_on_the_second_day(setup)
         with pytest.raises(RuntimeError):
             setup.compactor.commit(planned.compaction_id)
 
-        first, second = setup.journal.load_batch(planned.compaction_id)
-        assert (first.status, second.status) == (STAMPED, APPLYING)
-        assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(4)]
+        (day,) = setup.journal.load_batch(planned.compaction_id)
+        assert day.status == APPLYING
+        # Stamped once it's all applied, not before.
+        assert len(setup.notes.read_with_rows()) == 3
 
         setup.client.update_event.side_effect = None
         assert setup.compactor.commit(planned.compaction_id).status == "applied"
         assert setup.notes.read_with_rows() == []
 
-    def test_abandoning_partway_keeps_the_days_already_applied(self):
+    def test_abandoning_partway_keeps_what_was_applied_and_the_notes(self):
         setup = self._setup()
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
         self._fail_on_the_second_day(setup)
@@ -1064,9 +1060,9 @@ class TestSeveralDays:
 
         result = setup.compactor.abandon(planned.compaction_id)
 
-        assert "1 of its 2 days" in result.message
-        assert [d.status for d in setup.journal.load_batch(planned.compaction_id)] == [STAMPED, ABANDONED]
-        assert [n.id for n in setup.notes.read_with_rows()] == [setup.note_id(4)]
+        assert "stay applied" in result.message
+        assert [d.status for d in setup.journal.load_batch(planned.compaction_id)] == [ABANDONED]
+        assert len(setup.notes.read_with_rows()) == 3
 
     def test_refuses_when_an_earlier_days_notes_changed_after_the_preview(self):
         setup = self._setup()
@@ -1093,8 +1089,8 @@ class TestSeveralDays:
     def test_an_open_batch_is_reported_by_its_own_id(self):
         setup = self._setup()
         planned = setup.compactor.dry_run(self._late_wake_up(setup))
-        second = setup.journal.load_batch(planned.compaction_id)[1]
-        setup.journal.set_status(second, APPLYING)
+        (day,) = setup.journal.load_batch(planned.compaction_id)
+        setup.journal.set_status(day, APPLYING)
 
         assert setup.compactor.prepare().open_compaction == planned.compaction_id
         with pytest.raises(CompactionError, match=f"compaction {planned.compaction_id} is applying"):
@@ -1122,6 +1118,61 @@ class TestSeveralDays:
 
         assert len(context.days) == note_compactor._MAX_DAYS
         assert context.remaining_note_count == 9 - note_compactor._MAX_DAYS
+
+
+class TestSleepingInPastTheSpan:
+    """A compaction made in the night -- its span ends with that night --
+    that says the night ran on past the morning's events: they're its to
+    settle too."""
+
+    def _setup(self):
+        events = [
+            event_at("21:00-22:00", id="e1", summary="Reading", priority=2),
+            event_at("22:00-07:00+1", id="s1", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+            event_at("07:00+1-08:00+1", id="gr1", summary="Getting Ready", priority=2),
+            event_at("09:15+1-12:00+1", id="w1", summary="Work", priority=3),
+            event_at("22:00+1-23:30+1", id="s2", summary="Sleep", priority=0, is_end_of_day_sleep=True),
+        ]
+        return Setup([("21:05", "reading")], events=events, now="06:30+1")
+
+    def test_the_span_ends_with_the_night(self):
+        context = self._setup().compactor.prepare()
+
+        assert [e.id for e in context.events] == ["e1", "s1"]
+
+    def test_a_later_end_takes_in_what_it_runs_into(self):
+        setup = self._setup()
+
+        planned = setup.compactor.dry_run(
+            [
+                EventDecision(action="keep", event_id="s1", end=time_at("09:00+1")),
+                EventDecision(action="cancel", event_id="gr1"),
+            ]
+        )
+
+        changes = {c.event_id: c for c in planned.changes}
+        assert changes["s1"].after.end == time_at("09:00+1")
+        assert changes["gr1"].action == "cancel"
+        # Work, at 9:15, it doesn't reach.
+        assert "w1" not in changes
+
+    def test_what_it_runs_into_must_be_settled(self):
+        setup = self._setup()
+
+        with pytest.raises(CompactionError, match="(?s)'Sleep'.*overlaps 'Getting Ready'"):
+            setup.compactor.dry_run([EventDecision(action="keep", event_id="s1", end=time_at("09:00+1"))])
+
+    def test_what_it_doesnt_reach_is_still_outside(self):
+        setup = self._setup()
+
+        with pytest.raises(CompactionError, match="w1' isn't one of this day's events"):
+            setup.compactor.dry_run(
+                [
+                    EventDecision(action="keep", event_id="s1", end=time_at("09:00+1")),
+                    EventDecision(action="cancel", event_id="gr1"),
+                    EventDecision(action="keep", event_id="w1", start=time_at("09:30+1")),
+                ]
+            )
 
 
 class TestSleepingIn:
