@@ -157,7 +157,7 @@ as it is now:
 ### `amend_proposal` (app)
 
 `amend_proposal(proposal_id, revision, updates?, creates?, cancels?,
-as_planned?, notes?, additions?)`: `updates`/`creates`/`cancels` as
+as_planned?, notes?, additions?, through?)`: `updates`/`creates`/`cancels` as
 update_event takes them -- an update is `{event, clear_fields?}` (the
 event's id may be a key), a create an event -- each update and create
 also taking `start_note`/`end_note` (a note that sets that edge);
@@ -168,6 +168,12 @@ context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the 
 
 - Appends one ledger entry per edit and writes a new revision with
   `by: user`, built on the current revision.
+- `through`, later than the revision's, extends it there -- no later
+  than now, and never earlier than it was. Each note it takes in gets a
+  ledger entry adding it to the event it falls within (`{action: note,
+  use: annotate}`), unless the user says otherwise, in this call or
+  before. The proposal's `claude_through` still says where Claude's own
+  revision ran to; Claude's next revision runs to now, past both.
 - From an outdated revision: still applied on the current one; the
   response names each of Claude's newer changes it replaced.
 - Refused as a whole if an edit names an event or note outside the

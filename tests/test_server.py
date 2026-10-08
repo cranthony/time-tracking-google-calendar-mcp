@@ -823,6 +823,7 @@ class TestProposalTools:
             ["e3"],
             [NoteEdit(note_id="2026-01-01T09:05:00+00:00#2", use="ignore")],
             None,
+            through=None,
         )
 
     def test_clearing_a_description_or_facts_sends_them_empty(self, monkeypatch):

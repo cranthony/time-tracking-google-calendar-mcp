@@ -1955,6 +1955,7 @@ def amend_proposal(
     as_planned: list[str] | None = None,
     notes: list[NoteEdit] | None = None,
     additions: list[AdditionChoice] | None = None,
+    through: datetime | None = None,
 ) -> Proposal:
     """The user's edits to the open proposal, from the app: `updates`,
     `creates` and `cancels` as update_event takes them (an update's id may
@@ -1970,7 +1971,11 @@ def amend_proposal(
     or `drop` it from the events; and `as_planned` -- events (or keys)
     whose decisions to clear, notes to leave as Claude had them, and refs
     to leave unsettled. One created stays, whatever becomes of the
-    proposal.
+    proposal. `through`, later than the proposal's, extends it there (no
+    later than now; it can't be cut short): each note it takes in is added
+    to the event it falls within, unless `notes` says otherwise, and the
+    proposal's `claude_through` still says where Claude's revision ran
+    to.
     `revision` is the one the user was looking at. They're laid over the current revision as a new one,
     which is returned, with `replaced`: the events whose newer change by
     Claude they overrode. Refused, changing nothing, if one names an
@@ -1999,7 +2004,9 @@ def amend_proposal(
                     for c in cancels or ()
                 ),
             ]
-            return get_note_compactor().amend(proposal_id, revision, decisions, as_planned, notes, additions)
+            return get_note_compactor().amend(
+                proposal_id, revision, decisions, as_planned, notes, additions, through=through
+            )
         except CompactionError as exc:
             raise _rejected("amend_proposal", exc) from exc
 
