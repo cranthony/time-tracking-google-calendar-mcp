@@ -164,3 +164,8 @@ CANCELLATIONS_SHEET_ROLE = "cancellations"
 CANCELLATIONS_SHEET_TITLE = "Cancellations"
 """See `utilities/cancellations.py` for the tab this identifies -- the
 events the user cancelled, per person, for follow-through."""
+
+HEALTH_SHEET_ROLE = "health"
+HEALTH_SHEET_TITLE = "Health"
+"""The server's health metrics -- its tool calls' latencies, its memory
+and its restarts -- one series a row (see utilities/health.py)."""
