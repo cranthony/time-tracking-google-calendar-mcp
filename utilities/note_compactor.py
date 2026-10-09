@@ -58,9 +58,8 @@ the MCP tools use -- applied, then stamped, whole. Notes written after
 now wait for a later compaction.
 
 A day can take several compactions, so the events offered -- the
-*compaction window* -- start at the later of the day's start and the last
-*stamped* compaction's `now` (or, for a later day of a batch, the day
-before it's): whatever an earlier compaction already
+*compaction window* -- start at the later of the span's start and the
+last *stamped* compaction's `now`: whatever an earlier compaction already
 settled isn't offered again. Nor is anything after it skipped: a day
 with no notes is confirmed as planned. The one event that ended within `_LOOKBACK`
 before the compaction window starts is offered too, so an event the last
@@ -68,15 +67,19 @@ compaction closed off at "now" (or the night's sleep) can still be
 stretched. The latest compacted note, however long ago it was written,
 is offered as `previous_note`: what the user last said before the window
 often says what was going on as it began. The timeline shows it too, and
-when the last compaction ran, as context -- for the first day; a later
-day has the day before it right above it. Every past event
-offered is recorded as on schedule unless
-the client's decisions say otherwise (see utilities/note_compaction.py).
+when the last compaction ran, as context, above the span's first day.
+Every past event offered is recorded as on schedule unless the client's
+decisions say otherwise (see utilities/note_compaction.py).
 
-The events offered run through each day's end-of-day sleep, because an
-event that ran long runs into what follows it, which the decisions then
-have to move too -- and nothing may overlap any of them (see utilities/
-note_compaction.py). But compaction is about recording the past,
+The events offered run on past `now`, through the span's last night,
+because an event that ran long runs into what follows it, and nothing is
+moved to make room: the decisions have to move what follows too, and
+nothing may overlap any of the span's events, past or still to come (see
+utilities/note_compaction.py). So they're part of the plan -- and of the
+proposal's `events`, as `planned` -- and confirming checks them too: one
+the plan writes that has changed since makes a new revision, and one that
+now overlaps what the plan keeps hands it to Claude (see `confirm`).
+Events after the last night aren't read. But compaction is about recording the past,
 so the timeline shown to the user stops at `now`: a later event appears
 in it only if it's near enough to a note to be one of its candidates
 (lunch at noon, for an 11:45 "starting lunch") or -- after a dry run --

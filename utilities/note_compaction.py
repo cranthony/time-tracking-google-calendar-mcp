@@ -72,10 +72,13 @@ remove them.
   added to an event if `note_targets` has it: to the one it names, or,
   if it names none, to the one whose edge it sets.
 
-The day's own end-of-day sleep event ends the day, and its end starts
-the next one, which is never adjusted -- only warned about, unless the
-next day is being compacted with it (`next_day_follows`). Cancelling it
--- a night without sleep -- makes the day run on to the next one's end.
+The day's own end-of-day sleep event ends the day -- for a compaction,
+which plans every day since the last as one span, the span's last night
+(`closing_id`) -- and its end starts the next one, which is never
+adjusted, only warned about. (`next_day_follows` skips the warning; the
+compactor no longer sets it, the span having no day after it to plan.)
+Cancelling it -- a night without sleep -- makes the day run on to the
+next one's end.
 """
 
 from __future__ import annotations
@@ -446,7 +449,8 @@ def plan_compaction(
     one).
 
     Raises `CompactionError` (listing everything wrong at once) if the
-    decisions are invalid or leave past events overlapping. Never mutates
+    decisions are invalid or leave an event they keep or create
+    overlapping another of `day_events`, past or still to come. Never mutates
     its arguments."""
     ignored = set(ignore_notes or [])
     note_targets = dict(note_targets or {})

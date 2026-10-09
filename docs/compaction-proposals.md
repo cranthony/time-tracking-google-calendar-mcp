@@ -1,6 +1,6 @@
 # Compaction proposals
 
-Status: built in the server; the app's side is in progress.
+Status: built, in the server and the app.
 
 A compaction becomes a **proposal** the user confirms: "this is what
 happened from `from` to `through`." Claude prepares it; the user reviews
@@ -219,15 +219,32 @@ context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the 
 ### `confirm_proposal` (app only)
 
 `confirm_proposal(proposal_id, revision)` returns `{status, message,
-proposal}`, `status` one of `applied`, `rechecked`, `needs_claude`.
+proposal}`, `status` one of `applied`, `rechecked`, `needs_claude`,
+`rebuilt`.
 
-- Refused unless `revision` is current and no feedback is open.
-- Rechecks: plans the revision again on the calendar as it is now.
-  - Same writes: applies them (status `applying`), then stamps its
-    notes and makes `through` the new start of history.
-  - Different writes: writes a new revision (`recheck`) to confirm
-    again.
-  - Can't be planned: adds server feedback for Claude.
+- Refused unless `revision` is current, no feedback is open, and it
+  isn't already being applied (that's `finish_proposal`'s).
+- Rechecks: plans the revision again on the calendar as it is now, and
+  compares the writes it comes to -- each one's action, event, and the
+  event before and after -- and the notes in its window with the
+  revision's. The plan's events run past `through` to the span's last
+  night (the end-of-day sleep that ends after it), so a calendar change
+  up to then can count; one after it can't.
+  - Same writes, same notes: applies them (status `applying`), then
+    stamps its notes and makes `through` the new start of history. An
+    event changed on the calendar meanwhile that the plan doesn't
+    write is left as it is now.
+  - Different writes, or notes: writes a new revision (`recheck`) to
+    confirm again. It replays Claude's decisions and the user ledger
+    on the calendar as it is now: a calendar write isn't a ledger
+    entry, so where Claude's decision sets a field it changed, the
+    decision wins.
+  - Can't be planned -- an event a decision names is gone, say, or an
+    event now overlaps one the plan keeps or creates: adds server
+    feedback for Claude (`needs_claude`).
+  - A write that can never succeed while applying: as
+    `finish_proposal` (`rebuilt`). Any other failure leaves it
+    `applying`, refused with what stopped it, for `finish_proposal`.
 - Only the app calls it. It's a tool of its own so the user can deny it
   to Claude in Claude's connector settings -- for conversations and the
   routine alike.
@@ -240,6 +257,13 @@ proposal}`, `status` one of `applied`, `rechecked`, `needs_claude`.
 - A confirmed revision that stopped partway is resumed: writes already
   done are skipped. It was approved when confirmed, so finishing needs
   no new approval, and Claude may do it.
+- It takes no revision: only a confirmed revision is ever being
+  applied, and only one at a time; with none, it's refused ("hasn't been
+  confirmed").
+- It doesn't plan it again: the writes left are made as confirmed, over
+  whatever the calendar says now. Nothing refuses a calendar write to
+  the span while it's being applied, so one made meanwhile to an event
+  a write left changes is overwritten.
 - A write that can never succeed (Calendar: not found, gone) marks the
   revision `failed`, and the server writes a new revision (`apply
   failed`), its first warning saying what stopped it and what couldn't
