@@ -2051,9 +2051,13 @@ def confirm_proposal(proposal_id: str, revision: int) -> ProposalResult:
     revision -- the one they reviewed -- as what happened, and it's
     applied. Not for Claude: only the user confirms. Refused while
     feedback is waiting for Claude, or if `revision` isn't the current
-    one. If the notes or calendar changed since, it's planned again as a
-    new revision to confirm instead (`rechecked`); if it no longer plans
-    at all, it's handed to Claude (`needs_claude`)."""
+    one. If the notes or calendar changed since -- through the
+    proposal's last night, past `through` -- so it would write something
+    else, it's planned again as a new revision to confirm instead
+    (`rechecked`); if it no longer plans at all, it's handed to Claude
+    (`needs_claude`). A change that can never be made while applying
+    proposes what's left again (`rebuilt`); any other failure leaves it
+    to finish_proposal."""
     with track("confirm_proposal"), cached_reads():
         try:
             return get_note_compactor().confirm(proposal_id, revision)
@@ -2065,8 +2069,10 @@ def confirm_proposal(proposal_id: str, revision: int) -> ProposalResult:
 @writes
 def finish_proposal(proposal_id: str) -> ProposalResult:
     """Finish applying a confirmed proposal that stopped partway: what was
-    done stays done, and the rest is applied. It was confirmed, so this
-    needs no new approval. If a change can never be made (its event is
+    done stays done, and the rest is applied as confirmed, without planning
+    it again: over whatever the calendar says now. It was confirmed, so
+    this needs no new approval, nor a revision: only the confirmed one is
+    ever being applied. If a change can never be made (its event is
     gone), what's left is proposed again as a new revision for the user
     to confirm (`rebuilt`)."""
     with track("finish_proposal"), cached_reads():
