@@ -54,14 +54,22 @@ class WriteLock:
 
 WRITE_LOCK = WriteLock()
 
+HEALTH_TAB_LOCK = WriteLock()
+"""What writes to the Health tab hold instead of `WRITE_LOCK` (see
+utilities/health.py): its background writer, every 30 seconds. Nothing
+but those writes touches the tab, so holding this rather than
+`WRITE_LOCK` keeps them from interleaving with each other without ever
+making a tool wait for one, or one wait for a tool."""
+
 
 def requires_write_lock(method: Callable[P, R]) -> Callable[P, R]:
     """Mark `method` as writing to Google: calling it without holding
-    `WRITE_LOCK` raises WriteLockNotHeldError."""
+    `WRITE_LOCK` -- or, writing the Health tab, `HEALTH_TAB_LOCK` --
+    raises WriteLockNotHeldError."""
 
     @functools.wraps(method)
     def checked(*args: P.args, **kwargs: P.kwargs) -> R:
-        if not WRITE_LOCK.held():
+        if not (WRITE_LOCK.held() or HEALTH_TAB_LOCK.held()):
             raise WriteLockNotHeldError(
                 f"{method.__qualname__} writes to Google, so its caller must hold WRITE_LOCK"
             )

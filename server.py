@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import functools
 import logging
 import os
+import time
 from collections.abc import Callable, Collection, Iterator
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -14,7 +16,7 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from starlette.middleware.cors import CORSMiddleware
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from calendar_clients.google_calendar import (
     CalendarClient,
@@ -30,6 +32,7 @@ from config import (
     build_calendar_client,
     build_compaction_journal,
     build_habits,
+    build_health_tab,
     build_compaction_schedule,
     build_locations,
     build_noted_time_sheet,
@@ -68,6 +71,8 @@ from utilities.event_changes import Cancel, ChangeError, EventChanges, Shift
 from utilities.habits import CreatedHabit, Habit, Habits, HabitStatus, ListedHabit, action_scopes, subject_id
 from utilities.compaction_schedule import CompactionSchedule, CompactionScheduleHints, ScheduleHint
 from utilities.locations import CreatedLocation, Location, Locations
+from utilities import health
+from utilities.health import HealthRecorder, HealthTab, HealthWriter
 from utilities.memory_diagnostics import track
 from utilities.note_compaction import CompactionCreate, CompactionError, CompactionUpdate, EventDecision, NoteAnnotation
 from utilities.compaction_journal import CompactionJournal
@@ -677,10 +682,40 @@ def writes(tool: Callable[P, R]) -> Callable[P, R]:
     return locked
 
 
+HEALTH = HealthRecorder()
+"""The server's health metrics, in memory: each tool call's latency, and
+the memory in use after it (see utilities/health.py). Written to the
+Health tab by `_health_writer`, started with the server."""
+
+_health_writer: HealthWriter | None = None
+
+
+@dataclass
+class _RequestTiming:
+    """An HTTP request, as `with_health` times it: when it started, and
+    the tool calls it carried, each as `tool` timed it -- name, how long
+    its own work took, and whether it succeeded."""
+
+    started: float
+    calls: list[tuple[str, int, bool]]
+
+
+_request_timing: contextvars.ContextVar[_RequestTiming | None] = contextvars.ContextVar(
+    "request_timing", default=None
+)
+"""Set by `with_health` for each HTTP request. The MCP SDK hands each
+message on to its handler with the context it was sent in, so a tool
+call sees its request's -- and adds itself to it, for `with_health` to
+record with the request's whole time once the response is sent."""
+
+
 def tool(fn: Callable[P, R]) -> Callable[P, R]:
     """Register `fn` as an MCP tool, like `mcp.tool()`, telling the model
     how to recover if the calendar has no time zone set (see
-    `CalendarClient.get_time_zone`): set one, then retry."""
+    `CalendarClient.get_time_zone`): set one, then retry. Each call is
+    timed for the health metrics: its own work, and whether it succeeded
+    -- recorded with its request's whole time, by `with_health`, if it
+    came over HTTP, or else at once."""
 
     @functools.wraps(fn)
     def explained(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -693,7 +728,23 @@ def tool(fn: Callable[P, R]) -> Callable[P, R]:
                 f"them for it if you don't know it, then call {fn.__name__} again."
             ) from exc
 
-    return mcp.tool()(explained)
+    @functools.wraps(fn)
+    def timed(*args: P.args, **kwargs: P.kwargs) -> R:
+        started = time.perf_counter()
+        ok = False
+        try:
+            result = explained(*args, **kwargs)
+            ok = True
+            return result
+        finally:
+            work_ms = round((time.perf_counter() - started) * 1000)
+            request = _request_timing.get()
+            if request is not None:
+                request.calls.append((fn.__name__, work_ms, ok))
+            else:
+                HEALTH.record_call(fn.__name__, work_ms=work_ms, total_ms=None, ok=ok)
+
+    return mcp.tool()(timed)
 
 
 @tool
@@ -2229,6 +2280,188 @@ def set_time_zone(time_zone: str) -> str:
         return zone.key
 
 
+@dataclass(kw_only=True)
+class LatencySummary:
+    """The median, 95th percentile and slowest of some calls' latencies."""
+
+    median_ms: int
+    p95_ms: int
+    max_ms: int
+
+
+@dataclass(kw_only=True)
+class HealthCall:
+    """One tool call: when it ended (UTC), how long the tool's own work
+    took, and -- if it came over HTTP -- how long the whole request took,
+    auth and transport included, and how much of that wasn't the tool's
+    work (`overhead_ms`: `work_ms` and it stack to `total_ms`, to graph on
+    one timeline). `ok`: it returned, rather than raising; a refusal the
+    tool returns as its result is still ok."""
+
+    at: str
+    work_ms: int
+    total_ms: int | None = None
+    overhead_ms: int | None = None
+    ok: bool
+
+
+@dataclass(kw_only=True)
+class ToolHealth:
+    """One tool's last calls (up to 100): how many, how many failed, and
+    their latencies -- the tool's own work, and the whole request's."""
+
+    tool: str
+    count: int
+    errors: int
+    work: LatencySummary | None = None
+    total: LatencySummary | None = None
+    calls: list[HealthCall] | None = None
+
+
+@dataclass(kw_only=True)
+class MemorySample:
+    """The server's resident memory (RSS), in MiB, after a tool call --
+    any tool's -- ended (UTC)."""
+
+    at: str
+    rss_mib: float
+
+
+@dataclass(kw_only=True)
+class HealthReport:
+    """The server's health: each tool's calls (`tools`), its memory after
+    each of its last 100 calls, whichever tool (`memory`, with the least,
+    most and latest), and when it last started up, up to 100 times
+    (`restarts`: there's one server, so each start after the first is a
+    restart -- a crash, or a deploy). Times are UTC, oldest first."""
+
+    tools: list[ToolHealth]
+    memory: list[MemorySample] | None = None
+    memory_latest_mib: float | None = None
+    memory_min_mib: float | None = None
+    memory_max_mib: float | None = None
+    restarts: list[str]
+
+
+def _summary(values: list[int]) -> LatencySummary | None:
+    summary = health.latency_summary(values)
+    return None if summary is None else LatencySummary(**summary)
+
+
+@tool
+def get_health(tool_name: str | None = None, samples: bool = True) -> HealthReport:
+    """The server's health metrics, to graph or look for patterns in: for
+    each tool, its last 100 calls -- when each ended, how long the tool's
+    own work took and how long the whole request took (auth and transport
+    included), and whether it succeeded -- with the median, 95th
+    percentile and slowest of each; the server's memory after each of its
+    last 100 calls, whichever tool; and its last 100 restarts. Kept across
+    restarts, in the Health tab of the calendar's metadata spreadsheet;
+    the last few seconds' may not be written yet, but are given here.
+
+    `tool_name`: just that tool's calls. `samples`: false for just the
+    summaries, without each call and memory sample. Read-only."""
+    if _health_writer is not None:
+        # What the tab kept, from before this start, taken in.
+        _health_writer.loaded.wait(timeout=10)
+    calls = HEALTH.calls()
+    if tool_name is not None:
+        if tool_name not in calls:
+            known = ", ".join(calls) or "none yet"
+            raise ToolError(f"No calls of {tool_name!r} are recorded; those that are: {known}")
+        calls = {tool_name: calls[tool_name]}
+    tools = []
+    for name, recorded in calls.items():
+        totals = [c.total_ms for c in recorded if c.total_ms is not None]
+        tools.append(
+            ToolHealth(
+                tool=name,
+                count=len(recorded),
+                errors=sum(not c.ok for c in recorded),
+                work=_summary([c.work_ms for c in recorded]),
+                total=_summary(totals),
+                calls=[
+                    HealthCall(
+                        at=health.iso(c.at_ms),
+                        work_ms=c.work_ms,
+                        total_ms=c.total_ms,
+                        overhead_ms=None if c.total_ms is None else c.total_ms - c.work_ms,
+                        ok=c.ok,
+                    )
+                    for c in recorded
+                ]
+                if samples
+                else None,
+            )
+        )
+    memory = HEALTH.memory()
+    mib = [round(m.rss_kib / 1024, 1) for m in memory]
+    return HealthReport(
+        tools=tools,
+        memory=[MemorySample(at=health.iso(m.at_ms), rss_mib=v) for m, v in zip(memory, mib)] if samples else None,
+        memory_latest_mib=mib[-1] if mib else None,
+        memory_min_mib=min(mib) if mib else None,
+        memory_max_mib=max(mib) if mib else None,
+        restarts=[health.iso(t) for t in HEALTH.restarts()],
+    )
+
+
+def with_health(app: ASGIApp) -> ASGIApp:
+    """Times each HTTP request to [app] -- from when it arrives till its
+    response is sent, auth and transport included -- and records each
+    tool call it carried with that time, beside the tool's own (see
+    `tool`). Recording is a few microseconds' append to memory, after
+    the response is sent: the health writer writes it later."""
+
+    async def timed(scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope.get("method") != "POST":
+            await app(scope, receive, send)
+            return
+        timing = _RequestTiming(started=time.perf_counter(), calls=[])
+        recorded = False
+
+        def record() -> None:
+            nonlocal recorded
+            if recorded:
+                return
+            recorded = True
+            total_ms = round((time.perf_counter() - timing.started) * 1000)
+            for name, work_ms, ok in timing.calls:
+                HEALTH.record_call(name, work_ms=work_ms, total_ms=max(total_ms, work_ms), ok=ok)
+
+        async def sent(message: Message) -> None:
+            await send(message)
+            if message["type"] == "http.response.body" and not message.get("more_body", False):
+                record()
+
+        token = _request_timing.set(timing)
+        try:
+            await app(scope, receive, sent)
+        finally:
+            _request_timing.reset(token)
+            # A response cut short (the client gone) is still recorded.
+            record()
+
+    return timed
+
+
+def _open_health_tab() -> HealthTab:
+    """The Health tab, for the health writer: finding (or, the first time,
+    making) the metadata spreadsheet may write to the calendar, so that
+    holds `WRITE_LOCK`, once, as the server starts."""
+    with WRITE_LOCK:
+        return build_health_tab()
+
+
+def start_health_writer() -> None:
+    """Starts writing the health metrics to the Health tab, in the
+    background, recording this start as a restart (see utilities/
+    health.py)."""
+    global _health_writer
+    _health_writer = HealthWriter(HEALTH, _open_health_tab)
+    _health_writer.start()
+
+
 def with_cors(app: ASGIApp) -> ASGIApp:
     """Lets browser-based MCP clients (e.g. the Time Tracker web app) call
     [app] cross-origin: answers their CORS preflights -- before auth, which
@@ -2264,11 +2497,13 @@ if __name__ == "__main__":
         # assigns (default 10000 locally, to match Render's own default).
         # Same as mcp.run(transport="streamable-http"), plus with_cors.
         host = "0.0.0.0"
+        start_health_writer()
         uvicorn.run(
-            with_cors(mcp.streamable_http_app(host=host)),
+            with_health(with_cors(mcp.streamable_http_app(host=host))),
             host=host,
             port=int(os.environ.get("PORT", 10000)),
             log_level=mcp.settings.log_level.lower(),
         )
     else:
+        start_health_writer()
         mcp.run()

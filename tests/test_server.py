@@ -1560,6 +1560,7 @@ _READ_ONLY_TOOLS = {
     "get_compaction_schedule_hints",
     "prepare_judgments",
     "prepare_habit_judgments",
+    "get_health",
 }
 
 

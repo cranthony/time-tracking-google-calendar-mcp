@@ -14,6 +14,7 @@ from utilities.actions import Actions
 from utilities.cancellations import Cancellations
 from utilities.compaction_journal import CompactionJournal
 from utilities.habits import Habits
+from utilities.health import HealthTab
 from utilities.compaction_schedule import CompactionSchedule
 from utilities.locations import Locations
 from utilities.noted_time_sheet import NotedTimeSheet
@@ -175,6 +176,19 @@ def build_cancellations(
         calendar_client, sheets_client
     )
     return Cancellations.ensure(sheets_client, spreadsheet_id, people, traits, actions, habits)
+
+
+def build_health_tab(calendar_id: str | None = None) -> HealthTab:
+    """Construct the HealthTab from environment configuration (and a local
+    .env file, if present). See `_build_calendar_and_sheets_clients` for
+    `calendar_id`. Constructing this ensures the calendar has a metadata
+    spreadsheet and a Health tab -- see `HealthTab.ensure`. Making the
+    spreadsheet writes to the calendar, so the caller holds WRITE_LOCK."""
+    calendar_client, sheets_client = _build_calendar_and_sheets_clients(calendar_id)
+    spreadsheet_id, _is_new_spreadsheet = calendar_metadata_sheet.ensure_spreadsheet(
+        calendar_client, sheets_client
+    )
+    return HealthTab.ensure(sheets_client, spreadsheet_id)
 
 
 def build_traits(calendar_id: str | None = None) -> Traits:
