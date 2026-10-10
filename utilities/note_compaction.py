@@ -161,6 +161,13 @@ class EventDecision:
     """`create`: what a proposal calls the event before it exists, so an
     edit can name it (see utilities/compaction_proposals.py)."""
 
+    allow_history: bool | None = None
+    """True when the user approved this decision changing history (an
+    edit of a proposal sent with allow_compacted_changes): it may move the
+    start of, end earlier, or cancel or merge away an event an earlier
+    compaction recorded (see `history_until`). Only ever the user's; kept
+    with their edit, so every revision planned from it keeps to it."""
+
     def to_json_dict(self) -> dict:
         return {
             key: (
@@ -658,7 +665,7 @@ def _resolve(
         return min(event.end, history_until)
 
     for event_id, decision in by_event.items():
-        compacted = settled(events_by_id[event_id])
+        compacted = None if decision.allow_history else settled(events_by_id[event_id])
         if decision.action in ("cancel", "merge") and compacted is not None:
             problems.append(
                 Problem(
@@ -691,7 +698,7 @@ def _resolve(
                 "which isn't a positive length")
             )
             continue
-        compacted = settled(base)
+        compacted = None if decision.allow_history else settled(base)
         if compacted is not None and start != base.start:
             problems.append(
                 Problem(

@@ -181,6 +181,12 @@ context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the 
   description too long, if the result overlaps, or if it changes
   history. The response
   returns the current revision and the refused edits.
+- Changing history -- moving the start of, ending earlier, or cancelling
+  or merging away an event an earlier compaction recorded -- is allowed
+  once the user approves it: sent again with `allow_compacted_changes`,
+  each edit is kept with `allow_history`, so every revision planned from
+  the ledger (Claude's, a recheck, a rebuild) keeps to it. Only ever the
+  user's: Claude's own decisions keep to history.
 - A `description` is the event's whole description, as the user wrote
   it from what `get_proposal` shows, notes and all. It replaces
   Claude's `annotate`. A note counts as added only if the description

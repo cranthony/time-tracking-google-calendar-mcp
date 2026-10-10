@@ -500,6 +500,7 @@ def merge(
                     action="cancel",
                     event_id=target,
                     counts_against_follow_through=edit.edit.get("counts_against_follow_through"),
+                    allow_history=edit.edit.get("allow_history"),
                 )
                 decided_by[target] = "user"
             continue
@@ -583,6 +584,9 @@ def _overlay(under: EventDecision, over: EventDecision) -> EventDecision:
             changes[note] = None
         if getattr(over, note) is not None and getattr(over, time) is None:
             changes[time] = None
+    if over.allow_history:
+        # The user approved it changing history: so, then, may the rest.
+        changes["allow_history"] = True
     if over.description is not None:
         # The user's own description: no annotate text, and what it
         # leaves out is its own.
@@ -601,6 +605,8 @@ def decision_shape(decision: EventDecision) -> tuple[str, dict]:
     for handing Claude's decisions back to it."""
     data = decision.to_json_dict()
     action = data.pop("action")
+    # The user's alone: never Claude's to send back.
+    data.pop("allow_history", None)
     if action == "create":
         return "creates", data
     if action == "cancel":
