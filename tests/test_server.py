@@ -826,6 +826,26 @@ class TestProposalTools:
             through=None,
         )
 
+    def test_amend_proposal_changes_history_only_once_the_user_approves(self, monkeypatch):
+        compactor = _fake_compactor(monkeypatch)
+        compactor.amend.side_effect = CompactionError.of(
+            [Problem("compacted", "its start can't move")], "compacted"
+        )
+
+        with pytest.raises(ToolError, match="allow_compacted_changes"):
+            server.amend_proposal("0123456789ab", 2, updates=[ProposalUpdate(event=PublicEvent(id="e1"))])
+
+        compactor.amend.side_effect = None
+        server.amend_proposal(
+            "0123456789ab",
+            2,
+            updates=[ProposalUpdate(event=PublicEvent(id="e1"))],
+            cancels=[EventCancel(event_id="e2", counts_against_follow_through=False)],
+            allow_compacted_changes=True,
+        )
+        decisions = compactor.amend.call_args.args[2]
+        assert [d.allow_history for d in decisions] == [True, True]
+
     def test_clearing_a_description_or_facts_sends_them_empty(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
 

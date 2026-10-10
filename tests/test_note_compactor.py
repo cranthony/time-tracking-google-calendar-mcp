@@ -2193,6 +2193,26 @@ class TestProposals:
         assert setup.journal.revisions(p) == [(1, f"{p}r1", PROPOSED)]
         assert setup.journal.user_edits(p) == []
 
+    def test_an_edit_changing_history_is_refused_unless_the_user_approved_it(self):
+        # The last compaction ran at 09:30, as the email was going on.
+        setup = Setup([])
+        setup.journal.start("prev", now=time_at("09:30"), note_ids=[], decisions=[], plan=CompactionPlan(changes=[]))
+        setup.journal.set_status(setup.journal.load("prev"), STAMPED)
+        setup.compactor.dry_run([])
+        p = setup.compactor.get_proposal().id
+
+        with pytest.raises(CompactionError, match="its start can't move") as excinfo:
+            setup.compactor.amend(p, 1, [_keep("e1", start=time_at("09:10"))])
+        assert excinfo.value.categories == ["compacted"]
+
+        proposal = setup.compactor.amend(p, 1, [_keep("e1", start=time_at("09:10"), allow_history=True)])
+
+        assert self._event(proposal, "e1").start == time_at("09:10")
+        assert proposal.user_edits[0].edit["allow_history"] is True
+        # Kept with the edit: a revision planned again from it keeps to it.
+        outcome = setup.compactor.confirm(p, proposal.revision)
+        assert outcome.status == "applied"
+
     def test_an_edit_of_an_event_not_in_the_proposal_is_refused(self):
         setup, p = self._proposed()
 

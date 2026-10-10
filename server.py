@@ -2007,6 +2007,7 @@ def amend_proposal(
     notes: list[NoteEdit] | None = None,
     additions: list[AdditionChoice] | None = None,
     through: datetime | None = None,
+    allow_compacted_changes: bool = False,
 ) -> Proposal:
     """The user's edits to the open proposal, from the app: `updates`,
     `creates` and `cancels` as update_event takes them (an update's id may
@@ -2031,8 +2032,11 @@ def amend_proposal(
     which is returned, with `replaced`: the events whose newer change by
     Claude they overrode. Refused, changing nothing, if one names an
     event or a note that isn't in the proposal, adds a note to an event
-    of another day, or the result overlaps, or changes history; nothing
-    is moved to make room."""
+    of another day, or the result overlaps, or changes history -- moves
+    the start of, ends earlier, or cancels an event an earlier compaction
+    recorded -- unless allow_compacted_changes is set: ONLY set it when the
+    user has explicitly approved changing history. It's kept with these
+    edits, so later revisions keep to it. Nothing is moved to make room."""
     with track("amend_proposal"), cached_reads():
         try:
             decisions = [
@@ -2055,10 +2059,18 @@ def amend_proposal(
                     for c in cancels or ()
                 ),
             ]
+            if allow_compacted_changes:
+                decisions = [replace(d, allow_history=True) for d in decisions]
             return get_note_compactor().amend(
                 proposal_id, revision, decisions, as_planned, notes, additions, through=through
             )
         except CompactionError as exc:
+            if "compacted" in exc.categories and not allow_compacted_changes:
+                exc = CompactionError.wrapping(
+                    f"{exc}\n\nIt changes history, which needs the user's approval: send it again "
+                    "with allow_compacted_changes once they've given it.",
+                    exc,
+                )
             raise _rejected("amend_proposal", exc) from exc
 
 

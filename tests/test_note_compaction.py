@@ -137,6 +137,20 @@ class TestCompacted:
 
         assert excinfo.value.categories == ["compacted"]
 
+    @pytest.mark.parametrize(
+        "decision",
+        [
+            _keep("e2", end=time_at("10:20"), allow_history=True),
+            _keep("e2", start=time_at("10:05"), allow_history=True),
+            EventDecision(action="cancel", event_id="e2", allow_history=True),
+            EventDecision(action="cancel", event_id="e1", allow_history=True),
+        ],
+    )
+    def test_unless_the_user_approved_changing_it(self, decision):
+        plan = _plan([], [decision], history_until=time_at("10:30"))
+
+        assert decision.event_id in _by_event(plan)
+
 
 class TestKeep:
     def test_notes_set_the_edges_they_mark(self):
