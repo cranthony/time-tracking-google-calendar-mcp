@@ -3647,6 +3647,7 @@
           "type": "object"
         },
         "NewLocation": {
+          "additionalProperties": false,
           "description": "A location to add: `ref`, `name` and a `hint`. id is assigned when\nit's created.",
           "properties": {
             "hint": {
@@ -8109,6 +8110,7 @@
     "inputSchema": {
       "$defs": {
         "Location": {
+          "additionalProperties": false,
           "description": "One location -- see the module docstring.",
           "properties": {
             "hint": {
@@ -8167,6 +8169,7 @@
     "outputSchema": {
       "$defs": {
         "Location": {
+          "additionalProperties": false,
           "description": "One location -- see the module docstring.",
           "properties": {
             "hint": {
@@ -13976,6 +13979,7 @@
     "outputSchema": {
       "$defs": {
         "Location": {
+          "additionalProperties": false,
           "description": "One location -- see the module docstring.",
           "properties": {
             "hint": {
@@ -21726,6 +21730,7 @@
     "inputSchema": {
       "$defs": {
         "Location": {
+          "additionalProperties": false,
           "description": "One location -- see the module docstring.",
           "properties": {
             "hint": {

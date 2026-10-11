@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shlex
 import socket
 import sys
@@ -141,6 +142,8 @@ class Session:
             content = "\n".join(texts)
         if tool == "get_health" and not result.is_error:
             content = _masked_timings(content)
+        if isinstance(content, str):
+            content = unversioned(content)
         call = Call(tool, arguments, bool(result.is_error), content)
         self.calls.append(call)
         return call
@@ -153,6 +156,13 @@ class Session:
         }
 
 
+def unversioned(text: str) -> str:
+    """`text` with the pydantic version taken out of its error links
+    (".../2.13/v/missing"): it's whichever pydantic got installed, not
+    something the server decides."""
+    return re.sub(r"errors\.pydantic\.dev/[0-9.]+/", "errors.pydantic.dev/<version>/", text)
+
+
 _TIMING_KEYS = {"at", "work_ms", "total_ms", "overhead_ms", "median_ms", "p95_ms", "max_ms", "rss_mib", "memory_latest_mib", "memory_min_mib", "memory_max_mib"}
 
 
@@ -161,7 +171,12 @@ def _masked_timings(value: Any) -> Any:
     run to run -- replaced by what kind of value each was, so its shape and
     counts are still compared."""
     if isinstance(value, dict):
-        return {k: (type(v).__name__ if k in _TIMING_KEYS and v is not None else _masked_timings(v)) for k, v in value.items()}
+        masked = {k: (type(v).__name__ if k in _TIMING_KEYS and v is not None else _masked_timings(v)) for k, v in value.items()}
+        for key in masked:
+            if key.startswith("memory"):
+                # Whether memory can be measured depends on the platform.
+                masked[key] = "<memory>"
+        return masked
     if isinstance(value, list):
         return [_masked_timings(v) for v in value]
     return value

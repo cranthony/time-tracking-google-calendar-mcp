@@ -25,7 +25,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 from conformance.conftest import check_golden
 from conformance.fake_google import FakeGoogle
-from conformance.harness import DEFAULT_NOW, FakeGoogleServer, ROOT, _free_port, server_command
+from conformance.harness import DEFAULT_NOW, FakeGoogleServer, ROOT, _free_port, server_command, unversioned
 
 ALLOWED = "user_01ALLOWED"
 OTHER = "user_01STRANGER"
@@ -142,7 +142,7 @@ class HttpServer:
 
 def _normalized(text: str, base: str, issuer: str) -> str:
     """Addresses that change from run to run, made fixed."""
-    return text.replace(base, "<server>").replace(issuer, "<authkit>")
+    return unversioned(text.replace(base, "<server>").replace(issuer, "<authkit>"))
 
 
 @pytest.fixture

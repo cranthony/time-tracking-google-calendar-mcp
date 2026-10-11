@@ -53,6 +53,27 @@ class TestCreateAction:
         assert created.changed[0].effective_color == color_for_priority(1)[1]
         assert created.changed[0].holds_label
 
+    @pytest.mark.parametrize("color", ["red", "#12345", "#1234567", "123456", "#ggg000", ""])
+    def test_refuses_a_color_that_isnt_hex(self, color):
+        actions, _, sheets = _actions()
+
+        with pytest.raises(ValueError, match="isn't a color: give one as #rrggbb"):
+            _create(actions, name="Walk", background_color=color)
+        assert actions.all() == []
+
+    def test_refuses_a_color_that_isnt_hex_on_update_and_on_groups(self):
+        actions, _, _ = _actions()
+        walk = _create(actions, name="Walk")
+        group = _group(actions, name="Outside")
+
+        with pytest.raises(ValueError, match="isn't a color"):
+            actions.update_action(Action(id=walk, background_color="blue"))
+        with pytest.raises(ValueError, match="isn't a color"):
+            actions.create_action_group(ActionGroup(name="Inside", background_color="blue"))
+        with pytest.raises(ValueError, match="isn't a color"):
+            actions.update_action_group(ActionGroup(id=group, background_color="blue"))
+        actions.update_action(Action(id=walk, background_color="#A4BDFC"))
+
     def test_ignores_an_id_or_label_id_given(self):
         actions, _, _ = _actions()
 

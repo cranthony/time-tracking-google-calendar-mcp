@@ -40,7 +40,7 @@ async def test_create_and_update_traits(session):
 async def test_trait_part_with_action(session):
     action = (await session.call("create_action", action={"name": "go hiking", "status": "active"}))["created_id"]
     await session.call("create_trait", trait={"name": "Outdoorsy", "definition": "Time outside.", "parts": [{"kind": "count", "target": 2, "interval_days": 14, "noun": "hikes", "action": action}]})
-    await session.attempt("create_trait", trait={"name": "Broken", "definition": "d", "parts": [{"kind": "count", "target": 2, "interval_days": 14, "noun": "x", "action": "nosuch"}]})
+    await session.call_error("create_trait", trait={"name": "Broken", "definition": "d", "parts": [{"kind": "count", "target": 2, "interval_days": 14, "noun": "x", "action": "nosuch"}]})
 
 
 async def test_traits_edited_by_hand(session, google):

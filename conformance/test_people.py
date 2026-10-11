@@ -11,7 +11,7 @@ async def test_people(session):
     alex_id = alex["created_id"]
     other = await session.call("create_person", person={"name": "Alex Example", "context": "from work"})
     await session.call_error("create_person", person={"name": "Alex Example", "context": "met at salsa"})
-    await session.attempt("create_person", person={"name": "Alex Example"})
+    await session.call_error("create_person", person={"name": "Alex Example"})
     ambiguous = await session.call_error("get_person", id_or_name="alex example")
     assert "salsa" in ambiguous and "work" in ambiguous
     assert (await session.call("get_person", id_or_name=alex_id))["context"] == "met at salsa"

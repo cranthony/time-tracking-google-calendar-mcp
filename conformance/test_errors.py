@@ -19,7 +19,7 @@ async def test_schema_refusals(session):
     await session.call_error("update_event", updates=[{"event": {"id": "x"}, "clear_fields": ["summary"]}])
     await session.call_error("set_compaction_schedule_hints", hints="07:30")
     await session.call_error("update_priority_color", priority="high", color="#000000")
-    await session.attempt("create_location", location={"name": "Home", "unknown_field": 1})
+    await session.call_error("create_location", location={"name": "Home", "unknown_field": 1})
 
 
 async def test_missing_things(session):

@@ -100,7 +100,7 @@
    "status": 200
   },
   {
-   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"content\":[{\"text\":\"Error executing tool create_location: 1 validation error for create_locationArguments\\nlocation\\n  Input should be a dictionary or an instance of Location [type=dataclass_type, input_value='not an object', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/dataclass_type\",\"type\":\"text\"}],\"isError\":true}}\r\n\r\n",
+   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"content\":[{\"text\":\"Error executing tool create_location: 1 validation error for create_locationArguments\\nlocation\\n  Input should be a dictionary or an instance of Location [type=dataclass_type, input_value='not an object', input_type=str]\\n    For further information visit https://errors.pydantic.dev/<version>/v/dataclass_type\",\"type\":\"text\"}],\"isError\":true}}\r\n\r\n",
    "headers": {
     "cache-control": "no-cache, no-transform",
     "content-type": "text/event-stream"

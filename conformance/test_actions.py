@@ -25,7 +25,7 @@ async def test_create_and_find(session):
     assert "play guitar" in missing
     await session.call_error("create_action", action={"name": "Play Guitar"})
     await session.call_error("create_action", action={"name": "x" * 51})
-    await session.attempt("create_action", action={"name": "named color", "background_color": "red"})
+    await session.call_error("create_action", action={"name": "named color", "background_color": "red"})
 
 
 async def test_update_and_statuses(session):
