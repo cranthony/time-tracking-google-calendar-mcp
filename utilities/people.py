@@ -258,6 +258,7 @@ class People:
         """Add `person` (active unless given a status), with a new id."""
         people = self._sheet.read()
         new = replace(person, id=new_id({p.id for p in people}), status=person.status or "active")
+        _check_context(new, [self_person(), *people])
         circles = self.circles()
         self._write_people(people + [new], circles)
         return CreatedPerson(person=_listed(new, circles), created_id=new.id)
@@ -276,6 +277,8 @@ class People:
         if index is None:
             find_person(self.all(), person.id)  # Raises, suggesting close matches.
         changed = updated(people[index], person, clear_fields)
+        if person.name is not None or "context" in clear_fields:
+            _check_context(changed, [self_person(), *people])
         people[index] = changed
         circles = self.circles()
         self._write_people(people, circles)
@@ -378,6 +381,25 @@ def _no_match(kind: str, lister: str, items: list[Any], id_or_name: str) -> str:
     return f"There's no {kind} with the id or name {id_or_name!r}" + (f"; did you mean {hint}?" if hint else "") + (
         f" ({lister} lists them)"
     )
+
+
+def _check_context(person: Person, people: list[Person]) -> None:
+    """Refuse `person` -- one being added or changed -- having no context
+    when someone else has their name: a name that's shared needs a context
+    to tell them apart. Checked only for the person changing, so people
+    already sharing a name aren't stuck."""
+    if (person.context or "").strip() or not isinstance(person.name, str):
+        return
+    name = person.name.strip().casefold()
+    others = [p for p in people if p.id != person.id and isinstance(p.name, str) and p.name.strip().casefold() == name]
+    if others:
+        other = others[0]
+        name = other.name if other.id != SELF_ID else (other.name or SELF_NAME)
+        where = f" with the context {other.context!r}" if other.context else " with no context"
+        raise ValueError(
+            f"there's already a person named {name!r}{where} ({other.id}); a name someone else has needs a "
+            "context that tells them apart (e.g. \"met at salsa\")"
+        )
 
 
 def person_problems(

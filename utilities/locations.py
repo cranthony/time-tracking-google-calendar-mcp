@@ -14,6 +14,8 @@ import difflib
 from collections.abc import Collection
 from dataclasses import dataclass, replace
 
+from pydantic import ConfigDict
+
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
 from utilities.row_sheet import RowSheet, check_clear, new_id, updated
@@ -36,6 +38,10 @@ class Location:
     hint: str | None = None
     """How to tell that an event or note refers to it: other names for it,
     an address, what happens there."""
+
+    # A field it doesn't have is refused, not quietly dropped: a client
+    # sending one has the wrong idea of what a location is.
+    __pydantic_config__ = ConfigDict(extra="forbid")
 
 
 @dataclass(kw_only=True)

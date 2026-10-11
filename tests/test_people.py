@@ -71,6 +71,25 @@ class TestCreatePerson:
         with pytest.raises(ValueError, match=r"already a person named 'Sam' with the context 'work'.*give a context"):
             _person(people, name="sam", context=" Work")
 
+    def test_a_name_someone_else_has_needs_a_context(self):
+        people, _ = _people()
+        _person(people, name="Sam", context="met at salsa")
+
+        with pytest.raises(ValueError, match=r"already a person named 'Sam' with the context 'met at salsa'.*needs a context"):
+            _person(people, name="sam")
+        _person(people, name="Sam", context="work")
+
+    def test_people_already_sharing_a_name_arent_stuck(self):
+        people, sheets = _people()
+        first = _person(people, name="Sam")
+        # Two of them without contexts, as an older version allowed.
+        second = _person(people, name="Sam", context="work")
+        people.update_person(Person(id=second, what_matters="music"))
+        people.update_person(Person(id=first, what_matters="books"))
+
+        with pytest.raises(ValueError, match="needs a context"):
+            people.update_person(Person(id=second), clear_fields=["context"])
+
     def test_refuses_unknown_circles(self):
         people, _ = _people()
 

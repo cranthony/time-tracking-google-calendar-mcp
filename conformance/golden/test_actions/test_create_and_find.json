@@ -179,28 +179,8 @@
      "name": "named color"
     }
    },
-   "content": {
-    "changed": [
-     {
-      "background_color": "red",
-      "effective_color": "red",
-      "effective_priority": null,
-      "group_id": null,
-      "holds_label": true,
-      "id": "m8t0mg",
-      "label_id": "a9a107f0-309a-5c14-bd95-7649964be319",
-      "name": "named color",
-      "note": null,
-      "path": "named color",
-      "priority": null,
-      "status": "proposed"
-     }
-    ],
-    "created_id": "m8t0mg",
-    "label_slots_total": 200,
-    "label_slots_used": 7
-   },
-   "is_error": false,
+   "content": "Error executing tool create_action: 'red' isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"",
+   "is_error": true,
    "tool": "create_action"
   }
  ],
@@ -1371,115 +1351,6 @@
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 26,
-        "endRowIndex": 4,
-        "sheetId": 1000005,
-        "startColumnIndex": 0,
-        "startRowIndex": 1
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "4709iy",
-        "",
-        "play guitar",
-        "active",
-        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
-        "",
-        "1",
-        "every day"
-       ],
-       [
-        "bcyx3f",
-        "",
-        "read a book",
-        "proposed",
-        "7e24e426-20ee-500e-8413-2a46dd1d1a62",
-        "",
-        "",
-        ""
-       ],
-       [
-        "m8t0mg",
-        "",
-        "named color",
-        "proposed",
-        "a9a107f0-309a-5c14-bd95-7649964be319",
-        "red",
-        "",
-        ""
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "labelProperties": {
-     "eventLabels": [
-      {
-       "backgroundColor": "#e1e1e1",
-       "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
-       "name": "Priority 0"
-      },
-      {
-       "backgroundColor": "#fbd75b",
-       "id": "261822bd-b719-5bcf-864c-1efdfff66600",
-       "name": "Priority 1"
-      },
-      {
-       "backgroundColor": "#a4bdfc",
-       "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
-       "name": "Priority 2"
-      },
-      {
-       "backgroundColor": "#7ae7bf",
-       "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
-       "name": "Priority 3"
-      },
-      {
-       "backgroundColor": "#fbd75b",
-       "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
-       "name": "play guitar"
-      },
-      {
-       "backgroundColor": "#a4bdfc",
-       "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
-       "name": "read a book"
-      },
-      {
-       "backgroundColor": "red",
-       "id": "a9a107f0-309a-5c14-bd95-7649964be319",
-       "name": "named color"
-      }
-     ]
-    }
-   },
-   "if_match": "\"0000000000000027\"",
-   "method": "PATCH",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
-   "query": {}
   }
  ],
  "state": {
@@ -1521,11 +1392,6 @@
         "backgroundColor": "#a4bdfc",
         "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
         "name": "read a book"
-       },
-       {
-        "backgroundColor": "red",
-        "id": "a9a107f0-309a-5c14-bd95-7649964be319",
-        "name": "named color"
        }
       ]
      },
@@ -1654,14 +1520,6 @@
         "read a book",
         "proposed",
         "7e24e426-20ee-500e-8413-2a46dd1d1a62"
-       ],
-       [
-        "m8t0mg",
-        "",
-        "named color",
-        "proposed",
-        "a9a107f0-309a-5c14-bd95-7649964be319",
-        "red"
        ]
       ]
      },

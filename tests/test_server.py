@@ -38,6 +38,7 @@ from utilities.judgments import Judgment, JudgmentsDue
 from utilities.note_compaction import CompactionError, EventDecision, Problem
 from utilities.noted_time_sheet import NotedTime, NoteWithId, SheetNote
 from utilities.recurrences import Repeat
+from utilities.habits import Habit
 from utilities.traits import SEED_TRAITS, Trait
 from utilities.action_groups import ActionGroup
 from utilities.actions import Action
@@ -993,6 +994,58 @@ class TestTraitTools:
         with pytest.raises(ToolError, match="isn't a trait"):
             server.update_trait(Trait(id="x"), clear_fields=["definition"])
         traits.update_trait.assert_called_once_with(Trait(id="x"), ["definition"])
+
+
+class TestPartActions:
+    """A part's "action" -- a trait's own, or a person's or habit's -- must
+    be an action (not a deleted one) or an action group."""
+
+    @pytest.fixture
+    def stores(self, monkeypatch):
+        groups = GroupTree([ActionGroup(id="grp", name="Music")])
+        actions = MagicMock()
+        actions.all.return_value = [_action("act"), _action("gone", name="Old", status="deleted")]
+        actions.groups.return_value = groups
+        monkeypatch.setattr(server, "get_action_store", lambda: actions)
+        traits, people, habits = _fake_traits(monkeypatch), MagicMock(), MagicMock()
+        monkeypatch.setattr(server, "get_people_store", lambda: people)
+        monkeypatch.setattr(server, "get_habit_store", lambda: habits)
+        monkeypatch.setattr(server, "_prefetch", lambda *tabs: None)
+        return traits, people, habits
+
+    @staticmethod
+    def _part(action: str) -> dict:
+        return {"kind": "count", "target": 1, "interval_days": 21, "noun": "visits", "action": action}
+
+    def test_an_action_or_group_is_accepted(self, stores):
+        traits, people, habits = stores
+
+        server.create_trait(Trait(name="X", parts=[self._part("act"), self._part("grp")]))
+        server.update_person(Person(id="p1", traits={"parts": {"x": [self._part("grp")]}}))
+        server.create_habit(Habit(name="H", action_id="act", traits={"parts": {"x": [self._part("act")]}}))
+
+        traits.create_trait.assert_called_once()
+        people.update_person.assert_called_once()
+        habits.create_habit.assert_called_once()
+
+    @pytest.mark.parametrize("action", ["nosuch", "gone"])
+    def test_anything_else_is_refused_by_every_tool_taking_parts(self, stores, action):
+        traits, people, habits = stores
+        parts = {"x": [self._part(action)]}
+
+        calls = [
+            lambda: server.create_trait(Trait(name="X", parts=[self._part(action)])),
+            lambda: server.update_trait(Trait(id="x", parts=[self._part(action)])),
+            lambda: server.create_person(Person(name="Sam", traits={"parts": parts})),
+            lambda: server.update_person(Person(id="p1", traits={"parts": parts})),
+            lambda: server.create_habit(Habit(name="H", action_id="act", traits={"parts": parts})),
+            lambda: server.update_habit(Habit(id="h1", traits={"parts": parts})),
+        ]
+        for call in calls:
+            with pytest.raises(ToolError, match=f"A part's action '{action}' isn't an action or action group"):
+                call()
+        for store in (traits, people, habits):
+            assert not any(c[0].startswith(("create_", "update_")) for c in store.method_calls)
 
 
 class TestActionTools:

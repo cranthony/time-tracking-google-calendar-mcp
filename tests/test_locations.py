@@ -1,4 +1,5 @@
 import pytest
+from pydantic import TypeAdapter, ValidationError
 
 from tests.fake_sheets import FakeSheets
 from utilities import calendar_metadata_sheet
@@ -23,6 +24,14 @@ def test_creates_and_finds_a_location_by_id_or_name():
     assert locations.get_location(created.created_id).name == "Home"
     assert locations.get_location("HOME").hint == "the apartment"
     assert sheets.tags[("sheet-role", calendar_metadata_sheet.LOCATIONS_SHEET_ROLE)] is not None
+
+
+def test_a_location_has_no_other_fields():
+    adapter = TypeAdapter(Location)
+
+    assert adapter.validate_python({"name": "Home", "hint": "h"}) == Location(name="Home", hint="h")
+    with pytest.raises(ValidationError, match="unknown_field"):
+        adapter.validate_python({"name": "Home", "unknown_field": 1})
 
 
 def test_names_are_unique():

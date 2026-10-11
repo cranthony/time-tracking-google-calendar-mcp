@@ -624,6 +624,30 @@ def _check_action_ids(event: PublicEvent | PublicRecurrence, *, existing: bool =
         raise ToolError(str(exc)) from exc
 
 
+def _check_part_actions(parts: Any) -> None:
+    """Refuse trait parts whose "action" isn't an action (not a deleted
+    one) or an action group -- a trait's own parts, a list, or a person's
+    or habit's, {trait id: [parts]}. Malformed parts are left to the
+    trait checks, which say what's wrong with them."""
+    if isinstance(parts, dict):
+        parts = [p for listed in parts.values() if isinstance(listed, list) for p in listed]
+    named = [p["action"] for p in parts or () if isinstance(p, dict) and isinstance(p.get("action"), str)]
+    if not named:
+        return
+    scopes = action_scopes(get_action_store().all(), get_action_store().groups())
+    unknown = [a for a in named if a not in scopes]
+    if unknown:
+        raise ToolError(
+            f"A part's action {', '.join(repr(a) for a in unknown)} isn't an action or action group "
+            "(get_actions and get_action_groups list them)"
+        )
+
+
+def _traits_parts(traits: dict[str, Any] | None) -> Any:
+    """A person's or habit's own trait parts, if any."""
+    return traits.get("parts") if isinstance(traits, dict) else None
+
+
 def _check_facts(event: PublicEvent | PublicRecurrence) -> None:
     """Refuse facts that aren't well formed (see utilities/facts.py), or
     that name people or a location that aren't there."""
@@ -1222,6 +1246,7 @@ def create_trait(trait: Trait) -> Trait:
     saying what's wrong. It applies to every person whose traits don't
     select others. Returns the trait as created."""
     with track("create_trait"), cached_reads():
+        _check_part_actions(trait.parts)
         try:
             return get_trait_store().create_trait(trait)
         except ValueError as exc:
@@ -1245,6 +1270,7 @@ def update_trait(trait: Trait, clear_fields: list[TraitField] | None = None) -> 
     for create_trait. Ratings already recorded aren't changed. Returns the
     trait as updated."""
     with track("update_trait"), cached_reads():
+        _check_part_actions(trait.parts)
         try:
             return get_trait_store().update_trait(trait, clear_fields or ())
         except ValueError as exc:
@@ -1530,6 +1556,7 @@ def create_person(person: Person) -> CreatedPerson:
     created_id."""
     with track("create_person"), cached_reads():
         _prefetch_stores()
+        _check_part_actions(_traits_parts(person.traits))
         try:
             return get_people_store().create_person(person)
         except ValueError as exc:
@@ -1552,6 +1579,7 @@ def update_person(person: Person, clear_fields: list[PersonField] | None = None)
     person as updated."""
     with track("update_person"), cached_reads():
         _prefetch_stores()
+        _check_part_actions(_traits_parts(person.traits))
         try:
             return get_people_store().update_person(person, clear_fields or ())
         except ValueError as exc:
@@ -1744,6 +1772,7 @@ def create_habit(habit: Habit) -> CreatedHabit:
     Returns the habit and its id as created_id."""
     with track("create_habit"), cached_reads():
         _prefetch_habits()
+        _check_part_actions(_traits_parts(habit.traits))
         try:
             return get_habit_store().create_habit(habit)
         except ValueError as exc:
@@ -1764,6 +1793,7 @@ def update_habit(habit: Habit, clear_fields: list[HabitField] | None = None) -> 
     blank it instead. Returns the habit as updated."""
     with track("update_habit"), cached_reads():
         _prefetch_habits()
+        _check_part_actions(_traits_parts(habit.traits))
         try:
             return get_habit_store().update_habit(habit, clear_fields or ())
         except ValueError as exc:

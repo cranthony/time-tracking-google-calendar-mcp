@@ -392,6 +392,7 @@ class Actions:
     def create_action(self, action: Action) -> CreatedAction:
         """Add `action` (proposed unless given a status), with a new id and
         label id."""
+        _check_color(action.background_color)
         actions = self.all()
         new = replace(action, **{name: None for name in _READ_ONLY_FIELDS}, status=action.status or "proposed")
         new.id = new_id({a.id for a in actions})
@@ -412,6 +413,7 @@ class Actions:
         if not action.id:
             raise ValueError("update_action needs the action's id")
         check_clear(action, clear_fields, CLEARABLE_FIELDS)
+        _check_color(action.background_color)
         actions = self.all()
         index = next((i for i, a in enumerate(actions) if a.id == action.id), None)
         if index is None:
@@ -429,6 +431,7 @@ class Actions:
 
     def create_action_group(self, group: ActionGroup) -> CreatedActionGroup:
         """Add `group`, with a new id."""
+        _check_color(group.background_color)
         groups = self.groups().groups
         new = replace(group, id=new_id({g.id for g in groups}))
         actions = self.all()
@@ -447,6 +450,7 @@ class Actions:
         if not group.id:
             raise ValueError("update_action_group needs the group's id")
         check_clear(group, clear_fields, GROUP_CLEARABLE_FIELDS)
+        _check_color(group.background_color)
         groups = self.groups().groups
         index = next((i for i, g in enumerate(groups) if g.id == group.id), None)
         if index is None:
@@ -562,6 +566,14 @@ def _unknown(actions: list[Action], id_or_name: str) -> str:
         + (f"; did you mean {hint}?" if hint else "")
         + " (get_actions lists them)"
     )
+
+
+def _check_color(color: str | None) -> None:
+    """Refuse a background_color being set that isn't #rrggbb -- only the
+    one being set, so a color edited into the tab by hand doesn't block
+    every other change."""
+    if color is not None and (problem := priority_labels.color_problem(color)):
+        raise ValueError(problem)
 
 
 def action_problems(actions: list[Action], groups: list[ActionGroup]) -> list[str]:
