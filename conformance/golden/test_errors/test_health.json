@@ -1,0 +1,474 @@
+{
+ "calls": [
+  {
+   "arguments": {},
+   "content": [],
+   "is_error": false,
+   "tool": "get_locations"
+  },
+  {
+   "arguments": {},
+   "content": [],
+   "is_error": false,
+   "tool": "get_locations"
+  },
+  {
+   "arguments": {
+    "id_or_name": "nowhere"
+   },
+   "content": "Error executing tool get_location: There's no location with the id or name 'nowhere' (get_locations lists them)",
+   "is_error": true,
+   "tool": "get_location"
+  },
+  {
+   "arguments": {},
+   "content": {
+    "memory": [],
+    "memory_latest_mib": null,
+    "memory_max_mib": null,
+    "memory_min_mib": null,
+    "restarts": [],
+    "tools": [
+     {
+      "calls": [
+       {
+        "at": "str",
+        "ok": false,
+        "overhead_ms": null,
+        "total_ms": null,
+        "work_ms": "int"
+       }
+      ],
+      "count": 1,
+      "errors": 1,
+      "tool": "get_location",
+      "total": null,
+      "work": {
+       "max_ms": "int",
+       "median_ms": "int",
+       "p95_ms": "int"
+      }
+     },
+     {
+      "calls": [
+       {
+        "at": "str",
+        "ok": true,
+        "overhead_ms": null,
+        "total_ms": null,
+        "work_ms": "int"
+       },
+       {
+        "at": "str",
+        "ok": true,
+        "overhead_ms": null,
+        "total_ms": null,
+        "work_ms": "int"
+       }
+      ],
+      "count": 2,
+      "errors": 0,
+      "tool": "get_locations",
+      "total": null,
+      "work": {
+       "max_ms": "int",
+       "median_ms": "int",
+       "p95_ms": "int"
+      }
+     }
+    ]
+   },
+   "is_error": false,
+   "tool": "get_health"
+  },
+  {
+   "arguments": {
+    "samples": false
+   },
+   "content": {
+    "memory": null,
+    "memory_latest_mib": null,
+    "memory_max_mib": null,
+    "memory_min_mib": null,
+    "restarts": [],
+    "tools": [
+     {
+      "calls": null,
+      "count": 1,
+      "errors": 0,
+      "tool": "get_health",
+      "total": null,
+      "work": {
+       "max_ms": "int",
+       "median_ms": "int",
+       "p95_ms": "int"
+      }
+     },
+     {
+      "calls": null,
+      "count": 1,
+      "errors": 1,
+      "tool": "get_location",
+      "total": null,
+      "work": {
+       "max_ms": "int",
+       "median_ms": "int",
+       "p95_ms": "int"
+      }
+     },
+     {
+      "calls": null,
+      "count": 2,
+      "errors": 0,
+      "tool": "get_locations",
+      "total": null,
+      "work": {
+       "max_ms": "int",
+       "median_ms": "int",
+       "p95_ms": "int"
+      }
+     }
+    ]
+   },
+   "is_error": false,
+   "tool": "get_health"
+  },
+  {
+   "arguments": {
+    "tool_name": "get_locations"
+   },
+   "content": {
+    "memory": [],
+    "memory_latest_mib": null,
+    "memory_max_mib": null,
+    "memory_min_mib": null,
+    "restarts": [],
+    "tools": [
+     {
+      "calls": [
+       {
+        "at": "str",
+        "ok": true,
+        "overhead_ms": null,
+        "total_ms": null,
+        "work_ms": "int"
+       },
+       {
+        "at": "str",
+        "ok": true,
+        "overhead_ms": null,
+        "total_ms": null,
+        "work_ms": "int"
+       }
+      ],
+      "count": 2,
+      "errors": 0,
+      "tool": "get_locations",
+      "total": null,
+      "work": {
+       "max_ms": "int",
+       "median_ms": "int",
+       "p95_ms": "int"
+      }
+     }
+    ]
+   },
+   "is_error": false,
+   "tool": "get_health"
+  },
+  {
+   "arguments": {
+    "tool_name": "never_called"
+   },
+   "content": "Error executing tool get_health: No calls of 'never_called' are recorded; those that are: get_health, get_location, get_locations",
+   "is_error": true,
+   "tool": "get_health"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {},
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000005
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "locations",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Locations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Locations"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}

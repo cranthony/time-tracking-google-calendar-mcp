@@ -1,0 +1,2531 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "recurrence": {
+     "id": "b9e1e9b068c94af0129d20f775",
+     "repeat": {
+      "every": "day",
+      "interval": 2,
+      "until": "2026-10-20"
+     }
+    }
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": null,
+      "every": "day",
+      "interval": 2,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": "2026-10-20T23:59:59-04:00",
+      "week_starts_on": null,
+      "weekdays": null
+     },
+     "schedule": "Every 2 days, until Oct 20, 2026",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "update_recurrence"
+  },
+  {
+   "arguments": {
+    "max_time": "2027-12-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-07T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261009T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-11T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261011T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-11T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-13T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261013T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-13T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-15T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261015T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-15T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-17T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261017T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-17T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-19T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261019T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-19T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "recurrence": {
+     "id": "b9e1e9b068c94af0129d20f775",
+     "repeat": {
+      "every": "week",
+      "until": "2026-11-15T23:59:00-05:00",
+      "week_starts_on": "sun",
+      "weekdays": [
+       "tue"
+      ]
+     }
+    }
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": null,
+      "every": "week",
+      "interval": 1,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": "2026-11-15T23:59:00-05:00",
+      "week_starts_on": "sun",
+      "weekdays": [
+       "tue"
+      ]
+     },
+     "schedule": "Every week on Tue, until Nov 15, 2026",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "update_recurrence"
+  },
+  {
+   "arguments": {
+    "max_time": "2027-12-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-06T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-06T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-13T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261013T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-13T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-20T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261020T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-20T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-27T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261027T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-27T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-11-03T09:30:00-05:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261103T140000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-11-03T09:00:00-05:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-11-10T09:30:00-05:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261110T140000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-11-10T09:00:00-05:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "recurrence": {
+     "id": "b9e1e9b068c94af0129d20f775",
+     "repeat": {
+      "count": 4,
+      "every": "month",
+      "month_days": [
+       5,
+       20
+      ]
+     }
+    }
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": 4,
+      "every": "month",
+      "interval": 1,
+      "month_days": [
+       5,
+       20
+      ],
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": null,
+      "week_starts_on": null,
+      "weekdays": null
+     },
+     "schedule": "Every month on day 5, 20, 4 times",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "update_recurrence"
+  },
+  {
+   "arguments": {
+    "max_time": "2027-12-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-20T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261020T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-20T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-11-05T09:30:00-05:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261105T140000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-11-05T09:00:00-05:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-11-20T09:30:00-05:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261120T140000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-11-20T09:00:00-05:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "recurrence": {
+     "id": "b9e1e9b068c94af0129d20f775",
+     "repeat": {
+      "count": 3,
+      "every": "month",
+      "nth_weekdays": [
+       {
+        "nth": -1,
+        "weekday": "fri"
+       }
+      ]
+     }
+    }
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": 3,
+      "every": "month",
+      "interval": 1,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": [
+       {
+        "nth": -1,
+        "weekday": "fri"
+       }
+      ],
+      "skipped": null,
+      "until": null,
+      "week_starts_on": null,
+      "weekdays": null
+     },
+     "schedule": "Every month on the last Fri, 3 times",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "update_recurrence"
+  },
+  {
+   "arguments": {
+    "max_time": "2027-12-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-30T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261030T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-30T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-11-27T09:30:00-05:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261127T140000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-11-27T09:00:00-05:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-12-25T09:30:00-05:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261225T140000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-12-25T09:00:00-05:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "recurrence": {
+     "id": "b9e1e9b068c94af0129d20f775",
+     "repeat": {
+      "count": 2,
+      "every": "year",
+      "month_days": [
+       5
+      ],
+      "months": [
+       10
+      ]
+     }
+    }
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": 2,
+      "every": "year",
+      "interval": 1,
+      "month_days": [
+       5
+      ],
+      "months": [
+       10
+      ],
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": null,
+      "week_starts_on": null,
+      "weekdays": null
+     },
+     "schedule": "Every year on day 5 in Oct, 2 times",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "update_recurrence"
+  },
+  {
+   "arguments": {
+    "max_time": "2027-12-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2027-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20271005T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2027-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "recurrence": {
+     "id": "b9e1e9b068c94af0129d20f775",
+     "repeat": {
+      "added": [
+       "2026-10-11T09:00:00-04:00"
+      ],
+      "count": 5,
+      "every": "day",
+      "skipped": [
+       "2026-10-07T09:00:00-04:00"
+      ]
+     }
+    }
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": [
+       "2026-10-11T09:00:00-04:00"
+      ],
+      "count": 5,
+      "every": "day",
+      "interval": 1,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": [
+       "2026-10-07T09:00:00-04:00"
+      ],
+      "until": null,
+      "week_starts_on": null,
+      "weekdays": null
+     },
+     "schedule": "Every day, 5 times, with exceptions, plus 1 added date",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "update_recurrence"
+  },
+  {
+   "arguments": {
+    "max_time": "2027-12-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-06T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-06T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-08T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-08T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261009T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "actions"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Actions"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000007
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "actions",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "action-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Action Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000009
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "action-groups",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "People"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000011,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000011
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "people",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "circles"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Circles"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000013,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000013
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "circles",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000015
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "recurrence": [
+     "RRULE:FREQ=DAILY;INTERVAL=2;UNTIL=20261021T035959Z"
+    ]
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2027-12-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2027-12-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=TU;UNTIL=20261116T045900Z;WKST=SU"
+    ]
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2027-12-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "recurrence": [
+     "RRULE:FREQ=MONTHLY;BYMONTHDAY=5,20;COUNT=4"
+    ]
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2027-12-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "recurrence": [
+     "RRULE:FREQ=MONTHLY;BYDAY=-1FR;COUNT=3"
+    ]
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2027-12-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "recurrence": [
+     "RRULE:FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=5;COUNT=2"
+    ]
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2027-12-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "recurrence": [
+     "RRULE:FREQ=DAILY;COUNT=5",
+     "EXDATE;TZID=America/New_York:20261007T090000",
+     "RDATE;TZID=America/New_York:20261011T090000"
+    ]
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2027-12-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {
+     "b9e1e9b068c94af0129d20f775": {
+      "end": {
+       "dateTime": "2026-10-05T09:30:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "b9e1e9b068c94af0129d20f775@google.com",
+      "id": "b9e1e9b068c94af0129d20f775",
+      "kind": "calendar#event",
+      "recurrence": [
+       "RRULE:FREQ=DAILY;COUNT=5",
+       "EXDATE;TZID=America/New_York:20261007T090000",
+       "RDATE;TZID=America/New_York:20261011T090000"
+      ],
+      "start": {
+       "dateTime": "2026-10-05T09:00:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "confirmed",
+      "summary": "Standup"
+     }
+    },
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "actions",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000009
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "action-groups",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000011
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "people",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000013
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "circles",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000015
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "locations",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Action Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000009,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Action Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Actions": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Actions"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Circles": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000013,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Circles"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     },
+     "Locations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000015,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Locations"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     },
+     "People": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000011,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "People"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}

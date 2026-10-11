@@ -1,0 +1,20 @@
+{
+ "authkit_requests": [],
+ "exchanges": [
+  {
+   "body": "{\"resource\":\"<server>/mcp\",\"authorization_servers\":[\"<authkit>/\"],\"scopes_supported\":[],\"bearer_methods_supported\":[\"header\"]}",
+   "headers": {
+    "cache-control": "public, max-age=3600",
+    "content-type": "application/json"
+   },
+   "request": {
+    "body": "",
+    "headers": {},
+    "method": "GET",
+    "path": "/.well-known/oauth-protected-resource/mcp"
+   },
+   "status": 200
+  }
+ ],
+ "google_requests": []
+}

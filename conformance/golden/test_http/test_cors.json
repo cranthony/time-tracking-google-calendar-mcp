@@ -1,0 +1,104 @@
+{
+ "authkit_requests": [],
+ "exchanges": [
+  {
+   "body": "OK",
+   "headers": {
+    "access-control-allow-headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, Last-Event-ID, Mcp-Protocol-Version, Mcp-Session-Id",
+    "access-control-allow-methods": "GET, POST, DELETE",
+    "access-control-allow-origin": "https://app.example",
+    "content-type": "text/plain; charset=utf-8"
+   },
+   "request": {
+    "body": "",
+    "headers": {
+     "Access-Control-Request-Headers": "authorization, content-type, mcp-session-id, mcp-protocol-version",
+     "Access-Control-Request-Method": "POST",
+     "Origin": "https://app.example"
+    },
+    "method": "OPTIONS",
+    "path": "/mcp"
+   },
+   "status": 200
+  },
+  {
+   "body": "OK",
+   "headers": {
+    "access-control-allow-headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, Last-Event-ID, Mcp-Protocol-Version, Mcp-Session-Id",
+    "access-control-allow-methods": "GET, POST, DELETE",
+    "access-control-allow-origin": "http://localhost:5173",
+    "content-type": "text/plain; charset=utf-8"
+   },
+   "request": {
+    "body": "",
+    "headers": {
+     "Access-Control-Request-Headers": "authorization, content-type, mcp-session-id, mcp-protocol-version",
+     "Access-Control-Request-Method": "POST",
+     "Origin": "http://localhost:5173"
+    },
+    "method": "OPTIONS",
+    "path": "/mcp"
+   },
+   "status": 200
+  },
+  {
+   "body": "OK",
+   "headers": {
+    "access-control-allow-headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, Last-Event-ID, Mcp-Protocol-Version, Mcp-Session-Id",
+    "access-control-allow-methods": "GET, POST, DELETE",
+    "access-control-allow-origin": "http://127.0.0.1:8080",
+    "content-type": "text/plain; charset=utf-8"
+   },
+   "request": {
+    "body": "",
+    "headers": {
+     "Access-Control-Request-Headers": "authorization, content-type, mcp-session-id, mcp-protocol-version",
+     "Access-Control-Request-Method": "POST",
+     "Origin": "http://127.0.0.1:8080"
+    },
+    "method": "OPTIONS",
+    "path": "/mcp"
+   },
+   "status": 200
+  },
+  {
+   "body": "Disallowed CORS origin",
+   "headers": {
+    "access-control-allow-headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, Last-Event-ID, Mcp-Protocol-Version, Mcp-Session-Id",
+    "access-control-allow-methods": "GET, POST, DELETE",
+    "content-type": "text/plain; charset=utf-8"
+   },
+   "request": {
+    "body": "",
+    "headers": {
+     "Access-Control-Request-Headers": "authorization, content-type, mcp-session-id, mcp-protocol-version",
+     "Access-Control-Request-Method": "POST",
+     "Origin": "https://evil.example"
+    },
+    "method": "OPTIONS",
+    "path": "/mcp"
+   },
+   "status": 400
+  },
+  {
+   "body": "{\"error\": \"invalid_token\", \"error_description\": \"Authentication required\"}",
+   "headers": {
+    "access-control-allow-origin": "https://app.example",
+    "access-control-expose-headers": "Mcp-Session-Id, WWW-Authenticate",
+    "content-type": "application/json",
+    "www-authenticate": "Bearer error=\"invalid_token\", error_description=\"Authentication required\", resource_metadata=\"<server>/.well-known/oauth-protected-resource/mcp\""
+   },
+   "request": {
+    "body": "{}",
+    "headers": {
+     "Content-Type": "application/json",
+     "Origin": "https://app.example"
+    },
+    "method": "POST",
+    "path": "/mcp"
+   },
+   "status": 401
+  }
+ ],
+ "google_requests": []
+}

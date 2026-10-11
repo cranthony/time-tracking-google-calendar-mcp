@@ -1,0 +1,339 @@
+{
+ "authkit_requests": [],
+ "exchanges": [
+  {
+   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"experimental\":{},\"prompts\":{\"listChanged\":false},\"resources\":{\"listChanged\":false,\"subscribe\":false},\"tools\":{\"listChanged\":false}},\"protocolVersion\":\"2025-06-18\",\"serverInfo\":{\"name\":\"time-tracking-google-calendar-mcp\",\"version\":\"\"}}}\r\n\r\n",
+   "headers": {
+    "cache-control": "no-cache, no-transform",
+    "content-type": "text/event-stream"
+   },
+   "request": {
+    "body": "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2025-06-18\", \"capabilities\": {}, \"clientInfo\": {\"name\": \"conformance\", \"version\": \"1\"}}}",
+    "headers": {
+     "Accept": "application/json, text/event-stream",
+     "Authorization": "<token>",
+     "Content-Type": "application/json",
+     "MCP-Protocol-Version": "2025-06-18"
+    },
+    "method": "POST",
+    "path": "/mcp"
+   },
+   "status": 200
+  },
+  {
+   "body": "",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "request": {
+    "body": "{\"jsonrpc\": \"2.0\", \"method\": \"notifications/initialized\"}",
+    "headers": {
+     "Accept": "application/json, text/event-stream",
+     "Authorization": "<token>",
+     "Content-Type": "application/json",
+     "MCP-Protocol-Version": "2025-06-18",
+     "Mcp-Session-Id": "<session>"
+    },
+    "method": "POST",
+    "path": "/mcp"
+   },
+   "status": 202
+  },
+  {
+   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"content\":[{\"text\":\"{\\n  \\\"location\\\": {\\n    \\\"id\\\": \\\"4709iy\\\",\\n    \\\"name\\\": \\\"Home\\\",\\n    \\\"hint\\\": null\\n  },\\n  \\\"created_id\\\": \\\"4709iy\\\"\\n}\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"location\":{\"id\":\"4709iy\",\"name\":\"Home\",\"hint\":null},\"created_id\":\"4709iy\"}}}\r\n\r\n",
+   "headers": {
+    "cache-control": "no-cache, no-transform",
+    "content-type": "text/event-stream"
+   },
+   "request": {
+    "body": "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"create_location\", \"arguments\": {\"location\": {\"name\": \"Home\"}}}}",
+    "headers": {
+     "Accept": "application/json, text/event-stream",
+     "Authorization": "<token>",
+     "Content-Type": "application/json",
+     "MCP-Protocol-Version": "2025-06-18",
+     "Mcp-Session-Id": "<session>"
+    },
+    "method": "POST",
+    "path": "/mcp"
+   },
+   "status": 200
+  },
+  {
+   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"content\":[{\"text\":\"Error executing tool get_location: There's no location with the id or name 'nowhere' (get_locations lists them)\",\"type\":\"text\"}],\"isError\":true}}\r\n\r\n",
+   "headers": {
+    "cache-control": "no-cache, no-transform",
+    "content-type": "text/event-stream"
+   },
+   "request": {
+    "body": "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"get_location\", \"arguments\": {\"id_or_name\": \"nowhere\"}}}",
+    "headers": {
+     "Accept": "application/json, text/event-stream",
+     "Authorization": "<token>",
+     "Content-Type": "application/json",
+     "MCP-Protocol-Version": "2025-06-18",
+     "Mcp-Session-Id": "<session>"
+    },
+    "method": "POST",
+    "path": "/mcp"
+   },
+   "status": 200
+  },
+  {
+   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"content\":[{\"text\":\"Unknown tool: no_such_tool\",\"type\":\"text\"}],\"isError\":true}}\r\n\r\n",
+   "headers": {
+    "cache-control": "no-cache, no-transform",
+    "content-type": "text/event-stream"
+   },
+   "request": {
+    "body": "{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"no_such_tool\", \"arguments\": {}}}",
+    "headers": {
+     "Accept": "application/json, text/event-stream",
+     "Authorization": "<token>",
+     "Content-Type": "application/json",
+     "MCP-Protocol-Version": "2025-06-18",
+     "Mcp-Session-Id": "<session>"
+    },
+    "method": "POST",
+    "path": "/mcp"
+   },
+   "status": 200
+  },
+  {
+   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"content\":[{\"text\":\"Error executing tool create_location: 1 validation error for create_locationArguments\\nlocation\\n  Input should be a dictionary or an instance of Location [type=dataclass_type, input_value='not an object', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/dataclass_type\",\"type\":\"text\"}],\"isError\":true}}\r\n\r\n",
+   "headers": {
+    "cache-control": "no-cache, no-transform",
+    "content-type": "text/event-stream"
+   },
+   "request": {
+    "body": "{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/call\", \"params\": {\"name\": \"create_location\", \"arguments\": {\"location\": \"not an object\"}}}",
+    "headers": {
+     "Accept": "application/json, text/event-stream",
+     "Authorization": "<token>",
+     "Content-Type": "application/json",
+     "MCP-Protocol-Version": "2025-06-18",
+     "Mcp-Session-Id": "<session>"
+    },
+    "method": "POST",
+    "path": "/mcp"
+   },
+   "status": 200
+  }
+ ],
+ "google_requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "4709iy",
+        "Home",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  }
+ ]
+}
