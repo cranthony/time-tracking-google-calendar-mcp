@@ -1,0 +1,395 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "max_time": "2026-10-08T00:00:00-04:00",
+    "min_time": "yesterday"
+   },
+   "content": "Error executing tool list_events: 1 validation error for list_eventsArguments\nmin_time\n  Input should be a valid datetime or date, input is too short [type=datetime_from_date_parsing, input_value='yesterday', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+   "is_error": true,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "min_time": "2026-10-07T00:00:00-04:00"
+   },
+   "content": "Error executing tool list_events: 1 validation error for list_eventsArguments\nmax_time\n  Field required [type=missing, input_value={'min_time': '2026-10-07T00:00:00-04:00'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing",
+   "is_error": true,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "noted_time": {
+     "description": "no timestamp"
+    }
+   },
+   "content": "Error executing tool note: 1 validation error for noteArguments\nnoted_time.timestamp\n  Field required [type=missing, input_value={'description': 'no timestamp'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing",
+   "is_error": true,
+   "tool": "note"
+  },
+  {
+   "arguments": {
+    "statuses": [
+     "sleeping"
+    ]
+   },
+   "content": "Error executing tool get_actions: 1 validation error for get_actionsArguments\nstatuses.0\n  Input should be 'proposed', 'active', 'archived' or 'deleted' [type=literal_error, input_value='sleeping', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+   "is_error": true,
+   "tool": "get_actions"
+  },
+  {
+   "arguments": {
+    "statuses": [
+     "gone"
+    ]
+   },
+   "content": "Error executing tool get_people: 1 validation error for get_peopleArguments\nstatuses.0\n  Input should be 'active', 'archived' or 'deleted' [type=literal_error, input_value='gone', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+   "is_error": true,
+   "tool": "get_people"
+  },
+  {
+   "arguments": {
+    "statuses": [
+     "paused"
+    ]
+   },
+   "content": "Error executing tool get_habits: 1 validation error for get_habitsArguments\nstatuses.0\n  Input should be 'active', 'archived' or 'deleted' [type=literal_error, input_value='paused', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+   "is_error": true,
+   "tool": "get_habits"
+  },
+  {
+   "arguments": {
+    "statuses": [
+     "maybe"
+    ]
+   },
+   "content": "Error executing tool get_traits: 1 validation error for get_traitsArguments\nstatuses.0\n  Input should be 'active', 'off' or 'archived' [type=literal_error, input_value='maybe', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+   "is_error": true,
+   "tool": "get_traits"
+  },
+  {
+   "arguments": {
+    "events": "not a list"
+   },
+   "content": "Error executing tool create_event: 1 validation error for create_eventArguments\nevents\n  Input should be a valid list [type=list_type, input_value='not a list', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type",
+   "is_error": true,
+   "tool": "create_event"
+  },
+  {
+   "arguments": {
+    "updates": [
+     {
+      "clear_fields": [
+       "summary"
+      ],
+      "event": {
+       "id": "x"
+      }
+     }
+    ]
+   },
+   "content": "Error executing tool update_event: 1 validation error for update_eventArguments\nupdates.0.clear_fields.0\n  Input should be 'description', 'location', 'priority', 'facts' or 'judgments' [type=literal_error, input_value='summary', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+   "is_error": true,
+   "tool": "update_event"
+  },
+  {
+   "arguments": {
+    "hints": "07:30"
+   },
+   "content": "Error executing tool set_compaction_schedule_hints: 1 validation error for set_compaction_schedule_hintsArguments\nhints\n  Input should be a valid list [type=list_type, input_value='07:30', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type",
+   "is_error": true,
+   "tool": "set_compaction_schedule_hints"
+  },
+  {
+   "arguments": {
+    "color": "#000000",
+    "priority": "high"
+   },
+   "content": "Error executing tool update_priority_color: 1 validation error for update_priority_colorArguments\npriority\n  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='high', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_parsing",
+   "is_error": true,
+   "tool": "update_priority_color"
+  },
+  {
+   "arguments": {
+    "location": {
+     "name": "Home",
+     "unknown_field": 1
+    }
+   },
+   "content": {
+    "created_id": "4709iy",
+    "location": {
+     "hint": null,
+     "id": "4709iy",
+     "name": "Home"
+    }
+   },
+   "is_error": false,
+   "tool": "create_location"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "4709iy",
+        "Home",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {},
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000005
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "locations",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Locations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Locations"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "hint"
+       ],
+       [
+        "4709iy",
+        "Home"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}

@@ -161,6 +161,7 @@ class FakeGoogle:
         self.rate_limit_next: int = 0
         """Answer this many of the next Sheets requests with 429."""
         self.token_requests = 0
+        self.authkit_requests: list[dict] = []
         self._ids = itertools.count(1)
         self._lock = threading.RLock()
 
@@ -187,6 +188,15 @@ class FakeGoogle:
                 resource["description"] = description
             self.calendars[calendar_id] = FakeCalendar(calendar_id, resource)
             return calendar_id
+
+    def add_event(self, calendar_id: str, body: dict) -> str:
+        """Put an event on the calendar as if made in Google Calendar
+        itself (a recurring series, say, which no tool makes)."""
+        with self._lock:
+            calendar = self.calendars[calendar_id]
+            event_id = body.get("id") or self._next_id("seed")
+            calendar.events[event_id] = self._new_event(calendar, body, event_id)
+            return event_id
 
     def calendar(self, calendar_id: str) -> FakeCalendar:
         try:
@@ -833,6 +843,10 @@ class FakeGoogle:
     def app(self) -> Starlette:
         routes = [
             Route("/token", self._token, methods=["POST"]),
+            # WorkOS AuthKit, for the HTTP transport (see conformance/test_http.py).
+            Route("/oauth2/jwks", self._jwks, methods=["GET"]),
+            Route("/oauth2/register", self._authkit_echo, methods=["POST"]),
+            Route("/oauth2/token", self._authkit_echo, methods=["POST"]),
             Route("/calendar/v3/calendars", self._handler(lambda r, b: self.insert_calendar(b)), methods=["POST"]),
             Route("/calendar/v3/calendars/{cid}", self._calendar_route, methods=["GET", "PATCH"]),
             Route("/calendar/v3/users/me/calendarList/{cid}", self._handler(lambda r, b: {"id": unquote(r.path_params["cid"]), "hidden": True}), methods=["PATCH"]),
@@ -849,6 +863,21 @@ class FakeGoogle:
             Route("/v4/spreadsheets/{sid}/values/{rng:path}", self._values_route, methods=["GET", "PUT"]),
         ]
         return Starlette(routes=routes)
+
+    jwks: dict = {"keys": []}
+    """AuthKit's signing keys, as /oauth2/jwks serves them."""
+
+    async def _jwks(self, request: Request) -> Response:
+        return JSONResponse(self.jwks)
+
+    async def _authkit_echo(self, request: Request) -> Response:
+        """AuthKit's registration and token endpoints, as far as the
+        server's OAuth proxy can tell: what it was sent, echoed back -- a
+        400 for a body asking for one."""
+        raw = await request.body()
+        self.authkit_requests.append({"path": request.url.path, "content_type": request.headers.get("content-type"), "user_agent": request.headers.get("user-agent"), "body": raw.decode()})
+        status = 400 if b"invalid" in raw else 201
+        return JSONResponse({"echo": raw.decode(), "path": request.url.path}, status_code=status, headers={"Cache-Control": "no-store", "X-Dropped": "yes"})
 
     async def _token(self, request: Request) -> Response:
         self.token_requests += 1

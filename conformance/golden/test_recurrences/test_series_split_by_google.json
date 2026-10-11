@@ -1,0 +1,1609 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "max_time": "2026-11-01T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261005T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-05T18:00:00-04:00",
+     "summary": "Gym"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-06T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261006T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-06T18:00:00-04:00",
+     "summary": "Gym"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-12T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261012T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-12T18:00:00-04:00",
+     "summary": "Gym"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-13T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261013T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-13T18:00:00-04:00",
+     "summary": "Gym"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-19T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261019T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-19T18:00:00-04:00",
+     "summary": "Gym"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-20T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261020T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-20T18:00:00-04:00",
+     "summary": "Gym"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-26T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261026T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-26T18:00:00-04:00",
+     "summary": "Gym"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-27T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261027T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-27T18:00:00-04:00",
+     "summary": "Gym"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "recurrence": {
+     "id": "gymbase0001_R20261005T220000",
+     "repeat": {
+      "every": "week",
+      "weekdays": [
+       "mon"
+      ]
+     }
+    }
+   },
+   "content": "Error executing tool update_recurrence: Series gymbase0001_R20261005T220000 was split from another in Google Calendar, which won't change its rules (it would delete the series instead): change them from one of its later events on",
+   "is_error": true,
+   "tool": "update_recurrence"
+  },
+  {
+   "arguments": {
+    "recurrence": {
+     "id": "gymbase0001_R20261005T220000",
+     "summary": "Gym session"
+    }
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": null,
+      "every": "week",
+      "interval": 1,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": null,
+      "week_starts_on": "sun",
+      "weekdays": [
+       "mon",
+       "tue"
+      ]
+     },
+     "schedule": "Every week on Mon, Tue",
+     "start": "2026-10-05T18:00:00-04:00",
+     "summary": "Gym session",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "update_recurrence"
+  },
+  {
+   "arguments": {
+    "id": "gymbase0001_R20261005T220000",
+    "starting_at_event_id": "gymbase0001_R20261005T220000_20261019T220000Z"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": null,
+      "every": "week",
+      "interval": 1,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": "2026-10-18T23:59:59-04:00",
+      "week_starts_on": "sun",
+      "weekdays": [
+       "mon",
+       "tue"
+      ]
+     },
+     "schedule": "Every week on Mon, Tue, until Oct 18, 2026",
+     "start": "2026-10-05T18:00:00-04:00",
+     "summary": "Gym session",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "delete_recurrence"
+  },
+  {
+   "arguments": {
+    "max_time": "2026-11-01T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261005T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-05T18:00:00-04:00",
+     "summary": "Gym session"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-06T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261006T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-06T18:00:00-04:00",
+     "summary": "Gym session"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-12T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261012T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-12T18:00:00-04:00",
+     "summary": "Gym session"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-13T19:00:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "gymbase0001_R20261005T220000_20261013T220000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "gymbase0001_R20261005T220000",
+     "start": "2026-10-13T18:00:00-04:00",
+     "summary": "Gym session"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "actions"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Actions"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000007
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "actions",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "action-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Action Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000009
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "action-groups",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "People"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000011,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000011
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "people",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "circles"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Circles"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000013,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000013
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "circles",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000015
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-11-01T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-11-01T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/gymbase0001_R20261005T220000",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/gymbase0001_R20261005T220000",
+   "query": {}
+  },
+  {
+   "body": {
+    "summary": "Gym session"
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/gymbase0001_R20261005T220000",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/gymbase0001_R20261005T220000",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/gymbase0001_R20261005T220000_20261019T220000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "labelProperties": {
+     "eventLabels": [
+      {
+       "backgroundColor": "#e1e1e1",
+       "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+       "name": "Priority 0"
+      },
+      {
+       "backgroundColor": "#fbd75b",
+       "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+       "name": "Priority 1"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+       "name": "Priority 2"
+      },
+      {
+       "backgroundColor": "#7ae7bf",
+       "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+       "name": "Priority 3"
+      }
+     ]
+    }
+   },
+   "if_match": "\"0000000000000006\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-19T19:00:00-04:00",
+     "timeZone": "America/New_York"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "iCalUID": "gymbase0001_R20261019T220000@google.com",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=MO,TU"
+    ],
+    "start": {
+     "dateTime": "2026-10-19T18:00:00-04:00",
+     "timeZone": "America/New_York"
+    },
+    "summary": "Gym session"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/import",
+   "query": {}
+  },
+  {
+   "body": {
+    "status": "cancelled"
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/gymbase0001_R20261019T220000",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/gymbase0001_R20261005T220000",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-11-01T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {
+     "gymbase0001": {
+      "end": {
+       "dateTime": "2026-09-21T19:00:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "gymbase0001@google.com",
+      "id": "gymbase0001",
+      "kind": "calendar#event",
+      "recurrence": [
+       "RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=MO,TU;UNTIL=20261004T035959Z"
+      ],
+      "start": {
+       "dateTime": "2026-09-21T18:00:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "confirmed",
+      "summary": "Gym"
+     },
+     "gymbase0001_R20261005T220000": {
+      "end": {
+       "dateTime": "2026-10-05T19:00:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "gymbase0001_R20261005T220000@google.com",
+      "id": "gymbase0001_R20261005T220000",
+      "kind": "calendar#event",
+      "recurrence": [
+       "RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=MO,TU;UNTIL=20261019T035959Z"
+      ],
+      "start": {
+       "dateTime": "2026-10-05T18:00:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "confirmed",
+      "summary": "Gym session"
+     },
+     "gymbase0001_R20261019T220000": {
+      "end": {
+       "dateTime": "2026-10-19T19:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "gymbase0001_R20261019T220000@google.com",
+      "id": "gymbase0001_R20261019T220000",
+      "kind": "calendar#event",
+      "recurrence": [
+       "RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=MO,TU"
+      ],
+      "start": {
+       "dateTime": "2026-10-19T18:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "cancelled",
+      "summary": "Gym session"
+     }
+    },
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "labelProperties": {
+      "eventLabels": [
+       {
+        "backgroundColor": "#e1e1e1",
+        "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+        "name": "Priority 0"
+       },
+       {
+        "backgroundColor": "#fbd75b",
+        "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+        "name": "Priority 1"
+       },
+       {
+        "backgroundColor": "#a4bdfc",
+        "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+        "name": "Priority 2"
+       },
+       {
+        "backgroundColor": "#7ae7bf",
+        "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+        "name": "Priority 3"
+       }
+      ]
+     },
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "actions",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000009
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "action-groups",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000011
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "people",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000013
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "circles",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000015
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "locations",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Action Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000009,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Action Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Actions": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Actions"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Circles": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000013,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Circles"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     },
+     "Locations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000015,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Locations"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     },
+     "People": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000011,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "People"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}

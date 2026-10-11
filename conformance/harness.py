@@ -116,6 +116,11 @@ class Session:
             raise ToolFailed(tool, call.content)
         return call.content
 
+    async def attempt(self, tool: str, **arguments: Any) -> Call:
+        """Call `tool`, whether it succeeds or not: for a case whose outcome
+        is whatever the golden record says it is."""
+        return await self._call(tool, arguments)
+
     async def call_error(self, tool: str, **arguments: Any) -> str:
         """Call `tool`, expecting an error; returns its text."""
         call = await self._call(tool, arguments)
@@ -134,6 +139,8 @@ class Session:
                 content = content["result"]
         else:
             content = "\n".join(texts)
+        if tool == "get_health" and not result.is_error:
+            content = _masked_timings(content)
         call = Call(tool, arguments, bool(result.is_error), content)
         self.calls.append(call)
         return call
@@ -144,6 +151,20 @@ class Session:
             "requests": [r.as_dict() for r in self.google.requests],
             "state": self.google.snapshot(skip_tabs=("Health",)),
         }
+
+
+_TIMING_KEYS = {"at", "work_ms", "total_ms", "overhead_ms", "median_ms", "p95_ms", "max_ms", "rss_mib", "memory_latest_mib", "memory_min_mib", "memory_max_mib"}
+
+
+def _masked_timings(value: Any) -> Any:
+    """get_health's result with its times and sizes -- which differ from
+    run to run -- replaced by what kind of value each was, so its shape and
+    counts are still compared."""
+    if isinstance(value, dict):
+        return {k: (type(v).__name__ if k in _TIMING_KEYS and v is not None else _masked_timings(v)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_masked_timings(v) for v in value]
+    return value
 
 
 class ToolFailed(AssertionError):

@@ -1,0 +1,2029 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "max_time": "2026-10-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-06T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-06T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-07T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-08T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-08T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261009T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-10T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261010T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-10T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-11T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261011T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-11T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-12T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261012T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-12T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-13T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261013T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-13T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-14T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261014T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-14T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "event_id": "b9e1e9b068c94af0129d20f775_20261009T130000Z"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": 6,
+      "every": "day",
+      "interval": 1,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": null,
+      "week_starts_on": null,
+      "weekdays": null
+     },
+     "schedule": "Every day, 6 times",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": null,
+      "every": "day",
+      "interval": 1,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": "2026-10-09T08:59:59-04:00",
+      "week_starts_on": null,
+      "weekdays": null
+     },
+     "schedule": "Every day, until Oct 9, 2026",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "split_recurrence"
+  },
+  {
+   "arguments": {
+    "max_time": "2026-10-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-06T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-06T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-07T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-08T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-08T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261009T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-10T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261010T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-10T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-11T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261011T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-11T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-12T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261012T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-12T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-13T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261013T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-13T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-14T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261014T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-14T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "max_time": "2026-10-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-06T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-06T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-07T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-08T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-08T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261009T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-10T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261010T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-10T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-11T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261011T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-11T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-12T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261012T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-12T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-13T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261013T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-13T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-14T09:30:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "p5fdh666a99cgeg3k707ufe1813e7mgb_20261014T130000Z",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+     "start": "2026-10-14T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "event_id": "b9e1e9b068c94af0129d20f775_20261005T130000Z"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "event_label_id": null,
+     "facts": null,
+     "id": "b9e1e9b068c94af0129d20f775",
+     "location": null,
+     "priority": null,
+     "repeat": {
+      "added": null,
+      "count": null,
+      "every": "day",
+      "interval": 1,
+      "month_days": null,
+      "months": null,
+      "nth_weekdays": null,
+      "skipped": null,
+      "until": "2026-10-09T08:59:59-04:00",
+      "week_starts_on": null,
+      "weekdays": null
+     },
+     "schedule": "Every day, until Oct 9, 2026",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup",
+     "time_zone": "America/New_York"
+    }
+   ],
+   "is_error": false,
+   "tool": "split_recurrence"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "actions"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Actions"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000007
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "actions",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "action-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Action Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000009
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "action-groups",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "People"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000011,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000011
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "people",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "circles"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Circles"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000013,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000013
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "circles",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000015
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261009T130000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775/instances",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T09:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "labelProperties": {
+     "eventLabels": [
+      {
+       "backgroundColor": "#e1e1e1",
+       "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+       "name": "Priority 0"
+      },
+      {
+       "backgroundColor": "#fbd75b",
+       "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+       "name": "Priority 1"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+       "name": "Priority 2"
+      },
+      {
+       "backgroundColor": "#7ae7bf",
+       "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+       "name": "Priority 3"
+      }
+     ]
+    }
+   },
+   "if_match": "\"0000000000000006\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-09T09:30:00-04:00",
+     "timeZone": "America/New_York"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+    "recurrence": [
+     "RRULE:FREQ=DAILY;COUNT=6"
+    ],
+    "start": {
+     "dateTime": "2026-10-09T09:00:00-04:00",
+     "timeZone": "America/New_York"
+    },
+    "summary": "Standup"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "recurrence": [
+     "RRULE:FREQ=DAILY;UNTIL=20261009T125959Z"
+    ]
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-31T00:00:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-01T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261005T130000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {
+     "b9e1e9b068c94af0129d20f775": {
+      "end": {
+       "dateTime": "2026-10-05T09:30:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "b9e1e9b068c94af0129d20f775@google.com",
+      "id": "b9e1e9b068c94af0129d20f775",
+      "kind": "calendar#event",
+      "recurrence": [
+       "RRULE:FREQ=DAILY;UNTIL=20261009T125959Z"
+      ],
+      "start": {
+       "dateTime": "2026-10-05T09:00:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "confirmed",
+      "summary": "Standup"
+     },
+     "p5fdh666a99cgeg3k707ufe1813e7mgb": {
+      "end": {
+       "dateTime": "2026-10-09T09:30:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "p5fdh666a99cgeg3k707ufe1813e7mgb@google.com",
+      "id": "p5fdh666a99cgeg3k707ufe1813e7mgb",
+      "kind": "calendar#event",
+      "recurrence": [
+       "RRULE:FREQ=DAILY;COUNT=6"
+      ],
+      "start": {
+       "dateTime": "2026-10-09T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "confirmed",
+      "summary": "Standup"
+     }
+    },
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "labelProperties": {
+      "eventLabels": [
+       {
+        "backgroundColor": "#e1e1e1",
+        "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+        "name": "Priority 0"
+       },
+       {
+        "backgroundColor": "#fbd75b",
+        "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+        "name": "Priority 1"
+       },
+       {
+        "backgroundColor": "#a4bdfc",
+        "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+        "name": "Priority 2"
+       },
+       {
+        "backgroundColor": "#7ae7bf",
+        "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+        "name": "Priority 3"
+       }
+      ]
+     },
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "actions",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000009
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "action-groups",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000011
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "people",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000013
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "circles",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000015
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "locations",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Action Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000009,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Action Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Actions": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Actions"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Circles": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000013,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Circles"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     },
+     "Locations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000015,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Locations"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     },
+     "People": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000011,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "People"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}
