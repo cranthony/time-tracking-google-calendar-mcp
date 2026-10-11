@@ -3,8 +3,8 @@ services:
     name: time-tracking-google-calendar-mcp
     runtime: python
     plan: starter
-    buildCommand: pip install -r requirements.txt
-    startCommand: python server.py
+    buildCommand: bash scripts/render-build.sh
+    startCommand: bash scripts/render-start.sh
     healthCheckPath: /.well-known/oauth-protected-resource/mcp
     envVars:
       - key: MCP_TRANSPORT
