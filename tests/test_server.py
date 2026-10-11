@@ -32,7 +32,7 @@ from utilities.action_calendar import ActionCalendar
 from utilities.action_groups import GroupTree
 from utilities.actions import ActionTree
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
-from utilities.compaction_proposals import FeedbackReply, NoteEdit
+from utilities.compaction_proposals import FeedbackReply, NoteEdit, Recap, RecapPoint
 from utilities.facts import Facts
 from utilities.judgments import Judgment, JudgmentsDue
 from utilities.note_compaction import CompactionError, EventDecision, Problem
@@ -699,12 +699,16 @@ class TestPrepareCompaction:
         assert google_calendar._listings.get() is None
 
 
+_RECAP = Recap(overview="A quiet day", did=[RecapPoint(text="Kept it as planned")], unsure=[])
+
+
 class TestCompactNotes:
     def test_a_dry_run_plans_its_updates_creates_and_cancels(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
         end = datetime(2026, 1, 1, 12, 15, tzinfo=UTC)
 
         result = server.compact_notes(
+            recap=_RECAP,
             updates=[CompactionUpdate(event_id="e1", end=end)],
             creates=[CompactionCreate(summary="Walk", start_note="n1", end_note="n2")],
             cancels=[EventCancel(event_id="e2", counts_against_follow_through=False)],
@@ -718,23 +722,27 @@ class TestCompactNotes:
                 EventDecision(action="cancel", event_id="e2", counts_against_follow_through=False),
             ],
             None, None, None, None, proposal_id=None, revision=None, replies=None, annotate_notes=None,
+            recap=_RECAP, create_refs=[None],
         )
 
     def test_a_dry_run_passes_ignored_notes_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
 
-        server.compact_notes(updates=[CompactionUpdate(event_id="e1")], ignore_notes=["n2"])
+        server.compact_notes(recap=_RECAP, updates=[CompactionUpdate(event_id="e1")], ignore_notes=["n2"])
 
         compactor.dry_run.assert_called_once_with(
-            [EventDecision(action="keep", event_id="e1")], ["n2"], None, None, None, proposal_id=None, revision=None, replies=None, annotate_notes=None
+            [EventDecision(action="keep", event_id="e1")], ["n2"], None, None, None, proposal_id=None, revision=None, replies=None, annotate_notes=None,
+            recap=_RECAP, create_refs=[],
         )
 
     def test_a_dry_run_with_no_decisions_records_everything_as_on_schedule(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
 
-        server.compact_notes()
+        server.compact_notes(recap=_RECAP)
 
-        compactor.dry_run.assert_called_once_with([], None, None, None, None, proposal_id=None, revision=None, replies=None, annotate_notes=None)
+        compactor.dry_run.assert_called_once_with([], None, None, None, None, proposal_id=None, revision=None, replies=None, annotate_notes=None,
+            recap=_RECAP, create_refs=[],
+        )
 
     def test_a_dry_run_passes_what_it_adds_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
@@ -742,18 +750,21 @@ class TestCompactNotes:
         new_people = [NewPerson(ref="new:alex", name="Alex")]
         new_locations = [NewLocation(ref="new:park", name="Park")]
 
-        server.compact_notes(new_actions=new_actions, new_people=new_people, new_locations=new_locations)
+        server.compact_notes(recap=_RECAP, new_actions=new_actions, new_people=new_people, new_locations=new_locations)
 
-        compactor.dry_run.assert_called_once_with([], None, new_actions, new_people, new_locations, proposal_id=None, revision=None, replies=None, annotate_notes=None)
+        compactor.dry_run.assert_called_once_with([], None, new_actions, new_people, new_locations, proposal_id=None, revision=None, replies=None, annotate_notes=None,
+            recap=_RECAP, create_refs=[],
+        )
 
     def test_revising_a_proposal_passes_it_and_the_replies_through(self, monkeypatch):
         compactor = _fake_compactor(monkeypatch)
         replies = [FeedbackReply(feedback_id="0123456789abf1", reply="Moved the walk to 18:00")]
 
-        server.compact_notes(proposal_id="0123456789ab", revision=3, replies=replies)
+        server.compact_notes(recap=_RECAP, proposal_id="0123456789ab", revision=3, replies=replies)
 
         compactor.dry_run.assert_called_once_with(
-            [], None, None, None, None, proposal_id="0123456789ab", revision=3, replies=replies, annotate_notes=None
+            [], None, None, None, None, proposal_id="0123456789ab", revision=3, replies=replies, annotate_notes=None,
+            recap=_RECAP, create_refs=[],
         )
 
     def test_compaction_errors_become_tool_errors(self, monkeypatch):
@@ -761,7 +772,7 @@ class TestCompactNotes:
         compactor.dry_run.side_effect = CompactionError("the notes changed")
 
         with pytest.raises(ToolError, match="the notes changed"):
-            server.compact_notes()
+            server.compact_notes(recap=_RECAP)
 
     def test_a_rejection_is_logged_with_its_categories(self, monkeypatch, caplog):
         compactor = _fake_compactor(monkeypatch)
@@ -770,7 +781,7 @@ class TestCompactNotes:
         )
 
         with caplog.at_level(logging.WARNING, logger="server"), pytest.raises(ToolError):
-            server.compact_notes(updates=[])
+            server.compact_notes(recap=_RECAP, updates=[])
 
         assert caplog.messages == [
             "compaction rejected: tool=compact_notes categories=overlap,unknown_note: "

@@ -210,6 +210,14 @@ class RevisionMeta:
     `through`). `None` for a revision from before it was kept -- one
     that wasn't extended."""
 
+    claude_recap: dict | None = None
+    """Claude's recap of its last revision (see utilities/
+    compaction_proposals.py's `Recap`), kept by the revisions after it
+    until Claude writes another."""
+
+    recap_revision: int | None = None
+    """The revision `claude_recap` was written for."""
+
     def to_detail(self) -> dict:
         return {
             "proposal": self.proposal,
@@ -230,6 +238,8 @@ class RevisionMeta:
             **({"settled": self.settled} if self.settled else {}),
             **({"judge_also": self.judge_also} if self.judge_also else {}),
             **({"claude_through": self.claude_through.isoformat()} if self.claude_through else {}),
+            **({"claude_recap": self.claude_recap} if self.claude_recap is not None else {}),
+            **({"recap_revision": self.recap_revision} if self.recap_revision is not None else {}),
         }
 
     @classmethod
@@ -256,6 +266,8 @@ class RevisionMeta:
             claude_through=(
                 datetime.fromisoformat(detail["claude_through"]) if detail.get("claude_through") else None
             ),
+            claude_recap=detail.get("claude_recap"),
+            recap_revision=detail.get("recap_revision"),
         )
 
 

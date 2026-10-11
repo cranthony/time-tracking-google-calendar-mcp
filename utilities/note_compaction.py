@@ -229,8 +229,12 @@ class CompactionCreate:
     """The key a proposal already knows this event by, to keep it (see
     utilities/compaction_proposals.py); a new one is given otherwise."""
 
+    ref: str | None = None
+    """A name for it in this call, until it has a key: `annotate_notes`
+    and the recap may name it by this."""
+
     def decision(self) -> EventDecision:
-        return EventDecision(action="create", **vars(self))
+        return EventDecision(action="create", **{k: v for k, v in vars(self).items() if k != "ref"})
 
 
 def facts_dict(facts: Facts | None) -> dict[str, Any] | None:

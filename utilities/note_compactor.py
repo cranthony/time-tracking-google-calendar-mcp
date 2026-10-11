@@ -157,6 +157,7 @@ from utilities.compaction_proposals import (
     ProposalResult,
     ProposalState,
     ProposalSummary,
+    Recap,
     UserEdit,
     claude_key,
     claude_key_number,
@@ -332,6 +333,15 @@ DECISION_GUIDE = (
     "verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen "
     "it -- it shows each event's actions and facts compactly, under it), then the new actions, "
     "people and locations it adds, and the warnings. "
+    "RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it "
+    "in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which "
+    "notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what "
+    "would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, "
+    "italics, code, bullet and numbered lists; no headings or tables), and cites the events "
+    "(`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the "
+    "user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. "
+    "Write it afresh for every revision, about the proposal as it then stands; feedback answers go in "
+    "`replies`. "
     "PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of "
     "the open one) for the user to review in the app, where they confirm it, edit it, or leave "
     "you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass "
@@ -818,6 +828,8 @@ class NoteCompactor:
         revision: int | None = None,
         replies: list[FeedbackReply] | None = None,
         annotate_notes: list[NoteAnnotation] | None = None,
+        recap: Recap | None = None,
+        create_refs: list[str | None] | None = None,
     ) -> CompactionResult:
         """compact_notes: propose what happened, from the last compaction to
         now -- or, with the open proposal's `proposal_id` and the
@@ -827,7 +839,10 @@ class NoteCompactor:
         feedback, and `annotate_notes` add notes to particular events.
         `new_actions`, `new_people` and `new_locations`: what it adds when
         it's applied, which its decisions name by their refs (see
-        utilities/compaction_additions.py)."""
+        utilities/compaction_additions.py). `recap` is Claude's account of
+        the revision, kept with it; `create_refs`, the `ref` of each create
+        among `decisions`, in order, which `annotate_notes` and `recap` may
+        name it by until it has a key."""
         self._prefetch()
         # First: anything read after it deletes is read again.
         self._journal.garbage_collect()
@@ -875,6 +890,8 @@ class NoteCompactor:
             raise CompactionError.of(problems, "additions")
         decisions = self._checked_facts(decisions, claude_additions, settled=set(settled_additions))
         decisions, key_seq = _keyed(proposal, decisions, meta)
+        refs = _create_refs(decisions, create_refs or [])
+        claude_targets = {note: refs.get(event, event) for note, event in claude_targets.items()}
         aliases = meta.aliases if meta else {}
         settled = set(meta.settled) if meta else set()
         merged = merge(
@@ -890,6 +907,14 @@ class NoteCompactor:
                 status="nothing_to_compact",
                 message="nothing has happened to compact since the last compaction",
             )
+        if recap is not None:
+            recap = recap.resolved(refs)
+            problems = recap.problems(
+                {e.id for e in _proposal_events(walked, merged.decided_by)},
+                {n.id for w in walked for n in w.day.notes},
+            )
+            if problems:
+                raise CompactionError.of(problems, "recap")
         superseded = self._supersede_planned()
         revision_number = meta.revision + 1 if meta else 1
         outcomes = _outcomes(walked)
@@ -913,6 +938,8 @@ class NoteCompactor:
             settled=sorted(settled),
             judge_also=meta.judge_also if meta else [],
             claude_through=walked[-1].day.now,
+            claude_recap=recap.to_json_dict() if recap is not None else None,
+            recap_revision=revision_number if recap is not None else None,
         )
         self._write_revision(walked, new_meta, additions, current)
         newer = {e.event_id: e.id for _, e in edit_rows if base_meta is not None and e.seq > base_meta.user_seq}
@@ -1160,6 +1187,7 @@ class NoteCompactor:
             settled_additions=list(merge(proposal, [], edits).settled.values()),
             user_edits=edits,
             feedback=feedback,
+            recap=Recap.from_json_dict(meta.claude_recap) if meta.claude_recap is not None else None,
         )
 
     def proposal_summary(self) -> ProposalSummary | None:
@@ -1231,6 +1259,8 @@ class NoteCompactor:
             additions=current[0].additions or None,
             user_edits=edits,
             feedback=feedback,
+            recap=Recap.from_json_dict(meta.claude_recap) if meta.claude_recap is not None else None,
+            recap_revision=meta.recap_revision,
             replaced=replaced,
         )
         if isinstance(walked, CompactionError):
@@ -2573,6 +2603,25 @@ def _keyed(
     if problems:
         raise CompactionError.of(problems, "unknown_key")
     return keyed, key_seq
+
+
+def _create_refs(decisions: list[EventDecision], refs: list[str | None]) -> dict[str, str]:
+    """Each create's `ref` (`refs`, in the order of the creates among
+    `decisions`) -> the key it was given. CompactionError for a ref given
+    twice."""
+    creates = [d for d in decisions if d.action == "create"]
+    out: dict[str, str] = {}
+    problems = []
+    for decision, ref in zip(creates, refs):
+        if ref is None:
+            continue
+        if ref in out:
+            problems.append(f"create {decision.summary!r}: the ref {ref!r} is another create's too")
+            continue
+        out[ref] = decision.key
+    if problems:
+        raise CompactionError.of(problems, "duplicate_ref")
+    return out
 
 
 def _note_targets(annotations: list[NoteAnnotation]) -> dict[str, str]:
