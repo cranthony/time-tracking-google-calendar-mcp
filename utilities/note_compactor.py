@@ -97,7 +97,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
@@ -106,7 +105,9 @@ from typing import Literal
 from googleapiclient.errors import HttpError
 
 from calendar_clients.google_calendar import Event
+from utilities import determinism
 from utilities.actions import Actions, ActionTree
+from utilities.determinism import random_token
 from utilities.compaction_additions import (
     REF_PREFIX,
     Additions,
@@ -664,7 +665,7 @@ class NoteCompactor:
         self._locations = locations
         self._notes = notes
         self._journal = journal
-        self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._clock = clock or determinism.now
 
     def prepare(self) -> CompactionContext:
         self._prefetch()
@@ -870,7 +871,7 @@ class NoteCompactor:
         feedback_rows: list[tuple[int, Feedback]] = []
         base_meta: RevisionMeta | None = None
         if open_id is None:
-            proposal = new_proposal_id(uuid.uuid4().hex)
+            proposal = new_proposal_id(random_token("0123456789abcdef", 32))
             meta = None
         else:
             proposal = open_id

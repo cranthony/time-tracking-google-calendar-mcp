@@ -332,6 +332,21 @@ python -m pytest
 
 The tests need no credentials or configuration. [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs them on Python 3.11 and 3.13 for every pull request into `main` and every push to it. To block merging until they pass, make the `pytest (Python 3.11)` and `pytest (Python 3.13)` checks required for `main` in the repository's branch protection settings (Settings → Branches, or Rules → Rulesets).
 
+### Conformance scenarios
+
+[`conformance/`](conformance/) holds scenarios that drive the server the way a client does, over MCP, against [`conformance/fake_google.py`](conformance/fake_google.py): an in-memory fake of the parts of Google Calendar and Sheets this server uses, served over HTTP and faithful to what [`probes/`](probes/) found Google does. They're what the server's Rust port is held to. When a scenario ends, three things are compared with its golden record in `conformance/golden/`, which the Python server wrote: every tool result, every request the server sent Google, and Google's state afterwards. If two servers send Google the same requests, Google does the same for both, so this holds even where the fake gets Google wrong.
+
+```bash
+python -m pytest conformance -n auto
+```
+
+Set `CTT_SERVER` to a command line to run another build (the Rust binary, say), and `CTT_SERVER_LOG` to a file to keep its logs. After a deliberate change, rewrite the records from the Python server with `CTT_UPDATE_GOLDEN=1`. The server under test runs with these variables set, and none of them is set outside the scenarios:
+
+- `GOOGLE_API_ROOT`: where Google's APIs are (the fake's address).
+- `CTT_NOW`: a fixed time the server takes as now.
+- `CTT_DETERMINISTIC_IDS`: makes generated ids a fixed sequence (see [`utilities/determinism.py`](utilities/determinism.py)).
+- `CTT_HEALTH_WRITER=off`: no background writes to the Health tab, which would interleave with the tools' requests.
+
 ## Deploying
 
 Hosting this remotely (e.g. on [Render](https://render.com/)) involves **two independent OAuth concerns** — don't confuse them:

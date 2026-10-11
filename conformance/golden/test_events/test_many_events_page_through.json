@@ -1,0 +1,3604 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "events": [
+     {
+      "end": "2026-10-07T06:29:00-04:00",
+      "start": "2026-10-07T06:00:00-04:00",
+      "summary": "Block 0"
+     },
+     {
+      "end": "2026-10-07T06:59:00-04:00",
+      "start": "2026-10-07T06:30:00-04:00",
+      "summary": "Block 1"
+     },
+     {
+      "end": "2026-10-07T07:29:00-04:00",
+      "start": "2026-10-07T07:00:00-04:00",
+      "summary": "Block 2"
+     },
+     {
+      "end": "2026-10-07T07:59:00-04:00",
+      "start": "2026-10-07T07:30:00-04:00",
+      "summary": "Block 3"
+     },
+     {
+      "end": "2026-10-07T08:29:00-04:00",
+      "start": "2026-10-07T08:00:00-04:00",
+      "summary": "Block 4"
+     },
+     {
+      "end": "2026-10-07T08:59:00-04:00",
+      "start": "2026-10-07T08:30:00-04:00",
+      "summary": "Block 5"
+     },
+     {
+      "end": "2026-10-07T09:29:00-04:00",
+      "start": "2026-10-07T09:00:00-04:00",
+      "summary": "Block 6"
+     },
+     {
+      "end": "2026-10-07T09:59:00-04:00",
+      "start": "2026-10-07T09:30:00-04:00",
+      "summary": "Block 7"
+     },
+     {
+      "end": "2026-10-07T10:29:00-04:00",
+      "start": "2026-10-07T10:00:00-04:00",
+      "summary": "Block 8"
+     },
+     {
+      "end": "2026-10-07T10:59:00-04:00",
+      "start": "2026-10-07T10:30:00-04:00",
+      "summary": "Block 9"
+     },
+     {
+      "end": "2026-10-07T11:29:00-04:00",
+      "start": "2026-10-07T11:00:00-04:00",
+      "summary": "Block 10"
+     },
+     {
+      "end": "2026-10-07T11:59:00-04:00",
+      "start": "2026-10-07T11:30:00-04:00",
+      "summary": "Block 11"
+     },
+     {
+      "end": "2026-10-07T12:29:00-04:00",
+      "start": "2026-10-07T12:00:00-04:00",
+      "summary": "Block 12"
+     },
+     {
+      "end": "2026-10-07T12:59:00-04:00",
+      "start": "2026-10-07T12:30:00-04:00",
+      "summary": "Block 13"
+     },
+     {
+      "end": "2026-10-07T13:29:00-04:00",
+      "start": "2026-10-07T13:00:00-04:00",
+      "summary": "Block 14"
+     },
+     {
+      "end": "2026-10-07T13:59:00-04:00",
+      "start": "2026-10-07T13:30:00-04:00",
+      "summary": "Block 15"
+     },
+     {
+      "end": "2026-10-07T14:29:00-04:00",
+      "start": "2026-10-07T14:00:00-04:00",
+      "summary": "Block 16"
+     },
+     {
+      "end": "2026-10-07T14:59:00-04:00",
+      "start": "2026-10-07T14:30:00-04:00",
+      "summary": "Block 17"
+     },
+     {
+      "end": "2026-10-07T15:29:00-04:00",
+      "start": "2026-10-07T15:00:00-04:00",
+      "summary": "Block 18"
+     },
+     {
+      "end": "2026-10-07T15:59:00-04:00",
+      "start": "2026-10-07T15:30:00-04:00",
+      "summary": "Block 19"
+     },
+     {
+      "end": "2026-10-07T16:29:00-04:00",
+      "start": "2026-10-07T16:00:00-04:00",
+      "summary": "Block 20"
+     },
+     {
+      "end": "2026-10-07T16:59:00-04:00",
+      "start": "2026-10-07T16:30:00-04:00",
+      "summary": "Block 21"
+     },
+     {
+      "end": "2026-10-07T17:29:00-04:00",
+      "start": "2026-10-07T17:00:00-04:00",
+      "summary": "Block 22"
+     },
+     {
+      "end": "2026-10-07T17:59:00-04:00",
+      "start": "2026-10-07T17:30:00-04:00",
+      "summary": "Block 23"
+     }
+    ]
+   },
+   "content": {
+    "dry_run": false,
+    "events": [
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T06:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "55925eec0203effa267a7441a2",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T06:00:00-04:00",
+      "summary": "Block 0"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T06:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "6525bebff685bedf57356640a8",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T06:30:00-04:00",
+      "summary": "Block 1"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T07:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "35d98bd5ab3bf549dd770d737d",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T07:00:00-04:00",
+      "summary": "Block 2"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T07:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "9c3c1046e8cb7fa96f6b8bd88d",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T07:30:00-04:00",
+      "summary": "Block 3"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T08:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "556e592a0b77b0b17318b41f08",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T08:00:00-04:00",
+      "summary": "Block 4"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T08:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "3521324c178091b5c4ed4ca4c3",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T08:30:00-04:00",
+      "summary": "Block 5"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T09:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "4ae9a7381c23235f0631d97fad",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T09:00:00-04:00",
+      "summary": "Block 6"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T09:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "f25a39bee62b88efbce3359cff",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T09:30:00-04:00",
+      "summary": "Block 7"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T10:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "ecd953174a9e540d04e29086a6",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T10:00:00-04:00",
+      "summary": "Block 8"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T10:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "ef75dc0bc0c128f2cdca7830dc",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T10:30:00-04:00",
+      "summary": "Block 9"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T11:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "253ff45db2ccd0691eff5c50c4",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T11:00:00-04:00",
+      "summary": "Block 10"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T11:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "b8d341a83248e6df0b12de9aab",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T11:30:00-04:00",
+      "summary": "Block 11"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T12:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "449a39431d90f573fef724f914",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T12:00:00-04:00",
+      "summary": "Block 12"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T12:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "0e873f5e6145a62c5f1548a1b0",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T12:30:00-04:00",
+      "summary": "Block 13"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T13:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "475f19314ee7fcc44f01ea6642",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T13:00:00-04:00",
+      "summary": "Block 14"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T13:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "1344a7bd454cb0e31306211480",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T13:30:00-04:00",
+      "summary": "Block 15"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T14:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "44ace686e89a0044cab2787ec8",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T14:00:00-04:00",
+      "summary": "Block 16"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T14:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "034f175dd99ad72d0b5985a67f",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T14:30:00-04:00",
+      "summary": "Block 17"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T15:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "f42a0aecbe0df7a492057896ac",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T15:00:00-04:00",
+      "summary": "Block 18"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T15:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "5aa9b62d45d0a3e988d67de839",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T15:30:00-04:00",
+      "summary": "Block 19"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T16:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "2f5fa290c3875a02dd0d202e52",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T16:00:00-04:00",
+      "summary": "Block 20"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T16:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "38fdf369235566c29d44002885",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T16:30:00-04:00",
+      "summary": "Block 21"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T17:29:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "2eed72b8e85cbf104b0105b133",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T17:00:00-04:00",
+      "summary": "Block 22"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "effective_priority": null,
+      "end": "2026-10-07T17:59:00-04:00",
+      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "facts": null,
+      "id": "4a883fdeba2d03259bf35c1d74",
+      "is_cancelled": false,
+      "is_end_of_day_sleep": null,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": null,
+      "start": "2026-10-07T17:30:00-04:00",
+      "summary": "Block 23"
+     }
+    ],
+    "timeline": "06:00 ┌ Block 0 · new\n06:29 └ Block 0 ends\n06:30 ┌ Block 1 · new\n06:59 └ Block 1 ends\n07:00 ┌ Block 2 · new\n07:29 └ Block 2 ends\n07:30 ┌ Block 3 · new\n07:59 └ Block 3 ends\n08:00 ┌ Block 4 · new\n08:29 └ Block 4 ends\n08:30 ┌ Block 5 · new\n08:59 └ Block 5 ends\n09:00 ┌ Block 6 · new\n09:29 └ Block 6 ends\n09:30 ┌ Block 7 · new\n09:59 └ Block 7 ends\n10:00 ┌ Block 8 · new\n10:29 └ Block 8 ends\n10:30 ┌ Block 9 · new\n10:59 └ Block 9 ends\n11:00 ┌ Block 10 · new\n11:29 └ Block 10 ends\n11:30 ┌ Block 11 · new\n11:59 └ Block 11 ends\n12:00 ┌ Block 12 · new\n12:29 └ Block 12 ends\n12:30 ┌ Block 13 · new\n12:59 └ Block 13 ends\n13:00 ┌ Block 14 · new\n13:29 └ Block 14 ends\n13:30 ┌ Block 15 · new\n13:59 └ Block 15 ends\n14:00 ┌ Block 16 · new\n14:29 └ Block 16 ends\n14:30 ┌ Block 17 · new\n14:59 └ Block 17 ends\n15:00 ┌ Block 18 · new\n15:29 └ Block 18 ends\n15:30 ┌ Block 19 · new\n15:59 └ Block 19 ends\n16:00 ┌ Block 20 · new\n16:29 └ Block 20 ends\n16:30 ┌ Block 21 · new\n16:59 └ Block 21 ends\n17:00 ┌ Block 22 · new\n17:29 └ Block 22 ends\n17:30 ┌ Block 23 · new\n17:59 └ Block 23 ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
+   },
+   "is_error": false,
+   "tool": "create_event"
+  },
+  {
+   "arguments": {
+    "max_time": "2026-10-07T23:59:00-04:00",
+    "min_time": "2026-10-07T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T06:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "55925eec0203effa267a7441a2",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T06:00:00-04:00",
+     "summary": "Block 0"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T06:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "6525bebff685bedf57356640a8",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T06:30:00-04:00",
+     "summary": "Block 1"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T07:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "35d98bd5ab3bf549dd770d737d",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T07:00:00-04:00",
+     "summary": "Block 2"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T07:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "9c3c1046e8cb7fa96f6b8bd88d",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T07:30:00-04:00",
+     "summary": "Block 3"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T08:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "556e592a0b77b0b17318b41f08",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T08:00:00-04:00",
+     "summary": "Block 4"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T08:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "3521324c178091b5c4ed4ca4c3",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T08:30:00-04:00",
+     "summary": "Block 5"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T09:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "4ae9a7381c23235f0631d97fad",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T09:00:00-04:00",
+     "summary": "Block 6"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T09:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "f25a39bee62b88efbce3359cff",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T09:30:00-04:00",
+     "summary": "Block 7"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T10:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "ecd953174a9e540d04e29086a6",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T10:00:00-04:00",
+     "summary": "Block 8"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T10:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "ef75dc0bc0c128f2cdca7830dc",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T10:30:00-04:00",
+     "summary": "Block 9"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T11:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "253ff45db2ccd0691eff5c50c4",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T11:00:00-04:00",
+     "summary": "Block 10"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T11:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "b8d341a83248e6df0b12de9aab",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T11:30:00-04:00",
+     "summary": "Block 11"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T12:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "449a39431d90f573fef724f914",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T12:00:00-04:00",
+     "summary": "Block 12"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T12:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "0e873f5e6145a62c5f1548a1b0",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T12:30:00-04:00",
+     "summary": "Block 13"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T13:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "475f19314ee7fcc44f01ea6642",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T13:00:00-04:00",
+     "summary": "Block 14"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T13:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "1344a7bd454cb0e31306211480",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T13:30:00-04:00",
+     "summary": "Block 15"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T14:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "44ace686e89a0044cab2787ec8",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T14:00:00-04:00",
+     "summary": "Block 16"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T14:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "034f175dd99ad72d0b5985a67f",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T14:30:00-04:00",
+     "summary": "Block 17"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T15:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "f42a0aecbe0df7a492057896ac",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T15:00:00-04:00",
+     "summary": "Block 18"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T15:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "5aa9b62d45d0a3e988d67de839",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T15:30:00-04:00",
+     "summary": "Block 19"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T16:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "2f5fa290c3875a02dd0d202e52",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T16:00:00-04:00",
+     "summary": "Block 20"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T16:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "38fdf369235566c29d44002885",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T16:30:00-04:00",
+     "summary": "Block 21"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T17:29:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "2eed72b8e85cbf104b0105b133",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T17:00:00-04:00",
+     "summary": "Block 22"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "effective_priority": null,
+     "end": "2026-10-07T17:59:00-04:00",
+     "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+     "facts": null,
+     "id": "4a883fdeba2d03259bf35c1d74",
+     "is_cancelled": false,
+     "is_end_of_day_sleep": null,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": null,
+     "start": "2026-10-07T17:30:00-04:00",
+     "summary": "Block 23"
+    }
+   ],
+   "is_error": false,
+   "tool": "list_events"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "actions"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Actions"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "actions",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "action-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Action Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000007
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "action-groups",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "People"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000009
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "people",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "circles"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Circles"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000011,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000011
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "circles",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000013,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000013
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "traits"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Traits"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "status",
+        "definition",
+        "parts"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 6,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "thoughtful",
+        "Thoughtful",
+        "active",
+        "Remember what matters to them, and prepare for it.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+       ],
+       [
+        "reliable",
+        "Reliable",
+        "active",
+        "Do what I said I would, and keep contact going -- reliable to myself too.",
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+       ],
+       [
+        "creative",
+        "Creative",
+        "active",
+        "Make something together with them (making something alone is taking care of myself).",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+       ],
+       [
+        "adventurous",
+        "Adventurous",
+        "active",
+        "Share new experiences with them: new activities, new places.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+       ],
+       [
+        "generous",
+        "Generous",
+        "active",
+        "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000015
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "traits",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "habits"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Habits"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000017,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "status",
+        "note",
+        "traits"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000017
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "habits",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "cancellations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Cancellations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000019,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "engagement",
+        "summary",
+        "start",
+        "end",
+        "action_ids",
+        "parts",
+        "cancelled_at",
+        "source"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000019
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "cancellations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "compactions"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Compactions"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000021
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "compactions",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 8,
+        "endRowIndex": 1,
+        "sheetId": 1000021,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "compaction_id",
+        "step",
+        "kind",
+        "event_id",
+        "before",
+        "after",
+        "status",
+        "detail"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000019,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000021,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-08T17:59:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-07T17:59:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-08T17:59:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-07T06:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "labelProperties": {
+     "eventLabels": [
+      {
+       "backgroundColor": "#e1e1e1",
+       "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+       "name": "Priority 0"
+      },
+      {
+       "backgroundColor": "#fbd75b",
+       "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+       "name": "Priority 1"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+       "name": "Priority 2"
+      },
+      {
+       "backgroundColor": "#7ae7bf",
+       "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+       "name": "Priority 3"
+      }
+     ]
+    }
+   },
+   "if_match": "\"0000000000000004\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T06:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T06:00:00-04:00"
+    },
+    "summary": "Block 0"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T06:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T06:30:00-04:00"
+    },
+    "summary": "Block 1"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T07:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T07:00:00-04:00"
+    },
+    "summary": "Block 2"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T07:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T07:30:00-04:00"
+    },
+    "summary": "Block 3"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T08:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T08:00:00-04:00"
+    },
+    "summary": "Block 4"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T08:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T08:30:00-04:00"
+    },
+    "summary": "Block 5"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T09:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T09:00:00-04:00"
+    },
+    "summary": "Block 6"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T09:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T09:30:00-04:00"
+    },
+    "summary": "Block 7"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T10:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T10:00:00-04:00"
+    },
+    "summary": "Block 8"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T10:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T10:30:00-04:00"
+    },
+    "summary": "Block 9"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T11:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T11:00:00-04:00"
+    },
+    "summary": "Block 10"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T11:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T11:30:00-04:00"
+    },
+    "summary": "Block 11"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T12:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T12:00:00-04:00"
+    },
+    "summary": "Block 12"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T12:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T12:30:00-04:00"
+    },
+    "summary": "Block 13"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T13:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T13:00:00-04:00"
+    },
+    "summary": "Block 14"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T13:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T13:30:00-04:00"
+    },
+    "summary": "Block 15"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T14:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T14:00:00-04:00"
+    },
+    "summary": "Block 16"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T14:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T14:30:00-04:00"
+    },
+    "summary": "Block 17"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T15:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T15:00:00-04:00"
+    },
+    "summary": "Block 18"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T15:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T15:30:00-04:00"
+    },
+    "summary": "Block 19"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T16:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T16:00:00-04:00"
+    },
+    "summary": "Block 20"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T16:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T16:30:00-04:00"
+    },
+    "summary": "Block 21"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T17:29:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T17:00:00-04:00"
+    },
+    "summary": "Block 22"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "end": {
+     "dateTime": "2026-10-07T17:59:00-04:00"
+    },
+    "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+    "start": {
+     "dateTime": "2026-10-07T17:30:00-04:00"
+    },
+    "summary": "Block 23"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "eventLabelVersion": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-07T23:59:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-07T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-07T23:59:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-07T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "14"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-07T23:59:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-07T00:00:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "21"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-07T23:59:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-07T00:00:00-04:00"
+    ]
+   }
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {
+     "034f175dd99ad72d0b5985a67f": {
+      "end": {
+       "dateTime": "2026-10-07T14:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "034f175dd99ad72d0b5985a67f@google.com",
+      "id": "034f175dd99ad72d0b5985a67f",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T14:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 17"
+     },
+     "0e873f5e6145a62c5f1548a1b0": {
+      "end": {
+       "dateTime": "2026-10-07T12:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "0e873f5e6145a62c5f1548a1b0@google.com",
+      "id": "0e873f5e6145a62c5f1548a1b0",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T12:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 13"
+     },
+     "1344a7bd454cb0e31306211480": {
+      "end": {
+       "dateTime": "2026-10-07T13:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "1344a7bd454cb0e31306211480@google.com",
+      "id": "1344a7bd454cb0e31306211480",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T13:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 15"
+     },
+     "253ff45db2ccd0691eff5c50c4": {
+      "end": {
+       "dateTime": "2026-10-07T11:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "253ff45db2ccd0691eff5c50c4@google.com",
+      "id": "253ff45db2ccd0691eff5c50c4",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T11:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 10"
+     },
+     "2eed72b8e85cbf104b0105b133": {
+      "end": {
+       "dateTime": "2026-10-07T17:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "2eed72b8e85cbf104b0105b133@google.com",
+      "id": "2eed72b8e85cbf104b0105b133",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T17:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 22"
+     },
+     "2f5fa290c3875a02dd0d202e52": {
+      "end": {
+       "dateTime": "2026-10-07T16:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "2f5fa290c3875a02dd0d202e52@google.com",
+      "id": "2f5fa290c3875a02dd0d202e52",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T16:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 20"
+     },
+     "3521324c178091b5c4ed4ca4c3": {
+      "end": {
+       "dateTime": "2026-10-07T08:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "3521324c178091b5c4ed4ca4c3@google.com",
+      "id": "3521324c178091b5c4ed4ca4c3",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T08:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 5"
+     },
+     "35d98bd5ab3bf549dd770d737d": {
+      "end": {
+       "dateTime": "2026-10-07T07:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "35d98bd5ab3bf549dd770d737d@google.com",
+      "id": "35d98bd5ab3bf549dd770d737d",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T07:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 2"
+     },
+     "38fdf369235566c29d44002885": {
+      "end": {
+       "dateTime": "2026-10-07T16:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "38fdf369235566c29d44002885@google.com",
+      "id": "38fdf369235566c29d44002885",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T16:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 21"
+     },
+     "449a39431d90f573fef724f914": {
+      "end": {
+       "dateTime": "2026-10-07T12:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "449a39431d90f573fef724f914@google.com",
+      "id": "449a39431d90f573fef724f914",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T12:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 12"
+     },
+     "44ace686e89a0044cab2787ec8": {
+      "end": {
+       "dateTime": "2026-10-07T14:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "44ace686e89a0044cab2787ec8@google.com",
+      "id": "44ace686e89a0044cab2787ec8",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T14:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 16"
+     },
+     "475f19314ee7fcc44f01ea6642": {
+      "end": {
+       "dateTime": "2026-10-07T13:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "475f19314ee7fcc44f01ea6642@google.com",
+      "id": "475f19314ee7fcc44f01ea6642",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T13:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 14"
+     },
+     "4a883fdeba2d03259bf35c1d74": {
+      "end": {
+       "dateTime": "2026-10-07T17:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "4a883fdeba2d03259bf35c1d74@google.com",
+      "id": "4a883fdeba2d03259bf35c1d74",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T17:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 23"
+     },
+     "4ae9a7381c23235f0631d97fad": {
+      "end": {
+       "dateTime": "2026-10-07T09:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "4ae9a7381c23235f0631d97fad@google.com",
+      "id": "4ae9a7381c23235f0631d97fad",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T09:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 6"
+     },
+     "556e592a0b77b0b17318b41f08": {
+      "end": {
+       "dateTime": "2026-10-07T08:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "556e592a0b77b0b17318b41f08@google.com",
+      "id": "556e592a0b77b0b17318b41f08",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T08:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 4"
+     },
+     "55925eec0203effa267a7441a2": {
+      "end": {
+       "dateTime": "2026-10-07T06:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "55925eec0203effa267a7441a2@google.com",
+      "id": "55925eec0203effa267a7441a2",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T06:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 0"
+     },
+     "5aa9b62d45d0a3e988d67de839": {
+      "end": {
+       "dateTime": "2026-10-07T15:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "5aa9b62d45d0a3e988d67de839@google.com",
+      "id": "5aa9b62d45d0a3e988d67de839",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T15:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 19"
+     },
+     "6525bebff685bedf57356640a8": {
+      "end": {
+       "dateTime": "2026-10-07T06:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "6525bebff685bedf57356640a8@google.com",
+      "id": "6525bebff685bedf57356640a8",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T06:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 1"
+     },
+     "9c3c1046e8cb7fa96f6b8bd88d": {
+      "end": {
+       "dateTime": "2026-10-07T07:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "9c3c1046e8cb7fa96f6b8bd88d@google.com",
+      "id": "9c3c1046e8cb7fa96f6b8bd88d",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T07:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 3"
+     },
+     "b8d341a83248e6df0b12de9aab": {
+      "end": {
+       "dateTime": "2026-10-07T11:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "b8d341a83248e6df0b12de9aab@google.com",
+      "id": "b8d341a83248e6df0b12de9aab",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T11:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 11"
+     },
+     "ecd953174a9e540d04e29086a6": {
+      "end": {
+       "dateTime": "2026-10-07T10:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "ecd953174a9e540d04e29086a6@google.com",
+      "id": "ecd953174a9e540d04e29086a6",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T10:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 8"
+     },
+     "ef75dc0bc0c128f2cdca7830dc": {
+      "end": {
+       "dateTime": "2026-10-07T10:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "ef75dc0bc0c128f2cdca7830dc@google.com",
+      "id": "ef75dc0bc0c128f2cdca7830dc",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T10:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 9"
+     },
+     "f25a39bee62b88efbce3359cff": {
+      "end": {
+       "dateTime": "2026-10-07T09:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "f25a39bee62b88efbce3359cff@google.com",
+      "id": "f25a39bee62b88efbce3359cff",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T09:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 7"
+     },
+     "f42a0aecbe0df7a492057896ac": {
+      "end": {
+       "dateTime": "2026-10-07T15:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "f42a0aecbe0df7a492057896ac@google.com",
+      "id": "f42a0aecbe0df7a492057896ac",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T15:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 18"
+     }
+    },
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "labelProperties": {
+      "eventLabels": [
+       {
+        "backgroundColor": "#e1e1e1",
+        "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+        "name": "Priority 0"
+       },
+       {
+        "backgroundColor": "#fbd75b",
+        "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+        "name": "Priority 1"
+       },
+       {
+        "backgroundColor": "#a4bdfc",
+        "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+        "name": "Priority 2"
+       },
+       {
+        "backgroundColor": "#7ae7bf",
+        "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+        "name": "Priority 3"
+       }
+      ]
+     },
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000005
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "actions",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "action-groups",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000009
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "people",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000011
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "circles",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000013
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "locations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000015
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "traits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000017
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "habits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000019
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000021
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "compactions",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Action Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Action Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Actions": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Actions"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Cancellations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000019,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Cancellations"
+      },
+      "rows": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "engagement",
+        "summary",
+        "start",
+        "end",
+        "action_ids",
+        "parts",
+        "cancelled_at",
+        "source"
+       ]
+      ]
+     },
+     "Circles": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000011,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Circles"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     },
+     "Compactions": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000021,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Compactions"
+      },
+      "rows": [
+       [
+        "compaction_id",
+        "step",
+        "kind",
+        "event_id",
+        "before",
+        "after",
+        "status",
+        "detail"
+       ]
+      ]
+     },
+     "Habits": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000017,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Habits"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "status",
+        "note",
+        "traits"
+       ]
+      ]
+     },
+     "Locations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000013,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Locations"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     },
+     "People": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000009,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "People"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     },
+     "Traits": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000015,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Traits"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "status",
+        "definition",
+        "parts"
+       ],
+       [
+        "thoughtful",
+        "Thoughtful",
+        "active",
+        "Remember what matters to them, and prepare for it.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+       ],
+       [
+        "reliable",
+        "Reliable",
+        "active",
+        "Do what I said I would, and keep contact going -- reliable to myself too.",
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+       ],
+       [
+        "creative",
+        "Creative",
+        "active",
+        "Make something together with them (making something alone is taking care of myself).",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+       ],
+       [
+        "adventurous",
+        "Adventurous",
+        "active",
+        "Share new experiences with them: new activities, new places.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+       ],
+       [
+        "generous",
+        "Generous",
+        "active",
+        "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+       ]
+      ]
+     }
+    }
+   }
+  }
+ }
+}

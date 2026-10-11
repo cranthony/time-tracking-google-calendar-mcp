@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from pathlib import Path
 
@@ -151,4 +152,12 @@ def build_service(service_name: str, version: str, *, credentials: Credentials):
     """`googleapiclient.discovery.build(service_name, version)` authorized
     with `credentials`, safe to call from several threads at once -- see
     `_PerThreadHttp`."""
+    root = os.environ.get("GOOGLE_API_ROOT")
+    if root:
+        # conformance/'s fake Google (see conformance/fake_google.py). An
+        # api_endpoint stands in for a service's root *and* path, so the
+        # path (Calendar's "calendar/v3/"; Sheets' paths carry their own
+        # "v4/") goes on the end, as at Google.
+        endpoint = root + ("calendar/v3/" if service_name == "calendar" else "")
+        return build(service_name, version, http=_PerThreadHttp(credentials), client_options={"api_endpoint": endpoint})
     return build(service_name, version, http=_PerThreadHttp(credentials))
