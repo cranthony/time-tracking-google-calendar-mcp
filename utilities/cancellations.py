@@ -30,7 +30,7 @@ from typing import Any
 
 from calendar_clients.google_calendar import Event
 from calendar_clients.google_sheets import SheetsClient, TabRange
-from utilities import calendar_metadata_sheet
+from utilities import calendar_metadata_sheet, determinism
 from utilities.actions import Actions, ActionTree
 from utilities.facts import SELF_ID, Facts
 from utilities.habits import SUBJECT_PREFIX, Habits, subject_id
@@ -238,7 +238,7 @@ class Cancellations:
         """Record `event` (as it was planned, before it was cancelled) as
         cancelled for everyone it counts against (`matches`) -- again,
         harmlessly, if it already is. Returns the rows written."""
-        at = at or datetime.now(timezone.utc)
+        at = at or determinism.now()
         rows = [
             Cancellation(
                 id=f"{event.id}/{match.person_id}/{match.engagement}",

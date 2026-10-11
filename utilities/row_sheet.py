@@ -13,13 +13,13 @@ nothing for `None`.
 from __future__ import annotations
 
 import json
-import secrets
 from collections.abc import Collection
 from dataclasses import fields, replace
 from typing import Any, Generic, TypeVar
 
 from calendar_clients.google_sheets import SheetsClient, TabRange
 from utilities import calendar_metadata_sheet
+from utilities.determinism import random_token
 
 _HEADER_RANGE = "A1:Z1"
 _DATA_RANGE = "A2:Z"
@@ -35,7 +35,7 @@ _ID_LENGTH = 6
 def new_id(taken: Collection[str | None]) -> str:
     """A short random id (e.g. "a7k2qp") not in `taken`."""
     while True:
-        candidate = "".join(secrets.choice(_ID_ALPHABET) for _ in range(_ID_LENGTH))
+        candidate = random_token(_ID_ALPHABET, _ID_LENGTH)
         if candidate not in taken:
             return candidate
 

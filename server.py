@@ -2485,8 +2485,12 @@ def _open_health_tab() -> HealthTab:
 def start_health_writer() -> None:
     """Starts writing the health metrics to the Health tab, in the
     background, recording this start as a restart (see utilities/
-    health.py)."""
+    health.py). Not with CTT_HEALTH_WRITER=off: conformance/ compares
+    the requests each tool sends Google, which the writer's own would
+    interleave with."""
     global _health_writer
+    if os.environ.get("CTT_HEALTH_WRITER") == "off":
+        return
     _health_writer = HealthWriter(HEALTH, _open_health_tab)
     _health_writer.start()
 
