@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import functools
+import inspect
 import logging
 import os
 import time
@@ -745,7 +746,9 @@ def tool(fn: Callable[P, R]) -> Callable[P, R]:
             else:
                 HEALTH.record_call(fn.__name__, work_ms=work_ms, total_ms=None, ok=ok)
 
-    return mcp.tool()(timed)
+    # Cleaned, so every Python version sends the same description: 3.13
+    # strips a docstring's indentation itself, earlier ones don't.
+    return mcp.tool(description=inspect.cleandoc(fn.__doc__ or "") or None)(timed)
 
 
 @tool
