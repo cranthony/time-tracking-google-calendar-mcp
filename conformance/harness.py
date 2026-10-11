@@ -172,9 +172,10 @@ def _masked_timings(value: Any) -> Any:
     counts are still compared."""
     if isinstance(value, dict):
         masked = {k: (type(v).__name__ if k in _TIMING_KEYS and v is not None else _masked_timings(v)) for k, v in value.items()}
-        if "memory" in masked:
-            # Whether memory can be measured depends on the platform.
-            masked["memory"] = "<memory samples>"
+        for key in masked:
+            if key.startswith("memory"):
+                # Whether memory can be measured depends on the platform.
+                masked[key] = "<memory>"
         return masked
     if isinstance(value, list):
         return [_masked_timings(v) for v in value]

@@ -23,10 +23,10 @@
   {
    "arguments": {},
    "content": {
-    "memory": "<memory samples>",
-    "memory_latest_mib": null,
-    "memory_max_mib": null,
-    "memory_min_mib": null,
+    "memory": "<memory>",
+    "memory_latest_mib": "<memory>",
+    "memory_max_mib": "<memory>",
+    "memory_min_mib": "<memory>",
     "restarts": [],
     "tools": [
      {
@@ -86,10 +86,10 @@
     "samples": false
    },
    "content": {
-    "memory": "<memory samples>",
-    "memory_latest_mib": null,
-    "memory_max_mib": null,
-    "memory_min_mib": null,
+    "memory": "<memory>",
+    "memory_latest_mib": "<memory>",
+    "memory_max_mib": "<memory>",
+    "memory_min_mib": "<memory>",
     "restarts": [],
     "tools": [
      {
@@ -138,10 +138,10 @@
     "tool_name": "get_locations"
    },
    "content": {
-    "memory": "<memory samples>",
-    "memory_latest_mib": null,
-    "memory_max_mib": null,
-    "memory_min_mib": null,
+    "memory": "<memory>",
+    "memory_latest_mib": "<memory>",
+    "memory_max_mib": "<memory>",
+    "memory_min_mib": "<memory>",
     "restarts": [],
     "tools": [
      {
