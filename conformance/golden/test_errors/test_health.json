@@ -23,7 +23,7 @@
   {
    "arguments": {},
    "content": {
-    "memory": [],
+    "memory": "<memory samples>",
     "memory_latest_mib": null,
     "memory_max_mib": null,
     "memory_min_mib": null,
@@ -86,7 +86,7 @@
     "samples": false
    },
    "content": {
-    "memory": null,
+    "memory": "<memory samples>",
     "memory_latest_mib": null,
     "memory_max_mib": null,
     "memory_min_mib": null,
@@ -138,7 +138,7 @@
     "tool_name": "get_locations"
    },
    "content": {
-    "memory": [],
+    "memory": "<memory samples>",
     "memory_latest_mib": null,
     "memory_max_mib": null,
     "memory_min_mib": null,
