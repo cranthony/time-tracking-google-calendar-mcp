@@ -84,6 +84,7 @@ from utilities.compaction_proposals import (
     Proposal,
     ProposalResult,
     ProposalSummary,
+    Recap,
 )
 from utilities.note_compactor import CompactionContext, CompactionResult, NoteCompactor
 from utilities.noted_time_sheet import NotedTime, NotedTimeSheet, NoteWithId
@@ -1891,6 +1892,7 @@ def prepare_compaction() -> CompactionContext:
 @tool
 @writes
 def compact_notes(
+    recap: Recap,
     updates: list[CompactionUpdate] | None = None,
     creates: list[CompactionCreate] | None = None,
     cancels: list[EventCancel] | None = None,
@@ -1920,7 +1922,7 @@ def compact_notes(
     recorded as on schedule. Notes that don't set an event edge are added
     to the event they fall within, except those in `ignore_notes` -- and
     those in `annotate_notes`, added to the event they name (an event's
-    id, or a create's key from the open proposal) instead.
+    id, a create's key from the open proposal, or its `ref`) instead.
     new_actions, new_people and new_locations add what isn't there yet,
     each with a `ref` ("new:ukulele") the updates and creates use in
     place of its id; they're created when it's applied. You get the
@@ -1928,6 +1930,17 @@ def compact_notes(
     a `timeline` of the notes beside the resulting events, each with its
     actions and facts -- in a conversation, show its `text` to the user in
     a code block.
+
+    `recap` is your account of it, for the user reviewing it in the app:
+    a short `overview`, then one point for each thing you `did` (what you
+    decided, and from which notes) and each thing you're `unsure` of
+    (saying what you assumed -- empty only if nothing is in doubt). Each
+    point is Markdown (bold, italics, code, lists; no headings) and cites
+    the events (`event_ids`: ids, keys, or a create's `ref`) and the notes
+    (`note_ids`) it's about, so the user can go straight to them. Give a
+    create a `ref` of your choosing to name it before it has a key, here
+    and in `annotate_notes`. Write it afresh every call, for the proposal
+    as it now stands.
 
     With a proposal open (prepare_compaction's `proposal`), every call
     revises or extends it: pass its `proposal_id` and the `revision` you
@@ -1973,6 +1986,7 @@ def compact_notes(
             return compactor.dry_run(
                 decisions, ignore_notes, new_actions, new_people, new_locations,
                 proposal_id=proposal_id, revision=revision, replies=replies, annotate_notes=annotate_notes,
+                recap=recap, create_refs=[c.ref for c in creates or ()],
             )
         except CompactionError as exc:
             raise _rejected("compact_notes", exc) from exc

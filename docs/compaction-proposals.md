@@ -91,18 +91,29 @@ rules below say what happens then. A refused call writes nothing.
   a longer gap takes more than one proposal.
 - With a proposal open, also returns `proposal`: its current revision's
   Claude decisions (`updates`, `creates` with their keys, `cancels`,
-  `ignore_notes`, `annotate_notes`), the user ledger, every feedback
-  item, and `user_seq` (the last ledger entry included).
+  `ignore_notes`, `annotate_notes`), its last `recap`, the user ledger,
+  every feedback item, and `user_seq` (the last ledger entry included).
 
 ### `compact_notes` (Claude; plans only)
 
-Proposes, revises or extends: `compact_notes(updates, creates, cancels,
-ignore_notes, proposal_id?, revision?, replies?, new_actions?,
+Proposes, revises or extends: `compact_notes(recap, updates, creates,
+cancels, ignore_notes, proposal_id?, revision?, replies?, new_actions?,
 new_people?, new_locations?, annotate_notes?)`. `replies` is
 `[{feedback_id, reply}]`; `annotate_notes` is `[{note_id, event_id}]`
-(an event's id, or a create's key from the open proposal). Each call
-sends all of Claude's decisions, planned to now; a create with a `key`
-keeps it.
+(an event's id, a create's key from the open proposal, or a create's
+`ref` from this call). Each call sends all of Claude's decisions,
+planned to now; a create with a `key` keeps it, and one with a `ref` --
+any name Claude gives it -- can be named by it in this call, until it
+has a key.
+
+- `recap` (required) is Claude's account of the revision, for the user
+  reviewing it: `{overview, did, unsure}`, each of `did` and `unsure` a
+  list of `{text, event_ids?, note_ids?}` -- `text` in Markdown (bold,
+  italics, code, lists), citing the events (ids, keys or refs) and notes
+  it's about. `did` must say something; `unsure` may be empty. A point
+  citing an event or note the revision doesn't have is refused. It's
+  kept with the revision, and the user's revisions after it keep it
+  until Claude writes another.
 
 - `dry_run=False` is removed: Claude can't apply anything.
 - With no proposal open, starts one (revision 1). With one open, a call
@@ -151,6 +162,9 @@ as it is now:
 - `feedback`: `id`, `text`, `event_id`, `note_id`, `at`, `by` (`user`/`server`),
   `created`, `status` (`open`, `answered`, `withdrawn`), `reply`,
   `answered_in`.
+- `recap`: Claude's last recap (see `compact_notes`), refs resolved to
+  keys, and `recap_revision`, the revision it was written for -- the
+  user's edits since may have changed what it's about.
 - `changed_since`: with `since_revision`, the ids and keys whose outcome
   changed after it (the union of each later revision's `changed`).
 

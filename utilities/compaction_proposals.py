@@ -224,6 +224,84 @@ class FeedbackReply:
 
 
 @dataclass(kw_only=True)
+class RecapPoint:
+    """One point of Claude's recap: `text` in Markdown (bold, italics,
+    code, bullet and numbered lists -- no headings, tables or images), and
+    the events (`event_ids`: ids, keys, or a create's `ref` from the same
+    call) and notes (`note_ids`) it's about, for the user to go to."""
+
+    text: str
+    event_ids: list[str] = field(default_factory=list)
+    note_ids: list[str] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Recap:
+    """Claude's account of a revision, for the user reviewing it in the
+    app: a short `overview`, then each thing it `did` -- what it decided,
+    and from which notes -- and each thing it's `unsure` of, saying what
+    it assumed (empty if nothing: say so by sending it empty). One point
+    each, citing the events and notes it's about. Written afresh for every
+    revision: the proposal as it now stands, not what changed."""
+
+    overview: str
+    did: list[RecapPoint]
+    unsure: list[RecapPoint]
+
+    def to_json_dict(self) -> dict[str, Any]:
+        def point(p: RecapPoint) -> dict[str, Any]:
+            return {
+                "text": p.text,
+                **({"event_ids": p.event_ids} if p.event_ids else {}),
+                **({"note_ids": p.note_ids} if p.note_ids else {}),
+            }
+
+        return {
+            "overview": self.overview,
+            "did": [point(p) for p in self.did],
+            "unsure": [point(p) for p in self.unsure],
+        }
+
+    @classmethod
+    def from_json_dict(cls, data: dict[str, Any]) -> Recap:
+        def points(key: str) -> list[RecapPoint]:
+            return [
+                RecapPoint(text=p["text"], event_ids=p.get("event_ids", []), note_ids=p.get("note_ids", []))
+                for p in data.get(key, [])
+            ]
+
+        return cls(overview=data.get("overview", ""), did=points("did"), unsure=points("unsure"))
+
+    def resolved(self, refs: dict[str, str]) -> Recap:
+        """It with each create's `ref` among its events replaced by the
+        key the create was given."""
+
+        def point(p: RecapPoint) -> RecapPoint:
+            return replace(p, event_ids=[refs.get(e, e) for e in p.event_ids])
+
+        return replace(self, did=[point(p) for p in self.did], unsure=[point(p) for p in self.unsure])
+
+    def problems(self, events: set[str], notes: set[str]) -> list[str]:
+        """What's wrong with it, given the revision's `events` (ids and
+        keys) and `notes` -- empty if nothing."""
+        problems = []
+        if not self.overview.strip():
+            problems.append("recap: the overview is empty")
+        if not self.did:
+            problems.append(
+                "recap: `did` is empty -- say what you did, even if it's recording every event as on schedule"
+            )
+        for kind, points in (("did", self.did), ("unsure", self.unsure)):
+            for i, p in enumerate(points):
+                where = f"recap.{kind}[{i}]"
+                if not p.text.strip():
+                    problems.append(f"{where}: its text is empty")
+                problems += [f"{where}: {e!r} isn't one of the proposal's events" for e in p.event_ids if e not in events]
+                problems += [f"{where}: {n!r} isn't one of the proposal's notes" for n in p.note_ids if n not in notes]
+        return problems
+
+
+@dataclass(kw_only=True)
 class ProposalEvent:
     """One event as a revision leaves it."""
 
@@ -330,6 +408,14 @@ class Proposal:
 
     user_edits: list[UserEdit] = field(default_factory=list)
     feedback: list[Feedback] = field(default_factory=list)
+    recap: Recap | None = None
+    """Claude's account of its last revision: what it did, and what it's
+    unsure of."""
+
+    recap_revision: int | None = None
+    """The revision `recap` was written for: the user's edits since may
+    have changed what it's about."""
+
     changed_since: list[str] | None = None
     """With `since_revision`: the events (ids and keys) whose outcome
     changed in a later revision."""
@@ -392,6 +478,8 @@ class ProposalContext:
 
     user_edits: list[UserEdit] = field(default_factory=list)
     feedback: list[Feedback] = field(default_factory=list)
+    recap: Recap | None = None
+    """Your recap of your last revision: write it afresh for the next."""
 
 
 @dataclass

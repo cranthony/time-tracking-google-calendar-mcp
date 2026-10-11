@@ -37,7 +37,7 @@ from utilities.note_compaction import (
 from tests.fake_labels import FakeLabelCalendar
 from utilities.actions import Action, Actions
 from utilities.compaction_additions import NewAction, NewLocation, NewPerson
-from utilities.compaction_proposals import AdditionChoice, AdditionSettled, FeedbackReply, NoteEdit
+from utilities.compaction_proposals import AdditionChoice, AdditionSettled, FeedbackReply, NoteEdit, Recap, RecapPoint
 from utilities.cancellations import Cancellations
 from utilities.facts import Facts
 from utilities.habits import Habit, Habits
@@ -1547,7 +1547,9 @@ class TestSheetReadRequests:
 
         call("note", lambda: server.note(NotedTime(timestamp=time_at(note_at), description="note")))
         call("prepare_compaction", server.prepare_compaction)
-        plan = call("compact_notes dry run", lambda: server.compact_notes())
+        plan = call("compact_notes dry run", lambda: server.compact_notes(
+            recap=Recap(overview="As planned", did=[RecapPoint(text="Kept it as planned")], unsure=[])
+        ))
         call("confirm_proposal", lambda: server.confirm_proposal(plan.proposal_id, plan.revision))
         return counts
 
@@ -2966,3 +2968,95 @@ class TestEditingAProposalsEventFields:
 
         patches = {c.args[0].id: c.args[0] for c in setup.client.update_event.call_args_list}
         assert patches["e1"].description == ""
+
+
+class TestRecap:
+    """Claude's recap of a revision: what it did and what it's unsure of,
+    each point citing the events and notes it's about."""
+
+    @staticmethod
+    def _recap(did_events=("e1",), unsure_notes=(), unsure_events=()):
+        return Recap(
+            overview="A **quiet** morning",
+            did=[RecapPoint(text="Moved the *email*:\n- to 09:05", event_ids=list(did_events))],
+            unsure=[RecapPoint(text="Was it a report?", event_ids=list(unsure_events), note_ids=list(unsure_notes))],
+        )
+
+    def test_its_kept_with_the_revision_and_handed_back(self):
+        setup = _standard()
+        recap = self._recap(unsure_notes=[setup.note_id(3)], unsure_events=["e2"])
+
+        setup.compactor.dry_run(setup.email_then_report(), recap=recap)
+
+        proposal = setup.compactor.get_proposal()
+        assert (proposal.recap, proposal.recap_revision) == (recap, 1)
+        assert setup.compactor.prepare().proposal.recap == recap
+
+    def test_the_users_edits_keep_it_and_say_which_revision_its_of(self):
+        setup = _standard()
+        result = setup.compactor.dry_run(setup.email_then_report(), recap=self._recap())
+
+        proposal = setup.compactor.amend(result.proposal_id, 1, [_keep("e1", summary="Inbox")])
+
+        assert (proposal.revision, proposal.recap, proposal.recap_revision) == (2, self._recap(), 1)
+
+    def test_claudes_next_revision_replaces_it(self):
+        setup = _standard()
+        p = setup.compactor.dry_run(setup.email_then_report(), recap=self._recap()).proposal_id
+        setup.compactor.amend(p, 1, [_keep("e1", summary="Inbox")])
+        later = self._recap(did_events=["e2"])
+
+        setup.compactor.dry_run(setup.email_then_report(), proposal_id=p, revision=2, recap=later)
+
+        proposal = setup.compactor.get_proposal()
+        assert (proposal.recap, proposal.recap_revision) == (later, 3)
+
+    def test_it_names_a_new_event_by_its_ref_till_it_has_a_key(self):
+        setup = _standard()
+        walk = EventDecision(action="create", summary="Walk", start=time_at("11:00"), end=time_at("11:20"))
+
+        result = setup.compactor.dry_run(
+            setup.email_then_report() + [walk],
+            recap=self._recap(did_events=["walk"]),
+            annotate_notes=[NoteAnnotation(note_id=setup.note_id(2), event_id="walk")],
+            create_refs=["walk"],
+        )
+
+        p = result.proposal_id
+        proposal = setup.compactor.get_proposal()
+        assert proposal.recap.did[0].event_ids == [f"{p}c1"]
+        assert next(n for n in proposal.notes if n.id == setup.note_id(2)).event_id == f"{p}c1"
+
+    def test_a_ref_given_twice_is_refused(self):
+        setup = _standard()
+        walks = [
+            EventDecision(action="create", summary="Walk", start=time_at("11:00"), end=time_at("11:20")),
+            EventDecision(action="create", summary="Stroll", start=time_at("11:20"), end=time_at("11:25")),
+        ]
+
+        with pytest.raises(CompactionError, match="the ref 'walk' is another create's too"):
+            setup.compactor.dry_run(setup.email_then_report() + walks, create_refs=["walk", "walk"])
+
+    def test_one_citing_what_isnt_in_the_proposal_is_refused_and_writes_nothing(self):
+        setup = _standard()
+        recap = self._recap(did_events=["nope"], unsure_notes=["n-nope"])
+
+        with pytest.raises(CompactionError) as raised:
+            setup.compactor.dry_run(setup.email_then_report(), recap=recap)
+
+        assert "recap.did[0]: 'nope' isn't one of the proposal's events" in str(raised.value)
+        assert "recap.unsure[0]: 'n-nope' isn't one of the proposal's notes" in str(raised.value)
+        assert setup.journal.open_proposal() is None
+
+    def test_one_that_doesnt_say_what_claude_did_is_refused(self):
+        setup = _standard()
+
+        with pytest.raises(CompactionError, match="`did` is empty"):
+            setup.compactor.dry_run(
+                setup.email_then_report(), recap=Recap(overview="Fine", did=[], unsure=[])
+            )
+
+    def test_it_round_trips_through_the_journal(self):
+        recap = self._recap(unsure_notes=["n1"])
+
+        assert Recap.from_json_dict(recap.to_json_dict()) == recap
