@@ -4,6 +4,7 @@
 use super::*;
 use crate::testing::fake_google::FakeGoogle;
 use crate::write_lock::WRITE_LOCK;
+use serde_json::{json, Value};
 
 struct Fixture {
     fake: FakeGoogle,
@@ -20,8 +21,8 @@ fn fixture() -> Fixture {
     Fixture { fake, spreadsheet, locations }
 }
 
-fn location(given: Value) -> Row {
-    ROW.from_value(&given)
+fn location(given: Value) -> Location {
+    serde_json::from_value(given).unwrap()
 }
 
 fn refused<T>(result: anyhow::Result<T>, pattern: &str) {
@@ -36,7 +37,7 @@ impl Fixture {
     }
 
     fn create(&self, given: Value) -> String {
-        self.held(|l| l.create_location(&location(given))).unwrap()["created_id"].as_str().unwrap().to_string()
+        self.held(|l| l.create_location(&location(given))).unwrap().created_id
     }
 }
 
@@ -47,8 +48,8 @@ fn creates_and_finds_a_location_by_id_or_name() {
     let id = f.create(json!({"id": "mine", "name": "Home", "hint": "the apartment"}));
 
     assert_ne!(id, "mine");
-    assert_eq!(f.locations.get_location(&id).unwrap()["name"], "Home");
-    assert_eq!(f.locations.get_location("HOME").unwrap()["hint"], "the apartment");
+    assert_eq!(f.locations.get_location(&id).unwrap().name.as_deref(), Some("Home"));
+    assert_eq!(f.locations.get_location("HOME").unwrap().hint.as_deref(), Some("the apartment"));
     assert!(f.fake.tab_titles(&f.spreadsheet).contains(&LOCATIONS.1.to_string()));
 }
 
@@ -70,8 +71,8 @@ fn updates_and_clears() {
     let f = fixture();
     let home = f.create(json!({"name": "Home", "hint": "the apartment"}));
 
-    assert_eq!(f.held(|l| l.update_location(&location(json!({"id": home, "name": "Flat"})), &[])).unwrap()["hint"], "the apartment");
-    assert!(f.held(|l| l.update_location(&location(json!({"id": home})), &["hint".to_string()])).unwrap()["hint"].is_null());
+    assert_eq!(f.held(|l| l.update_location(&location(json!({"id": home, "name": "Flat"})), &[])).unwrap().hint.as_deref(), Some("the apartment"));
+    assert!(f.held(|l| l.update_location(&location(json!({"id": home})), &["hint".to_string()])).unwrap().hint.is_none());
 }
 
 #[test]
@@ -89,9 +90,9 @@ fn deletes_by_id() {
     let home = f.create(json!({"name": "Home"}));
     let studio = f.create(json!({"name": "Studio"}));
 
-    assert_eq!(f.held(|l| l.delete_location(&home)).unwrap()["name"], "Home");
-    let ids: Vec<Value> = f.locations.all().unwrap().iter().map(|l| l["id"].clone()).collect();
-    assert_eq!(ids, vec![json!(studio)]);
+    assert_eq!(f.held(|l| l.delete_location(&home)).unwrap().name.as_deref(), Some("Home"));
+    let ids: Vec<Option<String>> = f.locations.all().unwrap().into_iter().map(|l| l.id).collect();
+    assert_eq!(ids, vec![Some(studio.clone())]);
     refused(f.held(|l| l.delete_location("studio")), &format!("by its id: 'Studio' is {studio}"));
 }
 

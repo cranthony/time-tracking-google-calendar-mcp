@@ -1,7 +1,6 @@
 //! The module's tests, against the fake Google.
 
 use super::*;
-use crate::sheet::rows::Row;
 use crate::testing::app::{test_app, TestApp};
 
 fn schedule() -> (TestApp, CompactionSchedule) {
@@ -10,25 +9,26 @@ fn schedule() -> (TestApp, CompactionSchedule) {
     (t, schedule)
 }
 
-fn hint(id: Option<&str>, time: Option<&str>, label: Option<&str>) -> Row {
-    let mut row = HINT_ROW.empty();
-    row.insert("id".into(), json!(id));
-    row.insert("time".into(), json!(time));
-    row.insert("label".into(), json!(label));
-    row
+fn hint(id: Option<&str>, time: Option<&str>, label: Option<&str>) -> ScheduleHint {
+    ScheduleHint { id: id.map(str::to_string), time: time.map(str::to_string), label: label.map(str::to_string) }
 }
 
-fn at(time: &str) -> Row {
+fn at(time: &str) -> ScheduleHint {
     hint(None, Some(time), None)
 }
 
-fn set(schedule: &CompactionSchedule, hints: &[Row]) -> anyhow::Result<Vec<Row>> {
+fn set(schedule: &CompactionSchedule, hints: &[ScheduleHint]) -> anyhow::Result<Vec<ScheduleHint>> {
     let _held = crate::write_lock::WRITE_LOCK.hold();
     schedule.set_hints(hints)
 }
 
-fn field(hint: &Row, name: &str) -> Option<String> {
-    rows::text(hint, name).map(str::to_string)
+fn field(hint: &ScheduleHint, name: &str) -> Option<String> {
+    match name {
+        "id" => hint.id.clone(),
+        "time" => hint.time.clone(),
+        "label" => hint.label.clone(),
+        other => panic!("no field {other}"),
+    }
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn an_empty_list_clears_them() {
 #[test]
 fn refuses_what_isnt_a_schedule_writing_nothing() {
     let long = "x".repeat(101);
-    let cases: Vec<(Vec<Row>, &str)> = vec![
+    let cases: Vec<(Vec<ScheduleHint>, &str)> = vec![
         (vec![at("7")], "'7' isn't a time of day"),
         (vec![at("24:00")], "'24:00' isn't a time of day"),
         (vec![at("07:60")], "isn't a time of day"),

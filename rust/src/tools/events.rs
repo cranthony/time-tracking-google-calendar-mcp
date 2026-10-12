@@ -2,7 +2,7 @@
 //! delete_event), the calendar's time zone, schedule hints and time notes.
 
 use super::stores::{prefetch, prefetch_stores};
-use super::{from_store, refused, texts, to_row, ToolError};
+use super::{from_store, refused, texts, ToolError};
 use crate::app::App;
 use crate::event::{parse_iso, Event, Moment};
 use crate::contract::{tool, DateTimeText, Schema};
@@ -12,7 +12,7 @@ use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::ActionTree;
 use crate::stores::event_changes::{self, Cancel, EventChanges, Shift};
 use crate::stores::notes::NotedTime as StoredNote;
-use crate::stores::schedule::HINT_ROW;
+use crate::stores::schedule::ScheduleHint;
 use super::recurrences::{stored_repeat, Repeat};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -182,13 +182,6 @@ pub struct NoteWithId {
     pub compaction_id: Option<String>,
 }
 
-/// One time a routine runs: when (time) and what it's called (label).
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ScheduleHint {
-    pub id: Option<String>,
-    pub time: Option<String>,
-    pub label: Option<String>,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct CompactionScheduleHints {
@@ -310,7 +303,7 @@ pub fn check_facts(app: &App, facts: Option<&Facts>) -> Result<(), ToolError> {
         return Err(ToolError::Message(format!("Its facts name {}, who aren't people (get_people lists them)", py::repr_list(&unknown))));
     }
     if let Some(location) = facts.location() {
-        let known: Vec<Value> = app.locations()?.all()?.iter().map(|l| l.get("id").cloned().unwrap_or(Value::Null)).collect();
+        let known: Vec<Value> = app.locations()?.all()?.into_iter().map(|l| json!(l.id)).collect();
         if !known.contains(&json!(location)) {
             return Err(ToolError::Message(format!(
                 "Its facts' location {} isn't a location (get_locations lists them)",
@@ -612,8 +605,7 @@ pub fn get_compaction_schedule_hints(app: &App) -> Result<CompactionScheduleHint
 /// unique; an empty list clears them. Returns them as saved.
 #[tool(writes)]
 pub fn set_compaction_schedule_hints(app: &App, hints: Vec<ScheduleHint>) -> Result<CompactionScheduleHints, ToolError> {
-    let given: Vec<crate::sheet::rows::Row> = hints.iter().map(|h| to_row(HINT_ROW, h)).collect();
-    let saved = app.compaction_schedule()?.set_hints(&given).map_err(refused)?;
+    let saved = app.compaction_schedule()?.set_hints(&hints).map_err(refused)?;
     from_store(json!({ "hints": saved, "time_zone": schedule_time_zone(app)? }))
 }
 

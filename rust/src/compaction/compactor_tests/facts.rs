@@ -178,7 +178,7 @@ fn new_ones_are_named_by_ref_shown_and_created_when_applied() {
     let coffee = &all[0];
     assert_eq!((coffee["name"].as_str(), coffee["status"].as_str()), (Some("Drink coffee"), Some("active")));
     let alex = setup.compactor.people.as_ref().unwrap().get_person("alex").unwrap()["id"].as_str().unwrap().to_string();
-    let cafe = setup.compactor.locations.as_ref().unwrap().get_location("corner cafe").unwrap()["id"].as_str().unwrap().to_string();
+    let cafe = setup.compactor.locations.as_ref().unwrap().get_location("corner cafe").unwrap().id.unwrap();
     let event = created(&setup);
     assert_eq!(event.action_ids, Some(vec![coffee["id"].as_str().unwrap().to_string()]));
     assert_eq!(

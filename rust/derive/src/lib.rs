@@ -319,3 +319,86 @@ fn tool_impl(mut function: ItemFn, writes: bool) -> syn::Result<Tokens> {
         }
     })
 }
+
+/// A row of a row tab (see `ctt::sheet::rows`): its fields are the tab's
+/// columns, in order, each kept as text (`String`), a whole number (`i64`)
+/// or JSON (anything else), `Option` or not. `#[row(name = "...")]` names
+/// the kind for messages (default: the type's name). Adds the `RowItem`
+/// impl: the row type, and a check that a cell's value fits its field.
+#[proc_macro_derive(RowItem, attributes(row))]
+pub fn derive_row_item(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match row_item_impl(&input) {
+        Ok(tokens) => tokens.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
+}
+
+/// The kind a field's type is kept as.
+fn kind_of(ty: &Type) -> &'static str {
+    let mut ty = ty;
+    // Option<T> is kept as T is.
+    if let Type::Path(path) = ty {
+        if let Some(last) = path.path.segments.last() {
+            if last.ident == "Option" {
+                if let PathArguments::AngleBracketed(args) = &last.arguments {
+                    if let Some(GenericArgument::Type(inner)) = args.args.first() {
+                        ty = inner;
+                    }
+                }
+            }
+        }
+    }
+    match ty {
+        Type::Path(path) => match path.path.segments.last().map(|s| s.ident.to_string()).as_deref() {
+            Some("String") => "Str",
+            Some("i64") => "Int",
+            _ => "Json",
+        },
+        _ => "Json",
+    }
+}
+
+fn row_item_impl(input: &DeriveInput) -> syn::Result<Tokens> {
+    let ident = &input.ident;
+    let mut name = ident.to_string();
+    for attr in input.attrs.iter().filter(|a| a.path().is_ident("row")) {
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("name") {
+                name = meta.value()?.parse::<LitStr>()?.value();
+                Ok(())
+            } else {
+                Err(meta.error("unknown row option"))
+            }
+        })?;
+    }
+    let Data::Struct(data) = &input.data else {
+        return Err(syn::Error::new_spanned(ident, "RowItem is for structs"));
+    };
+    let Fields::Named(named) = &data.fields else {
+        return Err(syn::Error::new_spanned(ident, "RowItem needs named fields"));
+    };
+    let mut fields = Vec::new();
+    let mut checks = Vec::new();
+    for field in &named.named {
+        let field_name = wire_name(field.ident.as_ref().unwrap());
+        let kind = format_ident!("{}", kind_of(&field.ty));
+        let ty = &field.ty;
+        fields.push(quote!((#field_name, crate::sheet::rows::Kind::#kind)));
+        checks.push(quote! {
+            #field_name => ::serde_json::from_value::<#ty>(value.clone()).map(|_| ()).map_err(|e| e.to_string()),
+        });
+    }
+    Ok(quote! {
+        impl crate::sheet::rows::RowItem for #ident {
+            const ROW_TYPE: crate::sheet::rows::RowType = crate::sheet::rows::RowType { name: #name, fields: &[#(#fields),*] };
+
+            fn check(field: &str, value: &::serde_json::Value) -> ::core::result::Result<(), ::std::string::String> {
+                match field {
+                    #(#checks)*
+                    _ => Ok(()),
+                }
+            }
+        }
+    })
+}

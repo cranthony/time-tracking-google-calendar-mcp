@@ -45,6 +45,22 @@ impl std::fmt::Display for CellError {
 
 impl std::error::Error for CellError {}
 
+/// A typed row: a struct whose fields are its tab's columns (see
+/// `#[derive(RowItem)]`, which derives this).
+pub trait RowItem: serde::Serialize + serde::de::DeserializeOwned {
+    /// Its kind's name and columns, from its fields.
+    const ROW_TYPE: RowType;
+
+    /// Whether `value`, read from the cell of column `field`, fits that
+    /// field's type; if not, why.
+    fn check(field: &str, value: &Value) -> Result<(), String>;
+
+    /// The item as a row: every column, null when unset.
+    fn to_row(&self) -> Row {
+        Self::ROW_TYPE.from_value(&serde_json::to_value(self).expect("a row item is JSON"))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Kind {
     Str,
@@ -125,6 +141,21 @@ pub fn updated(current: &Row, given: &Row, clear_fields: &[String], read_only: &
     out
 }
 
+/// A row as a `T` (its values already checked).
+pub fn item_of<T: RowItem>(row: Row) -> T {
+    serde_json::from_value(Value::Object(row)).expect("a checked row fits its item")
+}
+
+/// `check_clear` for a typed item.
+pub fn check_clear_item<T: RowItem>(item: &T, clear_fields: &[String], clearable: &[&str]) -> anyhow::Result<()> {
+    check_clear(&item.to_row(), clear_fields, clearable)
+}
+
+/// `updated` for typed items.
+pub fn updated_item<T: RowItem>(current: &T, given: &T, clear_fields: &[String], read_only: &[&str]) -> T {
+    item_of(updated(&current.to_row(), &given.to_row(), clear_fields, read_only))
+}
+
 #[derive(Clone)]
 pub struct RowSheet {
     sheets: SheetsClient,
@@ -174,13 +205,42 @@ impl RowSheet {
     /// Every row, in sheet order, blank rows skipped -- or a CellError
     /// naming every cell that can't be read.
     pub fn read(&self) -> anyhow::Result<Vec<Row>> {
+        self.read_checked(|_, _| Ok(()))
+    }
+
+    /// Every row as a `T` -- or a CellError naming every cell that can't
+    /// be read, or doesn't fit its field's type.
+    pub fn read_items<T: RowItem>(&self) -> anyhow::Result<Vec<T>> {
+        let rows = self.read_checked(T::check)?;
+        rows.into_iter()
+            .map(|row| serde_json::from_value(Value::Object(row)).map_err(|e| anyhow::anyhow!("a checked {} row doesn't fit: {e}", T::ROW_TYPE.name)))
+            .collect()
+    }
+
+    /// Overwrite the data rows with `items` (see `write`).
+    pub fn write_items<T: RowItem>(&self, items: &[T]) -> anyhow::Result<()> {
+        self.write(&items.iter().map(RowItem::to_row).collect::<Vec<_>>())
+    }
+
+    fn read_checked(&self, check: impl Fn(&str, &Value) -> Result<(), String>) -> anyhow::Result<Vec<Row>> {
         let (header, rows) = self.read_raw()?;
         let mut items = Vec::new();
         let mut bad = Vec::new();
         for (i, row) in rows.iter().enumerate() {
             if row.iter().any(|c| !c.trim().is_empty()) {
                 // The spreadsheet's numbering: the header is row 1.
-                items.push(self.from_row(&header, row, i + 2, &mut bad));
+                let number = i + 2;
+                let item = self.from_row(&header, row, number, &mut bad);
+                for (name, value) in &item {
+                    if value.is_null() {
+                        continue;
+                    }
+                    if let Err(why) = check(name, value) {
+                        let text = header.iter().position(|h| h == name).and_then(|c| row.get(c)).map(|c| c.trim()).unwrap_or("");
+                        bad.push(format!("row {number}, column {name}: {} doesn't fit ({why})", py::repr(text)));
+                    }
+                }
+                items.push(item);
             }
         }
         if !bad.is_empty() {
