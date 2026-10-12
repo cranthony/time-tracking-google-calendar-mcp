@@ -4,6 +4,7 @@
 pub mod app;
 pub mod cli;
 pub mod compaction;
+pub mod contract;
 pub mod determinism;
 pub mod difflib;
 pub mod dotenv;
