@@ -2,6 +2,7 @@
 //! server.py. See ../README.md.
 
 pub mod app;
+pub mod compaction;
 pub mod determinism;
 pub mod difflib;
 pub mod event;
