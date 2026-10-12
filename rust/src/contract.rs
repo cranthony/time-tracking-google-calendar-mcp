@@ -331,9 +331,14 @@ pub fn to_result<T: Serialize>(result: &T) -> Result<Value, ToolError> {
     serde_json::to_value(result).map_err(|e| ToolError::Unexpected(e.into()))
 }
 
-/// What `#[tool]` passes for a parameter that wasn't given.
-pub fn absent<T: Schema>() -> T {
-    T::absent()
+/// What `#[tool]` passes for a parameter that wasn't given: its default
+/// (the arguments' check fills it in, but a call from inside the server
+/// needn't), or None.
+pub fn absent<T: Schema + DeserializeOwned>(default: Option<&str>) -> T {
+    match default {
+        Some(json) => serde_json::from_str(json).unwrap_or_else(|e| panic!("the default {json:?}: {e}")),
+        None => T::absent(),
+    }
 }
 
 /// A literal's text, as serde writes it ("hint" for ClearableField::Hint).
