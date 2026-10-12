@@ -263,11 +263,37 @@ impl EventChanges {
             }
         }
         let mut changes: Vec<Change> = Vec::new();
-        for (patch, how) in patches {
+        for (mut patch, how) in patches {
             if !claim(&mut problems, &mut named, patch.id.as_deref(), how) {
                 continue;
             }
             let Some(before) = load(&mut problems, &mut current, patch.id.as_deref().unwrap()) else { continue };
+            let event_id = patch.id.clone().unwrap_or_default();
+            if before.recurrence.as_ref().is_some_and(|r| !r.is_empty()) {
+                problems.push(Problem::new(
+                    "recurring_series",
+                    format!(
+                        "event {event_id} ({}) is a recurring series, not one of its events: edit it with update_recurrence, or one of its events by that event's own id",
+                        summary_repr(&before)
+                    ),
+                ));
+                continue;
+            }
+            if patch.recurrence.is_some() {
+                if let Some(series) = before.recurring_event_id.as_deref().filter(|s| !s.is_empty()) {
+                    problems.push(Problem::new(
+                        "recurring_series",
+                        format!(
+                            "event {event_id} ({}) is one of series {series}'s events already: change how it repeats with update_recurrence",
+                            summary_repr(&before)
+                        ),
+                    ));
+                    continue;
+                }
+                // Google needs a series' start and end in its time zone.
+                patch.start = patch.start.or(before.start);
+                patch.end = patch.end.or(before.end);
+            }
             let after = patched(&before, &patch);
             if let Some(guard) = guarded {
                 if before.start() < guard && !only_runs_on(&before, &after, &guard) {

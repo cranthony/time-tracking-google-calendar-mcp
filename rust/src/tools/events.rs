@@ -12,7 +12,9 @@ use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::ActionTree;
 use crate::stores::event_changes::{self, Cancel, EventChanges, Shift};
 use crate::stores::notes::NotedTime as StoredNote;
+use crate::stores::recurrences::Repeat as StoredRepeat;
 use crate::stores::schedule::HINT_ROW;
+use super::recurrences::Repeat;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -93,6 +95,14 @@ pub struct Facts {
 /// "scale", "reasoning"}}}}. Set them to overwrite a rating by hand
 /// (replacing them whole), or clear them.
 ///
+/// repeat is write-only: given to create_event, or to update_event for an
+/// event that isn't in a series, it makes the event the first of a
+/// recurring series that repeats as it says (see Repeat), in the
+/// calendar's time zone. The event's id becomes the series' own, and the
+/// series' events (list_events) each get their own id, with the series'
+/// as their recurring_event_id. It's never returned: get_recurrence says
+/// how a series repeats, and update_recurrence changes it.
+///
 /// Everything before the last compaction (get_compaction_status's
 /// last_compaction) is history: see update_event.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -116,6 +126,8 @@ pub struct PublicEvent {
     pub recurring_event_id: Option<String>,
     pub facts: Option<Facts>,
     pub judgments: Option<Map<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repeat: Option<Repeat>,
 }
 
 /// An event to cancel, and whether that counts against follow-through:
@@ -309,6 +321,19 @@ pub fn check_facts(app: &App, event: &Value) -> Result<(), ToolError> {
     Ok(())
 }
 
+/// `event`, made the first of a series that repeats as `repeat` says, if
+/// it's given: its rules, and the calendar's time zone, which Google
+/// needs on a series' start and end.
+fn with_repeat(app: &App, mut event: Event, repeat: Option<&Repeat>) -> Result<Event, ToolError> {
+    let Some(repeat) = repeat else { return Ok(event) };
+    let repeat = StoredRepeat::from_value(&to_json(repeat))?;
+    repeat.check().map_err(|e| ToolError::Message(e.to_string()))?;
+    let zone = app.calendar_client()?.get_time_zone()?;
+    event.recurrence = Some(repeat.to_rules(&zone).map_err(|e| ToolError::Message(e.to_string()))?);
+    event.time_zone = Some(zone.name().to_string());
+    Ok(event)
+}
+
 // -- the event tools ---------------------------------------------------------------
 
 /// `_prefetch_for_changes`: the people's tabs and the journal, in one request.
@@ -395,7 +420,7 @@ fn to_cancels(cancels: Vec<EventCancel>) -> Vec<Cancel> {
 /// event: where, who with, who for, and a note on each person there (see
 /// PublicEvent). action_names, effective_priority, is_end_of_day_sleep,
 /// recurring_event_id and event_label_id are read-only: update_event and
-/// create_event ignore them.
+/// create_event ignore them. repeat is write-only, and never listed.
 #[tool]
 pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText) -> Result<Vec<PublicEvent>, ToolError> {
     prefetch_stores(app)?;
@@ -427,6 +452,13 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// them. Set action_ids to change an event's actions ([] for none), and
 /// facts to replace its facts whole (see list_events). An update can't
 /// cancel an event (is_cancelled): put it in `cancels`.
+///
+/// Set repeat, on a create or on an update of an event that isn't in a
+/// series, to make it the first event of a recurring series (see
+/// PublicEvent); only that first event is checked for overlaps, as for
+/// update_recurrence. An update can't be of a series itself (the id a
+/// series' events give as recurring_event_id) -- edit it with
+/// update_recurrence -- nor give repeat to an event already in one.
 ///
 /// BATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every
 /// event the call creates or updates must end after it starts and must
@@ -468,9 +500,11 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
     }
     let mut patches = Vec::new();
     for update in &updates {
-        patches.push(to_event(&to_json(&update.event), &texts(update.clear_fields.as_deref().unwrap_or_default()))?);
+        let patch = to_event(&to_json(&update.event), &texts(update.clear_fields.as_deref().unwrap_or_default()))?;
+        patches.push(with_repeat(app, patch, update.event.repeat.as_ref())?);
     }
-    let creates: Vec<Event> = creates.iter().map(|e| to_event(&to_json(e), &[])).collect::<Result<_, _>>()?;
+    let creates: Vec<Event> =
+        creates.iter().map(|e| with_repeat(app, to_event(&to_json(e), &[])?, e.repeat.as_ref())).collect::<Result<_, _>>()?;
     let shifts: Vec<Shift> = shifts.unwrap_or_default().into_iter().map(|s| Shift { event_ids: s.event_ids, minutes: s.minutes }).collect();
     let cancels = to_cancels(cancels.unwrap_or_default());
     from_store(change_events(app, "update_event", patches, creates, cancels, shifts, allow_compacted_changes, dry_run)?)
@@ -479,7 +513,9 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
 /// Create new events, as one batch, optionally with actions
 /// (action_ids, the first setting its color) and facts. update_event
 /// takes creates too, beside updates and cancels, for a change that
-/// makes room for them.
+/// makes room for them. An event given a repeat is the first of a new
+/// recurring series (see PublicEvent); only it is checked for overlaps,
+/// not the series' later events.
 ///
 /// BATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every
 /// event the call creates or updates must end after it starts and must
@@ -503,7 +539,8 @@ pub fn create_event(app: &App, events: Vec<PublicEvent>, #[schema(default = "fal
         check_action_ids(app, &event, false)?;
         check_facts(app, &event)?;
     }
-    let creates: Vec<Event> = events.iter().map(|e| to_event(&to_json(e), &[])).collect::<Result<_, _>>()?;
+    let creates: Vec<Event> =
+        events.iter().map(|e| with_repeat(app, to_event(&to_json(e), &[])?, e.repeat.as_ref())).collect::<Result<_, _>>()?;
     from_store(change_events(app, "create_event", Vec::new(), creates, Vec::new(), Vec::new(), allow_compacted_changes, dry_run)?)
 }
 

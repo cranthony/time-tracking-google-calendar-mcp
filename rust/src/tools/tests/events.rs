@@ -384,6 +384,68 @@ fn creates_several_at_once() {
     assert_eq!(server.t.app.calendar_client().unwrap().list_events(&at(0, 0), &at(23, 0)).unwrap().len(), 4);
 }
 
+/// The events from midnight `at(0, 0)` to `days` days on, as listed.
+fn listed_for(server: &Server, days: i64) -> Vec<Value> {
+    let until = at(0, 0) + chrono::Duration::days(days);
+    server.ok("list_events", json!({"min_time": when(at(0, 0)), "max_time": when(until)})).as_array().unwrap().clone()
+}
+
+#[test]
+fn a_create_with_a_repeat_makes_a_series() {
+    let server = two();
+
+    let result = server.ok(
+        "create_event",
+        json!({"events": [{"summary": "Walk", "start": when(at(11, 0)), "end": when(at(11, 30)), "repeat": {"every": "day", "count": 3}}]}),
+    );
+
+    let created = &result["events"][0];
+    // Write-only: never given back.
+    assert!(created.get("repeat").is_none());
+    let series = server.event(created["id"].as_str().unwrap());
+    assert_eq!(series.recurrence, Some(strings(&["RRULE:FREQ=DAILY;COUNT=3"])));
+    assert!(series.time_zone.is_some());
+    let walks: Vec<Value> = listed_for(&server, 4).into_iter().filter(|e| e["summary"] == "Walk").collect();
+    assert_eq!(walks.len(), 3);
+    assert!(walks.iter().all(|w| w["recurring_event_id"] == created["id"] && w.get("repeat").is_none()));
+}
+
+#[test]
+fn an_update_with_a_repeat_makes_the_event_a_series_and_then_refuses_it() {
+    let server = two();
+
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"repeat": {"every": "week", "weekdays": ["thu"]}}))]}));
+
+    let series = server.event("abc123");
+    assert_eq!(series.recurrence, Some(strings(&["RRULE:FREQ=WEEKLY;BYDAY=TH"])));
+    assert!(series.time_zone.is_some());
+    // Its times kept, now in the series' time zone.
+    assert_eq!((series.start, series.end), (Some(day_at(9)), Some(day_at(10))));
+    let focus: Vec<Value> = listed_for(&server, 15).into_iter().filter(|e| e["recurring_event_id"] == "abc123").collect();
+    assert_eq!(focus.len(), 3);
+
+    // The series itself is update_recurrence's to change.
+    server.refused("update_event", json!({"updates": [update("abc123", json!({"summary": "Deep work"}))]}), "is a recurring series.*update_recurrence");
+    // And one of its events is in a series already.
+    let first = focus[0]["id"].as_str().unwrap();
+    server.refused("update_event", json!({"updates": [update(first, json!({"repeat": {"every": "day"}}))]}), "already: change how it repeats with update_recurrence");
+    // Though one of its events can be changed on its own.
+    server.ok("update_event", json!({"updates": [update(first, json!({"summary": "Deep work"}))]}));
+}
+
+#[test]
+fn a_repeat_that_breaks_a_rule_is_refused() {
+    let server = two();
+
+    server.refused(
+        "create_event",
+        json!({"events": [{"summary": "Walk", "start": when(at(11, 0)), "end": when(at(11, 30)), "repeat": {"every": "day", "count": 3, "until": "2026-02-01"}}]}),
+        "count or until",
+    );
+
+    assert_eq!(server.event_writes(), 0);
+}
+
 #[test]
 fn a_create_that_overlaps_is_refused() {
     let server = two();

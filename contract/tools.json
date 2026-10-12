@@ -1,6 +1,6 @@
 [
   {
-    "description": "List events between min_time and max_time. action_ids are what was\ndone at each event, the first setting its color (action_names gives\ntheir names). effective_priority is the priority that applies:\nthe event's own priority, falling back to the highest priority of its\nactions.\nis_end_of_day_sleep marks the sleep event that\nends a day; recurring_event_id is the id of an instance's recurring\nseries (see get_recurrence and update_recurrence to read and edit the\nseries as a whole); event_label_id is the calendar label derived from\nits first action. facts are what compaction established about a past\nevent: where, who with, who for, and a note on each person there (see\nPublicEvent). action_names, effective_priority, is_end_of_day_sleep,\nrecurring_event_id and event_label_id are read-only: update_event and\ncreate_event ignore them.",
+    "description": "List events between min_time and max_time. action_ids are what was\ndone at each event, the first setting its color (action_names gives\ntheir names). effective_priority is the priority that applies:\nthe event's own priority, falling back to the highest priority of its\nactions.\nis_end_of_day_sleep marks the sleep event that\nends a day; recurring_event_id is the id of an instance's recurring\nseries (see get_recurrence and update_recurrence to read and edit the\nseries as a whole); event_label_id is the calendar label derived from\nits first action. facts are what compaction established about a past\nevent: where, who with, who for, and a note on each person there (see\nPublicEvent). action_names, effective_priority, is_end_of_day_sleep,\nrecurring_event_id and event_label_id are read-only: update_event and\ncreate_event ignore them. repeat is write-only, and never listed.",
     "inputSchema": {
       "properties": {
         "min_time": {
@@ -73,8 +73,43 @@
           },
           "type": "object"
         },
+        "NthWeekday": {
+          "description": "One weekday of a month: the first Monday, the last Friday.",
+          "properties": {
+            "nth": {
+              "description": "Which of the month's `weekday`s: 1 for the first, 2 for the second,\n... 5 for the fifth (months without one are skipped), or -1 for the\nlast.",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                -1
+              ],
+              "type": "integer"
+            },
+            "weekday": {
+              "description": "The day of the week, e.g. \"mon\".",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "nth",
+            "weekday"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -186,8 +221,156 @@
                 "object",
                 "null"
               ]
+            },
+            "repeat": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Repeat"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
+          "type": "object"
+        },
+        "Repeat": {
+          "description": "How a recurring series repeats, starting from its first event's\n`start`: its events are at that event's time of day (in the series'\ntime zone), on the days this says.\n\nExamples:\n- every weekday: {\"every\": \"week\", \"weekdays\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]}\n- every other Tuesday: {\"every\": \"week\", \"interval\": 2, \"weekdays\": [\"tue\"]}\n- the 1st and 15th of each month: {\"every\": \"month\", \"month_days\": [1, 15]}\n- the last Friday of each month: {\"every\": \"month\", \"nth_weekdays\": [{\"nth\": -1, \"weekday\": \"fri\"}]}\n- the 4th Thursday of November: {\"every\": \"year\", \"months\": [11], \"nth_weekdays\": [{\"nth\": 4, \"weekday\": \"thu\"}]}\n- daily, 10 times: {\"every\": \"day\", \"count\": 10}\n- weekly through 2026: {\"every\": \"week\", \"until\": \"2026-12-31\"}\n\nLeaving out weekdays, nth_weekdays, month_days and months repeats on\nthe first event's own day: weekly on its weekday, monthly on its day\nof the month, yearly on its date. Only what's shown here can be\nwritten; a Repeat that breaks a rule given below (e.g. count with\nuntil) is refused with the reason, and nothing is changed.",
+          "properties": {
+            "every": {
+              "description": "How often the series repeats: its events fall in every `interval`th\nday, week, month or year.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string"
+            },
+            "interval": {
+              "default": 1,
+              "description": "1 for every day/week/month/year, 2 for every other one, and so on.\nAt least 1.",
+              "type": "integer"
+            },
+            "weekdays": {
+              "description": "The days of the week events fall on, e.g. [\"mon\", \"wed\"]. Mostly\nfor `every` \"week\". With \"day\" it keeps only those days (every\nweekday: \"week\" with all five is clearer); with \"month\" or \"year\"\nit's every one of those weekdays in the month or year -- use\n`nth_weekdays` for \"the first Monday\".",
+              "items": {
+                "enum": [
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "nth_weekdays": {
+              "description": "Particular weekdays of the month, like the first Monday or the last\nFriday. Only for `every` \"month\", or \"year\" with `months` set (each\nthen counts within those months). Can be given with `weekdays`.",
+              "items": {
+                "$ref": "#/$defs/NthWeekday"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "month_days": {
+              "description": "The days of the month events fall on: 1 to 31, or -1 for the last\nday (months without a given day are skipped, so use -1 for \"the end\nof the month\", not 31). Not for `every` \"week\".",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "months": {
+              "description": "Only these months, 1 (January) to 12 (December). Mostly for `every`\n\"year\", e.g. [11] with `nth_weekdays` for the 4th Thursday of\nNovember.",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "count": {
+              "description": "End the series after this many events, counting from its first.\nCan't be given with `until`; give neither for a series that never\nends.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End the series here: no event starts after it. A date (\"2026-12-31\")\nmeans through the end of that day, in the series' time zone; a\ndatetime is exact. Can't be given with `count`."
+            },
+            "week_starts_on": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The day weeks start on, which only matters for `every` \"week\" with\nan `interval` above 1 and several `weekdays`: it decides which days\ncount as the same week. Monday when left out."
+            },
+            "skipped": {
+              "description": "Starts of events the series leaves out, e.g.\n[\"2026-11-09T09:00:00-05:00\"]. Each must be exactly the start the\nrules give that event (a time without an offset is taken to be in the\nseries' time zone). (To cancel one event, cancelling it through\nupdate_event is usually simpler.)",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "added": {
+              "description": "Starts of extra events, beyond those the rules make, e.g.\n[\"2026-12-01T14:00:00-05:00\"] (a time without an offset is taken to\nbe in the series' time zone). Each lasts as long as the series'\nevents do.",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every"
+          ],
           "type": "object"
         }
       },
@@ -321,6 +504,16 @@
             "object",
             "null"
           ]
+        },
+        "repeat": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Repeat"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "type": "object",
@@ -363,12 +556,185 @@
             }
           },
           "type": "object"
+        },
+        "NthWeekday": {
+          "description": "One weekday of a month: the first Monday, the last Friday.",
+          "properties": {
+            "nth": {
+              "description": "Which of the month's `weekday`s: 1 for the first, 2 for the second,\n... 5 for the fifth (months without one are skipped), or -1 for the\nlast.",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                -1
+              ],
+              "type": "integer"
+            },
+            "weekday": {
+              "description": "The day of the week, e.g. \"mon\".",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "nth",
+            "weekday"
+          ],
+          "type": "object"
+        },
+        "Repeat": {
+          "description": "How a recurring series repeats, starting from its first event's\n`start`: its events are at that event's time of day (in the series'\ntime zone), on the days this says.\n\nExamples:\n- every weekday: {\"every\": \"week\", \"weekdays\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]}\n- every other Tuesday: {\"every\": \"week\", \"interval\": 2, \"weekdays\": [\"tue\"]}\n- the 1st and 15th of each month: {\"every\": \"month\", \"month_days\": [1, 15]}\n- the last Friday of each month: {\"every\": \"month\", \"nth_weekdays\": [{\"nth\": -1, \"weekday\": \"fri\"}]}\n- the 4th Thursday of November: {\"every\": \"year\", \"months\": [11], \"nth_weekdays\": [{\"nth\": 4, \"weekday\": \"thu\"}]}\n- daily, 10 times: {\"every\": \"day\", \"count\": 10}\n- weekly through 2026: {\"every\": \"week\", \"until\": \"2026-12-31\"}\n\nLeaving out weekdays, nth_weekdays, month_days and months repeats on\nthe first event's own day: weekly on its weekday, monthly on its day\nof the month, yearly on its date. Only what's shown here can be\nwritten; a Repeat that breaks a rule given below (e.g. count with\nuntil) is refused with the reason, and nothing is changed.",
+          "properties": {
+            "every": {
+              "description": "How often the series repeats: its events fall in every `interval`th\nday, week, month or year.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string"
+            },
+            "interval": {
+              "default": 1,
+              "description": "1 for every day/week/month/year, 2 for every other one, and so on.\nAt least 1.",
+              "type": "integer"
+            },
+            "weekdays": {
+              "description": "The days of the week events fall on, e.g. [\"mon\", \"wed\"]. Mostly\nfor `every` \"week\". With \"day\" it keeps only those days (every\nweekday: \"week\" with all five is clearer); with \"month\" or \"year\"\nit's every one of those weekdays in the month or year -- use\n`nth_weekdays` for \"the first Monday\".",
+              "items": {
+                "enum": [
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "nth_weekdays": {
+              "description": "Particular weekdays of the month, like the first Monday or the last\nFriday. Only for `every` \"month\", or \"year\" with `months` set (each\nthen counts within those months). Can be given with `weekdays`.",
+              "items": {
+                "$ref": "#/$defs/NthWeekday"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "month_days": {
+              "description": "The days of the month events fall on: 1 to 31, or -1 for the last\nday (months without a given day are skipped, so use -1 for \"the end\nof the month\", not 31). Not for `every` \"week\".",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "months": {
+              "description": "Only these months, 1 (January) to 12 (December). Mostly for `every`\n\"year\", e.g. [11] with `nth_weekdays` for the 4th Thursday of\nNovember.",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "count": {
+              "description": "End the series after this many events, counting from its first.\nCan't be given with `until`; give neither for a series that never\nends.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End the series here: no event starts after it. A date (\"2026-12-31\")\nmeans through the end of that day, in the series' time zone; a\ndatetime is exact. Can't be given with `count`."
+            },
+            "week_starts_on": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The day weeks start on, which only matters for `every` \"week\" with\nan `interval` above 1 and several `weekdays`: it decides which days\ncount as the same week. Monday when left out."
+            },
+            "skipped": {
+              "description": "Starts of events the series leaves out, e.g.\n[\"2026-11-09T09:00:00-05:00\"]. Each must be exactly the start the\nrules give that event (a time without an offset is taken to be in the\nseries' time zone). (To cancel one event, cancelling it through\nupdate_event is usually simpler.)",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "added": {
+              "description": "Starts of extra events, beyond those the rules make, e.g.\n[\"2026-12-01T14:00:00-05:00\"] (a time without an offset is taken to\nbe in the series' time zone). Each lasts as long as the series'\nevents do.",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every"
+          ],
+          "type": "object"
         }
       }
     }
   },
   {
-    "description": "Change several events at once, as one batch: `updates` (each an\nevent's id and the fields to set -- left out, a field keeps its value;\nlist it in that update's clear_fields to remove it instead -- clearing\npriority makes it follow its actions' priority again), `creates` (new\nevents, optionally with actions: action_ids, the first setting its\ncolor), `cancels` (each saying whether it counts against\nfollow-through: a commitment dropped, rather than a change of plan --\nsee delete_event) and `shifts` (events moved together by the same\nnumber of minutes, each as an update). An event can be in only one of\nthem. Set action_ids to change an event's actions ([] for none), and\nfacts to replace its facts whole (see list_events). An update can't\ncancel an event (is_cancelled): put it in `cancels`.\n\nBATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every\nevent the call creates or updates must end after it starts and must\nnot overlap any other event -- one on the calendar or another in the\ncall -- so move, shorten or cancel whatever's in the way in the same\ncall. A call that breaks this changes nothing, and the error lists\nevery problem and the events around them, to send a valid call at\nonce.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: an event that started before it can't be\nchanged or cancelled, and no event can be created, or moved, to start\nbefore it, unless allow_compacted_changes is set -- ONLY set it when\nthe user has explicitly approved changing history -- except that an\nevent still going on then may run on (an update moving only its end,\nto no earlier than the last compaction). dry_run checks the batch\nand returns what it would do without changing anything. Returns the\nevents changed, and a timeline of them beside the events around\nthem.",
+    "description": "Change several events at once, as one batch: `updates` (each an\nevent's id and the fields to set -- left out, a field keeps its value;\nlist it in that update's clear_fields to remove it instead -- clearing\npriority makes it follow its actions' priority again), `creates` (new\nevents, optionally with actions: action_ids, the first setting its\ncolor), `cancels` (each saying whether it counts against\nfollow-through: a commitment dropped, rather than a change of plan --\nsee delete_event) and `shifts` (events moved together by the same\nnumber of minutes, each as an update). An event can be in only one of\nthem. Set action_ids to change an event's actions ([] for none), and\nfacts to replace its facts whole (see list_events). An update can't\ncancel an event (is_cancelled): put it in `cancels`.\n\nSet repeat, on a create or on an update of an event that isn't in a\nseries, to make it the first event of a recurring series (see\nPublicEvent); only that first event is checked for overlaps, as for\nupdate_recurrence. An update can't be of a series itself (the id a\nseries' events give as recurring_event_id) -- edit it with\nupdate_recurrence -- nor give repeat to an event already in one.\n\nBATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every\nevent the call creates or updates must end after it starts and must\nnot overlap any other event -- one on the calendar or another in the\ncall -- so move, shorten or cancel whatever's in the way in the same\ncall. A call that breaks this changes nothing, and the error lists\nevery problem and the events around them, to send a valid call at\nonce.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: an event that started before it can't be\nchanged or cancelled, and no event can be created, or moved, to start\nbefore it, unless allow_compacted_changes is set -- ONLY set it when\nthe user has explicitly approved changing history -- except that an\nevent still going on then may run on (an update moving only its end,\nto no earlier than the last compaction). dry_run checks the batch\nand returns what it would do without changing anything. Returns the\nevents changed, and a timeline of them beside the events around\nthem.",
     "inputSchema": {
       "properties": {
         "updates": {
@@ -520,8 +886,43 @@
           },
           "type": "object"
         },
+        "NthWeekday": {
+          "description": "One weekday of a month: the first Monday, the last Friday.",
+          "properties": {
+            "nth": {
+              "description": "Which of the month's `weekday`s: 1 for the first, 2 for the second,\n... 5 for the fifth (months without one are skipped), or -1 for the\nlast.",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                -1
+              ],
+              "type": "integer"
+            },
+            "weekday": {
+              "description": "The day of the week, e.g. \"mon\".",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "nth",
+            "weekday"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -633,8 +1034,156 @@
                 "object",
                 "null"
               ]
+            },
+            "repeat": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Repeat"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
+          "type": "object"
+        },
+        "Repeat": {
+          "description": "How a recurring series repeats, starting from its first event's\n`start`: its events are at that event's time of day (in the series'\ntime zone), on the days this says.\n\nExamples:\n- every weekday: {\"every\": \"week\", \"weekdays\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]}\n- every other Tuesday: {\"every\": \"week\", \"interval\": 2, \"weekdays\": [\"tue\"]}\n- the 1st and 15th of each month: {\"every\": \"month\", \"month_days\": [1, 15]}\n- the last Friday of each month: {\"every\": \"month\", \"nth_weekdays\": [{\"nth\": -1, \"weekday\": \"fri\"}]}\n- the 4th Thursday of November: {\"every\": \"year\", \"months\": [11], \"nth_weekdays\": [{\"nth\": 4, \"weekday\": \"thu\"}]}\n- daily, 10 times: {\"every\": \"day\", \"count\": 10}\n- weekly through 2026: {\"every\": \"week\", \"until\": \"2026-12-31\"}\n\nLeaving out weekdays, nth_weekdays, month_days and months repeats on\nthe first event's own day: weekly on its weekday, monthly on its day\nof the month, yearly on its date. Only what's shown here can be\nwritten; a Repeat that breaks a rule given below (e.g. count with\nuntil) is refused with the reason, and nothing is changed.",
+          "properties": {
+            "every": {
+              "description": "How often the series repeats: its events fall in every `interval`th\nday, week, month or year.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string"
+            },
+            "interval": {
+              "default": 1,
+              "description": "1 for every day/week/month/year, 2 for every other one, and so on.\nAt least 1.",
+              "type": "integer"
+            },
+            "weekdays": {
+              "description": "The days of the week events fall on, e.g. [\"mon\", \"wed\"]. Mostly\nfor `every` \"week\". With \"day\" it keeps only those days (every\nweekday: \"week\" with all five is clearer); with \"month\" or \"year\"\nit's every one of those weekdays in the month or year -- use\n`nth_weekdays` for \"the first Monday\".",
+              "items": {
+                "enum": [
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "nth_weekdays": {
+              "description": "Particular weekdays of the month, like the first Monday or the last\nFriday. Only for `every` \"month\", or \"year\" with `months` set (each\nthen counts within those months). Can be given with `weekdays`.",
+              "items": {
+                "$ref": "#/$defs/NthWeekday"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "month_days": {
+              "description": "The days of the month events fall on: 1 to 31, or -1 for the last\nday (months without a given day are skipped, so use -1 for \"the end\nof the month\", not 31). Not for `every` \"week\".",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "months": {
+              "description": "Only these months, 1 (January) to 12 (December). Mostly for `every`\n\"year\", e.g. [11] with `nth_weekdays` for the 4th Thursday of\nNovember.",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "count": {
+              "description": "End the series after this many events, counting from its first.\nCan't be given with `until`; give neither for a series that never\nends.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End the series here: no event starts after it. A date (\"2026-12-31\")\nmeans through the end of that day, in the series' time zone; a\ndatetime is exact. Can't be given with `count`."
+            },
+            "week_starts_on": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The day weeks start on, which only matters for `every` \"week\" with\nan `interval` above 1 and several `weekdays`: it decides which days\ncount as the same week. Monday when left out."
+            },
+            "skipped": {
+              "description": "Starts of events the series leaves out, e.g.\n[\"2026-11-09T09:00:00-05:00\"]. Each must be exactly the start the\nrules give that event (a time without an offset is taken to be in the\nseries' time zone). (To cancel one event, cancelling it through\nupdate_event is usually simpler.)",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "added": {
+              "description": "Starts of extra events, beyond those the rules make, e.g.\n[\"2026-12-01T14:00:00-05:00\"] (a time without an offset is taken to\nbe in the series' time zone). Each lasts as long as the series'\nevents do.",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every"
+          ],
           "type": "object"
         }
       },
@@ -704,8 +1253,43 @@
           },
           "type": "object"
         },
+        "NthWeekday": {
+          "description": "One weekday of a month: the first Monday, the last Friday.",
+          "properties": {
+            "nth": {
+              "description": "Which of the month's `weekday`s: 1 for the first, 2 for the second,\n... 5 for the fifth (months without one are skipped), or -1 for the\nlast.",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                -1
+              ],
+              "type": "integer"
+            },
+            "weekday": {
+              "description": "The day of the week, e.g. \"mon\".",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "nth",
+            "weekday"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -817,8 +1401,156 @@
                 "object",
                 "null"
               ]
+            },
+            "repeat": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Repeat"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
+          "type": "object"
+        },
+        "Repeat": {
+          "description": "How a recurring series repeats, starting from its first event's\n`start`: its events are at that event's time of day (in the series'\ntime zone), on the days this says.\n\nExamples:\n- every weekday: {\"every\": \"week\", \"weekdays\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]}\n- every other Tuesday: {\"every\": \"week\", \"interval\": 2, \"weekdays\": [\"tue\"]}\n- the 1st and 15th of each month: {\"every\": \"month\", \"month_days\": [1, 15]}\n- the last Friday of each month: {\"every\": \"month\", \"nth_weekdays\": [{\"nth\": -1, \"weekday\": \"fri\"}]}\n- the 4th Thursday of November: {\"every\": \"year\", \"months\": [11], \"nth_weekdays\": [{\"nth\": 4, \"weekday\": \"thu\"}]}\n- daily, 10 times: {\"every\": \"day\", \"count\": 10}\n- weekly through 2026: {\"every\": \"week\", \"until\": \"2026-12-31\"}\n\nLeaving out weekdays, nth_weekdays, month_days and months repeats on\nthe first event's own day: weekly on its weekday, monthly on its day\nof the month, yearly on its date. Only what's shown here can be\nwritten; a Repeat that breaks a rule given below (e.g. count with\nuntil) is refused with the reason, and nothing is changed.",
+          "properties": {
+            "every": {
+              "description": "How often the series repeats: its events fall in every `interval`th\nday, week, month or year.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string"
+            },
+            "interval": {
+              "default": 1,
+              "description": "1 for every day/week/month/year, 2 for every other one, and so on.\nAt least 1.",
+              "type": "integer"
+            },
+            "weekdays": {
+              "description": "The days of the week events fall on, e.g. [\"mon\", \"wed\"]. Mostly\nfor `every` \"week\". With \"day\" it keeps only those days (every\nweekday: \"week\" with all five is clearer); with \"month\" or \"year\"\nit's every one of those weekdays in the month or year -- use\n`nth_weekdays` for \"the first Monday\".",
+              "items": {
+                "enum": [
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "nth_weekdays": {
+              "description": "Particular weekdays of the month, like the first Monday or the last\nFriday. Only for `every` \"month\", or \"year\" with `months` set (each\nthen counts within those months). Can be given with `weekdays`.",
+              "items": {
+                "$ref": "#/$defs/NthWeekday"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "month_days": {
+              "description": "The days of the month events fall on: 1 to 31, or -1 for the last\nday (months without a given day are skipped, so use -1 for \"the end\nof the month\", not 31). Not for `every` \"week\".",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "months": {
+              "description": "Only these months, 1 (January) to 12 (December). Mostly for `every`\n\"year\", e.g. [11] with `nth_weekdays` for the 4th Thursday of\nNovember.",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "count": {
+              "description": "End the series after this many events, counting from its first.\nCan't be given with `until`; give neither for a series that never\nends.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End the series here: no event starts after it. A date (\"2026-12-31\")\nmeans through the end of that day, in the series' time zone; a\ndatetime is exact. Can't be given with `count`."
+            },
+            "week_starts_on": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The day weeks start on, which only matters for `every` \"week\" with\nan `interval` above 1 and several `weekdays`: it decides which days\ncount as the same week. Monday when left out."
+            },
+            "skipped": {
+              "description": "Starts of events the series leaves out, e.g.\n[\"2026-11-09T09:00:00-05:00\"]. Each must be exactly the start the\nrules give that event (a time without an offset is taken to be in the\nseries' time zone). (To cancel one event, cancelling it through\nupdate_event is usually simpler.)",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "added": {
+              "description": "Starts of extra events, beyond those the rules make, e.g.\n[\"2026-12-01T14:00:00-05:00\"] (a time without an offset is taken to\nbe in the series' time zone). Each lasts as long as the series'\nevents do.",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every"
+          ],
           "type": "object"
         }
       }
@@ -2611,7 +3343,7 @@
     }
   },
   {
-    "description": "Create new events, as one batch, optionally with actions\n(action_ids, the first setting its color) and facts. update_event\ntakes creates too, beside updates and cancels, for a change that\nmakes room for them.\n\nBATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every\nevent the call creates or updates must end after it starts and must\nnot overlap any other event -- one on the calendar or another in the\ncall -- so move, shorten or cancel whatever's in the way in the same\ncall. A call that breaks this changes nothing, and the error lists\nevery problem and the events around them, to send a valid call at\nonce.\n\nAn event can't be created to start before the last compaction\n(get_compaction_status's last_compaction): that's history, unless\nallow_compacted_changes is set -- ONLY set it when the user has\nexplicitly approved changing history. dry_run checks them and returns\nwhat it would do without changing anything. Returns the events created, and a timeline of them beside\nthe events around them.",
+    "description": "Create new events, as one batch, optionally with actions\n(action_ids, the first setting its color) and facts. update_event\ntakes creates too, beside updates and cancels, for a change that\nmakes room for them. An event given a repeat is the first of a new\nrecurring series (see PublicEvent); only it is checked for overlaps,\nnot the series' later events.\n\nBATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every\nevent the call creates or updates must end after it starts and must\nnot overlap any other event -- one on the calendar or another in the\ncall -- so move, shorten or cancel whatever's in the way in the same\ncall. A call that breaks this changes nothing, and the error lists\nevery problem and the events around them, to send a valid call at\nonce.\n\nAn event can't be created to start before the last compaction\n(get_compaction_status's last_compaction): that's history, unless\nallow_compacted_changes is set -- ONLY set it when the user has\nexplicitly approved changing history. dry_run checks them and returns\nwhat it would do without changing anything. Returns the events created, and a timeline of them beside\nthe events around them.",
     "inputSchema": {
       "properties": {
         "events": {
@@ -2673,8 +3405,43 @@
           },
           "type": "object"
         },
+        "NthWeekday": {
+          "description": "One weekday of a month: the first Monday, the last Friday.",
+          "properties": {
+            "nth": {
+              "description": "Which of the month's `weekday`s: 1 for the first, 2 for the second,\n... 5 for the fifth (months without one are skipped), or -1 for the\nlast.",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                -1
+              ],
+              "type": "integer"
+            },
+            "weekday": {
+              "description": "The day of the week, e.g. \"mon\".",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "nth",
+            "weekday"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -2786,8 +3553,156 @@
                 "object",
                 "null"
               ]
+            },
+            "repeat": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Repeat"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
+          "type": "object"
+        },
+        "Repeat": {
+          "description": "How a recurring series repeats, starting from its first event's\n`start`: its events are at that event's time of day (in the series'\ntime zone), on the days this says.\n\nExamples:\n- every weekday: {\"every\": \"week\", \"weekdays\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]}\n- every other Tuesday: {\"every\": \"week\", \"interval\": 2, \"weekdays\": [\"tue\"]}\n- the 1st and 15th of each month: {\"every\": \"month\", \"month_days\": [1, 15]}\n- the last Friday of each month: {\"every\": \"month\", \"nth_weekdays\": [{\"nth\": -1, \"weekday\": \"fri\"}]}\n- the 4th Thursday of November: {\"every\": \"year\", \"months\": [11], \"nth_weekdays\": [{\"nth\": 4, \"weekday\": \"thu\"}]}\n- daily, 10 times: {\"every\": \"day\", \"count\": 10}\n- weekly through 2026: {\"every\": \"week\", \"until\": \"2026-12-31\"}\n\nLeaving out weekdays, nth_weekdays, month_days and months repeats on\nthe first event's own day: weekly on its weekday, monthly on its day\nof the month, yearly on its date. Only what's shown here can be\nwritten; a Repeat that breaks a rule given below (e.g. count with\nuntil) is refused with the reason, and nothing is changed.",
+          "properties": {
+            "every": {
+              "description": "How often the series repeats: its events fall in every `interval`th\nday, week, month or year.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string"
+            },
+            "interval": {
+              "default": 1,
+              "description": "1 for every day/week/month/year, 2 for every other one, and so on.\nAt least 1.",
+              "type": "integer"
+            },
+            "weekdays": {
+              "description": "The days of the week events fall on, e.g. [\"mon\", \"wed\"]. Mostly\nfor `every` \"week\". With \"day\" it keeps only those days (every\nweekday: \"week\" with all five is clearer); with \"month\" or \"year\"\nit's every one of those weekdays in the month or year -- use\n`nth_weekdays` for \"the first Monday\".",
+              "items": {
+                "enum": [
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "nth_weekdays": {
+              "description": "Particular weekdays of the month, like the first Monday or the last\nFriday. Only for `every` \"month\", or \"year\" with `months` set (each\nthen counts within those months). Can be given with `weekdays`.",
+              "items": {
+                "$ref": "#/$defs/NthWeekday"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "month_days": {
+              "description": "The days of the month events fall on: 1 to 31, or -1 for the last\nday (months without a given day are skipped, so use -1 for \"the end\nof the month\", not 31). Not for `every` \"week\".",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "months": {
+              "description": "Only these months, 1 (January) to 12 (December). Mostly for `every`\n\"year\", e.g. [11] with `nth_weekdays` for the 4th Thursday of\nNovember.",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "count": {
+              "description": "End the series after this many events, counting from its first.\nCan't be given with `until`; give neither for a series that never\nends.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End the series here: no event starts after it. A date (\"2026-12-31\")\nmeans through the end of that day, in the series' time zone; a\ndatetime is exact. Can't be given with `count`."
+            },
+            "week_starts_on": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The day weeks start on, which only matters for `every` \"week\" with\nan `interval` above 1 and several `weekdays`: it decides which days\ncount as the same week. Monday when left out."
+            },
+            "skipped": {
+              "description": "Starts of events the series leaves out, e.g.\n[\"2026-11-09T09:00:00-05:00\"]. Each must be exactly the start the\nrules give that event (a time without an offset is taken to be in the\nseries' time zone). (To cancel one event, cancelling it through\nupdate_event is usually simpler.)",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "added": {
+              "description": "Starts of extra events, beyond those the rules make, e.g.\n[\"2026-12-01T14:00:00-05:00\"] (a time without an offset is taken to\nbe in the series' time zone). Each lasts as long as the series'\nevents do.",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every"
+          ],
           "type": "object"
         }
       },
@@ -2857,8 +3772,43 @@
           },
           "type": "object"
         },
+        "NthWeekday": {
+          "description": "One weekday of a month: the first Monday, the last Friday.",
+          "properties": {
+            "nth": {
+              "description": "Which of the month's `weekday`s: 1 for the first, 2 for the second,\n... 5 for the fifth (months without one are skipped), or -1 for the\nlast.",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                -1
+              ],
+              "type": "integer"
+            },
+            "weekday": {
+              "description": "The day of the week, e.g. \"mon\".",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "nth",
+            "weekday"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -2970,8 +3920,156 @@
                 "object",
                 "null"
               ]
+            },
+            "repeat": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Repeat"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
+          "type": "object"
+        },
+        "Repeat": {
+          "description": "How a recurring series repeats, starting from its first event's\n`start`: its events are at that event's time of day (in the series'\ntime zone), on the days this says.\n\nExamples:\n- every weekday: {\"every\": \"week\", \"weekdays\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]}\n- every other Tuesday: {\"every\": \"week\", \"interval\": 2, \"weekdays\": [\"tue\"]}\n- the 1st and 15th of each month: {\"every\": \"month\", \"month_days\": [1, 15]}\n- the last Friday of each month: {\"every\": \"month\", \"nth_weekdays\": [{\"nth\": -1, \"weekday\": \"fri\"}]}\n- the 4th Thursday of November: {\"every\": \"year\", \"months\": [11], \"nth_weekdays\": [{\"nth\": 4, \"weekday\": \"thu\"}]}\n- daily, 10 times: {\"every\": \"day\", \"count\": 10}\n- weekly through 2026: {\"every\": \"week\", \"until\": \"2026-12-31\"}\n\nLeaving out weekdays, nth_weekdays, month_days and months repeats on\nthe first event's own day: weekly on its weekday, monthly on its day\nof the month, yearly on its date. Only what's shown here can be\nwritten; a Repeat that breaks a rule given below (e.g. count with\nuntil) is refused with the reason, and nothing is changed.",
+          "properties": {
+            "every": {
+              "description": "How often the series repeats: its events fall in every `interval`th\nday, week, month or year.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string"
+            },
+            "interval": {
+              "default": 1,
+              "description": "1 for every day/week/month/year, 2 for every other one, and so on.\nAt least 1.",
+              "type": "integer"
+            },
+            "weekdays": {
+              "description": "The days of the week events fall on, e.g. [\"mon\", \"wed\"]. Mostly\nfor `every` \"week\". With \"day\" it keeps only those days (every\nweekday: \"week\" with all five is clearer); with \"month\" or \"year\"\nit's every one of those weekdays in the month or year -- use\n`nth_weekdays` for \"the first Monday\".",
+              "items": {
+                "enum": [
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "nth_weekdays": {
+              "description": "Particular weekdays of the month, like the first Monday or the last\nFriday. Only for `every` \"month\", or \"year\" with `months` set (each\nthen counts within those months). Can be given with `weekdays`.",
+              "items": {
+                "$ref": "#/$defs/NthWeekday"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "month_days": {
+              "description": "The days of the month events fall on: 1 to 31, or -1 for the last\nday (months without a given day are skipped, so use -1 for \"the end\nof the month\", not 31). Not for `every` \"week\".",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "months": {
+              "description": "Only these months, 1 (January) to 12 (December). Mostly for `every`\n\"year\", e.g. [11] with `nth_weekdays` for the 4th Thursday of\nNovember.",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "count": {
+              "description": "End the series after this many events, counting from its first.\nCan't be given with `until`; give neither for a series that never\nends.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End the series here: no event starts after it. A date (\"2026-12-31\")\nmeans through the end of that day, in the series' time zone; a\ndatetime is exact. Can't be given with `count`."
+            },
+            "week_starts_on": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The day weeks start on, which only matters for `every` \"week\" with\nan `interval` above 1 and several `weekdays`: it decides which days\ncount as the same week. Monday when left out."
+            },
+            "skipped": {
+              "description": "Starts of events the series leaves out, e.g.\n[\"2026-11-09T09:00:00-05:00\"]. Each must be exactly the start the\nrules give that event (a time without an offset is taken to be in the\nseries' time zone). (To cancel one event, cancelling it through\nupdate_event is usually simpler.)",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "added": {
+              "description": "Starts of extra events, beyond those the rules make, e.g.\n[\"2026-12-01T14:00:00-05:00\"] (a time without an offset is taken to\nbe in the series' time zone). Each lasts as long as the series'\nevents do.",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every"
+          ],
           "type": "object"
         }
       }
@@ -3084,8 +4182,43 @@
           },
           "type": "object"
         },
+        "NthWeekday": {
+          "description": "One weekday of a month: the first Monday, the last Friday.",
+          "properties": {
+            "nth": {
+              "description": "Which of the month's `weekday`s: 1 for the first, 2 for the second,\n... 5 for the fifth (months without one are skipped), or -1 for the\nlast.",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                -1
+              ],
+              "type": "integer"
+            },
+            "weekday": {
+              "description": "The day of the week, e.g. \"mon\".",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "nth",
+            "weekday"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -3197,8 +4330,156 @@
                 "object",
                 "null"
               ]
+            },
+            "repeat": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Repeat"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
+          "type": "object"
+        },
+        "Repeat": {
+          "description": "How a recurring series repeats, starting from its first event's\n`start`: its events are at that event's time of day (in the series'\ntime zone), on the days this says.\n\nExamples:\n- every weekday: {\"every\": \"week\", \"weekdays\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]}\n- every other Tuesday: {\"every\": \"week\", \"interval\": 2, \"weekdays\": [\"tue\"]}\n- the 1st and 15th of each month: {\"every\": \"month\", \"month_days\": [1, 15]}\n- the last Friday of each month: {\"every\": \"month\", \"nth_weekdays\": [{\"nth\": -1, \"weekday\": \"fri\"}]}\n- the 4th Thursday of November: {\"every\": \"year\", \"months\": [11], \"nth_weekdays\": [{\"nth\": 4, \"weekday\": \"thu\"}]}\n- daily, 10 times: {\"every\": \"day\", \"count\": 10}\n- weekly through 2026: {\"every\": \"week\", \"until\": \"2026-12-31\"}\n\nLeaving out weekdays, nth_weekdays, month_days and months repeats on\nthe first event's own day: weekly on its weekday, monthly on its day\nof the month, yearly on its date. Only what's shown here can be\nwritten; a Repeat that breaks a rule given below (e.g. count with\nuntil) is refused with the reason, and nothing is changed.",
+          "properties": {
+            "every": {
+              "description": "How often the series repeats: its events fall in every `interval`th\nday, week, month or year.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string"
+            },
+            "interval": {
+              "default": 1,
+              "description": "1 for every day/week/month/year, 2 for every other one, and so on.\nAt least 1.",
+              "type": "integer"
+            },
+            "weekdays": {
+              "description": "The days of the week events fall on, e.g. [\"mon\", \"wed\"]. Mostly\nfor `every` \"week\". With \"day\" it keeps only those days (every\nweekday: \"week\" with all five is clearer); with \"month\" or \"year\"\nit's every one of those weekdays in the month or year -- use\n`nth_weekdays` for \"the first Monday\".",
+              "items": {
+                "enum": [
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "nth_weekdays": {
+              "description": "Particular weekdays of the month, like the first Monday or the last\nFriday. Only for `every` \"month\", or \"year\" with `months` set (each\nthen counts within those months). Can be given with `weekdays`.",
+              "items": {
+                "$ref": "#/$defs/NthWeekday"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "month_days": {
+              "description": "The days of the month events fall on: 1 to 31, or -1 for the last\nday (months without a given day are skipped, so use -1 for \"the end\nof the month\", not 31). Not for `every` \"week\".",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "months": {
+              "description": "Only these months, 1 (January) to 12 (December). Mostly for `every`\n\"year\", e.g. [11] with `nth_weekdays` for the 4th Thursday of\nNovember.",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "count": {
+              "description": "End the series after this many events, counting from its first.\nCan't be given with `until`; give neither for a series that never\nends.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End the series here: no event starts after it. A date (\"2026-12-31\")\nmeans through the end of that day, in the series' time zone; a\ndatetime is exact. Can't be given with `count`."
+            },
+            "week_starts_on": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The day weeks start on, which only matters for `every` \"week\" with\nan `interval` above 1 and several `weekdays`: it decides which days\ncount as the same week. Monday when left out."
+            },
+            "skipped": {
+              "description": "Starts of events the series leaves out, e.g.\n[\"2026-11-09T09:00:00-05:00\"]. Each must be exactly the start the\nrules give that event (a time without an offset is taken to be in the\nseries' time zone). (To cancel one event, cancelling it through\nupdate_event is usually simpler.)",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "added": {
+              "description": "Starts of extra events, beyond those the rules make, e.g.\n[\"2026-12-01T14:00:00-05:00\"] (a time without an offset is taken to\nbe in the series' time zone). Each lasts as long as the series'\nevents do.",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every"
+          ],
           "type": "object"
         }
       }
@@ -11105,6 +12386,41 @@
           ],
           "type": "object"
         },
+        "NthWeekday": {
+          "description": "One weekday of a month: the first Monday, the last Friday.",
+          "properties": {
+            "nth": {
+              "description": "Which of the month's `weekday`s: 1 for the first, 2 for the second,\n... 5 for the fifth (months without one are skipped), or -1 for the\nlast.",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                -1
+              ],
+              "type": "integer"
+            },
+            "weekday": {
+              "description": "The day of the week, e.g. \"mon\".",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "nth",
+            "weekday"
+          ],
+          "type": "object"
+        },
         "ProposalCreate": {
           "description": "An event to add to a proposal, as create_event takes one, plus\n`start_note`/`end_note`: a note that sets that edge, at its time.",
           "properties": {
@@ -11275,7 +12591,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_id (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -11387,8 +12703,156 @@
                 "object",
                 "null"
               ]
+            },
+            "repeat": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Repeat"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
+          "type": "object"
+        },
+        "Repeat": {
+          "description": "How a recurring series repeats, starting from its first event's\n`start`: its events are at that event's time of day (in the series'\ntime zone), on the days this says.\n\nExamples:\n- every weekday: {\"every\": \"week\", \"weekdays\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]}\n- every other Tuesday: {\"every\": \"week\", \"interval\": 2, \"weekdays\": [\"tue\"]}\n- the 1st and 15th of each month: {\"every\": \"month\", \"month_days\": [1, 15]}\n- the last Friday of each month: {\"every\": \"month\", \"nth_weekdays\": [{\"nth\": -1, \"weekday\": \"fri\"}]}\n- the 4th Thursday of November: {\"every\": \"year\", \"months\": [11], \"nth_weekdays\": [{\"nth\": 4, \"weekday\": \"thu\"}]}\n- daily, 10 times: {\"every\": \"day\", \"count\": 10}\n- weekly through 2026: {\"every\": \"week\", \"until\": \"2026-12-31\"}\n\nLeaving out weekdays, nth_weekdays, month_days and months repeats on\nthe first event's own day: weekly on its weekday, monthly on its day\nof the month, yearly on its date. Only what's shown here can be\nwritten; a Repeat that breaks a rule given below (e.g. count with\nuntil) is refused with the reason, and nothing is changed.",
+          "properties": {
+            "every": {
+              "description": "How often the series repeats: its events fall in every `interval`th\nday, week, month or year.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string"
+            },
+            "interval": {
+              "default": 1,
+              "description": "1 for every day/week/month/year, 2 for every other one, and so on.\nAt least 1.",
+              "type": "integer"
+            },
+            "weekdays": {
+              "description": "The days of the week events fall on, e.g. [\"mon\", \"wed\"]. Mostly\nfor `every` \"week\". With \"day\" it keeps only those days (every\nweekday: \"week\" with all five is clearer); with \"month\" or \"year\"\nit's every one of those weekdays in the month or year -- use\n`nth_weekdays` for \"the first Monday\".",
+              "items": {
+                "enum": [
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "nth_weekdays": {
+              "description": "Particular weekdays of the month, like the first Monday or the last\nFriday. Only for `every` \"month\", or \"year\" with `months` set (each\nthen counts within those months). Can be given with `weekdays`.",
+              "items": {
+                "$ref": "#/$defs/NthWeekday"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "month_days": {
+              "description": "The days of the month events fall on: 1 to 31, or -1 for the last\nday (months without a given day are skipped, so use -1 for \"the end\nof the month\", not 31). Not for `every` \"week\".",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "months": {
+              "description": "Only these months, 1 (January) to 12 (December). Mostly for `every`\n\"year\", e.g. [11] with `nth_weekdays` for the 4th Thursday of\nNovember.",
+              "items": {
+                "type": "integer"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "count": {
+              "description": "End the series after this many events, counting from its first.\nCan't be given with `until`; give neither for a series that never\nends.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End the series here: no event starts after it. A date (\"2026-12-31\")\nmeans through the end of that day, in the series' time zone; a\ndatetime is exact. Can't be given with `count`."
+            },
+            "week_starts_on": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The day weeks start on, which only matters for `every` \"week\" with\nan `interval` above 1 and several `weekdays`: it decides which days\ncount as the same week. Monday when left out."
+            },
+            "skipped": {
+              "description": "Starts of events the series leaves out, e.g.\n[\"2026-11-09T09:00:00-05:00\"]. Each must be exactly the start the\nrules give that event (a time without an offset is taken to be in the\nseries' time zone). (To cancel one event, cancelling it through\nupdate_event is usually simpler.)",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "added": {
+              "description": "Starts of extra events, beyond those the rules make, e.g.\n[\"2026-12-01T14:00:00-05:00\"] (a time without an offset is taken to\nbe in the series' time zone). Each lasts as long as the series'\nevents do.",
+              "items": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every"
+          ],
           "type": "object"
         }
       },
