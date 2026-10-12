@@ -601,6 +601,10 @@ impl Judging {
     }
 }
 
+#[cfg(test)]
+#[path = "judgments_tests.rs"]
+mod tests;
+
 /// `due_by_event`: `requests`, grouped by event and then person, each as
 /// just its part.
 pub fn due_by_event(requests: &[JudgmentRequest]) -> Vec<EventJudgmentsDue> {

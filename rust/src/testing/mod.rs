@@ -85,4 +85,5 @@ pub fn strings(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| s.to_string()).collect()
 }
 
+pub mod app;
 pub mod fake_google;

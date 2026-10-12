@@ -1206,6 +1206,38 @@ impl FakeGoogle {
         self.with(|s| s.spreadsheets[spreadsheet_id].sheets.iter().map(|t| t.properties["title"].as_str().unwrap_or("").to_string()).collect())
     }
 
+    /// A tab's grid size, in rows.
+    pub fn row_count(&self, spreadsheet_id: &str, title: &str) -> u64 {
+        self.with(|s| {
+            let tab = s.spreadsheets[spreadsheet_id].sheets.iter().find(|t| t.properties["title"] == json!(title)).unwrap();
+            tab.properties["gridProperties"]["rowCount"].as_u64().unwrap()
+        })
+    }
+
+    pub fn set_row_count(&self, spreadsheet_id: &str, title: &str, rows: u64) {
+        self.with(|s| {
+            let sheet = s.spreadsheets.get_mut(spreadsheet_id).unwrap();
+            let tab = sheet.sheets.iter_mut().find(|t| t.properties["title"] == json!(title)).unwrap();
+            tab.properties["gridProperties"]["rowCount"] = json!(rows);
+        })
+    }
+
+    /// Replace everything below a tab's header row with `rows`.
+    pub fn replace_rows(&self, spreadsheet_id: &str, title: &str, rows: Vec<Vec<String>>) {
+        self.with(|s| {
+            let sheet = s.spreadsheets.get_mut(spreadsheet_id).unwrap();
+            let tab = sheet.sheets.iter_mut().find(|t| t.properties["title"] == json!(title)).unwrap();
+            tab.cells.retain(|(r, _), _| *r == 0);
+            for (r, row) in rows.into_iter().enumerate() {
+                for (c, text) in row.into_iter().enumerate() {
+                    if !text.is_empty() {
+                        tab.cells.insert((r + 1, c), text);
+                    }
+                }
+            }
+        })
+    }
+
     pub fn set_cell(&self, spreadsheet_id: &str, title: &str, row: usize, column: usize, text: &str) {
         self.with(|s| {
             let sheet = s.spreadsheets.get_mut(spreadsheet_id).unwrap();

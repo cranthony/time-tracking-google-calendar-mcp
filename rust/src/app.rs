@@ -107,6 +107,14 @@ impl App {
         }
     }
 
+    /// An app on `google` -- the unit tests' fake -- rather than token.json.
+    #[cfg(test)]
+    pub fn with_google(config: Config, google: Arc<Google>) -> App {
+        let app = App::new(config);
+        let _ = app.google.set(google);
+        app
+    }
+
     /// The credentials, loaded (and refreshed if need be) once.
     pub fn google(&self) -> anyhow::Result<Arc<Google>> {
         if let Some(google) = self.google.get() {
