@@ -648,7 +648,7 @@ pub struct JudgmentPart {
 
 /// The judgments a compaction calls for -- those not made yet, or all
 /// of them when they're being redone -- each part, and each person's
-/// history, given once (see the module docstring).
+/// history, given once.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct JudgmentsDue {
     pub compaction_id: String,
@@ -723,7 +723,8 @@ pub struct ProposalNote {
     pub decided_by: Option<ProposalEventDecidedBy>,
 }
 
-/// A proposal's current revision -- see the module docstring.
+/// A proposal's current revision: the plan for compacting notes into
+/// the calendar, for the user to review, edit and confirm.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Proposal {
     pub id: String,

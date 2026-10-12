@@ -128,8 +128,8 @@ pub struct Repeat {
     pub added: Option<Vec<DateTimeText>>,
 }
 
-/// A recurring series of events, as a whole -- see utilities/
-/// recurrences.py. id is the series' own id, which is every one of its
+/// A recurring series of events, as a whole. id is the series' own
+/// id, which is every one of its
 /// events' recurring_event_id. start/end are when its first event starts
 /// and ends; time_zone keeps its events at the same wall-clock time
 /// across daylight saving changes. repeat says which days its events
@@ -259,8 +259,8 @@ pub fn get_recurrence(app: &App, id: String) -> Result<PublicRecurrence, ToolErr
 /// aren't checked for overlaps. Returns the edited series, then the earlier part if it
 /// was split.
 ///
-/// Events edited on their own don't keep those edits (found with
-/// probes/series_edits.py): any edit resets every field but their times
+/// Events edited on their own don't keep those edits (Google Calendar
+/// works that way): any edit resets every field but their times
 /// to the series' -- even fields it leaves out, so an event's own
 /// priority, action_ids, facts or description are lost to an actions-only edit --
 /// and an edit to start/end moves them back onto the series' times too.

@@ -99,7 +99,8 @@ pub struct ListedTrait {
     pub problems: Option<Vec<String>>,
 }
 
-/// One trait -- see the module docstring.
+/// One trait: how the user wants to be with people, and the parts it's
+/// scored by (see get_traits).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Trait {
     pub id: Option<String>,
@@ -110,8 +111,7 @@ pub struct Trait {
 }
 
 /// An event the user cancelled, as it counts against one person's
-/// follow-through -- one row of the Cancellations tab (see utilities/
-/// cancellations.py).
+/// follow-through -- one row of the Cancellations tab.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct CancelledEvent {
     pub event_id: Option<String>,
@@ -141,7 +141,7 @@ pub struct ListedPerson {
     pub cancelled_events: Option<Vec<CancelledEvent>>,
 }
 
-/// One person -- see the module docstring.
+/// One person the user spends time with (see get_people).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Person {
     pub id: Option<String>,
@@ -168,7 +168,7 @@ pub struct ListedCircle {
     pub member_ids: Option<Vec<String>>,
 }
 
-/// One circle -- see the module docstring.
+/// One circle: a group of people, such as family (see get_circles).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Circle {
     pub id: Option<String>,
@@ -202,7 +202,8 @@ pub struct ListedHabit {
     pub cancelled_events: Option<Vec<CancelledEvent>>,
 }
 
-/// One habit -- see the module docstring.
+/// One habit: what the user wants to do well, tied to an action or
+/// action group (see get_habits).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Habit {
     pub id: Option<String>,
