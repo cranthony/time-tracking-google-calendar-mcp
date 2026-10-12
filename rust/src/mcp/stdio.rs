@@ -36,7 +36,12 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
                     // doesn't need the lock held while it runs.
                     let mut local = super::Session { initialized: session.initialized };
                     drop(session);
-                    super::handle(&app, &mut local, &message)
+                    let mut timings = Vec::new();
+                    let response = super::handle(&app, &mut local, &message, &mut timings);
+                    for (name, work_ms, ok) in timings {
+                        app.health.record_call(&name, work_ms, None, ok);
+                    }
+                    response
                 })
                 .await
                 .ok()
@@ -48,7 +53,7 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
         } else {
             let response = {
                 let mut session = session.lock().unwrap_or_else(|e| e.into_inner());
-                super::handle(&app, &mut session, &message)
+                super::handle(&app, &mut session, &message, &mut Vec::new())
             };
             if let Some(response) = response {
                 write_line(&stdout, &response).await?;

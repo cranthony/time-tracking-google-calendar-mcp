@@ -53,10 +53,14 @@ impl Default for Session {
     }
 }
 
+/// A tool call as the health metrics record it: its name, how long its
+/// own work took, and whether it succeeded.
+pub type Timing = (String, i64, bool);
+
 /// One JSON-RPC message in, its response out (`None` for a notification).
-/// `on_tool_timing` is told each tool call's name, how long its own work
-/// took and whether it succeeded, for the health metrics.
-pub fn handle(app: &Arc<crate::app::App>, session: &mut Session, message: &Value) -> Option<Value> {
+/// Each tool call's timing goes in `timings`, for the transport to record
+/// -- over HTTP, with the whole request's time beside it.
+pub fn handle(app: &Arc<crate::app::App>, session: &mut Session, message: &Value, timings: &mut Vec<Timing>) -> Option<Value> {
     let Some(object) = message.as_object() else {
         return Some(error_response(Value::Null, INVALID_REQUEST, "Invalid Request"));
     };
@@ -80,7 +84,7 @@ pub fn handle(app: &Arc<crate::app::App>, session: &mut Session, message: &Value
         }
         "ping" => Ok(json!({})),
         "tools/list" => Ok(json!({ "tools": *CONTRACT })),
-        "tools/call" => Ok(call_tool(app, &params)),
+        "tools/call" => Ok(call_tool(app, &params, timings)),
         _ => Err((METHOD_NOT_FOUND, "Method not found")),
     };
     Some(match result {
@@ -154,7 +158,7 @@ fn content_of(value: &Value) -> Vec<Value> {
     }
 }
 
-pub fn call_tool(app: &Arc<crate::app::App>, params: &Value) -> Value {
+pub fn call_tool(app: &Arc<crate::app::App>, params: &Value, timings: &mut Vec<Timing>) -> Value {
     let name = params.get("name").and_then(Value::as_str).unwrap_or_default().to_string();
     let Some(contract) = contract_tool(&name) else {
         return error_result(format!("Unknown tool: {name}"));
@@ -172,8 +176,7 @@ pub fn call_tool(app: &Arc<crate::app::App>, params: &Value) -> Value {
     let started = std::time::Instant::now();
     let outcome = tools::run(app, &name, arguments);
     let work_ms = started.elapsed().as_millis() as i64;
-    let ok = !matches!(outcome, Err(_));
-    tools::record_timing(app, &name, work_ms, ok);
+    timings.push((name.clone(), work_ms, outcome.is_ok()));
     match outcome {
         Ok(Outcome(value)) => {
             let structured = if wrapped(contract) { json!({ "result": value }) } else { value.clone() };

@@ -4,6 +4,7 @@
 //! sees as "Error executing tool <name>: <message>".
 
 mod events;
+mod health;
 mod places;
 mod recurrences;
 mod stores;
@@ -119,6 +120,7 @@ fn registry() -> &'static [Tool] {
         Tool { name: "update_recurrence", writes: true, run: recurrences::update_recurrence },
         Tool { name: "split_recurrence", writes: true, run: recurrences::split_recurrence },
         Tool { name: "delete_recurrence", writes: true, run: recurrences::delete_recurrence },
+        Tool { name: "get_health", writes: false, run: health::get_health },
     ]
 }
 
@@ -171,6 +173,3 @@ pub fn check_part_actions(app: &App, parts: Option<&Value>) -> Result<(), ToolEr
     Ok(())
 }
 
-pub fn record_timing(app: &Arc<App>, name: &str, work_ms: i64, ok: bool) {
-    app.health.record_call(name, work_ms, None, ok);
-}

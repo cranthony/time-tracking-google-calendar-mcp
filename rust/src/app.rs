@@ -8,7 +8,7 @@
 use crate::google::calendar::CalendarClient;
 use crate::google::sheets::SheetsClient;
 use crate::google::Google;
-use crate::health::HealthRecorder;
+use crate::health::{HealthRecorder, HealthTab, HealthWriter};
 use crate::sheet::ensure_spreadsheet;
 use crate::stores::actions::Actions;
 use crate::stores::cancellations::Cancellations;
@@ -66,6 +66,7 @@ pub struct App {
     notes: OnceLock<NotedTimeSheet>,
     schedule: OnceLock<CompactionSchedule>,
     recurrences: OnceLock<Recurrences>,
+    writer: OnceLock<Arc<HealthWriter>>,
     me: OnceLock<std::sync::Weak<App>>,
 }
 
@@ -101,6 +102,7 @@ impl App {
             notes: OnceLock::new(),
             schedule: OnceLock::new(),
             recurrences: OnceLock::new(),
+            writer: OnceLock::new(),
             me: OnceLock::new(),
         }
     }
@@ -217,6 +219,28 @@ impl App {
             let client = self.calendar_client()?;
             Ok(Recurrences::new(ActionCalendar::new(client, self.actions()?)))
         })
+    }
+
+    /// The Health tab, for the writer: finding (or making) the metadata
+    /// spreadsheet may write to the calendar, so this holds WRITE_LOCK.
+    pub fn health_tab(&self) -> anyhow::Result<HealthTab> {
+        let _held = WRITE_LOCK.hold();
+        let (_, sheets, id) = self.spreadsheet()?;
+        HealthTab::ensure(&sheets, &id)
+    }
+
+    /// Start writing health metrics in the background -- not with
+    /// CTT_HEALTH_WRITER=off (conformance/ compares each tool's requests,
+    /// which the writer's would interleave with).
+    pub fn start_health_writer(self: &Arc<Self>) {
+        if std::env::var("CTT_HEALTH_WRITER").as_deref() == Ok("off") {
+            return;
+        }
+        let _ = self.writer.set(HealthWriter::start(self.clone()));
+    }
+
+    pub fn health_writer(&self) -> Option<&Arc<HealthWriter>> {
+        self.writer.get()
     }
 
     pub fn locations(&self) -> anyhow::Result<Locations> {

@@ -13,6 +13,8 @@ path = "src/main.rs"
 anyhow = "1.0.86"
 axum = "0.8.4"
 base64 = "0.22.1"
+flate2 = "1.1.2"
+futures-core = "0.3.31"
 chrono = { version = "0.4.41", features = ["serde"] }
 chrono-tz = "0.10.3"
 jsonwebtoken = "9.3.1"

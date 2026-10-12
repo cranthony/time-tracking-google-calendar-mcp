@@ -29,8 +29,14 @@ fn main() -> anyhow::Result<()> {
     app.set_self();
     let transport = std::env::var("MCP_TRANSPORT").unwrap_or_else(|_| "stdio".into());
     let runtime = tokio::runtime::Builder::new_multi_thread().enable_all().build()?;
-    match transport.as_str() {
-        "streamable-http" => anyhow::bail!("streamable-http isn't ported yet"),
-        _ => runtime.block_on(mcp::stdio::serve(app)),
+    app.start_health_writer();
+    let served = match transport.as_str() {
+        "streamable-http" => runtime.block_on(mcp::http::serve(app.clone())),
+        _ => runtime.block_on(mcp::stdio::serve(app.clone())),
+    };
+    // As Python's atexit does: write what the health writer hasn't yet.
+    if let Some(writer) = app.health_writer() {
+        writer.stop();
     }
+    served
 }
