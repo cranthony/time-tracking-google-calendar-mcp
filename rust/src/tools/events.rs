@@ -2,18 +2,195 @@
 //! delete_event), the calendar's time zone, schedule hints and time notes.
 
 use super::stores::{prefetch, prefetch_stores};
-use super::{args_str, args_strings, refused, ToolError, ToolResult};
+use super::{from_store, refused, texts, to_row, ToolError};
 use crate::app::App;
 use crate::event::{parse_iso, Event, Moment};
-use crate::facts::{fact_problems, Facts};
+use crate::contract::{tool, DateTimeText, Schema};
+use crate::facts::{fact_problems, Facts as EventFacts};
 use crate::py;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::ActionTree;
 use crate::stores::event_changes::{self, Cancel, EventChanges, Shift};
-use crate::stores::groups::python_repr;
-use crate::stores::notes::NotedTime;
+use crate::stores::notes::NotedTime as StoredNote;
 use crate::stores::schedule::HINT_ROW;
+use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+
+// -- the types -------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub enum EventField {
+    #[serde(rename = "description")]
+    Description,
+    #[serde(rename = "location")]
+    Location,
+    #[serde(rename = "priority")]
+    Priority,
+    #[serde(rename = "facts")]
+    Facts,
+    #[serde(rename = "judgments")]
+    Judgments,
+}
+
+/// What compaction established about an event -- see the module
+/// docstring. Every field is optional.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct Facts {
+    pub location_id: Option<String>,
+    pub with_ids: Option<Vec<String>>,
+    pub for_ids: Option<Vec<String>>,
+    pub notes: Option<IndexMap<String, String>>,
+}
+
+/// Event, minus the fields named in INTERNAL_EVENT_FIELDS, plus
+/// is_cancelled (which has no Event equivalent -- Event's status is one
+/// of INTERNAL_EVENT_FIELDS, hidden entirely). Every MCP tool
+/// returns/accepts this instead of Event directly, so those fields never
+/// appear in the tool schema the agent sees (via tools/list) or in any
+/// tool result -- the agent has no way to know they exist, not just that
+/// their value is hidden.
+///
+/// is_cancelled is read-only: update_event refuses to set it -- cancel
+/// an event with delete_event, which says whether the cancellation counts
+/// against follow-through.
+///
+/// action_ids are what was done at the event (see get_actions), the
+/// first setting its label and color; setting them is how an event is
+/// tied to actions. action_names (their names, in the same order) and
+/// event_label_id (derived from the first action -- see utilities/
+/// action_calendar.py) are read-only: to_event ignores them.
+///
+/// actions_from_label is true when an event was never given actions, so
+/// its action_ids are inferred from its label (the action that holds the
+/// label), not stored. Sending it back with actions_from_label still true
+/// leaves them inferred, whatever action_ids says; to store actions, send
+/// action_ids with actions_from_label false (or left out).
+///
+/// effective_priority is read-only: Event's property of the same name,
+/// the priority that applies, i.e. priority falling back,
+/// when the event doesn't set one, to the highest (lowest-numbered)
+/// priority among its actions (each action's own, or its nearest
+/// group's). Kept separate from priority so that sending a listed event
+/// straight back to update_event never copies its actions' priority onto
+/// the event itself, which would stop it following later changes to the
+/// actions. to_event ignores it.
+///
+/// is_end_of_day_sleep/recurring_event_id are read-only too, and
+/// to_event ignores them as well. is_end_of_day_sleep decides where a
+/// day ends for compaction (see utilities/note_compactor.py),
+/// so a wrong mark would quietly change what later updates shrink, move
+/// or cancel; it's only set by hand, via calendar_cli.py.
+/// recurring_event_id is assigned by Google and can't be set at all.
+///
+/// facts are what compaction established about a past event (see
+/// utilities/facts.py), for traits' judgments later: location_id (see
+/// get_locations), with_ids (the people there with the user -- never
+/// "self", who's at every event), for_ids (people it was done for who
+/// weren't there) and notes ({person id: a subjective note on how it was
+/// for them}, "self" for the user). Compaction writes them; set them to
+/// replace them whole.
+///
+/// judgments are how the event went for each person, judged after
+/// compaction against each judgment part of the traits that apply to them
+/// (see record_judgments): {person id: {trait id: {part key: {"rating",
+/// "scale", "reasoning"}}}}. Set them to overwrite a rating by hand
+/// (replacing them whole), or clear them.
+///
+/// Everything before the last compaction (get_compaction_status's
+/// last_compaction) is history: see update_event.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct PublicEvent {
+    pub id: Option<String>,
+    pub summary: Option<String>,
+    pub start: Option<DateTimeText>,
+    pub end: Option<DateTimeText>,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    pub priority: Option<i64>,
+    pub action_ids: Option<Vec<String>>,
+    pub action_names: Option<Vec<String>>,
+    #[schema(default = "false")]
+    pub actions_from_label: bool,
+    pub event_label_id: Option<String>,
+    #[schema(default = "false")]
+    pub is_cancelled: bool,
+    pub effective_priority: Option<i64>,
+    pub is_end_of_day_sleep: Option<bool>,
+    pub recurring_event_id: Option<String>,
+    pub facts: Option<Facts>,
+    pub judgments: Option<Map<String, Value>>,
+}
+
+/// An event to cancel, and whether that counts against follow-through:
+/// a commitment dropped (true) rather than just a change of plan (false).
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct EventCancel {
+    pub event_id: String,
+    pub counts_against_follow_through: bool,
+}
+
+/// Events to move together by `minutes` (later if positive, earlier if
+/// negative), keeping their lengths.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct EventShift {
+    pub event_ids: Vec<String>,
+    pub minutes: i64,
+}
+
+/// One event's update: `event` (its id and the fields to set), and the
+/// fields to remove (`clear_fields`).
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct EventUpdate {
+    pub event: PublicEvent,
+    pub clear_fields: Option<Vec<EventField>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct EventChangesResult {
+    pub events: Vec<PublicEvent>,
+    pub timeline: Option<String>,
+    #[schema(default = "false")]
+    pub dry_run: bool,
+}
+
+/// A single time note: some moment worth recording, with an optional
+/// free-text description of what it marks.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct NotedTime {
+    pub timestamp: DateTimeText,
+    pub description: Option<String>,
+    pub compaction_id: Option<String>,
+}
+
+/// A note as handed to a client: its fields plus its `SheetNote.id`,
+/// which `NotedTimeSheet.edit`/`delete` (and compaction) refer to it by.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct NoteWithId {
+    pub id: String,
+    pub timestamp: DateTimeText,
+    pub description: Option<String>,
+    pub compaction_id: Option<String>,
+}
+
+/// One time a routine runs -- see the module docstring.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct ScheduleHint {
+    pub id: Option<String>,
+    pub time: Option<String>,
+    pub label: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct CompactionScheduleHints {
+    pub hints: Vec<ScheduleHint>,
+    pub time_zone: Option<String>,
+}
+
+/// A typed argument as JSON.
+pub fn to_json<T: Serialize>(value: &T) -> Value {
+    serde_json::to_value(value).expect("an argument is JSON")
+}
 
 // -- PublicEvent -----------------------------------------------------------------
 
@@ -39,7 +216,7 @@ pub fn public_event(event: &Event, tree: Option<&ActionTree>) -> Value {
     out.insert("effective_priority".into(), json!(event.effective_priority()));
     out.insert("is_end_of_day_sleep".into(), json!(event.is_end_of_day_sleep));
     out.insert("recurring_event_id".into(), json!(event.recurring_event_id));
-    out.insert("facts".into(), event.facts.as_ref().map(Facts::to_public).unwrap_or(Value::Null));
+    out.insert("facts".into(), event.facts.as_ref().map(EventFacts::to_public).unwrap_or(Value::Null));
     out.insert("judgments".into(), event.judgments.clone().map(Value::Object).unwrap_or(Value::Null));
     Value::Object(out)
 }
@@ -76,7 +253,7 @@ pub fn to_event(value: &Value, clear_fields: &[String]) -> Result<Event, ToolErr
         action_ids,
         priority: value.get("priority").and_then(Value::as_i64),
         status: if value.get("is_cancelled").and_then(Value::as_bool).unwrap_or(false) { Some("cancelled".into()) } else { None },
-        facts: value.get("facts").filter(|f| !f.is_null()).map(|f| Facts::from_public(f).normalized()),
+        facts: value.get("facts").filter(|f| !f.is_null()).map(|f| EventFacts::from_public(f).normalized()),
         judgments: value.get("judgments").and_then(Value::as_object).cloned(),
         cleared: clear_fields.iter().cloned().collect(),
         ..Default::default()
@@ -114,7 +291,7 @@ pub fn check_action_ids(app: &App, event: &Value, existing: bool) -> Result<(), 
 /// `_check_facts`: well formed, naming people and a location that exist.
 pub fn check_facts(app: &App, event: &Value) -> Result<(), ToolError> {
     let Some(raw) = event.get("facts").filter(|f| !f.is_null()) else { return Ok(()) };
-    let facts = Facts::from_public(raw).normalized();
+    let facts = EventFacts::from_public(raw).normalized();
     let problems = fact_problems(&facts);
     if !problems.is_empty() {
         return Err(ToolError::Message(format!("Its facts {}", problems.join("; "))));
@@ -138,23 +315,6 @@ pub fn check_facts(app: &App, event: &Value) -> Result<(), ToolError> {
 
 // -- the event tools ---------------------------------------------------------------
 
-pub fn list_events(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    let (min, max) = (moment(args.get("min_time"))?.unwrap(), moment(args.get("max_time"))?.unwrap());
-    let events: Vec<Event> = app.calendar_client()?.list_events(&min, &max)?.into_iter().filter(|e| !e.is_cancelled()).collect();
-    Ok(public_events(app, &events)?)
-}
-
-pub fn get_event(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    let id = args_str(args, "id");
-    let event = app.calendar_client()?.get_event(id)?;
-    if event.is_cancelled() {
-        return Err(ToolError::Message(format!("Event {id} has been cancelled.")));
-    }
-    Ok(public_events(app, &[event])?.as_array().unwrap()[0].clone())
-}
-
 /// `_prefetch_for_changes`: the people's tabs and the journal, in one request.
 pub fn prefetch_for_changes(app: &App) -> anyhow::Result<()> {
     let (actions, people, locations, cancellations, journal) =
@@ -167,20 +327,6 @@ pub fn prefetch_for_changes(app: &App) -> anyhow::Result<()> {
     prefetch(app, ranges)
 }
 
-fn list_of<'a>(args: &'a Map<String, Value>, name: &str) -> Vec<&'a Value> {
-    args.get(name).and_then(Value::as_array).map(|a| a.iter().collect()).unwrap_or_default()
-}
-
-fn cancels(args: &Map<String, Value>) -> Vec<Cancel> {
-    list_of(args, "cancels")
-        .into_iter()
-        .map(|c| Cancel {
-            event_id: c.get("event_id").and_then(Value::as_str).unwrap_or_default().to_string(),
-            counts_against_follow_through: c.get("counts_against_follow_through").and_then(Value::as_bool).unwrap_or(false),
-        })
-        .collect()
-}
-
 #[allow(clippy::too_many_arguments)]
 fn change_events(
     app: &App,
@@ -191,7 +337,7 @@ fn change_events(
     shifts: Vec<Shift>,
     allow_compacted: bool,
     dry_run: bool,
-) -> ToolResult {
+) -> Result<Value, ToolError> {
     let changes = EventChanges::new(ActionCalendar::new(app.calendar_client()?, app.actions()?), Some(app.cancellations()?));
     let history_until = app.journal()?.last_stamped_now()?;
     let checked = match changes.check(updates, creates, cancels, shifts, history_until, allow_compacted)? {
@@ -222,66 +368,7 @@ fn change_events(
     }))
 }
 
-fn flag(args: &Map<String, Value>, name: &str) -> bool {
-    args.get(name).and_then(Value::as_bool).unwrap_or(false)
-}
-
-pub fn create_event(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_for_changes(app)?;
-    let events = list_of(args, "events");
-    for event in &events {
-        check_action_ids(app, event, false)?;
-        check_facts(app, event)?;
-    }
-    let creates: Vec<Event> = events.iter().map(|e| to_event(e, &[])).collect::<Result<_, _>>()?;
-    change_events(app, "create_event", Vec::new(), creates, Vec::new(), Vec::new(), flag(args, "allow_compacted_changes"), flag(args, "dry_run"))
-}
-
-pub fn update_event(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_for_changes(app)?;
-    let updates = list_of(args, "updates");
-    for update in &updates {
-        let event = &update["event"];
-        if event.get("is_cancelled").and_then(Value::as_bool).unwrap_or(false) {
-            return Err(ToolError::Message(
-                "an update can't cancel an event: put it in cancels, saying with counts_against_follow_through whether the cancellation counts against follow-through".into(),
-            ));
-        }
-        check_action_ids(app, event, true)?;
-        check_facts(app, event)?;
-    }
-    let creates_raw = list_of(args, "creates");
-    for event in &creates_raw {
-        check_action_ids(app, event, false)?;
-        check_facts(app, event)?;
-    }
-    let mut patches = Vec::new();
-    for update in &updates {
-        let clear: Vec<String> = update.get("clear_fields").and_then(Value::as_array).map(|a| a.iter().filter_map(|c| c.as_str().map(str::to_string)).collect()).unwrap_or_default();
-        patches.push(to_event(&update["event"], &clear)?);
-    }
-    let creates: Vec<Event> = creates_raw.iter().map(|e| to_event(e, &[])).collect::<Result<_, _>>()?;
-    let shifts: Vec<Shift> = list_of(args, "shifts")
-        .into_iter()
-        .map(|s| Shift {
-            event_ids: s.get("event_ids").and_then(Value::as_array).map(|a| a.iter().filter_map(|i| i.as_str().map(str::to_string)).collect()).unwrap_or_default(),
-            minutes: s.get("minutes").and_then(Value::as_i64).unwrap_or(0),
-        })
-        .collect();
-    change_events(app, "update_event", patches, creates, cancels(args), shifts, flag(args, "allow_compacted_changes"), flag(args, "dry_run"))
-}
-
-pub fn delete_event(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_for_changes(app)?;
-    change_events(app, "delete_event", Vec::new(), Vec::new(), cancels(args), Vec::new(), flag(args, "allow_compacted_changes"), flag(args, "dry_run"))
-}
-
 // -- time zone and schedule ----------------------------------------------------------
-
-pub fn set_time_zone(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let zone = app.calendar_client()?.set_time_zone(args_str(args, "time_zone")).map_err(refused)?;
-    Ok(json!(zone.name()))
-}
 
 fn schedule_time_zone(app: &App) -> anyhow::Result<Value> {
     match app.calendar_client()?.get_time_zone() {
@@ -291,36 +378,223 @@ fn schedule_time_zone(app: &App) -> anyhow::Result<Value> {
     }
 }
 
-pub fn get_compaction_schedule_hints(app: &App, _args: &Map<String, Value>) -> ToolResult {
-    let hints = app.compaction_schedule()?.all().map_err(refused)?;
-    Ok(json!({ "hints": hints, "time_zone": schedule_time_zone(app)? }))
-}
-
-pub fn set_compaction_schedule_hints(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let given: Vec<crate::sheet::rows::Row> = list_of(args, "hints").into_iter().map(|h| HINT_ROW.from_value(h)).collect();
-    let saved = app.compaction_schedule()?.set_hints(&given).map_err(refused)?;
-    Ok(json!({ "hints": saved, "time_zone": schedule_time_zone(app)? }))
-}
-
 // -- notes -----------------------------------------------------------------------------
 
-pub fn note(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let given = &args["noted_time"];
-    let recorded = NotedTime {
-        timestamp: moment(given.get("timestamp"))?.unwrap(),
-        description: given.get("description").and_then(Value::as_str).map(str::to_string),
+fn to_cancels(cancels: Vec<EventCancel>) -> Vec<Cancel> {
+    cancels.into_iter().map(|c| Cancel { event_id: c.event_id, counts_against_follow_through: c.counts_against_follow_through }).collect()
+}
+
+// -- the tools ------------------------------------------------------------------
+
+/// List events between min_time and max_time. action_ids are what was
+/// done at each event, the first setting its color (action_names gives
+/// their names). effective_priority is the priority that applies:
+/// the event's own priority, falling back to the highest priority of its
+/// actions.
+/// is_end_of_day_sleep marks the sleep event that
+/// ends a day; recurring_event_id is the id of an instance's recurring
+/// series (see get_recurrence and update_recurrence to read and edit the
+/// series as a whole); event_label_id is the calendar label derived from
+/// its first action. facts are what compaction established about a past
+/// event: where, who with, who for, and a note on each person there (see
+/// PublicEvent). action_names, effective_priority, is_end_of_day_sleep,
+/// recurring_event_id and event_label_id are read-only: update_event and
+/// create_event ignore them.
+#[tool]
+pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText) -> Result<Vec<PublicEvent>, ToolError> {
+    prefetch_stores(app)?;
+    let (min, max) = (moment(Some(&json!(min_time.0)))?.unwrap(), moment(Some(&json!(max_time.0)))?.unwrap());
+    let events: Vec<Event> = app.calendar_client()?.list_events(&min, &max)?.into_iter().filter(|e| !e.is_cancelled()).collect();
+    from_store(public_events(app, &events)?)
+}
+
+/// Get a single event by its ID. See list_events for its fields.
+#[tool]
+pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
+    prefetch_stores(app)?;
+    let event = app.calendar_client()?.get_event(&id)?;
+    if event.is_cancelled() {
+        return Err(ToolError::Message(format!("Event {id} has been cancelled.")));
+    }
+    from_store(public_events(app, &[event])?.as_array().unwrap()[0].clone())
+}
+
+/// Change several events at once, as one batch: `updates` (each an
+/// event's id and the fields to set -- left out, a field keeps its value;
+/// list it in that update's clear_fields to remove it instead -- clearing
+/// priority makes it follow its actions' priority again), `creates` (new
+/// events, optionally with actions: action_ids, the first setting its
+/// color), `cancels` (each saying whether it counts against
+/// follow-through: a commitment dropped, rather than a change of plan --
+/// see delete_event) and `shifts` (events moved together by the same
+/// number of minutes, each as an update). An event can be in only one of
+/// them. Set action_ids to change an event's actions ([] for none), and
+/// facts to replace its facts whole (see list_events). An update can't
+/// cancel an event (is_cancelled): put it in `cancels`.
+///
+/// BATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every
+/// event the call creates or updates must end after it starts and must
+/// not overlap any other event -- one on the calendar or another in the
+/// call -- so move, shorten or cancel whatever's in the way in the same
+/// call. A call that breaks this changes nothing, and the error lists
+/// every problem and the events around them, to send a valid call at
+/// once.
+///
+/// Everything before the last compaction (get_compaction_status's
+/// last_compaction) is history: an event that started before it can't be
+/// changed or cancelled, and no event can be created, or moved, to start
+/// before it, unless allow_compacted_changes is set -- ONLY set it when
+/// the user has explicitly approved changing history -- except that an
+/// event still going on then may run on (an update moving only its end,
+/// to no earlier than the last compaction). dry_run checks the batch
+/// and returns what it would do without changing anything. Returns the
+/// events changed, and a timeline of them beside the events around
+/// them.
+#[tool(writes)]
+pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Option<Vec<PublicEvent>>, cancels: Option<Vec<EventCancel>>, shifts: Option<Vec<EventShift>>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
+    prefetch_for_changes(app)?;
+    let updates = updates.unwrap_or_default();
+    let creates = creates.unwrap_or_default();
+    for update in &updates {
+        if update.event.is_cancelled {
+            return Err(ToolError::Message(
+                "an update can't cancel an event: put it in cancels, saying with counts_against_follow_through whether the cancellation counts against follow-through".into(),
+            ));
+        }
+        let event = to_json(&update.event);
+        check_action_ids(app, &event, true)?;
+        check_facts(app, &event)?;
+    }
+    for event in &creates {
+        let event = to_json(event);
+        check_action_ids(app, &event, false)?;
+        check_facts(app, &event)?;
+    }
+    let mut patches = Vec::new();
+    for update in &updates {
+        patches.push(to_event(&to_json(&update.event), &texts(update.clear_fields.as_deref().unwrap_or_default()))?);
+    }
+    let creates: Vec<Event> = creates.iter().map(|e| to_event(&to_json(e), &[])).collect::<Result<_, _>>()?;
+    let shifts: Vec<Shift> = shifts.unwrap_or_default().into_iter().map(|s| Shift { event_ids: s.event_ids, minutes: s.minutes }).collect();
+    let cancels = to_cancels(cancels.unwrap_or_default());
+    from_store(change_events(app, "update_event", patches, creates, cancels, shifts, allow_compacted_changes, dry_run)?)
+}
+
+/// Create new events, as one batch, optionally with actions
+/// (action_ids, the first setting its color) and facts. update_event
+/// takes creates too, beside updates and cancels, for a change that
+/// makes room for them.
+///
+/// BATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every
+/// event the call creates or updates must end after it starts and must
+/// not overlap any other event -- one on the calendar or another in the
+/// call -- so move, shorten or cancel whatever's in the way in the same
+/// call. A call that breaks this changes nothing, and the error lists
+/// every problem and the events around them, to send a valid call at
+/// once.
+///
+/// An event can't be created to start before the last compaction
+/// (get_compaction_status's last_compaction): that's history, unless
+/// allow_compacted_changes is set -- ONLY set it when the user has
+/// explicitly approved changing history. dry_run checks them and returns
+/// what it would do without changing anything. Returns the events created, and a timeline of them beside
+/// the events around them.
+#[tool(writes)]
+pub fn create_event(app: &App, events: Vec<PublicEvent>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
+    prefetch_for_changes(app)?;
+    for event in &events {
+        let event = to_json(event);
+        check_action_ids(app, &event, false)?;
+        check_facts(app, &event)?;
+    }
+    let creates: Vec<Event> = events.iter().map(|e| to_event(&to_json(e), &[])).collect::<Result<_, _>>()?;
+    from_store(change_events(app, "create_event", Vec::new(), creates, Vec::new(), Vec::new(), allow_compacted_changes, dry_run)?)
+}
+
+/// Delete (cancel) events, as one batch. Given one event of a recurring
+/// series, deletes only that event; to delete the whole series, or an
+/// event and the ones after it, use delete_recurrence. Each cancel says,
+/// with counts_against_follow_through, whether it counts against
+/// follow-through: true records it against the follow-through of each
+/// person a follow-through trait part matches it for -- the user and
+/// everyone it was planned with (facts' with_ids), or for (for_ids), if
+/// it's of the part's action -- as a commitment the user dropped; false
+/// is just a change of plan, and counts against no one. An event that
+/// started before the last compaction (get_compaction_status's
+/// last_compaction) is history, and can't be cancelled unless
+/// allow_compacted_changes is set -- ONLY set it when the user has
+/// explicitly approved changing history. dry_run returns
+/// what it would do without changing anything. Returns the events
+/// cancelled.
+#[tool(writes)]
+pub fn delete_event(app: &App, cancels: Vec<EventCancel>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
+    prefetch_for_changes(app)?;
+    from_store(change_events(app, "delete_event", Vec::new(), Vec::new(), to_cancels(cancels), Vec::new(), allow_compacted_changes, dry_run)?)
+}
+
+/// Record a new time note -- a timestamp, with an optional
+/// description of what it marks. Returns the note as recorded, with the
+/// id edit_note/delete_note refer to it by.
+#[tool(writes)]
+pub fn note(app: &App, noted_time: NotedTime) -> Result<NoteWithId, ToolError> {
+    let recorded = StoredNote {
+        timestamp: moment(Some(&json!(noted_time.timestamp.0)))?.unwrap(),
+        description: noted_time.description,
         compaction_id: None,
     };
-    Ok(app.noted_time_sheet()?.append(&recorded)?.with_id())
+    from_store(app.noted_time_sheet()?.append(&recorded)?.with_id())
 }
 
-pub fn get_notes(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let mut notes = app.noted_time_sheet()?.read_with_rows(flag(args, "include_compacted"))?;
+/// List the recorded time notes, sorted by timestamp, each with the id
+/// edit_note/delete_note refer to it by. Only notes that haven't been
+/// compacted yet, unless include_compacted is true. For browsing/review
+/// only -- may span many days. To compact notes, use prepare_compaction
+/// instead; it returns just the notes for the current round, which is
+/// what compact_notes expects.
+#[tool]
+pub fn get_notes(app: &App, #[schema(default = "false")] include_compacted: bool) -> Result<Vec<NoteWithId>, ToolError> {
+    let mut notes = app.noted_time_sheet()?.read_with_rows(include_compacted)?;
     notes.sort_by(|a, b| a.note.timestamp.cmp(&b.note.timestamp));
-    Ok(Value::Array(notes.iter().map(|n| n.with_id()).collect()))
+    from_store(Value::Array(notes.iter().map(|n| n.with_id()).collect()))
 }
 
-#[allow(dead_code)]
-fn unused(_: &[String]) -> String {
-    python_repr(&Value::Null) + &args_strings(&Map::new(), "x").join("")
+/// When the user's scheduled routines usually run -- the ones that
+/// compact notes into a proposal, and answer the notes left on it: each
+/// a time of day ("07:30", 24-hour, in the calendar's time_zone, given
+/// too) with an optional label ("Morning compaction"), earliest first.
+/// They're hints: nothing runs at them. The user's app fetches what a
+/// routine made a while after each, so it has it to show. Read-only.
+#[tool]
+pub fn get_compaction_schedule_hints(app: &App) -> Result<CompactionScheduleHints, ToolError> {
+    let hints = app.compaction_schedule()?.all().map_err(refused)?;
+    from_store(json!({ "hints": hints, "time_zone": schedule_time_zone(app)? }))
+}
+
+/// Say when the user's scheduled routines run, replacing the hints
+/// whole: each a time of day ("HH:MM", 24-hour, in the calendar's time
+/// zone -- see get_compaction_schedule_hints) and an optional label
+/// ("Morning compaction"). A scheduled routine that compacts notes into a
+/// proposal, or answers the notes left on one, should keep these up to
+/// date, its own time among them, so the user's app fetches what it made
+/// soon after it runs; the app can't change them. Keep the other hints
+/// there: get them first, and send them back with yours. Times are
+/// unique; an empty list clears them. Returns them as saved.
+#[tool(writes)]
+pub fn set_compaction_schedule_hints(app: &App, hints: Vec<ScheduleHint>) -> Result<CompactionScheduleHints, ToolError> {
+    let given: Vec<crate::sheet::rows::Row> = hints.iter().map(|h| to_row(HINT_ROW, h)).collect();
+    let saved = app.compaction_schedule()?.set_hints(&given).map_err(refused)?;
+    from_store(json!({ "hints": saved, "time_zone": schedule_time_zone(app)? }))
+}
+
+/// Set the calendar's time zone to an IANA name, e.g.
+/// "America/New_York" -- the user's own, so that times come back in their
+/// local time and days, weeks and months are dated as they live them.
+/// Set it when times come back in a zone that isn't the user's (e.g.
+/// UTC, with a "Z"), or when they say they've moved or are travelling.
+/// Events keep their moments; only how they're shown changes. Returns
+/// the zone set.
+#[tool(writes)]
+pub fn set_time_zone(app: &App, time_zone: String) -> Result<String, ToolError> {
+    let zone = app.calendar_client()?.set_time_zone(&time_zone).map_err(refused)?;
+    Ok(zone.name().to_string())
 }

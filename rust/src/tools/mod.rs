@@ -126,6 +126,16 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
             people::get_habit_tool(),
             people::create_habit_tool(),
             people::update_habit_tool(),
+            events::list_events_tool(),
+            events::get_event_tool(),
+            events::create_event_tool(),
+            events::update_event_tool(),
+            events::delete_event_tool(),
+            events::set_time_zone_tool(),
+            events::get_compaction_schedule_hints_tool(),
+            events::set_compaction_schedule_hints_tool(),
+            events::note_tool(),
+            events::get_notes_tool(),
         ]
     });
     &TYPED
@@ -133,16 +143,6 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
 
 fn registry() -> &'static [Tool] {
     &[
-        Tool { name: "list_events", writes: false, run: events::list_events },
-        Tool { name: "get_event", writes: false, run: events::get_event },
-        Tool { name: "create_event", writes: true, run: events::create_event },
-        Tool { name: "update_event", writes: true, run: events::update_event },
-        Tool { name: "delete_event", writes: true, run: events::delete_event },
-        Tool { name: "set_time_zone", writes: true, run: events::set_time_zone },
-        Tool { name: "get_compaction_schedule_hints", writes: false, run: events::get_compaction_schedule_hints },
-        Tool { name: "set_compaction_schedule_hints", writes: true, run: events::set_compaction_schedule_hints },
-        Tool { name: "note", writes: true, run: events::note },
-        Tool { name: "get_notes", writes: false, run: events::get_notes },
         Tool { name: "get_recurrence", writes: false, run: recurrences::get_recurrence },
         Tool { name: "update_recurrence", writes: true, run: recurrences::update_recurrence },
         Tool { name: "split_recurrence", writes: true, run: recurrences::split_recurrence },

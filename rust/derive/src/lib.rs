@@ -280,8 +280,9 @@ fn tool_impl(mut function: ItemFn, writes: bool) -> syn::Result<Tokens> {
             #[serde(default)]
             #ident: ::core::option::Option<#ty>
         });
+        let default = opt_str(&opts.default);
         call_args.push(quote! {
-            arguments.#ident.unwrap_or_else(|| crate::contract::absent::<#ty>())
+            arguments.#ident.unwrap_or_else(|| crate::contract::absent::<#ty>(#default))
         });
     }
     let input_title = format!("{name_text}Arguments");
