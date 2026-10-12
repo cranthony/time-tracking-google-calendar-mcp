@@ -1,7 +1,7 @@
 """Recurring series: reading one, editing it whole or from an event on,
 splitting it, deleting it whole or from an event on -- series made in
-Google Calendar itself (seeded straight into the fake, since no tool
-makes one), including one Google split itself ("_R")."""
+Google Calendar itself (seeded straight into the fake), including one
+Google split itself ("_R"), and series made by giving an event a repeat."""
 
 from __future__ import annotations
 
@@ -163,3 +163,30 @@ async def test_single_instance_edits(session, google, calendar_id):
     # Clearing a property an instance doesn't have is fine.
     await session.call("update_event", updates=[{"event": {"id": listed[5]["id"]}, "clear_fields": ["facts", "judgments"]}])
     assert master
+
+
+async def test_series_from_events(session, google, calendar_id):
+    created = (
+        await session.call(
+            "create_event",
+            events=[{"summary": "Run", "start": "2026-10-05T07:00:00-04:00", "end": "2026-10-05T07:30:00-04:00", "repeat": {"every": "week", "weekdays": ["mon", "thu"], "count": 4}}],
+        )
+    )["events"][0]
+    # Write-only: never given back.
+    assert "repeat" not in created
+    runs = [e for e in await instances(session) if e["recurring_event_id"] == created["id"]]
+    assert len(runs) == 4 and all("repeat" not in e for e in runs)
+    got = await session.call("get_recurrence", id=created["id"])
+    assert got["repeat"]["weekdays"] == ["mon", "thu"] and got["time_zone"]
+    # An event that doesn't repeat yet becomes the first of a series.
+    single = (await session.call("create_event", events=[{"summary": "Review", "start": "2026-10-07T11:00:00-04:00", "end": "2026-10-07T11:30:00-04:00"}]))["events"][0]
+    await session.call("update_event", updates=[{"event": {"id": single["id"], "repeat": {"every": "day", "count": 2}}}])
+    assert (await session.call("get_recurrence", id=single["id"]))["repeat"]["count"] == 2
+    # A series itself is update_recurrence's to change; an event in one
+    # can't be given a repeat; a repeat that breaks a rule is refused.
+    await session.call_error("update_event", updates=[{"event": {"id": single["id"], "summary": "Weekly review"}}])
+    await session.call_error("update_event", updates=[{"event": {"id": runs[0]["id"], "repeat": {"every": "day"}}}])
+    await session.call_error(
+        "create_event",
+        events=[{"summary": "Swim", "start": "2026-10-08T07:00:00-04:00", "end": "2026-10-08T07:30:00-04:00", "repeat": {"every": "day", "count": 2, "until": "2026-10-20"}}],
+    )
