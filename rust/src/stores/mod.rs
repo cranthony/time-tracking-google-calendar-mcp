@@ -8,5 +8,6 @@ pub mod journal;
 pub mod locations;
 pub mod notes;
 pub mod people;
+pub mod recurrences;
 pub mod schedule;
 pub mod traits;

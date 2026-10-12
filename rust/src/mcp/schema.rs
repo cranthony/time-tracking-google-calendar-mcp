@@ -123,6 +123,17 @@ impl<'a> Validator<'a> {
         if value.is_null() && options.iter().any(|o| o.get("type").and_then(Value::as_str) == Some("null")) {
             return Value::Null;
         }
+        // Repeat.until's BeforeValidator: a 10-character string is a date,
+        // anything else a datetime -- decided before pydantic's union sees it.
+        let formats: Vec<&str> = options.iter().filter_map(|o| o.get("format").and_then(Value::as_str)).collect();
+        if formats.contains(&"date-time") && formats.contains(&"date") {
+            if let Value::String(text) = value {
+                let format = if text.chars().count() == 10 { "date" } else { "date-time" };
+                if let Some(option) = options.iter().find(|o| o.get("format").and_then(Value::as_str) == Some(format)) {
+                    return self.check(option, value, loc, errors, false);
+                }
+            }
+        }
         let mut first_errors: Option<Vec<ArgError>> = None;
         for option in options {
             if option.get("type").and_then(Value::as_str) == Some("null") {

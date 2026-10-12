@@ -19,6 +19,8 @@ use crate::stores::traits::Traits;
 use crate::stores::journal::CompactionJournal;
 use crate::stores::notes::NotedTimeSheet;
 use crate::stores::schedule::CompactionSchedule;
+use crate::stores::recurrences::Recurrences;
+use crate::stores::action_calendar::ActionCalendar;
 use crate::write_lock::WRITE_LOCK;
 use anyhow::{anyhow, Context};
 use std::path::PathBuf;
@@ -63,6 +65,7 @@ pub struct App {
     journal: OnceLock<CompactionJournal>,
     notes: OnceLock<NotedTimeSheet>,
     schedule: OnceLock<CompactionSchedule>,
+    recurrences: OnceLock<Recurrences>,
     me: OnceLock<std::sync::Weak<App>>,
 }
 
@@ -97,6 +100,7 @@ impl App {
             journal: OnceLock::new(),
             notes: OnceLock::new(),
             schedule: OnceLock::new(),
+            recurrences: OnceLock::new(),
             me: OnceLock::new(),
         }
     }
@@ -204,6 +208,14 @@ impl App {
         built(&self.schedule, || {
             let (_, sheets, id) = self.spreadsheet()?;
             CompactionSchedule::ensure(&sheets, &id)
+        })
+    }
+
+    /// Recurrences, kept (with its ActionCalendar) for the server's life.
+    pub fn recurrences(&self) -> anyhow::Result<Recurrences> {
+        built(&self.recurrences, || {
+            let client = self.calendar_client()?;
+            Ok(Recurrences::new(ActionCalendar::new(client, self.actions()?)))
         })
     }
 

@@ -15,6 +15,7 @@ pub mod stores;
 pub mod timeline;
 pub mod tools;
 pub mod write_lock;
+pub mod zoned;
 
 use std::sync::Arc;
 

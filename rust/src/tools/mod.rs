@@ -5,6 +5,7 @@
 
 mod events;
 mod places;
+mod recurrences;
 mod stores;
 
 use crate::app::App;
@@ -114,6 +115,10 @@ fn registry() -> &'static [Tool] {
         Tool { name: "set_compaction_schedule_hints", writes: true, run: events::set_compaction_schedule_hints },
         Tool { name: "note", writes: true, run: events::note },
         Tool { name: "get_notes", writes: false, run: events::get_notes },
+        Tool { name: "get_recurrence", writes: false, run: recurrences::get_recurrence },
+        Tool { name: "update_recurrence", writes: true, run: recurrences::update_recurrence },
+        Tool { name: "split_recurrence", writes: true, run: recurrences::split_recurrence },
+        Tool { name: "delete_recurrence", writes: true, run: recurrences::delete_recurrence },
     ]
 }
 
