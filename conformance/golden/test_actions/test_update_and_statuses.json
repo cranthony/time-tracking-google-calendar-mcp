@@ -29,6 +29,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action"
   },
   {
@@ -62,6 +63,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": \"#aa0000\",\n      \"priority\": null,\n      \"note\": \"n\",\n      \"path\": \"play piano\",\n      \"effective_color\": \"#aa0000\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_action"
   },
   {
@@ -93,6 +95,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -126,6 +129,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -156,6 +160,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"archived\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -181,6 +186,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -227,6 +233,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"archived\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -257,6 +264,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -287,6 +295,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"deleted\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -298,6 +307,7 @@
    },
    "content": "Error executing tool update_action: There's no action with the id or name 'nosuch' (get_actions lists them)",
    "is_error": true,
+   "text": "Error executing tool update_action: There's no action with the id or name 'nosuch' (get_actions lists them)",
    "tool": "update_action"
   },
   {
@@ -309,6 +319,7 @@
    },
    "content": "Error executing tool update_action: there's already an action named 'play piano' (4709iy, active); action names must be unique -- use that one, or pick another name",
    "is_error": true,
+   "text": "Error executing tool update_action: there's already an action named 'play piano' (4709iy, active); action names must be unique -- use that one, or pick another name",
    "tool": "update_action"
   },
   {
@@ -323,6 +334,7 @@
    },
    "content": "Error executing tool update_action: Can't both set and clear ['note']",
    "is_error": true,
+   "text": "Error executing tool update_action: Can't both set and clear ['note']",
    "tool": "update_action"
   }
  ],

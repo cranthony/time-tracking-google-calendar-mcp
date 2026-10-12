@@ -14,6 +14,7 @@
     "timestamp": "2026-10-07T10:00:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": \"step 0 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -30,6 +31,7 @@
     "timestamp": "2026-10-07T10:05:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:05:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T10:05:00-04:00\",\n  \"description\": \"step 5 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -46,6 +48,7 @@
     "timestamp": "2026-10-07T10:10:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:10:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T10:10:00-04:00\",\n  \"description\": \"step 10 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -62,6 +65,7 @@
     "timestamp": "2026-10-07T10:15:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:15:00-04:00#5\",\n  \"timestamp\": \"2026-10-07T10:15:00-04:00\",\n  \"description\": \"step 15 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -78,6 +82,7 @@
     "timestamp": "2026-10-07T10:20:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:20:00-04:00#6\",\n  \"timestamp\": \"2026-10-07T10:20:00-04:00\",\n  \"description\": \"step 20 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -94,6 +99,7 @@
     "timestamp": "2026-10-07T10:25:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:25:00-04:00#7\",\n  \"timestamp\": \"2026-10-07T10:25:00-04:00\",\n  \"description\": \"step 25 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -110,6 +116,7 @@
     "timestamp": "2026-10-07T10:30:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:30:00-04:00#8\",\n  \"timestamp\": \"2026-10-07T10:30:00-04:00\",\n  \"description\": \"step 30 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -126,6 +133,7 @@
     "timestamp": "2026-10-07T10:35:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:35:00-04:00#9\",\n  \"timestamp\": \"2026-10-07T10:35:00-04:00\",\n  \"description\": \"step 35 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -142,6 +150,7 @@
     "timestamp": "2026-10-07T10:40:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:40:00-04:00#10\",\n  \"timestamp\": \"2026-10-07T10:40:00-04:00\",\n  \"description\": \"step 40 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -158,6 +167,7 @@
     "timestamp": "2026-10-07T10:45:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:45:00-04:00#11\",\n  \"timestamp\": \"2026-10-07T10:45:00-04:00\",\n  \"description\": \"step 45 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -174,6 +184,7 @@
     "timestamp": "2026-10-07T10:50:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:50:00-04:00#12\",\n  \"timestamp\": \"2026-10-07T10:50:00-04:00\",\n  \"description\": \"step 50 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -190,6 +201,7 @@
     "timestamp": "2026-10-07T10:55:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:55:00-04:00#13\",\n  \"timestamp\": \"2026-10-07T10:55:00-04:00\",\n  \"description\": \"step 55 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -269,6 +281,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T10:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": \"step 0 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:05:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T10:05:00-04:00\",\n  \"description\": \"step 5 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:10:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T10:10:00-04:00\",\n  \"description\": \"step 10 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:15:00-04:00#5\",\n  \"timestamp\": \"2026-10-07T10:15:00-04:00\",\n  \"description\": \"step 15 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:20:00-04:00#6\",\n  \"timestamp\": \"2026-10-07T10:20:00-04:00\",\n  \"description\": \"step 20 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:25:00-04:00#7\",\n  \"timestamp\": \"2026-10-07T10:25:00-04:00\",\n  \"description\": \"step 25 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:30:00-04:00#8\",\n  \"timestamp\": \"2026-10-07T10:30:00-04:00\",\n  \"description\": \"step 30 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:35:00-04:00#9\",\n  \"timestamp\": \"2026-10-07T10:35:00-04:00\",\n  \"description\": \"step 35 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:40:00-04:00#10\",\n  \"timestamp\": \"2026-10-07T10:40:00-04:00\",\n  \"description\": \"step 40 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:45:00-04:00#11\",\n  \"timestamp\": \"2026-10-07T10:45:00-04:00\",\n  \"description\": \"step 45 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:50:00-04:00#12\",\n  \"timestamp\": \"2026-10-07T10:50:00-04:00\",\n  \"description\": \"step 50 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:55:00-04:00#13\",\n  \"timestamp\": \"2026-10-07T10:55:00-04:00\",\n  \"description\": \"step 55 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
    "tool": "get_notes"
   }
  ],

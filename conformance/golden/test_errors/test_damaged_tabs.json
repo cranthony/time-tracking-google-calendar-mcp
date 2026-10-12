@@ -29,6 +29,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action"
   },
   {
@@ -47,6 +48,7 @@
     "created_id": "bcyx3f"
    },
    "is_error": false,
+   "text": "{\n  \"circle\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"member_ids\": []\n  },\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_circle"
   },
   {
@@ -68,6 +70,7 @@
     "time_zone": "America/New_York"
    },
    "is_error": false,
+   "text": "{\n  \"hints\": [\n    {\n      \"id\": \"7632uw\",\n      \"time\": \"07:30\",\n      \"label\": null\n    }\n  ],\n  \"time_zone\": \"America/New_York\"\n}",
    "tool": "set_compaction_schedule_hints"
   },
   {
@@ -84,6 +87,7 @@
     "timestamp": "2026-10-07T09:00:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T09:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n  \"description\": \"x\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -109,12 +113,14 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"4709iy (edited)\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
    "arguments": {},
    "content": [],
    "is_error": false,
+   "text": "",
    "tool": "get_action_groups"
   },
   {
@@ -128,6 +134,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"bcyx3f (edited)\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"member_ids\": []\n}",
    "tool": "get_circles"
   },
   {
@@ -146,18 +153,21 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_people"
   },
   {
    "arguments": {},
    "content": [],
    "is_error": false,
+   "text": "",
    "tool": "get_locations"
   },
   {
    "arguments": {},
    "content": [],
    "is_error": false,
+   "text": "",
    "tool": "get_habits"
   },
   {
@@ -328,12 +338,14 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"thoughtful\",\n  \"name\": \"Thoughtful\",\n  \"status\": \"active\",\n  \"definition\": \"Remember what matters to them, and prepare for it.\",\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"Was this preparation for them, built on what matters to them?\",\n      \"ratings\": {\n        \"0\": \"It wasn't really for them\",\n        \"1\": \"It was for them, but generic\",\n        \"2\": \"It was for them, and fit what matters to them\",\n        \"3\": \"It was carefully made around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    }\n  ],\n  \"problems\": null\n}\n{\n  \"id\": \"reliable\",\n  \"name\": \"Reliable\",\n  \"status\": \"active\",\n  \"definition\": \"Do what I said I would, and keep contact going -- reliable to myself too.\",\n  \"parts\": [\n    {\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"kind\": \"follow_through\"\n    },\n    {\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 14,\n      \"zero_at_days\": 30,\n      \"noun\": \"meetings\"\n    }\n  ],\n  \"problems\": null\n}\n{\n  \"id\": \"creative\",\n  \"name\": \"Creative\",\n  \"status\": \"active\",\n  \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 30\n        },\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"problems\": null\n}\n{\n  \"id\": \"adventurous\",\n  \"name\": \"Adventurous\",\n  \"status\": \"active\",\n  \"definition\": \"Share new experiences with them: new activities, new places.\",\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 90\n        }\n      ]\n    }\n  ],\n  \"problems\": null\n}\n{\n  \"id\": \"generous\",\n  \"name\": \"Generous\",\n  \"status\": \"active\",\n  \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"How much effort did I put into doing this for them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"problems\": null\n}",
    "tool": "get_traits"
   },
   {
    "arguments": {},
    "content": "Error executing tool get_notes",
    "is_error": true,
+   "text": "Error executing tool get_notes",
    "tool": "get_notes"
   },
   {
@@ -349,18 +361,21 @@
     "time_zone": "America/New_York"
    },
    "is_error": false,
+   "text": "{\n  \"hints\": [\n    {\n      \"id\": \"7632uw (edited)\",\n      \"time\": \"07:30\",\n      \"label\": null\n    }\n  ],\n  \"time_zone\": \"America/New_York\"\n}",
    "tool": "get_compaction_schedule_hints"
   },
   {
    "arguments": {},
    "content": "Error executing tool get_compaction_status",
    "is_error": true,
+   "text": "Error executing tool get_compaction_status",
    "tool": "get_compaction_status"
   },
   {
    "arguments": {},
    "content": "Error executing tool prepare_compaction",
    "is_error": true,
+   "text": "Error executing tool prepare_compaction",
    "tool": "prepare_compaction"
   },
   {
@@ -388,6 +403,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"priority\": 0,\n  \"color\": \"#e1e1e1\",\n  \"label_id\": \"495cdbf8-ca71-5284-8fe0-31ec6b15fbbe\"\n}\n{\n  \"priority\": 1,\n  \"color\": \"#fbd75b\",\n  \"label_id\": \"261822bd-b719-5bcf-864c-1efdfff66600\"\n}\n{\n  \"priority\": 2,\n  \"color\": \"#a4bdfc\",\n  \"label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\"\n}\n{\n  \"priority\": 3,\n  \"color\": \"#7ae7bf\",\n  \"label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\"\n}",
    "tool": "get_priority_colors"
   },
   {
@@ -397,6 +413,7 @@
    },
    "content": [],
    "is_error": false,
+   "text": "",
    "tool": "list_events"
   }
  ],

@@ -29,6 +29,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action"
   },
   {
@@ -61,6 +62,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_action"
   },
   {
@@ -109,6 +111,7 @@
     "timeline": "09:00 ┌ Practice · new\n10:00 └ Practice ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": \"d\",\n      \"location\": \"l\",\n      \"priority\": 4,\n      \"action_ids\": [\n        \"4709iy\"\n      ],\n      \"action_names\": [\n        \"play guitar\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 4,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Practice · new\\n10:00 └ Practice ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -162,6 +165,7 @@
     "timeline": null
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Piano practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": \"l\",\n      \"priority\": null,\n      \"action_ids\": [\n        \"bcyx3f\",\n        \"4709iy\"\n      ],\n      \"action_names\": [\n        \"play piano\",\n        \"play guitar\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 1,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -201,6 +205,7 @@
     "timeline": null
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Piano practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": \"l\",\n      \"priority\": null,\n      \"action_ids\": [],\n      \"action_names\": [],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -219,6 +224,7 @@
    },
    "content": "Error executing tool update_event: Can't both set and clear ['location']",
    "is_error": true,
+   "text": "Error executing tool update_event: Can't both set and clear ['location']",
    "tool": "update_event"
   },
   {
@@ -234,6 +240,7 @@
    },
    "content": "Error executing tool update_event: an update can't cancel an event: put it in cancels, saying with counts_against_follow_through whether the cancellation counts against follow-through",
    "is_error": true,
+   "text": "Error executing tool update_event: an update can't cancel an event: put it in cancels, saying with counts_against_follow_through whether the cancellation counts against follow-through",
    "tool": "update_event"
   }
  ],

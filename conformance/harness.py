@@ -90,8 +90,12 @@ class Call:
     content: Any
     """The structured result if there is one, else the text content."""
 
+    text: str = ""
+    """The text content, which is what a model reads: for a structured
+    result, its JSON as the server rendered it."""
+
     def as_dict(self) -> dict:
-        return {"tool": self.tool, "arguments": self.arguments, "is_error": self.is_error, "content": self.content}
+        return {"tool": self.tool, "arguments": self.arguments, "is_error": self.is_error, "content": self.content, "text": self.text}
 
 
 @dataclass
@@ -140,11 +144,14 @@ class Session:
                 content = content["result"]
         else:
             content = "\n".join(texts)
+        text = "\n".join(texts)
         if tool == "get_health" and not result.is_error:
             content = _masked_timings(content)
+            text = json.dumps(_masked_timings(json.loads(text))) if text.startswith("{") else text
         if isinstance(content, str):
-            content = unversioned(content)
-        call = Call(tool, arguments, bool(result.is_error), content)
+            content = argument_errors(unversioned(content))
+        text = argument_errors(unversioned(text))
+        call = Call(tool, arguments, bool(result.is_error), content, text)
         self.calls.append(call)
         return call
 
@@ -161,6 +168,26 @@ def unversioned(text: str) -> str:
     (".../2.13/v/missing"): it's whichever pydantic got installed, not
     something the server decides."""
     return re.sub(r"errors\.pydantic\.dev/[0-9.]+/", "errors.pydantic.dev/<version>/", text)
+
+
+_PYDANTIC_ERRORS = re.compile(r"^(Error executing tool \w+: )\d+ validation errors? for \w+Arguments\n(.*)$", re.S)
+_PYDANTIC_ERROR = re.compile(r"^(\S[^\n]*)\n  [^\n]*\[type=(\w+)", re.M)
+_RUST_ERRORS = re.compile(r"^(Error executing tool \w+: )invalid arguments\n(.*)$", re.S)
+_RUST_ERROR = re.compile(r"^- ([^:\n]+): [^\n]*\[type=(\w+)\]$", re.M)
+
+
+def argument_errors(text: str) -> str:
+    """An error for arguments the tool's schema refused, as just which
+    fields and what kind of error ("location.unknown_field
+    [unexpected_keyword_argument]"): the Python server words them as
+    pydantic does, the Rust one more simply -- by the user's choice, only
+    the fields and the kinds (pydantic's names for them) must agree."""
+    for whole, each in ((_PYDANTIC_ERRORS, _PYDANTIC_ERROR), (_RUST_ERRORS, _RUST_ERROR)):
+        match = whole.match(text)
+        if match:
+            found = sorted(f"{loc} [{kind}]" for loc, kind in each.findall(match.group(2)))
+            return f"{match.group(1)}invalid arguments: " + "; ".join(found)
+    return text
 
 
 _TIMING_KEYS = {"at", "work_ms", "total_ms", "overhead_ms", "median_ms", "p95_ms", "max_ms", "rss_mib", "memory_latest_mib", "memory_min_mib", "memory_max_mib"}

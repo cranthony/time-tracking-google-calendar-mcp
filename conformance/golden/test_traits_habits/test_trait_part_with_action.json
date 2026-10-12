@@ -29,6 +29,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"go hiking\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"go hiking\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action"
   },
   {
@@ -63,6 +64,7 @@
     "status": "active"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"outdoorsy\",\n  \"name\": \"Outdoorsy\",\n  \"status\": \"active\",\n  \"definition\": \"Time outside.\",\n  \"parts\": [\n    {\n      \"kind\": \"count\",\n      \"target\": 2,\n      \"interval_days\": 14,\n      \"noun\": \"hikes\",\n      \"action\": \"4709iy\"\n    }\n  ]\n}",
    "tool": "create_trait"
   },
   {
@@ -83,6 +85,7 @@
    },
    "content": "Error executing tool create_trait: A part's action 'nosuch' isn't an action or action group (get_actions and get_action_groups list them)",
    "is_error": true,
+   "text": "Error executing tool create_trait: A part's action 'nosuch' isn't an action or action group (get_actions and get_action_groups list them)",
    "tool": "create_trait"
   }
  ],

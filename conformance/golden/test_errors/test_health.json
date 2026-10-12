@@ -4,12 +4,14 @@
    "arguments": {},
    "content": [],
    "is_error": false,
+   "text": "",
    "tool": "get_locations"
   },
   {
    "arguments": {},
    "content": [],
    "is_error": false,
+   "text": "",
    "tool": "get_locations"
   },
   {
@@ -18,6 +20,7 @@
    },
    "content": "Error executing tool get_location: There's no location with the id or name 'nowhere' (get_locations lists them)",
    "is_error": true,
+   "text": "Error executing tool get_location: There's no location with the id or name 'nowhere' (get_locations lists them)",
    "tool": "get_location"
   },
   {
@@ -79,6 +82,7 @@
     ]
    },
    "is_error": false,
+   "text": "{\"tools\": [{\"tool\": \"get_location\", \"count\": 1, \"errors\": 1, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": false}]}, {\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}, {\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}]}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": []}",
    "tool": "get_health"
   },
   {
@@ -131,6 +135,7 @@
     ]
    },
    "is_error": false,
+   "text": "{\"tools\": [{\"tool\": \"get_health\", \"count\": 1, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}, {\"tool\": \"get_location\", \"count\": 1, \"errors\": 1, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}, {\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": []}",
    "tool": "get_health"
   },
   {
@@ -174,6 +179,7 @@
     ]
    },
    "is_error": false,
+   "text": "{\"tools\": [{\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}, {\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}]}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": []}",
    "tool": "get_health"
   },
   {
@@ -182,6 +188,7 @@
    },
    "content": "Error executing tool get_health: No calls of 'never_called' are recorded; those that are: get_health, get_location, get_locations",
    "is_error": true,
+   "text": "Error executing tool get_health: No calls of 'never_called' are recorded; those that are: get_health, get_location, get_locations",
    "tool": "get_health"
   }
  ],

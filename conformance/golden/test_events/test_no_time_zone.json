@@ -7,6 +7,7 @@
     "time_zone": null
    },
    "is_error": false,
+   "text": "{\n  \"hints\": [],\n  \"time_zone\": null\n}",
    "tool": "get_compaction_schedule_hints"
   },
   {
@@ -15,6 +16,7 @@
    },
    "content": "America/Chicago",
    "is_error": false,
+   "text": "America/Chicago",
    "tool": "set_time_zone"
   },
   {
@@ -24,6 +26,7 @@
     "time_zone": "America/Chicago"
    },
    "is_error": false,
+   "text": "{\n  \"hints\": [],\n  \"time_zone\": \"America/Chicago\"\n}",
    "tool": "get_compaction_schedule_hints"
   }
  ],

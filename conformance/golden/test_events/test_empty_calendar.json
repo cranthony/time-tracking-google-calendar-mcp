@@ -7,6 +7,7 @@
    },
    "content": [],
    "is_error": false,
+   "text": "",
    "tool": "list_events"
   },
   {
@@ -15,6 +16,7 @@
    },
    "content": "Error executing tool get_event",
    "is_error": true,
+   "text": "Error executing tool get_event",
    "tool": "get_event"
   }
  ],

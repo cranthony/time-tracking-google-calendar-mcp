@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -25,7 +26,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 from conformance.conftest import check_golden
 from conformance.fake_google import FakeGoogle
-from conformance.harness import DEFAULT_NOW, FakeGoogleServer, ROOT, _free_port, server_command, unversioned
+from conformance.harness import DEFAULT_NOW, FakeGoogleServer, ROOT, _free_port, server_command, unversioned, argument_errors
 
 ALLOWED = "user_01ALLOWED"
 OTHER = "user_01STRANGER"
@@ -66,7 +67,8 @@ class HttpServer:
         self.exchanges: list[dict] = []
         self._session_id: str | None = None
         self._next_id = 0
-        deadline = time.monotonic() + 60
+        # Generous: a Python server starting alongside other scenarios is slow.
+        deadline = time.monotonic() + 180
         while True:
             try:
                 urllib.request.urlopen(f"{self.base}/.well-known/oauth-protected-resource/mcp", timeout=2).read()
@@ -142,7 +144,27 @@ class HttpServer:
 
 def _normalized(text: str, base: str, issuer: str) -> str:
     """Addresses that change from run to run, made fixed."""
-    return unversioned(text.replace(base, "<server>").replace(issuer, "<authkit>"))
+    text = unversioned(text.replace(base, "<server>").replace(issuer, "<authkit>"))
+    return "".join(_with_argument_errors(line) for line in text.splitlines(keepends=True))
+
+
+def _with_argument_errors(line: str) -> str:
+    """An SSE `data:` line carrying an MCP response, with a tool's refusal
+    of its arguments compared by field and kind only (see
+    harness.argument_errors) -- the rest of the line left exactly as sent."""
+    if not line.startswith("data: "):
+        return line
+    ending = line[len(line.rstrip("\r\n")):]
+    try:
+        message = json.loads(line[len("data: "):])
+    except ValueError:
+        return line
+    content = message.get("result", {}).get("content") if isinstance(message, dict) else None
+    if not isinstance(content, list) or not any(argument_errors(c.get("text", "")) != c.get("text", "") for c in content):
+        return line
+    for item in content:
+        item["text"] = argument_errors(item.get("text", ""))
+    return "data: " + json.dumps(message, separators=(",", ":"), ensure_ascii=False) + ending
 
 
 @pytest.fixture

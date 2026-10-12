@@ -4,6 +4,7 @@
    "arguments": {},
    "content": [],
    "is_error": false,
+   "text": "",
    "tool": "get_notes"
   },
   {
@@ -20,6 +21,7 @@
     "timestamp": "2026-10-07T09:05:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -35,6 +37,7 @@
     "timestamp": "2026-10-07T08:00:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -52,6 +55,7 @@
     "timestamp": "2026-10-07T12:00:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -77,6 +81,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
    "tool": "get_notes"
   },
   {
@@ -91,6 +96,7 @@
     "timestamp": "2026-10-07T09:05:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null\n}",
    "tool": "edit_note"
   },
   {
@@ -105,6 +111,7 @@
     "timestamp": "2026-10-07T09:15:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null\n}",
    "tool": "edit_note"
   },
   {
@@ -119,6 +126,7 @@
     "timestamp": "2026-10-07T09:15:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
    "tool": "edit_note"
   },
   {
@@ -131,6 +139,7 @@
     "timestamp": "2026-10-07T08:00:00-04:00"
    },
    "is_error": false,
+   "text": "{\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
    "tool": "delete_note"
   },
   {
@@ -150,6 +159,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
    "tool": "get_notes"
   },
   {
@@ -158,6 +168,7 @@
    },
    "content": "Error executing tool delete_note: row 3 no longer holds the note '2026-10-07T08:00:00-04:00#3' -- it was edited or removed since it was read; list the notes again for current ids",
    "is_error": true,
+   "text": "Error executing tool delete_note: row 3 no longer holds the note '2026-10-07T08:00:00-04:00#3' -- it was edited or removed since it was read; list the notes again for current ids",
    "tool": "delete_note"
   },
   {
@@ -167,6 +178,7 @@
    },
    "content": "Error executing tool edit_note: 'nosuch' isn't a note id (expected e.g. '2026-01-01T09:05:00+00:00#5')",
    "is_error": true,
+   "text": "Error executing tool edit_note: 'nosuch' isn't a note id (expected e.g. '2026-01-01T09:05:00+00:00#5')",
    "tool": "edit_note"
   },
   {
@@ -188,6 +200,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
    "tool": "get_notes"
   }
  ],
