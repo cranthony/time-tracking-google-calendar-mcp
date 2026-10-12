@@ -157,7 +157,9 @@ pub struct State {
     /// Answer this many of the next Sheets requests with 429.
     pub rate_limit_next: usize,
     /// (method, a piece of the path, status, message): answer the next
-    /// request that matches each with that error, once.
+    /// request that matches each with that error, once. A 404 to a write
+    /// of an event deletes the event first, as if it was deleted
+    /// meanwhile.
     pub fail_next: Vec<(String, String, u16, String)>,
     ids: u64,
 }
@@ -1311,6 +1313,11 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                     let failing = s.fail_next.iter().position(|(m, p, _, _)| *m == method && decode(path).contains(p.as_str()));
                     if let Some(index) = failing {
                         let (_, _, code, message) = s.fail_next.remove(index);
+                        if code == 404 && method != "GET" && path.contains("/events/") {
+                            // Not found: deleted meanwhile, so gone from
+                            // the calendar too.
+                            let _ = s.handle("DELETE", path, &[], None, json!({}));
+                        }
                         (code, Some(error_body(code, &message)))
                     } else {
                         match s.handle(&method, path, &query, if_match.as_deref(), if body.is_null() { json!({}) } else { body }) {

@@ -15,7 +15,18 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
+#[cfg(test)]
+thread_local! {
+    /// The unit tests' clock: env vars are process-wide, and tests run in
+    /// parallel, so each test thread sets its own.
+    pub static TEST_NOW: std::cell::Cell<Option<DateTime<FixedOffset>>> = const { std::cell::Cell::new(None) };
+}
+
 pub fn now() -> DateTime<FixedOffset> {
+    #[cfg(test)]
+    if let Some(now) = TEST_NOW.with(std::cell::Cell::get) {
+        return now;
+    }
     now_from(std::env::var("CTT_NOW").ok())
 }
 

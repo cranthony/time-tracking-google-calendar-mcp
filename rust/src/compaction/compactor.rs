@@ -3071,3 +3071,7 @@ fn patch_for(step: &JournalStep) -> Event {
 fn unused(_: Problem, _: Option<Value>) -> Option<Value> {
     facts_dict(None)
 }
+
+#[cfg(test)]
+#[path = "compactor_tests/mod.rs"]
+mod tests;

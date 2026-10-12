@@ -65,6 +65,16 @@ impl TestApp {
             .collect()
     }
 
+    /// Put `event` straight into the fake calendar, with its own id however
+    /// short (Google would refuse "e1" from a client).
+    pub fn seed_event(&self, event: &Event) {
+        let mut body = event.insert_body().unwrap();
+        if let Some(id) = &event.id {
+            body.insert("id".into(), Value::String(id.clone()));
+        }
+        self.fake.add_event(&self.calendar_id, Value::Object(body));
+    }
+
     /// Put `event` on the calendar as is, with its own id if it has one.
     pub fn add_event(&self, event: &Event) -> Event {
         let client = self.app.calendar_client().unwrap();
