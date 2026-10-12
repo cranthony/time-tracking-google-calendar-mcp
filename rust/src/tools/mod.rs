@@ -136,6 +136,11 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
             events::set_compaction_schedule_hints_tool(),
             events::note_tool(),
             events::get_notes_tool(),
+            recurrences::get_recurrence_tool(),
+            recurrences::update_recurrence_tool(),
+            recurrences::split_recurrence_tool(),
+            recurrences::delete_recurrence_tool(),
+            health::get_health_tool(),
         ]
     });
     &TYPED
@@ -143,11 +148,6 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
 
 fn registry() -> &'static [Tool] {
     &[
-        Tool { name: "get_recurrence", writes: false, run: recurrences::get_recurrence },
-        Tool { name: "update_recurrence", writes: true, run: recurrences::update_recurrence },
-        Tool { name: "split_recurrence", writes: true, run: recurrences::split_recurrence },
-        Tool { name: "delete_recurrence", writes: true, run: recurrences::delete_recurrence },
-        Tool { name: "get_health", writes: false, run: health::get_health },
         Tool { name: "get_compaction_status", writes: false, run: compaction::get_compaction_status },
         Tool { name: "edit_note", writes: true, run: compaction::edit_note },
         Tool { name: "delete_note", writes: true, run: compaction::delete_note },
