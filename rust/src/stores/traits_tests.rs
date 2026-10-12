@@ -311,3 +311,29 @@ fn refuses_invalid_person_trait_specs() {
 fn part_keys_number_repeated_kinds() {
     assert_eq!(part_keys(&[json!({"kind": "count"}), json!({"kind": "judgment"}), json!({"kind": "count"})]), strings(&["count", "judgment", "count#2"]));
 }
+
+#[test]
+fn a_spacing_part_takes_an_action_a_gap_and_exceptions() {
+    for part in [
+        json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6}),
+        json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6, "exceptions": [{"actions": ["sleep"], "reset_hours": 1}, {"actions": ["fly", "train"]}]}),
+        json!({"kind": "spacing", "action": "meals", "max_gap_hours": 4.5, "exceptions": [{"actions": ["sleep"], "reset_hours": 0}]}),
+    ] {
+        assert!(part_problems(&part).is_empty(), "{part}: {:?}", part_problems(&part));
+    }
+    let cases = [
+        (json!({"kind": "spacing", "max_gap_hours": 6}), "needs \"action\""),
+        (json!({"kind": "spacing", "action": "meals"}), "needs \"max_gap_hours\""),
+        (json!({"kind": "spacing", "action": "meals", "max_gap_hours": 0}), "\"max_gap_hours\" must be a number above 0"),
+        (json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6, "exceptions": {"actions": ["sleep"]}}), "\"exceptions\" must be a list"),
+        (json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6, "exceptions": ["sleep"]}), "exception 0 must be an object"),
+        (json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6, "exceptions": [{"actions": []}]}), "exception 0's \"actions\" must be a list"),
+        (json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6, "exceptions": [{"actions": ["sleep"], "reset_hours": -1}]}), "exception 0's \"reset_hours\" must be"),
+        (json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6, "exceptions": [{"actions": ["sleep"], "reset": 1}]}), "exception 0 has no field \"reset\""),
+        (json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6, "window_days": 7}), "has no field \"window_days\"; a spacing part takes"),
+    ];
+    for (part, problem) in cases {
+        let problems = part_problems(&part);
+        assert!(problems.first().is_some_and(|p| p.starts_with(problem)), "{part}: {problems:?}");
+    }
+}

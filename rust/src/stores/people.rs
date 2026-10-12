@@ -5,6 +5,7 @@ use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
 use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};
 use crate::sheet::{CIRCLES, PEOPLE};
+use crate::stores::foundations::{self, foundation_problems, Node, NodesFn};
 use crate::stores::groups::{python_repr, python_str, truthy};
 use crate::stores::locations::dedup;
 use crate::stores::traits::person_traits_problems;
@@ -17,7 +18,7 @@ pub const SELF_NAME: &str = "Me";
 pub const PERSON_STATUSES: [&str; 3] = ["active", "archived", "deleted"];
 pub const DEFAULT_STATUSES: [&str; 1] = ["active"];
 pub const MAX_NAME_LENGTH: usize = 100;
-pub const PERSON_CLEARABLE_FIELDS: [&str; 4] = ["context", "circles", "what_matters", "traits"];
+pub const PERSON_CLEARABLE_FIELDS: [&str; 5] = ["context", "circles", "what_matters", "traits", "foundations"];
 pub const CIRCLE_CLEARABLE_FIELDS: [&str; 1] = ["note"];
 
 pub const PERSON_ROW: RowType = RowType {
@@ -30,6 +31,7 @@ pub const PERSON_ROW: RowType = RowType {
         ("circles", Kind::Json),
         ("what_matters", Kind::Str),
         ("traits", Kind::Json),
+        ("foundations", Kind::Json),
     ],
 };
 
@@ -69,6 +71,7 @@ pub struct People {
     sheet: RowSheet,
     circle_sheet: RowSheet,
     trait_ids: Option<TraitIds>,
+    habits: Option<NodesFn>,
 }
 
 fn circles_of(person: &Row) -> Vec<Value> {
@@ -82,7 +85,30 @@ impl People {
     pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str, trait_ids: Option<TraitIds>) -> anyhow::Result<People> {
         let sheet = RowSheet::ensure(sheets, spreadsheet_id, PEOPLE.0, PEOPLE.1, PERSON_ROW, &["id", "name"])?;
         let circle_sheet = RowSheet::ensure(sheets, spreadsheet_id, CIRCLES.0, CIRCLES.1, CIRCLE_ROW, &["id", "name"])?;
-        Ok(People { sheet, circle_sheet, trait_ids })
+        Ok(People { sheet, circle_sheet, trait_ids, habits: None })
+    }
+
+    /// It, checking foundations against `habits`' nodes too.
+    pub fn with_habits(mut self, habits: NodesFn) -> People {
+        self.habits = Some(habits);
+        self
+    }
+
+    /// Every person as a node of the habit graph: any may be a
+    /// foundation, though only those with foundations (even none) are
+    /// on it by themselves.
+    pub fn nodes(&self) -> anyhow::Result<Vec<Node>> {
+        Ok(person_nodes(&self.all()?))
+    }
+
+    /// Takes `subject` (a habit's or a person's, deleted) out of every
+    /// person's foundations.
+    pub fn drop_foundation(&self, subject: &str) -> anyhow::Result<()> {
+        let mut people = self.sheet.read()?;
+        if foundations::without(&mut people, subject) {
+            self.sheet.write(&people)?;
+        }
+        Ok(())
     }
 
     pub fn whole_tabs(&self) -> Vec<TabRange> {
@@ -148,7 +174,7 @@ impl People {
         let circles = self.circles()?;
         let mut all = people.clone();
         all.push(new.clone());
-        self.write_people(&all, &circles)?;
+        self.write_people(&all, &circles, &id)?;
         Ok(json!({ "person": Value::Object(listed(&new, &circles)), "created_id": id }))
     }
 
@@ -167,6 +193,7 @@ impl People {
             find_person(&self.all()?, &id)?;
             unreachable!()
         };
+        let was_deleted = rows::text(&people[index], "status") == Some("deleted");
         let changed = rows::updated(&people[index], person, clear_fields, &["id"]);
         if rows::is_set(person, "name") || clear_fields.iter().any(|c| c == "context") {
             let mut everyone = vec![self_person()];
@@ -174,20 +201,34 @@ impl People {
             check_context(&changed, &everyone)?;
         }
         people[index] = changed.clone();
+        if !was_deleted && rows::text(&changed, "status") == Some("deleted") {
+            foundations::without(&mut people, &id);
+        }
         let circles = self.circles()?;
-        self.write_people(&people, &circles)?;
+        self.write_people(&people, &circles, &id)?;
         let shown = if is_self(&changed) { as_self(Some(&changed)) } else { changed };
         Ok(listed(&shown, &circles))
     }
 
-    fn write_people(&self, people: &[Row], circles: &[Row]) -> anyhow::Result<()> {
+    fn write_people(&self, people: &[Row], circles: &[Row], changed: &str) -> anyhow::Result<()> {
         let checked: Vec<Row> =
             if people.iter().any(is_self) { people.to_vec() } else { std::iter::once(self_person()).chain(people.iter().cloned()).collect() };
         let trait_ids = match &self.trait_ids {
             Some(lookup) if people.iter().any(|p| rows::is_set(p, "traits")) => Some(lookup()?),
             _ => None,
         };
-        let problems = person_problems(&checked, circles, trait_ids.as_deref());
+        let mut problems = person_problems(&checked, circles, trait_ids.as_deref());
+        if let Some(person) = checked.iter().find(|p| rows::text(p, "id") == Some(changed)) {
+            if let Some(value) = person.get("foundations").filter(|f| !f.is_null()) {
+                let mut nodes = person_nodes(&checked);
+                if let Some(habits) = &self.habits {
+                    nodes.extend(habits()?);
+                }
+                for p in foundation_problems(changed, value, &nodes) {
+                    problems.push(format!("person {changed}'s {p}"));
+                }
+            }
+        }
         if !problems.is_empty() {
             bail!("{}", problems.join("; "));
         }
@@ -261,6 +302,10 @@ impl People {
         }
         self.circle_sheet.write(circles)
     }
+}
+
+fn person_nodes(people: &[Row]) -> Vec<Node> {
+    people.iter().filter_map(|p| rows::text(p, "id").filter(|i| !i.is_empty()).map(|id| foundations::node(id.to_string(), p))).collect()
 }
 
 pub fn find_person(people: &[Row], id_or_name: &str) -> anyhow::Result<Row> {

@@ -247,6 +247,7 @@
      "action_id": "bcyx3f",
      "action_path": "Music › play guitar",
      "cancelled_events": null,
+     "foundations": null,
      "id": "7632uw",
      "name": "Daily practice",
      "note": "20 minutes a day",
@@ -255,7 +256,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"7632uw\",\n    \"name\": \"Daily practice\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": \"20 minutes a day\",\n    \"traits\": null,\n    \"action_path\": \"Music › play guitar\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"7632uw\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"7632uw\",\n    \"name\": \"Daily practice\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": \"20 minutes a day\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"Music › play guitar\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"7632uw\"\n}",
    "tool": "create_habit"
   },
   {
@@ -300,6 +301,7 @@
      "action_id": "4709iy",
      "action_path": "Music",
      "cancelled_events": null,
+     "foundations": null,
      "id": "mkgvva",
      "name": "Music overall",
      "note": null,
@@ -312,7 +314,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"mkgvva\",\n    \"name\": \"Music overall\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"action_path\": \"Music\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"mkgvva\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"mkgvva\",\n    \"name\": \"Music overall\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"action_path\": \"Music\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"mkgvva\"\n}",
    "tool": "create_habit"
   },
   {
@@ -339,6 +341,7 @@
      "action_id": "bcyx3f",
      "action_path": "Music › play guitar",
      "cancelled_events": [],
+     "foundations": null,
      "id": "7632uw",
      "name": "Daily practice",
      "note": "20 minutes a day",
@@ -349,6 +352,7 @@
      "action_id": "4709iy",
      "action_path": "Music",
      "cancelled_events": [],
+     "foundations": null,
      "id": "mkgvva",
      "name": "Music overall",
      "note": null,
@@ -361,7 +365,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -372,6 +376,7 @@
     "action_id": "bcyx3f",
     "action_path": "Music › play guitar",
     "cancelled_events": [],
+    "foundations": null,
     "id": "7632uw",
     "name": "Daily practice",
     "note": "20 minutes a day",
@@ -379,7 +384,7 @@
     "traits": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habit"
   },
   {
@@ -406,6 +411,7 @@
     "action_id": "4709iy",
     "action_path": "Music",
     "cancelled_events": null,
+    "foundations": null,
     "id": "7632uw",
     "name": "Guitar practice",
     "note": null,
@@ -413,7 +419,7 @@
     "traits": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
@@ -439,6 +445,7 @@
     "action_id": "4709iy",
     "action_path": "Music",
     "cancelled_events": null,
+    "foundations": null,
     "id": "7632uw",
     "name": "Guitar practice",
     "note": null,
@@ -458,7 +465,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
@@ -472,6 +479,7 @@
     "action_id": "4709iy",
     "action_path": "Music",
     "cancelled_events": null,
+    "foundations": null,
     "id": "7632uw",
     "name": "Guitar practice",
     "note": null,
@@ -491,7 +499,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
@@ -501,6 +509,7 @@
      "action_id": "4709iy",
      "action_path": "Music",
      "cancelled_events": [],
+     "foundations": null,
      "id": "mkgvva",
      "name": "Music overall",
      "note": null,
@@ -513,7 +522,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -529,6 +538,7 @@
      "action_id": "4709iy",
      "action_path": "Music",
      "cancelled_events": [],
+     "foundations": null,
      "id": "7632uw",
      "name": "Guitar practice",
      "note": null,
@@ -551,6 +561,7 @@
      "action_id": "4709iy",
      "action_path": "Music",
      "cancelled_events": [],
+     "foundations": null,
      "id": "mkgvva",
      "name": "Music overall",
      "note": null,
@@ -563,7 +574,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -873,7 +884,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1600,7 +1612,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1698,6 +1711,7 @@
         "bcyx3f",
         "active",
         "20 minutes a day",
+        "",
         ""
        ]
       ]
@@ -1860,6 +1874,7 @@
         "bcyx3f",
         "active",
         "20 minutes a day",
+        "",
         ""
        ],
        [
@@ -1868,7 +1883,8 @@
         "4709iy",
         "active",
         "",
-        "{\"select\":[\"thoughtful\"]}"
+        "{\"select\":[\"thoughtful\"]}",
+        ""
        ]
       ]
      }
@@ -2293,6 +2309,7 @@
         "4709iy",
         "active",
         "",
+        "",
         ""
        ],
        [
@@ -2301,7 +2318,8 @@
         "4709iy",
         "active",
         "",
-        "{\"select\":[\"thoughtful\"]}"
+        "{\"select\":[\"thoughtful\"]}",
+        ""
        ]
       ]
      }
@@ -2377,7 +2395,8 @@
         "4709iy",
         "active",
         "",
-        "{\"parts\":{\"thoughtful\":[{\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}"
+        "{\"parts\":{\"thoughtful\":[{\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}",
+        ""
        ],
        [
         "mkgvva",
@@ -2385,7 +2404,8 @@
         "4709iy",
         "active",
         "",
-        "{\"select\":[\"thoughtful\"]}"
+        "{\"select\":[\"thoughtful\"]}",
+        ""
        ]
       ]
      }
@@ -2461,7 +2481,8 @@
         "4709iy",
         "archived",
         "",
-        "{\"parts\":{\"thoughtful\":[{\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}"
+        "{\"parts\":{\"thoughtful\":[{\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}",
+        ""
        ],
        [
         "mkgvva",
@@ -2469,7 +2490,8 @@
         "4709iy",
         "active",
         "",
-        "{\"select\":[\"thoughtful\"]}"
+        "{\"select\":[\"thoughtful\"]}",
+        ""
        ]
       ]
      }
@@ -2925,7 +2947,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "7632uw",
@@ -2995,7 +3018,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },

@@ -78,6 +78,26 @@ async def test_habits(session):
     await session.call_error("update_habit", habit={"id": "nosuch", "name": "x"})
 
 
+
+async def test_foundations(session):
+    meal = (await session.call("create_action", action={"name": "eat a meal", "status": "active"}))["created_id"]
+    sleep = (await session.call("create_action", action={"name": "sleep", "status": "active"}))["created_id"]
+    spacing = {"kind": "spacing", "action": meal, "max_gap_hours": 6, "exceptions": [{"actions": [sleep], "reset_hours": 1}]}
+    rest = (await session.call("create_habit", habit={"name": "Sleep well", "action_id": sleep}))["created_id"]
+    eat = (await session.call("create_habit", habit={"name": "Eat well", "action_id": meal, "traits": {"parts": {"reliable": [spacing]}}}))["created_id"]
+    await session.call_error("create_habit", habit={"name": "Bad gap", "action_id": meal, "traits": {"parts": {"reliable": [{**spacing, "max_gap_hours": 0}]}}})
+    gym = (await session.call("create_habit", habit={"name": "Exercise", "action_id": meal, "foundations": [f"habit:{rest}", f"habit:{eat}"]}))["created_id"]
+    family = (await session.call("create_person", person={"name": "Family Example", "foundations": [f"habit:{gym}"]}))["created_id"]
+    await session.call_error("create_habit", habit={"name": "Unknown", "action_id": meal, "foundations": [rest]})
+    await session.call_error("update_habit", habit={"id": rest, "foundations": [family]})
+    await session.call_error("update_person", person={"id": family, "foundations": [family]})
+    assert (await session.call("get_person", id_or_name=family))["foundations"] == [f"habit:{gym}"]
+    await session.call("update_habit", habit={"id": gym, "status": "deleted"})
+    assert (await session.call("get_person", id_or_name=family))["foundations"] == []
+    cleared = await session.call("update_person", person={"id": family}, clear_fields=["foundations"])
+    assert cleared["foundations"] is None
+
+
 async def test_schedule_hints(session):
     empty = await session.call("get_compaction_schedule_hints")
     assert empty["hints"] == [] and empty["time_zone"] == "America/New_York"

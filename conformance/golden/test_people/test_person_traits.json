@@ -189,6 +189,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "4709iy",
      "name": "Sam Example",
      "status": "active",
@@ -201,7 +202,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_person"
   },
   {
@@ -243,6 +244,7 @@
     "circle_names": null,
     "circles": null,
     "context": null,
+    "foundations": null,
     "id": "4709iy",
     "name": "Sam Example",
     "status": "active",
@@ -261,7 +263,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   },
   {
@@ -299,6 +301,7 @@
     "circle_names": null,
     "circles": null,
     "context": null,
+    "foundations": null,
     "id": "4709iy",
     "name": "Sam Example",
     "status": "active",
@@ -306,7 +309,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   }
  ],
@@ -791,7 +794,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1113,7 +1117,8 @@
         "active",
         "",
         "",
-        "{\"select\":[\"thoughtful\"]}"
+        "{\"select\":[\"thoughtful\"]}",
+        ""
        ]
       ]
      }
@@ -1305,7 +1310,8 @@
         "active",
         "",
         "",
-        "{\"parts\":{\"thoughtful\":[{\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"noun\":\"visits\"}]}}"
+        "{\"parts\":{\"thoughtful\":[{\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"noun\":\"visits\"}]}}",
+        ""
        ]
       ]
      }
@@ -1467,6 +1473,7 @@
         "Sam Example",
         "",
         "active",
+        "",
         "",
         "",
         ""
@@ -1684,7 +1691,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "4709iy",

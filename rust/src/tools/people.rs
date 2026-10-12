@@ -71,6 +71,8 @@ pub enum PersonField {
     WhatMatters,
     #[serde(rename = "traits")]
     Traits,
+    #[serde(rename = "foundations")]
+    Foundations,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -85,6 +87,8 @@ pub enum HabitField {
     Note,
     #[serde(rename = "traits")]
     Traits,
+    #[serde(rename = "foundations")]
+    Foundations,
 }
 
 /// A trait as get_traits lists it: plus anything wrong with it, as hand
@@ -137,6 +141,7 @@ pub struct ListedPerson {
     pub circles: Option<Vec<String>>,
     pub what_matters: Option<String>,
     pub traits: Option<Map<String, Value>>,
+    pub foundations: Option<Vec<String>>,
     pub circle_names: Option<Vec<String>>,
     pub cancelled_events: Option<Vec<CancelledEvent>>,
 }
@@ -151,6 +156,7 @@ pub struct Person {
     pub circles: Option<Vec<String>>,
     pub what_matters: Option<String>,
     pub traits: Option<Map<String, Value>>,
+    pub foundations: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -198,6 +204,7 @@ pub struct ListedHabit {
     pub status: Option<Status>,
     pub note: Option<String>,
     pub traits: Option<Map<String, Value>>,
+    pub foundations: Option<Vec<String>>,
     pub action_path: Option<String>,
     pub cancelled_events: Option<Vec<CancelledEvent>>,
 }
@@ -212,6 +219,7 @@ pub struct Habit {
     pub status: Option<Status>,
     pub note: Option<String>,
     pub traits: Option<Map<String, Value>>,
+    pub foundations: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -258,9 +266,14 @@ pub struct CreatedHabit {
 /// measures of the same kind -- follow_through counting the events the
 /// user cancelled: said in compaction didn't happen, or deleted with
 /// delete_event's counts_against_follow_through, never a plan merely
-/// changed. continuity, count, duration and
-/// follow_through can take an "action" (an action or action group id) to
-/// count only its events. A person's traits can select which traits
+/// changed; "spacing" ({"kind": "spacing", "action": "<meals>",
+/// "max_gap_hours": 6, "exceptions": [{"actions": ["<sleep>"],
+/// "reset_hours": 1}]}): a clock that each event of its action resets to
+/// max_gap_hours left, stopped during an exception's events and, after
+/// one, set to its reset_hours left (if given) -- each day scored as
+/// the share of its time outside exceptions that the clock hadn't run
+/// out. continuity, count, duration and follow_through can take an
+/// "action" (an action or action group id) to count only its events. A person's traits can select which traits
 /// apply to them and give them their own parts for any (see
 /// create_person). problems lists anything wrong with a trait edited by
 /// hand; a bad part isn't rated. Read-only.
@@ -312,7 +325,10 @@ pub fn update_trait(app: &App, r#trait: Trait, clear_fields: Option<Vec<TraitFie
 /// that count against their follow-through, newest first -- when each was
 /// planned, its actions, whether they were to be there ("with") or it was
 /// for them ("for"), the follow-through parts it counted against, and
-/// what cancelled it. Read-only.
+/// what cancelled it. Each also has foundations: the habits (each as
+/// "habit:<id>") and people (by id) their relationship is built on, on
+/// the user's habit graph -- a person with foundations, even none ([]),
+/// is on it; without, they aren't. Read-only.
 #[tool]
 pub fn get_people(app: &App, statuses: Option<Vec<Status>>) -> Result<Vec<ListedPerson>, ToolError> {
     prefetch_people(app)?;
@@ -341,9 +357,10 @@ pub fn get_person(app: &App, id_or_name: String) -> Result<ListedPerson, ToolErr
 /// one), and parts replacing a trait's for them alone, each checked as a
 /// trait's own (see get_traits): a person's own cadence, say,
 /// {"parts": {"reliable": [{"kind": "count", "target": 1,
-/// "interval_days": 21, "noun": "visits"}]}}. Active unless given a
-/// status. id is assigned. Returns the person and their id as
-/// created_id.
+/// "interval_days": 21, "noun": "visits"}]}}, and foundations (see
+/// get_people: habits as "habit:<id>", people by id; none of them
+/// deleted, and never making a cycle). Active unless given a status. id
+/// is assigned. Returns the person and their id as created_id.
 #[tool(writes)]
 pub fn create_person(app: &App, person: Person) -> Result<CreatedPerson, ToolError> {
     prefetch_stores(app)?;
@@ -355,17 +372,22 @@ pub fn create_person(app: &App, person: Person) -> Result<CreatedPerson, ToolErr
 /// Update a person by id ("self" for the user): their name, context,
 /// status (active; archived, out of touch; or deleted, shouldn't have
 /// existed -- self is always active), circles (replaced whole, so send
-/// every circle to keep), what_matters or traits (replaced whole; see
-/// create_person). Omitted properties keep their
-/// value; list one in clear_fields to blank it instead. Returns the
-/// person as updated.
+/// every circle to keep), what_matters, traits (replaced whole; see
+/// create_person) or foundations (replaced whole; clear it to take them
+/// off the habit graph). Omitted properties keep their value; list one
+/// in clear_fields to blank it instead. A person deleted leaves every
+/// habit's and person's foundations. Returns the person as updated.
 #[tool(writes)]
 pub fn update_person(app: &App, person: Person, clear_fields: Option<Vec<PersonField>>) -> Result<ListedPerson, ToolError> {
     prefetch_stores(app)?;
     let person = to_row(PERSON_ROW, &person);
     check_part_actions(app, person.get("traits").and_then(|t| t.get("parts")))?;
     let clear = texts(&clear_fields.unwrap_or_default());
-    from_store(Value::Object(app.people()?.update_person(&person, &clear).map_err(refused)?))
+    let updated = app.people()?.update_person(&person, &clear).map_err(refused)?;
+    if updated.get("status").and_then(Value::as_str) == Some("deleted") {
+        app.habits()?.drop_foundation(&person_id(&updated))?;
+    }
+    from_store(Value::Object(updated))
 }
 
 /// Every circle: a group people belong to ("Close friends",
@@ -422,7 +444,9 @@ pub fn delete_circle(app: &App, circle_id: String) -> Result<DeletedCircle, Tool
 /// looks like). Each also has cancelled_events: the events the user
 /// cancelled that count against its follow-through, newest first, as a
 /// person's (see get_people). Its events' judgments are kept under
-/// "habit:<id>", as a person's are under their id. Read-only.
+/// "habit:<id>", as a person's are under their id. Each also has
+/// foundations: the habits (each as "habit:<id>") and people (by id)
+/// it's built on, on the user's habit graph. Read-only.
 #[tool]
 pub fn get_habits(app: &App, statuses: Option<Vec<Status>>) -> Result<Vec<ListedHabit>, ToolError> {
     prefetch_habits(app, true)?;
@@ -451,8 +475,11 @@ pub fn get_habit(app: &App, id_or_name: String) -> Result<ListedHabit, ToolError
 /// traits that apply to it (by default every active one), and parts
 /// replacing a trait's for it alone, a more specific rubric, say. It's
 /// always "with": judgment parts for those an event was done "for"
-/// don't apply to it. Active unless given a status. id is assigned.
-/// Returns the habit and its id as created_id.
+/// don't apply to it. Also optionally foundations: the habits (each as
+/// "habit:<id>") and people (by id) it's built on -- sleeping well under
+/// exercising, say; none of them deleted, and never making a cycle.
+/// Active unless given a status. id is assigned. Returns the habit and
+/// its id as created_id.
 #[tool(writes)]
 pub fn create_habit(app: &App, habit: Habit) -> Result<CreatedHabit, ToolError> {
     prefetch_habits(app, false)?;
@@ -463,14 +490,19 @@ pub fn create_habit(app: &App, habit: Habit) -> Result<CreatedHabit, ToolError> 
 
 /// Update a habit by id: its name, action_id (an action's or a
 /// group's), status (active; archived, set aside; or deleted, shouldn't
-/// have existed), note or traits (replaced whole; see create_habit).
-/// Omitted properties keep their value; list one in clear_fields to
-/// blank it instead. Returns the habit as updated.
+/// have existed), note, traits or foundations (each replaced whole; see
+/// create_habit). Omitted properties keep their value; list one in
+/// clear_fields to blank it instead. A habit deleted leaves every
+/// habit's and person's foundations. Returns the habit as updated.
 #[tool(writes)]
 pub fn update_habit(app: &App, habit: Habit, clear_fields: Option<Vec<HabitField>>) -> Result<ListedHabit, ToolError> {
     prefetch_habits(app, false)?;
     let habit = to_row(HABIT_ROW, &habit);
     check_part_actions(app, habit.get("traits").and_then(|t| t.get("parts")))?;
     let clear = texts(&clear_fields.unwrap_or_default());
-    from_store(Value::Object(app.habits()?.update_habit(&habit, &clear).map_err(refused)?))
+    let updated = app.habits()?.update_habit(&habit, &clear).map_err(refused)?;
+    if updated.get("status").and_then(Value::as_str) == Some("deleted") {
+        app.people()?.drop_foundation(&habit_subject(&updated))?;
+    }
+    from_store(Value::Object(updated))
 }

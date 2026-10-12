@@ -178,9 +178,9 @@
      ]
     }
    },
-   "content": "Error executing tool create_trait: The trait 'Bad kind': part 1 has kind 'vibes'; a part's kind is one of judgment, continuity, count, duration, follow_through",
+   "content": "Error executing tool create_trait: The trait 'Bad kind': part 1 has kind 'vibes'; a part's kind is one of judgment, continuity, count, duration, follow_through, spacing",
    "is_error": true,
-   "text": "Error executing tool create_trait: The trait 'Bad kind': part 1 has kind 'vibes'; a part's kind is one of judgment, continuity, count, duration, follow_through",
+   "text": "Error executing tool create_trait: The trait 'Bad kind': part 1 has kind 'vibes'; a part's kind is one of judgment, continuity, count, duration, follow_through, spacing",
    "tool": "create_trait"
   },
   {

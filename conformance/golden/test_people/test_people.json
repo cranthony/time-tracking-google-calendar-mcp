@@ -8,6 +8,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -16,7 +17,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_people"
   },
   {
@@ -34,6 +35,7 @@
      "circle_names": null,
      "circles": null,
      "context": "met at salsa",
+     "foundations": null,
      "id": "4709iy",
      "name": "Alex Example",
      "status": "active",
@@ -42,7 +44,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Alex Example\",\n    \"context\": \"met at salsa\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": \"music\",\n    \"traits\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Alex Example\",\n    \"context\": \"met at salsa\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": \"music\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_person"
   },
   {
@@ -59,6 +61,7 @@
      "circle_names": null,
      "circles": null,
      "context": "from work",
+     "foundations": null,
      "id": "bcyx3f",
      "name": "Alex Example",
      "status": "active",
@@ -67,7 +70,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"Alex Example\",\n    \"context\": \"from work\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"bcyx3f\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"Alex Example\",\n    \"context\": \"from work\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_person"
   },
   {
@@ -111,6 +114,7 @@
     "circle_names": null,
     "circles": null,
     "context": "met at salsa",
+    "foundations": null,
     "id": "4709iy",
     "name": "Alex Example",
     "status": "active",
@@ -118,7 +122,7 @@
     "what_matters": "music"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex Example\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": \"music\",\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex Example\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": \"music\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -130,6 +134,7 @@
     "circle_names": null,
     "circles": null,
     "context": null,
+    "foundations": null,
     "id": "self",
     "name": "Me",
     "status": "active",
@@ -137,7 +142,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -164,6 +169,7 @@
     "circle_names": null,
     "circles": null,
     "context": "met at salsa",
+    "foundations": null,
     "id": "4709iy",
     "name": "Alex E.",
     "status": "active",
@@ -171,7 +177,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   },
   {
@@ -186,6 +192,7 @@
     "circle_names": null,
     "circles": null,
     "context": "from work",
+    "foundations": null,
     "id": "bcyx3f",
     "name": "Alex Example",
     "status": "archived",
@@ -193,7 +200,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   },
   {
@@ -204,6 +211,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -215,6 +223,7 @@
      "circle_names": null,
      "circles": null,
      "context": "met at salsa",
+     "foundations": null,
      "id": "4709iy",
      "name": "Alex E.",
      "status": "active",
@@ -223,7 +232,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_people"
   },
   {
@@ -239,6 +248,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -250,6 +260,7 @@
      "circle_names": null,
      "circles": null,
      "context": "met at salsa",
+     "foundations": null,
      "id": "4709iy",
      "name": "Alex E.",
      "status": "active",
@@ -261,6 +272,7 @@
      "circle_names": null,
      "circles": null,
      "context": "from work",
+     "foundations": null,
      "id": "bcyx3f",
      "name": "Alex Example",
      "status": "archived",
@@ -269,7 +281,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_people"
   },
   {
@@ -308,6 +320,7 @@
     "circle_names": null,
     "circles": null,
     "context": null,
+    "foundations": null,
     "id": "self",
     "name": "Me",
     "status": "active",
@@ -315,7 +328,7 @@
     "what_matters": "time well spent"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": \"time well spent\",\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": \"time well spent\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   }
  ],
@@ -613,7 +626,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1059,7 +1073,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1346,6 +1361,7 @@
         "active",
         "",
         "music",
+        "",
         ""
        ]
       ]
@@ -1431,6 +1447,7 @@
         "active",
         "",
         "music",
+        "",
         ""
        ],
        [
@@ -1438,6 +1455,7 @@
         "Alex Example",
         "from work",
         "active",
+        "",
         "",
         "",
         ""
@@ -1927,6 +1945,7 @@
         "active",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -1934,6 +1953,7 @@
         "Alex Example",
         "from work",
         "active",
+        "",
         "",
         "",
         ""
@@ -2019,6 +2039,7 @@
         "Alex E.",
         "met at salsa",
         "active",
+        "",
         "",
         "",
         ""
@@ -2028,6 +2049,7 @@
         "Alex Example",
         "from work",
         "archived",
+        "",
         "",
         "",
         ""
@@ -2367,6 +2389,7 @@
         "active",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -2374,6 +2397,7 @@
         "Alex Example",
         "from work",
         "archived",
+        "",
         "",
         "",
         ""
@@ -2385,6 +2409,7 @@
         "active",
         "",
         "time well spent",
+        "",
         ""
        ]
       ]
@@ -2623,7 +2648,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },
@@ -2677,7 +2703,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "4709iy",

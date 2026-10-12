@@ -13,6 +13,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "4709iy",
      "name": "Sam Example",
      "status": "active",
@@ -21,7 +22,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_person"
   },
   {
@@ -4924,6 +4925,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -4935,6 +4937,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "4709iy",
      "name": "Sam Example",
      "status": "active",
@@ -4946,6 +4949,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "m8t0mg",
      "name": "Alex Example",
      "status": "active",
@@ -4954,7 +4958,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"4709iy\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"m8t0mg\",\n  \"name\": \"Alex Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"4709iy\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"m8t0mg\",\n  \"name\": \"Alex Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_people"
   },
   {
@@ -5270,7 +5274,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -5562,6 +5567,7 @@
         "Sam Example",
         "",
         "active",
+        "",
         "",
         "",
         ""
@@ -6116,7 +6122,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -8675,6 +8682,7 @@
         "active",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -8682,6 +8690,7 @@
         "Alex Example",
         "",
         "active",
+        "",
         "",
         "",
         ""
@@ -10115,7 +10124,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },
@@ -10214,7 +10224,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "4709iy",

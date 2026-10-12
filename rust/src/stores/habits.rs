@@ -5,6 +5,7 @@ use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
 use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};
 use crate::sheet::HABITS;
+use crate::stores::foundations::{self, foundation_problems, Node, NodesFn};
 use crate::stores::groups::{python_repr, python_str, truthy, GroupTree};
 use crate::stores::locations::dedup;
 use crate::stores::people::TraitIds;
@@ -16,7 +17,7 @@ use std::sync::Arc;
 pub const HABIT_STATUSES: [&str; 3] = ["active", "archived", "deleted"];
 pub const DEFAULT_STATUSES: [&str; 1] = ["active"];
 pub const MAX_NAME_LENGTH: usize = 100;
-pub const CLEARABLE_FIELDS: [&str; 2] = ["note", "traits"];
+pub const CLEARABLE_FIELDS: [&str; 3] = ["note", "traits", "foundations"];
 pub const SUBJECT_PREFIX: &str = "habit:";
 
 pub const HABIT_ROW: RowType = RowType {
@@ -28,6 +29,7 @@ pub const HABIT_ROW: RowType = RowType {
         ("status", Kind::Str),
         ("note", Kind::Str),
         ("traits", Kind::Json),
+        ("foundations", Kind::Json),
     ],
 };
 
@@ -69,11 +71,34 @@ pub struct Habits {
     sheet: RowSheet,
     scopes: Option<ScopesFn>,
     trait_ids: Option<TraitIds>,
+    people: Option<NodesFn>,
 }
 
 impl Habits {
     pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str, scopes: Option<ScopesFn>, trait_ids: Option<TraitIds>) -> anyhow::Result<Habits> {
-        Ok(Habits { sheet: RowSheet::ensure(sheets, spreadsheet_id, HABITS.0, HABITS.1, HABIT_ROW, &["id", "name"])?, scopes, trait_ids })
+        Ok(Habits { sheet: RowSheet::ensure(sheets, spreadsheet_id, HABITS.0, HABITS.1, HABIT_ROW, &["id", "name"])?, scopes, trait_ids, people: None })
+    }
+
+    /// It, checking foundations against `people`'s nodes too: the people
+    /// on the habit graph.
+    pub fn with_people(mut self, people: NodesFn) -> Habits {
+        self.people = Some(people);
+        self
+    }
+
+    /// Every habit as a node of the habit graph.
+    pub fn nodes(&self) -> anyhow::Result<Vec<Node>> {
+        Ok(habit_nodes(&self.all()?))
+    }
+
+    /// Takes `subject` (a habit's or a person's, deleted) out of every
+    /// habit's foundations.
+    pub fn drop_foundation(&self, subject: &str) -> anyhow::Result<()> {
+        let mut habits = self.all()?;
+        if foundations::without(&mut habits, subject) {
+            self.sheet.write(&habits)?;
+        }
+        Ok(())
     }
 
     pub fn whole_tab(&self) -> TabRange {
@@ -128,7 +153,11 @@ impl Habits {
             find(&habits, &id)?;
             unreachable!()
         };
+        let was_deleted = rows::text(&habits[index], "status") == Some("deleted");
         habits[index] = rows::updated(&habits[index], habit, clear_fields, &["id"]);
+        if !was_deleted && rows::text(&habits[index], "status") == Some("deleted") {
+            foundations::without(&mut habits, &subject_id(&id));
+        }
         self.write(&habits, &id)?;
         Ok(listed(&habits[index], &self.paths()?))
     }
@@ -142,7 +171,18 @@ impl Habits {
             Some(f) if habits.iter().any(|h| rows::is_set(h, "traits")) => Some(f()?),
             _ => None,
         };
-        let problems = habit_problems(habits, scopes.as_ref(), trait_ids.as_deref(), Some(changed));
+        let mut problems = habit_problems(habits, scopes.as_ref(), trait_ids.as_deref(), Some(changed));
+        if let Some(habit) = habits.iter().find(|h| rows::text(h, "id") == Some(changed)) {
+            if let Some(value) = habit.get("foundations").filter(|f| !f.is_null()) {
+                let mut nodes = habit_nodes(habits);
+                if let Some(people) = &self.people {
+                    nodes.extend(people()?);
+                }
+                for p in foundation_problems(&subject_id(changed), value, &nodes) {
+                    problems.push(format!("habit {changed}'s {p}"));
+                }
+            }
+        }
         if !problems.is_empty() {
             bail!("{}", problems.join("; "));
         }
@@ -155,6 +195,10 @@ impl Habits {
             None => Ok(Vec::new()),
         }
     }
+}
+
+fn habit_nodes(habits: &[Row]) -> Vec<Node> {
+    habits.iter().filter_map(|h| rows::text(h, "id").filter(|i| !i.is_empty()).map(|id| foundations::node(subject_id(id), h))).collect()
 }
 
 pub fn find(habits: &[Row], id_or_name: &str) -> anyhow::Result<Row> {

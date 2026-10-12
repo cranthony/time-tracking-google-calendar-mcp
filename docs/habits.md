@@ -2,7 +2,8 @@
 
 Status: built in the server: 1. the habits store and tools; 2. habits
 as judgment and cancellation subjects; 3. backfilling a habit's
-judgments. The app's side is in progress.
+judgments; 4. foundations, and the spacing part. The app's side is in
+progress.
 
 A **habit** is something the user wants to do well -- "Practice guitar",
 "Cook" -- rated by traits, as a person is. It belongs to the user (self),
@@ -35,14 +36,15 @@ The **Habits** tab of the calendar's metadata spreadsheet
 `action_id` (an action's or a group's id), `status` (`active`,
 `archived` or `deleted`; deleted habits are kept, so judgments naming
 them still make sense), `note` (what it's for, and what doing it well
-looks like: context for judging its events) and `traits`.
+looks like: context for judging its events), `traits` and
+`foundations` (see 4).
 
 | Tool | |
 |---|---|
 | `get_habits(statuses?)` | The habits, by default active ones, each with its `action_path` ("Creative › Guitar"). Read-only. |
 | `get_habit(id_or_name)` | One, suggesting close matches if there's none. Read-only. |
 | `create_habit(habit)` | `name` and `action_id` required; `traits` checked as a person's. Returns it, and `created_id`. |
-| `update_habit(habit, clear_fields?)` | Sets what's given; `clear_fields` (`note`, `traits`) blanks. Deleting is `status: deleted`. |
+| `update_habit(habit, clear_fields?)` | Sets what's given; `clear_fields` (`note`, `traits`, `foundations`) blanks. Deleting is `status: deleted`. |
 
 A habit's `action_id` is checked when it's written: it has to be an
 action (not a deleted one) or a group. One whose action or group is
@@ -91,6 +93,36 @@ It's a tool of its own rather than an argument of `prepare_judgments`:
 that one is the last step of a compaction, which isn't complete until
 its judgments are recorded; a backfill completes nothing. Follow-through
 can't be backfilled: cancellations are recorded only as they happen.
+
+## 4. Foundations, and spacing
+
+Habits, and the people the user chooses, form a graph: each node's
+`foundations` are what it's built on -- exercising on sleeping and
+eating well, a relationship on exercising and working well.
+
+- **Ids.** A foundation is a subject id: a habit as `habit:<id>`, a
+  person by their id. A person can be a foundation, and so can self.
+- **On the graph.** Every habit is. A person is when their
+  `foundations` is set, even to `[]`; clearing it (`clear_fields`)
+  takes them off. They're in the **People** tab's `foundations` column.
+- **Checked when written**, for the habit or person written: a list of
+  ids, none twice, not itself, each an existing habit or person that
+  isn't deleted, and no cycle through habits and people
+  (rust/src/stores/foundations.rs). Each store checks against the
+  other's nodes.
+- **Deleting** a habit or person takes it out of every habit's and
+  person's foundations; restoring it doesn't put it back.
+
+A **spacing** part (`{"kind": "spacing", "action": <meals>,
+"max_gap_hours": 6, "exceptions": [{"actions": [<sleep>],
+"reset_hours": 1}]}`) measures that something happens often enough
+through the day. A clock runs down from `max_gap_hours` and each event
+of `action` resets it. It's stopped during an exception's events, and
+after one it's set to that exception's `reset_hours` left, if given
+(so the first meal is due an hour after waking). Each day is scored as
+the share of its time outside exceptions that the clock hadn't run
+out. The server only checks its shape (and that its actions exist);
+the app scores it.
 
 ## The app
 

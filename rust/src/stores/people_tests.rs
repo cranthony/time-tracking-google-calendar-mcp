@@ -296,3 +296,38 @@ fn refuses_traits_that_arent_traits_or_bad_parts() {
     refused(f.held(|p| p.create_person(&person(json!({"name": "Sam", "traits": {"select": ["kind"]}})))), "traits \"select\" names 'kind', which isn't a trait");
     refused(f.held(|p| p.create_person(&person(json!({"name": "Sam", "traits": {"parts": {"reliable": [{"kind": "count"}]}}})))), r#"traits "parts" for 'reliable': part 1 \(count\) needs"#);
 }
+
+// -- foundations -----------------------------------------------------------------------
+
+#[test]
+fn a_person_with_foundations_even_none_is_on_the_habit_graph() {
+    let f = fixture();
+    let habits: NodesFn = Arc::new(|| Ok(vec![Node { subject: "habit:gym".into(), deleted: false, foundations: vec![] }]));
+    let people = f.people.clone().with_habits(habits);
+    let held = |given: Value, clear: &[&str]| {
+        let _held = WRITE_LOCK.hold();
+        people.update_person(&person(given), &strings(clear))
+    };
+    let family = f.create(json!({"name": "Family"}));
+    let friend = f.create(json!({"name": "Friend"}));
+
+    assert!(f.get(&family)["foundations"].is_null());
+    assert_eq!(held(json!({"id": family, "foundations": []}), &[]).unwrap()["foundations"], json!([]));
+    assert_eq!(held(json!({"id": friend, "foundations": ["habit:gym", family]}), &[]).unwrap()["foundations"], json!(["habit:gym", family]));
+    assert_eq!(held(json!({"id": "self", "foundations": [friend]}), &[]).unwrap()["foundations"], json!([friend]));
+    refused(held(json!({"id": family, "foundations": [friend]}), &[]), &format!("person {family}'s foundations would make a cycle: {family} → {friend} → {family}"));
+    refused(held(json!({"id": family, "foundations": ["habit:read"]}), &[]), r"foundations \['habit:read'\] aren't habits or people");
+    assert!(held(json!({"id": family}), &["foundations"]).unwrap()["foundations"].is_null());
+}
+
+#[test]
+fn a_person_deleted_leaves_the_others_foundations() {
+    let f = fixture();
+    let family = f.create(json!({"name": "Family"}));
+    let friend = f.create(json!({"name": "Friend", "foundations": [family]}));
+
+    f.update(json!({"id": family, "status": "deleted"}), &[]).unwrap();
+
+    assert_eq!(f.get(&friend)["foundations"], json!([]));
+    refused(f.update(json!({"id": friend, "foundations": [family]}), &[]), "aren't habits or people");
+}

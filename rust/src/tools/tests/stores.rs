@@ -65,6 +65,38 @@ fn anything_else_is_refused_by_every_tool_taking_parts() {
     assert_eq!(people.as_array().unwrap().len(), 1);
 }
 
+#[test]
+fn a_spacing_parts_exception_actions_are_checked_too() {
+    let server = Server::new();
+    with_scopes(&server);
+    let spacing = |exception: &str| json!({"kind": "spacing", "action": "act", "max_gap_hours": 6, "exceptions": [{"actions": ["grp", exception], "reset_hours": 1}]});
+
+    server.ok("create_habit", json!({"habit": {"name": "H", "action_id": "act", "traits": {"parts": {"reliable": [spacing("act")]}}}}));
+    server.refused("create_trait", json!({"trait": {"name": "X", "parts": [spacing("nosuch")]}}), "A part's action 'nosuch' isn't an action or action group");
+}
+
+// -- foundations ----------------------------------------------------------------------------
+
+#[test]
+fn habits_and_people_are_each_others_foundations_and_a_deletion_leaves_them() {
+    let server = Server::new();
+    with_scopes(&server);
+    let id = |v: Value| v["created_id"].as_str().unwrap().to_string();
+    let gym = id(server.ok("create_habit", json!({"habit": {"name": "Gym", "action_id": "act"}})));
+    let family = id(server.ok("create_person", json!({"person": {"name": "Family", "foundations": [format!("habit:{gym}")]}})));
+    let read = id(server.ok("create_habit", json!({"habit": {"name": "Read", "action_id": "act", "foundations": [family]}})));
+
+    assert_eq!(server.ok("get_habit", json!({"id_or_name": read}))["foundations"], json!([family]));
+    server.refused("update_habit", json!({"habit": {"id": gym, "foundations": [format!("habit:{read}")]}}), "would make a cycle");
+    server.refused("update_person", json!({"person": {"id": family, "foundations": [format!("habit:{read}")]}}), "would make a cycle");
+
+    server.ok("update_person", json!({"person": {"id": family, "status": "deleted"}}));
+    assert_eq!(server.ok("get_habit", json!({"id_or_name": read}))["foundations"], json!([]));
+    server.ok("update_person", json!({"person": {"id": family, "status": "active", "foundations": [format!("habit:{gym}")]}}));
+    server.ok("update_habit", json!({"habit": {"id": gym, "status": "deleted"}}));
+    assert_eq!(server.ok("get_person", json!({"id_or_name": family}))["foundations"], json!([]));
+}
+
 // -- actions, people, locations -------------------------------------------------------------
 
 #[test]

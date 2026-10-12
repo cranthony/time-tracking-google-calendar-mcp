@@ -13,6 +13,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "4709iy",
      "name": "Robin Example",
      "status": "active",
@@ -21,7 +22,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Robin Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Robin Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_person"
   },
   {
@@ -104,6 +105,7 @@
      "action_id": "bcyx3f",
      "action_path": "eat a meal",
      "cancelled_events": null,
+     "foundations": null,
      "id": "7632uw",
      "name": "Eat together",
      "note": null,
@@ -112,7 +114,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"7632uw\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"7632uw\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"7632uw\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"7632uw\"\n}",
    "tool": "create_habit"
   },
   {
@@ -1075,6 +1077,7 @@
     "circle_names": null,
     "circles": null,
     "context": null,
+    "foundations": null,
     "id": "4709iy",
     "name": "Robin Example",
     "status": "active",
@@ -1082,7 +1085,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
    "tool": "get_person"
   },
   {
@@ -1109,6 +1112,7 @@
        "summary": "Dinner"
       }
      ],
+     "foundations": null,
      "id": "7632uw",
      "name": "Eat together",
      "note": null,
@@ -1117,7 +1121,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
    "tool": "get_habits"
   },
   {
@@ -1357,6 +1361,7 @@
     "circle_names": null,
     "circles": null,
     "context": null,
+    "foundations": null,
     "id": "4709iy",
     "name": "Robin Example",
     "status": "active",
@@ -1364,7 +1369,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"aa5b8e80de82b0f901f784923b\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"delete_event\"\n    },\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"aa5b8e80de82b0f901f784923b\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"delete_event\"\n    },\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
    "tool": "get_person"
   }
  ],
@@ -1662,7 +1667,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1954,6 +1960,7 @@
         "Robin Example",
         "",
         "active",
+        "",
         "",
         "",
         ""
@@ -2445,7 +2452,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -2542,6 +2550,7 @@
         "Eat together",
         "bcyx3f",
         "active",
+        "",
         "",
         ""
        ]
@@ -5513,7 +5522,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "7632uw",
@@ -5603,7 +5613,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "4709iy",

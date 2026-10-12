@@ -103,6 +103,7 @@
      "action_id": "4709iy",
      "action_path": "eat a meal",
      "cancelled_events": null,
+     "foundations": null,
      "id": "bcyx3f",
      "name": "Eat slowly",
      "note": "no screens",
@@ -111,7 +112,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"Eat slowly\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": \"no screens\",\n    \"traits\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"bcyx3f\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"Eat slowly\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": \"no screens\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_habit"
   },
   {
@@ -1050,6 +1051,7 @@
     "action_id": "4709iy",
     "action_path": "eat a meal",
     "cancelled_events": null,
+    "foundations": null,
     "id": "bcyx3f",
     "name": "Eat slowly",
     "note": "no screens",
@@ -1057,7 +1059,7 @@
     "traits": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Eat slowly\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": \"no screens\",\n  \"traits\": null,\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Eat slowly\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": \"no screens\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
@@ -1364,7 +1366,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -2035,7 +2038,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -2133,6 +2137,7 @@
         "4709iy",
         "active",
         "no screens",
+        "",
         ""
        ]
       ]
@@ -4708,6 +4713,7 @@
         "4709iy",
         "archived",
         "no screens",
+        "",
         ""
        ]
       ]
@@ -5536,7 +5542,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "bcyx3f",
@@ -5627,7 +5634,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },
