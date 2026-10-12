@@ -265,6 +265,7 @@ fn get_health_reports_each_tools_calls_the_memory_and_restarts() {
     assert_eq!(report["memory"].as_array().unwrap().len(), 10);
     assert_eq!(report["memory_latest_mib"], json!(round1(300_000.0 / 1024.0)));
     assert_eq!(report["restarts"].as_array().unwrap().len(), 1);
+    assert_eq!(report["auth"], json!(crate::auth_mode::name()));
     let summary = crate::tools::run(&t.app, "get_health", json!({"samples": false})).ok().unwrap().0;
     assert!(summary["tools"][0]["calls"].is_null());
 }

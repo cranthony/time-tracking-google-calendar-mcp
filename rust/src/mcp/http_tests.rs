@@ -14,7 +14,7 @@ const BASE: [(&str, &str); 3] =
 fn config(changes: &[(&str, &str)]) -> anyhow::Result<HttpConfig> {
     let mut all: Vec<(&str, &str)> = BASE.iter().copied().filter(|(k, _)| !changes.iter().any(|(c, _)| c == k)).collect();
     all.extend(changes.iter().copied());
-    HttpConfig::from_vars(vars(&all))
+    HttpConfig::for_mode(vars(&all), false)
 }
 
 #[test]
@@ -59,6 +59,37 @@ fn the_port_defaults_to_renders() {
     assert_eq!(config(&[("PORT", "8000")]).unwrap().port, 8000);
 }
 
+// -- a build that skips sign-in ------------------------------------------------------------
+
+fn disabled(changes: &[(&str, &str)]) -> anyhow::Result<HttpConfig> {
+    HttpConfig::for_mode(vars(changes), true)
+}
+
+#[test]
+fn this_builds_settings_follow_its_mode() {
+    // A build without AUTH_DISABLED needs WorkOS; one with it doesn't.
+    assert_eq!(HttpConfig::from_vars(vars(&[])).is_ok(), crate::auth_mode::disabled());
+}
+
+#[test]
+fn skipping_sign_in_needs_no_workos_settings_and_says_which_it_ignores() {
+    let config = disabled(&[]).unwrap();
+    assert!(config.auth_disabled && config.ignored.is_empty());
+    assert_eq!(config.port, 10000);
+
+    let config = disabled(&BASE).unwrap();
+    assert_eq!(config.ignored, vec!["WORKOS_AUTHKIT_DOMAIN", "MCP_ALLOWED_USER_IDS"]);
+    assert!(config.allowed_user_ids.is_empty());
+}
+
+#[test]
+fn skipping_sign_in_refuses_to_run_on_render() {
+    let refused = disabled(&[("RENDER_EXTERNAL_URL", "https://my-service.onrender.com")]).err().unwrap().to_string();
+    assert!(refused.contains("won't run where the internet can reach it"), "{refused}");
+    // Where sign-in is required, Render is fine.
+    assert!(config(&[("RENDER_EXTERNAL_URL", "https://my-service.onrender.com")]).is_ok());
+}
+
 #[test]
 fn the_metadata_urls_follow_the_resource() {
     let config = config(&[]).unwrap();
@@ -86,6 +117,8 @@ fn http_config(authkit: &str) -> HttpConfig {
         allowed_user_ids: vec!["user_123".into(), "user_456".into()],
         cors_origins: vec!["https://tracker.example".into()],
         port: 0,
+        auth_disabled: false,
+        ignored: Vec::new(),
     }
 }
 
@@ -96,8 +129,12 @@ struct Served {
 
 /// The router on a local port, its key set holding the test key.
 fn served(authkit: &str) -> Served {
+    served_with(http_config(authkit))
+}
+
+fn served_with(config: HttpConfig) -> Served {
     let t = crate::testing::app::test_app();
-    let state = shared(t.app.clone(), http_config(authkit));
+    let state = shared(t.app.clone(), config);
     *state.keys.lock().unwrap() = vec![keys()["key"]["jwk"].clone()];
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
@@ -401,4 +438,43 @@ fn rejects_an_oversized_body_without_forwarding_it() {
 
     assert_eq!(answer.status, 413);
     assert!(seen.lock().unwrap().is_empty());
+}
+
+// -- served, skipping sign-in ---------------------------------------------------------------
+
+fn served_without_sign_in() -> Served {
+    served_with(HttpConfig { auth_disabled: true, ..http_config(AUTHKIT) })
+}
+
+#[test]
+fn skipping_sign_in_trusts_every_request_token_or_not() {
+    let served = served_without_sign_in();
+
+    for bearer in ["", "not-a-jwt", &token(json!({"sub": "user_stranger"}))] {
+        assert_eq!(initialize(&served, bearer).status, 200, "{bearer:?}");
+    }
+    let body = json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}}});
+    let answer = send("POST", &format!("{}/mcp", served.url), &[("Content-Type", "application/json"), ACCEPT], Some(body.to_string().as_bytes()));
+    assert_eq!(answer.status, 200);
+    assert!(answer.header("www-authenticate").is_none());
+}
+
+#[test]
+fn skipping_sign_in_serves_nothing_to_sign_in_with() {
+    let served = served_without_sign_in();
+
+    assert_eq!(send("GET", &format!("{}/.well-known/oauth-protected-resource/mcp", served.url), &[], None).status, 404);
+    for path in ["/oauth/register", "/oauth/token"] {
+        assert_eq!(send("POST", &format!("{}{path}", served.url), &[], Some(b"{}")).status, 404, "{path}");
+    }
+}
+
+#[test]
+fn the_handshake_says_whether_this_build_skips_sign_in() {
+    let served = served_without_sign_in();
+
+    let answer = initialize(&served, "");
+
+    let says = answer.body.contains("Authentication is disabled") && answer.body.contains("(sign-in off)");
+    assert_eq!(says, crate::auth_mode::disabled(), "{}", answer.body);
 }
