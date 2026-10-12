@@ -6,12 +6,12 @@
 use crate::event::{Event, Moment};
 use crate::facts::SELF_ID;
 use crate::py;
-use crate::sheet::rows::{self, Row};
+
 use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::actions::{ActionTree, Actions};
 use crate::stores::cancellations::{of_action, traits_for};
-use crate::stores::groups::{python_repr, python_str, truthy};
-use crate::stores::habits::{self, subject_id, Habits};
+use crate::stores::groups::{python_str, repr_or_none, str_or_none, truthy};
+use crate::stores::habits::{self, subject_id, Habit, Habits};
 use crate::stores::locations::Locations;
 use crate::stores::people::{People, Person};
 use crate::stores::traits::{fact_lookbacks, part_keys, part_problems, Trait, Traits};
@@ -313,11 +313,14 @@ impl Judging {
         let mut scopes: Vec<(String, Value)> = Vec::new();
         if let Some(store) = &self.habits {
             for habit in store.all()? {
-                if rows::text(&habit, "status") != Some("active") || !truthy(habit.get("id")) || !truthy(habit.get("action_id")) {
+                let (Some(id), Some(action_id)) = (habit.id.clone().filter(|i| !i.is_empty()), habit.action_id.clone().filter(|a| !a.is_empty())) else {
+                    continue;
+                };
+                if habit.status != Some(crate::stores::people::Status::Active) {
                     continue;
                 }
-                let key = subject_id(&python_str(habit.get("id")));
-                let name = if truthy(habit.get("name")) { habit.get("name").cloned() } else { habit.get("id").cloned() };
+                let key = subject_id(&id);
+                let name = Some(Value::String(habit.name.clone().filter(|n| !n.is_empty()).unwrap_or(id)));
                 set(
                     &mut people,
                     &key,
@@ -325,13 +328,13 @@ impl Judging {
                         id: key.clone(),
                         name,
                         context: None,
-                        what_matters: habit.get("note").filter(|v| !v.is_null()).cloned(),
-                        traits: habit.get("traits").filter(|v| !v.is_null()).cloned(),
+                        what_matters: habit.note.clone().map(Value::String),
+                        traits: habit.traits.clone().map(Value::Object),
                     },
                 );
                 match scopes.iter_mut().find(|(k, _)| *k == key) {
-                    Some(slot) => slot.1 = habit["action_id"].clone(),
-                    None => scopes.push((key, habit["action_id"].clone())),
+                    Some(slot) => slot.1 = Value::String(action_id),
+                    None => scopes.push((key, Value::String(action_id))),
                 }
             }
         }
@@ -378,26 +381,27 @@ impl Judging {
     }
 
     /// `habit`: the active habit with this id, or else this name.
-    pub fn habit(&self, id_or_name: &str) -> anyhow::Result<Row> {
+    pub fn habit(&self, id_or_name: &str) -> anyhow::Result<Habit> {
         let all = match &self.habits {
             Some(h) => h.all()?,
             None => Vec::new(),
         };
         let habit = habits::find(&all, id_or_name)?;
-        if rows::text(&habit, "status") != Some("active") {
+        if habit.status != Some(crate::stores::people::Status::Active) {
             anyhow::bail!(
                 "{} ({}) is {}: only an active habit is judged",
-                python_repr(habit.get("name").unwrap_or(&Value::Null)),
-                python_str(habit.get("id")),
-                python_str(habit.get("status"))
+                repr_or_none(habit.name.as_deref()),
+                str_or_none(habit.id.as_deref()),
+                str_or_none(habit.status.as_ref().map(crate::contract::wire_text).as_deref())
             );
         }
         Ok(habit)
     }
 
-    pub fn backfill_days(&self, habit: &Row) -> anyhow::Result<i64> {
+    pub fn backfill_days(&self, habit: &Habit) -> anyhow::Result<i64> {
         let traits = self.active_traits()?;
-        let windows: Vec<i64> = traits_for(habit.get("traits").filter(|v| !v.is_null()), &traits)
+        let spec = habit.traits.clone().map(Value::Object);
+        let windows: Vec<i64> = traits_for(spec.as_ref(), &traits)
             .into_iter()
             .flat_map(|(_, parts)| parts)
             .filter(is_judgment)
@@ -409,7 +413,7 @@ impl Judging {
         Ok(windows.into_iter().max().unwrap_or(DEFAULT_WINDOW_DAYS) + SCORE_DAYS)
     }
 
-    pub fn habit_requests(&self, habit: &Row, since: Moment, until: Moment, include_judged: bool) -> anyhow::Result<Vec<JudgmentRequest>> {
+    pub fn habit_requests(&self, habit: &Habit, since: Moment, until: Moment, include_judged: bool) -> anyhow::Result<Vec<JudgmentRequest>> {
         let listed: Vec<Event> = self
             .list_events(&(since - Duration::days(self.lookback()?)), &until)?
             .into_iter()
@@ -417,7 +421,7 @@ impl Judging {
             .collect();
         let events: Vec<Event> = listed.iter().filter(|e| since <= e.start() && e.start() < until).cloned().collect();
         let history: Vec<Event> = listed.iter().filter(|e| e.facts.is_some()).cloned().collect();
-        let only = subject_id(&python_str(habit.get("id")));
+        let only = subject_id(habit.id.as_deref().unwrap_or("None"));
         self.requests_for(&events, &history, include_judged, Some(&only))
     }
 

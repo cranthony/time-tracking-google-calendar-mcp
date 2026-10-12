@@ -1952,13 +1952,13 @@ impl NoteCompactor {
     pub fn habit_judgments_due(&self, habit_id: &str, since: Option<Moment>, redo: bool) -> anyhow::Result<HabitJudgmentsDue> {
         let (habit, since, until) = self.backfill(habit_id, since)?;
         let judging = self.judging.as_ref().unwrap();
-        let id = python_str(habit.get("id"));
+        let id = habit.id.clone().unwrap_or_else(|| "None".into());
         let backfill_id = format!("{}@{}", subject_id(&id), iso(&since));
         let requests = judging.habit_requests(&habit, since, until, redo)?;
         let due = judging.due(&backfill_id, &requests)?;
         Ok(HabitJudgmentsDue {
             backfill_id,
-            habit_name: if truthy(habit.get("name")) { python_str(habit.get("name")) } else { id.clone() },
+            habit_name: habit.name.clone().filter(|n| !n.is_empty()).unwrap_or_else(|| id.clone()),
             habit_id: id,
             since,
             until,
@@ -1966,7 +1966,7 @@ impl NoteCompactor {
         })
     }
 
-    fn backfill(&self, habit_id: &str, since: Option<Moment>) -> anyhow::Result<(rows::Row, Moment, Moment)> {
+    fn backfill(&self, habit_id: &str, since: Option<Moment>) -> anyhow::Result<(crate::stores::habits::Habit, Moment, Moment)> {
         let Some(judging) = &self.judging else { return Err(ce("this calendar has no traits to judge", "no_traits")) };
         let habit = match judging.habit(habit_id) {
             Ok(h) => h,
@@ -1999,7 +1999,7 @@ impl NoteCompactor {
             Err(e) => return Err(ce(e.to_string(), "judgment")),
         };
         let remaining: Vec<String> = judging.habit_requests(&habit, since, until, false)?.into_iter().map(|r| r.id).collect();
-        let name = python_repr(habit.get("name").unwrap_or(&Value::Null));
+        let name = crate::stores::groups::repr_or_none(habit.name.as_deref());
         Ok(JudgmentsResult {
             compaction_id: backfill_id.into(),
             recorded,

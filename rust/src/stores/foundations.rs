@@ -4,7 +4,6 @@
 //! checks its own rows against the other's.
 
 use crate::py;
-use crate::sheet::rows::{self, Row};
 use serde_json::Value;
 use std::sync::Arc;
 
@@ -19,16 +18,9 @@ pub struct Node {
 /// The other store's nodes.
 pub type NodesFn = Arc<dyn Fn() -> anyhow::Result<Vec<Node>> + Send + Sync>;
 
-/// `row`'s foundations, as far as they're a list of ids.
-pub fn foundations_of(row: &Row) -> Vec<String> {
-    match row.get("foundations") {
-        Some(Value::Array(items)) => items.iter().filter_map(Value::as_str).map(str::to_string).collect(),
-        _ => Vec::new(),
-    }
-}
-
-pub fn node(subject: String, row: &Row) -> Node {
-    Node { subject, deleted: rows::text(row, "status") == Some("deleted"), foundations: foundations_of(row) }
+/// A row on the habit graph: a habit, or a person.
+pub trait OnGraph {
+    fn foundations_mut(&mut self) -> &mut Option<Vec<String>>;
 }
 
 /// What's wrong with `subject`'s foundations, `value`, in `nodes` (every
@@ -97,15 +89,14 @@ fn cycle(subject: &str, foundations: &[&str], nodes: &[Node]) -> Option<Vec<Stri
     walk(subject, subject, &next, &mut seen, &mut path).then_some(path)
 }
 
-/// `rows` without `subject` in any row's foundations, and whether any
+/// `items` without `subject` in any item's foundations, and whether any
 /// changed.
-pub fn without(rows: &mut [Row], subject: &str) -> bool {
+pub fn without<T: OnGraph>(items: &mut [T], subject: &str) -> bool {
     let mut changed = false;
-    for row in rows.iter_mut() {
-        if let Some(Value::Array(items)) = row.get("foundations") {
-            if items.iter().any(|i| i.as_str() == Some(subject)) {
-                let kept: Vec<Value> = items.iter().filter(|i| i.as_str() != Some(subject)).cloned().collect();
-                row.insert("foundations".into(), Value::Array(kept));
+    for item in items.iter_mut() {
+        if let Some(foundations) = item.foundations_mut() {
+            if foundations.iter().any(|f| f == subject) {
+                foundations.retain(|f| f != subject);
                 changed = true;
             }
         }
