@@ -160,6 +160,10 @@ class FakeGoogle:
         self.requests: list[LoggedRequest] = []
         self.rate_limit_next: int = 0
         """Answer this many of the next Sheets requests with 429."""
+        self.fail_next: list[tuple[str, str, int, str]] = []
+        """(method, a piece of the path, status, message): answer the next
+        request that matches each with that error, once -- a write that
+        fails partway through applying something."""
         self.token_requests = 0
         self.authkit_requests: list[dict] = []
         self._ids = itertools.count(1)
@@ -891,6 +895,12 @@ class FakeGoogle:
                 return GoogleError(401, "Request is missing required authentication credential.").response()
             with self._lock:
                 self.requests.append(LoggedRequest(request.method, unquote(request.url.path), _query(request), request.headers.get("if-match"), body))
+                failing = next(
+                    (f for f in self.fail_next if f[0] == request.method and f[1] in unquote(request.url.path)), None
+                )
+                if failing is not None:
+                    self.fail_next.remove(failing)
+                    return GoogleError(failing[2], failing[3]).response()
                 try:
                     result = fn(request, body or {})
                 except _SeriesDeleted:
