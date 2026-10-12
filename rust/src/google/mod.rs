@@ -4,6 +4,7 @@
 //! already happened, a 412 on a stale etag, a 429 to retry...).
 
 pub mod calendar;
+pub mod consent;
 pub mod sheets;
 
 use anyhow::{anyhow, Context};
@@ -84,6 +85,24 @@ impl Google {
         let google = Google::from_token_json(&text, token_path)?;
         google.ensure_valid()?;
         Ok(google)
+    }
+
+    /// `load_credentials` for a command-line tool: as `load`, but a missing
+    /// token -- or one with nothing to refresh it with -- runs the consent
+    /// flow first (see consent.rs), as Python's does.
+    pub fn load_or_consent(token_path: &Path, credentials_path: &Path) -> anyhow::Result<Google> {
+        let usable = match std::fs::read_to_string(token_path) {
+            Ok(text) => {
+                let google = Google::from_token_json(&text, token_path)?;
+                let credentials = google.credentials.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                credentials.valid() || credentials.refresh_token.is_some()
+            }
+            Err(_) => false,
+        };
+        if !usable {
+            consent::consent(token_path, credentials_path)?;
+        }
+        Google::load(token_path, credentials_path)
     }
 
     pub fn from_token_json(text: &str, token_path: &Path) -> anyhow::Result<Google> {
