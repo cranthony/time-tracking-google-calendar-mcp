@@ -10,6 +10,7 @@ use serde_json::{json, Value};
 
 mod compaction;
 mod events;
+mod reads;
 mod stores;
 
 pub struct Server {

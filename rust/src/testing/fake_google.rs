@@ -1218,6 +1218,17 @@ impl FakeGoogle {
         self.with(|s| s.spreadsheets[spreadsheet_id].sheets.iter().map(|t| t.properties["title"].as_str().unwrap_or("").to_string()).collect())
     }
 
+    /// Each tab's sheetId, by title.
+    pub fn tab_ids(&self, spreadsheet_id: &str) -> Vec<(i64, String)> {
+        self.with(|s| {
+            s.spreadsheets[spreadsheet_id]
+                .sheets
+                .iter()
+                .map(|t| (t.properties["sheetId"].as_i64().unwrap_or(0), t.properties["title"].as_str().unwrap_or("").to_string()))
+                .collect()
+        })
+    }
+
     /// A tab's grid size, in rows.
     pub fn row_count(&self, spreadsheet_id: &str, title: &str) -> u64 {
         self.with(|s| {

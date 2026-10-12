@@ -3,6 +3,7 @@
 //! (src/bin/) share.
 
 pub mod app;
+pub mod cli;
 pub mod compaction;
 pub mod determinism;
 pub mod difflib;

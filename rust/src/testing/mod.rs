@@ -87,3 +87,53 @@ pub fn strings(items: &[&str]) -> Vec<String> {
 
 pub mod app;
 pub mod fake_google;
+
+#[cfg(test)]
+mod tests {
+    //! tests/test_event_time_helpers.py.
+    use super::*;
+
+    fn utc(day: u32, hour: u32, minute: u32) -> Moment {
+        chrono::DateTime::parse_from_rfc3339(&format!("2026-01-{day:02}T{hour:02}:{minute:02}:00+00:00")).unwrap()
+    }
+
+    #[test]
+    fn time_at_parses_hh_mm_on_the_day() {
+        assert_eq!(time_at("09:30"), utc(1, 9, 30));
+    }
+
+    #[test]
+    fn time_at_plus_one_falls_on_the_day_after() {
+        assert_eq!(time_at("07:00+1"), utc(2, 7, 0));
+    }
+
+    #[test]
+    #[should_panic]
+    fn time_at_rejects_an_unrecognized_format() {
+        time_at("9:30am");
+    }
+
+    #[test]
+    fn event_at_sets_start_and_end() {
+        let event = event_at("09:00-10:30").build();
+        assert_eq!((event.start, event.end), (Some(time_at("09:00")), Some(time_at("10:30"))));
+    }
+
+    #[test]
+    fn event_at_can_end_on_the_day_after_it_starts() {
+        let event = event_at("20:00-07:00+1").build();
+        assert_eq!((event.start, event.end), (Some(time_at("20:00")), Some(time_at("07:00+1"))));
+        assert!(event.end > event.start);
+    }
+
+    #[test]
+    fn event_at_defaults_the_summary_to_event() {
+        assert_eq!(event_at("09:00-10:00").build().summary.as_deref(), Some("Event"));
+    }
+
+    #[test]
+    fn event_at_overrides_apply_and_take_precedence() {
+        let event = event_at("09:00-10:00").id("abc123").summary("Focus block").priority(1).build();
+        assert_eq!((event.id.as_deref(), event.summary.as_deref(), event.priority), (Some("abc123"), Some("Focus block"), Some(1)));
+    }
+}

@@ -112,8 +112,8 @@ impl App {
         }
     }
 
-    /// An app on `google` -- the unit tests' fake -- rather than token.json.
-    #[cfg(test)]
+    /// An app on `google`, already loaded (create_calendar's, or the unit
+    /// tests' fake), rather than token.json.
     pub fn with_google(config: Config, google: Arc<Google>) -> App {
         let app = App::new(config);
         let _ = app.google.set(google);
