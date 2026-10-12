@@ -73,17 +73,6 @@ pub fn texts<T: serde::Serialize>(items: &[T]) -> Vec<String> {
     items.iter().map(crate::contract::wire_text).collect()
 }
 
-pub fn args_str<'a>(args: &'a Map<String, Value>, name: &str) -> &'a str {
-    args.get(name).and_then(Value::as_str).unwrap_or_default()
-}
-
-pub fn args_strings(args: &Map<String, Value>, name: &str) -> Vec<String> {
-    args.get(name)
-        .and_then(Value::as_array)
-        .map(|items| items.iter().filter_map(|i| i.as_str().map(str::to_string)).collect())
-        .unwrap_or_default()
-}
-
 /// Every tool, in the order tools/list sends them.
 pub fn registry() -> &'static [crate::contract::ToolDef] {
     static TOOLS: std::sync::LazyLock<Vec<crate::contract::ToolDef>> = std::sync::LazyLock::new(|| {
