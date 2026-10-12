@@ -18,9 +18,11 @@ use syn::{
 ///
 /// On the type: `#[schema(title = "...")]` (default: its name),
 /// `#[schema(deny_unknown)]` (`additionalProperties: false`). On a field:
-/// `#[schema(default = "<json>")]`, and `#[schema(required)]` for an
-/// `Option` that has no default (otherwise its default is null). Doc
-/// comments are descriptions.
+/// `#[schema(default = "<json>")]`, `#[schema(required)]` for an
+/// `Option` that has no default (otherwise its default is null), and
+/// `#[schema(optional)]` for a field that may be left out though it
+/// shows no default (a list that starts empty). Doc comments are
+/// descriptions.
 #[proc_macro_derive(Schema, attributes(schema))]
 pub fn derive_schema(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -80,6 +82,7 @@ struct Options {
     deny_unknown: bool,
     default: Option<String>,
     required: bool,
+    optional: bool,
     description: Option<String>,
 }
 
@@ -91,6 +94,8 @@ fn options(attrs: &[Attribute]) -> syn::Result<Options> {
                 options.deny_unknown = true;
             } else if meta.path.is_ident("required") {
                 options.required = true;
+            } else if meta.path.is_ident("optional") {
+                options.optional = true;
             } else if meta.path.is_ident("title") {
                 options.title = Some(meta.value()?.parse::<LitStr>()?.value());
             } else if meta.path.is_ident("default") {
@@ -124,8 +129,9 @@ fn field_tokens(name: &str, ty: &Type, opts: &Options, doc_text: Option<String>)
     let default = opt_str(&opts.default);
     let description = opt_str(&opts.description.clone().or(doc_text));
     let required = opts.required;
+    let optional = opts.optional;
     quote! {
-        crate::contract::Field::new::<#ty>(defs, #name, #default, #required, #description)
+        crate::contract::Field::new::<#ty>(defs, #name, #default, #required, #optional, #description)
     }
 }
 

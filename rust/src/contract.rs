@@ -174,6 +174,7 @@ pub struct Field {
     name: &'static str,
     schema: Value,
     default: Option<Value>,
+    optional: bool,
     description: Option<&'static str>,
 }
 
@@ -183,6 +184,7 @@ impl Field {
         name: &'static str,
         default: Option<&'static str>,
         required: bool,
+        optional: bool,
         description: Option<&'static str>,
     ) -> Field {
         let default = match default {
@@ -190,7 +192,7 @@ impl Field {
             None if T::OPTIONAL && !required => Some(Value::Null),
             None => None,
         };
-        Field { name, schema: T::schema(defs), default, description }
+        Field { name, schema: T::schema(defs), default, optional, description }
     }
 }
 
@@ -212,10 +214,16 @@ fn is_reference(schema: &Value) -> bool {
     schema.get("$ref").is_some() || schema.pointer("/anyOf/0/$ref").is_some()
 }
 
+/// Where a model keeps its `#[schema(optional)]` fields while it's built:
+/// a result inlined at the top lists them as required, as pydantic does
+/// (it always sends them); anywhere else they're left out.
+const OPTIONAL_KEY: &str = "__optional";
+
 /// A model's `properties` and `required`.
 fn object(fields: Vec<Field>) -> Map<String, Value> {
     let mut properties = Map::new();
     let mut required = Vec::new();
+    let mut optional = Vec::new();
     for field in fields {
         let mut schema = field.schema;
         let reference = is_reference(&schema);
@@ -230,6 +238,7 @@ fn object(fields: Vec<Field>) -> Map<String, Value> {
             Some(default) => {
                 map.insert("default".into(), default);
             }
+            None if field.optional => optional.push(json!(field.name)),
             None => required.push(json!(field.name)),
         }
         properties.insert(field.name.to_string(), schema);
@@ -240,7 +249,22 @@ fn object(fields: Vec<Field>) -> Map<String, Value> {
         out.insert("required".into(), Value::Array(required));
     }
     out.insert("type".into(), json!("object"));
+    if !optional.is_empty() {
+        out.insert(OPTIONAL_KEY.into(), Value::Array(optional));
+    }
     out
+}
+
+/// Drop every model's optional fields' note.
+fn strip_optional(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            map.remove(OPTIONAL_KEY);
+            map.values_mut().for_each(strip_optional);
+        }
+        Value::Array(items) => items.iter_mut().for_each(strip_optional),
+        _ => {}
+    }
 }
 
 /// Add the model `title` to `defs`; its `$ref`.
@@ -268,6 +292,10 @@ pub fn arguments(_defs: &mut Defs, title: &str, fields: Vec<Field>) -> Value {
 /// but `properties`', and the top level's `$defs` and `title` last.
 fn top(mut schema: Map<String, Value>, defs: Defs) -> Value {
     let models: Map<String, Value> = defs.models.into_iter().filter(|(_, m)| !m.is_null()).collect();
+    let mut models = Value::Object(models);
+    strip_optional(&mut models);
+    let Value::Object(models) = models else { unreachable!() };
+    schema.remove(OPTIONAL_KEY);
     if !models.is_empty() {
         schema.insert("$defs".into(), Value::Object(models));
     }
@@ -337,6 +365,14 @@ impl ToolDef {
                 let Some(Value::Object(mut inlined)) = defs.models.remove(title) else { unreachable!("a $ref is in $defs") };
                 inlined.remove("description");
                 inlined.remove("additionalProperties");
+                if let Some(Value::Array(optional)) = inlined.remove(OPTIONAL_KEY) {
+                    // Required in field order, as pydantic lists them.
+                    let names: Vec<String> = inlined["properties"].as_object().map(|p| p.keys().cloned().collect()).unwrap_or_default();
+                    let listed: Vec<Value> = inlined.get("required").and_then(Value::as_array).cloned().unwrap_or_default();
+                    let required: Vec<Value> =
+                        names.into_iter().map(Value::String).filter(|n| listed.contains(n) || optional.contains(n)).collect();
+                    inlined.insert("required".into(), Value::Array(required));
+                }
                 inlined
             }
             None => {

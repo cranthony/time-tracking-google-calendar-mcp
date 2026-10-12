@@ -141,6 +141,21 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
             recurrences::split_recurrence_tool(),
             recurrences::delete_recurrence_tool(),
             health::get_health_tool(),
+            compaction::get_compaction_status_tool(),
+            compaction::edit_note_tool(),
+            compaction::delete_note_tool(),
+            compaction::prepare_compaction_tool(),
+            compaction::compact_notes_tool(),
+            compaction::get_proposal_tool(),
+            compaction::amend_proposal_tool(),
+            compaction::add_proposal_note_tool(),
+            compaction::withdraw_proposal_note_tool(),
+            compaction::confirm_proposal_tool(),
+            compaction::finish_proposal_tool(),
+            compaction::prepare_judgments_tool(),
+            compaction::prepare_habit_judgments_tool(),
+            compaction::record_judgments_tool(),
+            compaction::abandon_compaction_tool(),
         ]
     });
     &TYPED
@@ -148,21 +163,6 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
 
 fn registry() -> &'static [Tool] {
     &[
-        Tool { name: "get_compaction_status", writes: false, run: compaction::get_compaction_status },
-        Tool { name: "edit_note", writes: true, run: compaction::edit_note },
-        Tool { name: "delete_note", writes: true, run: compaction::delete_note },
-        Tool { name: "prepare_compaction", writes: true, run: compaction::prepare_compaction },
-        Tool { name: "compact_notes", writes: true, run: compaction::compact_notes },
-        Tool { name: "get_proposal", writes: false, run: compaction::get_proposal },
-        Tool { name: "amend_proposal", writes: true, run: compaction::amend_proposal },
-        Tool { name: "add_proposal_note", writes: true, run: compaction::add_proposal_note },
-        Tool { name: "withdraw_proposal_note", writes: true, run: compaction::withdraw_proposal_note },
-        Tool { name: "confirm_proposal", writes: true, run: compaction::confirm_proposal },
-        Tool { name: "finish_proposal", writes: true, run: compaction::finish_proposal },
-        Tool { name: "prepare_judgments", writes: false, run: compaction::prepare_judgments },
-        Tool { name: "prepare_habit_judgments", writes: false, run: compaction::prepare_habit_judgments },
-        Tool { name: "record_judgments", writes: true, run: compaction::record_judgments },
-        Tool { name: "abandon_compaction", writes: true, run: compaction::abandon_compaction },
     ]
 }
 
