@@ -278,3 +278,7 @@ fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "habits_tests.rs"]
+mod tests;

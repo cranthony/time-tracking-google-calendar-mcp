@@ -515,3 +515,7 @@ fn into_history(event: &Event, how: &str, history_until: &Moment) -> Problem {
         ),
     )
 }
+
+#[cfg(test)]
+#[path = "event_changes_tests.rs"]
+mod tests;
