@@ -601,3 +601,7 @@ pub fn is_label_conflict(error: &anyhow::Error) -> bool {
 fn _unused() -> anyhow::Result<()> {
     bail!("unused")
 }
+
+#[cfg(test)]
+#[path = "calendar_tests.rs"]
+mod tests;

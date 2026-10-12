@@ -30,6 +30,8 @@ pub struct LoggedRequest {
     pub query: Vec<(String, String)>,
     pub if_match: Option<String>,
     pub body: Value,
+    /// The access token it was sent with.
+    pub bearer: Option<String>,
 }
 
 struct GoogleError {
@@ -742,9 +744,9 @@ impl State {
             match kind.as_str() {
                 "addSheet" => {
                     self.ids += 1;
-                    let sheet_id = 1_000_000 + self.ids as i64;
-                    let sheet = self.spreadsheet(sid)?;
                     let properties = &args["properties"];
+                    let sheet_id = properties["sheetId"].as_i64().unwrap_or(1_000_000 + self.ids as i64);
+                    let sheet = self.spreadsheet(sid)?;
                     if sheet.sheets.iter().any(|t| t.properties["title"] == properties["title"]) {
                         return Err(err(400, format!("A sheet with the name \"{}\" already exists.", properties["title"].as_str().unwrap_or(""))));
                     }
@@ -1270,7 +1272,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                 let (method, target) = (parts.next().unwrap_or("").to_string(), parts.next().unwrap_or("").to_string());
                 let mut length = 0usize;
                 let mut if_match: Option<String> = None;
-                let mut authorized = false;
+                let mut bearer: Option<String> = None;
                 loop {
                     let mut header = String::new();
                     if reader.read_line(&mut header).unwrap_or(0) == 0 {
@@ -1284,7 +1286,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                         match name.trim().to_lowercase().as_str() {
                             "content-length" => length = value.trim().parse().unwrap_or(0),
                             "if-match" => if_match = Some(value.trim().to_string()),
-                            "authorization" => authorized = value.trim().starts_with("Bearer "),
+                            "authorization" => bearer = value.trim().strip_prefix("Bearer ").map(str::to_string),
                             _ => {}
                         }
                     }
@@ -1293,7 +1295,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                 if reader.read_exact(&mut raw).is_err() {
                     return;
                 }
-                let body: Value = if raw.is_empty() { Value::Null } else { serde_json::from_slice(&raw).unwrap_or(Value::Null) };
+                let mut body: Value = if raw.is_empty() { Value::Null } else { serde_json::from_slice(&raw).unwrap_or(Value::Null) };
                 let (path, query_text) = target.split_once('?').unwrap_or((&target, ""));
                 let mut query: Vec<(String, String)> = query_text
                     .split('&')
@@ -1305,11 +1307,23 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                     .filter(|(k, _)| !["alt", "prettyPrint", "key"].contains(&k.as_str()))
                     .collect();
                 query.sort_by(|a, b| a.0.cmp(&b.0));
-                let (status, answer) = if !authorized {
+                let (status, answer) = if method == "POST" && path == "/token" {
+                    // OAuth's token endpoint: a refresh, as a form.
+                    let form: Map<String, Value> = String::from_utf8_lossy(&raw)
+                        .split('&')
+                        .filter_map(|p| p.split_once('='))
+                        .map(|(k, v)| (decode(k), json!(decode(&v.replace('+', " ")))))
+                        .collect();
+                    body = Value::Object(form);
+                    let mut s = state.lock().unwrap();
+                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: None, body: body.clone(), bearer: None });
+                    s.ids += 1;
+                    (200, Some(json!({"access_token": format!("fresh-{}", s.ids), "expires_in": 3600, "token_type": "Bearer"})))
+                } else if bearer.is_none() {
                     (401, Some(error_body(401, "Request is missing required authentication credential.")))
                 } else {
                     let mut s = state.lock().unwrap();
-                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: if_match.clone(), body: body.clone() });
+                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: if_match.clone(), body: body.clone(), bearer: bearer.clone() });
                     let failing = s.fail_next.iter().position(|(m, p, _, _)| *m == method && decode(path).contains(p.as_str()));
                     if let Some(index) = failing {
                         let (_, _, code, message) = s.fail_next.remove(index);

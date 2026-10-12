@@ -338,6 +338,10 @@ pub fn write_chunks(name: &str, text: Option<&str>) -> anyhow::Result<Vec<(Strin
 }
 
 #[cfg(test)]
+#[path = "event_tests.rs"]
+mod api_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
