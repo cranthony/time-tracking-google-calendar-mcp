@@ -3,6 +3,7 @@
 //! give -- fields in declaration order -- or a ToolError, which the client
 //! sees as "Error executing tool <name>: <message>".
 
+mod events;
 mod places;
 mod stores;
 
@@ -103,6 +104,16 @@ fn registry() -> &'static [Tool] {
         Tool { name: "get_habit", writes: false, run: stores::get_habit },
         Tool { name: "create_habit", writes: true, run: stores::create_habit },
         Tool { name: "update_habit", writes: true, run: stores::update_habit },
+        Tool { name: "list_events", writes: false, run: events::list_events },
+        Tool { name: "get_event", writes: false, run: events::get_event },
+        Tool { name: "create_event", writes: true, run: events::create_event },
+        Tool { name: "update_event", writes: true, run: events::update_event },
+        Tool { name: "delete_event", writes: true, run: events::delete_event },
+        Tool { name: "set_time_zone", writes: true, run: events::set_time_zone },
+        Tool { name: "get_compaction_schedule_hints", writes: false, run: events::get_compaction_schedule_hints },
+        Tool { name: "set_compaction_schedule_hints", writes: true, run: events::set_compaction_schedule_hints },
+        Tool { name: "note", writes: true, run: events::note },
+        Tool { name: "get_notes", writes: false, run: events::get_notes },
     ]
 }
 

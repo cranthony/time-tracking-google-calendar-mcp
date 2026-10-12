@@ -16,6 +16,9 @@ use crate::stores::habits::{action_scopes, Habits};
 use crate::stores::locations::Locations;
 use crate::stores::people::People;
 use crate::stores::traits::Traits;
+use crate::stores::journal::CompactionJournal;
+use crate::stores::notes::NotedTimeSheet;
+use crate::stores::schedule::CompactionSchedule;
 use crate::write_lock::WRITE_LOCK;
 use anyhow::{anyhow, Context};
 use std::path::PathBuf;
@@ -57,6 +60,9 @@ pub struct App {
     traits: OnceLock<Traits>,
     habits: OnceLock<Habits>,
     cancellations: OnceLock<Cancellations>,
+    journal: OnceLock<CompactionJournal>,
+    notes: OnceLock<NotedTimeSheet>,
+    schedule: OnceLock<CompactionSchedule>,
     me: OnceLock<std::sync::Weak<App>>,
 }
 
@@ -88,6 +94,9 @@ impl App {
             traits: OnceLock::new(),
             habits: OnceLock::new(),
             cancellations: OnceLock::new(),
+            journal: OnceLock::new(),
+            notes: OnceLock::new(),
+            schedule: OnceLock::new(),
             me: OnceLock::new(),
         }
     }
@@ -174,6 +183,27 @@ impl App {
             let (actions, people, traits, habits) = (self.actions()?, self.people()?, self.traits()?, self.habits()?);
             let (_, sheets, id) = self.spreadsheet()?;
             Cancellations::ensure(&sheets, &id, people, traits, actions, Some(habits))
+        })
+    }
+
+    pub fn journal(&self) -> anyhow::Result<CompactionJournal> {
+        built(&self.journal, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            CompactionJournal::ensure(&sheets, &id)
+        })
+    }
+
+    pub fn noted_time_sheet(&self) -> anyhow::Result<NotedTimeSheet> {
+        built(&self.notes, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            NotedTimeSheet::ensure(&sheets, &id)
+        })
+    }
+
+    pub fn compaction_schedule(&self) -> anyhow::Result<CompactionSchedule> {
+        built(&self.schedule, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            CompactionSchedule::ensure(&sheets, &id)
         })
     }
 

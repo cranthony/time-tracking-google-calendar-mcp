@@ -12,6 +12,7 @@ pub mod mcp;
 pub mod py;
 pub mod sheet;
 pub mod stores;
+pub mod timeline;
 pub mod tools;
 pub mod write_lock;
 

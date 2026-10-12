@@ -1,7 +1,12 @@
+pub mod action_calendar;
 pub mod actions;
 pub mod cancellations;
+pub mod event_changes;
 pub mod groups;
 pub mod habits;
+pub mod journal;
 pub mod locations;
+pub mod notes;
 pub mod people;
+pub mod schedule;
 pub mod traits;
