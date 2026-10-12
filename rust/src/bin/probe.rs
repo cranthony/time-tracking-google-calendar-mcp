@@ -1,12 +1,12 @@
 //! Probes: find out empirically, against Google for real, how its APIs
-//! behave where their docs don't say -- and check the server's own writes
-//! (probes/*.py, ported). Each makes a throwaway calendar (this app's
-//! calendar.app.created scope allows that), runs its steps, prints what it
-//! finds and deletes the calendar again; nothing else in your account is
-//! touched. `cancelled_events` only reads the configured calendar.
+//! behave where their docs don't say -- and check the server's own writes.
+//! Each makes a throwaway calendar (this app's calendar.app.created scope
+//! allows that), runs its steps, prints what it finds and deletes the
+//! calendar again; nothing else in your account is touched.
+//! `cancelled_events` only reads the configured calendar.
 //!
 //! Usage:
-//!     probe <name> [--keep] [--pause] [--raw] [--days N]
+//!     probe <name> [--keep] [--pause] [--raw] [--days N] [--server PATH]
 //!
 //! where <name> is one of:
 //!     cancelled_events  whether events.list shows cancelled events, and what they keep
@@ -16,9 +16,10 @@
 //!     series_edits      which instances an edit to a recurring series reaches
 //!     series_deletes    what deleting a series (whole, or from an event on) leaves
 //!     series_splits     ending a series Google split itself ("_R" ids), and Recurrences on it
+//!     server            the server binary (cargo build first) end to end over MCP, on Google
 //!
-//! Each probe's findings, from when it was last run, are in its Python
-//! counterpart's docstring (probes/).
+//! Each probe's findings, from when it was last run, are in its doc
+//! comment below.
 
 use anyhow::{anyhow, Context};
 use chrono::{DateTime, Datelike, Duration, FixedOffset, TimeZone, Utc};
@@ -46,6 +47,8 @@ struct Options {
     pause: bool,
     raw: bool,
     days: i64,
+    /// The server binary `server` runs (default: ctt-server beside this one).
+    server: Option<std::path::PathBuf>,
 }
 
 fn main() {
@@ -58,9 +61,9 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: probe <cancelled_events|clear_fields|label_lifecycle|metadata_tabs|series_edits|series_deletes|series_splits> [--keep] [--pause] [--raw] [--days N]";
+    let usage = "usage: probe <cancelled_events|clear_fields|label_lifecycle|metadata_tabs|series_edits|series_deletes|series_splits|server> [--keep] [--pause] [--raw] [--days N] [--server PATH]";
     let Some(name) = args.first().cloned() else { anyhow::bail!("{usage}") };
-    let mut options = Options { keep: false, pause: false, raw: false, days: 14 };
+    let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None };
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -70,6 +73,10 @@ fn run() -> anyhow::Result<()> {
             "--days" => {
                 i += 1;
                 options.days = args.get(i).and_then(|d| d.parse().ok()).ok_or_else(|| anyhow!("--days takes a number"))?;
+            }
+            "--server" => {
+                i += 1;
+                options.server = Some(args.get(i).ok_or_else(|| anyhow!("--server takes a path"))?.into());
             }
             other => anyhow::bail!("{usage}\nunrecognized argument: {other}"),
         }
@@ -88,6 +95,7 @@ fn run() -> anyhow::Result<()> {
         "series_edits" => ("CTT series probe (safe to delete)", Some(TIME_ZONE)),
         "series_deletes" => ("CTT series delete probe (safe to delete)", Some(TIME_ZONE)),
         "series_splits" => ("CTT series split probe (safe to delete)", Some(TIME_ZONE)),
+        "server" => ("CTT server probe (safe to delete)", Some(TIME_ZONE)),
         _ => anyhow::bail!("{usage}"),
     };
     let calendar_id = CalendarClient::new(google.clone(), "").create_calendar(title, None, zone)?;
@@ -99,7 +107,11 @@ fn run() -> anyhow::Result<()> {
         "metadata_tabs" => metadata_tabs(&raw, &config),
         "series_edits" => series_edits(&raw, &options),
         "series_deletes" => series_deletes(&raw, &options),
-        _ => series_splits(&raw, &config),
+        "series_splits" => series_splits(&raw, &config),
+        _ => {
+            let beside = std::env::current_exe()?.with_file_name(format!("ctt-server{}", std::env::consts::EXE_SUFFIX));
+            server(&raw, &config, options.server.as_deref().unwrap_or(&beside))
+        }
     };
     if options.keep {
         println!("Kept scratch calendar {calendar_id}");
@@ -248,6 +260,32 @@ fn indented(value: &Value, indent: &str) -> String {
 
 // -- cancelled_events -----------------------------------------------------------
 
+/// Find out empirically whether Google Calendar lists your cancelled
+/// events, and what's kept on them.
+///
+/// Google's docs say events.list leaves cancelled events out unless asked
+/// for them with showDeleted, and that a cancelled event is only guaranteed
+/// to keep its `id`. The server once read cancelled events this way, to tell
+/// when each was and whose it was (its start, and its action_ids or label);
+/// it no longer does -- CalendarClient.list_events never asks for them, and
+/// the events that count against someone are recorded in the Cancellations
+/// tab when they're cancelled (stores/cancellations.rs). This script is
+/// kept for reference.
+///
+/// What it found:
+/// - Without showDeleted, no cancelled event is listed.
+/// - With it, a cancelled event is listed with status "cancelled", usually
+///   keeping its summary, start, end and label.
+/// - But an instance a series edit took away comes back as just
+///   "CANCELLED", with no times or label -- some keeping only
+///   originalStartTime (and recurringEventId), some not even that, so
+///   there's nothing to place them by.
+///
+/// It lists the configured calendar's events (GOOGLE_CALENDAR_ID) over the
+/// last --days days twice, without showDeleted (as list_events does) and
+/// with it, and prints how many cancelled events each returned and, for
+/// each cancelled one, which fields it kept. It only reads: nothing is
+/// written.
 fn cancelled_events(google: &Arc<Google>, calendar_id: &str, options: &Options) -> anyhow::Result<()> {
     let raw = Raw { google: google.clone(), calendar_id: calendar_id.into() };
     let end = Utc::now().fixed_offset();
@@ -313,6 +351,43 @@ fn cancelled_events(google: &Arc<Google>, calendar_id: &str, options: &Options) 
 
 // -- clear_fields ---------------------------------------------------------------
 
+/// Check against the live API that clearing an event's fields (Event.cleared,
+/// which update_event's and update_recurrence's clear_fields set) really
+/// removes them.
+///
+/// Event.to_api_body sends each cleared field as null in a patch: description
+/// and location as top-level fields, the app's own fields (priority,
+/// facts, judgments) as keys of extendedProperties.private,
+/// and never colorId (see Event.to_api_body). Google documents
+/// patch as replacing only the fields it's given, but not, in so many words,
+/// that a null removes a top-level field, or that a null key of
+/// extendedProperties.private removes that key while the rest are kept.
+/// This script writes through CalendarClient and Recurrences themselves, so
+/// it checks the bodies the tools actually send.
+///
+/// It creates a throwaway calendar (this app's calendar.app.created scope
+/// allows that), then:
+///
+/// 1. creates an event with clearable fields set, plus action_ids, and
+///    clears them all while renaming it;
+/// 2. creates an event with a priority and judgments, and clears only the
+///    judgments;
+/// 3. creates a daily series with a priority and a location, and clears its
+///    priority, checking the series and each of its instances;
+/// 4. clears another series' priority from its third event on ("this and
+///    following"), checking both parts.
+///
+/// Each check prints PASS or FAIL. It then deletes the calendar again --
+/// nothing else in your account is touched.
+///
+/// Found (2026-10-04): every check passed.
+///
+/// - A null top-level field in a patch removes it: description and
+///   location.
+/// - A null key of extendedProperties.private removes just that key; the
+///   others are kept, whether the patch sets them or leaves them out.
+/// - On a series' master, the clear reaches every instance; split first
+///   ("this and following"), it reaches only the later part.
 fn clear_fields(raw: &Raw) -> anyhow::Result<()> {
     let client = raw.client();
     let nine = tomorrow_at(9);
@@ -421,6 +496,21 @@ fn recurrences_for(raw: &Raw) -> anyhow::Result<Recurrences> {
 
 // -- label_lifecycle ------------------------------------------------------------
 
+/// Find out empirically what Google Calendar does with an event whose
+/// event label is removed from the calendar, and then added back.
+///
+/// Google's docs (https://developers.google.com/workspace/calendar/api/guides/
+/// labels and the Calendars resource reference) say a label's `id` may be
+/// client-supplied (a UUID) and that removing a label from
+/// `labelProperties.eventLabels` deletes it -- but say nothing about events
+/// still pointing at it. docs/goals-design.md ("Label lifecycle") depends on
+/// the answers, so this script asks the API directly.
+///
+/// It creates a throwaway calendar (this app's calendar.app.created scope
+/// allows that), runs every step against it, prints what happened, and
+/// deletes the calendar again -- nothing else in your account is touched.
+/// Pass --pause to stop after removing the label and after re-adding it, so
+/// you can look at the events in the Google Calendar UI too.
 fn label_lifecycle(raw: &Raw, options: &Options) -> anyhow::Result<()> {
     let label_id = uuid::Uuid::new_v4().to_string();
     let label = json!({"id": label_id, "name": "Probe label", "backgroundColor": "#8e24aa"});
@@ -511,6 +601,17 @@ fn row(pairs: Value) -> Row {
     pairs.as_object().cloned().unwrap_or_default()
 }
 
+/// Run the metadata spreadsheet's newer tabs end to end against Google:
+/// actions and action groups, with their labels on the calendar, and people
+/// and circles, and locations -- the tabs of row-per-item data (sheet/rows.rs)
+/// -- and events' facts, split across private properties.
+///
+/// It creates a throwaway calendar (this app's calendar.app.created scope
+/// allows that), which gets its own metadata spreadsheet, runs every step
+/// against them, prints what happened, then deletes the calendar --
+/// nothing else in your account is touched. The spreadsheet is renamed
+/// "CTT tabs probe (safe to delete)" and left in Drive: this app's Google
+/// Cloud project doesn't enable the Drive API, so it can't trash it.
 fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
     let mut config = Config { calendar_id: Some(raw.calendar_id.clone()), token_path: base.token_path.clone(), credentials_path: base.credentials_path.clone() };
     config.calendar_id = Some(raw.calendar_id.clone());
@@ -645,6 +746,55 @@ fn describe_series_event(event: &Value) -> String {
     fields.join("  ")
 }
 
+/// Find out empirically which of a recurring series' instances an edit to
+/// the series reaches, and what it does to instances edited on their own.
+///
+/// Google's docs (https://developers.google.com/workspace/calendar/api/guides/
+/// recurringevents) say instances are generated from the series' master
+/// event, and that an instance written on its own becomes an exception --
+/// but not whether a later patch to the master still reaches the fields an
+/// exception didn't change, nor what a change to the master's times does to
+/// exceptions. update_recurrence (stores/recurrences.rs) depends on both:
+/// it patches the master with whichever fields it's given -- priority and
+/// goal_ids as private extended properties (priority once also set colorId, only
+/// to show it), times etc. This script asks the API directly, writing each
+/// field the way Event.to_api_body does.
+///
+/// It creates a throwaway calendar (this app's calendar.app.created scope
+/// allows that) holding a daily series of six events, then:
+///
+/// 1. edits four of the instances on their own: one moved an hour, one given
+///    another priority, one given other goal_ids, one given a description --
+///    the first and last are left alone;
+/// 2. patches the master's summary, priority and goal_ids -- no times -- and
+///    shows what each instance has now;
+/// 3. patches the master's goal_ids alone, as update_recurrence sends a
+///    goals-only edit, and shows whether the master (and its instances) kept
+///    the priority property -- that is, whether a patch merges
+///    extendedProperties.private rather than replacing it;
+/// 4. patches the master's start and end 30 minutes later, and shows which
+///    instances (and exceptions) are left, cancelled ones included.
+///
+/// Each step prints every instance's times and fields. It then deletes the
+/// calendar again -- nothing else in your account is touched. Pass --pause
+/// to stop after each step, so you can look at the series in the Google
+/// Calendar UI too.
+///
+/// Found (2026-10-04):
+///
+/// - A patch to the master with no times reaches every instance, exceptions
+///   included, and resets all their fields except times to the master's --
+///   not just the fields it sets: the reprioritized and regoaled instances
+///   took the series' priority and goal_ids, and the described one lost its
+///   description, though the patch didn't mention it. The moved instance
+///   kept its own time. No instance's times changed.
+/// - extendedProperties.private is merged by a patch, not replaced: a
+///   goals-only patch left the master's priority (and its instances') as it
+///   was.
+/// - A patch to the master's start/end moves every instance, exceptions
+///   included: the moved instance went back to the series' new time, and
+///   every instance's originalStartTime moved with it. None was cancelled
+///   or dropped.
 fn series_edits(raw: &Raw, options: &Options) -> anyhow::Result<()> {
     let with_priority = |priority: i64, mut extra: Map<String, Value>| {
         extra.insert(key("priority"), json!(priority.to_string()));
@@ -738,6 +888,46 @@ fn describe_brief(event: &Value) -> String {
     fields.join("  ")
 }
 
+/// Find out empirically what delete_recurrence's two writes do to a
+/// recurring series' instances, and to those edited on their own.
+///
+/// stores/recurrences.rs deletes a whole series by cancelling its master
+/// (a patch with status "cancelled"), and deletes "this and following" by
+/// ending the master's RRULE just before the event (UNTIL, in place of any
+/// COUNT). Google's docs (https://developers.google.com/workspace/calendar/
+/// api/guides/recurringevents) don't say what either does to an instance
+/// edited on its own (an exception) -- in particular, whether one whose
+/// original start is past a new UNTIL, or one moved from there to before
+/// it, is still listed. This script runs Recurrences.delete itself, through
+/// a CalendarClient, and asks the API what's left.
+///
+/// It creates a throwaway calendar (this app's calendar.app.created scope
+/// allows that) holding two daily series of six events, then:
+///
+/// 1. edits four instances of series A on their own: one before the cut
+///    moved an hour, one after it given a description, one after it moved
+///    to before the cut, one after it moved later still;
+/// 2. deletes series A from its third event on, and shows its master, every
+///    instance (cancelled ones included), and what a plain list of the
+///    calendar's events -- what list_events reads -- still holds;
+/// 3. edits one instance of series B on its own, deletes series B whole,
+///    and shows the same.
+///
+/// Each step prints what it finds. It then deletes the calendar again --
+/// nothing else in your account is touched. Pass --pause to stop after each
+/// step, so you can look at the series in the Google Calendar UI too.
+///
+/// Found (2026-10-04):
+///
+/// - Ending a series early (UNTIL just before an event) removes every
+///   instance from that event on outright -- not cancelled, but gone, even
+///   with showDeleted. Exceptions go too, by their original start: the one
+///   described, the one moved later, and the one moved to before the cut
+///   (its original start was after it). Instances before the cut, the one
+///   moved an hour among them, are left as they were.
+/// - Cancelling the master cancels every instance, past ones and exceptions
+///   included: with showDeleted all six are listed, cancelled; without it,
+///   none is.
 fn series_deletes(raw: &Raw, options: &Options) -> anyhow::Result<()> {
     let recurrences = recurrences_for(raw)?;
     let mv = |item: &Value, to: Moment| raw.patch(item["id"].as_str().unwrap(), json!({"start": when(&to), "end": when(&(to + Duration::minutes(30)))}));
@@ -813,6 +1003,61 @@ fn stamp(at: &Moment) -> String {
     at.with_timezone(&Utc).format("%Y%m%dT%H%M%S").to_string()
 }
 
+/// Find out empirically why ending a series that Google Calendar split
+/// itself fails, and what ends it instead.
+///
+/// Recurrences.split (stores/recurrences.rs) copies a series from the
+/// split event on, then ends the original by patching its RRULE with an
+/// UNTIL just before that event. On 2026-10-05 that patch failed with a bare
+/// 400 "Bad Request" for a series whose id ended "_R20260915T223000": one
+/// Google made itself when the series was edited "this and following" in the
+/// Calendar UI. (Its instances' ids use the base id, without the "_R..."
+/// part.) The copy had been made, so every later event was there twice.
+///
+/// A series like that can be made through the API too: importing (events.
+/// import) an event whose iCalUID is "<series id>_R<an instance's start,
+/// UTC>@google.com" makes Google split the series there itself.
+///
+/// It creates a throwaway calendar (this app's calendar.app.created scope
+/// allows that) and, for each step, a fresh weekly Mon/Tue series (WKST=SU,
+/// as the UI writes it) split by Google on its 3rd event. Then:
+///
+/// 1. tries ending that "_R" series before its own 3rd event in several
+///    ways, on one left as Google made it and on one whose 1st event is
+///    cancelled (as the real one's was), whose 2nd is moved and whose 5th is
+///    described; and shows what's left of it, and of any later part;
+/// 2. runs Recurrences itself on such series: split, delete from an event
+///    on, an edit to the whole series' start (no rules), an edit to its
+///    rules (refused), and a split undone and retried.
+///
+/// Each step prints what it finds. It then deletes the calendar again --
+/// nothing else in your account is touched.
+///
+/// Found (2026-10-05):
+///
+/// - Any change to an "_R" series' rules -- a patch or an update (PUT), with
+///   UNTIL or COUNT, with or without start/end -- deletes it: it's left
+///   cancelled, its rules replaced by "FREQ=DAILY;COUNT=1", with no
+///   instances. Deleting it leaves just the same. If its 1st event is
+///   cancelled the change fails instead, with a bare 400 "Bad Request" --
+///   the failure seen for real. Patches that leave its rules alone (summary,
+///   start/end, unchanged rules) work.
+/// - Importing "<base id>_R<time>@google.com" splits it again, leaving
+///   just what Google's own "this and following" edit left on the real
+///   series (what the UI calls to do that isn't known): the "_R" series is
+///   ended at the local midnight before that
+///   time's day (UNTIL 23:59:59 the day before), and the rest is a new
+///   series "<base id>_R<time>" -- events after the time that were edited on
+///   their own move to it. Its private extended properties and color come
+///   from the import. That works with the 1st event cancelled too, and
+///   importing the same UID again returns the same series. A COUNT in it is
+///   set by Google, counting from the base series' first event.
+/// - Importing an "_R" series' own UID with other rules changes nothing.
+/// - Cancelling the part split off that way leaves no instances of it, not
+///   even cancelled ones, and the series before it as it was: so an "_R"
+///   series is ended before an event by splitting it there and cancelling
+///   the rest, as Recurrences now does.
+/// - A cancelled series patched back to "confirmed" has its instances back.
 fn series_splits(raw: &Raw, _config: &Config) -> anyhow::Result<()> {
     let client = raw.client();
     let recurrences = recurrences_for(raw)?;
@@ -1004,5 +1249,230 @@ fn series_splits(raw: &Raw, _config: &Config) -> anyhow::Result<()> {
         show(earlier.id.as_deref().unwrap(), "earlier")?;
     }
     show(later.id.as_deref().unwrap(), "later")?;
+    Ok(())
+}
+
+// -- server ------------------------------------------------------------------
+
+/// The server binary, run over stdio, speaking MCP: one JSON-RPC message a
+/// line.
+struct Mcp {
+    child: std::process::Child,
+    stdin: std::process::ChildStdin,
+    stdout: std::io::Lines<std::io::BufReader<std::process::ChildStdout>>,
+    next_id: i64,
+}
+
+impl Mcp {
+    fn start(server: &std::path::Path, env: &[(&str, String)]) -> anyhow::Result<Mcp> {
+        let mut command = std::process::Command::new(server);
+        command.stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::inherit());
+        for (key, value) in env {
+            command.env(key, value);
+        }
+        let mut child = command.spawn().with_context(|| format!("starting {}", server.display()))?;
+        let stdin = child.stdin.take().unwrap();
+        let stdout = std::io::BufRead::lines(std::io::BufReader::new(child.stdout.take().unwrap()));
+        let mut mcp = Mcp { child, stdin, stdout, next_id: 0 };
+        mcp.request("initialize", json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "probe", "version": "1"}}))?;
+        mcp.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}))?;
+        Ok(mcp)
+    }
+
+    fn send(&mut self, message: &Value) -> anyhow::Result<()> {
+        writeln!(self.stdin, "{message}")?;
+        Ok(self.stdin.flush()?)
+    }
+
+    fn request(&mut self, method: &str, params: Value) -> anyhow::Result<Value> {
+        self.next_id += 1;
+        let id = self.next_id;
+        self.send(&json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}))?;
+        loop {
+            let line = self.stdout.next().ok_or_else(|| anyhow!("the server exited"))??;
+            let message: Value = serde_json::from_str(&line).with_context(|| format!("not JSON: {line}"))?;
+            if message["id"] == id {
+                if let Some(error) = message.get("error") {
+                    anyhow::bail!("{method}: {error}");
+                }
+                return Ok(message["result"].clone());
+            }
+        }
+    }
+
+    /// A tool's structured result (unwrapped from {"result": ...}), shown.
+    fn call(&mut self, tool: &str, arguments: Value) -> anyhow::Result<Value> {
+        let result = self.request("tools/call", json!({"name": tool, "arguments": arguments}))?;
+        if result["isError"] == true {
+            let text: Vec<&str> = result["content"].as_array().into_iter().flatten().filter_map(|c| c["text"].as_str()).collect();
+            anyhow::bail!("{tool} failed: {}", text.join("\n"));
+        }
+        let mut content = result["structuredContent"].clone();
+        if content.as_object().is_some_and(|o| o.len() == 1 && o.contains_key("result")) {
+            content = content["result"].take();
+        }
+        let shown = content.to_string();
+        let cut: String = shown.chars().take(200).collect();
+        println!("  {tool}: {cut}{}", if cut.len() < shown.len() { "..." } else { "" });
+        Ok(content)
+    }
+}
+
+impl Drop for Mcp {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+/// Run the server (ctt-server) against Google for real, over MCP:
+/// conformance holds it to its recorded behavior against a fake Google;
+/// this checks the real one answers it the same way -- OAuth, Calendar and
+/// Sheets, labels, developer metadata -- before it's deployed. Seeds three
+/// planned days on the scratch calendar, starts the server over stdio on
+/// it (with a copy of your token, so a refresh can't touch the real one),
+/// and walks a compaction through: actions, people and locations, notes, a
+/// proposal, the user's edit, confirming it, judging it -- then the event
+/// tools and health. Its metadata spreadsheet is left in Drive: this app
+/// can't trash it (see metadata_tabs).
+fn server(raw: &Raw, config: &Config, binary: &std::path::Path) -> anyhow::Result<()> {
+    let days = seed_planned_days(raw)?;
+    let scratch = std::env::temp_dir().join(format!("ctt-probe-{}", std::process::id()));
+    std::fs::create_dir_all(&scratch)?;
+    let token = scratch.join("token.json");
+    std::fs::copy(&config.token_path, &token).context("copying the token")?;
+    let credentials = std::fs::canonicalize(&config.credentials_path).context("finding the OAuth credentials")?;
+    let env = [
+        ("GOOGLE_CALENDAR_ID", raw.calendar_id.clone()),
+        ("GOOGLE_OAUTH_TOKEN_PATH", token.display().to_string()),
+        ("GOOGLE_OAUTH_CREDENTIALS_PATH", credentials.display().to_string()),
+        ("MCP_TRANSPORT", "stdio".to_string()),
+        ("CTT_HEALTH_WRITER", "off".to_string()),
+    ];
+    let outcome = Mcp::start(binary, &env).and_then(|mut mcp| walk_server(&mut mcp, &days));
+    let _ = std::fs::remove_dir_all(&scratch);
+    outcome?;
+    println!("All steps passed.");
+    Ok(())
+}
+
+type PlannedDay = (chrono::NaiveDate, std::collections::BTreeMap<&'static str, String>);
+
+/// The three days before today (in New York), planned as conformance/
+/// seed.py plans them: the first for the night before the other two.
+fn seed_planned_days(raw: &Raw) -> anyhow::Result<Vec<PlannedDay>> {
+    let today = Utc::now().with_timezone(&zone()).date_naive();
+    let mut days = Vec::new();
+    for offset in [3, 2, 1] {
+        let day = today - Duration::days(offset);
+        let mut ids = std::collections::BTreeMap::new();
+        for (summary, start, end, sleep) in [
+            ("Breakfast", "07:00", "07:30", false),
+            ("Work", "08:00", "12:00", false),
+            ("Lunch", "12:00", "13:00", false),
+            ("Dinner", "18:00", "19:00", false),
+            ("Sleep", "22:30", "06:30", true),
+        ] {
+            let end_day = if sleep { day + Duration::days(1) } else { day };
+            let mut body = json!({
+                "summary": summary,
+                "start": {"dateTime": format!("{day}T{start}:00"), "timeZone": TIME_ZONE},
+                "end": {"dateTime": format!("{end_day}T{end}:00"), "timeZone": TIME_ZONE},
+            });
+            if sleep {
+                body["extendedProperties"] = json!({"private": {key("is_end_of_day_sleep"): "true"}});
+            }
+            let id = raw.insert(body)?["id"].as_str().unwrap_or_default().to_string();
+            ids.insert(summary, id);
+        }
+        days.push((day, ids));
+    }
+    Ok(days)
+}
+
+fn walk_server(mcp: &mut Mcp, days: &[PlannedDay]) -> anyhow::Result<()> {
+    let ((first, d1), (second, d2)) = ((&days[1].0, &days[1].1), (&days[2].0, &days[2].1));
+    let at = |day: &chrono::NaiveDate, hhmm: &str| -> String {
+        let naive = chrono::NaiveDateTime::parse_from_str(&format!("{day}T{hhmm}"), "%Y-%m-%dT%H:%M").unwrap();
+        zone().from_local_datetime(&naive).unwrap().fixed_offset().to_rfc3339()
+    };
+    let tools = mcp.request("tools/list", json!({}))?;
+    println!("{} tools", tools["tools"].as_array().map_or(0, Vec::len));
+    let created = |value: Value| value["created_id"].as_str().unwrap_or_default().to_string();
+
+    println!("Stores");
+    let eat = created(mcp.call("create_action", json!({"action": {"name": "eat a meal", "status": "active"}}))?);
+    mcp.call("create_action_group", json!({"group": {"name": "Meals", "priority": 1}}))?;
+    let friend = created(mcp.call("create_person", json!({"person": {"name": "Probe Friend", "what_matters": "good food"}}))?);
+    let cafe = created(mcp.call("create_location", json!({"location": {"name": "Probe Cafe", "hint": "the cafe"}}))?);
+    mcp.call(
+        "create_trait",
+        json!({"trait": {"name": "Probe close", "parts": [{"kind": "judgment", "rubric": "How close?", "ratings": {"0": "apart", "1": "close"}, "facts": ["general_notes"]}]}}),
+    )?;
+    mcp.call("create_habit", json!({"habit": {"name": "Probe meals", "action_id": eat}}))?;
+    mcp.call("get_actions", json!({}))?;
+    mcp.call("get_people", json!({}))?;
+    mcp.call("get_priority_colors", json!({}))?;
+
+    println!("Events");
+    mcp.call("list_events", json!({"min_time": at(first, "00:00"), "max_time": at(second, "23:59")}))?;
+    mcp.call("update_event", json!({"updates": [{"event": {"id": d1["Breakfast"], "action_ids": [eat]}}]}))?;
+    let walked = mcp.call("create_event", json!({"events": [{"summary": "Probe walk", "start": at(second, "19:15"), "end": at(second, "19:45")}]}))?;
+    let walk = walked.pointer("/events/0/id").or_else(|| walked.pointer("/0/id")).and_then(Value::as_str).unwrap_or_default().to_string();
+    mcp.call("get_event", json!({"id": walk}))?;
+    mcp.call("delete_event", json!({"cancels": [{"event_id": walk, "counts_against_follow_through": false}]}))?;
+
+    println!("Compaction");
+    for (when, text) in [(at(first, "07:45"), "finished breakfast"), (at(first, "12:30"), "lunch with the friend at the cafe"), (at(second, "19:20"), "dinner done")] {
+        mcp.call("note", json!({"noted_time": {"timestamp": when, "description": text}}))?;
+    }
+    let context = mcp.call("prepare_compaction", json!({}))?;
+    let note = |description: &str| -> Value {
+        context["notes"].as_array().into_iter().flatten().find(|n| n["description"] == description).map(|n| n["id"].clone()).unwrap_or(Value::Null)
+    };
+    let proposed = mcp.call(
+        "compact_notes",
+        json!({
+            "recap": {"overview": "Probe.", "did": [{"text": "Recorded the probe days.", "event_ids": [], "note_ids": []}], "unsure": []},
+            "updates": [
+                {"event_id": d1["Breakfast"], "end_note": note("finished breakfast"), "action_ids": [eat]},
+                {"event_id": d1["Lunch"], "action_ids": [eat], "facts": {"with_ids": [friend], "location_id": cafe, "notes": {friend.clone(): "chatty"}}},
+                {"event_id": d2["Dinner"], "end_note": note("dinner done")},
+            ],
+            "creates": [{"summary": "Probe stroll", "start": at(second, "19:30"), "end": at(second, "20:00"), "action_ids": ["new:stroll"]}],
+            "new_actions": [{"ref": "new:stroll", "name": "take a stroll"}],
+        }),
+    )?;
+    let pid = proposed["proposal_id"].clone();
+    mcp.call("get_proposal", json!({}))?;
+    let amended = mcp.call(
+        "amend_proposal",
+        json!({"proposal_id": pid, "revision": proposed["revision"], "updates": [{"event": {"id": d2["Dinner"], "summary": "Probe dinner"}}]}),
+    )?;
+    let feedback = mcp.call("add_proposal_note", json!({"proposal_id": pid, "text": "probe feedback"}))?;
+    mcp.call("withdraw_proposal_note", json!({"feedback_id": feedback["id"]}))?;
+    let applied = mcp.call("confirm_proposal", json!({"proposal_id": pid, "revision": amended["revision"]}))?;
+    anyhow::ensure!(applied["status"] == "applied", "confirm_proposal: {applied}");
+    let due = mcp.call("prepare_judgments", json!({}))?;
+    let mut requests = Vec::new();
+    for event in due["events"].as_array().into_iter().flatten() {
+        for (person, parts) in event["people"].as_object().into_iter().flatten() {
+            for part in parts.as_array().into_iter().flatten() {
+                requests.push(format!("{}/{person}/{}", event["event_id"].as_str().unwrap_or_default(), part.as_str().unwrap_or_default()));
+            }
+        }
+    }
+    if !requests.is_empty() {
+        let judgments: Vec<Value> = requests.iter().map(|r| json!({"request_id": r, "rating": 1, "reasoning": "probe"})).collect();
+        mcp.call("record_judgments", json!({"compaction_id": due["compaction_id"], "judgments": judgments}))?;
+    }
+    let status = mcp.call("get_compaction_status", json!({}))?;
+    anyhow::ensure!(status["judgments_pending"].is_null(), "get_compaction_status: {status}");
+    let dinner = mcp.call("get_event", json!({"id": d2["Dinner"]}))?;
+    anyhow::ensure!(dinner["summary"] == "Probe dinner", "get_event: {dinner}");
+    mcp.call("prepare_habit_judgments", json!({"habit_id": "Probe meals"}))?;
+
+    println!("Health");
+    mcp.call("get_health", json!({"samples": false}))?;
     Ok(())
 }
