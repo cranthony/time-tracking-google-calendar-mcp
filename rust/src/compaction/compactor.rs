@@ -1,0 +1,3061 @@
+//! Compacting notes (utilities/note_compactor.py): the policy that ties the
+//! notes tab, the calendar, the planner and the journal together -- a
+//! compaction is a proposal the user confirms. See the Python module for
+//! the whole design; this follows it call for call, so the requests it
+//! makes are the same.
+
+use super::additions::{check_additions, create_additions, ref_of, resolve, Additions, REF_PREFIX};
+use super::guide::{APPROVAL_RULE, DECISION_GUIDE};
+use super::judgments::{HabitJudgmentsDue, Judging, Judgment, JudgmentRequest, JudgmentsDue, JudgmentsResult};
+use super::plan::{
+    error, error_of, facts_dict, facts_from_dict, plan_compaction, planned_timeline, repr_opt, CompactionChange, CompactionPlan,
+    EventDecision, EventState, Issue, PlanNote, PlanOptions,
+};
+use super::proposals::{
+    change_json, claude_key, claude_key_number, decision_shape, edit_id, feedback_id, merge, new_proposal_id, revision_id, settle_refs,
+    split_feedback_id, AdditionChoice, Dict, Feedback, FeedbackReply, MergeOptions, Merged, NoteEdit, Proposal, ProposalContext,
+    ProposalEvent, ProposalNote, ProposalResult, ProposalSummary, Recap, UserEdit,
+};
+use crate::determinism;
+use crate::event::{Event, Moment};
+use crate::facts::{fact_problems, Facts, SELF_ID};
+use crate::google::GoogleError;
+use crate::py;
+use crate::sheet::rows;
+use crate::stores::action_calendar::ActionCalendar;
+use crate::stores::actions::{ActionTree, Actions};
+use crate::stores::cancellations::Cancellations;
+use crate::stores::event_changes::{ChangeError, Problem};
+use crate::stores::groups::{python_repr, python_str, truthy};
+use crate::stores::habits::{subject_id, SUBJECT_PREFIX};
+use crate::stores::journal::{
+    CompactionJournal, JournalCompaction, JournalStep, PlannedDay, RevisionMeta, ABANDONED, APPLIED, APPLYING, FAILED, OPEN_STATUSES,
+    PLANNED, PROPOSED, STAMPED, SUPERSEDED,
+};
+use crate::stores::locations::Locations;
+use crate::stores::notes::{NotedTime, NotedTimeSheet, SheetNote};
+use crate::stores::people::People;
+use crate::timeline::{join_days, render, split_days, Timeline};
+use chrono::Duration;
+use serde_json::{json, Map, Value};
+use sha1::{Digest, Sha1};
+
+const CANDIDATE_MINUTES: i64 = 60;
+const HINT_HISTORY_DAYS: i64 = 28;
+const MAX_DAYS: i64 = 7;
+const LOOKBACK_MINUTES: i64 = 15;
+
+fn prefetch_before() -> Duration {
+    Duration::hours(24) + Duration::minutes(LOOKBACK_MINUTES)
+}
+
+fn prefetch_after() -> Duration {
+    Duration::hours(48)
+}
+
+/// A CompactionError, as an error to return.
+fn ce(message: impl Into<String>, category: &str) -> anyhow::Error {
+    error(message, category).into()
+}
+
+fn ce_of(problems: &[String], category: &str) -> anyhow::Error {
+    let issues: Vec<Issue> = problems.iter().map(|p| Issue::plain(p.clone())).collect();
+    error_of(&issues, category).into()
+}
+
+/// The CompactionError `error` is, if it's one.
+pub fn compaction_error(error: &anyhow::Error) -> Option<&ChangeError> {
+    error.downcast_ref::<ChangeError>()
+}
+
+fn google_status(error: &anyhow::Error) -> Option<u16> {
+    error.downcast_ref::<GoogleError>().map(|e| e.status)
+}
+
+/// Python's max() of two: the first of equals.
+fn pmax(a: Moment, b: Moment) -> Moment {
+    if b > a { b } else { a }
+}
+
+fn when(moment: &Option<Moment>) -> Value {
+    moment.map(|m| json!(py::pydantic_datetime(&m))).unwrap_or(Value::Null)
+}
+
+fn iso(moment: &Moment) -> String {
+    py::isoformat(moment)
+}
+
+fn lookup(map: &[(String, String)], key: &str) -> Option<String> {
+    map.iter().rev().find(|(k, _)| k == key).map(|(_, v)| v.clone())
+}
+
+// -- what the tools hand back -------------------------------------------------
+
+pub struct ContextNote {
+    pub id: String,
+    pub timestamp: Moment,
+    pub description: Option<String>,
+    pub candidates: Vec<String>,
+}
+
+pub struct ContextEvent {
+    pub id: String,
+    pub summary: Option<String>,
+    pub start: Moment,
+    pub end: Moment,
+    pub description: Option<String>,
+    pub action_ids: Option<Vec<String>>,
+    pub action_names: Option<Vec<String>>,
+    pub suggested_action_ids: Option<Vec<String>>,
+    pub priority: Option<i64>,
+    pub facts: Option<Facts>,
+    pub history_until: Option<Moment>,
+}
+
+pub struct ContextDay {
+    pub label: String,
+    pub compaction_window_start: Moment,
+    pub day_end: Moment,
+    pub note_ids: Vec<String>,
+}
+
+#[derive(Default)]
+pub struct CompactionContext {
+    pub notes: Vec<ContextNote>,
+    pub events: Vec<ContextEvent>,
+    pub now: Option<Moment>,
+    pub day_end: Option<Moment>,
+    pub remaining_note_count: usize,
+    pub days: Option<Vec<ContextDay>>,
+    pub open_compaction: Option<String>,
+    pub judgments_pending: Option<String>,
+    pub compaction_window_start: Option<Moment>,
+    pub timeline: Option<Timeline>,
+    pub actions: Option<Vec<Value>>,
+    pub people: Option<Vec<Value>>,
+    pub locations: Option<Vec<Value>>,
+    pub previous_note: Option<NotedTime>,
+    pub proposal: Option<ProposalContext>,
+}
+
+impl CompactionContext {
+    pub fn to_json(&self) -> Value {
+        let mut out = Map::new();
+        out.insert(
+            "notes".into(),
+            Value::Array(
+                self.notes
+                    .iter()
+                    .map(|n| {
+                        json!({
+                            "id": n.id,
+                            "timestamp": py::pydantic_datetime(&n.timestamp),
+                            "description": n.description,
+                            "candidates": n.candidates,
+                        })
+                    })
+                    .collect(),
+            ),
+        );
+        out.insert(
+            "events".into(),
+            Value::Array(
+                self.events
+                    .iter()
+                    .map(|e| {
+                        let mut m = Map::new();
+                        m.insert("id".into(), json!(e.id));
+                        m.insert("summary".into(), json!(e.summary));
+                        m.insert("start".into(), json!(py::pydantic_datetime(&e.start)));
+                        m.insert("end".into(), json!(py::pydantic_datetime(&e.end)));
+                        m.insert("description".into(), json!(e.description));
+                        m.insert("action_ids".into(), json!(e.action_ids));
+                        m.insert("action_names".into(), json!(e.action_names));
+                        m.insert("suggested_action_ids".into(), json!(e.suggested_action_ids));
+                        m.insert("priority".into(), json!(e.priority));
+                        m.insert("facts".into(), e.facts.as_ref().map(Facts::to_public).unwrap_or(Value::Null));
+                        m.insert("history_until".into(), when(&e.history_until));
+                        Value::Object(m)
+                    })
+                    .collect(),
+            ),
+        );
+        out.insert("now".into(), when(&self.now));
+        out.insert("day_end".into(), when(&self.day_end));
+        out.insert("remaining_note_count".into(), json!(self.remaining_note_count));
+        out.insert(
+            "days".into(),
+            match &self.days {
+                None => Value::Null,
+                Some(days) => Value::Array(
+                    days.iter()
+                        .map(|d| {
+                            json!({
+                                "label": d.label,
+                                "compaction_window_start": py::pydantic_datetime(&d.compaction_window_start),
+                                "day_end": py::pydantic_datetime(&d.day_end),
+                                "note_ids": d.note_ids,
+                            })
+                        })
+                        .collect(),
+                ),
+            },
+        );
+        out.insert("open_compaction".into(), json!(self.open_compaction));
+        out.insert("judgments_pending".into(), json!(self.judgments_pending));
+        out.insert("compaction_window_start".into(), when(&self.compaction_window_start));
+        out.insert("timeline".into(), self.timeline.as_ref().map(Timeline::to_json).unwrap_or(Value::Null));
+        out.insert("actions".into(), json!(self.actions));
+        out.insert("people".into(), json!(self.people));
+        out.insert("locations".into(), json!(self.locations));
+        out.insert(
+            "previous_note".into(),
+            self.previous_note
+                .as_ref()
+                .map(|n| json!({"timestamp": py::pydantic_datetime(&n.timestamp), "description": n.description}))
+                .unwrap_or(Value::Null),
+        );
+        out.insert("proposal".into(), self.proposal.as_ref().map(ProposalContext::to_json).unwrap_or(Value::Null));
+        out.insert("instructions".into(), json!(DECISION_GUIDE));
+        Value::Object(out)
+    }
+}
+
+#[derive(Default)]
+pub struct CompactionResult {
+    pub status: String,
+    pub message: String,
+    pub compaction_id: Option<String>,
+    pub proposal_id: Option<String>,
+    pub revision: Option<i64>,
+    pub changes: Vec<CompactionChange>,
+    pub warnings: Vec<String>,
+    pub timeline: Option<Timeline>,
+    pub additions: Option<Map<String, Value>>,
+    pub judgments: Option<JudgmentsDue>,
+}
+
+impl CompactionResult {
+    pub fn to_json(&self) -> Value {
+        let mut out = Map::new();
+        out.insert("status".into(), json!(self.status));
+        out.insert("message".into(), json!(self.message));
+        out.insert("compaction_id".into(), json!(self.compaction_id));
+        out.insert("proposal_id".into(), json!(self.proposal_id));
+        out.insert("revision".into(), json!(self.revision));
+        out.insert("changes".into(), Value::Array(self.changes.iter().map(change_json).collect()));
+        out.insert("warnings".into(), json!(self.warnings));
+        out.insert("timeline".into(), self.timeline.as_ref().map(Timeline::to_json).unwrap_or(Value::Null));
+        out.insert("additions".into(), self.additions.clone().map(Value::Object).unwrap_or(Value::Null));
+        out.insert("judgments".into(), self.judgments.as_ref().map(JudgmentsDue::to_json).unwrap_or(Value::Null));
+        Value::Object(out)
+    }
+}
+
+// -- the span -----------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct Day {
+    pub notes: Vec<SheetNote>,
+    pub events: Vec<Event>,
+    pub day_start: Moment,
+    pub compaction_window_start: Moment,
+    pub day_end: Moment,
+    pub now: Moment,
+    pub previous: Option<Event>,
+    pub latest_compacted: Option<NotedTime>,
+    pub last_compaction: Option<Moment>,
+    pub history_until: Option<Moment>,
+    pub closing: Option<Event>,
+    pub nights: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Walked {
+    pub day: Day,
+    pub plan: CompactionPlan,
+    pub decisions: Vec<EventDecision>,
+    pub ignore_notes: Vec<String>,
+    pub note_targets: Vec<(String, Option<String>)>,
+}
+
+/// A revision planned again, or why it can't be.
+pub enum Replanned {
+    Walked(Vec<Walked>),
+    Failed(ChangeError),
+}
+
+#[derive(Clone)]
+pub struct NoteCompactor {
+    pub calendar: ActionCalendar,
+    pub client: ActionCalendar,
+    pub notes: NotedTimeSheet,
+    pub journal: CompactionJournal,
+    pub actions: Option<Actions>,
+    pub people: Option<People>,
+    pub locations: Option<Locations>,
+    pub judging: Option<Judging>,
+    pub cancellations: Option<Cancellations>,
+}
+
+impl NoteCompactor {
+    fn clock(&self) -> Moment {
+        determinism::now()
+    }
+
+    fn tree(&self) -> anyhow::Result<Option<ActionTree>> {
+        match &self.actions {
+            Some(a) => Ok(Some(a.tree()?)),
+            None => Ok(None),
+        }
+    }
+
+    /// The span's calendar: what the plan's days are read from (the
+    /// Python's `_PlannedCalendar`, which nothing applies changes to any
+    /// more), only what overlaps the window.
+    fn span_events(&self, time_min: Moment, time_max: Moment) -> anyhow::Result<Vec<Event>> {
+        Ok(self
+            .calendar
+            .list_events(&time_min, &time_max)?
+            .into_iter()
+            .filter(|e| e.end() > time_min && e.start() < time_max)
+            .collect())
+    }
+
+    pub fn prepare(&self) -> anyhow::Result<CompactionContext> {
+        self.prefetch_tabs(true)?;
+        let pending = self.judgments_pending()?;
+        self.journal.garbage_collect()?;
+        let open_ids = self.journal.open_compactions()?;
+        let open_id = match open_ids.first() {
+            Some((id, _)) => Some(self.journal.load(id)?.batch_id()),
+            None => None,
+        };
+        let proposal = self.proposal_context()?;
+        let (day, remaining) = self.walk(self.clock(), None, MAX_DAYS)?;
+        let Some(day) = day else {
+            return Ok(CompactionContext { open_compaction: open_id, judgments_pending: pending, proposal, ..Default::default() });
+        };
+        let tree = self.tree()?;
+        let names = self.names(None)?;
+        let suggested = match &tree {
+            Some(tree) => self.suggestions(std::slice::from_ref(&day), tree)?,
+            None => Vec::new(),
+        };
+        let mut notes: Vec<ContextNote> = Vec::new();
+        let mut events: Vec<ContextEvent> = Vec::new();
+        let mut timelines: Vec<(Moment, Timeline)> = Vec::new();
+        {
+            let befores = befores(&day);
+            let candidates: Vec<(String, Vec<String>)> = day
+                .notes
+                .iter()
+                .map(|n| (n.id(), candidates(n.note.timestamp, &day.events, lookup_event(&befores, &n.id()))))
+                .collect();
+            for n in &day.notes {
+                notes.push(ContextNote {
+                    id: n.id(),
+                    timestamp: n.note.timestamp,
+                    description: n.note.description.clone(),
+                    candidates: candidates.iter().rev().find(|(k, _)| *k == n.id()).map(|(_, v)| v.clone()).unwrap_or_default(),
+                });
+            }
+            for e in &day.events {
+                let Some(id) = e.id.clone().filter(|i| !i.is_empty()) else { continue };
+                if events.iter().any(|c| c.id == id) {
+                    continue;
+                }
+                events.push(ContextEvent {
+                    id: id.clone(),
+                    summary: e.summary.clone(),
+                    start: e.start(),
+                    end: e.end(),
+                    description: e.description.clone(),
+                    action_ids: e.action_ids.clone(),
+                    action_names: e.action_ids.as_ref().map(|ids| ids.iter().map(|a| lookup(&names, a).unwrap_or(a.clone())).collect()),
+                    suggested_action_ids: suggested.iter().rev().find(|(k, _)| *k == id).map(|(_, v)| v.clone()),
+                    priority: e.effective_priority(),
+                    facts: e.facts.clone(),
+                    history_until: day.history_until.filter(|h| e.start() < *h).map(|h| e.end().min(h)),
+                });
+            }
+            let shown = shown(&day, &candidates);
+            timelines.extend(split_days(
+                &planned_timeline(
+                    &plan_notes(&day),
+                    &shown,
+                    day.now,
+                    &names,
+                    &suggested,
+                    latest_compacted(&day).as_ref(),
+                    day.last_compaction,
+                ),
+                &day_starts(&day, &[]),
+            ));
+        }
+        let previous_note = day.latest_compacted.clone();
+        Ok(CompactionContext {
+            notes,
+            events,
+            now: Some(day.now),
+            day_end: Some(day.day_end),
+            remaining_note_count: remaining,
+            open_compaction: open_id,
+            compaction_window_start: Some(day.compaction_window_start),
+            days: context_days(&day),
+            timeline: Some(join_days(timelines)),
+            actions: tree.as_ref().map(|t| {
+                t.actions
+                    .iter()
+                    .filter(|a| matches!(rows::text(a, "status"), Some("active") | Some("proposed")))
+                    .map(|a| json!({"id": a.get("id"), "name": a.get("name"), "note": a.get("note")}))
+                    .collect()
+            }),
+            people: match &self.people {
+                Some(p) => Some(
+                    p.get_people(None)?
+                        .iter()
+                        .map(|p| json!({"id": p.get("id"), "name": p.get("name"), "context": p.get("context"), "what_matters": p.get("what_matters")}))
+                        .collect(),
+                ),
+                None => None,
+            },
+            locations: match &self.locations {
+                Some(l) => Some(l.all()?.iter().map(|l| json!({"id": l.get("id"), "name": l.get("name"), "hint": l.get("hint")})).collect()),
+                None => None,
+            },
+            previous_note,
+            judgments_pending: pending,
+            proposal,
+        })
+    }
+
+    pub fn prefetch(&self) -> anyhow::Result<()> {
+        self.prefetch_tabs(true)
+    }
+
+    fn prefetch_tabs(&self, facts: bool) -> anyhow::Result<()> {
+        let mut tabs = vec![self.notes.whole_tab(), self.journal.whole_tab()];
+        if facts {
+            if let Some(a) = &self.actions {
+                tabs.extend(a.whole_tabs());
+            }
+            if let Some(p) = &self.people {
+                tabs.extend(p.whole_tabs());
+            }
+            if let Some(l) = &self.locations {
+                tabs.push(l.whole_tab());
+            }
+            if let Some(j) = &self.judging {
+                tabs.extend(j.whole_tabs());
+            }
+            if let Some(c) = &self.cancellations {
+                tabs.extend(c.whole_tabs());
+            }
+        }
+        self.notes.prefetch(&tabs)
+    }
+
+    /// Every action's, person's and location's id (and every ref in
+    /// `additions`), with its name.
+    fn names(&self, additions: Option<&Additions>) -> anyhow::Result<Vec<(String, String)>> {
+        let mut names: Vec<(String, String)> = Vec::new();
+        let named = |row: &rows::Row| -> Option<(String, String)> {
+            if !truthy(row.get("id")) {
+                return None;
+            }
+            let id = python_str(row.get("id"));
+            Some((id.clone(), if truthy(row.get("name")) { python_str(row.get("name")) } else { id }))
+        };
+        if let Some(a) = &self.actions {
+            names.extend(a.all()?.iter().filter_map(named));
+        }
+        if let Some(p) = &self.people {
+            names.extend(p.all()?.iter().filter_map(named));
+        }
+        if let Some(l) = &self.locations {
+            names.extend(l.all()?.iter().filter_map(named));
+        }
+        if let Some(additions) = additions {
+            names.extend(additions.refs().into_iter().map(|(r, name)| (r, format!("{name} (new)"))));
+        }
+        Ok(names)
+    }
+
+    fn suggestions(&self, days: &[Day], tree: &ActionTree) -> anyhow::Result<Vec<(String, Vec<String>)>> {
+        let bare: Vec<&Event> = days
+            .iter()
+            .flat_map(|day| {
+                day.events.iter().filter(move |e| {
+                    e.id.as_deref().is_some_and(|i| !i.is_empty())
+                        && e.action_ids.as_ref().is_none_or(|a| a.is_empty())
+                        && e.end() <= day.now
+                        && e.summary.as_deref().is_some_and(|s| !s.is_empty())
+                })
+            })
+            .collect();
+        if bare.is_empty() {
+            return Ok(Vec::new());
+        }
+        let start = days[0].compaction_window_start;
+        let mut history = self.calendar.list_events(&(start - Duration::days(HINT_HISTORY_DAYS)), &start)?;
+        history.sort_by_key(|e| e.start());
+        let mut hints: Vec<(String, Vec<String>)> = Vec::new();
+        for event in &history {
+            let usable: Vec<String> = event
+                .action_ids
+                .iter()
+                .flatten()
+                .filter(|a| tree.by_id(a).is_some_and(|row| rows::text(row, "status") != Some("deleted")))
+                .cloned()
+                .collect();
+            if let Some(summary) = event.summary.as_deref().filter(|s| !s.is_empty()) {
+                if !usable.is_empty() && !event.is_cancelled() {
+                    let key = title_key(summary);
+                    match hints.iter_mut().find(|(k, _)| *k == key) {
+                        Some(slot) => slot.1 = usable,
+                        None => hints.push((key, usable)),
+                    }
+                }
+            }
+        }
+        let mut out: Vec<(String, Vec<String>)> = Vec::new();
+        for e in bare {
+            if let Some((_, hint)) = hints.iter().find(|(k, _)| *k == title_key(e.summary.as_deref().unwrap())) {
+                let id = e.id.clone().unwrap();
+                match out.iter_mut().find(|(k, _)| *k == id) {
+                    Some(slot) => slot.1 = hint.clone(),
+                    None => out.push((id, hint.clone())),
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    /// compact_notes: propose what happened, or revise the open proposal.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dry_run(
+        &self,
+        decisions: Vec<EventDecision>,
+        ignore_notes: Option<Vec<String>>,
+        claude_additions: Additions,
+        proposal_id: Option<String>,
+        revision: Option<i64>,
+        replies: Vec<FeedbackReply>,
+        annotate_notes: Vec<(String, String)>,
+        recap: Option<Recap>,
+        create_refs: Vec<Option<String>>,
+    ) -> anyhow::Result<CompactionResult> {
+        self.prefetch_tabs(true)?;
+        self.journal.garbage_collect()?;
+        self.require_no_open_compaction()?;
+        let open_id = self.journal.open_proposal()?;
+        if let (Some(open), None) = (&open_id, &proposal_id) {
+            return Err(ce(
+                format!(
+                    "proposal {open} is open: revise or extend it -- compact_notes with proposal_id={} and the revision you started from (prepare_compaction's `proposal` shows it)",
+                    py::repr(open)
+                ),
+                "open_proposal",
+            ));
+        }
+        if let Some(given) = &proposal_id {
+            if Some(given) != open_id.as_ref() {
+                return Err(ce(
+                    format!(
+                        "there's no open proposal {}{}",
+                        py::repr(given),
+                        open_id.as_ref().map(|o| format!("; the open one is {o}")).unwrap_or_default()
+                    ),
+                    "unknown_proposal",
+                ));
+            }
+        }
+        let claude_targets = note_targets(&annotate_notes)?;
+        let now = self.clock();
+        let mut current: Option<Vec<JournalCompaction>> = None;
+        let mut edit_rows: Vec<(i64, UserEdit)> = Vec::new();
+        let mut feedback_rows: Vec<(i64, Feedback)> = Vec::new();
+        let mut base_meta: Option<RevisionMeta> = None;
+        let proposal: String;
+        let meta: Option<RevisionMeta>;
+        match &open_id {
+            None => {
+                proposal = new_proposal_id(&determinism::random_token("0123456789abcdef", 32));
+                meta = None;
+            }
+            Some(open) => {
+                proposal = open.clone();
+                let days = self.current(&proposal)?;
+                meta = days[0].meta.clone();
+                base_meta = Some(self.base(&proposal, meta.as_ref().unwrap(), revision)?);
+                current = Some(days);
+                edit_rows = self.journal.user_edits(&proposal)?;
+                feedback_rows = self.journal.feedback(&proposal)?;
+            }
+        }
+        let (answered, replaced) = self.answers(&proposal, &replies, &feedback_rows, &edit_rows, base_meta.as_ref())?;
+        let edits: Vec<UserEdit> = edit_rows.iter().filter(|(row, _)| !replaced.contains(row)).map(|(_, e)| e.clone()).collect();
+        let settled_additions = merge(&proposal, &[], &edits, MergeOptions::default()).settled;
+        let additions = unsettled(&claude_additions, &settled_additions);
+        let problems = check_additions(&additions, self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?;
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "additions"));
+        }
+        let settled_refs: Vec<String> = settled_additions.keys().cloned().collect();
+        let decisions = self.checked_facts(decisions, &claude_additions, &settled_refs)?;
+        let (decisions, key_seq) = keyed(&proposal, decisions, meta.as_ref())?;
+        let refs = create_refs_of(&decisions, &create_refs)?;
+        let claude_targets: Vec<(String, String)> =
+            claude_targets.into_iter().map(|(note, event)| (note, lookup(&refs, &event).unwrap_or(event))).collect();
+        let aliases: Vec<(String, String)> = meta.as_ref().map(|m| m.aliases.clone()).unwrap_or_default();
+        let settled: Vec<String> = meta.as_ref().map(|m| m.settled.clone()).unwrap_or_default();
+        let ignore: Vec<String> = ignore_notes.clone().unwrap_or_default();
+        let known_ids = self.known_ids(now)?;
+        let known_notes = self.uncompacted_notes(now)?;
+        let merged = merge(
+            &proposal,
+            &decisions,
+            &edits,
+            MergeOptions {
+                known_ids: Some(&known_ids),
+                aliases: &aliases,
+                settled: &settled,
+                claude_ignore: &ignore,
+                claude_targets: &claude_targets,
+                known_notes: Some(&known_notes),
+            },
+        );
+        let (walked, remaining) = self.plan_walk(&settled_decisions(&merged), &merged.ignore_notes, &additions, now, &merged.note_targets.items)?;
+        if walked.is_empty() || (meta.is_none() && !has_anything(&walked)) {
+            return Ok(CompactionResult {
+                status: "nothing_to_compact".into(),
+                message: "nothing has happened to compact since the last compaction".into(),
+                ..Default::default()
+            });
+        }
+        let recap = match recap {
+            Some(recap) => {
+                let recap = recap.resolved(&refs);
+                let events: Vec<String> = proposal_events(&walked, &merged.decided_by).into_iter().map(|e| e.id).collect();
+                let notes: Vec<String> = walked.iter().flat_map(|w| w.day.notes.iter().map(|n| n.id())).collect();
+                let problems = recap.problems(&events, &notes);
+                if !problems.is_empty() {
+                    return Err(ce_of(&problems, "recap"));
+                }
+                Some(recap)
+            }
+            None => None,
+        };
+        let superseded = self.supersede_planned()?;
+        let revision_number = meta.as_ref().map(|m| m.revision + 1).unwrap_or(1);
+        let outcomes = outcomes_of(&walked);
+        let mut claude_ignore: Vec<String> = ignore.clone();
+        claude_ignore.sort();
+        claude_ignore.dedup();
+        let mut settled_sorted = settled.clone();
+        settled_sorted.sort();
+        settled_sorted.dedup();
+        let new_meta = RevisionMeta {
+            proposal: proposal.clone(),
+            revision: revision_number,
+            window_start: Some(walked[0].day.compaction_window_start),
+            created: Some(now),
+            base: revision,
+            user_seq: edit_rows.iter().map(|(_, e)| e.seq).max().unwrap_or(0),
+            by: "claude".into(),
+            reason: if meta.is_none() {
+                "proposed".into()
+            } else if !answered.is_empty() {
+                "revised for notes".into()
+            } else {
+                "extended".into()
+            },
+            changed: changed(meta.as_ref().map(|m| m.outcomes.as_slice()), &outcomes),
+            outcomes,
+            key_seq,
+            claude_decisions: decisions.clone(),
+            claude_ignore_notes: Some(claude_ignore),
+            claude_note_targets: claude_targets.clone(),
+            claude_additions: Some(claude_additions.to_json_dict()),
+            aliases: aliases.clone(),
+            settled: settled_sorted,
+            judge_also: meta.as_ref().map(|m| m.judge_also.clone()).unwrap_or_default(),
+            claude_through: Some(walked.last().unwrap().day.now),
+            claude_recap: recap.as_ref().map(Recap::to_json_dict),
+            recap_revision: recap.as_ref().map(|_| revision_number),
+        };
+        self.write_revision(&walked, &new_meta, &additions, current, &[])?;
+        let newer: Vec<(String, String)> = edit_rows
+            .iter()
+            .filter(|(_, e)| base_meta.as_ref().is_some_and(|b| e.seq > b.user_seq))
+            .map(|(_, e)| (e.event_id.clone().unwrap_or_default(), e.id.clone()))
+            .collect();
+        for (row, item) in &answered {
+            let mut item = item.clone();
+            if let Some(newer) = item.event_id.as_ref().and_then(|e| lookup(&newer, e)) {
+                item.superseded_by = Some(vec![newer]);
+            }
+            item.answered_in = Some(revision_number);
+            self.journal.update_feedback(*row, &item)?;
+        }
+        for row in &replaced {
+            self.journal.set_user_edit_status(*row, "replaced")?;
+        }
+        let unknown: Vec<&String> = merged.unknown.iter().map(|e| &e.id).collect();
+        for (row, edit) in &edit_rows {
+            if unknown.contains(&&edit.id) && !replaced.contains(row) {
+                self.journal.set_user_edit_status(*row, "inapplicable")?;
+            }
+        }
+        let changes: Vec<CompactionChange> = walked.iter().flat_map(|w| w.plan.changes.clone()).collect();
+        let note_count: usize = walked.iter().map(|w| w.day.notes.len()).sum();
+        let day_count: usize = walked.iter().map(|w| day_starts(&w.day, &w.decisions).len()).sum();
+        let days = if day_count > 1 { format!(" over {day_count} days") } else { String::new() };
+        let answered_ids: Vec<&String> = answered.iter().map(|(_, i)| &i.id).collect();
+        let still_open = feedback_rows.iter().filter(|(_, f)| f.status == "open" && !answered_ids.contains(&&f.id)).count();
+        let mut message = format!(
+            "proposal {proposal} revision {revision_number}: {} calendar change(s) for {note_count} note(s){days}, through {}; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. {APPROVAL_RULE}",
+            changes.len(),
+            iso(&walked.last().unwrap().day.now)
+        );
+        if superseded > 0 {
+            message.push_str(&format!(" (Replaced {superseded} unapplied plan(s) from before proposals.)"));
+        }
+        if still_open > 0 {
+            message.push_str(&format!(
+                " {still_open} feedback item(s) came in after your revision began and are still open: prepare_compaction again and answer them."
+            ));
+        }
+        if remaining > 0 {
+            message.push_str(&format!(" {remaining} later note(s) aren't part of it: they'll be in the next proposal."));
+        }
+        let additions_json = additions.to_json_dict();
+        Ok(CompactionResult {
+            status: "proposed".into(),
+            compaction_id: Some(revision_id(&proposal, revision_number)),
+            proposal_id: Some(proposal.clone()),
+            revision: Some(revision_number),
+            warnings: walked.iter().flat_map(|w| w.plan.warnings.clone()).collect(),
+            timeline: Some(joined(&walked)),
+            additions: if additions_json.is_empty() { None } else { Some(additions_json) },
+            changes,
+            message,
+            judgments: None,
+        })
+    }
+
+    /// `_plan_walk`: walk the span up to `now`, planning it with
+    /// `decisions`, the notes to ignore and those added to a particular
+    /// event.
+    fn plan_walk(
+        &self,
+        decisions: &[EventDecision],
+        ignore_notes: &[String],
+        additions: &Additions,
+        now: Moment,
+        note_targets: &[(String, Option<String>)],
+    ) -> anyhow::Result<(Vec<Walked>, usize)> {
+        let night = |event_id: &str| decisions.iter().find(|d| d.event_id.as_deref() == Some(event_id)).cloned();
+        let (day, remaining) = self.walk(now, Some(&night), MAX_DAYS)?;
+        let Some(day) = day else { return Ok((Vec::new(), remaining)) };
+        let plan = self.plan(&day, decisions, ignore_notes, additions, note_targets)?;
+        Ok((
+            vec![Walked { day, plan, decisions: decisions.to_vec(), ignore_notes: ignore_notes.to_vec(), note_targets: note_targets.to_vec() }],
+            remaining,
+        ))
+    }
+
+    fn write_revision(
+        &self,
+        walked: &[Walked],
+        meta: &RevisionMeta,
+        additions: &Additions,
+        previous: Option<Vec<JournalCompaction>>,
+        edits: &[UserEdit],
+    ) -> anyhow::Result<()> {
+        let batch = revision_id(&meta.proposal, meta.revision);
+        let days: Vec<PlannedDay> = walked
+            .iter()
+            .enumerate()
+            .map(|(i, w)| PlannedDay {
+                compaction_id: day_id(&batch, i + 1),
+                now: w.day.now,
+                note_ids: w.day.notes.iter().map(SheetNote::id).collect(),
+                decisions: &w.decisions,
+                plan: &w.plan,
+                ignore_notes: w.ignore_notes.clone(),
+                additions: if i == 0 { additions.to_json_dict() } else { Map::new() },
+                note_targets: w.note_targets.clone(),
+            })
+            .collect();
+        self.journal.start_batch(&days, Some(meta), edits)?;
+        for mut day in previous.unwrap_or_default() {
+            if day.status == PROPOSED || day.status == PLANNED {
+                self.journal.set_status(&mut day, SUPERSEDED)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn current(&self, proposal: &str) -> anyhow::Result<Vec<JournalCompaction>> {
+        let revisions = self.journal.revisions(proposal)?;
+        let Some((_, first, _)) = revisions.last() else {
+            return Err(ce(format!("there's no proposal {}", py::repr(proposal)), "unknown_proposal"));
+        };
+        self.journal.load_batch(first)
+    }
+
+    fn open(&self, proposal_id: &str) -> anyhow::Result<Vec<JournalCompaction>> {
+        let open_id = self.journal.open_proposal()?;
+        if Some(proposal_id) != open_id.as_deref() {
+            return Err(ce(
+                format!(
+                    "proposal {} isn't open{}",
+                    py::repr(proposal_id),
+                    match &open_id {
+                        Some(o) => format!("; the open one is {o}"),
+                        None => "; there's no open proposal".into(),
+                    }
+                ),
+                "unknown_proposal",
+            ));
+        }
+        self.current(proposal_id)
+    }
+
+    fn base(&self, proposal: &str, meta: &RevisionMeta, revision: Option<i64>) -> anyhow::Result<RevisionMeta> {
+        let Some(revision) = revision.filter(|r| (1..=meta.revision).contains(r)) else {
+            return Err(ce(
+                format!(
+                    "say which revision of proposal {proposal} you started from (revision=, 1 to {}; the current one is {})",
+                    meta.revision, meta.revision
+                ),
+                "stale_revision",
+            ));
+        };
+        let base = if revision == meta.revision { Some(meta.clone()) } else { self.journal.revision_meta(proposal, revision)? };
+        base.ok_or_else(|| ce(format!("revision {revision} of proposal {proposal} is gone: prepare again"), "stale_revision"))
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn answers(
+        &self,
+        proposal: &str,
+        replies: &[FeedbackReply],
+        feedback_rows: &[(i64, Feedback)],
+        edit_rows: &[(i64, UserEdit)],
+        base: Option<&RevisionMeta>,
+    ) -> anyhow::Result<(Vec<(i64, Feedback)>, Vec<i64>)> {
+        let mut problems: Vec<String> = Vec::new();
+        let mut answered: Vec<(i64, Feedback)> = Vec::new();
+        for reply in replies {
+            let Some((row, item)) = feedback_rows.iter().rev().find(|(_, f)| f.id == reply.feedback_id) else {
+                problems.push(format!("replies: {} isn't feedback on proposal {proposal}", py::repr(&reply.feedback_id)));
+                continue;
+            };
+            if item.status == "withdrawn" {
+                continue;
+            }
+            if item.status != "open" {
+                problems.push(format!("replies: {} is already {}", item.id, item.status));
+                continue;
+            }
+            if reply.reply.trim().is_empty() {
+                problems.push(format!("replies: the reply to {} is empty", item.id));
+                continue;
+            }
+            let mut item = item.clone();
+            item.status = "answered".into();
+            item.reply = Some(reply.reply.trim().to_string());
+            answered.push((*row, item));
+        }
+        if let Some(base) = base {
+            let done: Vec<&String> = answered.iter().map(|(_, i)| &i.id).collect();
+            let missed: Vec<String> = feedback_rows
+                .iter()
+                .filter(|(_, f)| f.status == "open" && f.created < base.created() && !done.contains(&&f.id))
+                .map(|(_, f)| f.id.clone())
+                .collect();
+            if !missed.is_empty() {
+                problems.push(format!("answer every open feedback item in `replies` -- these aren't: {}", missed.join(", ")));
+            }
+        }
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "feedback"));
+        }
+        let about: Vec<String> =
+            answered.iter().flat_map(|(_, i)| [i.event_id.clone(), i.note_id.clone()]).flatten().filter(|n| !n.is_empty()).collect();
+        let mut replaced: Vec<i64> = edit_rows
+            .iter()
+            .filter(|(_, e)| {
+                e.status == "active"
+                    && e.event_id.as_ref().is_some_and(|id| about.contains(id))
+                    && base.is_some_and(|b| e.seq <= b.user_seq)
+            })
+            .map(|(row, _)| *row)
+            .collect();
+        replaced.sort();
+        Ok((answered, replaced))
+    }
+
+    fn known_ids(&self, now: Moment) -> anyhow::Result<Vec<String>> {
+        let (sheet_notes, _latest) = self.notes.read_with_latest_compacted()?;
+        let times: Vec<Moment> = sheet_notes.iter().map(|n| n.note.timestamp).filter(|t| *t <= now).collect();
+        let last_stamped = self.journal.last_stamped_now()?;
+        let anchor = last_stamped.or(if times.is_empty() { Some(now) } else { None });
+        let oldest = anchor.into_iter().chain(times.iter().copied()).min().unwrap();
+        let mut ids: Vec<String> = Vec::new();
+        for e in self.calendar.list_events(&(oldest - prefetch_before()), &(now + prefetch_after()))? {
+            if let Some(id) = e.id.clone().filter(|i| !i.is_empty()) {
+                if !e.is_cancelled() && !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+        }
+        Ok(ids)
+    }
+
+    fn proposal_context(&self) -> anyhow::Result<Option<ProposalContext>> {
+        let Some(proposal) = self.journal.open_proposal()? else { return Ok(None) };
+        let current = self.current(&proposal)?;
+        let meta = current[0].meta().clone();
+        let feedback: Vec<Feedback> = self.journal.feedback(&proposal)?.into_iter().map(|(_, f)| f).collect();
+        let edits: Vec<UserEdit> = self.journal.user_edits(&proposal)?.into_iter().map(|(_, e)| e).collect();
+        let claude_additions = claude_additions_of(&current);
+        let (mut updates, mut creates, mut cancels) = (Vec::new(), Vec::new(), Vec::new());
+        for decision in &meta.claude_decisions {
+            let (kind, shape) = decision_shape(decision);
+            match kind {
+                "creates" => creates.push(shape),
+                "cancels" => cancels.push(shape),
+                _ => updates.push(shape),
+            }
+        }
+        let list = |key: &str| -> Vec<Value> { claude_additions.get(key).and_then(Value::as_array).cloned().unwrap_or_default() };
+        Ok(Some(ProposalContext {
+            id: proposal.clone(),
+            revision: meta.revision,
+            state: state_of(&current, &feedback),
+            user_seq: meta.user_seq,
+            updates,
+            creates,
+            cancels,
+            ignore_notes: claude_ignore(&current),
+            annotate_notes: meta.claude_note_targets.iter().map(|(n, e)| json!({"note_id": n, "event_id": e})).collect(),
+            new_actions: list("actions"),
+            new_people: list("people"),
+            new_locations: list("locations"),
+            settled_additions: merge(&proposal, &[], &edits, MergeOptions::default()).settled.values().cloned().collect(),
+            user_edits: edits,
+            feedback,
+            recap: meta.claude_recap.as_ref().map(Recap::from_json_dict),
+        }))
+    }
+
+    pub fn proposal_summary(&self) -> anyhow::Result<Option<ProposalSummary>> {
+        let Some(proposal) = self.journal.open_proposal()? else { return Ok(None) };
+        let current = self.current(&proposal)?;
+        let meta = current[0].meta();
+        let feedback: Vec<Feedback> = self.journal.feedback(&proposal)?.into_iter().map(|(_, f)| f).collect();
+        Ok(Some(ProposalSummary {
+            id: proposal.clone(),
+            revision: meta.revision,
+            state: state_of(&current, &feedback),
+            window_start: meta.window_start(),
+            through: current.last().unwrap().now,
+            open_feedback: feedback.iter().filter(|f| f.status == "open").count() as i64,
+        }))
+    }
+
+    pub fn get_proposal(&self, proposal_id: Option<&str>, since_revision: Option<i64>) -> anyhow::Result<Proposal> {
+        self.prefetch_tabs(true)?;
+        let proposal = match proposal_id.filter(|p| !p.is_empty()) {
+            Some(p) => Some(p.to_string()),
+            None => self.journal.open_proposal()?,
+        };
+        let Some(proposal) = proposal else { return Err(ce("there's no open proposal", "unknown_proposal")) };
+        let current = self.current(&proposal)?;
+        let replanned = self.replanned(&current)?;
+        self.view(&current, replanned, since_revision, None, None, None)
+    }
+
+    fn replanned(&self, current: &[JournalCompaction]) -> anyhow::Result<Replanned> {
+        if current.iter().any(|d| [STAMPED, ABANDONED, APPLYING, APPLIED].contains(&d.status.as_str())) {
+            return Ok(Replanned::Failed(error("it's been applied or abandoned", "finished")));
+        }
+        match self.replan(current, false) {
+            Ok(walked) => Ok(Replanned::Walked(walked)),
+            Err(e) => match compaction_error(&e) {
+                Some(c) => Ok(Replanned::Failed(c.clone())),
+                None => Err(e),
+            },
+        }
+    }
+
+    fn view(
+        &self,
+        current: &[JournalCompaction],
+        walked: Replanned,
+        since_revision: Option<i64>,
+        replaced: Option<Vec<String>>,
+        edits: Option<Vec<UserEdit>>,
+        feedback: Option<Vec<Feedback>>,
+    ) -> anyhow::Result<Proposal> {
+        let meta = current[0].meta().clone();
+        let proposal = meta.proposal.clone();
+        let edits = match edits {
+            Some(e) => e,
+            None => self.journal.user_edits(&proposal)?.into_iter().map(|(_, e)| e).collect(),
+        };
+        let feedback = match feedback {
+            Some(f) => f,
+            None => self.journal.feedback(&proposal)?.into_iter().map(|(_, f)| f).collect(),
+        };
+        let state = state_of(current, &feedback);
+        let mut view = Proposal {
+            id: proposal.clone(),
+            revision: meta.revision,
+            state: state.clone(),
+            window_start: meta.window_start(),
+            through: current.last().unwrap().now,
+            claude_through: Some(meta.claude_through.unwrap_or(current.last().unwrap().now)),
+            by: meta.by.clone(),
+            reason: meta.reason.clone(),
+            created: meta.created(),
+            events: None,
+            problem: None,
+            notes: Vec::new(),
+            changes: Vec::new(),
+            warnings: current.iter().flat_map(|d| d.warnings.clone()).collect(),
+            timeline: None,
+            additions: Some(current[0].additions.clone()).filter(|a| !a.is_empty()),
+            settled_additions: Vec::new(),
+            user_edits: edits.clone(),
+            feedback,
+            recap: meta.claude_recap.as_ref().map(Recap::from_json_dict),
+            recap_revision: meta.recap_revision,
+            changed_since: None,
+            replaced,
+        };
+        match walked {
+            Replanned::Failed(problem) => {
+                view.changes = current.iter().flat_map(|d| d.changes()).collect();
+                if state == "awaiting_review" || state == "awaiting_claude" {
+                    view.problem = Some(format!("it no longer plans against the calendar: {}", problem.message));
+                }
+            }
+            Replanned::Walked(walked) => {
+                let included: Vec<UserEdit> = edits.iter().filter(|e| e.seq <= meta.user_seq).cloned().collect();
+                let ignore = claude_ignore(current);
+                let merged = merge(
+                    &proposal,
+                    &meta.claude_decisions,
+                    &included,
+                    MergeOptions { aliases: &meta.aliases, claude_ignore: &ignore, claude_targets: &meta.claude_note_targets, ..Default::default() },
+                );
+                view.events = Some(proposal_events(&walked, &merged.decided_by));
+                view.notes = proposal_notes(&walked, &merged);
+                view.settled_additions = merged.settled.values().cloned().collect();
+                view.changes = walked.iter().flat_map(|w| w.plan.changes.clone()).collect();
+                view.timeline = Some(joined(&walked));
+            }
+        }
+        if let Some(since) = since_revision {
+            let mut changed: Vec<String> = Vec::new();
+            for number in (since + 1)..=meta.revision {
+                let later = if number == meta.revision { Some(meta.clone()) } else { self.journal.revision_meta(&proposal, number)? };
+                if let Some(later) = later {
+                    for name in later.changed {
+                        if !changed.contains(&name) {
+                            changed.push(name);
+                        }
+                    }
+                }
+            }
+            changed.sort();
+            view.changed_since = Some(changed);
+        }
+        Ok(view)
+    }
+
+    /// amend_proposal: the user's edits laid over the open proposal as a
+    /// new revision.
+    #[allow(clippy::too_many_arguments)]
+    pub fn amend(
+        &self,
+        proposal_id: &str,
+        revision: i64,
+        decisions: Vec<EventDecision>,
+        as_planned: Vec<String>,
+        notes: Vec<NoteEdit>,
+        additions: Vec<AdditionChoice>,
+        through: Option<Moment>,
+    ) -> anyhow::Result<Proposal> {
+        self.prefetch_tabs(true)?;
+        self.journal.garbage_collect()?;
+        let current = self.open(proposal_id)?;
+        let meta = current[0].meta().clone();
+        if current.iter().any(|d| OPEN_STATUSES.contains(&d.status.as_str())) {
+            return Err(ce(format!("proposal {proposal_id} is being applied; it can't be changed now"), "applying"));
+        }
+        self.base(proposal_id, &meta, Some(revision))?;
+        let claude_additions = Additions::from_json_dict(Some(&Value::Object(claude_additions_of(&current))));
+        let edit_rows = self.journal.user_edits(proposal_id)?;
+        let all_edits: Vec<UserEdit> = edit_rows.iter().map(|(_, e)| e.clone()).collect();
+        let known_settled: Vec<String> = merge(proposal_id, &[], &all_edits, MergeOptions::default()).settled.keys().cloned().collect();
+        let decisions = self.checked_facts(decisions, &claude_additions, &known_settled)?;
+        let mut seq = edit_rows.iter().map(|(_, e)| e.seq).max().unwrap_or(0);
+        let now = self.clock();
+        let mut new_edits: Vec<UserEdit> = Vec::new();
+        let add = |new_edits: &mut Vec<UserEdit>, seq: &mut i64, event_id: Option<String>, edit: Map<String, Value>| {
+            *seq += 1;
+            new_edits.push(UserEdit {
+                id: edit_id(proposal_id, *seq),
+                seq: *seq,
+                event_id,
+                edit,
+                status: "active".into(),
+                created: now,
+                base_revision: revision,
+            });
+        };
+        for decision in &decisions {
+            let edit = decision.to_json_dict().as_object().cloned().unwrap_or_default();
+            add(&mut new_edits, &mut seq, if decision.action != "create" { decision.event_id.clone() } else { None }, edit);
+        }
+        for note in &notes {
+            add(&mut new_edits, &mut seq, Some(note.note_id.clone()), note.edit());
+        }
+        let choices = self.addition_choices(&claude_additions, &additions)?;
+        for (choice, _) in &choices {
+            let mut edit = Map::new();
+            edit.insert("action".into(), json!("addition"));
+            edit.insert("use".into(), json!(choice.use_));
+            if let Some(id) = choice.id.as_ref().filter(|i| !i.is_empty()) {
+                edit.insert("id".into(), json!(id));
+            }
+            add(&mut new_edits, &mut seq, Some(choice.ref_.clone()), edit);
+        }
+        for name in &as_planned {
+            let mut edit = Map::new();
+            edit.insert("action".into(), json!("as_planned"));
+            add(&mut new_edits, &mut seq, Some(name.clone()), edit);
+        }
+        let before = current.last().unwrap().now;
+        if let Some(through) = through {
+            if through < before {
+                return Err(ce(format!("proposal {proposal_id} runs to {}: it can only be extended, not cut short", iso(&before)), "not_extended"));
+            }
+            if through > now {
+                return Err(ce(format!("proposal {proposal_id} can't be extended past now ({})", iso(&now)), "future"));
+            }
+        }
+        let extended = through.is_some_and(|t| t > before);
+        let mut taken_in: Vec<String> = Vec::new();
+        if extended {
+            let mut said: Vec<String> = notes.iter().map(|n| n.note_id.clone()).collect();
+            said.extend(edit_rows.iter().filter(|(_, e)| e.action() == Some("note")).filter_map(|(_, e)| e.event_id.clone()));
+            let (sheet_notes, _latest) = self.notes.read_with_latest_compacted()?;
+            taken_in = sheet_notes.iter().filter(|n| before < n.note.timestamp && n.note.timestamp <= through.unwrap()).map(SheetNote::id).collect();
+            for note_id in &taken_in {
+                if said.contains(note_id) {
+                    continue;
+                }
+                let edit = NoteEdit { note_id: note_id.clone(), use_: "annotate".into(), event_id: None }.edit();
+                add(&mut new_edits, &mut seq, Some(note_id.clone()), edit);
+            }
+        }
+        if new_edits.is_empty() && !extended {
+            return Err(ce("there's nothing to amend", "empty"));
+        }
+        let through = if extended { through.unwrap() } else { before };
+        let mut known_notes: Vec<String> = current.iter().flat_map(|d| d.note_ids.clone()).collect();
+        known_notes.extend(taken_in.iter().cloned());
+        let ignore = claude_ignore(&current);
+        let planned = |edits: &[UserEdit]| -> anyhow::Result<(Merged, Vec<Walked>)> {
+            let mut all = all_edits.clone();
+            all.extend(edits.iter().cloned());
+            let known_ids = self.known_ids(through)?;
+            let merged = merge(
+                proposal_id,
+                &meta.claude_decisions,
+                &all,
+                MergeOptions {
+                    known_ids: Some(&known_ids),
+                    aliases: &meta.aliases,
+                    settled: &meta.settled,
+                    claude_ignore: &ignore,
+                    claude_targets: &meta.claude_note_targets,
+                    known_notes: Some(&known_notes),
+                },
+            );
+            let unknown_new: Vec<&UserEdit> = merged.unknown.iter().filter(|e| edits.iter().any(|n| n == *e)).collect();
+            if !unknown_new.is_empty() {
+                let named: Vec<String> = unknown_new
+                    .iter()
+                    .map(|e| match e.event_id.clone().filter(|i| !i.is_empty()) {
+                        Some(id) => py::repr(&id),
+                        None => match e.edit.get("event_id") {
+                            Some(v) => python_repr(v),
+                            None => "None".into(),
+                        },
+                    })
+                    .collect();
+                return Err(ce(format!("these edits name events or notes that aren't in the proposal: {}", named.join(", ")), "unknown_event"));
+            }
+            let (walked, _remaining) = self.plan_walk(
+                &settled_decisions(&merged),
+                &merged.ignore_notes,
+                &unsettled(&claude_additions, &merged.settled),
+                through,
+                &merged.note_targets.items,
+            )?;
+            Ok((merged, walked))
+        };
+        let creating: Vec<String> = new_edits
+            .iter()
+            .filter(|e| e.action() == Some("addition") && e.edit.get("use").and_then(Value::as_str) == Some("create"))
+            .filter_map(|e| e.event_id.clone())
+            .collect();
+        if !creating.is_empty() {
+            let without: Vec<UserEdit> = new_edits.iter().filter(|e| e.event_id.as_ref().is_none_or(|id| !creating.contains(id))).cloned().collect();
+            planned(&without)?;
+            for (choice, item) in &choices {
+                if choice.use_ == "create" {
+                    let id = self.create_addition(item, choice)?;
+                    // The last edit for that ref, as Python's dict keeps it.
+                    if let Some(edit) = new_edits.iter_mut().rev().find(|e| {
+                        e.action() == Some("addition")
+                            && e.edit.get("use").and_then(Value::as_str) == Some("create")
+                            && e.event_id.as_deref() == Some(choice.ref_.as_str())
+                    }) {
+                        edit.edit.insert("id".into(), json!(id));
+                    }
+                }
+            }
+        }
+        let (merged, mut walked) = planned(&new_edits)?;
+        let additions = unsettled(&claude_additions, &merged.settled);
+        let mut kept_out: Vec<(String, String)> = Vec::new();
+        for w in &walked {
+            for (note, key) in &w.plan.kept_out {
+                match kept_out.iter_mut().find(|(n, _)| n == note) {
+                    Some(slot) => slot.1 = key.clone(),
+                    None => kept_out.push((note.clone(), key.clone())),
+                }
+            }
+        }
+        let mut left_out: Vec<(String, Vec<String>)> = Vec::new();
+        for edit in new_edits.iter_mut() {
+            let action = edit.action().unwrap_or_default().to_string();
+            if edit.edit.get("description").is_some_and(|d| !d.is_null()) && (action == "keep" || action == "create") {
+                let described = if action == "create" { edit.id.clone() } else { edit.event_id.clone().unwrap_or_default() };
+                let mut notes: Vec<String> = kept_out.iter().filter(|(_, k)| *k == described).map(|(n, _)| n.clone()).collect();
+                notes.sort();
+                match left_out.iter_mut().find(|(k, _)| *k == described) {
+                    Some(slot) => slot.1 = notes.clone(),
+                    None => left_out.push((described.clone(), notes.clone())),
+                }
+                edit.edit.insert("dropped_notes".into(), json!(notes));
+            }
+        }
+        for w in walked.iter_mut() {
+            for d in w.decisions.iter_mut() {
+                let name = d.key.clone().or(d.event_id.clone()).unwrap_or_default();
+                if d.description.is_some() && d.dropped_notes.is_none() {
+                    if let Some((_, notes)) = left_out.iter().find(|(k, _)| *k == name) {
+                        d.dropped_notes = Some(notes.clone());
+                    }
+                }
+            }
+        }
+        let outcomes = outcomes_of(&walked);
+        let mut new_meta = meta.clone();
+        new_meta.revision = meta.revision + 1;
+        new_meta.window_start = Some(walked[0].day.compaction_window_start);
+        new_meta.created = Some(now);
+        new_meta.base = Some(revision);
+        new_meta.user_seq = seq;
+        new_meta.by = "user".into();
+        new_meta.reason = "user edit".into();
+        new_meta.changed = changed(Some(&meta.outcomes), &outcomes);
+        new_meta.outcomes = outcomes;
+        new_meta.claude_additions = Some(claude_additions.to_json_dict());
+        let replaced = self.replaced(proposal_id, &meta, revision, &new_edits)?;
+        self.write_revision(&walked, &new_meta, &additions, Some(current), &new_edits)?;
+        let unknown: Vec<&String> = merged.unknown.iter().map(|e| &e.id).collect();
+        for (row, edit) in &edit_rows {
+            if unknown.contains(&&edit.id) {
+                self.journal.set_user_edit_status(*row, "inapplicable")?;
+            }
+        }
+        let current = self.current(proposal_id)?;
+        self.view(&current, Replanned::Walked(walked), None, Some(replaced), None, None)
+    }
+
+    fn addition_choices(&self, additions: &Additions, choices: &[AdditionChoice]) -> anyhow::Result<Vec<(AdditionChoice, (String, rows::Row))>> {
+        let mut added: Vec<(String, (String, rows::Row))> = Vec::new();
+        for (kind, items) in [("action", &additions.actions), ("person", &additions.people), ("location", &additions.locations)] {
+            for item in items {
+                let r = ref_of(item);
+                match added.iter_mut().find(|(k, _)| *k == r) {
+                    Some(slot) => slot.1 = (kind.into(), item.clone()),
+                    None => added.push((r, (kind.into(), item.clone()))),
+                }
+            }
+        }
+        let ids = |rows: anyhow::Result<Vec<rows::Row>>| -> anyhow::Result<Vec<String>> {
+            Ok(rows?.iter().map(|r| python_str(r.get("id"))).collect())
+        };
+        let there_actions = match &self.actions {
+            Some(a) => ids(a.all())?,
+            None => Vec::new(),
+        };
+        let there_people = match &self.people {
+            Some(p) => ids(p.all())?,
+            None => Vec::new(),
+        };
+        let there_locations = match &self.locations {
+            Some(l) => ids(l.all())?,
+            None => Vec::new(),
+        };
+        let mut problems: Vec<String> = Vec::new();
+        let mut found = Vec::new();
+        for choice in choices {
+            let Some((_, (kind, item))) = added.iter().find(|(k, _)| *k == choice.ref_) else {
+                problems.push(format!("additions: {} isn't something the proposal adds", py::repr(&choice.ref_)));
+                continue;
+            };
+            let there = match kind.as_str() {
+                "action" => &there_actions,
+                "person" => &there_people,
+                _ => &there_locations,
+            };
+            if choice.use_ == "existing" && !choice.id.as_ref().is_some_and(|i| there.contains(i)) {
+                problems.push(format!("additions: {} -- there's no {kind} {}", choice.ref_, repr_opt(choice.id.as_deref())));
+                continue;
+            }
+            if choice.use_ != "existing" && choice.id.is_some() {
+                problems.push(format!("additions: {} -- only 'existing' takes an id", choice.ref_));
+                continue;
+            }
+            found.push((choice.clone(), (kind.clone(), item.clone())));
+        }
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "additions"));
+        }
+        Ok(found)
+    }
+
+    fn create_addition(&self, item: &(String, rows::Row), choice: &AdditionChoice) -> anyhow::Result<String> {
+        let (kind, row) = item;
+        let mut row = row.clone();
+        for (name, value) in [("name", &choice.name), ("context", &choice.context), ("hint", &choice.hint)] {
+            if let Some(value) = value {
+                if row.contains_key(name) {
+                    row.insert(name.into(), json!(value));
+                }
+            }
+        }
+        if kind == "action" {
+            row.insert("status".into(), json!("active"));
+        }
+        let single = Additions {
+            actions: if kind == "action" { vec![row.clone()] } else { Vec::new() },
+            people: if kind == "person" { vec![row.clone()] } else { Vec::new() },
+            locations: if kind == "location" { vec![row.clone()] } else { Vec::new() },
+        };
+        let ids = create_additions(&single, self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?;
+        Ok(lookup(&ids, &ref_of(&row)).unwrap_or_default())
+    }
+
+    fn replaced(&self, proposal: &str, meta: &RevisionMeta, base: i64, edits: &[UserEdit]) -> anyhow::Result<Vec<String>> {
+        if base == meta.revision {
+            return Ok(Vec::new());
+        }
+        let then = match self.journal.load(&revision_id(proposal, base)) {
+            Ok(then) => then,
+            Err(e) if compaction_error(&e).is_some() => return Ok(Vec::new()),
+            Err(e) => return Err(e),
+        };
+        let claude = then.meta.as_ref().map(|m| m.claude_decisions.clone()).unwrap_or_default();
+        if then.decisions.is_empty() && then.steps.is_empty() && claude.is_empty() {
+            return Ok(Vec::new());
+        }
+        let by_event = |decisions: &[EventDecision]| -> Vec<(String, Value)> {
+            let mut out: Vec<(String, Value)> = Vec::new();
+            for d in decisions {
+                let name = d.key.clone().or(d.event_id.clone()).unwrap_or_default();
+                match out.iter_mut().find(|(k, _)| *k == name) {
+                    Some(slot) => slot.1 = d.to_json_dict(),
+                    None => out.push((name, d.to_json_dict())),
+                }
+            }
+            out
+        };
+        let before = by_event(&claude);
+        let now = by_event(&meta.claude_decisions);
+        let get = |map: &[(String, Value)], key: &str| map.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone());
+        let mut names: Vec<String> = edits
+            .iter()
+            .filter_map(|e| e.event_id.clone().filter(|i| !i.is_empty()))
+            .filter(|id| get(&before, id) != get(&now, id))
+            .collect();
+        names.sort();
+        names.dedup();
+        Ok(names)
+    }
+
+    pub fn add_note(&self, proposal_id: &str, text: &str, event_id: Option<String>, at: Option<Moment>, note_id: Option<String>) -> anyhow::Result<Feedback> {
+        self.prefetch_tabs(false)?;
+        if self.open(proposal_id)?.iter().any(|d| OPEN_STATUSES.contains(&d.status.as_str())) {
+            return Err(ce(format!("proposal {proposal_id} is being applied"), "applying"));
+        }
+        if text.trim().is_empty() {
+            return Err(ce("the note is empty", "empty"));
+        }
+        let seq = self.journal.feedback(proposal_id)?.iter().map(|(_, f)| f.seq).max().unwrap_or(0) + 1;
+        let item = Feedback {
+            id: feedback_id(proposal_id, seq),
+            seq,
+            text: text.trim().into(),
+            event_id,
+            note_id,
+            at,
+            by: "user".into(),
+            created: self.clock(),
+            status: "open".into(),
+            reply: None,
+            answered_in: None,
+            superseded_by: None,
+        };
+        self.journal.add_feedback(&item, proposal_id)?;
+        Ok(item)
+    }
+
+    fn uncompacted_notes(&self, now: Moment) -> anyhow::Result<Vec<String>> {
+        let (sheet_notes, _latest) = self.notes.read_with_latest_compacted()?;
+        Ok(sheet_notes.iter().filter(|n| n.note.timestamp <= now).map(SheetNote::id).collect())
+    }
+
+    pub fn withdraw_note(&self, feedback: &str) -> anyhow::Result<Feedback> {
+        self.prefetch_tabs(false)?;
+        let Some((proposal, _seq)) = split_feedback_id(feedback) else {
+            return Err(ce(format!("{} isn't a feedback id", py::repr(feedback)), "unknown_feedback"));
+        };
+        let Some((row, item)) = self.journal.feedback(&proposal)?.into_iter().find(|(_, f)| f.id == feedback) else {
+            return Err(ce(format!("there's no feedback {}", py::repr(feedback)), "unknown_feedback"));
+        };
+        if item.status == "withdrawn" {
+            return Ok(item);
+        }
+        if item.status == "answered" {
+            return Err(ce(
+                format!(
+                    "{feedback} was already answered, in revision {}: see the reply",
+                    item.answered_in.map(|r| r.to_string()).unwrap_or_else(|| "None".into())
+                ),
+                "answered",
+            ));
+        }
+        self.open(&proposal)?;
+        let mut item = item;
+        item.status = "withdrawn".into();
+        self.journal.update_feedback(row, &item)?;
+        Ok(item)
+    }
+
+    pub fn confirm(&self, proposal_id: &str, revision: i64) -> anyhow::Result<ProposalResult> {
+        self.prefetch_tabs(true)?;
+        let current = self.open(proposal_id)?;
+        let meta = current[0].meta().clone();
+        if current.iter().any(|d| OPEN_STATUSES.contains(&d.status.as_str())) {
+            return Err(ce(format!("proposal {proposal_id} is already being applied: finish it with finish_proposal"), "applying"));
+        }
+        if revision != meta.revision {
+            return Err(ce(
+                format!("revision {revision} isn't proposal {proposal_id}'s current one ({}): review that, and confirm it", meta.revision),
+                "stale_revision",
+            ));
+        }
+        let feedback: Vec<Feedback> = self.journal.feedback(proposal_id)?.into_iter().map(|(_, f)| f).collect();
+        let waiting: Vec<String> = feedback.iter().filter(|f| f.status == "open").map(|f| f.id.clone()).collect();
+        if !waiting.is_empty() {
+            return Err(ce(
+                format!("feedback is waiting for Claude ({}): wait for the revision that answers it, or withdraw it", waiting.join(", ")),
+                "feedback_open",
+            ));
+        }
+        if current[0].status != PROPOSED {
+            return Err(ce(format!("proposal {proposal_id} needs Claude first"), "needs_claude"));
+        }
+        self.require_no_open_compaction()?;
+        self.journal.garbage_collect()?;
+        let current = self.current(proposal_id)?;
+        if let Err(e) = self.replan(&current, true) {
+            let Some(problem) = compaction_error(&e) else { return Err(e) };
+            if !problem.categories.iter().any(|c| c == "stale") {
+                return self.needs_claude(proposal_id, &current, &format!("it no longer plans: {}", problem.message));
+            }
+            let walked = match self.replan(&current, false) {
+                Ok(walked) => walked,
+                Err(e) => match compaction_error(&e) {
+                    Some(replanned) => return self.needs_claude(proposal_id, &current, &format!("it no longer plans: {}", replanned.message)),
+                    None => return Err(e),
+                },
+            };
+            let outcomes = outcomes_of(&walked);
+            let mut new_meta = meta.clone();
+            new_meta.revision = meta.revision + 1;
+            new_meta.window_start = Some(walked[0].day.compaction_window_start);
+            new_meta.created = Some(self.clock());
+            new_meta.base = Some(meta.revision);
+            new_meta.by = "server".into();
+            new_meta.reason = "recheck".into();
+            new_meta.changed = changed(Some(&meta.outcomes), &outcomes);
+            new_meta.outcomes = outcomes;
+            let additions = Additions::from_json_dict(Some(&Value::Object(current[0].additions.clone())));
+            self.write_revision(&walked, &new_meta, &additions, Some(current), &[])?;
+            let refreshed = self.current(proposal_id)?;
+            return Ok(ProposalResult {
+                status: "rechecked".into(),
+                message: format!(
+                    "the notes or calendar changed since revision {revision}, so it was planned again as revision {}: review what changed, and confirm that",
+                    new_meta.revision
+                ),
+                proposal: Some(self.view(&refreshed, Replanned::Walked(walked), Some(revision), None, None, None)?),
+            });
+        }
+        self.apply(proposal_id, current, Some(feedback))
+    }
+
+    pub fn finish(&self, proposal_id: &str) -> anyhow::Result<ProposalResult> {
+        self.prefetch_tabs(true)?;
+        let current = self.current(proposal_id)?;
+        let statuses: Vec<&str> = current.iter().map(|d| d.status.as_str()).collect();
+        if statuses.iter().all(|s| *s == STAMPED) {
+            return Ok(ProposalResult {
+                status: "applied".into(),
+                message: format!("proposal {proposal_id} was already applied"),
+                proposal: Some(self.view(&current, Replanned::Failed(error("applied", "finished")), None, None, None, None)?),
+            });
+        }
+        if !statuses.iter().any(|s| OPEN_STATUSES.contains(s)) {
+            return Err(ce(format!("proposal {proposal_id} hasn't been confirmed, so there's nothing to finish"), "not_confirmed"));
+        }
+        self.apply(proposal_id, current, None)
+    }
+
+    fn apply(&self, proposal: &str, mut current: Vec<JournalCompaction>, feedback: Option<Vec<Feedback>>) -> anyhow::Result<ProposalResult> {
+        let edits: Vec<UserEdit> = self.journal.user_edits(proposal)?.into_iter().map(|(_, e)| e).collect();
+        let feedback = match feedback {
+            Some(f) => f,
+            None => self.journal.feedback(proposal)?.into_iter().map(|(_, f)| f).collect(),
+        };
+        let result = match self.commit(&current[0].batch_id(), false) {
+            Ok(result) => result,
+            Err(e) => match google_status(&e) {
+                Some(404) | Some(410) => return self.rebuild(proposal, &current[0].batch_id(), &e),
+                Some(_) => {
+                    return Err(ce(
+                        format!("applying proposal {proposal} stopped partway ({e}); what's done stays done -- finish it with finish_proposal"),
+                        "apply_stopped",
+                    ))
+                }
+                None => return Err(e),
+            },
+        };
+        let judging = if result.judgments.is_some() { " Claude makes its judgments next (prepare_judgments)." } else { "" };
+        for day in current.iter_mut() {
+            day.status = STAMPED.into();
+        }
+        let message = result.message.split(". The compaction isn't complete yet").next().unwrap_or_default().to_string() + "." + judging;
+        Ok(ProposalResult {
+            status: "applied".into(),
+            message,
+            proposal: Some(self.view(&current, Replanned::Failed(error("applied", "finished")), None, None, Some(edits), Some(feedback))?),
+        })
+    }
+
+    fn rebuild(&self, proposal: &str, batch: &str, failure: &anyhow::Error) -> anyhow::Result<ProposalResult> {
+        let mut days = self.journal.load_batch(batch)?;
+        let meta = days[0].meta().clone();
+        let failed_index = days.iter().position(|d| d.status != STAMPED).unwrap();
+        self.record_cancellations(&days[failed_index], true)?;
+        let mut aliases = meta.aliases.clone();
+        let mut settled: Vec<String> = meta.settled.clone();
+        let mut judge_also = meta.judge_also.clone();
+        for day in &days {
+            if day.status == STAMPED {
+                let (ids, _) = judged_events(std::slice::from_ref(day));
+                judge_also.extend(ids.into_iter().map(|i| json!([i, null, null])));
+            }
+        }
+        let failed = days[failed_index].clone();
+        for step in &failed.steps {
+            if step.status != "done" {
+                continue;
+            }
+            if step.action == "create" {
+                if let Some(key) = &step.key {
+                    let id = new_event_id(&failed.id, step.step);
+                    match aliases.iter_mut().find(|(k, _)| k == key) {
+                        Some(slot) => slot.1 = id,
+                        None => aliases.push((key.clone(), id)),
+                    }
+                }
+            } else if step.action == "cancel" {
+                if let Some(id) = &step.event_id {
+                    if !settled.contains(id) {
+                        settled.push(id.clone());
+                    }
+                }
+            }
+            if step.action != "cancel" && step.after.as_ref().is_some_and(|a| a.facts.as_ref().is_some_and(|f| truthy(Some(f)))) {
+                let id = if step.action == "update" { step.event_id.clone().unwrap_or_default() } else { new_event_id(&failed.id, step.step) };
+                judge_also.push(json!([id, null, null]));
+            }
+        }
+        for day in days.iter_mut() {
+            if day.status != STAMPED {
+                self.journal.set_status(day, FAILED)?;
+            }
+        }
+        let mut history: Vec<String> = Vec::new();
+        for day in &days {
+            if day.status == STAMPED {
+                for d in &day.decisions {
+                    for name in [&d.event_id, &d.key].into_iter().flatten() {
+                        if !name.is_empty() && !history.contains(name) {
+                            history.push(name.clone());
+                        }
+                    }
+                }
+            }
+        }
+        let through = days.last().unwrap().now;
+        let known = self.known_ids(through)?;
+        let mut carried: Vec<EventDecision> = Vec::new();
+        let mut dropped: Vec<String> = Vec::new();
+        for decision in &meta.claude_decisions {
+            if decision.action == "create" {
+                if decision.key.as_ref().is_none_or(|k| lookup(&aliases, k).is_none()) {
+                    carried.push(decision.clone());
+                }
+            } else if decision.event_id.as_ref().is_some_and(|e| settled.contains(e) || history.contains(e)) {
+                continue;
+            } else if !decision.event_id.as_ref().is_some_and(|e| known.contains(e)) {
+                dropped.push(decision.event_id.clone().unwrap_or_default());
+            } else {
+                carried.push(decision.clone());
+            }
+        }
+        let edit_rows = self.journal.user_edits(proposal)?;
+        let all_edits: Vec<UserEdit> = edit_rows.iter().map(|(_, e)| e.clone()).collect();
+        let mut settled_all = settled.clone();
+        for h in &history {
+            if !settled_all.contains(h) {
+                settled_all.push(h.clone());
+            }
+        }
+        let ignore = claude_ignore(&days);
+        let known_notes = self.uncompacted_notes(through)?;
+        let merged = merge(
+            proposal,
+            &carried,
+            &all_edits,
+            MergeOptions {
+                known_ids: Some(&known),
+                aliases: &aliases,
+                settled: &settled_all,
+                claude_ignore: &ignore,
+                claude_targets: &meta.claude_note_targets,
+                known_notes: Some(&known_notes),
+            },
+        );
+        let inapplicable: Vec<&String> = merged.unknown.iter().map(|e| &e.id).collect();
+        for (row, edit) in &edit_rows {
+            if inapplicable.contains(&&edit.id) {
+                self.journal.set_user_edit_status(*row, "inapplicable")?;
+            }
+        }
+        let stopped = format!("applying revision {} stopped: {failure}", meta.revision);
+        let additions = unsettled(&Additions::from_json_dict(Some(&Value::Object(claude_additions_of(&days)))), &merged.settled);
+        let mut walked = match self.plan_walk(&settled_decisions(&merged), &merged.ignore_notes, &additions, through, &merged.note_targets.items) {
+            Ok((walked, _)) => walked,
+            Err(e) => match compaction_error(&e) {
+                Some(problem) => {
+                    return self.needs_claude(proposal, &days, &format!("{stopped}. What's left of it couldn't be planned again: {}", problem.message))
+                }
+                None => return Err(e),
+            },
+        };
+        let mut left_out: Vec<String> = dropped.clone();
+        left_out.extend(merged.unknown.iter().filter_map(|e| e.event_id.clone()).filter(|e| !e.is_empty()));
+        left_out.sort();
+        left_out.dedup();
+        walked[0].plan.warnings.insert(
+            0,
+            format!(
+                "{stopped}. What it wrote before then stays; this is what's left of it{}.",
+                if left_out.is_empty() { String::new() } else { format!(" -- leaving out what was about {}, which is gone", left_out.join(", ")) }
+            ),
+        );
+        let outcomes = outcomes_of(&walked);
+        let mut new_meta = meta.clone();
+        new_meta.revision = meta.revision + 1;
+        new_meta.window_start = Some(walked[0].day.compaction_window_start);
+        new_meta.created = Some(self.clock());
+        new_meta.base = Some(meta.revision);
+        new_meta.by = "server".into();
+        new_meta.reason = "apply failed".into();
+        new_meta.changed = changed(Some(&meta.outcomes), &outcomes);
+        new_meta.outcomes = outcomes;
+        new_meta.claude_decisions = carried;
+        new_meta.aliases = aliases;
+        settled_all.sort();
+        new_meta.settled = settled_all;
+        new_meta.judge_also = judge_also;
+        self.write_revision(&walked, &new_meta, &additions, None, &[])?;
+        let refreshed = self.current(proposal)?;
+        Ok(ProposalResult {
+            status: "rebuilt".into(),
+            message: format!("{stopped}; what's left of it is revision {}, to review and confirm", new_meta.revision),
+            proposal: Some(self.view(&refreshed, Replanned::Walked(walked), None, None, None, None)?),
+        })
+    }
+
+    fn needs_claude(&self, proposal: &str, current: &[JournalCompaction], why: &str) -> anyhow::Result<ProposalResult> {
+        let rows = self.journal.feedback(proposal)?;
+        let seq = rows.iter().map(|(_, f)| f.seq).max().unwrap_or(0) + 1;
+        self.journal.add_feedback(
+            &Feedback {
+                id: feedback_id(proposal, seq),
+                seq,
+                text: format!("Revision {} {why}", current[0].meta().revision),
+                event_id: None,
+                note_id: None,
+                at: None,
+                by: "server".into(),
+                created: self.clock(),
+                status: "open".into(),
+                reply: None,
+                answered_in: None,
+                superseded_by: None,
+            },
+            proposal,
+        )?;
+        let refreshed = self.current(proposal)?;
+        Ok(ProposalResult {
+            status: "needs_claude".into(),
+            message: format!("proposal {proposal} {why}. It's waiting for Claude to revise it."),
+            proposal: Some(self.view(&refreshed, Replanned::Failed(error(why, "needs_claude")), None, None, None, None)?),
+        })
+    }
+
+    /// `commit`: apply the batch a day at a time -- each day's steps, then
+    /// its notes stamped.
+    pub fn commit(&self, compaction_id: &str, verify: bool) -> anyhow::Result<CompactionResult> {
+        self.prefetch_tabs(true)?;
+        let mut days = self.journal.load_batch(compaction_id)?;
+        let changes: Vec<CompactionChange> = days.iter().flat_map(|d| d.changes()).collect();
+        if days.iter().all(|d| d.status == STAMPED) {
+            return Ok(CompactionResult {
+                status: "already_compacted".into(),
+                compaction_id: Some(compaction_id.into()),
+                changes,
+                message: format!("compaction {compaction_id} was already applied and its notes stamped"),
+                ..Default::default()
+            });
+        }
+        if days.iter().any(|d| d.status == ABANDONED) {
+            return Err(ce(format!("compaction {compaction_id} was abandoned; run a new dry run"), "abandoned"));
+        }
+        if days.iter().any(|d| d.status == SUPERSEDED || d.status == FAILED) {
+            return Err(ce(
+                format!(
+                    "compaction {compaction_id} was {}",
+                    if days[0].status == SUPERSEDED { "superseded by a newer revision" } else { "stopped by a write that failed" }
+                ),
+                "superseded",
+            ));
+        }
+        let pending: Vec<usize> = (0..days.len()).filter(|i| days[*i].status != STAMPED).collect();
+        let mut timeline = None;
+        if [PLANNED, PROPOSED].contains(&days[pending[0]].status.as_str()) {
+            self.require_no_open_compaction()?;
+            if verify {
+                let unapplied: Vec<JournalCompaction> = pending.iter().map(|i| days[*i].clone()).collect();
+                let walked = self.replan(&unapplied, true)?;
+                timeline = Some(joined(&walked));
+            }
+        }
+        let mut refs: Option<Vec<(String, String)>> = None;
+        for &i in &pending {
+            if [PLANNED, PROPOSED].contains(&days[i].status.as_str()) {
+                self.journal.set_status(&mut days[i], APPLYING)?;
+            }
+            if refs.is_none() {
+                let additions = Additions::from_json_dict(Some(&Value::Object(days[0].additions.clone())));
+                refs = Some(create_additions(&additions, self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?);
+            }
+            let id = days[i].id.clone();
+            for s in 0..days[i].steps.len() {
+                if days[i].steps[s].status != "done" {
+                    self.apply_step(&id, &days[i].steps[s], refs.as_ref().unwrap())?;
+                    self.journal.mark_step_done(&mut days[i].steps[s])?;
+                }
+            }
+            self.record_cancellations(&days[i], false)?;
+            self.journal.set_status(&mut days[i], APPLIED)?;
+            self.notes.mark_compacted(&days[i].note_ids, &id)?;
+            self.journal.set_status(&mut days[i], STAMPED)?;
+        }
+        let steps: usize = days.iter().map(|d| d.steps.len()).sum();
+        let notes: usize = days.iter().map(|d| d.note_ids.len()).sum();
+        let warnings: Vec<String> = days.iter().flat_map(|d| d.warnings.clone()).collect();
+        let due = if self.judging.is_some() { Some(self.due(compaction_id, &days, false)?) } else { None };
+        let mut message = format!("applied {steps} change(s) and marked {notes} note(s) compacted");
+        if let Some(due) = due.as_ref().filter(|d| !d.events.is_empty()) {
+            message.push_str(&format!(
+                ". The compaction isn't complete yet: make the {} judgment(s) in `judgments` now, yourself, of the events as `timeline` shows them, and record them with record_judgments (see `judgments.instructions`)",
+                due.count()
+            ));
+        }
+        Ok(CompactionResult {
+            status: "applied".into(),
+            compaction_id: Some(compaction_id.into()),
+            changes,
+            warnings,
+            message,
+            judgments: due.filter(|d| !d.events.is_empty()),
+            timeline,
+            ..Default::default()
+        })
+    }
+
+    // -- judgments ------------------------------------------------------------
+
+    pub fn judgments_due(&self, compaction_id: Option<&str>, redo: bool) -> anyhow::Result<Option<JudgmentsDue>> {
+        if self.judging.is_none() {
+            return Ok(None);
+        }
+        let compaction_id = match compaction_id.filter(|c| !c.is_empty()) {
+            Some(c) => c.to_string(),
+            None => match self.journal.last_stamped_batch()? {
+                Some(c) => c,
+                None => return Ok(None),
+            },
+        };
+        let days = self.journal.load_batch(&compaction_id)?;
+        Ok(Some(self.due(&compaction_id, &days, redo)?))
+    }
+
+    fn due(&self, compaction_id: &str, days: &[JournalCompaction], redo: bool) -> anyhow::Result<JudgmentsDue> {
+        let requests = self.requests(compaction_id, days, redo)?;
+        self.judging.as_ref().unwrap().due(compaction_id, &requests)
+    }
+
+    fn requests(&self, compaction_id: &str, days: &[JournalCompaction], redo: bool) -> anyhow::Result<Vec<JudgmentRequest>> {
+        if !days.iter().all(|d| d.status == STAMPED) {
+            return Err(ce(format!("compaction {compaction_id} hasn't been applied, so its events have nothing to judge"), "not_applied"));
+        }
+        let (ids, span) = judged_events(days);
+        self.judging.as_ref().unwrap().requests(&ids, span, redo)
+    }
+
+    pub fn habit_judgments_due(&self, habit_id: &str, since: Option<Moment>, redo: bool) -> anyhow::Result<HabitJudgmentsDue> {
+        let (habit, since, until) = self.backfill(habit_id, since)?;
+        let judging = self.judging.as_ref().unwrap();
+        let id = python_str(habit.get("id"));
+        let backfill_id = format!("{}@{}", subject_id(&id), iso(&since));
+        let requests = judging.habit_requests(&habit, since, until, redo)?;
+        let due = judging.due(&backfill_id, &requests)?;
+        Ok(HabitJudgmentsDue {
+            backfill_id,
+            habit_name: if truthy(habit.get("name")) { python_str(habit.get("name")) } else { id.clone() },
+            habit_id: id,
+            since,
+            until,
+            due,
+        })
+    }
+
+    fn backfill(&self, habit_id: &str, since: Option<Moment>) -> anyhow::Result<(rows::Row, Moment, Moment)> {
+        let Some(judging) = &self.judging else { return Err(ce("this calendar has no traits to judge", "no_traits")) };
+        let habit = match judging.habit(habit_id) {
+            Ok(h) => h,
+            Err(e) if google_status(&e).is_some() => return Err(e),
+            Err(e) => return Err(ce(e.to_string(), "unknown_habit")),
+        };
+        let Some(until) = self.journal.last_stamped_now()? else {
+            return Err(ce("nothing's been compacted yet, so there's nothing settled to judge", "not_applied"));
+        };
+        let since = match since {
+            Some(s) => s,
+            None => until - Duration::days(judging.backfill_days(&habit)?),
+        };
+        Ok((habit, since, until))
+    }
+
+    fn record_backfill(&self, backfill_id: &str, judgments: &[Judgment]) -> anyhow::Result<JudgmentsResult> {
+        let (habit_part, since_part) = backfill_id.split_once('@').unwrap_or((backfill_id, ""));
+        let since = match crate::event::parse_iso(since_part, None) {
+            Ok(s) => s,
+            Err(_) => {
+                return Err(ce(format!("{} isn't a backfill_id (prepare_habit_judgments gives one)", py::repr(backfill_id)), "judgment"))
+            }
+        };
+        let (habit, since, until) = self.backfill(habit_part.strip_prefix(SUBJECT_PREFIX).unwrap_or(habit_part), Some(since))?;
+        let judging = self.judging.as_ref().unwrap();
+        let recorded = match judging.habit_requests(&habit, since, until, true).and_then(|r| judging.record(&r, judgments)) {
+            Ok(n) => n,
+            Err(e) if google_status(&e).is_some() => return Err(e),
+            Err(e) => return Err(ce(e.to_string(), "judgment")),
+        };
+        let remaining: Vec<String> = judging.habit_requests(&habit, since, until, false)?.into_iter().map(|r| r.id).collect();
+        let name = python_repr(habit.get("name").unwrap_or(&Value::Null));
+        Ok(JudgmentsResult {
+            compaction_id: backfill_id.into(),
+            recorded,
+            complete: remaining.is_empty(),
+            message: if remaining.is_empty() {
+                format!("recorded {recorded} judgment(s); the backfill of {name} is complete")
+            } else {
+                format!("recorded {recorded} judgment(s); {} still to make for {name} (see `remaining`)", remaining.len())
+            },
+            remaining,
+        })
+    }
+
+    pub fn record_judgments(&self, compaction_id: &str, judgments: &[Judgment]) -> anyhow::Result<JudgmentsResult> {
+        if compaction_id.starts_with(SUBJECT_PREFIX) {
+            return self.record_backfill(compaction_id, judgments);
+        }
+        let Some(judging) = &self.judging else { return Err(ce("this calendar has no traits to judge", "no_traits")) };
+        let days = self.journal.load_batch(compaction_id)?;
+        let recorded = match self.requests(compaction_id, &days, true).and_then(|r| judging.record(&r, judgments)) {
+            Ok(n) => n,
+            Err(e) if google_status(&e).is_some() => return Err(e),
+            Err(e) => return Err(ce(e.to_string(), "judgment")),
+        };
+        let remaining: Vec<String> = self.requests(compaction_id, &days, false)?.into_iter().map(|r| r.id).collect();
+        Ok(JudgmentsResult {
+            compaction_id: compaction_id.into(),
+            recorded,
+            complete: remaining.is_empty(),
+            message: if remaining.is_empty() {
+                format!("recorded {recorded} judgment(s); compaction {compaction_id} is complete")
+            } else {
+                format!(
+                    "recorded {recorded} judgment(s); {} still to make before compaction {compaction_id} is complete (see `remaining`)",
+                    remaining.len()
+                )
+            },
+            remaining,
+        })
+    }
+
+    fn judgments_pending(&self) -> anyhow::Result<Option<String>> {
+        if self.judging.is_none() {
+            return Ok(None);
+        }
+        let Some(compaction_id) = self.journal.last_stamped_batch()? else { return Ok(None) };
+        let due = match self.journal.load_batch(&compaction_id).and_then(|days| self.requests(&compaction_id, &days, false)) {
+            Ok(due) => due,
+            Err(e) if compaction_error(&e).is_some() => return Ok(None),
+            Err(e) => return Err(e),
+        };
+        Ok(if due.is_empty() { None } else { Some(compaction_id) })
+    }
+
+    fn checked_facts(&self, decisions: Vec<EventDecision>, additions: &Additions, settled: &[String]) -> anyhow::Result<Vec<EventDecision>> {
+        let people: Option<Vec<String>> = match &self.people {
+            Some(p) => Some(p.all()?.iter().map(|r| python_str(r.get("id"))).collect()),
+            None => None,
+        };
+        let locations: Option<Vec<String>> = match &self.locations {
+            Some(l) => Some(l.all()?.iter().map(|r| python_str(r.get("id"))).collect()),
+            None => None,
+        };
+        let mut new_people: Vec<String> = additions.people.iter().map(ref_of).collect();
+        new_people.extend(settled.iter().cloned());
+        let mut new_locations: Vec<String> = additions.locations.iter().map(ref_of).collect();
+        new_locations.extend(settled.iter().cloned());
+        let mut checked = Vec::new();
+        let mut problems: Vec<String> = Vec::new();
+        for (number, mut decision) in decisions.into_iter().enumerate() {
+            if let Some(facts) = &decision.facts {
+                let facts = facts.normalized();
+                let label = format!(
+                    "decision {} ({}{})",
+                    number + 1,
+                    decision.action,
+                    decision.event_id.as_ref().filter(|e| !e.is_empty()).map(|e| format!(" {e}")).unwrap_or_default()
+                );
+                problems.extend(fact_problems(&facts).into_iter().map(|p| format!("{label}: its facts {p}")));
+                if let Some(people) = &people {
+                    let unknown: Vec<String> = facts
+                        .people()
+                        .into_iter()
+                        .filter(|i| !people.contains(i) && !new_people.contains(i) && i != SELF_ID)
+                        .collect();
+                    if !unknown.is_empty() {
+                        problems.push(format!(
+                            "{label}: its facts name {}, who aren't people (get_people lists them; add someone new with new_people)",
+                            py::repr_list(&unknown)
+                        ));
+                    }
+                }
+                if let (Some(locations), Some(location)) = (&locations, facts.location().filter(|l| !l.is_empty())) {
+                    if !locations.contains(&location) && !new_locations.contains(&location) {
+                        problems.push(format!(
+                            "{label}: its facts' location {} isn't a location (add a new one with new_locations)",
+                            py::repr(&location)
+                        ));
+                    }
+                }
+                decision.facts = Some(facts);
+            }
+            checked.push(decision);
+        }
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "facts"));
+        }
+        Ok(checked)
+    }
+
+    pub fn edit_note(&self, note_id: &str, timestamp: Option<Moment>, description: Option<&str>) -> anyhow::Result<SheetNote> {
+        self.prefetch_tabs(false)?;
+        self.require_not_being_applied(note_id)?;
+        match self.notes.edit(note_id, timestamp, description) {
+            Ok(note) => Ok(note),
+            Err(e) if google_status(&e).is_some() => Err(e),
+            Err(e) => Err(ce(e.to_string(), "note_edit")),
+        }
+    }
+
+    pub fn delete_note(&self, note_id: &str) -> anyhow::Result<NotedTime> {
+        self.prefetch_tabs(false)?;
+        self.require_not_being_applied(note_id)?;
+        match self.notes.delete(note_id) {
+            Ok(note) => Ok(note),
+            Err(e) if google_status(&e).is_some() => Err(e),
+            Err(e) => Err(ce(e.to_string(), "note_edit")),
+        }
+    }
+
+    fn require_not_being_applied(&self, note_id: &str) -> anyhow::Result<()> {
+        for (compaction_id, status) in self.journal.open_compactions()? {
+            let compaction = self.journal.load(&compaction_id)?;
+            if compaction.note_ids.iter().any(|n| n == note_id) {
+                return Err(ce(
+                    format!(
+                        "note {} is part of compaction {}, which is {status} -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
+                        py::repr(note_id),
+                        compaction.batch_id()
+                    ),
+                    "note_in_compaction",
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn abandon(&self, compaction_id: &str) -> anyhow::Result<CompactionResult> {
+        let mut days =
+            if !self.journal.revisions(compaction_id)?.is_empty() { self.current(compaction_id)? } else { self.journal.load_batch(compaction_id)? };
+        if days.iter().all(|d| d.status == STAMPED) {
+            return Err(ce(format!("compaction {compaction_id} is already complete; there's nothing to abandon"), "already_complete"));
+        }
+        let finished = days.iter().filter(|d| d.status == STAMPED).count();
+        let total = days.len();
+        for day in days.iter_mut() {
+            if day.status != STAMPED && day.status != ABANDONED {
+                self.journal.set_status(day, ABANDONED)?;
+            }
+        }
+        let mut message = format!(
+            "compaction {compaction_id} abandoned. Any steps it had already applied stay applied (the journal has each one's before-state); its notes are still uncompacted."
+        );
+        if finished > 0 {
+            message.push_str(&format!(
+                " ({finished} of its {total} days had already been applied in full, so those days' notes stay compacted.)"
+            ));
+        }
+        Ok(CompactionResult { status: "abandoned".into(), compaction_id: Some(compaction_id.into()), message, ..Default::default() })
+    }
+
+    /// `_walk`: the span from the last compaction (or the oldest note's
+    /// day) up to `now`, and how many uncompacted notes are left after it.
+    fn walk(&self, now: Moment, night: Option<&dyn Fn(&str) -> Option<EventDecision>>, max_days: i64) -> anyhow::Result<(Option<Day>, usize)> {
+        let (sheet_notes, latest) = self.notes.read_with_latest_compacted()?;
+        let notes: Vec<SheetNote> = sheet_notes.iter().filter(|n| n.note.timestamp <= now).cloned().collect();
+        let times: Vec<(String, Moment)> = notes.iter().map(|n| (n.id(), n.note.timestamp)).collect();
+        let last_stamped = self.journal.last_stamped_now()?;
+        let anchor = last_stamped.or(if notes.is_empty() { Some(now) } else { None });
+        if anchor.is_some_and(|a| a >= now) {
+            return Ok((None, sheet_notes.len()));
+        }
+        let oldest = anchor.into_iter().chain(times.iter().map(|(_, t)| *t)).min().unwrap();
+        self.calendar.list_events(&(oldest - prefetch_before()), &(now + prefetch_after()))?;
+        let day_for = |sleepless: &[String], overrun: Option<Moment>| {
+            self.day(now, &notes, last_stamped, latest.clone(), sleepless, overrun, anchor, max_days)
+        };
+        let mut day = cut(&day_for, night, &times)?;
+        day.history_until = last_stamped;
+        let remaining = sheet_notes.len() - day.notes.len();
+        Ok((Some(day), remaining))
+    }
+
+    /// `_day`: the span from the day the oldest note (or the anchor) falls
+    /// in up to `now` -- see the Python for every rule.
+    #[allow(clippy::too_many_arguments)]
+    fn day(
+        &self,
+        now: Moment,
+        notes: &[SheetNote],
+        last_stamped: Option<Moment>,
+        latest_compacted: Option<NotedTime>,
+        sleepless: &[String],
+        overrun: Option<Moment>,
+        anchor: Option<Moment>,
+        max_days: i64,
+    ) -> anyhow::Result<Day> {
+        let oldest = anchor.unwrap_or_else(|| notes.iter().map(|n| n.note.timestamp).min().unwrap());
+        let recent = self.span_events(oldest - Duration::hours(24), oldest + Duration::seconds(1))?;
+        let mut opening: Option<&Event> = None;
+        for e in recent.iter().filter(|e| e.is_end_of_day_sleep == Some(true) && !e.is_cancelled() && e.start() <= oldest) {
+            if opening.is_none_or(|o| e.start() > o.start()) {
+                opening = Some(e);
+            }
+        }
+        let day_start = match opening {
+            Some(o) => o.end().min(oldest),
+            None => oldest,
+        };
+        let compaction_window_start = match last_stamped {
+            Some(l) => pmax(day_start, l),
+            None => day_start,
+        };
+        let limit = day_start + Duration::hours(24) * max_days as i32;
+        let capped = now > limit;
+        let until = if capped { limit } else { now };
+        let reach = Duration::hours(24) * (1 + sleepless.len() as i32);
+        let reach_end = pmax(pmax(day_start, until), overrun.unwrap_or(until)) + reach;
+        let mut fetched: Vec<Event> = self
+            .span_events(compaction_window_start - Duration::minutes(LOOKBACK_MINUTES), reach_end)?
+            .into_iter()
+            .filter(|e| !e.is_cancelled())
+            .collect();
+        fetched.sort_by_key(|e| e.start());
+        let earlier: Vec<Event> = fetched.iter().filter(|e| e.end() <= compaction_window_start).cloned().collect();
+        let mut events: Vec<Event> = fetched.iter().filter(|e| e.end() > compaction_window_start).cloned().collect();
+        let is_night = |e: &Event| e.is_end_of_day_sleep == Some(true) && e.start() > day_start;
+        let nights: Vec<usize> = (0..events.len())
+            .filter(|i| is_night(&events[*i]) && !events[*i].id.as_ref().is_some_and(|id| sleepless.contains(id)))
+            .collect();
+        let closing = if capped {
+            nights.iter().rev().copied().find(|i| events[*i].start() < limit)
+        } else {
+            nights.iter().copied().find(|i| events[*i].end() > now)
+        };
+        if let Some(closing) = closing {
+            let runs_into: Vec<Event> = events[closing + 1..].iter().filter(|e| overrun.is_some_and(|o| e.start() < o)).cloned().collect();
+            events.truncate(closing + 1);
+            events.extend(runs_into);
+        }
+        let mut previous: Option<Event> = None;
+        for e in &earlier {
+            if previous.as_ref().is_none_or(|p| e.end() > p.end()) {
+                previous = Some(e.clone());
+            }
+        }
+        if let Some(p) = &previous {
+            events.insert(0, p.clone());
+        }
+        let shift = if previous.is_some() { 1 } else { 0 };
+        let day_end = match closing {
+            Some(closing) => events[closing + shift].end(),
+            None => {
+                // The night indices from before `previous` went in front,
+                // as Python reads them.
+                let mut last_start = day_start;
+                for i in &nights {
+                    let end = events[*i].end();
+                    if end <= until && end > last_start {
+                        last_start = end;
+                    }
+                }
+                pmax(last_start + reach, until)
+            }
+        };
+        let span_now = now.min(day_end);
+        let mut night_ids: Vec<String> = Vec::new();
+        for e in &events {
+            if is_night(e) {
+                if let Some(id) = e.id.clone().filter(|i| !i.is_empty()) {
+                    if !night_ids.contains(&id) {
+                        night_ids.push(id);
+                    }
+                }
+            }
+        }
+        Ok(Day {
+            notes: notes.iter().filter(|n| n.note.timestamp <= span_now).cloned().collect(),
+            closing: closing.map(|c| events[c + shift].clone()),
+            events,
+            day_start,
+            compaction_window_start,
+            day_end,
+            now: span_now,
+            previous,
+            latest_compacted,
+            last_compaction: last_stamped,
+            history_until: None,
+            nights: night_ids,
+        })
+    }
+
+    fn supersede_planned(&self) -> anyhow::Result<usize> {
+        let mut replaced: Vec<JournalCompaction> = Vec::new();
+        for (id, _status) in self.journal.compactions_with_status(&[PLANNED])? {
+            replaced.push(self.journal.load(&id)?);
+        }
+        let mut batches: Vec<String> = Vec::new();
+        for compaction in replaced.iter_mut() {
+            self.journal.set_status(compaction, ABANDONED)?;
+            if !batches.contains(&compaction.batch_id()) {
+                batches.push(compaction.batch_id());
+            }
+        }
+        Ok(batches.len())
+    }
+
+    fn require_no_open_compaction(&self) -> anyhow::Result<()> {
+        if let Some((compaction_id, status)) = self.journal.open_compactions()?.into_iter().next() {
+            let batch_id = self.journal.load(&compaction_id)?.batch_id();
+            return Err(ce(
+                format!(
+                    "compaction {batch_id} is {status} -- finish it with finish_proposal, or abandon it with abandon_compaction, before starting another"
+                ),
+                "open_compaction",
+            ));
+        }
+        Ok(())
+    }
+
+    /// `_replan`: plan a batch's unapplied days again, as one span.
+    /// `strict`: check it comes out as it did ("stale" if not).
+    fn replan(&self, days: &[JournalCompaction], strict: bool) -> anyhow::Result<Vec<Walked>> {
+        let stale = || ce(format!("the notes or calendar changed since compaction {} was previewed; run a new dry run", days[0].batch_id()), "stale");
+        let decisions: Vec<EventDecision> = days.iter().flat_map(|d| d.decisions.clone()).collect();
+        let ignore_notes: Vec<String> = days.iter().flat_map(|d| d.ignore_notes.clone()).collect();
+        let mut note_targets: Vec<(String, Option<String>)> = Vec::new();
+        for day in days {
+            for (n, e) in &day.note_targets {
+                match note_targets.iter_mut().find(|(k, _)| k == n) {
+                    Some(slot) => slot.1 = e.clone(),
+                    None => note_targets.push((n.clone(), e.clone())),
+                }
+            }
+        }
+        let mut note_ids: Vec<String> = days.iter().flat_map(|d| d.note_ids.clone()).collect();
+        note_ids.sort();
+        note_ids.dedup();
+        let changes: Vec<CompactionChange> = days.iter().flat_map(|d| d.changes()).collect();
+        let night = |event_id: &str| decisions.iter().find(|d| d.event_id.as_deref() == Some(event_id)).cloned();
+        let (day, _remaining) = self.walk(days.last().unwrap().now, Some(&night), MAX_DAYS)?;
+        let Some(day) = day else { return Err(anyhow::anyhow!("there's nothing to plan up to {}", iso(&days.last().unwrap().now))) };
+        if strict {
+            let mut ids: Vec<String> = day.notes.iter().map(SheetNote::id).collect();
+            ids.sort();
+            ids.dedup();
+            if ids != note_ids {
+                return Err(stale());
+            }
+        }
+        let additions = Additions::from_json_dict(Some(&Value::Object(days[0].additions.clone())));
+        let plan = self.plan(&day, &decisions, &ignore_notes, &additions, &note_targets)?;
+        if strict && comparable(&plan.changes) != comparable(&changes) {
+            return Err(stale());
+        }
+        Ok(vec![Walked { day, plan, decisions, ignore_notes, note_targets }])
+    }
+
+    /// `_plan`: `plan_compaction` for `day`, with the decisions' actions
+    /// checked and created events' labels checked against the calendar's.
+    fn plan(
+        &self,
+        day: &Day,
+        decisions: &[EventDecision],
+        ignore_notes: &[String],
+        additions: &Additions,
+        note_targets: &[(String, Option<String>)],
+    ) -> anyhow::Result<CompactionPlan> {
+        let tree = self.tree()?;
+        if let Some(tree) = &tree {
+            let current = |id: Option<&str>| -> Vec<String> {
+                day.events
+                    .iter()
+                    .rev()
+                    .find(|e| e.id.as_deref().is_some_and(|i| !i.is_empty()) && e.id.as_deref() == id)
+                    .map(|e| e.action_ids.clone().unwrap_or_default())
+                    .unwrap_or_default()
+            };
+            let new: Vec<String> = additions.actions.iter().map(ref_of).collect();
+            let mut problems: Vec<String> = Vec::new();
+            for d in decisions {
+                let ids = d.action_ids.clone().unwrap_or_default();
+                let named: Vec<String> = ids.iter().filter(|a| !new.contains(a)).cloned().collect();
+                let who = repr_opt(d.event_id.as_deref().filter(|e| !e.is_empty()).or(d.summary.as_deref()));
+                if !ids.is_empty() && ids.iter().any(|a| a.starts_with(REF_PREFIX) && !new.contains(a)) {
+                    problems.push(format!("{} {who}: a ref that isn't in new_actions", d.action));
+                    continue;
+                }
+                if !named.is_empty() {
+                    if let Err(e) = tree.check_action_ids(&named, &current(d.event_id.as_deref())) {
+                        problems.push(format!("{} {who}: {e}", d.action));
+                    }
+                }
+            }
+            if !problems.is_empty() {
+                return Err(ce_of(&problems, "actions"));
+            }
+        }
+        let names = self.names(Some(additions))?;
+        let notes = plan_notes(day);
+        let previous = latest_compacted(day);
+        let closing_id = day.closing.as_ref().and_then(|c| c.id.clone());
+        let mut plan = plan_compaction(
+            &notes,
+            decisions,
+            &day.events,
+            day.now,
+            PlanOptions {
+                ignore_notes: Some(ignore_notes),
+                day_start: Some(day.day_start),
+                names: Some(&names),
+                previous_note: previous.as_ref(),
+                last_compaction: day.last_compaction,
+                next_day_follows: false,
+                history_until: day.history_until,
+                note_targets: Some(note_targets),
+                closing_id: closing_id.as_deref(),
+                nights: Some(&day.nights),
+            },
+        )
+        .map_err(anyhow::Error::from)?;
+        self.check_before_window(day, &plan)?;
+        self.show_follow_through(day, decisions, &mut plan)?;
+        if let Some(tree) = &tree {
+            keep_priorities(&mut plan, tree, day);
+        }
+        let labelled: Vec<usize> = (0..plan.changes.len())
+            .filter(|i| plan.changes[*i].action == "create" && plan.changes[*i].after.as_ref().is_some_and(|a| a.event_label_id.is_some()))
+            .collect();
+        if labelled.is_empty() {
+            return Ok(plan);
+        }
+        let (labels, _etag) = self.client.list_event_labels()?;
+        let label_ids: Vec<String> = labels.iter().filter_map(|l| l.id.clone()).collect();
+        for i in labelled {
+            let after = plan.changes[i].after.as_mut().unwrap();
+            if !after.event_label_id.as_ref().is_some_and(|l| label_ids.contains(l)) {
+                after.event_label_id = None;
+            }
+        }
+        Ok(plan)
+    }
+
+    fn show_follow_through(&self, day: &Day, decisions: &[EventDecision], plan: &mut CompactionPlan) -> anyhow::Result<()> {
+        let (Some(cancellations), Some(timeline)) = (&self.cancellations, plan.timeline.as_mut()) else { return Ok(()) };
+        let cancelled: Vec<String> = decisions
+            .iter()
+            .filter(|d| d.action == "cancel" && d.counts_against_follow_through != Some(false))
+            .filter_map(|d| d.event_id.clone())
+            .collect();
+        let mut marked = false;
+        for shown in timeline.events.iter_mut() {
+            let Some(event_id) = &shown.event_id else { continue };
+            if !cancelled.contains(event_id) {
+                continue;
+            }
+            let Some(event) = day.events.iter().rev().find(|e| e.id.as_ref() == Some(event_id)) else { continue };
+            shown.follow_through =
+                cancellations.matches(event)?.iter().map(|m| format!("{} ({})", m.person_name, m.trait_names.join(", "))).collect();
+            marked = marked || !shown.follow_through.is_empty();
+        }
+        if marked {
+            timeline.text = render(timeline, true);
+        }
+        Ok(())
+    }
+
+    fn record_cancellations(&self, journal: &JournalCompaction, only_done: bool) -> anyhow::Result<()> {
+        let Some(cancellations) = &self.cancellations else { return Ok(()) };
+        let cancelled: Vec<String> = journal
+            .decisions
+            .iter()
+            .filter(|d| d.action == "cancel" && d.counts_against_follow_through != Some(false))
+            .filter_map(|d| d.event_id.clone())
+            .collect();
+        for step in &journal.steps {
+            if only_done && step.status != "done" {
+                continue;
+            }
+            if step.action == "cancel" && step.event_id.as_ref().is_some_and(|e| cancelled.contains(e)) {
+                if let Some(before) = &step.before {
+                    cancellations.record(&before.to_event(step.event_id.as_deref()), &format!("compaction {}", journal.batch_id()), Some(self.clock()))?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn check_before_window(&self, day: &Day, plan: &CompactionPlan) -> anyhow::Result<()> {
+        let placed: Vec<&CompactionChange> = plan.changes.iter().filter(|c| c.action != "cancel" && c.after.is_some()).collect();
+        let Some(reach) = placed.iter().map(|c| c.after.as_ref().unwrap().start()).min() else { return Ok(()) };
+        if reach >= day.compaction_window_start {
+            return Ok(());
+        }
+        let offered: Vec<Option<&String>> = day.events.iter().map(|e| e.id.as_ref()).collect();
+        let before: Vec<Event> = self
+            .span_events(reach, day.compaction_window_start)?
+            .into_iter()
+            .filter(|e| !e.is_cancelled() && !offered.contains(&e.id.as_ref()))
+            .collect();
+        let mut problems: Vec<Issue> = Vec::new();
+        for c in &placed {
+            let after = c.after.as_ref().unwrap();
+            for e in &before {
+                if e.id != c.event_id && e.start() < after.end.unwrap() && e.end() > after.start() {
+                    problems.push(Issue::tagged(
+                        "overlap",
+                        format!(
+                            "{} ({} to {}) runs back over {} ({} to {}), from before this round's events begin ({}) -- an earlier compaction settled it. Start it no earlier than {}, or change {} with update_event first.",
+                            repr_opt(after.summary.as_deref()),
+                            iso(&after.start()),
+                            iso(&after.end.unwrap()),
+                            repr_opt(e.summary.as_deref()),
+                            iso(&e.start()),
+                            iso(&e.end()),
+                            iso(&day.compaction_window_start),
+                            iso(&e.end()),
+                            repr_opt(e.summary.as_deref()),
+                        ),
+                    ));
+                }
+            }
+        }
+        if !problems.is_empty() {
+            return Err(error_of(&problems, "overlap").into());
+        }
+        Ok(())
+    }
+
+    fn apply_step(&self, compaction_id: &str, step: &JournalStep, refs: &[(String, String)]) -> anyhow::Result<()> {
+        if step.action == "create" {
+            let event = resolve(&step.after.as_ref().unwrap().to_event(Some(&new_event_id(compaction_id, step.step))), refs);
+            if let Err(e) = self.client.create_event(&event) {
+                if google_status(&e) != Some(409) {
+                    return Err(e);
+                }
+            }
+        } else {
+            self.client.update_event(&resolve(&patch_for(step), refs))?;
+        }
+        Ok(())
+    }
+}
+
+/// `_cut`: the span `day_for` reads, ended where the decision on its last
+/// night puts it.
+fn cut(
+    day_for: &dyn Fn(&[String], Option<Moment>) -> anyhow::Result<Day>,
+    night: Option<&dyn Fn(&str) -> Option<EventDecision>>,
+    times: &[(String, Moment)],
+) -> anyhow::Result<Day> {
+    let mut sleepless: Vec<String> = Vec::new();
+    let mut overrun: Option<Moment> = None;
+    let mut day = day_for(&sleepless, overrun)?;
+    while let (Some(night), Some(closing)) = (night, day.closing.clone()) {
+        let closing_id = closing.id.clone().unwrap_or_default();
+        let Some(decision) = night(&closing_id) else { break };
+        if decision.action == "cancel" && !sleepless.contains(&closing_id) {
+            sleepless.push(closing_id);
+            overrun = None;
+        } else if decision.action == "keep" && overrun.is_none() {
+            let end = decision.end.or_else(|| decision.end_note.as_ref().and_then(|n| times.iter().rev().find(|(k, _)| k == n).map(|(_, t)| *t)));
+            match end {
+                Some(end) if end > closing.end() => overrun = Some(end),
+                _ => break,
+            }
+        } else {
+            break;
+        }
+        day = day_for(&sleepless, overrun)?;
+    }
+    Ok(day)
+}
+
+fn lookup_event<'a>(befores: &'a [(String, Event)], id: &str) -> Option<&'a Event> {
+    befores.iter().rev().find(|(k, _)| k == id).map(|(_, e)| e)
+}
+
+/// The changes, comparable as Python compares them (sorted reprs).
+fn comparable(changes: &[CompactionChange]) -> Vec<String> {
+    let mut out: Vec<String> = changes
+        .iter()
+        .map(|c| {
+            py::json_default(&json!([
+                c.action,
+                c.event_id,
+                c.key,
+                c.before.as_ref().map(EventState::to_json_dict),
+                c.after.as_ref().map(EventState::to_json_dict)
+            ]))
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+/// `_judged_events`: the ids of a batch's events whose facts it set, and
+/// the span of time they're in.
+pub fn judged_events(days: &[JournalCompaction]) -> (Vec<String>, (Moment, Moment)) {
+    let mut ids: Vec<String> = Vec::new();
+    let mut spans: Vec<(Moment, Moment)> = Vec::new();
+    for day in days {
+        for step in &day.steps {
+            let Some(after) = step.after.as_ref().filter(|a| a.facts.as_ref().is_some_and(|f| truthy(Some(f)))) else { continue };
+            if step.action == "cancel" {
+                continue;
+            }
+            ids.push(if step.action == "update" { step.event_id.clone().unwrap_or_default() } else { new_event_id(&day.id, step.step) });
+            spans.push((after.start(), after.end.unwrap()));
+        }
+    }
+    if let Some(meta) = &days[0].meta {
+        for entry in &meta.judge_also {
+            if let Some(id) = entry.get(0).map(|v| python_str(Some(v))) {
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+        }
+    }
+    if spans.is_empty() {
+        return (ids, (days[0].now, days[0].now));
+    }
+    let start = spans.iter().map(|(s, _)| *s).min().unwrap();
+    let end = spans.iter().map(|(_, e)| *e).reduce(pmax).unwrap();
+    (ids, (start, end))
+}
+
+/// `_keyed`: `decisions` with a key on every create.
+fn keyed(proposal: &str, decisions: Vec<EventDecision>, meta: Option<&RevisionMeta>) -> anyhow::Result<(Vec<EventDecision>, i64)> {
+    let mut key_seq = meta.map(|m| m.key_seq).unwrap_or(0);
+    let mut problems: Vec<String> = Vec::new();
+    let mut seen: Vec<String> = Vec::new();
+    let mut out: Vec<EventDecision> = Vec::new();
+    for mut decision in decisions {
+        if decision.action != "create" {
+            decision.key = None;
+            out.push(decision);
+            continue;
+        }
+        if let Some(key) = decision.key.clone() {
+            let number = claude_key_number(proposal, Some(&key));
+            if number.is_none_or(|n| n > key_seq) || seen.contains(&key) {
+                problems.push(format!(
+                    "create {}: {} isn't one of proposal {proposal}'s keys (keep only those prepare_compaction gave; leave it out for something new)",
+                    repr_opt(decision.summary.as_deref()),
+                    py::repr(&key)
+                ));
+                continue;
+            }
+            seen.push(key);
+            out.push(decision);
+            continue;
+        }
+        key_seq += 1;
+        decision.key = Some(claude_key(proposal, key_seq));
+        out.push(decision);
+    }
+    if !problems.is_empty() {
+        return Err(ce_of(&problems, "unknown_key"));
+    }
+    Ok((out, key_seq))
+}
+
+/// `_create_refs`: each create's `ref` -> the key it was given.
+fn create_refs_of(decisions: &[EventDecision], refs: &[Option<String>]) -> anyhow::Result<Vec<(String, String)>> {
+    let creates: Vec<&EventDecision> = decisions.iter().filter(|d| d.action == "create").collect();
+    let mut out: Vec<(String, String)> = Vec::new();
+    let mut problems: Vec<String> = Vec::new();
+    for (decision, r) in creates.iter().zip(refs) {
+        let Some(r) = r else { continue };
+        if out.iter().any(|(k, _)| k == r) {
+            problems.push(format!("create {}: the ref {} is another create's too", repr_opt(decision.summary.as_deref()), py::repr(r)));
+            continue;
+        }
+        out.push((r.clone(), decision.key.clone().unwrap_or_default()));
+    }
+    if !problems.is_empty() {
+        return Err(ce_of(&problems, "duplicate_ref"));
+    }
+    Ok(out)
+}
+
+/// `_note_targets`: `annotate_notes` as note -> event.
+fn note_targets(annotations: &[(String, String)]) -> anyhow::Result<Vec<(String, String)>> {
+    let mut targets: Vec<(String, String)> = Vec::new();
+    let mut twice: Vec<String> = Vec::new();
+    for (note, event) in annotations {
+        match targets.iter_mut().find(|(k, _)| k == note) {
+            Some(slot) => {
+                twice.push(note.clone());
+                slot.1 = event.clone();
+            }
+            None => targets.push((note.clone(), event.clone())),
+        }
+    }
+    if !twice.is_empty() {
+        return Err(ce(
+            format!("annotate_notes: each note goes with one event -- {} are given more than once", twice.join(", ")),
+            "malformed_decision",
+        ));
+    }
+    Ok(targets)
+}
+
+fn claude_additions_of(days: &[JournalCompaction]) -> Map<String, Value> {
+    if let Some(additions) = days[0].meta.as_ref().and_then(|m| m.claude_additions.clone()) {
+        return additions;
+    }
+    days[0].additions.clone()
+}
+
+fn unsettled<V>(additions: &Additions, settled: &Dict<V>) -> Additions
+where
+    V: Clone,
+{
+    Additions {
+        actions: additions.actions.iter().filter(|a| !settled.contains(&ref_of(a))).cloned().collect(),
+        people: additions.people.iter().filter(|p| !settled.contains(&ref_of(p))).cloned().collect(),
+        locations: additions.locations.iter().filter(|l| !settled.contains(&ref_of(l))).cloned().collect(),
+    }
+}
+
+fn settled_decisions(merged: &Merged) -> Vec<EventDecision> {
+    merged.decisions.iter().map(|d| settle_refs(d, &merged.settled)).collect()
+}
+
+fn claude_ignore(days: &[JournalCompaction]) -> Vec<String> {
+    if let Some(ignore) = days[0].meta.as_ref().and_then(|m| m.claude_ignore_notes.clone()) {
+        return ignore;
+    }
+    let mut all: Vec<String> = days.iter().flat_map(|d| d.ignore_notes.clone()).collect();
+    all.sort();
+    all.dedup();
+    all
+}
+
+fn proposal_notes(walked: &[Walked], merged: &Merged) -> Vec<ProposalNote> {
+    let mut notes = Vec::new();
+    for w in walked {
+        for note in &w.day.notes {
+            let id = note.id();
+            let (use_, event) = w.plan.note_uses.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone()).unwrap_or(("unused".into(), None));
+            let edge = w.plan.note_edges.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone());
+            let mut decided_by = merged.notes_decided_by.get(&id).cloned();
+            if decided_by.is_none() && use_ == "edge" {
+                decided_by = event.as_ref().and_then(|e| merged.decided_by.get(e).cloned());
+            }
+            notes.push(ProposalNote {
+                id,
+                timestamp: note.note.timestamp,
+                description: note.note.description.clone(),
+                use_,
+                event_id: event.filter(|e| !e.starts_with("new:")),
+                edge_of: edge.filter(|e| !e.starts_with("new:")),
+                decided_by,
+            });
+        }
+    }
+    notes
+}
+
+fn has_anything(walked: &[Walked]) -> bool {
+    walked.iter().any(|w| !w.day.notes.is_empty())
+        || walked.iter().any(|w| w.day.events.iter().any(|e| e.start() < w.day.now && e.end() > w.day.compaction_window_start))
+}
+
+/// `json.dumps(..., sort_keys=True)`.
+fn sorted_keys(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            Value::Object(keys.into_iter().map(|k| (k.clone(), sorted_keys(&map[k]))).collect())
+        }
+        Value::Array(items) => Value::Array(items.iter().map(sorted_keys).collect()),
+        other => other.clone(),
+    }
+}
+
+fn outcomes_of(walked: &[Walked]) -> Vec<(String, String)> {
+    let mut outcomes: Vec<(String, String)> = Vec::new();
+    for w in walked {
+        for change in &w.plan.changes {
+            let Some(name) = change.event_id.clone().or(change.key.clone()) else { continue };
+            let digest = py::json_default(&sorted_keys(&json!([change.action, change.after.as_ref().map(EventState::to_json_dict)])));
+            let hash = Sha1::digest(digest.as_bytes());
+            let hex: String = hash.iter().map(|b| format!("{b:02x}")).collect::<String>()[..10].to_string();
+            match outcomes.iter_mut().find(|(k, _)| *k == name) {
+                Some(slot) => slot.1 = hex,
+                None => outcomes.push((name, hex)),
+            }
+        }
+    }
+    outcomes
+}
+
+fn changed(before: Option<&[(String, String)]>, after: &[(String, String)]) -> Vec<String> {
+    let Some(before) = before else { return Vec::new() };
+    let mut names: Vec<String> = before.iter().chain(after).map(|(k, _)| k.clone()).collect();
+    names.sort();
+    names.dedup();
+    names.into_iter().filter(|n| lookup(before, n) != lookup(after, n)).collect()
+}
+
+pub fn state_of(days: &[JournalCompaction], feedback: &[Feedback]) -> String {
+    let statuses: Vec<&str> = days.iter().map(|d| d.status.as_str()).collect();
+    if statuses.iter().all(|s| *s == STAMPED) {
+        return "applied".into();
+    }
+    if statuses.iter().any(|s| OPEN_STATUSES.contains(s)) {
+        return "applying".into();
+    }
+    if statuses.contains(&ABANDONED) {
+        return "abandoned".into();
+    }
+    if statuses.contains(&FAILED) || feedback.iter().any(|f| f.status == "open") {
+        return "awaiting_claude".into();
+    }
+    "awaiting_review".into()
+}
+
+fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<ProposalEvent> {
+    let mut out: Vec<(String, ProposalEvent)> = Vec::new();
+    for w in walked {
+        let day = &w.day;
+        let change_of = |id: &str| w.plan.changes.iter().rev().find(|c| c.event_id.as_deref() == Some(id));
+        let merged: Vec<&String> = w.decisions.iter().filter(|d| d.action == "merge").filter_map(|d| d.event_id.as_ref()).collect();
+        let cancel_of = |id: &str| w.decisions.iter().rev().find(|d| d.action == "cancel" && d.event_id.as_deref() == Some(id));
+        let against = |id: &str| -> Vec<String> {
+            w.plan
+                .timeline
+                .as_ref()
+                .and_then(|t| t.events.iter().rev().find(|e| e.event_id.as_deref() == Some(id)))
+                .map(|e| e.follow_through.clone())
+                .unwrap_or_default()
+        };
+        for event in &day.events {
+            let Some(id) = event.id.clone().filter(|i| !i.is_empty() && !i.starts_with("planned")) else { continue };
+            let change = change_of(&id);
+            if out.iter().any(|(k, _)| *k == id) && change.is_none() {
+                continue;
+            }
+            let state = match change {
+                Some(c) if c.action == "update" => c.after.clone().unwrap(),
+                _ => EventState::from_event(event),
+            };
+            let status = if change.is_some_and(|c| c.action == "cancel") {
+                if merged.contains(&&id) { "merged" } else { "cancelled" }
+            } else if (state.start, state.end) != (event.start, event.end) {
+                "adjusted"
+            } else if event.start() < day.now {
+                "on_schedule"
+            } else {
+                "planned"
+            };
+            let counts = if status == "cancelled" {
+                Some(cancel_of(&id).is_none_or(|d| d.counts_against_follow_through != Some(false)))
+            } else {
+                None
+            };
+            let shown = ProposalEvent {
+                counts_against_follow_through: counts,
+                follow_through: if counts == Some(true) { against(&id) } else { Vec::new() },
+                id: id.clone(),
+                summary: state.summary.clone(),
+                start: state.start,
+                end: state.end,
+                status: status.into(),
+                planned_start: event.start,
+                planned_end: event.end,
+                description: state.description.clone(),
+                location: state.location.clone(),
+                priority: state.priority,
+                action_ids: state.action_ids.clone(),
+                facts: state.facts.as_ref().map(|f| facts_from_dict(Some(f))),
+                decided_by: decided_by.get(&id).cloned(),
+                history_until: day.history_until.filter(|h| event.start() < *h).map(|h| event.end().min(h)),
+                is_end_of_day_sleep: event.is_end_of_day_sleep == Some(true),
+            };
+            match out.iter_mut().find(|(k, _)| *k == id) {
+                Some(slot) => slot.1 = shown,
+                None => out.push((id, shown)),
+            }
+        }
+        for change in &w.plan.changes {
+            let Some(after) = change.after.as_ref().filter(|_| change.action == "create") else { continue };
+            let name = change.key.clone().unwrap_or_else(|| format!("new{}", out.len() + 1));
+            let shown = ProposalEvent {
+                id: name.clone(),
+                summary: after.summary.clone(),
+                start: after.start,
+                end: after.end,
+                status: "new".into(),
+                description: after.description.clone(),
+                location: after.location.clone(),
+                priority: after.priority,
+                action_ids: after.action_ids.clone(),
+                facts: after.facts.as_ref().map(|f| facts_from_dict(Some(f))),
+                decided_by: change.key.as_ref().and_then(|k| decided_by.get(k).cloned()),
+                ..Default::default()
+            };
+            match out.iter_mut().find(|(k, _)| *k == name) {
+                Some(slot) => slot.1 = shown,
+                None => out.push((name, shown)),
+            }
+        }
+    }
+    let mut events: Vec<ProposalEvent> = out.into_iter().map(|(_, e)| e).collect();
+    events.sort_by(|a, b| (a.start.or(a.planned_start), &a.id).cmp(&(b.start.or(b.planned_start), &b.id)));
+    events
+}
+
+/// `_day_starts`: where each of the days a span takes on starts.
+fn day_starts(day: &Day, decisions: &[EventDecision]) -> Vec<Moment> {
+    let sleepless: Vec<&String> = decisions.iter().filter(|d| d.action == "cancel").filter_map(|d| d.event_id.as_ref()).collect();
+    let mut ends: Vec<Moment> = day
+        .events
+        .iter()
+        .filter(|e| {
+            e.id.as_ref().is_some_and(|id| day.nights.contains(id) && !sleepless.contains(&id)) && day.day_start < e.end() && e.end() < day.now
+        })
+        .map(|e| e.end())
+        .collect();
+    ends.sort();
+    let mut starts = vec![day.day_start];
+    starts.extend(ends);
+    starts
+}
+
+fn joined(walked: &[Walked]) -> Timeline {
+    join_days(walked.iter().flat_map(|w| split_days(w.plan.timeline.as_ref().unwrap(), &day_starts(&w.day, &w.decisions))).collect())
+}
+
+/// `_befores`: the first note of each day a span takes on, with the event
+/// that ended just before that day.
+fn befores(day: &Day) -> Vec<(String, Event)> {
+    let starts = day_starts(day, &[]);
+    let mut nights: Vec<(Moment, Event)> = Vec::new();
+    for e in &day.events {
+        if e.id.as_ref().is_some_and(|id| day.nights.contains(id)) {
+            match nights.iter_mut().find(|(end, _)| *end == e.end()) {
+                Some(slot) => slot.1 = e.clone(),
+                None => nights.push((e.end(), e.clone())),
+            }
+        }
+    }
+    let mut out: Vec<(String, Event)> = Vec::new();
+    for (i, start) in starts.iter().enumerate() {
+        let end = starts.get(i + 1);
+        let mut first: Option<&SheetNote> = None;
+        for n in &day.notes {
+            let t = n.note.timestamp;
+            let from = if i > 0 { *start } else { t };
+            if t >= from && end.is_none_or(|e| t < *e) && first.is_none_or(|f| t < f.note.timestamp) {
+                first = Some(n);
+            }
+        }
+        let before = if i == 0 { day.previous.clone() } else { nights.iter().find(|(e, _)| e == start).map(|(_, ev)| ev.clone()) };
+        if let (Some(first), Some(before)) = (first, before) {
+            let id = first.id();
+            match out.iter_mut().find(|(k, _)| *k == id) {
+                Some(slot) => slot.1 = before,
+                None => out.push((id, before)),
+            }
+        }
+    }
+    out
+}
+
+fn display_offset(day: &Day) -> chrono::FixedOffset {
+    match day.notes.first() {
+        Some(n) => *n.note.timestamp.offset(),
+        None => *day.day_start.offset(),
+    }
+}
+
+fn context_days(day: &Day) -> Option<Vec<ContextDay>> {
+    let starts = day_starts(day, &[]);
+    if starts.len() < 2 {
+        return None;
+    }
+    let tz = display_offset(day);
+    let mut ends: Vec<Moment> = starts[1..].to_vec();
+    ends.push(day.day_end);
+    Some(
+        starts
+            .iter()
+            .zip(&ends)
+            .enumerate()
+            .map(|(i, (start, end))| ContextDay {
+                label: start.with_timezone(&tz).format("%a %d %b").to_string(),
+                compaction_window_start: pmax(*start, day.compaction_window_start),
+                day_end: *end,
+                note_ids: day
+                    .notes
+                    .iter()
+                    .filter(|n| (i == 0 || n.note.timestamp >= *start) && (*end == day.day_end || n.note.timestamp < *end))
+                    .map(SheetNote::id)
+                    .collect(),
+            })
+            .collect(),
+    )
+}
+
+fn day_id(batch_id: &str, number: usize) -> String {
+    if number == 1 { batch_id.to_string() } else { format!("{batch_id}d{number}") }
+}
+
+fn plan_notes(day: &Day) -> Vec<PlanNote> {
+    day.notes.iter().map(|n| PlanNote { id: n.id(), timestamp: n.note.timestamp, description: n.note.description.clone() }).collect()
+}
+
+fn latest_compacted(day: &Day) -> Option<PlanNote> {
+    day.latest_compacted.as_ref().map(|l| PlanNote { id: "previous_note".into(), timestamp: l.timestamp, description: l.description.clone() })
+}
+
+fn shown(day: &Day, candidates: &[(String, Vec<String>)]) -> Vec<Event> {
+    let near: Vec<&String> = candidates.iter().flat_map(|(_, ids)| ids).collect();
+    day.events
+        .iter()
+        .filter(|e| e.id.as_ref().is_some_and(|id| !id.is_empty() && (e.start() < day.now || near.contains(&id))))
+        .cloned()
+        .collect()
+}
+
+fn candidates(timestamp: Moment, events: &[Event], previous: Option<&Event>) -> Vec<String> {
+    let window = Duration::minutes(CANDIDATE_MINUTES);
+    let mut near: Vec<&Event> = events
+        .iter()
+        .filter(|e| e.id.as_ref().is_some_and(|i| !i.is_empty()) && e.end() > timestamp - window && e.start() < timestamp + window)
+        .collect();
+    near.sort_by_key(|e| (e.start() - timestamp).abs());
+    let mut ids: Vec<String> = near.iter().map(|e| e.id.clone().unwrap()).collect();
+    if let Some(id) = previous.and_then(|p| p.id.clone()).filter(|i| !i.is_empty()) {
+        if !ids.contains(&id) {
+            ids.push(id);
+        }
+    }
+    ids
+}
+
+fn title_key(summary: &str) -> String {
+    summary.to_lowercase().split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// `_keep_priorities`: give each event the plan settles the priority its
+/// actions give it now, as its own, unless it has one.
+fn keep_priorities(plan: &mut CompactionPlan, tree: &ActionTree, day: &Day) {
+    let kept = |state: &EventState| -> Option<i64> {
+        let start = state.start?;
+        if start >= day.now || state.priority.is_some() {
+            return None;
+        }
+        state.action_ids.iter().flatten().filter_map(|a| tree.priority(a)).min()
+    };
+    let mut changed: Vec<Option<String>> = Vec::new();
+    for change in plan.changes.iter_mut() {
+        changed.push(change.event_id.clone());
+        if change.action != "cancel" {
+            if let Some(after) = change.after.as_mut() {
+                if let Some(priority) = kept(after) {
+                    after.priority = Some(priority);
+                }
+            }
+        }
+    }
+    for event in &day.events {
+        let Some(id) = event.id.clone().filter(|i| !i.is_empty()) else { continue };
+        if changed.contains(&Some(id.clone())) || event.is_cancelled() {
+            continue;
+        }
+        let before = EventState::from_event(event);
+        if let Some(priority) = kept(&before) {
+            let mut after = before.clone();
+            after.priority = Some(priority);
+            plan.changes.push(CompactionChange {
+                action: "update".into(),
+                event_id: Some(id),
+                key: None,
+                reason: "kept the priority its actions give it, as its own".into(),
+                before: Some(before),
+                after: Some(after),
+            });
+        }
+    }
+}
+
+pub fn new_event_id(compaction_id: &str, step: i64) -> String {
+    format!("cmp{compaction_id}s{step:03}")
+}
+
+fn patch_for(step: &JournalStep) -> Event {
+    if step.action == "cancel" {
+        return Event { id: step.event_id.clone(), status: Some("cancelled".into()), ..Default::default() };
+    }
+    let before = step.before.clone().unwrap_or_default();
+    let after = step.after.clone().unwrap_or_default();
+    let mut patch = Event { id: step.event_id.clone(), ..Default::default() };
+    if after.summary.is_some() && after.summary != before.summary {
+        patch.summary = after.summary.clone();
+    }
+    if after.start.is_some() && after.start != before.start {
+        patch.start = after.start;
+    }
+    if after.end.is_some() && after.end != before.end {
+        patch.end = after.end;
+    }
+    if after.description.is_some() && after.description != before.description {
+        patch.description = after.description.clone();
+    }
+    if after.location.is_some() && after.location != before.location {
+        patch.location = after.location.clone();
+    }
+    if after.priority.is_some() && after.priority != before.priority {
+        patch.priority = after.priority;
+    }
+    if after.event_label_id.is_some() && after.event_label_id != before.event_label_id {
+        patch.event_label_id = after.event_label_id.clone();
+    }
+    if after.action_ids.is_some() && after.action_ids != before.action_ids {
+        patch.action_ids = after.action_ids.clone();
+    }
+    if after.facts != before.facts {
+        patch.facts = Some(facts_from_dict(after.facts.as_ref()));
+    }
+    patch
+}
+
+#[allow(dead_code)]
+fn unused(_: Problem, _: Option<Value>) -> Option<Value> {
+    facts_dict(None)
+}

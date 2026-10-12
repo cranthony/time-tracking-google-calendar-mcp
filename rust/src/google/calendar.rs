@@ -393,7 +393,7 @@ impl CalendarClient {
             let kept: Map<String, Value> =
                 private.into_iter().filter(|(k, v)| !v.is_null() || current_private.contains_key(k)).collect();
             if kept.is_empty() {
-                body.remove("extendedProperties");
+                body.shift_remove("extendedProperties");
             } else {
                 body.insert("extendedProperties".into(), json!({ "private": kept }));
             }
