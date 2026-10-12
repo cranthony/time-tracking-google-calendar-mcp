@@ -184,6 +184,19 @@ fn within(rows: &Rows, outer: &GridRange, inner: &GridRange) -> Rows {
 
 const MAX_RATE_LIMIT_RETRIES: u32 = 6;
 
+#[cfg(test)]
+thread_local! {
+    /// The unit tests' backoff: each wait, recorded rather than slept.
+    pub static PAUSES: RefCell<Vec<f64>> = const { RefCell::new(Vec::new()) };
+}
+
+fn pause(seconds: f64) {
+    #[cfg(test)]
+    PAUSES.with(|p| p.borrow_mut().push(seconds));
+    #[cfg(not(test))]
+    std::thread::sleep(std::time::Duration::from_secs_f64(seconds));
+}
+
 #[derive(Clone)]
 pub struct SheetsClient {
     google: Arc<Google>,
@@ -223,7 +236,7 @@ impl SheetsClient {
             match self.google.request(method, &url, query, body, None) {
                 Err(error) if status_of(&error) == Some(429) && attempt < MAX_RATE_LIMIT_RETRIES => {
                     let fraction = (uuid::Uuid::new_v4().as_u128() % 1_000_000) as f64 / 1_000_000.0;
-                    std::thread::sleep(std::time::Duration::from_secs_f64(fraction * 2f64.powi(attempt as i32)));
+                    pause(fraction * 2f64.powi(attempt as i32));
                     attempt += 1;
                 }
                 other => return other,
@@ -524,3 +537,7 @@ fn values_by_filter(response: &Value, grids: &[GridRange]) -> Vec<Rows> {
 fn encode_range(range: &str) -> String {
     super::segment(range)
 }
+
+#[cfg(test)]
+#[path = "sheets_tests.rs"]
+mod tests;

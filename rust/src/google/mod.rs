@@ -278,3 +278,7 @@ pub fn segment(text: &str) -> String {
     }
     out
 }
+
+#[cfg(test)]
+#[path = "auth_tests.rs"]
+mod tests;
