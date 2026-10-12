@@ -145,6 +145,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -153,7 +154,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_people"
   },
   {
@@ -711,7 +712,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1852,7 +1854,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -3010,7 +3013,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },
@@ -3093,7 +3097,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },

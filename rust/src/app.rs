@@ -179,7 +179,9 @@ impl App {
     pub fn people(&self) -> anyhow::Result<People> {
         built(&self.people, || {
             let (_, sheets, id) = self.spreadsheet()?;
-            People::ensure(&sheets, &id, Some(self.trait_ids_fn()))
+            let me = self.me();
+            let habits: crate::stores::foundations::NodesFn = Arc::new(move || me.habits()?.nodes());
+            Ok(People::ensure(&sheets, &id, Some(self.trait_ids_fn()))?.with_habits(habits))
         })
     }
 
@@ -191,7 +193,9 @@ impl App {
                 let actions = me.actions()?;
                 Ok(action_scopes(&actions.all()?, &actions.groups()?))
             });
-            Habits::ensure(&sheets, &id, Some(scopes), Some(self.trait_ids_fn()))
+            let me = self.me();
+            let people: crate::stores::foundations::NodesFn = Arc::new(move || me.people()?.nodes());
+            Ok(Habits::ensure(&sheets, &id, Some(scopes), Some(self.trait_ids_fn()))?.with_people(people))
         })
     }
 

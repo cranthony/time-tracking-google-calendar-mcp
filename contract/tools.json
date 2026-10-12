@@ -4486,7 +4486,7 @@
     }
   },
   {
-    "description": "The traits: how the user wants to be with people (and with\nthemselves), in order -- by default the active ones (rated) and those\nturned off (kept, but not rated for now), not archived ones\n(retired). Each has an id (fixed when it's created, and what a\nperson's traits name), name, definition and parts. A trait's score is\nthe weighted mean of its parts' scores (0-100), leaving out any with\nnothing to rate it by. Each part is {\"kind\": ..., \"weight\": 1,\n\"engagement_type\": \"with\", ...}: engagement_type \"with\" (the default)\nreads the events the person was at with the user, \"for\" those the\nuser did for them while they weren't there. The kinds:\n\"judgment\" -- each event judged by the assistant on its own, never by\nasking the user, for one person or a named group, against a \"rubric\"\n(the question: \"Was this activity or place new?\") on a scale of\n\"ratings\" ({\"0\": \"The activity and place were routine\", \"1\": \"There\nwas a twist on the activity or place\", \"2\": \"The activity or the\nplace were new\", \"3\": \"Both were new, or it was otherwise\nadventurous\"}), from the \"facts\" it names: \"action\" (what was done),\n\"action_history\" (what's been done with them before), \"location\",\n\"location_history\" (where they've been together before),\n\"general_notes\" (the event's notes), \"person_notes\" (the notes on\nthe person: the user's own for a \"for\" engagement, the other\nperson's for \"with\") and \"what_matters\" (what's important to the\nperson, as their what_matters says), each a name or {\"fact\": \"action_history\",\n\"lookback_days\": 90} (history facts look back 30 days by default),\nand scored over the person's events in its last \"window_days\" (30\nby default);\n\"continuity\" (the last event ended within \"last_within_days\" of the\nday's end and the next starts within \"next_within_days\" after it,\nboth default 14: 100 for both, 50 for one, 0 for neither); \"count\"\n({\"kind\": \"count\", \"target\": 1, \"interval_days\": 21, \"zero_at_days\":\n42, \"noun\": \"visits\"}), \"duration\" (with \"target_min\") and\n\"follow_through\" (\"penalty\", \"recovery\", \"look_back_days\"), as the\nmeasures of the same kind -- follow_through counting the events the\nuser cancelled: said in compaction didn't happen, or deleted with\ndelete_event's counts_against_follow_through, never a plan merely\nchanged. continuity, count, duration and\nfollow_through can take an \"action\" (an action or action group id) to\ncount only its events. A person's traits can select which traits\napply to them and give them their own parts for any (see\ncreate_person). problems lists anything wrong with a trait edited by\nhand; a bad part isn't rated. Read-only.",
+    "description": "The traits: how the user wants to be with people (and with\nthemselves), in order -- by default the active ones (rated) and those\nturned off (kept, but not rated for now), not archived ones\n(retired). Each has an id (fixed when it's created, and what a\nperson's traits name), name, definition and parts. A trait's score is\nthe weighted mean of its parts' scores (0-100), leaving out any with\nnothing to rate it by. Each part is {\"kind\": ..., \"weight\": 1,\n\"engagement_type\": \"with\", ...}: engagement_type \"with\" (the default)\nreads the events the person was at with the user, \"for\" those the\nuser did for them while they weren't there. The kinds:\n\"judgment\" -- each event judged by the assistant on its own, never by\nasking the user, for one person or a named group, against a \"rubric\"\n(the question: \"Was this activity or place new?\") on a scale of\n\"ratings\" ({\"0\": \"The activity and place were routine\", \"1\": \"There\nwas a twist on the activity or place\", \"2\": \"The activity or the\nplace were new\", \"3\": \"Both were new, or it was otherwise\nadventurous\"}), from the \"facts\" it names: \"action\" (what was done),\n\"action_history\" (what's been done with them before), \"location\",\n\"location_history\" (where they've been together before),\n\"general_notes\" (the event's notes), \"person_notes\" (the notes on\nthe person: the user's own for a \"for\" engagement, the other\nperson's for \"with\") and \"what_matters\" (what's important to the\nperson, as their what_matters says), each a name or {\"fact\": \"action_history\",\n\"lookback_days\": 90} (history facts look back 30 days by default),\nand scored over the person's events in its last \"window_days\" (30\nby default);\n\"continuity\" (the last event ended within \"last_within_days\" of the\nday's end and the next starts within \"next_within_days\" after it,\nboth default 14: 100 for both, 50 for one, 0 for neither); \"count\"\n({\"kind\": \"count\", \"target\": 1, \"interval_days\": 21, \"zero_at_days\":\n42, \"noun\": \"visits\"}), \"duration\" (with \"target_min\") and\n\"follow_through\" (\"penalty\", \"recovery\", \"look_back_days\"), as the\nmeasures of the same kind -- follow_through counting the events the\nuser cancelled: said in compaction didn't happen, or deleted with\ndelete_event's counts_against_follow_through, never a plan merely\nchanged; \"spacing\" ({\"kind\": \"spacing\", \"action\": \"<meals>\",\n\"max_gap_hours\": 6, \"exceptions\": [{\"actions\": [\"<sleep>\"],\n\"reset_hours\": 1}]}): a clock that each event of its action resets to\nmax_gap_hours left, stopped during an exception's events and, after\none, set to its reset_hours left (if given) -- each day scored as\nthe share of its time outside exceptions that the clock hadn't run\nout. continuity, count, duration and follow_through can take an\n\"action\" (an action or action group id) to count only its events. A person's traits can select which traits\napply to them and give them their own parts for any (see\ncreate_person). problems lists anything wrong with a trait edited by\nhand; a bad part isn't rated. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -6576,7 +6576,7 @@
     }
   },
   {
-    "description": "The people the user spends time with: by default the active ones,\nnot archived (out of touch) or deleted ones. The user themself is\nalways first, with the id \"self\". Each has an id, name, context (what\ntells them apart from others of the same name, e.g. \"met at salsa\"),\nstatus, circles (the ids of the circles they're in) with their\ncircle_names, what_matters (what's important to them) and traits:\nwhich traits apply to them, and their own parts for any (see\ncreate_person; without it, every active trait applies as get_traits\nhas it). Each also has cancelled_events: the events the user cancelled\nthat count against their follow-through, newest first -- when each was\nplanned, its actions, whether they were to be there (\"with\") or it was\nfor them (\"for\"), the follow-through parts it counted against, and\nwhat cancelled it. Read-only.",
+    "description": "The people the user spends time with: by default the active ones,\nnot archived (out of touch) or deleted ones. The user themself is\nalways first, with the id \"self\". Each has an id, name, context (what\ntells them apart from others of the same name, e.g. \"met at salsa\"),\nstatus, circles (the ids of the circles they're in) with their\ncircle_names, what_matters (what's important to them) and traits:\nwhich traits apply to them, and their own parts for any (see\ncreate_person; without it, every active trait applies as get_traits\nhas it). Each also has cancelled_events: the events the user cancelled\nthat count against their follow-through, newest first -- when each was\nplanned, its actions, whether they were to be there (\"with\") or it was\nfor them (\"for\"), the follow-through parts it counted against, and\nwhat cancelled it. Each also has foundations: the habits (each as\n\"habit:<id>\") and people (by id) their relationship is built on, on\nthe user's habit graph -- a person with foundations, even none ([]),\nis on it; without, they aren't. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -6739,6 +6739,15 @@
                 "null"
               ]
             },
+            "foundations": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "circle_names": {
               "items": {
                 "type": "string"
@@ -6836,6 +6845,15 @@
             "null"
           ]
         },
+        "foundations": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
         "circle_names": {
           "items": {
             "type": "string"
@@ -6930,7 +6948,7 @@
     }
   },
   {
-    "description": "Add a person: a name, and optionally a context (what tells them\napart, e.g. \"met at salsa\" -- a name and context together must be\nunique, so give one when the name's taken), circles (circle ids, see\nget_circles), what_matters (what's important to them) and traits:\n{\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]}}, both\noptional -- the traits that apply to them (by default every active\none), and parts replacing a trait's for them alone, each checked as a\ntrait's own (see get_traits): a person's own cadence, say,\n{\"parts\": {\"reliable\": [{\"kind\": \"count\", \"target\": 1,\n\"interval_days\": 21, \"noun\": \"visits\"}]}}. Active unless given a\nstatus. id is assigned. Returns the person and their id as\ncreated_id.",
+    "description": "Add a person: a name, and optionally a context (what tells them\napart, e.g. \"met at salsa\" -- a name and context together must be\nunique, so give one when the name's taken), circles (circle ids, see\nget_circles), what_matters (what's important to them) and traits:\n{\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]}}, both\noptional -- the traits that apply to them (by default every active\none), and parts replacing a trait's for them alone, each checked as a\ntrait's own (see get_traits): a person's own cadence, say,\n{\"parts\": {\"reliable\": [{\"kind\": \"count\", \"target\": 1,\n\"interval_days\": 21, \"noun\": \"visits\"}]}}, and foundations (see\nget_people: habits as \"habit:<id>\", people by id; none of them\ndeleted, and never making a cycle). Active unless given a status. id\nis assigned. Returns the person and their id as created_id.",
     "inputSchema": {
       "properties": {
         "person": {
@@ -6997,6 +7015,15 @@
               "additionalProperties": true,
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "foundations": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
                 "null"
               ]
             }
@@ -7149,6 +7176,15 @@
                 "null"
               ]
             },
+            "foundations": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "circle_names": {
               "items": {
                 "type": "string"
@@ -7174,7 +7210,7 @@
     }
   },
   {
-    "description": "Update a person by id (\"self\" for the user): their name, context,\nstatus (active; archived, out of touch; or deleted, shouldn't have\nexisted -- self is always active), circles (replaced whole, so send\nevery circle to keep), what_matters or traits (replaced whole; see\ncreate_person). Omitted properties keep their\nvalue; list one in clear_fields to blank it instead. Returns the\nperson as updated.",
+    "description": "Update a person by id (\"self\" for the user): their name, context,\nstatus (active; archived, out of touch; or deleted, shouldn't have\nexisted -- self is always active), circles (replaced whole, so send\nevery circle to keep), what_matters, traits (replaced whole; see\ncreate_person) or foundations (replaced whole; clear it to take them\noff the habit graph). Omitted properties keep their value; list one\nin clear_fields to blank it instead. A person deleted leaves every\nhabit's and person's foundations. Returns the person as updated.",
     "inputSchema": {
       "properties": {
         "person": {
@@ -7186,7 +7222,8 @@
               "context",
               "circles",
               "what_matters",
-              "traits"
+              "traits",
+              "foundations"
             ],
             "type": "string"
           },
@@ -7258,6 +7295,15 @@
                 "object",
                 "null"
               ]
+            },
+            "foundations": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -7320,6 +7366,15 @@
           "additionalProperties": true,
           "type": [
             "object",
+            "null"
+          ]
+        },
+        "foundations": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
             "null"
           ]
         },
@@ -8050,7 +8105,7 @@
     }
   },
   {
-    "description": "The user's habits: by default the active ones, not archived (set\naside) or deleted ones. Each is about the user's events with one\naction, or with any action under one action group (action_id, with\nits action_path), and is rated by traits as a person is: its traits\nsay which apply (by default every active one) and give it its own\nparts -- its own rubrics -- for any (see create_habit). Each has an\nid, name, status and note (what it's for, and what doing it well\nlooks like). Each also has cancelled_events: the events the user\ncancelled that count against its follow-through, newest first, as a\nperson's (see get_people). Its events' judgments are kept under\n\"habit:<id>\", as a person's are under their id. Read-only.",
+    "description": "The user's habits: by default the active ones, not archived (set\naside) or deleted ones. Each is about the user's events with one\naction, or with any action under one action group (action_id, with\nits action_path), and is rated by traits as a person is: its traits\nsay which apply (by default every active one) and give it its own\nparts -- its own rubrics -- for any (see create_habit). Each has an\nid, name, status and note (what it's for, and what doing it well\nlooks like). Each also has cancelled_events: the events the user\ncancelled that count against its follow-through, newest first, as a\nperson's (see get_people). Its events' judgments are kept under\n\"habit:<id>\", as a person's are under their id. Each also has\nfoundations: the habits (each as \"habit:<id>\") and people (by id)\nit's built on, on the user's habit graph. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -8204,6 +8259,15 @@
                 "null"
               ]
             },
+            "foundations": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "action_path": {
               "type": [
                 "string",
@@ -8286,6 +8350,15 @@
           "additionalProperties": true,
           "type": [
             "object",
+            "null"
+          ]
+        },
+        "foundations": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
             "null"
           ]
         },
@@ -8380,7 +8453,7 @@
     }
   },
   {
-    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}}, both optional, as a person's (see create_person) -- the\ntraits that apply to it (by default every active one), and parts\nreplacing a trait's for it alone, a more specific rubric, say. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Active unless given a status. id is assigned.\nReturns the habit and its id as created_id.",
+    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}}, both optional, as a person's (see create_person) -- the\ntraits that apply to it (by default every active one), and parts\nreplacing a trait's for it alone, a more specific rubric, say. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") and people (by id) it's built on -- sleeping well under\nexercising, say; none of them deleted, and never making a cycle.\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
     "inputSchema": {
       "properties": {
         "habit": {
@@ -8438,6 +8511,15 @@
               "additionalProperties": true,
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "foundations": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
                 "null"
               ]
             }
@@ -8581,6 +8663,15 @@
                 "null"
               ]
             },
+            "foundations": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "action_path": {
               "type": [
                 "string",
@@ -8603,7 +8694,7 @@
     }
   },
   {
-    "description": "Update a habit by id: its name, action_id (an action's or a\ngroup's), status (active; archived, set aside; or deleted, shouldn't\nhave existed), note or traits (replaced whole; see create_habit).\nOmitted properties keep their value; list one in clear_fields to\nblank it instead. Returns the habit as updated.",
+    "description": "Update a habit by id: its name, action_id (an action's or a\ngroup's), status (active; archived, set aside; or deleted, shouldn't\nhave existed), note, traits or foundations (each replaced whole; see\ncreate_habit). Omitted properties keep their value; list one in\nclear_fields to blank it instead. A habit deleted leaves every\nhabit's and person's foundations. Returns the habit as updated.",
     "inputSchema": {
       "properties": {
         "habit": {
@@ -8613,7 +8704,8 @@
           "items": {
             "enum": [
               "note",
-              "traits"
+              "traits",
+              "foundations"
             ],
             "type": "string"
           },
@@ -8676,6 +8768,15 @@
                 "object",
                 "null"
               ]
+            },
+            "foundations": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8729,6 +8830,15 @@
           "additionalProperties": true,
           "type": [
             "object",
+            "null"
+          ]
+        },
+        "foundations": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
             "null"
           ]
         },

@@ -38,11 +38,12 @@ pub fn part_kind(kind: &str) -> Option<(&'static [&'static str], &'static [&'sta
         "count" => Some((&["target"], &["noun", "interval_days", "zero_at_days", "action"])),
         "duration" => Some((&["target_min"], &["interval_days", "zero_at_days", "action"])),
         "follow_through" => Some((&[], &["penalty", "recovery", "look_back_days", "action"])),
+        "spacing" => Some((&["action", "max_gap_hours"], &["exceptions"])),
         _ => None,
     }
 }
 
-pub const PART_KIND_NAMES: [&str; 5] = ["judgment", "continuity", "count", "duration", "follow_through"];
+pub const PART_KIND_NAMES: [&str; 6] = ["judgment", "continuity", "count", "duration", "follow_through", "spacing"];
 
 /// A trait: id, name, status, definition and parts, each a JSON value
 /// (a hand edit can leave any of them any shape).
@@ -347,7 +348,7 @@ pub fn part_problems(part: &Value) -> Vec<String> {
             problems.push("\"action\" must be an action or action group id".into());
         }
     }
-    for name in ["target", "target_min", "interval_days", "last_within_days", "next_within_days", "look_back_days", "window_days"] {
+    for name in ["max_gap_hours", "target", "target_min", "interval_days", "last_within_days", "next_within_days", "look_back_days", "window_days"] {
         if let Some(value) = object.get(name) {
             if !(is_number(value) && number(value) > 0.0) {
                 problems.push(format!("\"{name}\" must be a number above 0"));
@@ -374,6 +375,40 @@ pub fn part_problems(part: &Value) -> Vec<String> {
     }
     if kind == "judgment" {
         problems.extend(judgment_problems(object));
+    }
+    if let Some(exceptions) = object.get("exceptions") {
+        problems.extend(exception_problems(exceptions));
+    }
+    problems
+}
+
+/// A spacing part's exceptions: each {"actions": [ids], "reset_hours":
+/// n}, the clock stopped at their events and, after one, set to
+/// reset_hours left (if given).
+fn exception_problems(exceptions: &Value) -> Vec<String> {
+    let Some(items) = exceptions.as_array() else {
+        return vec!["\"exceptions\" must be a list of {\"actions\": [action ids], \"reset_hours\": hours}".into()];
+    };
+    let mut problems = Vec::new();
+    for (i, item) in items.iter().enumerate() {
+        let Some(object) = item.as_object() else {
+            problems.push(format!("exception {i} must be an object with \"actions\""));
+            continue;
+        };
+        let mut extra: Vec<&String> = object.keys().filter(|k| !["actions", "reset_hours"].contains(&k.as_str())).collect();
+        extra.sort();
+        for name in extra {
+            problems.push(format!("exception {i} has no field \"{name}\"; an exception takes \"actions\", \"reset_hours\""));
+        }
+        match object.get("actions").and_then(Value::as_array) {
+            Some(actions) if !actions.is_empty() && actions.iter().all(|a| a.as_str().is_some_and(|a| !a.trim().is_empty())) => {}
+            _ => problems.push(format!("exception {i}'s \"actions\" must be a list of action or action group ids")),
+        }
+        if let Some(reset) = object.get("reset_hours") {
+            if !(is_number(reset) && number(reset) >= 0.0) {
+                problems.push(format!("exception {i}'s \"reset_hours\" must be a number, 0 or more"));
+            }
+        }
     }
     problems
 }

@@ -361,7 +361,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -807,7 +808,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1539,7 +1541,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },
@@ -1593,7 +1596,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },

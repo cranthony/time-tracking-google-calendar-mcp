@@ -14,6 +14,7 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "foundations": null,
      "id": "4709iy",
      "name": "Robin Example",
      "status": "active",
@@ -22,7 +23,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Robin Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": \"time outdoors\",\n    \"traits\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Robin Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": \"time outdoors\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_person"
   },
   {
@@ -2100,7 +2101,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -2394,6 +2396,7 @@
         "active",
         "",
         "time outdoors",
+        "",
         ""
        ]
       ]
@@ -2983,7 +2986,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -5460,7 +5464,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },
@@ -5544,7 +5549,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "4709iy",

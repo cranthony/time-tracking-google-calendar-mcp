@@ -73,6 +73,7 @@
       "bcyx3f"
      ],
      "context": null,
+     "foundations": null,
      "id": "9vxzfr",
      "name": "Sam Example",
      "status": "active",
@@ -81,7 +82,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"9vxzfr\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"4709iy\",\n      \"bcyx3f\"\n    ],\n    \"what_matters\": null,\n    \"traits\": null,\n    \"circle_names\": [\n      \"Close friends\",\n      \"Family\"\n    ],\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"9vxzfr\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"9vxzfr\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"4709iy\",\n      \"bcyx3f\"\n    ],\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Close friends\",\n      \"Family\"\n    ],\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"9vxzfr\"\n}",
    "tool": "create_person"
   },
   {
@@ -137,6 +138,7 @@
      "bcyx3f"
     ],
     "context": null,
+    "foundations": null,
     "id": "9vxzfr",
     "name": "Sam Example",
     "status": "active",
@@ -144,7 +146,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"9vxzfr\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"4709iy\",\n    \"bcyx3f\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": [\n    \"Close friends\",\n    \"Family\"\n  ],\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"9vxzfr\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"4709iy\",\n    \"bcyx3f\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Close friends\",\n    \"Family\"\n  ],\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -244,6 +246,7 @@
      "bcyx3f"
     ],
     "context": null,
+    "foundations": null,
     "id": "9vxzfr",
     "name": "Sam Example",
     "status": "active",
@@ -251,7 +254,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"9vxzfr\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"bcyx3f\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": [\n    \"Relatives\"\n  ],\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"9vxzfr\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"bcyx3f\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Relatives\"\n  ],\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -558,7 +561,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1070,6 +1074,7 @@
         "active",
         "[\"4709iy\",\"bcyx3f\"]",
         "",
+        "",
         ""
        ]
       ]
@@ -1409,7 +1414,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      }
@@ -1970,6 +1976,7 @@
         "active",
         "[\"bcyx3f\"]",
         "",
+        "",
         ""
        ]
       ]
@@ -2373,7 +2380,8 @@
         "action_id",
         "status",
         "note",
-        "traits"
+        "traits",
+        "foundations"
        ]
       ]
      },
@@ -2427,7 +2435,8 @@
         "status",
         "circles",
         "what_matters",
-        "traits"
+        "traits",
+        "foundations"
        ],
        [
         "9vxzfr",

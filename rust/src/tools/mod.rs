@@ -193,7 +193,12 @@ pub fn check_part_actions(app: &App, parts: Option<&Value>) -> Result<(), ToolEr
         Some(Value::Array(items)) => items.iter().collect(),
         _ => Vec::new(),
     };
-    let named: Vec<&str> = listed.iter().filter_map(|p| p.get("action").and_then(Value::as_str)).collect();
+    let mut named: Vec<&str> = listed.iter().filter_map(|p| p.get("action").and_then(Value::as_str)).collect();
+    for part in &listed {
+        for exception in part.get("exceptions").and_then(Value::as_array).into_iter().flatten() {
+            named.extend(exception.get("actions").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str));
+        }
+    }
     if named.is_empty() {
         return Ok(());
     }

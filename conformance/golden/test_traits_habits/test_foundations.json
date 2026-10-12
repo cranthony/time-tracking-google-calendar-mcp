@@ -1,0 +1,3036 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "action": {
+     "name": "eat a meal",
+     "status": "active"
+    }
+   },
+   "content": {
+    "changed": [
+     {
+      "background_color": null,
+      "effective_color": "#a4bdfc",
+      "effective_priority": null,
+      "group_id": null,
+      "holds_label": true,
+      "id": "4709iy",
+      "label_id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+      "name": "eat a meal",
+      "note": null,
+      "path": "eat a meal",
+      "priority": null,
+      "status": "active"
+     }
+    ],
+    "created_id": "4709iy",
+    "label_slots_total": 200,
+    "label_slots_used": 5
+   },
+   "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"eat a meal\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"eat a meal\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
+   "tool": "create_action"
+  },
+  {
+   "arguments": {
+    "action": {
+     "name": "sleep",
+     "status": "active"
+    }
+   },
+   "content": {
+    "changed": [
+     {
+      "background_color": null,
+      "effective_color": "#a4bdfc",
+      "effective_priority": null,
+      "group_id": null,
+      "holds_label": true,
+      "id": "bcyx3f",
+      "label_id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+      "name": "sleep",
+      "note": null,
+      "path": "sleep",
+      "priority": null,
+      "status": "active"
+     }
+    ],
+    "created_id": "bcyx3f",
+    "label_slots_total": 200,
+    "label_slots_used": 6
+   },
+   "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"sleep\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"sleep\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
+   "tool": "create_action"
+  },
+  {
+   "arguments": {
+    "habit": {
+     "action_id": "bcyx3f",
+     "name": "Sleep well"
+    }
+   },
+   "content": {
+    "created_id": "7632uw",
+    "habit": {
+     "action_id": "bcyx3f",
+     "action_path": "sleep",
+     "cancelled_events": null,
+     "foundations": null,
+     "id": "7632uw",
+     "name": "Sleep well",
+     "note": null,
+     "status": "active",
+     "traits": null
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"habit\": {\n    \"id\": \"7632uw\",\n    \"name\": \"Sleep well\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"sleep\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"7632uw\"\n}",
+   "tool": "create_habit"
+  },
+  {
+   "arguments": {
+    "habit": {
+     "action_id": "4709iy",
+     "name": "Eat well",
+     "traits": {
+      "parts": {
+       "reliable": [
+        {
+         "action": "4709iy",
+         "exceptions": [
+          {
+           "actions": [
+            "bcyx3f"
+           ],
+           "reset_hours": 1
+          }
+         ],
+         "kind": "spacing",
+         "max_gap_hours": 6
+        }
+       ]
+      }
+     }
+    }
+   },
+   "content": {
+    "created_id": "9vxzfr",
+    "habit": {
+     "action_id": "4709iy",
+     "action_path": "eat a meal",
+     "cancelled_events": null,
+     "foundations": null,
+     "id": "9vxzfr",
+     "name": "Eat well",
+     "note": null,
+     "status": "active",
+     "traits": {
+      "parts": {
+       "reliable": [
+        {
+         "action": "4709iy",
+         "exceptions": [
+          {
+           "actions": [
+            "bcyx3f"
+           ],
+           "reset_hours": 1
+          }
+         ],
+         "kind": "spacing",
+         "max_gap_hours": 6
+        }
+       ]
+      }
+     }
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"habit\": {\n    \"id\": \"9vxzfr\",\n    \"name\": \"Eat well\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"parts\": {\n        \"reliable\": [\n          {\n            \"kind\": \"spacing\",\n            \"action\": \"4709iy\",\n            \"max_gap_hours\": 6,\n            \"exceptions\": [\n              {\n                \"actions\": [\n                  \"bcyx3f\"\n                ],\n                \"reset_hours\": 1\n              }\n            ]\n          }\n        ]\n      }\n    },\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"9vxzfr\"\n}",
+   "tool": "create_habit"
+  },
+  {
+   "arguments": {
+    "habit": {
+     "action_id": "4709iy",
+     "name": "Bad gap",
+     "traits": {
+      "parts": {
+       "reliable": [
+        {
+         "action": "4709iy",
+         "exceptions": [
+          {
+           "actions": [
+            "bcyx3f"
+           ],
+           "reset_hours": 1
+          }
+         ],
+         "kind": "spacing",
+         "max_gap_hours": 0
+        }
+       ]
+      }
+     }
+    }
+   },
+   "content": "Error executing tool create_habit: habit m8t0mg's traits \"parts\" for 'reliable': part 1 (spacing) \"max_gap_hours\" must be a number above 0",
+   "is_error": true,
+   "text": "Error executing tool create_habit: habit m8t0mg's traits \"parts\" for 'reliable': part 1 (spacing) \"max_gap_hours\" must be a number above 0",
+   "tool": "create_habit"
+  },
+  {
+   "arguments": {
+    "habit": {
+     "action_id": "4709iy",
+     "foundations": [
+      "habit:7632uw",
+      "habit:9vxzfr"
+     ],
+     "name": "Exercise"
+    }
+   },
+   "content": {
+    "created_id": "mkgvva",
+    "habit": {
+     "action_id": "4709iy",
+     "action_path": "eat a meal",
+     "cancelled_events": null,
+     "foundations": [
+      "habit:7632uw",
+      "habit:9vxzfr"
+     ],
+     "id": "mkgvva",
+     "name": "Exercise",
+     "note": null,
+     "status": "active",
+     "traits": null
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"habit\": {\n    \"id\": \"mkgvva\",\n    \"name\": \"Exercise\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:7632uw\",\n      \"habit:9vxzfr\"\n    ],\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"mkgvva\"\n}",
+   "tool": "create_habit"
+  },
+  {
+   "arguments": {
+    "person": {
+     "foundations": [
+      "habit:mkgvva"
+     ],
+     "name": "Family Example"
+    }
+   },
+   "content": {
+    "created_id": "6gpeqq",
+    "person": {
+     "cancelled_events": null,
+     "circle_names": null,
+     "circles": null,
+     "context": null,
+     "foundations": [
+      "habit:mkgvva"
+     ],
+     "id": "6gpeqq",
+     "name": "Family Example",
+     "status": "active",
+     "traits": null,
+     "what_matters": null
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"person\": {\n    \"id\": \"6gpeqq\",\n    \"name\": \"Family Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:mkgvva\"\n    ],\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"6gpeqq\"\n}",
+   "tool": "create_person"
+  },
+  {
+   "arguments": {
+    "habit": {
+     "action_id": "4709iy",
+     "foundations": [
+      "7632uw"
+     ],
+     "name": "Unknown"
+    }
+   },
+   "content": "Error executing tool create_habit: habit c133sb's foundations ['7632uw'] aren't habits or people (get_habits and get_people list them; a habit is named \"habit:<id>\")",
+   "is_error": true,
+   "text": "Error executing tool create_habit: habit c133sb's foundations ['7632uw'] aren't habits or people (get_habits and get_people list them; a habit is named \"habit:<id>\")",
+   "tool": "create_habit"
+  },
+  {
+   "arguments": {
+    "habit": {
+     "foundations": [
+      "6gpeqq"
+     ],
+     "id": "7632uw"
+    }
+   },
+   "content": "Error executing tool update_habit: habit 7632uw's foundations would make a cycle: habit:7632uw → 6gpeqq → habit:mkgvva → habit:7632uw",
+   "is_error": true,
+   "text": "Error executing tool update_habit: habit 7632uw's foundations would make a cycle: habit:7632uw → 6gpeqq → habit:mkgvva → habit:7632uw",
+   "tool": "update_habit"
+  },
+  {
+   "arguments": {
+    "person": {
+     "foundations": [
+      "6gpeqq"
+     ],
+     "id": "6gpeqq"
+    }
+   },
+   "content": "Error executing tool update_person: person 6gpeqq's foundations can't include itself",
+   "is_error": true,
+   "text": "Error executing tool update_person: person 6gpeqq's foundations can't include itself",
+   "tool": "update_person"
+  },
+  {
+   "arguments": {
+    "id_or_name": "6gpeqq"
+   },
+   "content": {
+    "cancelled_events": [],
+    "circle_names": null,
+    "circles": null,
+    "context": null,
+    "foundations": [
+     "habit:mkgvva"
+    ],
+    "id": "6gpeqq",
+    "name": "Family Example",
+    "status": "active",
+    "traits": null,
+    "what_matters": null
+   },
+   "is_error": false,
+   "text": "{\n  \"id\": \"6gpeqq\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:mkgvva\"\n  ],\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "tool": "get_person"
+  },
+  {
+   "arguments": {
+    "habit": {
+     "id": "mkgvva",
+     "status": "deleted"
+    }
+   },
+   "content": {
+    "action_id": "4709iy",
+    "action_path": "eat a meal",
+    "cancelled_events": null,
+    "foundations": [
+     "habit:7632uw",
+     "habit:9vxzfr"
+    ],
+    "id": "mkgvva",
+    "name": "Exercise",
+    "note": null,
+    "status": "deleted",
+    "traits": null
+   },
+   "is_error": false,
+   "text": "{\n  \"id\": \"mkgvva\",\n  \"name\": \"Exercise\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"deleted\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:7632uw\",\n    \"habit:9vxzfr\"\n  ],\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": null\n}",
+   "tool": "update_habit"
+  },
+  {
+   "arguments": {
+    "id_or_name": "6gpeqq"
+   },
+   "content": {
+    "cancelled_events": [],
+    "circle_names": null,
+    "circles": null,
+    "context": null,
+    "foundations": [],
+    "id": "6gpeqq",
+    "name": "Family Example",
+    "status": "active",
+    "traits": null,
+    "what_matters": null
+   },
+   "is_error": false,
+   "text": "{\n  \"id\": \"6gpeqq\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": [],\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "tool": "get_person"
+  },
+  {
+   "arguments": {
+    "clear_fields": [
+     "foundations"
+    ],
+    "person": {
+     "id": "6gpeqq"
+    }
+   },
+   "content": {
+    "cancelled_events": null,
+    "circle_names": null,
+    "circles": null,
+    "context": null,
+    "foundations": null,
+    "id": "6gpeqq",
+    "name": "Family Example",
+    "status": "active",
+    "traits": null,
+    "what_matters": null
+   },
+   "is_error": false,
+   "text": "{\n  \"id\": \"6gpeqq\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "tool": "update_person"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "actions"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Actions"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "actions",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "action-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Action Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000007
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "action-groups",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "People"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits",
+        "foundations"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000009
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "people",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "circles"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Circles"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000011,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000011
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "circles",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000013,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000013
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "4709iy",
+        "",
+        "eat a meal",
+        "active",
+        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "",
+        "",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "labelProperties": {
+     "eventLabels": [
+      {
+       "backgroundColor": "#e1e1e1",
+       "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+       "name": "Priority 0"
+      },
+      {
+       "backgroundColor": "#fbd75b",
+       "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+       "name": "Priority 1"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+       "name": "Priority 2"
+      },
+      {
+       "backgroundColor": "#7ae7bf",
+       "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+       "name": "Priority 3"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+       "name": "eat a meal"
+      }
+     ]
+    }
+   },
+   "if_match": "\"0000000000000004\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 3,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "4709iy",
+        "",
+        "eat a meal",
+        "active",
+        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "",
+        "",
+        ""
+       ],
+       [
+        "bcyx3f",
+        "",
+        "sleep",
+        "active",
+        "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "",
+        "",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "labelProperties": {
+     "eventLabels": [
+      {
+       "backgroundColor": "#e1e1e1",
+       "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+       "name": "Priority 0"
+      },
+      {
+       "backgroundColor": "#fbd75b",
+       "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+       "name": "Priority 1"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+       "name": "Priority 2"
+      },
+      {
+       "backgroundColor": "#7ae7bf",
+       "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+       "name": "Priority 3"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+       "name": "eat a meal"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+       "name": "sleep"
+      }
+     ]
+    }
+   },
+   "if_match": "\"0000000000000020\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "habits"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Habits"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000028,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "status",
+        "note",
+        "traits",
+        "foundations"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000028
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "habits",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "traits"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Traits"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000030,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "status",
+        "definition",
+        "parts"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 6,
+        "sheetId": 1000030,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "thoughtful",
+        "Thoughtful",
+        "active",
+        "Remember what matters to them, and prepare for it.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+       ],
+       [
+        "reliable",
+        "Reliable",
+        "active",
+        "Do what I said I would, and keep contact going -- reliable to myself too.",
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+       ],
+       [
+        "creative",
+        "Creative",
+        "active",
+        "Make something together with them (making something alone is taking care of myself).",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+       ],
+       [
+        "adventurous",
+        "Adventurous",
+        "active",
+        "Share new experiences with them: new activities, new places.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+       ],
+       [
+        "generous",
+        "Generous",
+        "active",
+        "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000030
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "traits",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000028,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "7632uw",
+        "Sleep well",
+        "bcyx3f",
+        "active",
+        "",
+        "",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 3,
+        "sheetId": 1000028,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "7632uw",
+        "Sleep well",
+        "bcyx3f",
+        "active",
+        "",
+        "",
+        ""
+       ],
+       [
+        "9vxzfr",
+        "Eat well",
+        "4709iy",
+        "active",
+        "",
+        "{\"parts\":{\"reliable\":[{\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 4,
+        "sheetId": 1000028,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "7632uw",
+        "Sleep well",
+        "bcyx3f",
+        "active",
+        "",
+        "",
+        ""
+       ],
+       [
+        "9vxzfr",
+        "Eat well",
+        "4709iy",
+        "active",
+        "",
+        "{\"parts\":{\"reliable\":[{\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
+        ""
+       ],
+       [
+        "mkgvva",
+        "Exercise",
+        "4709iy",
+        "active",
+        "",
+        "",
+        "[\"habit:7632uw\",\"habit:9vxzfr\"]"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "6gpeqq",
+        "Family Example",
+        "",
+        "active",
+        "",
+        "",
+        "",
+        "[\"habit:mkgvva\"]"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "cancellations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Cancellations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000032,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "engagement",
+        "summary",
+        "start",
+        "end",
+        "action_ids",
+        "parts",
+        "cancelled_at",
+        "source"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000032
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "cancellations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000032,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 4,
+        "sheetId": 1000028,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "7632uw",
+        "Sleep well",
+        "bcyx3f",
+        "active",
+        "",
+        "",
+        ""
+       ],
+       [
+        "9vxzfr",
+        "Eat well",
+        "4709iy",
+        "active",
+        "",
+        "{\"parts\":{\"reliable\":[{\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
+        ""
+       ],
+       [
+        "mkgvva",
+        "Exercise",
+        "4709iy",
+        "deleted",
+        "",
+        "",
+        "[\"habit:7632uw\",\"habit:9vxzfr\"]"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "6gpeqq",
+        "Family Example",
+        "",
+        "active",
+        "",
+        "",
+        "",
+        "[]"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000032,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000030,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000028,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "6gpeqq",
+        "Family Example",
+        "",
+        "active",
+        "",
+        "",
+        "",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {},
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "labelProperties": {
+      "eventLabels": [
+       {
+        "backgroundColor": "#e1e1e1",
+        "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+        "name": "Priority 0"
+       },
+       {
+        "backgroundColor": "#fbd75b",
+        "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+        "name": "Priority 1"
+       },
+       {
+        "backgroundColor": "#a4bdfc",
+        "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+        "name": "Priority 2"
+       },
+       {
+        "backgroundColor": "#7ae7bf",
+        "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+        "name": "Priority 3"
+       },
+       {
+        "backgroundColor": "#a4bdfc",
+        "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "name": "eat a meal"
+       },
+       {
+        "backgroundColor": "#a4bdfc",
+        "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "name": "sleep"
+       }
+      ]
+     },
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000005
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "actions",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "action-groups",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000009
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "people",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000011
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "circles",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000013
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "locations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000028
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "habits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000030
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "traits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000032
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Action Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Action Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note"
+       ]
+      ]
+     },
+     "Actions": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Actions"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note"
+       ],
+       [
+        "4709iy",
+        "",
+        "eat a meal",
+        "active",
+        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7"
+       ],
+       [
+        "bcyx3f",
+        "",
+        "sleep",
+        "active",
+        "7e24e426-20ee-500e-8413-2a46dd1d1a62"
+       ]
+      ]
+     },
+     "Cancellations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000032,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Cancellations"
+      },
+      "rows": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "engagement",
+        "summary",
+        "start",
+        "end",
+        "action_ids",
+        "parts",
+        "cancelled_at",
+        "source"
+       ]
+      ]
+     },
+     "Circles": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000011,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Circles"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "note"
+       ]
+      ]
+     },
+     "Habits": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000028,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Habits"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "status",
+        "note",
+        "traits",
+        "foundations"
+       ],
+       [
+        "7632uw",
+        "Sleep well",
+        "bcyx3f",
+        "active"
+       ],
+       [
+        "9vxzfr",
+        "Eat well",
+        "4709iy",
+        "active",
+        "",
+        "{\"parts\":{\"reliable\":[{\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}"
+       ],
+       [
+        "mkgvva",
+        "Exercise",
+        "4709iy",
+        "deleted",
+        "",
+        "",
+        "[\"habit:7632uw\",\"habit:9vxzfr\"]"
+       ]
+      ]
+     },
+     "Locations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000013,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Locations"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "hint"
+       ]
+      ]
+     },
+     "People": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000009,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "People"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "what_matters",
+        "traits",
+        "foundations"
+       ],
+       [
+        "6gpeqq",
+        "Family Example",
+        "",
+        "active"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     },
+     "Traits": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000030,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Traits"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "status",
+        "definition",
+        "parts"
+       ],
+       [
+        "thoughtful",
+        "Thoughtful",
+        "active",
+        "Remember what matters to them, and prepare for it.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+       ],
+       [
+        "reliable",
+        "Reliable",
+        "active",
+        "Do what I said I would, and keep contact going -- reliable to myself too.",
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+       ],
+       [
+        "creative",
+        "Creative",
+        "active",
+        "Make something together with them (making something alone is taking care of myself).",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+       ],
+       [
+        "adventurous",
+        "Adventurous",
+        "active",
+        "Share new experiences with them: new activities, new places.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+       ],
+       [
+        "generous",
+        "Generous",
+        "active",
+        "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+       ]
+      ]
+     }
+    }
+   }
+  }
+ }
+}
