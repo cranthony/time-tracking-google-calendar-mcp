@@ -2,6 +2,8 @@
 //! an OAuth resource server whose bearer tokens WorkOS AuthKit issues, CORS
 //! for browser clients (with_cors), the OAuth proxy to AuthKit, and each
 //! tool call's whole-request time for the health metrics (with_health).
+//! A build that skips sign-in (crate::auth_mode) trusts every request, and
+//! serves neither the protected-resource metadata nor the OAuth proxy.
 //! Every answer -- status, headers that matter, body byte for byte -- is
 //! held to conformance/'s golden records.
 
@@ -36,16 +38,55 @@ pub struct HttpConfig {
     pub allowed_user_ids: Vec<String>,
     pub cors_origins: Vec<String>,
     pub port: u16,
+    /// Whether every request is trusted, with no sign-in: this build's
+    /// crate::auth_mode.
+    pub auth_disabled: bool,
+    /// The sign-in settings given, though a build that skips sign-in
+    /// doesn't read them.
+    pub ignored: Vec<&'static str>,
 }
+
+/// The settings only sign-in reads.
+const SIGN_IN_VARS: [&str; 2] = ["WORKOS_AUTHKIT_DOMAIN", "MCP_ALLOWED_USER_IDS"];
 
 impl HttpConfig {
     pub fn from_env() -> anyhow::Result<HttpConfig> {
         HttpConfig::from_vars(|name| std::env::var(name).ok())
     }
 
-    /// The configuration from `get`, an environment's variables.
+    /// The configuration from `get`, an environment's variables, for this
+    /// build.
     pub fn from_vars(get: impl Fn(&str) -> Option<String>) -> anyhow::Result<HttpConfig> {
+        HttpConfig::for_mode(get, crate::auth_mode::disabled())
+    }
+
+    /// The configuration from `get` for a build that skips sign-in, or
+    /// doesn't: it needs no WorkOS settings, and won't run on Render.
+    pub fn for_mode(get: impl Fn(&str) -> Option<String>, auth_disabled: bool) -> anyhow::Result<HttpConfig> {
         let var = |name: &str| get(name).filter(|v| !v.is_empty());
+        let cors_origins = var("MCP_CORS_ALLOWED_ORIGINS")
+            .unwrap_or_default()
+            .split(',')
+            .map(|s| s.trim().trim_end_matches('/').to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        let port = var("PORT").and_then(|p| p.parse().ok()).unwrap_or(10000);
+        if auth_disabled {
+            if var("RENDER_EXTERNAL_URL").is_some() {
+                anyhow::bail!(
+                    "This build skips sign-in (it was built with AUTH_DISABLED), and RENDER_EXTERNAL_URL says it's on Render: it won't run where the internet can reach it. Deploy a build made without AUTH_DISABLED."
+                );
+            }
+            return Ok(HttpConfig {
+                authkit_domain: String::new(),
+                resource: var("MCP_PUBLIC_URL").unwrap_or_default(),
+                allowed_user_ids: Vec::new(),
+                cors_origins,
+                port,
+                auth_disabled,
+                ignored: SIGN_IN_VARS.into_iter().filter(|name| var(name).is_some()).collect(),
+            });
+        }
         let required = |name: &str, message: &str| var(name).ok_or_else(|| anyhow::anyhow!("{message}"));
         let authkit_domain = required(
             "WORKOS_AUTHKIT_DOMAIN",
@@ -71,14 +112,7 @@ impl HttpConfig {
                 "MCP_ALLOWED_USER_IDS is not set. Set it to your WorkOS user id (e.g. \"user_01ABC...\", from the Users page of the WorkOS dashboard) -- see the README's \"Deploying\" section."
             );
         }
-        let cors_origins = var("MCP_CORS_ALLOWED_ORIGINS")
-            .unwrap_or_default()
-            .split(',')
-            .map(|s| s.trim().trim_end_matches('/').to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
-        let port = var("PORT").and_then(|p| p.parse().ok()).unwrap_or(10000);
-        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port })
+        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new() })
     }
 
     /// The domain as an issuer URL (pydantic's AnyHttpUrl gives a bare host
@@ -117,6 +151,14 @@ struct Shared {
 
 pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
     let config = HttpConfig::from_env()?;
+    if config.auth_disabled {
+        tracing::warn!("{}", crate::auth_mode::WARNING);
+        for name in &config.ignored {
+            tracing::warn!("{name} is set, but this build skips sign-in, so it's ignored.");
+        }
+    } else if std::env::var("AUTH_DISABLED").is_ok_and(|v| !v.is_empty()) {
+        tracing::warn!("AUTH_DISABLED is set in the environment, but it's read when the server is built, not when it runs: this build requires sign-in as usual.");
+    }
     let port = config.port;
     let router = router(shared(app, config));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
@@ -136,13 +178,17 @@ fn shared(app: Arc<App>, config: HttpConfig) -> Arc<Shared> {
 }
 
 /// The endpoints: MCP, its protected-resource metadata, and the OAuth
-/// proxy -- behind CORS.
+/// proxy -- behind CORS. A build that skips sign-in has only MCP: nothing
+/// to send a client off to sign in.
 fn router(shared: Arc<Shared>) -> Router {
-    Router::new()
-        .route(PROTECTED_RESOURCE_PATH, get(protected_resource))
-        .route("/mcp", get(mcp_get).post(mcp_post).delete(mcp_delete))
-        .route("/oauth/register", post(oauth_register))
-        .route("/oauth/token", post(oauth_token))
+    let mut router = Router::new().route("/mcp", get(mcp_get).post(mcp_post).delete(mcp_delete));
+    if !shared.config.auth_disabled {
+        router = router
+            .route(PROTECTED_RESOURCE_PATH, get(protected_resource))
+            .route("/oauth/register", post(oauth_register))
+            .route("/oauth/token", post(oauth_token));
+    }
+    router
         .method_not_allowed_fallback(method_not_allowed)
         .fallback(not_found)
         .layer(middleware::from_fn_with_state(shared.clone(), cors))
@@ -265,8 +311,12 @@ fn unauthorized(shared: &Shared) -> Response {
 }
 
 /// WorkOSTokenVerifier: the token's signature against AuthKit's keys, its
-/// issuer, audience and expiry, and its user among those allowed.
+/// issuer, audience and expiry, and its user among those allowed. A build
+/// that skips sign-in trusts every request, token or not.
 async fn verify(shared: &Arc<Shared>, headers: &HeaderMap) -> bool {
+    if shared.config.auth_disabled {
+        return true;
+    }
     let Some(token) = headers
         .get("authorization")
         .and_then(|h| h.to_str().ok())
@@ -363,6 +413,9 @@ async fn mcp_post(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: B
             id
         }
         None if is_initialize => {
+            if shared.config.auth_disabled {
+                tracing::warn!("New session, unauthenticated: {}", crate::auth_mode::WARNING);
+            }
             let id = uuid::Uuid::new_v4().simple().to_string();
             shared.sessions.lock().unwrap_or_else(|e| e.into_inner()).insert(id.clone(), crate::mcp::Session::new());
             id

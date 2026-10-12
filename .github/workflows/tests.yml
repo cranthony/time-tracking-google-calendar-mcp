@@ -28,6 +28,25 @@ jobs:
       - run: cargo test --locked
         working-directory: rust
 
+  cargo-test-auth-disabled:
+    # The same tests in a build that skips sign-in (AUTH_DISABLED, read
+    # when it's built): it trusts every request, serves nothing to sign in
+    # with, says so, and won't run on Render. Built and tested, never
+    # deployed.
+    name: cargo test (AUTH_DISABLED)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: auth-disabled
+      - run: cargo test --locked
+        working-directory: rust
+        env:
+          AUTH_DISABLED: "true"
+
   rust-conformance:
     # The conformance scenarios (conformance/) against the server: run over
     # MCP against a fake Google, and compared with their golden records.

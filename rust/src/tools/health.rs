@@ -58,6 +58,9 @@ pub struct HealthReport {
     pub memory_min_mib: Option<Number>,
     pub memory_max_mib: Option<Number>,
     pub restarts: Vec<String>,
+    /// How this build signs people in: "required" (WorkOS sign-in) or
+    /// "disabled" (built with AUTH_DISABLED: every request is trusted).
+    pub auth: String,
 }
 
 /// The server's health metrics, to graph or look for patterns in: for
@@ -68,6 +71,7 @@ pub struct HealthReport {
 /// last 100 calls, whichever tool; and its last 100 restarts. Kept across
 /// restarts, in the Health tab of the calendar's metadata spreadsheet;
 /// the last few seconds' may not be written yet, but are given here.
+/// Also auth: "required", or "disabled" for a build that skips sign-in.
 ///
 /// `tool_name`: just that tool's calls. `samples`: false for just the
 /// summaries, without each call and memory sample. Read-only.
@@ -125,5 +129,6 @@ pub fn get_health(app: &App, tool_name: Option<String>, #[schema(default = "true
         "memory_min_mib": min,
         "memory_max_mib": max,
         "restarts": app.health.restarts().into_iter().map(iso).collect::<Vec<_>>(),
+        "auth": crate::auth_mode::name(),
     }))
 }

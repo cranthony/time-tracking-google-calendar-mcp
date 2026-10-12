@@ -2,6 +2,7 @@
 //! (src/bin/) share.
 
 pub mod app;
+pub mod auth_mode;
 pub mod cli;
 pub mod compaction;
 pub mod contract;

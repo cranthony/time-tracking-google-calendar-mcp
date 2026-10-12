@@ -121,7 +121,7 @@ fn initialize_result(params: &Value) -> Value {
     let negotiated =
         if HANDSHAKE_PROTOCOL_VERSIONS.contains(&requested) { requested } else { LATEST_HANDSHAKE_VERSION };
     // Keys in the order the Python SDK sends them.
-    json!({
+    let mut result = json!({
         "capabilities": {
             "experimental": {},
             "prompts": {"listChanged": false},
@@ -130,7 +130,13 @@ fn initialize_result(params: &Value) -> Value {
         },
         "protocolVersion": negotiated,
         "serverInfo": {"name": SERVER_NAME, "version": ""}
-    })
+    });
+    // A build that skips sign-in says so to whoever connects.
+    if crate::auth_mode::disabled() {
+        result["instructions"] = json!(crate::auth_mode::INSTRUCTIONS);
+        result["serverInfo"]["title"] = json!(format!("{SERVER_NAME} (sign-in off)"));
+    }
+    result
 }
 
 fn text_item(text: String) -> Value {

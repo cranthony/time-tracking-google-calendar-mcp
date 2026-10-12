@@ -358,6 +358,24 @@ Local development is entirely unaffected by any of this: the server with no `MCP
 
 A client running in a web page (like the Time Tracker web app) can't talk to AuthKit's registration and token endpoints directly: AuthKit answers them without CORS headers, so the browser hides the responses. For those clients only, this server offers `POST /oauth/register` and `POST /oauth/token`, which forward the request to the same endpoints under `WORKOS_AUTHKIT_DOMAIN` and return AuthKit's response unchanged (see [`rust/src/mcp/http.rs`](rust/src/mcp/http.rs)). Nothing to configure in WorkOS: the web client still registers itself through DCR, just via this server. Its origin does need to be allowed by `MCP_CORS_ALLOWED_ORIGINS` (localhost always is). Claude.ai and the native apps never use these routes.
 
+### Without sign-in, behind a corporate proxy
+
+For a network where a proxy in front of the server already signs people in, the server can be built to skip WorkOS altogether:
+
+```bash
+AUTH_DISABLED=true cargo build --release --manifest-path rust/Cargo.toml --bin ctt-server
+```
+
+`AUTH_DISABLED` is read when the server is **built**, not when it runs ([`rust/src/auth_mode.rs`](rust/src/auth_mode.rs), [`rust/build.rs`](rust/build.rs)): `true`, `1` or `yes`, in any case, turn sign-in off, and anything else leaves it on. A binary built without it always requires WorkOS sign-in, whatever its environment says. Setting `AUTH_DISABLED` in the environment of a normal build just logs that it's ignored.
+
+Such a build trusts every request as the server's single user, token or not, and it makes this hard to miss:
+- **It won't run on Render.** It refuses to start if `RENDER_EXTERNAL_URL` is set, so the public deployment can't lose its sign-in.
+- **It needs no WorkOS settings.** `WORKOS_AUTHKIT_DOMAIN` and `MCP_ALLOWED_USER_IDS` aren't read, and it logs any that are set as ignored.
+- **It says so.** It logs a warning at startup and for every new session, and tells every client in the MCP handshake: `instructions`, and a server title ending "(sign-in off)". `get_health` reports `"auth": "disabled"` instead of `"required"`.
+- **It offers nothing to sign in with.** There's no protected-resource metadata, no `WWW-Authenticate` challenge, and no OAuth proxy.
+
+The proxy's own header isn't read: the server can't tell who's behind it, and doesn't need to, since it serves one user. CI builds and tests this variant on every PR (`cargo test (AUTH_DISABLED)`), but never deploys it.
+
 ### Connecting from Claude.ai
 
 Once deployed, add it under claude.ai's **Settings → Connectors → Add custom connector**, using your server's URL plus `/mcp` (e.g. `https://your-service.onrender.com/mcp`). Claude.ai takes it from there — discovering that the server requires auth, finding your WorkOS AuthKit project, registering itself as a client, and walking you through the login/consent flow — before it can call any tool.
