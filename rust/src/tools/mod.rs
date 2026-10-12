@@ -189,3 +189,6 @@ pub fn check_part_actions(app: &App, parts: Option<&Value>) -> Result<(), ToolEr
     Ok(())
 }
 
+#[cfg(test)]
+#[path = "tests/mod.rs"]
+mod tests;

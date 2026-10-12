@@ -18,8 +18,13 @@ pub struct TestApp {
 }
 
 pub fn test_app() -> TestApp {
+    test_app_in(Some("UTC"))
+}
+
+/// A test app on a calendar in `time_zone` (or none).
+pub fn test_app_in(time_zone: Option<&str>) -> TestApp {
     let fake = FakeGoogle::start();
-    let calendar_id = fake.add_calendar(Some("UTC"));
+    let calendar_id = fake.add_calendar(time_zone);
     let config = Config { calendar_id: Some(calendar_id.clone()), token_path: "unused".into(), credentials_path: "unused".into() };
     let app = Arc::new(App::with_google(config, fake.google()));
     app.set_self();

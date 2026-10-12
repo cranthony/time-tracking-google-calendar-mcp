@@ -32,7 +32,7 @@ pub fn contract_tool(name: &str) -> Option<&'static Value> {
 
 /// Whether `name`'s result goes in `{"result": ...}` -- a tool returning
 /// something other than an object (a list, a string).
-fn wrapped(tool: &Value) -> bool {
+pub(crate) fn wrapped(tool: &Value) -> bool {
     let name = tool["name"].as_str().unwrap_or_default();
     tool.pointer("/outputSchema/title").and_then(Value::as_str) == Some(&format!("{name}Output"))
 }
