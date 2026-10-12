@@ -5,6 +5,7 @@ pub mod app;
 pub mod compaction;
 pub mod determinism;
 pub mod difflib;
+pub mod dotenv;
 pub mod event;
 pub mod facts;
 pub mod google;
@@ -21,6 +22,8 @@ pub mod zoned;
 use std::sync::Arc;
 
 fn main() -> anyhow::Result<()> {
+    // Before anything reads the environment, as config.py's load_dotenv().
+    dotenv::load(std::path::Path::new(".env"));
     // Logs go to stderr: over stdio, stdout carries the protocol.
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
