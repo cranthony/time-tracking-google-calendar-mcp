@@ -345,9 +345,8 @@ impl Judging {
     fn names(&self, subjects: &Subjects) -> anyhow::Result<Vec<(String, String)>> {
         let mut names: Vec<(String, String)> = subjects.people.iter().map(|(i, p)| (i.clone(), if truthy(p.name.as_ref()) { python_str(p.name.as_ref()) } else { i.clone() })).collect();
         for a in self.actions.all()? {
-            if truthy(a.get("id")) {
-                let id = python_str(a.get("id"));
-                names.push((id.clone(), if truthy(a.get("name")) { python_str(a.get("name")) } else { id }));
+            if let Some(id) = a.id.filter(|i| !i.is_empty()) {
+                names.push((id.clone(), a.name.filter(|n| !n.is_empty()).unwrap_or(id)));
             }
         }
         for l in self.locations.all()? {

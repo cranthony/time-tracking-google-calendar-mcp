@@ -316,7 +316,7 @@ pub fn of_action(events: &[Event], action_id: Option<&Value>, tree: Option<&Acti
         }
         let Some(tree) = tree else { return false };
         let Some(action) = tree.by_id(candidate) else { return false };
-        tree.groups.chain(action).iter().skip(1).any(|g| g.get("id") == Some(action_id))
+        tree.groups.enclosing(action).iter().any(|g| g.id.as_deref().is_some() && g.id.as_deref() == action_id.as_str())
     };
     events.iter().filter(|e| e.action_ids.iter().flatten().any(|a| matches(a))).cloned().collect()
 }

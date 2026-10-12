@@ -279,7 +279,7 @@ pub fn check_action_ids(app: &App, id: Option<&str>, action_ids: Option<&[String
     if existing {
         if let Some(id) = id.filter(|i| !i.is_empty()) {
             let any_deleted =
-                ids.iter().any(|a| tree.by_id(a).is_some_and(|row| crate::sheet::rows::text(row, "status") == Some("deleted")));
+                ids.iter().any(|a| tree.by_id(a).is_some_and(|action| action.status == Some(crate::stores::actions::ActionStatus::Deleted)));
             if any_deleted {
                 let current = fill_in_from_actions(&[app.calendar_client()?.get_event(id)?], &tree).remove(0);
                 already = current.action_ids.unwrap_or_default();

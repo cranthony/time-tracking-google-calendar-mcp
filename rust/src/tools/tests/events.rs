@@ -19,7 +19,7 @@ fn action(id: &str, name: &str, priority: Option<i64>) -> Value {
 }
 
 fn tree(actions: &[Value]) -> ActionTree {
-    ActionTree::new(actions.iter().map(|a| ACTION_ROW.from_value(a)).collect(), GroupTree::new(vec![], palette(&[])))
+    ActionTree::new(actions.iter().map(|a| crate::sheet::rows::item_of(ACTION_ROW.from_value(a))).collect(), GroupTree::new(vec![], palette(&[])))
 }
 
 fn with_actions(server: &Server, actions: &[Value]) {

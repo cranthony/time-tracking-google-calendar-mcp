@@ -1,167 +1,10 @@
 //! The action, action group and priority color tools.
 
 use super::stores::prefetch_stores;
-use super::{from_store, refused, refused_or_conflict, texts, to_row, ToolError};
+use super::{refused, refused_or_conflict, texts, ToolError};
 use crate::app::App;
-use crate::contract::{tool, Schema};
-use crate::stores::actions::ACTION_ROW;
-use crate::stores::groups::GROUP_ROW;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
-pub enum ActionStatus {
-    #[serde(rename = "proposed")]
-    Proposed,
-    #[serde(rename = "active")]
-    Active,
-    #[serde(rename = "archived")]
-    Archived,
-    #[serde(rename = "deleted")]
-    Deleted,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
-pub enum ClearableField {
-    #[serde(rename = "group_id")]
-    GroupId,
-    #[serde(rename = "background_color")]
-    BackgroundColor,
-    #[serde(rename = "priority")]
-    Priority,
-    #[serde(rename = "note")]
-    Note,
-}
-
-/// An action as the action tools return it: plus where it sits, what
-/// it inherits from its groups, and whether it holds its label.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ListedAction {
-    pub id: Option<String>,
-    pub group_id: Option<String>,
-    pub name: Option<String>,
-    pub status: Option<ActionStatus>,
-    pub label_id: Option<String>,
-    pub background_color: Option<String>,
-    pub priority: Option<i64>,
-    pub note: Option<String>,
-    pub path: Option<String>,
-    pub effective_color: Option<String>,
-    pub effective_priority: Option<i64>,
-    pub holds_label: Option<bool>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ActionList {
-    pub actions: Vec<ListedAction>,
-    pub label_slots_used: i64,
-    #[schema(default = "200")]
-    pub label_slots_total: i64,
-}
-
-/// One action: what the user does with their time, a verb phrase (see
-/// get_actions).
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct Action {
-    pub id: Option<String>,
-    pub group_id: Option<String>,
-    pub name: Option<String>,
-    pub status: Option<ActionStatus>,
-    pub label_id: Option<String>,
-    pub background_color: Option<String>,
-    pub priority: Option<i64>,
-    pub note: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct CreatedAction {
-    pub changed: Vec<ListedAction>,
-    pub label_slots_used: i64,
-    #[schema(default = "200")]
-    pub label_slots_total: i64,
-    pub created_id: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ActionChanges {
-    pub changed: Vec<ListedAction>,
-    pub label_slots_used: i64,
-    #[schema(default = "200")]
-    pub label_slots_total: i64,
-}
-
-/// A group as the group tools return it: plus where it sits, and what
-/// it inherits.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ListedActionGroup {
-    pub id: Option<String>,
-    pub group_id: Option<String>,
-    pub name: Option<String>,
-    pub background_color: Option<String>,
-    pub priority: Option<i64>,
-    pub note: Option<String>,
-    pub path: Option<String>,
-    pub effective_color: Option<String>,
-    pub effective_priority: Option<i64>,
-}
-
-/// One action group: a name that rolls actions up (see
-/// get_action_groups).
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ActionGroup {
-    pub id: Option<String>,
-    pub group_id: Option<String>,
-    pub name: Option<String>,
-    pub background_color: Option<String>,
-    pub priority: Option<i64>,
-    pub note: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct CreatedActionGroup {
-    pub changed: Vec<ListedActionGroup>,
-    pub affected_actions: Vec<ListedAction>,
-    pub label_slots_used: i64,
-    #[schema(default = "200")]
-    pub label_slots_total: i64,
-    pub created_id: String,
-}
-
-/// One priority's color: its label's.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct PriorityColor {
-    pub priority: i64,
-    pub color: String,
-    pub label_id: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct PriorityColorChange {
-    pub colors: Vec<PriorityColor>,
-    pub affected_actions: Vec<ListedAction>,
-    pub label_slots_used: i64,
-    #[schema(default = "200")]
-    pub label_slots_total: i64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ActionGroupChanges {
-    pub changed: Vec<ListedActionGroup>,
-    pub affected_actions: Vec<ListedAction>,
-    pub label_slots_used: i64,
-    #[schema(default = "200")]
-    pub label_slots_total: i64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DeletedActionGroup {
-    pub changed: Vec<ListedActionGroup>,
-    pub affected_actions: Vec<ListedAction>,
-    pub label_slots_used: i64,
-    #[schema(default = "200")]
-    pub label_slots_total: i64,
-    pub deleted: ActionGroup,
-}
+use crate::contract::tool;
+pub use crate::stores::actions::*;
 
 // -- the tools ------------------------------------------------------------------
 
@@ -180,7 +23,7 @@ pub struct DeletedActionGroup {
 pub fn get_actions(app: &App, statuses: Option<Vec<ActionStatus>>) -> Result<ActionList, ToolError> {
     prefetch_stores(app)?;
     let statuses = statuses.map(|s| texts(&s));
-    from_store(app.actions()?.get_actions(statuses.as_deref()).map_err(refused_or_conflict)?)
+    app.actions()?.get_actions(statuses.as_deref()).map_err(refused_or_conflict)
 }
 
 /// One action, by its id or else its name (ignoring case), as
@@ -189,7 +32,7 @@ pub fn get_actions(app: &App, statuses: Option<Vec<ActionStatus>>) -> Result<Act
 #[tool]
 pub fn get_action(app: &App, id_or_name: String) -> Result<ListedAction, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.actions()?.get_action(&id_or_name).map_err(refused_or_conflict)?)
+    app.actions()?.get_action(&id_or_name).map_err(refused_or_conflict)
 }
 
 /// Create an action: a name (a verb phrase for what the user is doing,
@@ -208,7 +51,7 @@ pub fn get_action(app: &App, id_or_name: String) -> Result<ListedAction, ToolErr
 #[tool(writes)]
 pub fn create_action(app: &App, action: Action) -> Result<CreatedAction, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.actions()?.create_action(&to_row(ACTION_ROW, &action)).map_err(refused_or_conflict)?)
+    app.actions()?.create_action(&action).map_err(refused_or_conflict)
 }
 
 /// Update an action by id: its group_id, name (still unique),
@@ -225,7 +68,7 @@ pub fn create_action(app: &App, action: Action) -> Result<CreatedAction, ToolErr
 pub fn update_action(app: &App, action: Action, clear_fields: Option<Vec<ClearableField>>) -> Result<ActionChanges, ToolError> {
     prefetch_stores(app)?;
     let clear = texts(&clear_fields.unwrap_or_default());
-    from_store(app.actions()?.update_action(&to_row(ACTION_ROW, &action), &clear).map_err(refused_or_conflict)?)
+    app.actions()?.update_action(&action, &clear).map_err(refused_or_conflict)
 }
 
 /// Every action group: a name that rolls actions up ("Creative",
@@ -240,7 +83,7 @@ pub fn update_action(app: &App, action: Action, clear_fields: Option<Vec<Clearab
 #[tool]
 pub fn get_action_groups(app: &App) -> Result<Vec<ListedActionGroup>, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.actions()?.get_action_groups().map_err(refused)?)
+    app.actions()?.get_action_groups().map_err(refused)
 }
 
 /// One action group, by its id or else its name (ignoring case), as
@@ -249,7 +92,7 @@ pub fn get_action_groups(app: &App) -> Result<Vec<ListedActionGroup>, ToolError>
 #[tool]
 pub fn get_action_group(app: &App, id_or_name: String) -> Result<ListedActionGroup, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.actions()?.get_action_group(&id_or_name).map_err(refused)?)
+    app.actions()?.get_action_group(&id_or_name).map_err(refused)
 }
 
 /// Create an action group: a name (unique among groups, though an
@@ -262,7 +105,7 @@ pub fn get_action_group(app: &App, id_or_name: String) -> Result<ListedActionGro
 #[tool(writes)]
 pub fn create_action_group(app: &App, group: ActionGroup) -> Result<CreatedActionGroup, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.actions()?.create_action_group(&to_row(GROUP_ROW, &group)).map_err(refused_or_conflict)?)
+    app.actions()?.create_action_group(&group).map_err(refused_or_conflict)
 }
 
 /// Each priority's color, 0 to 3: an event with no action's label is
@@ -273,7 +116,7 @@ pub fn create_action_group(app: &App, group: ActionGroup) -> Result<CreatedActio
 #[tool]
 pub fn get_priority_colors(app: &App) -> Result<Vec<PriorityColor>, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.actions()?.priority_colors().map_err(refused)?)
+    app.actions()?.priority_colors().map_err(refused)
 }
 
 /// Change a priority's color (priority 0 to 3; color as #rrggbb): its
@@ -284,7 +127,7 @@ pub fn get_priority_colors(app: &App) -> Result<Vec<PriorityColor>, ToolError> {
 #[tool(writes)]
 pub fn update_priority_color(app: &App, priority: i64, color: String) -> Result<PriorityColorChange, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.actions()?.set_priority_color(&json!(priority), &json!(color)).map_err(refused_or_conflict)?)
+    app.actions()?.set_priority_color(priority, &color).map_err(refused_or_conflict)
 }
 
 /// Update an action group by id: its group_id (move it inside another
@@ -299,7 +142,7 @@ pub fn update_priority_color(app: &App, priority: i64, color: String) -> Result<
 pub fn update_action_group(app: &App, group: ActionGroup, clear_fields: Option<Vec<ClearableField>>) -> Result<ActionGroupChanges, ToolError> {
     prefetch_stores(app)?;
     let clear = texts(&clear_fields.unwrap_or_default());
-    from_store(app.actions()?.update_action_group(&to_row(GROUP_ROW, &group), &clear).map_err(refused_or_conflict)?)
+    app.actions()?.update_action_group(&group, &clear).map_err(refused_or_conflict)
 }
 
 /// Delete an action group, by id. Its actions and the groups inside it
@@ -310,5 +153,5 @@ pub fn update_action_group(app: &App, group: ActionGroup, clear_fields: Option<V
 #[tool(writes)]
 pub fn delete_action_group(app: &App, group_id: String) -> Result<DeletedActionGroup, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.actions()?.delete_action_group(&group_id).map_err(refused_or_conflict)?)
+    app.actions()?.delete_action_group(&group_id).map_err(refused_or_conflict)
 }

@@ -176,11 +176,11 @@ fn new_ones_are_named_by_ref_shown_and_created_when_applied() {
     let all = actions.all().unwrap();
     assert_eq!(all.len(), 1);
     let coffee = &all[0];
-    assert_eq!((coffee["name"].as_str(), coffee["status"].as_str()), (Some("Drink coffee"), Some("active")));
+    assert_eq!((coffee.name.as_deref(), coffee.status), (Some("Drink coffee"), Some(crate::stores::actions::ActionStatus::Active)));
     let alex = setup.compactor.people.as_ref().unwrap().get_person("alex").unwrap()["id"].as_str().unwrap().to_string();
     let cafe = setup.compactor.locations.as_ref().unwrap().get_location("corner cafe").unwrap().id.unwrap();
     let event = created(&setup);
-    assert_eq!(event.action_ids, Some(vec![coffee["id"].as_str().unwrap().to_string()]));
+    assert_eq!(event.action_ids, Some(vec![coffee.id.clone().unwrap()]));
     assert_eq!(
         event.facts.map(|f| f.to_public()),
         Some(facts(json!({"location": cafe, "with": ["sam", alex.clone()], "notes": {alex: "new in town"}})).to_public())
@@ -203,9 +203,9 @@ fn a_resumed_commit_reuses_what_it_already_added() {
     setup.commit(&id);
 
     let all = setup.compactor.actions.as_ref().unwrap().all().unwrap();
-    let names: Vec<&str> = all.iter().map(|a| a["name"].as_str().unwrap()).collect();
+    let names: Vec<&str> = all.iter().map(|a| a.name.as_deref().unwrap()).collect();
     assert_eq!(names, vec!["Drink coffee"]);
-    assert_eq!(created(&setup).action_ids, Some(vec![all[0]["id"].as_str().unwrap().to_string()]));
+    assert_eq!(created(&setup).action_ids, Some(vec![all[0].id.clone().unwrap()]));
 }
 
 #[test]

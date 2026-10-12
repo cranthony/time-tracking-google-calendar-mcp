@@ -492,8 +492,8 @@ impl NoteCompactor {
             actions: tree.as_ref().map(|t| {
                 t.actions
                     .iter()
-                    .filter(|a| matches!(rows::text(a, "status"), Some("active") | Some("proposed")))
-                    .map(|a| json!({"id": a.get("id"), "name": a.get("name"), "note": a.get("note")}))
+                    .filter(|a| matches!(a.status, Some(crate::stores::actions::ActionStatus::Active | crate::stores::actions::ActionStatus::Proposed)))
+                    .map(|a| json!({"id": a.id, "name": a.name, "note": a.note}))
                     .collect()
             }),
             people: match &self.people {
@@ -553,7 +553,10 @@ impl NoteCompactor {
             Some((id.clone(), if truthy(row.get("name")) { python_str(row.get("name")) } else { id }))
         };
         if let Some(a) = &self.actions {
-            names.extend(a.all()?.iter().filter_map(named));
+            names.extend(a.all()?.into_iter().filter_map(|a| {
+                let id = a.id.filter(|i| !i.is_empty())?;
+                Some((id.clone(), a.name.filter(|n| !n.is_empty()).unwrap_or(id)))
+            }));
         }
         if let Some(p) = &self.people {
             names.extend(p.all()?.iter().filter_map(named));
@@ -594,7 +597,7 @@ impl NoteCompactor {
                 .action_ids
                 .iter()
                 .flatten()
-                .filter(|a| tree.by_id(a).is_some_and(|row| rows::text(row, "status") != Some("deleted")))
+                .filter(|a| tree.by_id(a).is_some_and(|action| action.status != Some(crate::stores::actions::ActionStatus::Deleted)))
                 .cloned()
                 .collect();
             if let Some(summary) = event.summary.as_deref().filter(|s| !s.is_empty()) {
@@ -1397,7 +1400,7 @@ impl NoteCompactor {
             Ok(rows?.iter().map(|r| python_str(r.get("id"))).collect())
         };
         let there_actions = match &self.actions {
-            Some(a) => ids(a.all())?,
+            Some(a) => a.all()?.into_iter().map(|a| a.id.unwrap_or_else(|| "None".into())).collect(),
             None => Vec::new(),
         };
         let there_people = match &self.people {

@@ -27,8 +27,8 @@ fn group_rows() -> Vec<Value> {
 
 fn tree() -> ActionTree {
     ActionTree::new(
-        action_rows().iter().map(|a| ACTION_ROW.from_value(a)).collect(),
-        GroupTree::new(group_rows().iter().map(|g| GROUP_ROW.from_value(g)).collect(), palette(&[])),
+        action_rows().iter().map(|a| crate::sheet::rows::item_of(ACTION_ROW.from_value(a))).collect(),
+        GroupTree::new(group_rows().iter().map(|g| crate::sheet::rows::item_of(GROUP_ROW.from_value(g))).collect(), palette(&[])),
     )
 }
 

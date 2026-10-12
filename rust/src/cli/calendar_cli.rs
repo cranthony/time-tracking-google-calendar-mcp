@@ -483,7 +483,7 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
             }
             let chosen: Option<Vec<String>> = if all { Some(ACTION_STATUSES.iter().map(|s| s.to_string()).collect()) } else if statuses.is_empty() { None } else { Some(statuses) };
             let listed = app.actions()?.get_actions(chosen.as_deref()).map_err(|e| Failure::Exit(format!("error: {e}")))?;
-            print_actions(out, &listed, "actions", "No actions found.");
+            print_actions(out, &serde_json::to_value(&listed).expect("a listing is JSON"), "actions", "No actions found.");
         }
         "create_action" | "update_action" => {
             let mut row: Row = ACTION_ROW.empty();
@@ -513,16 +513,18 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
                 i += 1;
             }
             let actions = app.actions()?;
+            let action: crate::stores::actions::Action =
+                serde_json::from_value(Value::Object(row)).map_err(|e| Failure::Exit(format!("error: {e}")))?;
             let changed = if command == "create_action" {
                 if !any {
                     return Err(usage("the following arguments are required: key=value"));
                 }
-                actions.create_action(&row)
+                actions.create_action(&action).map(|c| serde_json::to_value(&c).expect("a change is JSON"))
             } else {
                 if !any && clear.is_empty() {
                     return Err(usage("update_action requires at least one key=value or --clear"));
                 }
-                actions.update_action(&row, &clear)
+                actions.update_action(&action, &clear).map(|c| serde_json::to_value(&c).expect("a change is JSON"))
             };
             let changed = changed.map_err(|e| if crate::google::status_of(&e).is_some() { Failure::Error(e) } else { Failure::Exit(format!("error: {e}")) })?;
             print_actions(out, &changed, "changed", "No actions changed.");

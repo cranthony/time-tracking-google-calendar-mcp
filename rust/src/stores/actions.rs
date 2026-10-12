@@ -5,75 +5,240 @@
 use crate::google::calendar::{CalendarClient, EventLabel};
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
-use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};
+use crate::contract::{wire_text, RowItem, Schema};
+use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::{ACTIONS, ACTION_GROUPS};
 use crate::stores::groups::{
-    color_problem, find_group, group_problems, palette, python_repr, python_str, priority_label_id, truthy,
-    with_priority_labels, GroupTree, Palette, GROUP_CLEARABLE_FIELDS, GROUP_ROW, PRIORITIES,
+    color_problem, find_group, group_problems, palette, priority_label_id, repr_or_none, set, str_or_none, with_priority_labels,
+    GroupTree, Palette, Placed, GROUP_CLEARABLE_FIELDS, GROUP_ROW, PRIORITIES,
 };
 use crate::stores::locations::dedup;
 use anyhow::bail;
-use serde_json::{json, Map, Value};
+use serde::{Deserialize, Serialize};
 
-pub const ACTION_ROW: RowType = RowType {
-    name: "Action",
-    fields: &[
-        ("id", Kind::Str),
-        ("group_id", Kind::Str),
-        ("name", Kind::Str),
-        ("status", Kind::Str),
-        ("label_id", Kind::Str),
-        ("background_color", Kind::Str),
-        ("priority", Kind::Int),
-        ("note", Kind::Str),
-    ],
-};
+// -- the types -------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub enum ActionStatus {
+    #[serde(rename = "proposed")]
+    Proposed,
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "archived")]
+    Archived,
+    #[serde(rename = "deleted")]
+    Deleted,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub enum ClearableField {
+    #[serde(rename = "group_id")]
+    GroupId,
+    #[serde(rename = "background_color")]
+    BackgroundColor,
+    #[serde(rename = "priority")]
+    Priority,
+    #[serde(rename = "note")]
+    Note,
+}
+
+/// An action as the action tools return it: plus where it sits, what
+/// it inherits from its groups, and whether it holds its label.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct ListedAction {
+    pub id: Option<String>,
+    pub group_id: Option<String>,
+    pub name: Option<String>,
+    pub status: Option<ActionStatus>,
+    pub label_id: Option<String>,
+    pub background_color: Option<String>,
+    pub priority: Option<i64>,
+    pub note: Option<String>,
+    pub path: Option<String>,
+    pub effective_color: Option<String>,
+    pub effective_priority: Option<i64>,
+    pub holds_label: Option<bool>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct ActionList {
+    pub actions: Vec<ListedAction>,
+    pub label_slots_used: i64,
+    #[schema(default = "200")]
+    pub label_slots_total: i64,
+}
+
+/// One action: what the user does with their time, a verb phrase (see
+/// get_actions).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema, RowItem)]
+pub struct Action {
+    pub id: Option<String>,
+    pub group_id: Option<String>,
+    pub name: Option<String>,
+    #[row(text)]
+    pub status: Option<ActionStatus>,
+    pub label_id: Option<String>,
+    pub background_color: Option<String>,
+    pub priority: Option<i64>,
+    pub note: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct CreatedAction {
+    pub changed: Vec<ListedAction>,
+    pub label_slots_used: i64,
+    #[schema(default = "200")]
+    pub label_slots_total: i64,
+    pub created_id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct ActionChanges {
+    pub changed: Vec<ListedAction>,
+    pub label_slots_used: i64,
+    #[schema(default = "200")]
+    pub label_slots_total: i64,
+}
+
+/// A group as the group tools return it: plus where it sits, and what
+/// it inherits.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct ListedActionGroup {
+    pub id: Option<String>,
+    pub group_id: Option<String>,
+    pub name: Option<String>,
+    pub background_color: Option<String>,
+    pub priority: Option<i64>,
+    pub note: Option<String>,
+    pub path: Option<String>,
+    pub effective_color: Option<String>,
+    pub effective_priority: Option<i64>,
+}
+
+/// One action group: a name that rolls actions up (see
+/// get_action_groups).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema, RowItem)]
+pub struct ActionGroup {
+    pub id: Option<String>,
+    pub group_id: Option<String>,
+    pub name: Option<String>,
+    pub background_color: Option<String>,
+    pub priority: Option<i64>,
+    pub note: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct CreatedActionGroup {
+    pub changed: Vec<ListedActionGroup>,
+    pub affected_actions: Vec<ListedAction>,
+    pub label_slots_used: i64,
+    #[schema(default = "200")]
+    pub label_slots_total: i64,
+    pub created_id: String,
+}
+
+/// One priority's color: its label's.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct PriorityColor {
+    pub priority: i64,
+    pub color: String,
+    pub label_id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct PriorityColorChange {
+    pub colors: Vec<PriorityColor>,
+    pub affected_actions: Vec<ListedAction>,
+    pub label_slots_used: i64,
+    #[schema(default = "200")]
+    pub label_slots_total: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct ActionGroupChanges {
+    pub changed: Vec<ListedActionGroup>,
+    pub affected_actions: Vec<ListedAction>,
+    pub label_slots_used: i64,
+    #[schema(default = "200")]
+    pub label_slots_total: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct DeletedActionGroup {
+    pub changed: Vec<ListedActionGroup>,
+    pub affected_actions: Vec<ListedAction>,
+    pub label_slots_used: i64,
+    #[schema(default = "200")]
+    pub label_slots_total: i64,
+    pub deleted: ActionGroup,
+}
+
+pub const ACTION_ROW: RowType = <Action as rows::RowItem>::ROW_TYPE;
 
 pub const ACTION_STATUSES: [&str; 4] = ["proposed", "active", "archived", "deleted"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["proposed", "active"];
-pub const MAX_LABELS: usize = 200;
+pub const MAX_LABELS: i64 = 200;
 pub const MAX_NAME_LENGTH: usize = 50;
 const LABEL_ID_NAMESPACE: &str = "8f0d3c52-41b7-4a8e-9d0a-6c1e2b7f4a93";
 pub const CLEARABLE_FIELDS: [&str; 4] = ["group_id", "background_color", "priority", "note"];
 const READ_ONLY_FIELDS: [&str; 2] = ["id", "label_id"];
 
-fn id_of(row: &Row) -> Option<&Value> {
-    row.get("id").filter(|i| truthy(Some(i)))
+impl Placed for Action {
+    fn id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+    fn group_id(&self) -> Option<&str> {
+        self.group_id.as_deref()
+    }
+    fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+    fn background_color(&self) -> Option<&str> {
+        self.background_color.as_deref()
+    }
+    fn priority(&self) -> Option<i64> {
+        self.priority
+    }
+}
+
+/// An action's status as its text ("active"), if it has one.
+pub fn status_of(action: &Action) -> Option<String> {
+    action.status.as_ref().map(wire_text)
 }
 
 /// Read-only lookups over one snapshot of the actions and their groups.
 #[derive(Clone)]
 pub struct ActionTree {
-    pub actions: Vec<Row>,
+    pub actions: Vec<Action>,
     pub groups: GroupTree,
 }
 
 impl ActionTree {
-    pub fn new(actions: Vec<Row>, groups: GroupTree) -> ActionTree {
+    pub fn new(actions: Vec<Action>, groups: GroupTree) -> ActionTree {
         ActionTree { actions, groups }
     }
 
-    pub fn by_id(&self, id: &str) -> Option<&Row> {
-        self.actions.iter().rev().find(|a| id_of(a).and_then(Value::as_str) == Some(id))
+    pub fn by_id(&self, id: &str) -> Option<&Action> {
+        self.actions.iter().rev().find(|a| set(a.id.as_deref()) == Some(id))
     }
 
     pub fn priority(&self, action_id: &str) -> Option<i64> {
-        self.by_id(action_id).and_then(|a| self.groups.priority_int(a))
+        self.by_id(action_id).and_then(|a| self.groups.priority(a))
     }
 
     pub fn name(&self, action_id: &str) -> String {
         match self.by_id(action_id) {
-            Some(action) => match action.get("name").filter(|n| truthy(Some(n))) {
-                Some(name) => python_str(Some(name)),
+            Some(action) => match set(action.name.as_deref()) {
+                Some(name) => name.to_string(),
                 None => action_id.to_string(),
             },
             None => format!("(unknown action {action_id})"),
         }
     }
 
-    pub fn action_for_label(&self, label_id: Option<&str>) -> Option<&Row> {
-        let label_id = label_id.filter(|l| !l.is_empty())?;
-        self.actions.iter().rev().find(|a| truthy(a.get("label_id")) && rows::text(a, "label_id") == Some(label_id))
+    pub fn action_for_label(&self, label_id: Option<&str>) -> Option<&Action> {
+        let label_id = set(label_id)?;
+        self.actions.iter().rev().find(|a| set(a.label_id.as_deref()) == Some(label_id))
     }
 
     /// Refuse ids that aren't actions (suggesting close ones), or that
@@ -81,11 +246,10 @@ impl ActionTree {
     pub fn check_action_ids(&self, action_ids: &[String], already: &[String]) -> anyhow::Result<()> {
         let deleted: Vec<&String> = action_ids
             .iter()
-            .filter(|i| self.by_id(i).is_some_and(|a| rows::text(a, "status") == Some("deleted")) && !already.contains(i))
+            .filter(|i| self.by_id(i).is_some_and(|a| a.status == Some(ActionStatus::Deleted)) && !already.contains(i))
             .collect();
         if !deleted.is_empty() {
-            let names: Vec<String> =
-                deleted.iter().map(|i| format!("{i} ({})", python_str(self.by_id(i).unwrap().get("name")))).collect();
+            let names: Vec<String> = deleted.iter().map(|i| format!("{i} ({})", str_or_none(self.by_id(i).unwrap().name.as_deref()))).collect();
             bail!("Deleted actions can't be given to an event: {}", names.join(", "));
         }
         let unknown: Vec<&String> = action_ids.iter().filter(|i| self.by_id(i).is_none()).collect();
@@ -106,20 +270,9 @@ pub struct Actions {
 
 /// What `_commit` reports: the groups changed, the actions affected.
 pub struct Changes {
-    pub changed: Vec<Value>,
-    pub affected_actions: Vec<Value>,
-    pub label_slots_used: usize,
-}
-
-impl Changes {
-    pub fn to_json(&self) -> Value {
-        json!({
-            "changed": self.changed,
-            "affected_actions": self.affected_actions,
-            "label_slots_used": self.label_slots_used,
-            "label_slots_total": MAX_LABELS,
-        })
-    }
+    pub changed: Vec<ListedActionGroup>,
+    pub affected_actions: Vec<ListedAction>,
+    pub label_slots_used: i64,
 }
 
 impl Actions {
@@ -141,39 +294,32 @@ impl Actions {
         self.sheet.prefetch(ranges)
     }
 
-    pub fn all(&self) -> anyhow::Result<Vec<Row>> {
+    pub fn all(&self) -> anyhow::Result<Vec<Action>> {
         self.prefetch(&self.whole_tabs())?;
-        self.sheet.read()
+        self.sheet.read_items()
     }
 
     pub fn groups(&self) -> anyhow::Result<GroupTree> {
         self.prefetch(&self.whole_tabs())?;
-        Ok(GroupTree::new(self.group_sheet.read()?, Vec::new()))
+        Ok(GroupTree::new(self.group_sheet.read_items()?, Vec::new()))
     }
 
     pub fn tree(&self) -> anyhow::Result<ActionTree> {
         Ok(ActionTree::new(self.all()?, self.groups()?))
     }
 
-    pub fn get_actions(&self, statuses: Option<&[String]>) -> anyhow::Result<Value> {
+    pub fn get_actions(&self, statuses: Option<&[String]>) -> anyhow::Result<ActionList> {
         let statuses = check_statuses(statuses)?;
         let actions = self.all()?;
         let (raw_labels, _) = self.calendar.list_event_labels()?;
         let tree = GroupTree::new(self.groups()?.groups, palette(&raw_labels));
         let holders = label_holders(&actions, &raw_labels);
-        let listed: Vec<Value> = actions
-            .iter()
-            .filter(|a| statuses.iter().any(|s| Some(s.as_str()) == rows::text(a, "status")))
-            .map(|a| listed(a, &tree, &holders))
-            .collect();
-        Ok(json!({
-            "actions": listed,
-            "label_slots_used": slots_used(&actions, &raw_labels, &holders),
-            "label_slots_total": MAX_LABELS,
-        }))
+        let listed: Vec<ListedAction> =
+            actions.iter().filter(|a| statuses.iter().any(|s| Some(s) == status_of(a).as_ref())).map(|a| listed(a, &tree, &holders)).collect();
+        Ok(ActionList { actions: listed, label_slots_used: slots_used(&actions, &raw_labels, &holders), label_slots_total: MAX_LABELS })
     }
 
-    pub fn get_action(&self, id_or_name: &str) -> anyhow::Result<Value> {
+    pub fn get_action(&self, id_or_name: &str) -> anyhow::Result<ListedAction> {
         let actions = self.all()?;
         let action = find(&actions, id_or_name)?;
         let (raw_labels, _) = self.calendar.list_event_labels()?;
@@ -181,12 +327,12 @@ impl Actions {
         Ok(listed(&action, &tree, &label_holders(&actions, &raw_labels)))
     }
 
-    pub fn get_action_groups(&self) -> anyhow::Result<Value> {
+    pub fn get_action_groups(&self) -> anyhow::Result<Vec<ListedActionGroup>> {
         let tree = self.painted_groups()?;
-        Ok(Value::Array(tree.ordered().into_iter().map(|g| tree.listed(g)).collect()))
+        Ok(tree.ordered().into_iter().map(|g| tree.listed(g)).collect())
     }
 
-    pub fn get_action_group(&self, id_or_name: &str) -> anyhow::Result<Value> {
+    pub fn get_action_group(&self, id_or_name: &str) -> anyhow::Result<ListedActionGroup> {
         let tree = self.painted_groups()?;
         Ok(tree.listed(&find_group(&tree.groups, id_or_name)?))
     }
@@ -196,16 +342,15 @@ impl Actions {
         Ok(GroupTree::new(self.groups()?.groups, palette(&raw_labels)))
     }
 
-    pub fn priority_colors(&self) -> anyhow::Result<Value> {
+    pub fn priority_colors(&self) -> anyhow::Result<Vec<PriorityColor>> {
         let (raw_labels, _) = self.calendar.list_event_labels()?;
-        Ok(priority_colors_json(&palette(&raw_labels)))
+        Ok(priority_colors(&palette(&raw_labels)))
     }
 
-    pub fn set_priority_color(&self, priority: &Value, color: &Value) -> anyhow::Result<Value> {
-        let p = priority.as_i64().filter(|p| PRIORITIES.contains(p));
-        let Some(p) = p else {
-            bail!("There's no priority {}: priorities are 0, 1, 2, 3", python_repr(priority));
-        };
+    pub fn set_priority_color(&self, priority: i64, color: &str) -> anyhow::Result<PriorityColorChange> {
+        if !PRIORITIES.contains(&priority) {
+            bail!("There's no priority {priority}: priorities are 0, 1, 2, 3");
+        }
         if let Some(problem) = color_problem(color) {
             bail!("{problem}");
         }
@@ -215,14 +360,14 @@ impl Actions {
             &actions,
             &groups,
             &groups,
-            CommitOptions { write_actions: false, write_groups: false, priority_colors: Some(vec![(p, color.as_str().unwrap().to_string())]), ..Default::default() },
+            CommitOptions { write_actions: false, write_groups: false, priority_colors: Some(vec![(priority, color.to_string())]), ..Default::default() },
         )?;
-        Ok(json!({
-            "colors": self.priority_colors()?,
-            "affected_actions": changes.affected_actions,
-            "label_slots_used": changes.label_slots_used,
-            "label_slots_total": MAX_LABELS,
-        }))
+        Ok(PriorityColorChange {
+            colors: self.priority_colors()?,
+            affected_actions: changes.affected_actions,
+            label_slots_used: changes.label_slots_used,
+            label_slots_total: MAX_LABELS,
+        })
     }
 
     /// Add any priority label the calendar doesn't have yet.
@@ -235,46 +380,43 @@ impl Actions {
         Ok(())
     }
 
-    pub fn create_action(&self, action: &Row) -> anyhow::Result<Value> {
-        check_color(action.get("background_color"))?;
+    pub fn create_action(&self, action: &Action) -> anyhow::Result<CreatedAction> {
+        check_color(action.background_color.as_deref())?;
         let actions = self.all()?;
-        let mut new = action.clone();
-        for name in READ_ONLY_FIELDS {
-            new.insert(name.into(), Value::Null);
-        }
-        if !truthy(action.get("status")) {
-            new.insert("status".into(), json!("proposed"));
-        }
-        let id = rows::new_id(actions.iter().map(|a| rows::text(a, "id")).collect::<Vec<_>>());
+        let id = rows::new_id(actions.iter().map(|a| a.id.as_deref()).collect::<Vec<_>>());
         let namespace = uuid::Uuid::parse_str(LABEL_ID_NAMESPACE).unwrap();
-        new.insert("id".into(), json!(id));
-        new.insert("label_id".into(), json!(uuid::Uuid::new_v5(&namespace, id.as_bytes()).to_string()));
+        let new = Action {
+            id: Some(id.clone()),
+            label_id: Some(uuid::Uuid::new_v5(&namespace, id.as_bytes()).to_string()),
+            status: Some(action.status.unwrap_or(ActionStatus::Proposed)),
+            ..action.clone()
+        };
         let groups = self.groups()?.groups;
         let mut after = actions.clone();
         after.push(new);
         let changes = self.commit(&actions, &after, &groups, &groups, CommitOptions { write_groups: false, ..Default::default() })?;
-        let (mine, others): (Vec<Value>, Vec<Value>) =
-            changes.affected_actions.into_iter().partition(|a| a["id"].as_str() == Some(id.as_str()));
-        Ok(json!({
-            "changed": mine.into_iter().chain(others).collect::<Vec<_>>(),
-            "label_slots_used": changes.label_slots_used,
-            "label_slots_total": MAX_LABELS,
-            "created_id": id,
-        }))
+        let (mine, others): (Vec<ListedAction>, Vec<ListedAction>) =
+            changes.affected_actions.into_iter().partition(|a| a.id.as_deref() == Some(id.as_str()));
+        Ok(CreatedAction {
+            changed: mine.into_iter().chain(others).collect(),
+            label_slots_used: changes.label_slots_used,
+            label_slots_total: MAX_LABELS,
+            created_id: id,
+        })
     }
 
-    pub fn update_action(&self, action: &Row, clear_fields: &[String]) -> anyhow::Result<Value> {
-        let Some(id) = rows::text(action, "id").filter(|i| !i.is_empty()).map(str::to_string) else {
+    pub fn update_action(&self, action: &Action, clear_fields: &[String]) -> anyhow::Result<ActionChanges> {
+        let Some(id) = set(action.id.as_deref()).map(str::to_string) else {
             bail!("update_action needs the action's id");
         };
-        rows::check_clear(action, clear_fields, &CLEARABLE_FIELDS)?;
-        check_color(action.get("background_color"))?;
+        rows::check_clear_item(action, clear_fields, &CLEARABLE_FIELDS)?;
+        check_color(action.background_color.as_deref())?;
         let actions = self.all()?;
-        let Some(index) = actions.iter().position(|a| rows::text(a, "id") == Some(id.as_str())) else {
+        let Some(index) = actions.iter().position(|a| a.id.as_deref() == Some(id.as_str())) else {
             bail!("{}", unknown_message(&actions, &id));
         };
         let mut after = actions.clone();
-        after[index] = rows::updated(&actions[index], action, clear_fields, &READ_ONLY_FIELDS);
+        after[index] = rows::updated_item(&actions[index], action, clear_fields, &READ_ONLY_FIELDS);
         let groups = self.groups()?.groups;
         let changes = self.commit(
             &actions,
@@ -283,83 +425,86 @@ impl Actions {
             &groups,
             CommitOptions { write_groups: false, changed_actions: vec![id.clone()], ..Default::default() },
         )?;
-        let (mine, others): (Vec<Value>, Vec<Value>) =
-            changes.affected_actions.into_iter().partition(|a| a["id"].as_str() == Some(id.as_str()));
-        Ok(json!({
-            "changed": mine.into_iter().chain(others).collect::<Vec<_>>(),
-            "label_slots_used": changes.label_slots_used,
-            "label_slots_total": MAX_LABELS,
-        }))
+        let (mine, others): (Vec<ListedAction>, Vec<ListedAction>) =
+            changes.affected_actions.into_iter().partition(|a| a.id.as_deref() == Some(id.as_str()));
+        Ok(ActionChanges { changed: mine.into_iter().chain(others).collect(), label_slots_used: changes.label_slots_used, label_slots_total: MAX_LABELS })
     }
 
-    pub fn create_action_group(&self, group: &Row) -> anyhow::Result<Value> {
-        check_color(group.get("background_color"))?;
+    pub fn create_action_group(&self, group: &ActionGroup) -> anyhow::Result<CreatedActionGroup> {
+        check_color(group.background_color.as_deref())?;
         let groups = self.groups()?.groups;
-        let mut new = group.clone();
-        let id = rows::new_id(groups.iter().map(|g| rows::text(g, "id")).collect::<Vec<_>>());
-        new.insert("id".into(), json!(id));
+        let id = rows::new_id(groups.iter().map(|g| g.id.as_deref()).collect::<Vec<_>>());
+        let new = ActionGroup { id: Some(id.clone()), ..group.clone() };
         let actions = self.all()?;
         let mut after = groups.clone();
         after.push(new);
         let changes = self.commit(&actions, &actions, &groups, &after, CommitOptions { write_actions: false, ..Default::default() })?;
-        let mut out = changes.to_json();
-        out.as_object_mut().unwrap().insert("created_id".into(), json!(id));
-        Ok(out)
+        Ok(CreatedActionGroup {
+            changed: changes.changed,
+            affected_actions: changes.affected_actions,
+            label_slots_used: changes.label_slots_used,
+            label_slots_total: MAX_LABELS,
+            created_id: id,
+        })
     }
 
-    pub fn update_action_group(&self, group: &Row, clear_fields: &[String]) -> anyhow::Result<Value> {
-        let Some(id) = rows::text(group, "id").filter(|i| !i.is_empty()).map(str::to_string) else {
+    pub fn update_action_group(&self, group: &ActionGroup, clear_fields: &[String]) -> anyhow::Result<ActionGroupChanges> {
+        let Some(id) = set(group.id.as_deref()).map(str::to_string) else {
             bail!("update_action_group needs the group's id");
         };
-        rows::check_clear(group, clear_fields, &GROUP_CLEARABLE_FIELDS)?;
-        check_color(group.get("background_color"))?;
+        rows::check_clear_item(group, clear_fields, &GROUP_CLEARABLE_FIELDS)?;
+        check_color(group.background_color.as_deref())?;
         let groups = self.groups()?.groups;
-        let Some(index) = groups.iter().position(|g| rows::text(g, "id") == Some(id.as_str())) else {
+        let Some(index) = groups.iter().position(|g| g.id.as_deref() == Some(id.as_str())) else {
             find_group(&groups, &id)?;
             unreachable!()
         };
         let mut after = groups.clone();
-        after[index] = rows::updated(&groups[index], group, clear_fields, &["id"]);
+        after[index] = rows::updated_item(&groups[index], group, clear_fields, &["id"]);
         let actions = self.all()?;
-        Ok(self
-            .commit(&actions, &actions, &groups, &after, CommitOptions { write_actions: false, changed_groups: vec![id], ..Default::default() })?
-            .to_json())
+        let changes = self.commit(&actions, &actions, &groups, &after, CommitOptions { write_actions: false, changed_groups: vec![id], ..Default::default() })?;
+        Ok(ActionGroupChanges {
+            changed: changes.changed,
+            affected_actions: changes.affected_actions,
+            label_slots_used: changes.label_slots_used,
+            label_slots_total: MAX_LABELS,
+        })
     }
 
-    pub fn delete_action_group(&self, group_id: &str) -> anyhow::Result<Value> {
+    pub fn delete_action_group(&self, group_id: &str) -> anyhow::Result<DeletedActionGroup> {
         let groups = self.groups()?.groups;
-        let deleted = match groups.iter().find(|g| rows::text(g, "id") == Some(group_id)) {
+        let deleted = match groups.iter().find(|g| g.id.as_deref() == Some(group_id)) {
             Some(found) => found.clone(),
             None => find_group(&groups, group_id)?,
         };
-        if rows::text(&deleted, "id") != Some(group_id) {
-            bail!(
-                "Delete a group by its id: {} is {}",
-                python_repr(deleted.get("name").unwrap_or(&Value::Null)),
-                python_str(deleted.get("id"))
-            );
+        if deleted.id.as_deref() != Some(group_id) {
+            bail!("Delete a group by its id: {} is {}", repr_or_none(deleted.name.as_deref()), str_or_none(deleted.id.as_deref()));
         }
-        let parent = deleted.get("group_id").cloned().unwrap_or(Value::Null);
-        let moved = |row: &Row| -> Row {
-            let mut row = row.clone();
-            if rows::text(&row, "group_id") == Some(group_id) {
-                row.insert("group_id".into(), parent.clone());
+        let parent = deleted.group_id.clone();
+        let moved = |current: &Option<String>| -> Option<String> {
+            if current.as_deref() == Some(group_id) {
+                parent.clone()
+            } else {
+                current.clone()
             }
-            row
         };
-        let groups_after: Vec<Row> = groups.iter().filter(|g| rows::text(g, "id") != Some(group_id)).map(moved).collect();
-        let actions = self.all()?;
-        let actions_after: Vec<Row> = actions.iter().map(moved).collect();
-        let changed_groups: Vec<String> = groups
+        let groups_after: Vec<ActionGroup> = groups
             .iter()
-            .filter(|g| rows::text(g, "group_id") == Some(group_id))
-            .filter_map(|g| rows::text(g, "id").map(str::to_string))
+            .filter(|g| g.id.as_deref() != Some(group_id))
+            .map(|g| ActionGroup { group_id: moved(&g.group_id), ..g.clone() })
             .collect();
-        let changes =
-            self.commit(&actions, &actions_after, &groups, &groups_after, CommitOptions { changed_groups, ..Default::default() })?;
-        let mut out = changes.to_json();
-        out.as_object_mut().unwrap().insert("deleted".into(), Value::Object(deleted));
-        Ok(out)
+        let actions = self.all()?;
+        let actions_after: Vec<Action> = actions.iter().map(|a| Action { group_id: moved(&a.group_id), ..a.clone() }).collect();
+        let changed_groups: Vec<String> =
+            groups.iter().filter(|g| g.group_id.as_deref() == Some(group_id)).filter_map(|g| g.id.clone()).collect();
+        let changes = self.commit(&actions, &actions_after, &groups, &groups_after, CommitOptions { changed_groups, ..Default::default() })?;
+        Ok(DeletedActionGroup {
+            changed: changes.changed,
+            affected_actions: changes.affected_actions,
+            label_slots_used: changes.label_slots_used,
+            label_slots_total: MAX_LABELS,
+            deleted,
+        })
     }
 
     /// Check the actions and groups after a change, write them, then make
@@ -367,10 +512,10 @@ impl Actions {
     /// checked before anything is written.
     fn commit(
         &self,
-        actions_before: &[Row],
-        actions_after: &[Row],
-        groups_before: &[Row],
-        groups_after: &[Row],
+        actions_before: &[Action],
+        actions_after: &[Action],
+        groups_before: &[ActionGroup],
+        groups_after: &[ActionGroup],
         options: CommitOptions,
     ) -> anyhow::Result<Changes> {
         let mut problems = group_problems(groups_after);
@@ -392,39 +537,32 @@ impl Actions {
         let holders = label_holders(actions_after, &raw_labels);
         let desired = desired_labels(actions_after, &tree_after, &raw_labels, &holders, options.priority_colors.as_ref())?;
         if options.write_groups {
-            self.group_sheet.write(groups_after)?;
+            self.group_sheet.write_items(groups_after)?;
         }
         if options.write_actions {
-            self.sheet.write(actions_after)?;
+            self.sheet.write_items(actions_after)?;
         }
         if !same_labels(&desired, &raw_labels) {
             raw_labels = self.calendar.replace_event_labels(&desired, etag.as_deref())?;
         }
-        let old_groups: Vec<Option<&Value>> = groups_before.iter().map(|g| g.get("id")).collect();
-        let placement = |action: &Row, tree: &GroupTree, held: &[Value]| -> (Value, String, Value, Option<Value>, bool) {
-            (
-                action.get("group_id").cloned().unwrap_or(Value::Null),
-                tree.path(action),
-                tree.color(action),
-                tree.priority(action),
-                held.contains(action.get("id").unwrap_or(&Value::Null)),
-            )
+        let old_groups: Vec<Option<&str>> = groups_before.iter().map(|g| g.id.as_deref()).collect();
+        let placement = |action: &Action, tree: &GroupTree, held: &[Option<String>]| {
+            (action.group_id.clone(), tree.path(action), tree.color(action), tree.priority(action), held.contains(&action.id))
         };
-        let changed: Vec<Value> = tree_after
+        let changed: Vec<ListedActionGroup> = tree_after
             .ordered()
             .into_iter()
             .filter(|g| {
-                let id = g.get("id");
-                options.changed_groups.iter().any(|c| id.and_then(Value::as_str) == Some(c.as_str())) || !old_groups.contains(&id)
+                let id = g.id.as_deref();
+                options.changed_groups.iter().any(|c| id == Some(c.as_str())) || !old_groups.contains(&id)
             })
             .map(|g| tree_after.listed(g))
             .collect();
-        let affected: Vec<Value> = actions_after
+        let affected: Vec<ListedAction> = actions_after
             .iter()
             .filter(|a| {
-                let id = a.get("id").unwrap_or(&Value::Null);
-                let before = actions_before.iter().rev().find(|b| b.get("id").unwrap_or(&Value::Null) == id);
-                options.changed_actions.iter().any(|c| id.as_str() == Some(c.as_str()))
+                let before = actions_before.iter().rev().find(|b| b.id == a.id);
+                options.changed_actions.iter().any(|c| a.id.as_deref() == Some(c.as_str()))
                     || before.is_none()
                     || placement(before.unwrap(), &tree_before, &held_before) != placement(a, &tree_after, &holders)
             })
@@ -461,25 +599,25 @@ fn same_labels(a: &[EventLabel], b: &[EventLabel]) -> bool {
     x == y
 }
 
-pub fn find(actions: &[Row], id_or_name: &str) -> anyhow::Result<Row> {
-    if let Some(found) = actions.iter().find(|a| rows::text(a, "id") == Some(id_or_name)) {
+pub fn find(actions: &[Action], id_or_name: &str) -> anyhow::Result<Action> {
+    if let Some(found) = actions.iter().find(|a| a.id.as_deref() == Some(id_or_name)) {
         return Ok(found.clone());
     }
     let wanted = id_or_name.to_lowercase();
-    if let Some(found) = actions.iter().rev().find(|a| rows::text(a, "name").unwrap_or_default().to_lowercase() == wanted) {
+    if let Some(found) = actions.iter().rev().find(|a| a.name.as_deref().unwrap_or_default().to_lowercase() == wanted) {
         return Ok(found.clone());
     }
     bail!("{}", unknown_message(actions, id_or_name))
 }
 
-pub fn unknown_message(actions: &[Row], id_or_name: &str) -> String {
-    let with_ids: Vec<&Row> = actions.iter().filter(|a| id_of(a).is_some()).collect();
-    let key = |row: &Row| rows::text(row, "name").unwrap_or_default().to_lowercase();
-    let ids = dedup(with_ids.iter().filter_map(|a| rows::text(a, "id").map(str::to_string)));
+pub fn unknown_message(actions: &[Action], id_or_name: &str) -> String {
+    let with_ids: Vec<&Action> = actions.iter().filter(|a| set(a.id.as_deref()).is_some()).collect();
+    let key = |a: &Action| a.name.as_deref().unwrap_or_default().to_lowercase();
+    let ids = dedup(with_ids.iter().filter_map(|a| a.id.clone()));
     let names = dedup(with_ids.iter().map(|a| key(a)));
-    let mut close: Vec<&Row> = Vec::new();
+    let mut close: Vec<&Action> = Vec::new();
     for id in crate::difflib::get_close_matches(id_or_name, &ids, 3) {
-        if let Some(a) = with_ids.iter().rev().find(|a| rows::text(a, "id") == Some(id.as_str())) {
+        if let Some(a) = with_ids.iter().rev().find(|a| a.id.as_deref() == Some(id.as_str())) {
             close.push(a);
         }
     }
@@ -488,7 +626,7 @@ pub fn unknown_message(actions: &[Row], id_or_name: &str) -> String {
             close.push(a);
         }
     }
-    let hints = dedup(close.iter().map(|a| format!("{} ({})", python_str(a.get("id")), python_str(a.get("name")))));
+    let hints = dedup(close.iter().map(|a| format!("{} ({})", str_or_none(a.id.as_deref()), str_or_none(a.name.as_deref()))));
     let hint = hints.join(", ");
     format!(
         "There's no action with the id or name {}{} (get_actions lists them)",
@@ -497,18 +635,16 @@ pub fn unknown_message(actions: &[Row], id_or_name: &str) -> String {
     )
 }
 
-fn check_color(color: Option<&Value>) -> anyhow::Result<()> {
-    if let Some(color) = color.filter(|c| !c.is_null()) {
-        if let Some(problem) = color_problem(color) {
-            bail!("{problem}");
-        }
+fn check_color(color: Option<&str>) -> anyhow::Result<()> {
+    if let Some(problem) = color.and_then(color_problem) {
+        bail!("{problem}");
     }
     Ok(())
 }
 
-pub fn action_problems(actions: &[Row], groups: &[Row]) -> Vec<String> {
+pub fn action_problems(actions: &[Action], groups: &[ActionGroup]) -> Vec<String> {
     let mut problems = Vec::new();
-    let ids: Vec<Option<&str>> = actions.iter().map(|a| rows::text(a, "id")).collect();
+    let ids: Vec<Option<&str>> = actions.iter().map(|a| a.id.as_deref()).collect();
     let mut repeated: Vec<&str> =
         ids.iter().flatten().copied().filter(|i| !i.is_empty() && ids.iter().filter(|x| **x == Some(*i)).count() > 1).collect();
     repeated.sort();
@@ -516,21 +652,21 @@ pub fn action_problems(actions: &[Row], groups: &[Row]) -> Vec<String> {
     for id in repeated {
         problems.push(format!("action id {} is used more than once", py::repr(id)));
     }
-    let group_ids: Vec<&Value> = groups.iter().map(|g| g.get("id").unwrap_or(&Value::Null)).collect();
-    let mut names: Vec<(String, Row)> = Vec::new();
+    let group_ids: Vec<Option<&str>> = groups.iter().map(|g| g.id.as_deref()).collect();
+    let mut names: Vec<(String, &Action)> = Vec::new();
     for action in actions {
-        let name_repr = python_repr(action.get("name").unwrap_or(&Value::Null));
-        let label = match id_of(action) {
-            Some(id) => format!("action {}", python_str(Some(id))),
+        let name_repr = repr_or_none(action.name.as_deref());
+        let label = match set(action.id.as_deref()) {
+            Some(id) => format!("action {id}"),
             None => format!("action {name_repr}"),
         };
-        if id_of(action).is_none() {
+        if set(action.id.as_deref()).is_none() {
             problems.push(format!("an action named {name_repr} has no id"));
         }
-        if !truthy(action.get("label_id")) {
+        if set(action.label_id.as_deref()).is_none() {
             problems.push(format!("{label} has no label_id"));
         }
-        match action.get("name").and_then(Value::as_str).filter(|n| !n.trim().is_empty()) {
+        match action.name.as_deref().filter(|n| !n.trim().is_empty()) {
             None => problems.push(format!("{label} needs a name")),
             Some(name) if name.chars().count() > MAX_NAME_LENGTH => {
                 problems.push(format!("{label}'s name {} is longer than {MAX_NAME_LENGTH} characters", py::repr(name)))
@@ -540,75 +676,67 @@ pub fn action_problems(actions: &[Row], groups: &[Row]) -> Vec<String> {
                 if let Some((_, other)) = names.iter().find(|(k, _)| *k == key) {
                     problems.push(format!(
                         "there's already an action named {} ({}, {}); action names must be unique -- use that one, or pick another name",
-                        python_repr(other.get("name").unwrap_or(&Value::Null)),
-                        python_str(other.get("id")),
-                        python_str(other.get("status"))
+                        repr_or_none(other.name.as_deref()),
+                        str_or_none(other.id.as_deref()),
+                        str_or_none(status_of(other).as_deref())
                     ));
                 }
                 names.retain(|(k, _)| *k != key);
-                names.push((key, action.clone()));
+                names.push((key, action));
             }
         }
-        if !ACTION_STATUSES.iter().any(|s| rows::text(action, "status") == Some(*s)) {
+        if action.status.is_none() {
             problems.push(format!("{label}'s status must be one of {}", ACTION_STATUSES.join(", ")));
         }
-        if let Some(priority) = action.get("priority").filter(|p| !p.is_null()) {
-            if !(priority.is_i64() || priority.is_u64() || priority.is_boolean()) {
-                problems.push(format!("{label}'s priority must be a whole number"));
-            }
-        }
-        if let Some(group_id) = action.get("group_id").filter(|g| !g.is_null()) {
-            if !group_ids.contains(&group_id) {
-                problems.push(format!(
-                    "{label}'s group_id {} isn't an action group (get_action_groups lists them)",
-                    python_repr(group_id)
-                ));
+        if let Some(group_id) = action.group_id.as_deref() {
+            if !group_ids.contains(&Some(group_id)) {
+                problems.push(format!("{label}'s group_id {} isn't an action group (get_action_groups lists them)", py::repr(group_id)));
             }
         }
     }
     problems
 }
 
-pub fn listed(action: &Row, tree: &GroupTree, holders: &[Value]) -> Value {
-    let mut out: Map<String, Value> = Map::new();
-    for (name, _) in ACTION_ROW.fields {
-        out.insert(name.to_string(), action.get(*name).cloned().unwrap_or(Value::Null));
+pub fn listed(action: &Action, tree: &GroupTree, holders: &[Option<String>]) -> ListedAction {
+    ListedAction {
+        id: action.id.clone(),
+        group_id: action.group_id.clone(),
+        name: action.name.clone(),
+        status: action.status,
+        label_id: action.label_id.clone(),
+        background_color: action.background_color.clone(),
+        priority: action.priority,
+        note: action.note.clone(),
+        path: Some(tree.path(action)),
+        effective_color: Some(tree.color(action)),
+        effective_priority: tree.priority(action),
+        holds_label: Some(holders.contains(&action.id)),
     }
-    out.insert("path".into(), json!(tree.path(action)));
-    out.insert("effective_color".into(), tree.color(action));
-    out.insert("effective_priority".into(), tree.priority(action).unwrap_or(Value::Null));
-    out.insert("holds_label".into(), json!(holders.contains(action.get("id").unwrap_or(&Value::Null))));
-    Value::Object(out)
 }
 
 /// The calendar's labels that aren't any action's -- plus every priority
 /// label, recolored as `priority_colors` says.
-fn foreign(actions: &[Row], raw_labels: &[EventLabel], priority_colors: Option<&Palette>) -> Vec<EventLabel> {
-    let ours: Vec<&str> = actions.iter().filter(|a| truthy(a.get("label_id"))).filter_map(|a| rows::text(a, "label_id")).collect();
-    let others: Vec<EventLabel> =
-        raw_labels.iter().filter(|l| !l.id.as_deref().is_some_and(|i| ours.contains(&i))).cloned().collect();
+fn foreign(actions: &[Action], raw_labels: &[EventLabel], priority_colors: Option<&Palette>) -> Vec<EventLabel> {
+    let ours: Vec<&str> = actions.iter().filter_map(|a| set(a.label_id.as_deref())).collect();
+    let others: Vec<EventLabel> = raw_labels.iter().filter(|l| !l.id.as_deref().is_some_and(|i| ours.contains(&i))).cloned().collect();
     with_priority_labels(&others, priority_colors)
 }
 
 /// The ids of the actions holding a label: every active one, then
 /// proposed ones in sheet order while there's room.
-pub fn label_holders(actions: &[Row], raw_labels: &[EventLabel]) -> Vec<Value> {
-    let mut room = MAX_LABELS as i64 - foreign(actions, raw_labels, None).len() as i64;
-    let mut holders: Vec<Value> = Vec::new();
+pub fn label_holders(actions: &[Action], raw_labels: &[EventLabel]) -> Vec<Option<String>> {
+    let mut room = MAX_LABELS - foreign(actions, raw_labels, None).len() as i64;
+    let mut holders: Vec<Option<String>> = Vec::new();
     for action in actions {
-        if rows::text(action, "status") == Some("active") {
-            let id = action.get("id").cloned().unwrap_or(Value::Null);
-            if !holders.contains(&id) {
-                holders.push(id);
-            }
+        if action.status == Some(ActionStatus::Active) && !holders.contains(&action.id) {
+            holders.push(action.id.clone());
         }
     }
     room -= holders.len() as i64;
     for action in actions {
-        if rows::text(action, "status") == Some("proposed") && room > 0 {
-            let id = action.get("id").cloned().unwrap_or(Value::Null);
-            if !holders.contains(&id) {
-                holders.push(id);
+        if action.status == Some(ActionStatus::Proposed) && room > 0 {
+            if !holders.contains(&action.id) {
+                holders.push(action.id.clone());
             }
             room -= 1;
         }
@@ -617,51 +745,43 @@ pub fn label_holders(actions: &[Row], raw_labels: &[EventLabel]) -> Vec<Value> {
 }
 
 fn desired_labels(
-    actions: &[Row],
+    actions: &[Action],
     tree: &GroupTree,
     raw_labels: &[EventLabel],
-    holders: &[Value],
+    holders: &[Option<String>],
     priority_colors: Option<&Palette>,
 ) -> anyhow::Result<Vec<EventLabel>> {
     let mut labels = foreign(actions, raw_labels, priority_colors);
-    let active = actions.iter().filter(|a| rows::text(a, "status") == Some("active")).count();
-    if labels.len() + active > MAX_LABELS {
+    let active = actions.iter().filter(|a| a.status == Some(ActionStatus::Active)).count();
+    if (labels.len() + active) as i64 > MAX_LABELS {
         bail!(
             "That would need {} event labels, but a calendar holds {MAX_LABELS} ({} aren't actions'), so at most {} actions can be active at once. Archive one that isn't done any more.",
             labels.len() + active,
             labels.len(),
-            MAX_LABELS - labels.len()
+            MAX_LABELS - labels.len() as i64
         );
     }
     for action in actions {
-        if holders.contains(action.get("id").unwrap_or(&Value::Null)) {
-            labels.push(EventLabel {
-                id: action.get("label_id").and_then(Value::as_str).map(str::to_string),
-                name: action.get("name").and_then(Value::as_str).map(str::to_string),
-                background_color: python_str(Some(&tree.color(action))),
-            });
+        if holders.contains(&action.id) {
+            labels.push(EventLabel { id: action.label_id.clone(), name: action.name.clone(), background_color: tree.color(action) });
         }
     }
     Ok(labels)
 }
 
-fn slots_used(actions: &[Row], raw_labels: &[EventLabel], holders: &[Value]) -> usize {
-    foreign(actions, raw_labels, None).len() + holders.len()
+fn slots_used(actions: &[Action], raw_labels: &[EventLabel], holders: &[Option<String>]) -> i64 {
+    (foreign(actions, raw_labels, None).len() + holders.len()) as i64
 }
 
-pub fn priority_colors_json(palette: &Palette) -> Value {
-    Value::Array(
-        PRIORITIES
-            .iter()
-            .map(|p| {
-                json!({
-                    "priority": p,
-                    "color": palette.iter().find(|(q, _)| q == p).map(|(_, c)| c.clone()).unwrap_or_default(),
-                    "label_id": priority_label_id(Some(*p)),
-                })
-            })
-            .collect(),
-    )
+pub fn priority_colors(palette: &Palette) -> Vec<PriorityColor> {
+    PRIORITIES
+        .iter()
+        .map(|p| PriorityColor {
+            priority: *p,
+            color: palette.iter().find(|(q, _)| q == p).map(|(_, c)| c.clone()).unwrap_or_default(),
+            label_id: priority_label_id(Some(*p)),
+        })
+        .collect()
 }
 
 fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {

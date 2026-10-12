@@ -362,8 +362,8 @@ fn an_action_approved_now_is_created_active() {
 
     let all = s.setup.compactor.actions.as_ref().unwrap().all().unwrap();
     assert_eq!(all.len(), 1);
-    assert_eq!((all[0]["name"].as_str(), all[0]["status"].as_str()), (Some("Drink coffee"), Some("active")));
-    assert_eq!(s.coffee(&proposal).action_ids, Some(vec![all[0]["id"].as_str().unwrap().to_string()]));
+    assert_eq!((all[0].name.as_deref(), all[0].status), (Some("Drink coffee"), Some(crate::stores::actions::ActionStatus::Active)));
+    assert_eq!(s.coffee(&proposal).action_ids, Some(vec![all[0].id.clone().unwrap()]));
 }
 
 #[test]
@@ -393,7 +393,7 @@ fn confirming_creates_only_whats_left() {
     assert_eq!(s.setup.call(|c| c.confirm(&s.p, 2)).unwrap().status, "applied");
 
     assert_eq!(s.people_names().iter().filter(|n| *n == "Alex").count(), 1);
-    let actions: Vec<String> = s.setup.compactor.actions.as_ref().unwrap().all().unwrap().iter().map(|a| a["name"].as_str().unwrap().to_string()).collect();
+    let actions: Vec<String> = s.setup.compactor.actions.as_ref().unwrap().all().unwrap().iter().map(|a| a.name.as_deref().unwrap().to_string()).collect();
     assert_eq!(actions, strings(&["Drink coffee"]));
     let id = s.setup.creates().last().unwrap()["id"].as_str().unwrap().to_string();
     assert_eq!(s.setup.event(&id).facts.unwrap().with(), vec!["sam".to_string(), s.person_id("alex")]);
