@@ -2028,39 +2028,12 @@ impl NoteCompactor {
 
     pub fn edit_note(&self, note_id: &str, timestamp: Option<Moment>, description: Option<&str>) -> anyhow::Result<SheetNote> {
         self.prefetch_tabs(false)?;
-        self.require_not_being_applied(note_id)?;
-        match self.notes.edit(note_id, timestamp, description) {
-            Ok(note) => Ok(note),
-            Err(e) if google_status(&e).is_some() => Err(e),
-            Err(e) => Err(ce(e.to_string(), "note_edit")),
-        }
+        edit_note(&self.notes, &self.journal, note_id, timestamp, description)
     }
 
     pub fn delete_note(&self, note_id: &str) -> anyhow::Result<NotedTime> {
         self.prefetch_tabs(false)?;
-        self.require_not_being_applied(note_id)?;
-        match self.notes.delete(note_id) {
-            Ok(note) => Ok(note),
-            Err(e) if google_status(&e).is_some() => Err(e),
-            Err(e) => Err(ce(e.to_string(), "note_edit")),
-        }
-    }
-
-    fn require_not_being_applied(&self, note_id: &str) -> anyhow::Result<()> {
-        for (compaction_id, status) in self.journal.open_compactions()? {
-            let compaction = self.journal.load(&compaction_id)?;
-            if compaction.note_ids.iter().any(|n| n == note_id) {
-                return Err(ce(
-                    format!(
-                        "note {} is part of compaction {}, which is {status} -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
-                        py::repr(note_id),
-                        compaction.batch_id()
-                    ),
-                    "note_in_compaction",
-                ));
-            }
-        }
-        Ok(())
+        delete_note(&self.notes, &self.journal, note_id)
     }
 
     pub fn abandon(&self, compaction_id: &str) -> anyhow::Result<CompactionResult> {
@@ -2468,6 +2441,45 @@ impl NoteCompactor {
         }
         Ok(())
     }
+}
+
+/// `edit_note`: `NotedTimeSheet::edit`, refused (a CompactionError) for a
+/// note a compaction is partway through applying -- it stamps its notes
+/// last, by their ids.
+pub fn edit_note(notes: &NotedTimeSheet, journal: &CompactionJournal, note_id: &str, timestamp: Option<Moment>, description: Option<&str>) -> anyhow::Result<SheetNote> {
+    require_not_being_applied(journal, note_id)?;
+    match notes.edit(note_id, timestamp, description) {
+        Ok(note) => Ok(note),
+        Err(e) if google_status(&e).is_some() => Err(e),
+        Err(e) => Err(ce(e.to_string(), "note_edit")),
+    }
+}
+
+/// `delete_note`: `NotedTimeSheet::delete`, refused like `edit_note`.
+pub fn delete_note(notes: &NotedTimeSheet, journal: &CompactionJournal, note_id: &str) -> anyhow::Result<NotedTime> {
+    require_not_being_applied(journal, note_id)?;
+    match notes.delete(note_id) {
+        Ok(note) => Ok(note),
+        Err(e) if google_status(&e).is_some() => Err(e),
+        Err(e) => Err(ce(e.to_string(), "note_edit")),
+    }
+}
+
+fn require_not_being_applied(journal: &CompactionJournal, note_id: &str) -> anyhow::Result<()> {
+    for (compaction_id, status) in journal.open_compactions()? {
+        let compaction = journal.load(&compaction_id)?;
+        if compaction.note_ids.iter().any(|n| n == note_id) {
+            return Err(ce(
+                format!(
+                    "note {} is part of compaction {}, which is {status} -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
+                    py::repr(note_id),
+                    compaction.batch_id()
+                ),
+                "note_in_compaction",
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// `_cut`: the span `day_for` reads, ended where the decision on its last
