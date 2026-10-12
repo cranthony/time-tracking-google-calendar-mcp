@@ -269,11 +269,12 @@ struct Settling {
 }
 
 fn new_additions() -> Additions {
-    Additions::new(
-        &[json!({"ref": "new:coffee", "name": "Drink coffee"})],
-        &[json!({"ref": "new:alex", "name": "Alex", "context": "Sam's friend"})],
-        &[json!({"ref": "new:cafe", "name": "Corner cafe", "hint": "the cafe on Main"})],
-    )
+    Additions::from_json_dict(Some(&json!({
+        "actions": [{"ref": "new:coffee", "name": "Drink coffee"}],
+        "people": [{"ref": "new:alex", "name": "Alex", "context": "Sam's friend"}],
+        "locations": [{"ref": "new:cafe", "name": "Corner cafe", "hint": "the cafe on Main"}],
+    })))
+    .unwrap()
 }
 
 fn settling() -> Settling {

@@ -63,11 +63,6 @@ pub fn from_store<T: serde::de::DeserializeOwned>(value: Value) -> Result<T, Too
     serde_json::from_value(value).map_err(|e| ToolError::Unexpected(anyhow::anyhow!("the store's result doesn't fit the tool's: {e}")))
 }
 
-/// A typed argument, as the store's row of `row_type`.
-pub fn to_row<T: serde::Serialize>(row_type: crate::sheet::rows::RowType, value: &T) -> crate::sheet::rows::Row {
-    row_type.from_value(&serde_json::to_value(value).expect("an argument is JSON"))
-}
-
 /// Literals (such as clear_fields') as their text.
 pub fn texts<T: serde::Serialize>(items: &[T]) -> Vec<String> {
     items.iter().map(crate::contract::wire_text).collect()

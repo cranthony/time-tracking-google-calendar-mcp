@@ -131,8 +131,7 @@ fn a_created_event_takes_facts() {
 // New actions, people and locations, added from the compaction itself.
 
 fn additions(actions: Value, people: Value, locations: Value) -> Additions {
-    let list = |v: Value| v.as_array().cloned().unwrap_or_default();
-    Additions::new(&list(actions), &list(people), &list(locations))
+    Additions::from_json_dict(Some(&json!({"actions": actions, "people": people, "locations": locations}))).unwrap()
 }
 
 #[test]

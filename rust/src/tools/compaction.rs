@@ -2,21 +2,17 @@
 //! the user confirms, judging the events it settles, and correcting notes.
 
 use super::events::{when_given, EventCancel, Facts as PublicFacts, NoteWithId, NotedTime, PublicEvent};
-use super::{from_store, texts, to_row, ToolError};
+use super::{from_store, texts, ToolError};
 use crate::contract::{tool, wire_text, DateTimeText, Schema};
 use crate::app::App;
-use crate::compaction::additions::Additions;
+use crate::compaction::additions::{Addition, Additions};
 use crate::compaction::compactor::{compaction_error, NoteCompactor};
 use crate::compaction::judgments::{self, Judging};
 use crate::compaction::plan::EventDecision;
 use crate::compaction::proposals;
 use crate::facts::Facts;
 use crate::py;
-use crate::sheet::rows::{Row, RowType};
 use crate::stores::action_calendar::ActionCalendar;
-use crate::stores::actions::ACTION_ROW;
-use crate::stores::locations::ROW as LOCATION_ROW;
-use crate::stores::people::PERSON_ROW;
 use indexmap::IndexMap;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -1004,11 +1000,9 @@ fn stored_recap(recap: &Recap) -> proposals::Recap {
     proposals::Recap { overview: recap.overview.clone(), did: points(&recap.did), unsure: points(&recap.unsure) }
 }
 
-/// An addition as the compactor keeps it: the store's row, and its ref.
-fn addition_row<T: Serialize>(row_type: RowType, item: &T, reference: &str) -> Row {
-    let mut row = to_row(row_type, item);
-    row.insert("ref".into(), json!(reference));
-    row
+/// An addition as the compactor keeps it: the store's item, and its ref.
+fn addition<T: Serialize, U: DeserializeOwned>(given: &T) -> Addition<U> {
+    serde_json::from_value(serde_json::to_value(given).expect("an argument is JSON")).expect("a new item is its store's item")
 }
 
 /// What the client sees of a compactor's result (as the tool's type).
@@ -1242,9 +1236,9 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
     }
     decisions.extend(cancels.iter().map(cancel_decision));
     let additions = Additions {
-        actions: new_actions.unwrap_or_default().iter().map(|a| addition_row(ACTION_ROW, a, &a.r#ref)).collect(),
-        people: new_people.unwrap_or_default().iter().map(|p| addition_row(PERSON_ROW, p, &p.r#ref)).collect(),
-        locations: new_locations.unwrap_or_default().iter().map(|l| addition_row(LOCATION_ROW, l, &l.r#ref)).collect(),
+        actions: new_actions.unwrap_or_default().iter().map(addition).collect(),
+        people: new_people.unwrap_or_default().iter().map(addition).collect(),
+        locations: new_locations.unwrap_or_default().iter().map(addition).collect(),
     };
     let replies: Vec<proposals::FeedbackReply> =
         replies.unwrap_or_default().into_iter().map(|r| proposals::FeedbackReply { feedback_id: r.feedback_id, reply: r.reply }).collect();

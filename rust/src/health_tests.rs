@@ -22,8 +22,8 @@ fn call(at_ms: i64, work_ms: i64, total_ms: Option<i64>, ok: bool) -> CallSample
     CallSample { at_ms, work_ms, total_ms, ok }
 }
 
-fn ids(rows: &[Row]) -> Vec<String> {
-    rows.iter().map(|r| rows::text(r, "id").unwrap().to_string()).collect()
+fn ids(rows: &[HealthRow]) -> Vec<String> {
+    rows.iter().map(|r| r.id.as_deref().unwrap().to_string()).collect()
 }
 
 fn calls_of(recorder: &HealthRecorder, tool: &str) -> Vec<CallSample> {
@@ -103,7 +103,7 @@ fn keeps_no_memory_where_it_cant_be_read() {
     recorder.record_call("note", 5, None, true);
 
     assert!(recorder.memory().is_empty());
-    let series: Vec<String> = recorder.take_dirty().unwrap().iter().map(|r| rows::text(r, "series").unwrap().to_string()).collect();
+    let series: Vec<String> = recorder.take_dirty().unwrap().iter().map(|r| r.series.as_deref().unwrap().to_string()).collect();
     assert_eq!(series, vec!["tool:note"]);
 }
 
@@ -119,7 +119,7 @@ fn gives_what_changed_once() {
     assert!(recorder.take_dirty().is_none());
     recorder.mark_dirty(&rows[..1]);
     let again = recorder.take_dirty().unwrap();
-    assert_eq!(rows::text(&again[0], "series"), Some("memory"));
+    assert_eq!(again[0].series.as_deref(), Some("memory"));
 }
 
 #[test]
@@ -149,12 +149,12 @@ fn carries_on_from_what_the_tab_kept() {
 #[test]
 fn skips_a_row_it_cant_read() {
     let recorder = recorder();
-    let row = |id: &str, source: &str, series: &str, data: &str| {
-        let mut row = HEALTH_ROW.empty();
-        for (k, v) in [("id", id), ("source", source), ("series", series), ("data", data)] {
-            row.insert(k.into(), json!(v));
-        }
-        row
+    let row = |id: &str, source: &str, series: &str, data: &str| HealthRow {
+        id: Some(id.into()),
+        source: Some(source.into()),
+        series: Some(series.into()),
+        data: Some(data.into()),
+        ..HealthRow::default()
     };
 
     recorder.merge(&[row("server:tool:note", "server", "tool:note", "1!!"), row("app:tool:x", "app", "tool:x", "whatever")]);
@@ -168,10 +168,14 @@ fn skips_a_row_it_cant_read() {
 fn the_tab_is_written_under_its_own_lock_keeping_others_rows() {
     let t = test_app();
     let tab = t.app.health_tab().unwrap();
-    let mut app_row = HEALTH_ROW.empty();
-    for (k, v) in [("id", json!("app:tool:sync")), ("source", json!("app")), ("series", json!("tool:sync")), ("count", json!(1)), ("data", json!("x"))] {
-        app_row.insert(k.into(), v);
-    }
+    let app_row = HealthRow {
+        id: Some("app:tool:sync".into()),
+        source: Some("app".into()),
+        series: Some("tool:sync".into()),
+        count: Some(1),
+        data: Some("x".into()),
+        ..HealthRow::default()
+    };
     tab.write(&[app_row]).unwrap();
     let recorder = recorder();
     recorder.record_call("note", 5, Some(9), true);
@@ -183,7 +187,7 @@ fn the_tab_is_written_under_its_own_lock_keeping_others_rows() {
     let mut found = ids(&rows);
     found.sort();
     assert_eq!(found, vec!["app:tool:sync", "server:memory", "server:tool:note"]);
-    let data = |id: &str| rows.iter().find(|r| rows::text(r, "id") == Some(id)).and_then(|r| rows::text(r, "data")).unwrap().to_string();
+    let data = |id: &str| rows.iter().find(|r| r.id.as_deref() == Some(id)).and_then(|r| r.data.as_deref()).unwrap().to_string();
     assert_eq!(data("app:tool:sync"), "x");
     assert_eq!(decode_calls(&data("server:tool:note")).unwrap()[0].total_ms, Some(9));
 }
@@ -196,7 +200,7 @@ fn nothing_else_writes_without_a_lock() {
     assert!(sheets.add_sheet(&t.spreadsheet(), "Anything", None).is_err());
 }
 
-fn health_rows(t: &crate::testing::app::TestApp) -> Vec<Row> {
+fn health_rows(t: &crate::testing::app::TestApp) -> Vec<HealthRow> {
     t.app.health_tab().unwrap().read().unwrap()
 }
 
@@ -214,8 +218,8 @@ fn the_writer_takes_in_what_was_kept_records_the_start_and_writes_what_changes()
     writer.flush();
 
     assert_eq!(t.app.health.restarts().len(), 2);
-    let restarts = health_rows(&t).into_iter().find(|r| rows::text(r, "id") == Some("server:restarts")).unwrap();
-    assert_eq!(decode_times(rows::text(&restarts, "data").unwrap()).unwrap().len(), 2);
+    let restarts = health_rows(&t).into_iter().find(|r| r.id.as_deref() == Some("server:restarts")).unwrap();
+    assert_eq!(decode_times(restarts.data.as_deref().unwrap()).unwrap().len(), 2);
     t.app.health.record_call("note", 5, None, true);
     writer.flush();
     assert!(ids(&health_rows(&t)).contains(&"server:tool:note".to_string()));

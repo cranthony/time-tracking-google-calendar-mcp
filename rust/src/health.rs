@@ -4,11 +4,13 @@
 //! and writes (so either server carries on the other's series).
 
 use crate::google::sheets::SheetsClient;
-use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};
+use crate::contract::RowItem;
+use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::HEALTH;
 use crate::write_lock::HEALTH_TAB_LOCK;
 use base64::Engine;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::VecDeque;
 use std::io::{Read, Write};
@@ -36,17 +38,18 @@ pub struct MemorySample {
     pub rss_kib: i64,
 }
 
-pub const HEALTH_ROW: RowType = RowType {
-    name: "HealthRow",
-    fields: &[
-        ("id", Kind::Str),
-        ("source", Kind::Str),
-        ("series", Kind::Str),
-        ("count", Kind::Int),
-        ("latest", Kind::Str),
-        ("data", Kind::Str),
-    ],
-};
+/// A row of the Health tab: one source's series, encoded.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, RowItem)]
+pub struct HealthRow {
+    pub id: Option<String>,
+    pub source: Option<String>,
+    pub series: Option<String>,
+    pub count: Option<i64>,
+    pub latest: Option<String>,
+    pub data: Option<String>,
+}
+
+pub const HEALTH_ROW: RowType = <HealthRow as rows::RowItem>::ROW_TYPE;
 
 // -- encoding -------------------------------------------------------------------
 
@@ -260,10 +263,10 @@ impl HealthRecorder {
     }
 
     /// Take in the series as the tab kept them, from before this start.
-    pub fn merge(&self, rows: &[Row]) {
+    pub fn merge(&self, rows: &[HealthRow]) {
         let mut series = self.lock();
         for row in rows {
-            let (Some(source), Some(name), Some(data)) = (rows::text(row, "source"), rows::text(row, "series"), rows::text(row, "data")) else {
+            let (Some(source), Some(name), Some(data)) = (row.source.as_deref(), row.series.as_deref(), row.data.as_deref()) else {
                 continue;
             };
             if source != SERVER || data.is_empty() {
@@ -293,12 +296,12 @@ impl HealthRecorder {
                 Ok(())
             })();
             if let Err(error) = result {
-                tracing::warn!("health: skipping unreadable row {}: {error}", rows::text(row, "id").unwrap_or_default());
+                tracing::warn!("health: skipping unreadable row {}: {error}", row.id.as_deref().unwrap_or_default());
             }
         }
     }
 
-    pub fn take_dirty(&self) -> Option<Vec<Row>> {
+    pub fn take_dirty(&self) -> Option<Vec<HealthRow>> {
         let mut series = self.lock();
         if series.dirty.is_empty() {
             return None;
@@ -308,10 +311,10 @@ impl HealthRecorder {
         Some(dirty.iter().map(|name| Self::row(&series, name)).collect())
     }
 
-    pub fn mark_dirty(&self, changed: &[Row]) {
+    pub fn mark_dirty(&self, changed: &[HealthRow]) {
         let mut series = self.lock();
         for row in changed {
-            if let Some(name) = rows::text(row, "series") {
+            if let Some(name) = row.series.as_deref() {
                 Self::dirty(&mut series, name.to_string());
             }
         }
@@ -333,7 +336,7 @@ impl HealthRecorder {
         self.lock().restarts.iter().copied().collect()
     }
 
-    fn row(series: &Series, name: &str) -> Row {
+    fn row(series: &Series, name: &str) -> HealthRow {
         let (data, latest, count) = if let Some(tool) = name.strip_prefix(TOOL_PREFIX) {
             let samples: Vec<CallSample> = series.calls.iter().find(|(n, _)| n == tool).map(|(_, s)| s.iter().copied().collect()).unwrap_or_default();
             (encode_calls(&samples), samples.last().map(|s| s.at_ms), samples.len())
@@ -344,14 +347,14 @@ impl HealthRecorder {
             let samples: Vec<i64> = series.restarts.iter().copied().collect();
             (encode_times(&samples), samples.last().copied(), samples.len())
         };
-        let mut row = HEALTH_ROW.empty();
-        row.insert("id".into(), json!(format!("{SERVER}:{name}")));
-        row.insert("source".into(), json!(SERVER));
-        row.insert("series".into(), json!(name));
-        row.insert("count".into(), json!(count));
-        row.insert("latest".into(), json!(latest.map(iso)));
-        row.insert("data".into(), json!(data));
-        row
+        HealthRow {
+            id: Some(format!("{SERVER}:{name}")),
+            source: Some(SERVER.into()),
+            series: Some(name.into()),
+            count: Some(count as i64),
+            latest: latest.map(iso),
+            data: Some(data),
+        }
     }
 }
 
@@ -380,24 +383,23 @@ impl HealthTab {
         Ok(HealthTab { sheet: RowSheet::ensure(sheets, spreadsheet_id, HEALTH.0, HEALTH.1, HEALTH_ROW, &["id", "source", "series", "data"])? })
     }
 
-    pub fn read(&self) -> anyhow::Result<Vec<Row>> {
-        self.sheet.read()
+    pub fn read(&self) -> anyhow::Result<Vec<HealthRow>> {
+        self.sheet.read_items()
     }
 
     /// Put `changed` in place of the rows with their ids, adding new ones.
-    pub fn write(&self, changed: &[Row]) -> anyhow::Result<()> {
+    pub fn write(&self, changed: &[HealthRow]) -> anyhow::Result<()> {
         let _held = HEALTH_TAB_LOCK.hold();
-        let mut all: Vec<Row> = Vec::new();
-        for row in self.sheet.read()?.into_iter().chain(changed.iter().cloned()) {
-            let id = row.get("id").cloned();
-            all.retain(|r| r.get("id").cloned() != id);
+        let mut all: Vec<HealthRow> = Vec::new();
+        for row in self.read()?.into_iter().chain(changed.iter().cloned()) {
+            all.retain(|r| r.id != row.id);
             all.push(row);
         }
         all.sort_by(|a, b| {
-            let key = |r: &Row| (rows::text(r, "source").unwrap_or_default().to_string(), rows::text(r, "series").unwrap_or_default().to_string());
+            let key = |r: &HealthRow| (r.source.clone().unwrap_or_default(), r.series.clone().unwrap_or_default());
             key(a).cmp(&key(b))
         });
-        self.sheet.write(&all)
+        self.sheet.write_items(&all)
     }
 }
 

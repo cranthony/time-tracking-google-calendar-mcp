@@ -4,61 +4,104 @@
 
 use crate::event::Event;
 use crate::facts::Facts;
-use crate::sheet::rows::{self, Row, RowType};
-use crate::stores::actions::{action_problems, Actions, ACTION_ROW};
+use crate::stores::actions::{action_problems, Action, ActionStatus, Actions};
 use crate::stores::groups::truthy;
-use crate::stores::locations::{location_problems, Locations, ROW as LOCATION_ROW};
-use crate::stores::people::{person_problems, People, PERSON_ROW};
+use crate::stores::locations::{location_problems, Location, Locations};
+use crate::stores::people::{person_problems, People, Person, Status};
 use crate::py;
-use serde_json::{json, Map, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 pub const REF_PREFIX: &str = "new:";
 
-/// An addition, as its dataclass (an Action, Person or Location with a
-/// `ref`): every field, in order, null when unset.
-fn item(row_type: &RowType, value: &Value) -> Row {
-    let mut row = row_type.from_value(value);
-    row.insert("ref".into(), value.get("ref").cloned().unwrap_or(Value::Null));
-    row
+/// An addition: an action, person or location with the `ref` the plan's
+/// decisions name it by.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Addition<T> {
+    #[serde(flatten)]
+    pub item: T,
+    #[serde(rename = "ref", default)]
+    pub ref_: String,
 }
 
-pub fn ref_of(row: &Row) -> String {
-    row.get("ref").and_then(Value::as_str).unwrap_or_default().to_string()
+/// One addition of any kind.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Added {
+    Action(Addition<Action>),
+    Person(Addition<Person>),
+    Location(Addition<Location>),
 }
 
-fn text<'a>(row: &'a Row, name: &str) -> Option<&'a str> {
-    row.get(name).and_then(Value::as_str)
+impl Added {
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Added::Action(_) => "action",
+            Added::Person(_) => "person",
+            Added::Location(_) => "location",
+        }
+    }
+
+    pub fn ref_(&self) -> &str {
+        match self {
+            Added::Action(a) => &a.ref_,
+            Added::Person(p) => &p.ref_,
+            Added::Location(l) => &l.ref_,
+        }
+    }
+
+    fn name(&self) -> Option<&str> {
+        match self {
+            Added::Action(a) => a.item.name.as_deref(),
+            Added::Person(p) => p.item.name.as_deref(),
+            Added::Location(l) => l.item.name.as_deref(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Additions {
-    pub actions: Vec<Row>,
-    pub people: Vec<Row>,
-    pub locations: Vec<Row>,
+    pub actions: Vec<Addition<Action>>,
+    pub people: Vec<Addition<Person>>,
+    pub locations: Vec<Addition<Location>>,
+}
+
+/// `value`'s set fields: its nulls left out.
+fn plain(value: Value) -> Value {
+    match value {
+        Value::Object(map) => Value::Object(map.into_iter().filter(|(_, v)| !v.is_null()).collect()),
+        other => other,
+    }
 }
 
 impl Additions {
-    pub fn new(actions: &[Value], people: &[Value], locations: &[Value]) -> Additions {
-        Additions {
-            actions: actions.iter().map(|v| item(&ACTION_ROW, v)).collect(),
-            people: people.iter().map(|v| item(&PERSON_ROW, v)).collect(),
-            locations: locations.iter().map(|v| item(&LOCATION_ROW, v)).collect(),
-        }
+    /// Every addition, actions first, then people, then locations.
+    pub fn all(&self) -> Vec<Added> {
+        let actions = self.actions.iter().cloned().map(Added::Action);
+        let people = self.people.iter().cloned().map(Added::Person);
+        actions.chain(people).chain(self.locations.iter().cloned().map(Added::Location)).collect()
     }
 
-    fn all(&self) -> impl Iterator<Item = &Row> {
-        self.actions.iter().chain(&self.people).chain(&self.locations)
+    /// Just `added`.
+    pub fn of(added: Added) -> Additions {
+        let mut out = Additions::default();
+        match added {
+            Added::Action(a) => out.actions.push(a),
+            Added::Person(p) => out.people.push(p),
+            Added::Location(l) => out.locations.push(l),
+        }
+        out
     }
 
     /// Every ref, with the name it stands for (a dict: the last of a ref
     /// wins, at the first one's place).
     pub fn refs(&self) -> Vec<(String, String)> {
         let mut out: Vec<(String, String)> = Vec::new();
-        for row in self.all() {
-            let name = text(row, "name").filter(|n| !n.is_empty()).map(str::to_string).unwrap_or_else(|| ref_of(row));
-            match out.iter_mut().find(|(r, _)| *r == ref_of(row)) {
+        for added in self.all() {
+            let r = added.ref_().to_string();
+            let name = added.name().filter(|n| !n.is_empty()).map(str::to_string).unwrap_or_else(|| r.clone());
+            match out.iter_mut().find(|(k, _)| *k == r) {
                 Some(slot) => slot.1 = name,
-                None => out.push((ref_of(row), name)),
+                None => out.push((r, name)),
             }
         }
         out
@@ -68,38 +111,58 @@ impl Additions {
         self.actions.is_empty() && self.people.is_empty() && self.locations.is_empty()
     }
 
+    /// Only those whose refs `keep` takes.
+    pub fn filtered(&self, keep: impl Fn(&str) -> bool) -> Additions {
+        Additions {
+            actions: self.actions.iter().filter(|a| keep(&a.ref_)).cloned().collect(),
+            people: self.people.iter().filter(|p| keep(&p.ref_)).cloned().collect(),
+            locations: self.locations.iter().filter(|l| keep(&l.ref_)).cloned().collect(),
+        }
+    }
+
     pub fn to_json_dict(&self) -> Map<String, Value> {
-        let plain = |row: &Row| -> Value {
-            Value::Object(row.iter().filter(|(_, v)| !v.is_null()).map(|(k, v)| (k.clone(), v.clone())).collect())
-        };
+        let json = |items: Vec<Value>| Value::Array(items.into_iter().map(plain).collect());
         let mut out = Map::new();
-        for (kind, items) in [("actions", &self.actions), ("people", &self.people), ("locations", &self.locations)] {
-            if !items.is_empty() {
-                out.insert(kind.into(), Value::Array(items.iter().map(plain).collect()));
-            }
+        if !self.actions.is_empty() {
+            out.insert("actions".into(), json(self.actions.iter().map(to_value).collect()));
+        }
+        if !self.people.is_empty() {
+            out.insert("people".into(), json(self.people.iter().map(to_value).collect()));
+        }
+        if !self.locations.is_empty() {
+            out.insert("locations".into(), json(self.locations.iter().map(to_value).collect()));
         }
         out
     }
 
-    pub fn from_json_dict(data: Option<&Value>) -> Additions {
-        let list = |key: &str| -> Vec<Value> { data.and_then(|d| d.get(key)).and_then(Value::as_array).cloned().unwrap_or_default() };
-        Additions::new(&list("actions"), &list("people"), &list("locations"))
+    pub fn from_json_dict(data: Option<&Value>) -> anyhow::Result<Additions> {
+        fn list<T: serde::de::DeserializeOwned>(data: Option<&Value>, key: &str) -> anyhow::Result<Vec<T>> {
+            let items = data.and_then(|d| d.get(key)).and_then(Value::as_array).cloned().unwrap_or_default();
+            items
+                .into_iter()
+                .map(|item| serde_json::from_value(item).map_err(|e| anyhow::anyhow!("the journal's {key} additions can't be read: {e}")))
+                .collect()
+        }
+        Ok(Additions { actions: list(data, "actions")?, people: list(data, "people")?, locations: list(data, "locations")? })
     }
 }
 
-/// `item`'s fields that `base` has too, but its id and label.
-fn base_fields(row: &Row) -> Row {
-    row.iter().filter(|(k, _)| !["id", "label_id", "ref"].contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect()
+fn to_value<T: Serialize>(item: &T) -> Value {
+    serde_json::to_value(item).expect("an addition is JSON")
 }
 
-fn with_fields(row_type: &RowType, fields: Row) -> Row {
-    row_type.fields.iter().map(|(name, _)| (name.to_string(), fields.get(*name).cloned().unwrap_or(Value::Null))).collect()
+/// A new action as its store takes it: active unless given, without the
+/// id or label it'll be given.
+fn new_action(a: &Addition<Action>) -> Action {
+    Action { id: None, label_id: None, status: Some(a.item.status.unwrap_or(ActionStatus::Active)), ..a.item.clone() }
 }
 
-fn status_or_active(row: &mut Row) {
-    if !truthy(row.get("status")) {
-        row.insert("status".into(), json!("active"));
-    }
+fn new_person(p: &Addition<Person>) -> Person {
+    Person { id: None, ..p.item.clone() }
+}
+
+fn new_location(l: &Addition<Location>) -> Location {
+    Location { id: None, ..l.item.clone() }
 }
 
 /// `check_additions`: everything wrong with `additions` as their stores
@@ -111,7 +174,7 @@ pub fn check_additions(
     locations: Option<&Locations>,
 ) -> anyhow::Result<Vec<String>> {
     let mut problems: Vec<String> = Vec::new();
-    let refs: Vec<String> = additions.all().map(ref_of).collect();
+    let refs: Vec<String> = additions.all().iter().map(|a| a.ref_().to_string()).collect();
     for r in &refs {
         if !(r.starts_with(REF_PREFIX) && r.chars().count() > REF_PREFIX.len()) {
             problems.push(format!("{} isn't a ref: refs start with {}, e.g. \"new:ukulele\"", py::repr(r), py::repr(REF_PREFIX)));
@@ -129,11 +192,7 @@ pub fn check_additions(
             Some(store) => {
                 let mut all = store.all()?;
                 for a in &additions.actions {
-                    let mut row = with_fields(&ACTION_ROW, base_fields(a));
-                    row.insert("id".into(), json!(ref_of(a)));
-                    row.insert("label_id".into(), json!(ref_of(a)));
-                    status_or_active(&mut row);
-                    all.push(rows::item_of(row));
+                    all.push(Action { id: Some(a.ref_.clone()), label_id: Some(a.ref_.clone()), ..new_action(a) });
                 }
                 problems.extend(action_problems(&all, &store.groups()?.groups).into_iter().map(|p| format!("new actions: {p}")));
             }
@@ -145,10 +204,7 @@ pub fn check_additions(
             Some(store) => {
                 let mut all = store.all()?;
                 for p in &additions.people {
-                    let mut row = with_fields(&PERSON_ROW, base_fields(p));
-                    row.insert("id".into(), json!(ref_of(p)));
-                    status_or_active(&mut row);
-                    all.push(rows::item_of(row));
+                    all.push(Person { id: Some(p.ref_.clone()), status: Some(p.item.status.unwrap_or(Status::Active)), ..new_person(p) });
                 }
                 problems.extend(person_problems(&all, &store.circles()?, None).into_iter().map(|p| format!("new people: {p}")));
             }
@@ -160,9 +216,7 @@ pub fn check_additions(
             Some(store) => {
                 let mut all = store.all()?;
                 for l in &additions.locations {
-                    let mut row = with_fields(&LOCATION_ROW, base_fields(l));
-                    row.insert("id".into(), json!(ref_of(l)));
-                    all.push(rows::item_of(row));
+                    all.push(Location { id: Some(l.ref_.clone()), ..new_location(l) });
                 }
                 problems.extend(location_problems(&all).into_iter().map(|p| format!("new locations: {p}")));
             }
@@ -190,39 +244,35 @@ pub fn create_additions(
     };
     if let (false, Some(store)) = (additions.actions.is_empty(), actions) {
         for new in &additions.actions {
-            let wanted = folded(text(new, "name").map(str::trim));
+            let wanted = folded(new.item.name.as_deref().map(str::trim));
             let found = store.all()?.into_iter().find(|a| folded(a.name.as_deref()) == wanted);
             let id = match found {
                 Some(found) => found.id.unwrap_or_default(),
-                None => {
-                    let mut row = with_fields(&ACTION_ROW, base_fields(new));
-                    status_or_active(&mut row);
-                    store.create_action(&rows::item_of(row))?.created_id
-                }
+                None => store.create_action(&new_action(new))?.created_id,
             };
-            put(&mut ids, ref_of(new), id);
+            put(&mut ids, new.ref_.clone(), id);
         }
     }
     if let (false, Some(store)) = (additions.people.is_empty(), people) {
         for new in &additions.people {
-            let key = (folded(text(new, "name").map(str::trim)), folded(text(new, "context").map(str::trim)));
+            let key = (folded(new.item.name.as_deref().map(str::trim)), folded(new.item.context.as_deref().map(str::trim)));
             let found = store.all()?.into_iter().find(|p| (folded(p.name.as_deref()), folded(p.context.as_deref())) == key);
             let id = match found {
                 Some(found) => found.id.unwrap_or_default(),
-                None => store.create_person(&rows::item_of(with_fields(&PERSON_ROW, base_fields(new))))?.created_id,
+                None => store.create_person(&new_person(new))?.created_id,
             };
-            put(&mut ids, ref_of(new), id);
+            put(&mut ids, new.ref_.clone(), id);
         }
     }
     if let (false, Some(store)) = (additions.locations.is_empty(), locations) {
         for new in &additions.locations {
-            let wanted = folded(text(new, "name").map(str::trim));
+            let wanted = folded(new.item.name.as_deref().map(str::trim));
             let found = store.all()?.into_iter().find(|l| folded(l.name.as_deref()) == wanted);
             let id = match found {
                 Some(found) => found.id.unwrap_or_default(),
-                None => store.create_location(&rows::item_of(with_fields(&LOCATION_ROW, base_fields(new))))?.created_id,
+                None => store.create_location(&new_location(new))?.created_id,
             };
-            put(&mut ids, ref_of(new), id);
+            put(&mut ids, new.ref_.clone(), id);
         }
     }
     Ok(ids)
