@@ -38,8 +38,12 @@ fn fixture(trait_ids: Option<Vec<String>>) -> Fixture {
     Fixture { fake, spreadsheet, habits, scopes }
 }
 
-fn habit(given: Value) -> Row {
-    HABIT_ROW.from_value(&given)
+fn habit(given: Value) -> Habit {
+    serde_json::from_value(given).unwrap()
+}
+
+fn json_of<T: serde::Serialize>(value: T) -> Value {
+    serde_json::to_value(value).unwrap()
 }
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -52,17 +56,17 @@ fn refused<T>(result: anyhow::Result<T>, pattern: &str) {
 }
 
 impl Fixture {
-    fn held<T>(&self, f: impl FnOnce(&Habits) -> anyhow::Result<T>) -> anyhow::Result<T> {
+    fn held<T: serde::Serialize>(&self, f: impl FnOnce(&Habits) -> anyhow::Result<T>) -> anyhow::Result<Value> {
         let _held = WRITE_LOCK.hold();
-        f(&self.habits)
+        f(&self.habits).map(json_of)
     }
 
     fn create(&self, given: Value) -> anyhow::Result<String> {
         Ok(self.held(|h| h.create_habit(&habit(given)))?["created_id"].as_str().unwrap().to_string())
     }
 
-    fn get(&self, id_or_name: &str) -> Map<String, Value> {
-        self.habits.get_habit(id_or_name).unwrap()
+    fn get(&self, id_or_name: &str) -> Value {
+        json_of(self.habits.get_habit(id_or_name).unwrap())
     }
 }
 
@@ -88,7 +92,7 @@ fn lists_active_habits_by_default() {
 
     let names = |statuses: Option<&[&str]>| -> Vec<Value> {
         let statuses = statuses.map(strings);
-        f.habits.get_habits(statuses.as_deref()).unwrap().into_iter().map(|h| h["name"].clone()).collect()
+        f.habits.get_habits(statuses.as_deref()).unwrap().into_iter().map(|h| json_of(h)["name"].clone()).collect()
     };
     assert_eq!(names(None), vec![json!("Guitar")]);
     assert_eq!(names(Some(&["active", "archived"])), vec![json!("Guitar"), json!("Walk")]);
@@ -188,7 +192,7 @@ fn foundations_are_other_habits_or_people_without_a_cycle() {
     let habits = f.habits.clone().with_people(people);
     let held = |given: Value| {
         let _held = WRITE_LOCK.hold();
-        habits.create_habit(&habit(given)).map(|c| c["created_id"].as_str().unwrap().to_string())
+        habits.create_habit(&habit(given)).map(|c| c.created_id)
     };
     let sleep = held(json!({"name": "Sleep", "action_id": "walk"})).unwrap();
     let guitar = held(json!({"name": "Guitar", "action_id": "guitar", "foundations": [subject_id(&sleep), "family"]})).unwrap();

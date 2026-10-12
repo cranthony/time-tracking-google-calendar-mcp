@@ -207,14 +207,16 @@ impl Cancellations {
         }
         if let Some(habits) = &self.habits {
             for habit in habits.all()? {
-                let Some(id) = habit.get("id").filter(|i| truthy(Some(i))).map(|i| python_str(Some(i))) else { continue };
-                if rows::text(&habit, "status") != Some("active")
-                    || of_action(std::slice::from_ref(event), habit.get("action_id"), Some(&tree)).is_empty()
+                let Some(id) = set(habit.id.as_deref()).map(str::to_string) else { continue };
+                let action_id = habit.action_id.clone().map(Value::String);
+                if habit.status != Some(crate::stores::people::Status::Active)
+                    || of_action(std::slice::from_ref(event), action_id.as_ref(), Some(&tree)).is_empty()
                 {
                     continue;
                 }
                 let (mut keys, mut names) = (Vec::new(), Vec::new());
-                for (t, parts) in traits_for(habit.get("traits"), &traits) {
+                let spec = habit.traits.clone().map(Value::Object);
+                for (t, parts) in traits_for(spec.as_ref(), &traits) {
                     for (part, key) in parts.iter().zip(part_keys(&parts)) {
                         if part.get("kind").and_then(Value::as_str) != Some("follow_through") || !part_problems(part).is_empty() {
                             continue;
@@ -234,7 +236,7 @@ impl Cancellations {
                 if !keys.is_empty() {
                     found.push(FollowThroughMatch {
                         person_id: subject_id(&id),
-                        person_name: format!("the {} habit", python_str(habit.get("name"))),
+                        person_name: format!("the {} habit", str_or_none(habit.name.as_deref())),
                         engagement: "with".into(),
                         parts: keys,
                         trait_names: names,

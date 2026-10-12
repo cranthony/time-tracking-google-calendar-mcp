@@ -47,18 +47,22 @@ fn refuses_a_cycle_through_habits_and_people() {
     assert!(foundation_problems("habit:sleep", &json!(["habit:eat"]), &graph()).is_empty());
 }
 
-#[test]
-fn without_takes_a_subject_out_of_every_rows_foundations() {
-    let mut rows: Vec<Row> = vec![
-        json!({"id": "a", "foundations": ["habit:x", "b"]}).as_object().unwrap().clone(),
-        json!({"id": "b", "foundations": ["b"]}).as_object().unwrap().clone(),
-        json!({"id": "c"}).as_object().unwrap().clone(),
-    ];
+/// A row on the graph, for `without`.
+#[derive(Debug, PartialEq)]
+struct Item(Option<Vec<String>>);
 
-    assert!(without(&mut rows, "habit:x"));
-    assert_eq!(rows[0]["foundations"], json!(["b"]));
-    assert!(!without(&mut rows, "habit:x"));
-    assert!(without(&mut rows, "b"));
-    assert_eq!((rows[0]["foundations"].clone(), rows[1]["foundations"].clone()), (json!([]), json!([])));
-    assert!(!rows[2].contains_key("foundations"));
+impl OnGraph for Item {
+    fn foundations_mut(&mut self) -> &mut Option<Vec<String>> {
+        &mut self.0
+    }
+}
+
+#[test]
+fn without_takes_a_subject_out_of_every_items_foundations() {
+    let mut items = vec![Item(Some(vec!["habit:x".into(), "b".into()])), Item(None), Item(Some(vec!["habit:x".into()]))];
+
+    assert!(without(&mut items, "habit:x"));
+    assert_eq!(items, vec![Item(Some(vec!["b".into()])), Item(None), Item(Some(vec![]))]);
+    assert!(!without(&mut items, "habit:x"));
+    assert!(without(&mut items, "b"));
 }

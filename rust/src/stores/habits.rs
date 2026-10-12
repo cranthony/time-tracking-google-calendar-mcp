@@ -3,15 +3,18 @@
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
-use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};
+use crate::contract::{wire_text, RowItem, Schema};
+use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::HABITS;
-use crate::stores::foundations::{self, foundation_problems, Node, NodesFn};
+use crate::stores::cancellations::CancelledEvent;
+use crate::stores::foundations::{self, foundation_problems, Node, NodesFn, OnGraph};
 use crate::stores::actions::{Action, ActionStatus};
-use crate::stores::groups::{python_repr, python_str, set, truthy, GroupTree};
+use crate::stores::groups::{repr_or_none, set, str_or_none, GroupTree};
 use crate::stores::locations::dedup;
-use crate::stores::people::TraitIds;
+use crate::stores::people::{Status, TraitIds};
 use crate::stores::traits::person_traits_problems;
 use anyhow::bail;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::sync::Arc;
 
@@ -21,22 +24,50 @@ pub const MAX_NAME_LENGTH: usize = 100;
 pub const CLEARABLE_FIELDS: [&str; 3] = ["note", "traits", "foundations"];
 pub const SUBJECT_PREFIX: &str = "habit:";
 
-pub const HABIT_ROW: RowType = RowType {
-    name: "Habit",
-    fields: &[
-        ("id", Kind::Str),
-        ("name", Kind::Str),
-        ("action_id", Kind::Str),
-        ("status", Kind::Str),
-        ("note", Kind::Str),
-        ("traits", Kind::Json),
-        ("foundations", Kind::Json),
-    ],
-};
+// -- the types -------------------------------------------------------------------
 
-pub fn subject_id(habit_id: &str) -> String {
-    format!("{SUBJECT_PREFIX}{habit_id}")
+/// A habit as the habit tools return it: plus its action's or
+/// group's path.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct ListedHabit {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub action_id: Option<String>,
+    pub status: Option<Status>,
+    pub note: Option<String>,
+    pub traits: Option<Map<String, Value>>,
+    pub foundations: Option<Vec<String>>,
+    pub action_path: Option<String>,
+    pub cancelled_events: Option<Vec<CancelledEvent>>,
 }
+
+/// One habit: what the user wants to do well, tied to an action or
+/// action group (see get_habits).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema, RowItem)]
+pub struct Habit {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub action_id: Option<String>,
+    #[row(text)]
+    pub status: Option<Status>,
+    pub note: Option<String>,
+    pub traits: Option<Map<String, Value>>,
+    pub foundations: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct CreatedHabit {
+    pub habit: ListedHabit,
+    pub created_id: String,
+}
+
+impl OnGraph for Habit {
+    fn foundations_mut(&mut self) -> &mut Option<Vec<String>> {
+        &mut self.foundations
+    }
+}
+
+pub const HABIT_ROW: RowType = <Habit as rows::RowItem>::ROW_TYPE;
 
 /// Every action's and group's id with its path: what a habit's action_id
 /// may name (not a deleted action).
@@ -65,6 +96,15 @@ pub fn action_scopes(actions: &[Action], groups: &GroupTree) -> Scopes {
         }
     }
     scopes
+}
+
+pub fn subject_id(habit_id: &str) -> String {
+    format!("{SUBJECT_PREFIX}{habit_id}")
+}
+
+/// A habit's status as its text ("active"), if it has one.
+fn status_of(habit: &Habit) -> Option<String> {
+    habit.status.as_ref().map(wire_text)
 }
 
 #[derive(Clone)]
@@ -97,7 +137,7 @@ impl Habits {
     pub fn drop_foundation(&self, subject: &str) -> anyhow::Result<()> {
         let mut habits = self.all()?;
         if foundations::without(&mut habits, subject) {
-            self.sheet.write(&habits)?;
+            self.sheet.write_items(&habits)?;
         }
         Ok(())
     }
@@ -110,76 +150,67 @@ impl Habits {
         self.sheet.prefetch(ranges)
     }
 
-    pub fn all(&self) -> anyhow::Result<Vec<Row>> {
-        self.sheet.read()
+    pub fn all(&self) -> anyhow::Result<Vec<Habit>> {
+        self.sheet.read_items()
     }
 
-    pub fn get_habits(&self, statuses: Option<&[String]>) -> anyhow::Result<Vec<Map<String, Value>>> {
+    pub fn get_habits(&self, statuses: Option<&[String]>) -> anyhow::Result<Vec<ListedHabit>> {
         let statuses = check_statuses(statuses)?;
         let paths = self.paths()?;
-        Ok(self
-            .all()?
-            .iter()
-            .filter(|h| statuses.iter().any(|s| rows::text(h, "status") == Some(s.as_str())))
-            .map(|h| listed(h, &paths))
-            .collect())
+        Ok(self.all()?.iter().filter(|h| statuses.iter().any(|s| Some(s) == status_of(h).as_ref())).map(|h| listed(h, &paths)).collect())
     }
 
-    pub fn get_habit(&self, id_or_name: &str) -> anyhow::Result<Map<String, Value>> {
+    pub fn get_habit(&self, id_or_name: &str) -> anyhow::Result<ListedHabit> {
         let habit = find(&self.all()?, id_or_name)?;
         Ok(listed(&habit, &self.paths()?))
     }
 
-    pub fn create_habit(&self, habit: &Row) -> anyhow::Result<Value> {
+    pub fn create_habit(&self, habit: &Habit) -> anyhow::Result<CreatedHabit> {
         let habits = self.all()?;
-        let mut new = habit.clone();
-        let id = rows::new_id(habits.iter().map(|h| rows::text(h, "id")).collect::<Vec<_>>());
-        new.insert("id".into(), json!(id));
-        if !truthy(habit.get("status")) {
-            new.insert("status".into(), json!("active"));
-        }
+        let id = rows::new_id(habits.iter().map(|h| h.id.as_deref()).collect::<Vec<_>>());
+        let new = Habit { id: Some(id.clone()), status: Some(habit.status.unwrap_or(Status::Active)), ..habit.clone() };
         let mut all = habits.clone();
         all.push(new.clone());
         self.write(&all, &id)?;
-        Ok(json!({ "habit": Value::Object(listed(&new, &self.paths()?)), "created_id": id }))
+        Ok(CreatedHabit { habit: listed(&new, &self.paths()?), created_id: id })
     }
 
-    pub fn update_habit(&self, habit: &Row, clear_fields: &[String]) -> anyhow::Result<Map<String, Value>> {
-        let Some(id) = rows::text(habit, "id").filter(|i| !i.is_empty()).map(str::to_string) else {
+    pub fn update_habit(&self, habit: &Habit, clear_fields: &[String]) -> anyhow::Result<ListedHabit> {
+        let Some(id) = set(habit.id.as_deref()).map(str::to_string) else {
             bail!("update_habit needs the habit's id");
         };
-        rows::check_clear(habit, clear_fields, &CLEARABLE_FIELDS)?;
+        rows::check_clear_item(habit, clear_fields, &CLEARABLE_FIELDS)?;
         let mut habits = self.all()?;
-        let Some(index) = habits.iter().position(|h| rows::text(h, "id") == Some(id.as_str())) else {
+        let Some(index) = habits.iter().position(|h| h.id.as_deref() == Some(id.as_str())) else {
             find(&habits, &id)?;
             unreachable!()
         };
-        let was_deleted = rows::text(&habits[index], "status") == Some("deleted");
-        habits[index] = rows::updated(&habits[index], habit, clear_fields, &["id"]);
-        if !was_deleted && rows::text(&habits[index], "status") == Some("deleted") {
+        let was_deleted = habits[index].status == Some(Status::Deleted);
+        habits[index] = rows::updated_item(&habits[index], habit, clear_fields, &["id"]);
+        if !was_deleted && habits[index].status == Some(Status::Deleted) {
             foundations::without(&mut habits, &subject_id(&id));
         }
         self.write(&habits, &id)?;
         Ok(listed(&habits[index], &self.paths()?))
     }
 
-    fn write(&self, habits: &[Row], changed: &str) -> anyhow::Result<()> {
+    fn write(&self, habits: &[Habit], changed: &str) -> anyhow::Result<()> {
         let scopes = match &self.scopes {
             Some(f) => Some(f()?),
             None => None,
         };
         let trait_ids = match &self.trait_ids {
-            Some(f) if habits.iter().any(|h| rows::is_set(h, "traits")) => Some(f()?),
+            Some(f) if habits.iter().any(|h| h.traits.is_some()) => Some(f()?),
             _ => None,
         };
         let mut problems = habit_problems(habits, scopes.as_ref(), trait_ids.as_deref(), Some(changed));
-        if let Some(habit) = habits.iter().find(|h| rows::text(h, "id") == Some(changed)) {
-            if let Some(value) = habit.get("foundations").filter(|f| !f.is_null()) {
+        if let Some(habit) = habits.iter().find(|h| h.id.as_deref() == Some(changed)) {
+            if let Some(given) = &habit.foundations {
                 let mut nodes = habit_nodes(habits);
                 if let Some(people) = &self.people {
                     nodes.extend(people()?);
                 }
-                for p in foundation_problems(&subject_id(changed), value, &nodes) {
+                for p in foundation_problems(&subject_id(changed), &json!(given), &nodes) {
                     problems.push(format!("habit {changed}'s {p}"));
                 }
             }
@@ -187,7 +218,7 @@ impl Habits {
         if !problems.is_empty() {
             bail!("{}", problems.join("; "));
         }
-        self.sheet.write(habits)
+        self.sheet.write_items(habits)
     }
 
     fn paths(&self) -> anyhow::Result<Scopes> {
@@ -198,24 +229,31 @@ impl Habits {
     }
 }
 
-fn habit_nodes(habits: &[Row]) -> Vec<Node> {
-    habits.iter().filter_map(|h| rows::text(h, "id").filter(|i| !i.is_empty()).map(|id| foundations::node(subject_id(id), h))).collect()
+fn habit_nodes(habits: &[Habit]) -> Vec<Node> {
+    habits
+        .iter()
+        .filter_map(|h| {
+            let id = set(h.id.as_deref())?;
+            Some(Node { subject: subject_id(id), deleted: h.status == Some(Status::Deleted), foundations: h.foundations.clone().unwrap_or_default() })
+        })
+        .collect()
 }
 
-pub fn find(habits: &[Row], id_or_name: &str) -> anyhow::Result<Row> {
-    if let Some(h) = habits.iter().find(|h| rows::text(h, "id") == Some(id_or_name)) {
+
+pub fn find(habits: &[Habit], id_or_name: &str) -> anyhow::Result<Habit> {
+    if let Some(h) = habits.iter().find(|h| h.id.as_deref() == Some(id_or_name)) {
         return Ok(h.clone());
     }
-    let key = |row: &Row| rows::text(row, "name").unwrap_or_default().to_lowercase();
+    let key = |h: &Habit| h.name.as_deref().unwrap_or_default().to_lowercase();
     let wanted = id_or_name.to_lowercase();
     if let Some(h) = habits.iter().rev().find(|h| key(h) == wanted) {
         return Ok(h.clone());
     }
-    let ids = dedup(habits.iter().filter(|h| truthy(h.get("id"))).filter_map(|h| rows::text(h, "id").map(str::to_string)));
+    let ids = dedup(habits.iter().filter_map(|h| set(h.id.as_deref()).map(str::to_string)));
     let names = dedup(habits.iter().map(key));
-    let mut close: Vec<&Row> = Vec::new();
+    let mut close: Vec<&Habit> = Vec::new();
     for id in crate::difflib::get_close_matches(id_or_name, &ids, 3) {
-        if let Some(h) = habits.iter().rev().find(|h| rows::text(h, "id") == Some(id.as_str())) {
+        if let Some(h) = habits.iter().rev().find(|h| h.id.as_deref() == Some(id.as_str())) {
             close.push(h);
         }
     }
@@ -224,7 +262,7 @@ pub fn find(habits: &[Row], id_or_name: &str) -> anyhow::Result<Row> {
             close.push(h);
         }
     }
-    let hints = dedup(close.iter().map(|h| format!("{} ({})", python_str(h.get("id")), python_str(h.get("name")))));
+    let hints = dedup(close.iter().map(|h| format!("{} ({})", str_or_none(h.id.as_deref()), str_or_none(h.name.as_deref()))));
     let hint = hints.join(", ");
     bail!(
         "There's no habit with the id or name {}{} (get_habits lists them)",
@@ -233,9 +271,9 @@ pub fn find(habits: &[Row], id_or_name: &str) -> anyhow::Result<Row> {
     )
 }
 
-pub fn habit_problems(habits: &[Row], scopes: Option<&Scopes>, trait_ids: Option<&[String]>, changed: Option<&str>) -> Vec<String> {
+pub fn habit_problems(habits: &[Habit], scopes: Option<&Scopes>, trait_ids: Option<&[String]>, changed: Option<&str>) -> Vec<String> {
     let mut problems = Vec::new();
-    let ids: Vec<Option<&str>> = habits.iter().map(|h| rows::text(h, "id")).collect();
+    let ids: Vec<Option<&str>> = habits.iter().map(|h| h.id.as_deref()).collect();
     let mut repeated: Vec<&str> =
         ids.iter().flatten().copied().filter(|i| !i.is_empty() && ids.iter().filter(|x| **x == Some(*i)).count() > 1).collect();
     repeated.sort();
@@ -243,16 +281,16 @@ pub fn habit_problems(habits: &[Row], scopes: Option<&Scopes>, trait_ids: Option
     for id in repeated {
         problems.push(format!("habit id {} is used more than once", py::repr(id)));
     }
-    let mut names: Vec<(String, Row)> = Vec::new();
+    let mut names: Vec<(String, &Habit)> = Vec::new();
     for habit in habits {
-        let label = match habit.get("id").filter(|i| truthy(Some(i))) {
-            Some(id) => format!("habit {}", python_str(Some(id))),
-            None => format!("habit {}", python_repr(habit.get("name").unwrap_or(&Value::Null))),
+        let label = match set(habit.id.as_deref()) {
+            Some(id) => format!("habit {id}"),
+            None => format!("habit {}", repr_or_none(habit.name.as_deref())),
         };
-        if !truthy(habit.get("id")) {
-            problems.push(format!("a habit named {} has no id", python_repr(habit.get("name").unwrap_or(&Value::Null))));
+        if set(habit.id.as_deref()).is_none() {
+            problems.push(format!("a habit named {} has no id", repr_or_none(habit.name.as_deref())));
         }
-        match habit.get("name").and_then(Value::as_str).filter(|n| !n.trim().is_empty()) {
+        match habit.name.as_deref().filter(|n| !n.trim().is_empty()) {
             None => problems.push(format!("{label} needs a name")),
             Some(n) if n.chars().count() > MAX_NAME_LENGTH => problems.push(format!("{label}'s name is longer than {MAX_NAME_LENGTH} characters")),
             Some(n) => {
@@ -260,33 +298,33 @@ pub fn habit_problems(habits: &[Row], scopes: Option<&Scopes>, trait_ids: Option
                 if let Some((_, other)) = names.iter().find(|(k, _)| *k == key) {
                     problems.push(format!(
                         "there's already a habit named {} ({}); habit names must be unique -- use that one, or pick another name",
-                        python_repr(other.get("name").unwrap_or(&Value::Null)),
-                        python_str(other.get("id"))
+                        repr_or_none(other.name.as_deref()),
+                        str_or_none(other.id.as_deref())
                     ));
                 }
                 names.retain(|(k, _)| *k != key);
-                names.push((key, habit.clone()));
+                names.push((key, habit));
             }
         }
-        match habit.get("action_id").filter(|a| truthy(Some(a))) {
+        match set(habit.action_id.as_deref()) {
             None => problems.push(format!("{label} needs an action_id: the action, or the action group, it's about")),
             Some(action_id) => {
-                let applies = changed.is_none() || rows::text(habit, "id") == changed;
+                let applies = changed.is_none() || habit.id.as_deref() == changed;
                 if let Some(scopes) = scopes {
-                    if applies && !scopes.iter().any(|(k, _)| Some(k.as_str()) == action_id.as_str()) {
+                    if applies && !scopes.iter().any(|(k, _)| k == action_id) {
                         problems.push(format!(
                             "{label}'s action_id {} isn't an action or an action group (get_actions and get_action_groups list them)",
-                            python_repr(action_id)
+                            py::repr(action_id)
                         ));
                     }
                 }
             }
         }
-        if !HABIT_STATUSES.iter().any(|s| rows::text(habit, "status") == Some(*s)) {
+        if habit.status.is_none() {
             problems.push(format!("{label}'s status must be one of {}", HABIT_STATUSES.join(", ")));
         }
-        if let Some(traits) = habit.get("traits").filter(|t| !t.is_null()) {
-            for p in person_traits_problems(traits, trait_ids) {
+        if let Some(traits) = &habit.traits {
+            for p in person_traits_problems(&Value::Object(traits.clone()), trait_ids) {
                 problems.push(format!("{label}'s traits {p}"));
             }
         }
@@ -294,18 +332,19 @@ pub fn habit_problems(habits: &[Row], scopes: Option<&Scopes>, trait_ids: Option
     problems
 }
 
-pub fn listed(habit: &Row, paths: &Scopes) -> Map<String, Value> {
-    let mut out: Map<String, Value> = Map::new();
-    for (name, _) in HABIT_ROW.fields {
-        out.insert(name.to_string(), habit.get(*name).cloned().unwrap_or(Value::Null));
+pub fn listed(habit: &Habit, paths: &Scopes) -> ListedHabit {
+    let action_path = set(habit.action_id.as_deref()).and_then(|a| paths.iter().find(|(k, _)| k == a).map(|(_, p)| p.clone()));
+    ListedHabit {
+        id: habit.id.clone(),
+        name: habit.name.clone(),
+        action_id: habit.action_id.clone(),
+        status: habit.status,
+        note: habit.note.clone(),
+        traits: habit.traits.clone(),
+        foundations: habit.foundations.clone(),
+        action_path,
+        cancelled_events: None,
     }
-    let path = habit
-        .get("action_id")
-        .filter(|a| truthy(Some(a)))
-        .and_then(|a| paths.iter().find(|(k, _)| Some(k.as_str()) == a.as_str()).map(|(_, p)| json!(p)));
-    out.insert("action_path".into(), path.unwrap_or(Value::Null));
-    out.insert("cancelled_events".into(), Value::Null);
-    out
 }
 
 fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {

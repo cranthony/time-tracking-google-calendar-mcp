@@ -7,7 +7,7 @@ use crate::contract::{wire_text, RowItem, Schema};
 use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::{CIRCLES, PEOPLE};
 use crate::stores::cancellations::CancelledEvent;
-use crate::stores::foundations::{foundation_problems, Node, NodesFn};
+use crate::stores::foundations::{self, foundation_problems, Node, NodesFn, OnGraph};
 use crate::stores::groups::{repr_or_none, set, str_or_none};
 use crate::stores::locations::dedup;
 use crate::stores::traits::person_traits_problems;
@@ -102,6 +102,12 @@ pub struct DeletedCircle {
     pub left: Vec<String>,
 }
 
+impl OnGraph for Person {
+    fn foundations_mut(&mut self) -> &mut Option<Vec<String>> {
+        &mut self.foundations
+    }
+}
+
 pub const PERSON_ROW: RowType = <Person as rows::RowItem>::ROW_TYPE;
 
 pub const CIRCLE_ROW: RowType = <Circle as rows::RowItem>::ROW_TYPE;
@@ -165,7 +171,7 @@ impl People {
     /// person's foundations.
     pub fn drop_foundation(&self, subject: &str) -> anyhow::Result<()> {
         let mut people: Vec<Person> = self.sheet.read_items()?;
-        if without_foundation(&mut people, subject) {
+        if foundations::without(&mut people, subject) {
             self.sheet.write_items(&people)?;
         }
         Ok(())
@@ -253,7 +259,7 @@ impl People {
         }
         people[index] = changed.clone();
         if !was_deleted && changed.status == Some(Status::Deleted) {
-            without_foundation(&mut people, &id);
+            foundations::without(&mut people, &id);
         }
         let circles = self.circles()?;
         self.write_people(&people, &circles, &id)?;
@@ -355,20 +361,6 @@ fn person_nodes(people: &[Person]) -> Vec<Node> {
         .collect()
 }
 
-/// `people` without `subject` in anyone's foundations, and whether anyone
-/// changed.
-fn without_foundation(people: &mut [Person], subject: &str) -> bool {
-    let mut changed = false;
-    for person in people.iter_mut() {
-        if let Some(foundations) = &mut person.foundations {
-            if foundations.iter().any(|f| f == subject) {
-                foundations.retain(|f| f != subject);
-                changed = true;
-            }
-        }
-    }
-    changed
-}
 
 pub fn find_person(people: &[Person], id_or_name: &str) -> anyhow::Result<Person> {
     if let Some(person) = people.iter().find(|p| p.id.as_deref() == Some(id_or_name)) {

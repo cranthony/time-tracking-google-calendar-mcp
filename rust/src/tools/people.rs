@@ -1,11 +1,11 @@
 //! The people, circle, trait and habit tools.
 
 use super::stores::{prefetch_habits, prefetch_people, prefetch_stores};
-use super::{check_part_actions, from_store, refused, texts, to_row, ToolError};
+use super::{check_part_actions, from_store, refused, texts, ToolError};
 use crate::app::App;
 use crate::contract::{tool, Schema};
-use crate::stores::habits::{subject_id, HABIT_ROW};
-pub use crate::stores::cancellations::CancelledEvent;
+use crate::stores::habits::subject_id;
+pub use crate::stores::habits::{CreatedHabit, Habit, ListedHabit};
 pub use crate::stores::people::{Circle, CreatedCircle, CreatedPerson, DeletedCircle, ListedCircle, ListedPerson, Person, Status};
 use crate::stores::traits::Trait as StoredTrait;
 use serde::{Deserialize, Serialize};
@@ -18,14 +18,13 @@ fn to_json<T: Serialize>(value: &T) -> Value {
 
 /// Each habit (by its subject id) with the events the user cancelled
 /// that count against its follow-through.
-fn with_cancellations(app: &App, mut items: Vec<Map<String, Value>>, subject: impl Fn(&Map<String, Value>) -> String) -> anyhow::Result<Vec<Value>> {
+fn habits_with_cancellations(app: &App, mut habits: Vec<ListedHabit>) -> anyhow::Result<Vec<ListedHabit>> {
     let by_person = app.cancellations()?.by_person()?;
-    for item in items.iter_mut() {
-        let id = subject(item);
-        let events = by_person.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone()).unwrap_or_default();
-        item.insert("cancelled_events".into(), to_json(&events));
+    for habit in habits.iter_mut() {
+        let id = subject_id(habit.id.as_deref().unwrap_or("None"));
+        habit.cancelled_events = Some(by_person.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone()).unwrap_or_default());
     }
-    Ok(items.into_iter().map(Value::Object).collect())
+    Ok(habits)
 }
 
 /// Each person with the events the user cancelled that count against
@@ -44,9 +43,6 @@ fn parts_of(traits: &Option<Map<String, Value>>) -> Option<&Value> {
     traits.as_ref().and_then(|t| t.get("parts"))
 }
 
-fn habit_subject(item: &Map<String, Value>) -> String {
-    subject_id(&crate::stores::groups::python_str(item.get("id")))
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub enum TraitStatus {
@@ -115,40 +111,6 @@ pub struct Trait {
     pub status: Option<TraitStatus>,
     pub definition: Option<String>,
     pub parts: Option<Vec<Map<String, Value>>>,
-}
-
-/// A habit as the habit tools return it: plus its action's or
-/// group's path.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ListedHabit {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub action_id: Option<String>,
-    pub status: Option<Status>,
-    pub note: Option<String>,
-    pub traits: Option<Map<String, Value>>,
-    pub foundations: Option<Vec<String>>,
-    pub action_path: Option<String>,
-    pub cancelled_events: Option<Vec<CancelledEvent>>,
-}
-
-/// One habit: what the user wants to do well, tied to an action or
-/// action group (see get_habits).
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct Habit {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub action_id: Option<String>,
-    pub status: Option<Status>,
-    pub note: Option<String>,
-    pub traits: Option<Map<String, Value>>,
-    pub foundations: Option<Vec<String>>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct CreatedHabit {
-    pub habit: ListedHabit,
-    pub created_id: String,
 }
 
 // -- the tools ------------------------------------------------------------------
@@ -373,7 +335,7 @@ pub fn get_habits(app: &App, statuses: Option<Vec<Status>>) -> Result<Vec<Listed
     prefetch_habits(app, true)?;
     let statuses = statuses.map(|s| texts(&s));
     let habits = app.habits()?.get_habits(statuses.as_deref()).map_err(refused)?;
-    from_store(Value::Array(with_cancellations(app, habits, habit_subject)?))
+    Ok(habits_with_cancellations(app, habits)?)
 }
 
 /// One habit, by id or else by name (ignoring case), as get_habits
@@ -383,7 +345,7 @@ pub fn get_habits(app: &App, statuses: Option<Vec<Status>>) -> Result<Vec<Listed
 pub fn get_habit(app: &App, id_or_name: String) -> Result<ListedHabit, ToolError> {
     prefetch_habits(app, true)?;
     let habit = app.habits()?.get_habit(&id_or_name).map_err(refused)?;
-    from_store(with_cancellations(app, vec![habit], habit_subject)?.remove(0))
+    Ok(habits_with_cancellations(app, vec![habit])?.remove(0))
 }
 
 /// Add a habit: a name (unique among habits), the action or action
@@ -404,9 +366,8 @@ pub fn get_habit(app: &App, id_or_name: String) -> Result<ListedHabit, ToolError
 #[tool(writes)]
 pub fn create_habit(app: &App, habit: Habit) -> Result<CreatedHabit, ToolError> {
     prefetch_habits(app, false)?;
-    let habit = to_row(HABIT_ROW, &habit);
-    check_part_actions(app, habit.get("traits").and_then(|t| t.get("parts")))?;
-    from_store(app.habits()?.create_habit(&habit).map_err(refused)?)
+    check_part_actions(app, parts_of(&habit.traits))?;
+    app.habits()?.create_habit(&habit).map_err(refused)
 }
 
 /// Update a habit by id: its name, action_id (an action's or a
@@ -418,12 +379,11 @@ pub fn create_habit(app: &App, habit: Habit) -> Result<CreatedHabit, ToolError> 
 #[tool(writes)]
 pub fn update_habit(app: &App, habit: Habit, clear_fields: Option<Vec<HabitField>>) -> Result<ListedHabit, ToolError> {
     prefetch_habits(app, false)?;
-    let habit = to_row(HABIT_ROW, &habit);
-    check_part_actions(app, habit.get("traits").and_then(|t| t.get("parts")))?;
+    check_part_actions(app, parts_of(&habit.traits))?;
     let clear = texts(&clear_fields.unwrap_or_default());
     let updated = app.habits()?.update_habit(&habit, &clear).map_err(refused)?;
-    if updated.get("status").and_then(Value::as_str) == Some("deleted") {
-        app.people()?.drop_foundation(&habit_subject(&updated))?;
+    if updated.status == Some(Status::Deleted) {
+        app.people()?.drop_foundation(&subject_id(updated.id.as_deref().unwrap_or("None")))?;
     }
-    from_store(Value::Object(updated))
+    Ok(updated)
 }
