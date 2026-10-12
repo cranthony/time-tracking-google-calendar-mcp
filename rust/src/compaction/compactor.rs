@@ -90,7 +90,7 @@
 //! since that's where the notes tab grows), for what that means for row
 //! numbers and ids.
 
-use super::additions::{check_additions, create_additions, ref_of, resolve, Additions, REF_PREFIX};
+use super::additions::{check_additions, create_additions, resolve, Added, Additions, REF_PREFIX};
 use super::guide::{APPROVAL_RULE, DECISION_GUIDE};
 use super::judgments::{HabitJudgmentsDue, Judging, Judgment, JudgmentRequest, JudgmentsDue, JudgmentsResult};
 use super::plan::{
@@ -107,7 +107,6 @@ use crate::event::{Event, Moment};
 use crate::facts::{fact_problems, Facts, SELF_ID};
 use crate::google::GoogleError;
 use crate::py;
-use crate::sheet::rows;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::actions::{ActionTree, Actions};
 use crate::stores::cancellations::Cancellations;
@@ -1187,7 +1186,7 @@ impl NoteCompactor {
             return Err(ce(format!("proposal {proposal_id} is being applied; it can't be changed now"), "applying"));
         }
         self.base(proposal_id, &meta, Some(revision))?;
-        let claude_additions = Additions::from_json_dict(Some(&Value::Object(claude_additions_of(&current))));
+        let claude_additions = Additions::from_json_dict(Some(&Value::Object(claude_additions_of(&current))))?;
         let edit_rows = self.journal.user_edits(proposal_id)?;
         let all_edits: Vec<UserEdit> = edit_rows.iter().map(|(_, e)| e.clone()).collect();
         let known_settled: Vec<String> = merge(proposal_id, &[], &all_edits, MergeOptions::default()).settled.keys().cloned().collect();
@@ -1381,15 +1380,13 @@ impl NoteCompactor {
         self.view(&current, Replanned::Walked(walked), None, Some(replaced), None, None)
     }
 
-    fn addition_choices(&self, additions: &Additions, choices: &[AdditionChoice]) -> anyhow::Result<Vec<(AdditionChoice, (String, rows::Row))>> {
-        let mut added: Vec<(String, (String, rows::Row))> = Vec::new();
-        for (kind, items) in [("action", &additions.actions), ("person", &additions.people), ("location", &additions.locations)] {
-            for item in items {
-                let r = ref_of(item);
-                match added.iter_mut().find(|(k, _)| *k == r) {
-                    Some(slot) => slot.1 = (kind.into(), item.clone()),
-                    None => added.push((r, (kind.into(), item.clone()))),
-                }
+    fn addition_choices(&self, additions: &Additions, choices: &[AdditionChoice]) -> anyhow::Result<Vec<(AdditionChoice, Added)>> {
+        let mut added: Vec<(String, Added)> = Vec::new();
+        for item in additions.all() {
+            let r = item.ref_().to_string();
+            match added.iter_mut().find(|(k, _)| *k == r) {
+                Some(slot) => slot.1 = item,
+                None => added.push((r, item)),
             }
         }
         let there_actions = match &self.actions {
@@ -1407,14 +1404,15 @@ impl NoteCompactor {
         let mut problems: Vec<String> = Vec::new();
         let mut found = Vec::new();
         for choice in choices {
-            let Some((_, (kind, item))) = added.iter().find(|(k, _)| *k == choice.ref_) else {
+            let Some((_, item)) = added.iter().find(|(k, _)| *k == choice.ref_) else {
                 problems.push(format!("additions: {} isn't something the proposal adds", py::repr(&choice.ref_)));
                 continue;
             };
-            let there = match kind.as_str() {
-                "action" => &there_actions,
-                "person" => &there_people,
-                _ => &there_locations,
+            let kind = item.kind();
+            let there = match item {
+                Added::Action(_) => &there_actions,
+                Added::Person(_) => &there_people,
+                Added::Location(_) => &there_locations,
             };
             if choice.use_ == "existing" && !choice.id.as_ref().is_some_and(|i| there.contains(i)) {
                 problems.push(format!("additions: {} -- there's no {kind} {}", choice.ref_, repr_opt(choice.id.as_deref())));
@@ -1424,7 +1422,7 @@ impl NoteCompactor {
                 problems.push(format!("additions: {} -- only 'existing' takes an id", choice.ref_));
                 continue;
             }
-            found.push((choice.clone(), (kind.clone(), item.clone())));
+            found.push((choice.clone(), item.clone()));
         }
         if !problems.is_empty() {
             return Err(ce_of(&problems, "additions"));
@@ -1432,26 +1430,35 @@ impl NoteCompactor {
         Ok(found)
     }
 
-    fn create_addition(&self, item: &(String, rows::Row), choice: &AdditionChoice) -> anyhow::Result<String> {
-        let (kind, row) = item;
-        let mut row = row.clone();
-        for (name, value) in [("name", &choice.name), ("context", &choice.context), ("hint", &choice.hint)] {
-            if let Some(value) = value {
-                if row.contains_key(name) {
-                    row.insert(name.into(), json!(value));
+    fn create_addition(&self, item: &Added, choice: &AdditionChoice) -> anyhow::Result<String> {
+        let mut item = item.clone();
+        match &mut item {
+            Added::Action(a) => {
+                if let Some(name) = &choice.name {
+                    a.item.name = Some(name.clone());
+                }
+                a.item.status = Some(crate::stores::actions::ActionStatus::Active);
+            }
+            Added::Person(p) => {
+                if let Some(name) = &choice.name {
+                    p.item.name = Some(name.clone());
+                }
+                if let Some(context) = &choice.context {
+                    p.item.context = Some(context.clone());
+                }
+            }
+            Added::Location(l) => {
+                if let Some(name) = &choice.name {
+                    l.item.name = Some(name.clone());
+                }
+                if let Some(hint) = &choice.hint {
+                    l.item.hint = Some(hint.clone());
                 }
             }
         }
-        if kind == "action" {
-            row.insert("status".into(), json!("active"));
-        }
-        let single = Additions {
-            actions: if kind == "action" { vec![row.clone()] } else { Vec::new() },
-            people: if kind == "person" { vec![row.clone()] } else { Vec::new() },
-            locations: if kind == "location" { vec![row.clone()] } else { Vec::new() },
-        };
-        let ids = create_additions(&single, self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?;
-        Ok(lookup(&ids, &ref_of(&row)).unwrap_or_default())
+        let r = item.ref_().to_string();
+        let ids = create_additions(&Additions::of(item), self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?;
+        Ok(lookup(&ids, &r).unwrap_or_default())
     }
 
     fn replaced(&self, proposal: &str, meta: &RevisionMeta, base: i64, edits: &[UserEdit]) -> anyhow::Result<Vec<String>> {
@@ -1599,7 +1606,7 @@ impl NoteCompactor {
             new_meta.reason = "recheck".into();
             new_meta.changed = changed(Some(&meta.outcomes), &outcomes);
             new_meta.outcomes = outcomes;
-            let additions = Additions::from_json_dict(Some(&Value::Object(current[0].additions.clone())));
+            let additions = Additions::from_json_dict(Some(&Value::Object(current[0].additions.clone())))?;
             self.write_revision(&walked, &new_meta, &additions, Some(current), &[])?;
             let refreshed = self.current(proposal_id)?;
             return Ok(ProposalResult {
@@ -1765,7 +1772,7 @@ impl NoteCompactor {
             }
         }
         let stopped = format!("applying revision {} stopped: {failure}", meta.revision);
-        let additions = unsettled(&Additions::from_json_dict(Some(&Value::Object(claude_additions_of(&days)))), &merged.settled);
+        let additions = unsettled(&Additions::from_json_dict(Some(&Value::Object(claude_additions_of(&days))))?, &merged.settled);
         let mut walked = match self.plan_walk(&settled_decisions(&merged), &merged.ignore_notes, &additions, through, &merged.note_targets.items) {
             Ok((walked, _)) => walked,
             Err(e) => match compaction_error(&e) {
@@ -1881,7 +1888,7 @@ impl NoteCompactor {
                 self.journal.set_status(&mut days[i], APPLYING)?;
             }
             if refs.is_none() {
-                let additions = Additions::from_json_dict(Some(&Value::Object(days[0].additions.clone())));
+                let additions = Additions::from_json_dict(Some(&Value::Object(days[0].additions.clone())))?;
                 refs = Some(create_additions(&additions, self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?);
             }
             let id = days[i].id.clone();
@@ -2063,9 +2070,9 @@ impl NoteCompactor {
             Some(l) => Some(l.all()?.into_iter().map(|l| l.id.unwrap_or_else(|| "None".into())).collect()),
             None => None,
         };
-        let mut new_people: Vec<String> = additions.people.iter().map(ref_of).collect();
+        let mut new_people: Vec<String> = additions.people.iter().map(|p| p.ref_.clone()).collect();
         new_people.extend(settled.iter().cloned());
-        let mut new_locations: Vec<String> = additions.locations.iter().map(ref_of).collect();
+        let mut new_locations: Vec<String> = additions.locations.iter().map(|l| l.ref_.clone()).collect();
         new_locations.extend(settled.iter().cloned());
         let mut checked = Vec::new();
         let mut problems: Vec<String> = Vec::new();
@@ -2345,7 +2352,7 @@ impl NoteCompactor {
                 return Err(stale());
             }
         }
-        let additions = Additions::from_json_dict(Some(&Value::Object(days[0].additions.clone())));
+        let additions = Additions::from_json_dict(Some(&Value::Object(days[0].additions.clone())))?;
         let plan = self.plan(&day, &decisions, &ignore_notes, &additions, &note_targets)?;
         if strict && comparable(&plan.changes) != comparable(&changes) {
             return Err(stale());
@@ -2373,7 +2380,7 @@ impl NoteCompactor {
                     .map(|e| e.action_ids.clone().unwrap_or_default())
                     .unwrap_or_default()
             };
-            let new: Vec<String> = additions.actions.iter().map(ref_of).collect();
+            let new: Vec<String> = additions.actions.iter().map(|a| a.ref_.clone()).collect();
             let mut problems: Vec<String> = Vec::new();
             for d in decisions {
                 let ids = d.action_ids.clone().unwrap_or_default();
@@ -2750,11 +2757,7 @@ fn unsettled<V>(additions: &Additions, settled: &Dict<V>) -> Additions
 where
     V: Clone,
 {
-    Additions {
-        actions: additions.actions.iter().filter(|a| !settled.contains(&ref_of(a))).cloned().collect(),
-        people: additions.people.iter().filter(|p| !settled.contains(&ref_of(p))).cloned().collect(),
-        locations: additions.locations.iter().filter(|l| !settled.contains(&ref_of(l))).cloned().collect(),
-    }
+    additions.filtered(|r| !settled.contains(&r.to_string()))
 }
 
 fn settled_decisions(merged: &Merged) -> Vec<EventDecision> {
