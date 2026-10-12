@@ -150,17 +150,18 @@ class Session:
             text = json.dumps(_masked_timings(json.loads(text))) if text.startswith("{") else text
         if isinstance(content, str):
             content = argument_errors(unversioned(content))
-        text = argument_errors(unversioned(text))
+        content = masked_http_errors(content)
+        text = masked_http_errors(argument_errors(unversioned(text)))
         call = Call(tool, arguments, bool(result.is_error), content, text)
         self.calls.append(call)
         return call
 
     def record(self) -> dict:
-        return {
+        return masked_http_errors({
             "calls": [c.as_dict() for c in self.calls],
             "requests": [r.as_dict() for r in self.google.requests],
             "state": self.google.snapshot(skip_tabs=("Health",)),
-        }
+        })
 
 
 def unversioned(text: str) -> str:
@@ -168,6 +169,23 @@ def unversioned(text: str) -> str:
     (".../2.13/v/missing"): it's whichever pydantic got installed, not
     something the server decides."""
     return re.sub(r"errors\.pydantic\.dev/[0-9.]+/", "errors.pydantic.dev/<version>/", text)
+
+
+_HTTP_ERROR = re.compile(r"<HttpError (\d+) when requesting [^>]*>")
+
+
+def masked_http_errors(value: Any) -> Any:
+    """`value` with every Google API error a message quotes ("<HttpError
+    410 when requesting http://127.0.0.1:<port>/... returned ...>") down to
+    its status: the fake's port differs from run to run, and each server's
+    client words the rest its own way."""
+    if isinstance(value, str):
+        return _HTTP_ERROR.sub(r"<HttpError \1>", value)
+    if isinstance(value, dict):
+        return {k: masked_http_errors(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [masked_http_errors(v) for v in value]
+    return value
 
 
 _PYDANTIC_ERRORS = re.compile(r"^(Error executing tool \w+: )\d+ validation errors? for \w+Arguments\n(.*)$", re.S)
