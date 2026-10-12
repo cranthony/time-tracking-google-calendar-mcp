@@ -1,13 +1,10 @@
-//! The tools over the metadata tabs: actions and groups, priority colors,
-//! people and circles, traits, habits -- and the prefetches that make a
-//! tool read all its tabs in one request.
+//! The tools over the metadata tabs: people and circles, traits, habits --
+//! and the prefetches that make a tool read all its tabs in one request.
 
-use super::{args_str, args_strings, refused, refused_or_conflict, ToolResult};
+use super::{args_str, args_strings, refused, ToolResult};
 use crate::app::App;
 use crate::google::sheets::TabRange;
 use crate::sheet::rows::RowType;
-use crate::stores::actions::ACTION_ROW;
-use crate::stores::groups::GROUP_ROW;
 use crate::stores::habits::{subject_id, HABIT_ROW};
 use crate::stores::people::{CIRCLE_ROW, PERSON_ROW};
 use crate::stores::traits::Trait;
@@ -61,62 +58,16 @@ fn statuses(args: &Map<String, Value>) -> Option<Vec<String>> {
 
 // -- actions and groups --------------------------------------------------------
 
-pub fn get_actions(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.get_actions(statuses(args).as_deref()).map_err(refused_or_conflict)
-}
 
-pub fn get_action(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.get_action(args_str(args, "id_or_name")).map_err(refused_or_conflict)
-}
 
-pub fn create_action(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.create_action(&row(ACTION_ROW, args, "action")).map_err(refused_or_conflict)
-}
 
-pub fn update_action(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.update_action(&row(ACTION_ROW, args, "action"), &args_strings(args, "clear_fields")).map_err(refused_or_conflict)
-}
 
-pub fn get_action_groups(app: &App, _args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.get_action_groups().map_err(refused)
-}
 
-pub fn get_action_group(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.get_action_group(args_str(args, "id_or_name")).map_err(refused)
-}
 
-pub fn create_action_group(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.create_action_group(&row(GROUP_ROW, args, "group")).map_err(refused_or_conflict)
-}
 
-pub fn update_action_group(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.update_action_group(&row(GROUP_ROW, args, "group"), &args_strings(args, "clear_fields")).map_err(refused_or_conflict)
-}
 
-pub fn delete_action_group(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.delete_action_group(args_str(args, "group_id")).map_err(refused_or_conflict)
-}
 
-pub fn get_priority_colors(app: &App, _args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    app.actions()?.priority_colors().map_err(refused)
-}
 
-pub fn update_priority_color(app: &App, args: &Map<String, Value>) -> ToolResult {
-    prefetch_stores(app)?;
-    let priority = args.get("priority").cloned().unwrap_or(Value::Null);
-    let color = args.get("color").cloned().unwrap_or(Value::Null);
-    app.actions()?.set_priority_color(&priority, &color).map_err(refused_or_conflict)
-}
 
 // -- people and circles ----------------------------------------------------------
 

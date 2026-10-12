@@ -3,6 +3,7 @@
 //! declaration order -- or a ToolError, which the client sees as "Error
 //! executing tool <name>: <message>".
 
+mod actions;
 mod compaction;
 mod events;
 mod health;
@@ -56,6 +57,21 @@ pub fn refused_or_conflict(error: anyhow::Error) -> ToolError {
     }
 }
 
+/// A store's result, as the tool's result type.
+pub fn from_store<T: serde::de::DeserializeOwned>(value: Value) -> Result<T, ToolError> {
+    serde_json::from_value(value).map_err(|e| ToolError::Unexpected(anyhow::anyhow!("the store's result doesn't fit the tool's: {e}")))
+}
+
+/// A typed argument, as the store's row of `row_type`.
+pub fn to_row<T: serde::Serialize>(row_type: crate::sheet::rows::RowType, value: &T) -> crate::sheet::rows::Row {
+    row_type.from_value(&serde_json::to_value(value).expect("an argument is JSON"))
+}
+
+/// Literals (such as clear_fields') as their text.
+pub fn texts<T: serde::Serialize>(items: &[T]) -> Vec<String> {
+    items.iter().map(crate::contract::wire_text).collect()
+}
+
 pub fn args_str<'a>(args: &'a Map<String, Value>, name: &str) -> &'a str {
     args.get(name).and_then(Value::as_str).unwrap_or_default()
 }
@@ -82,6 +98,17 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
             places::create_location_tool(),
             places::update_location_tool(),
             places::delete_location_tool(),
+            actions::get_actions_tool(),
+            actions::get_action_tool(),
+            actions::create_action_tool(),
+            actions::update_action_tool(),
+            actions::get_action_groups_tool(),
+            actions::get_action_group_tool(),
+            actions::create_action_group_tool(),
+            actions::update_action_group_tool(),
+            actions::delete_action_group_tool(),
+            actions::get_priority_colors_tool(),
+            actions::update_priority_color_tool(),
         ]
     });
     &TYPED
@@ -89,17 +116,6 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
 
 fn registry() -> &'static [Tool] {
     &[
-        Tool { name: "get_actions", writes: false, run: stores::get_actions },
-        Tool { name: "get_action", writes: false, run: stores::get_action },
-        Tool { name: "create_action", writes: true, run: stores::create_action },
-        Tool { name: "update_action", writes: true, run: stores::update_action },
-        Tool { name: "get_action_groups", writes: false, run: stores::get_action_groups },
-        Tool { name: "get_action_group", writes: false, run: stores::get_action_group },
-        Tool { name: "create_action_group", writes: true, run: stores::create_action_group },
-        Tool { name: "update_action_group", writes: true, run: stores::update_action_group },
-        Tool { name: "delete_action_group", writes: true, run: stores::delete_action_group },
-        Tool { name: "get_priority_colors", writes: false, run: stores::get_priority_colors },
-        Tool { name: "update_priority_color", writes: true, run: stores::update_priority_color },
         Tool { name: "get_people", writes: false, run: stores::get_people },
         Tool { name: "get_person", writes: false, run: stores::get_person },
         Tool { name: "create_person", writes: true, run: stores::create_person },
