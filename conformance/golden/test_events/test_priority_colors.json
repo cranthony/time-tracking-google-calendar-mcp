@@ -25,6 +25,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"priority\": 0,\n  \"color\": \"#e1e1e1\",\n  \"label_id\": \"495cdbf8-ca71-5284-8fe0-31ec6b15fbbe\"\n}\n{\n  \"priority\": 1,\n  \"color\": \"#fbd75b\",\n  \"label_id\": \"261822bd-b719-5bcf-864c-1efdfff66600\"\n}\n{\n  \"priority\": 2,\n  \"color\": \"#a4bdfc\",\n  \"label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\"\n}\n{\n  \"priority\": 3,\n  \"color\": \"#7ae7bf\",\n  \"label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\"\n}",
    "tool": "get_priority_colors"
   },
   {
@@ -60,6 +61,7 @@
     "label_slots_used": 4
    },
    "is_error": false,
+   "text": "{\n  \"colors\": [\n    {\n      \"priority\": 0,\n      \"color\": \"#e1e1e1\",\n      \"label_id\": \"495cdbf8-ca71-5284-8fe0-31ec6b15fbbe\"\n    },\n    {\n      \"priority\": 1,\n      \"color\": \"#fbd75b\",\n      \"label_id\": \"261822bd-b719-5bcf-864c-1efdfff66600\"\n    },\n    {\n      \"priority\": 2,\n      \"color\": \"#123456\",\n      \"label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\"\n    },\n    {\n      \"priority\": 3,\n      \"color\": \"#7ae7bf\",\n      \"label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\"\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
    "tool": "update_priority_color"
   },
   {
@@ -87,6 +89,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"priority\": 0,\n  \"color\": \"#e1e1e1\",\n  \"label_id\": \"495cdbf8-ca71-5284-8fe0-31ec6b15fbbe\"\n}\n{\n  \"priority\": 1,\n  \"color\": \"#fbd75b\",\n  \"label_id\": \"261822bd-b719-5bcf-864c-1efdfff66600\"\n}\n{\n  \"priority\": 2,\n  \"color\": \"#123456\",\n  \"label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\"\n}\n{\n  \"priority\": 3,\n  \"color\": \"#7ae7bf\",\n  \"label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\"\n}",
    "tool": "get_priority_colors"
   },
   {
@@ -96,6 +99,7 @@
    },
    "content": "Error executing tool update_priority_color: 'blue' isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"",
    "is_error": true,
+   "text": "Error executing tool update_priority_color: 'blue' isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"",
    "tool": "update_priority_color"
   },
   {
@@ -105,6 +109,7 @@
    },
    "content": "Error executing tool update_priority_color: There's no priority 99: priorities are 0, 1, 2, 3",
    "is_error": true,
+   "text": "Error executing tool update_priority_color: There's no priority 99: priorities are 0, 1, 2, 3",
    "tool": "update_priority_color"
   }
  ],

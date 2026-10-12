@@ -29,6 +29,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"action 0\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 0\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action"
   },
   {
@@ -60,6 +61,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"action 1\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 1\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_action"
   },
   {
@@ -91,6 +93,7 @@
     "label_slots_used": 7
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"7632uw\",\n      \"group_id\": null,\n      \"name\": \"action 2\",\n      \"status\": \"active\",\n      \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 2\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 7,\n  \"label_slots_total\": 200,\n  \"created_id\": \"7632uw\"\n}",
    "tool": "create_action"
   },
   {
@@ -122,6 +125,7 @@
     "label_slots_used": 8
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"9vxzfr\",\n      \"group_id\": null,\n      \"name\": \"action 3\",\n      \"status\": \"active\",\n      \"label_id\": \"c39130fa-760e-5eea-9f25-506b25968866\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 3\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 8,\n  \"label_slots_total\": 200,\n  \"created_id\": \"9vxzfr\"\n}",
    "tool": "create_action"
   },
   {
@@ -153,6 +157,7 @@
     "label_slots_used": 9
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"m8t0mg\",\n      \"group_id\": null,\n      \"name\": \"action 4\",\n      \"status\": \"active\",\n      \"label_id\": \"a9a107f0-309a-5c14-bd95-7649964be319\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 4\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 9,\n  \"label_slots_total\": 200,\n  \"created_id\": \"m8t0mg\"\n}",
    "tool": "create_action"
   },
   {
@@ -184,6 +189,7 @@
     "label_slots_used": 10
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"mkgvva\",\n      \"group_id\": null,\n      \"name\": \"action 5\",\n      \"status\": \"active\",\n      \"label_id\": \"35804a81-635a-5ed0-b8f4-c9a1f61b4169\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 5\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 10,\n  \"label_slots_total\": 200,\n  \"created_id\": \"mkgvva\"\n}",
    "tool": "create_action"
   },
   {
@@ -279,6 +285,7 @@
     "label_slots_used": 10
    },
    "is_error": false,
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"action 0\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 0\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"action 1\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 1\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"7632uw\",\n      \"group_id\": null,\n      \"name\": \"action 2\",\n      \"status\": \"active\",\n      \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 2\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"9vxzfr\",\n      \"group_id\": null,\n      \"name\": \"action 3\",\n      \"status\": \"active\",\n      \"label_id\": \"c39130fa-760e-5eea-9f25-506b25968866\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 3\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"m8t0mg\",\n      \"group_id\": null,\n      \"name\": \"action 4\",\n      \"status\": \"active\",\n      \"label_id\": \"a9a107f0-309a-5c14-bd95-7649964be319\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 4\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"mkgvva\",\n      \"group_id\": null,\n      \"name\": \"action 5\",\n      \"status\": \"active\",\n      \"label_id\": \"35804a81-635a-5ed0-b8f4-c9a1f61b4169\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"action 5\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 10,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   }
  ],

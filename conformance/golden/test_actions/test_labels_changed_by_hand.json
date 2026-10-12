@@ -29,6 +29,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action"
   },
   {
@@ -50,6 +51,7 @@
     "status": "active"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"4709iy\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#a4bdfc\",\n  \"effective_priority\": null,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   }
  ],

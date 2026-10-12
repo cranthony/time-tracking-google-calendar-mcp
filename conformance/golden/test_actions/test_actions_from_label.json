@@ -29,6 +29,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action"
   },
   {
@@ -50,6 +51,7 @@
     "status": "active"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"4709iy\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#a4bdfc\",\n  \"effective_priority\": null,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
@@ -88,6 +90,7 @@
     "timeline": "09:00 ┌ Practice · new\n10:00 └ Practice ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"b31766454241b44ec99625d763\",\n      \"summary\": \"Practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Practice · new\\n10:00 └ Practice ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -118,6 +121,7 @@
     "summary": "Practice"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"b31766454241b44ec99625d763\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"4709iy\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": true,\n  \"event_label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "get_event"
   },
   {
@@ -165,6 +169,7 @@
     "timeline": null
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"b31766454241b44ec99625d763\",\n      \"summary\": \"Guitar\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"4709iy\"\n      ],\n      \"action_names\": [\n        \"play guitar\"\n      ],\n      \"actions_from_label\": true,\n      \"event_label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -195,6 +200,7 @@
     "summary": "Guitar"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"b31766454241b44ec99625d763\",\n  \"summary\": \"Guitar\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"4709iy\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": true,\n  \"event_label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "get_event"
   }
  ],

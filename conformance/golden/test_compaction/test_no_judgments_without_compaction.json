@@ -4,6 +4,7 @@
    "arguments": {},
    "content": "Error executing tool prepare_judgments: there's no applied compaction to judge",
    "is_error": true,
+   "text": "Error executing tool prepare_judgments: there's no applied compaction to judge",
    "tool": "prepare_judgments"
   },
   {
@@ -13,6 +14,7 @@
    },
    "content": "Error executing tool record_judgments: there's no compaction with id 'nosuch'",
    "is_error": true,
+   "text": "Error executing tool record_judgments: there's no compaction with id 'nosuch'",
    "tool": "record_judgments"
   }
  ],

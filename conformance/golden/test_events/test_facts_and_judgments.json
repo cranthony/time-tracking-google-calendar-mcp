@@ -21,6 +21,7 @@
     }
    },
    "is_error": false,
+   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Friend One\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_person"
   },
   {
@@ -38,6 +39,7 @@
     }
    },
    "is_error": false,
+   "text": "{\n  \"location\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"The Park\",\n    \"hint\": null\n  },\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_location"
   },
   {
@@ -96,6 +98,7 @@
     "timeline": "09:00 ┌ Walk · new\n10:00 └ Walk ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_id\": \"bcyx3f\",\n        \"with_ids\": [\n          \"4709iy\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"4709iy\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -115,6 +118,7 @@
    },
    "content": "Error executing tool create_event: Its facts name ['nobody'], who aren't people (get_people lists them)",
    "is_error": true,
+   "text": "Error executing tool create_event: Its facts name ['nobody'], who aren't people (get_people lists them)",
    "tool": "create_event"
   },
   {
@@ -132,6 +136,7 @@
    },
    "content": "Error executing tool create_event: Its facts' location 'nowhere' isn't a location (get_locations lists them)",
    "is_error": true,
+   "text": "Error executing tool create_event: Its facts' location 'nowhere' isn't a location (get_locations lists them)",
    "tool": "create_event"
   },
   {
@@ -151,6 +156,7 @@
    },
    "content": "Error executing tool create_event: Its facts \"with_ids\" never names \"self\": the user is at every event",
    "is_error": true,
+   "text": "Error executing tool create_event: Its facts \"with_ids\" never names \"self\": the user is at every event",
    "tool": "create_event"
   },
   {
@@ -220,6 +226,7 @@
     "timeline": null
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_id\": \"bcyx3f\",\n        \"with_ids\": [\n          \"4709iy\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"4709iy\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      }\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -262,6 +269,7 @@
     "timeline": null
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   }
  ],

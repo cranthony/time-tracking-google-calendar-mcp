@@ -31,6 +31,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action"
   },
   {
@@ -61,6 +62,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_action"
   },
   {
@@ -100,6 +102,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -121,6 +124,7 @@
     "status": "active"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"4709iy\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
@@ -142,6 +146,7 @@
     "status": "active"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"4709iy\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
@@ -150,6 +155,7 @@
    },
    "content": "Error executing tool get_action: There's no action with the id or name 'play gutar'; did you mean 4709iy (play guitar)? (get_actions lists them)",
    "is_error": true,
+   "text": "Error executing tool get_action: There's no action with the id or name 'play gutar'; did you mean 4709iy (play guitar)? (get_actions lists them)",
    "tool": "get_action"
   },
   {
@@ -160,6 +166,7 @@
    },
    "content": "Error executing tool create_action: there's already an action named 'play guitar' (4709iy, active); action names must be unique -- use that one, or pick another name",
    "is_error": true,
+   "text": "Error executing tool create_action: there's already an action named 'play guitar' (4709iy, active); action names must be unique -- use that one, or pick another name",
    "tool": "create_action"
   },
   {
@@ -170,6 +177,7 @@
    },
    "content": "Error executing tool create_action: action 9vxzfr's name 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is longer than 50 characters",
    "is_error": true,
+   "text": "Error executing tool create_action: action 9vxzfr's name 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is longer than 50 characters",
    "tool": "create_action"
   },
   {
@@ -181,6 +189,7 @@
    },
    "content": "Error executing tool create_action: 'red' isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"",
    "is_error": true,
+   "text": "Error executing tool create_action: 'red' isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"",
    "tool": "create_action"
   }
  ],

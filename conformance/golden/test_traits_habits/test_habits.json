@@ -26,6 +26,7 @@
     "label_slots_used": 4
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_action_group"
   },
   {
@@ -58,6 +59,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": \"4709iy\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_action"
   },
   {
@@ -228,6 +230,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"thoughtful\",\n  \"name\": \"Thoughtful\",\n  \"status\": \"active\",\n  \"definition\": \"Remember what matters to them, and prepare for it.\",\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"Was this preparation for them, built on what matters to them?\",\n      \"ratings\": {\n        \"0\": \"It wasn't really for them\",\n        \"1\": \"It was for them, but generic\",\n        \"2\": \"It was for them, and fit what matters to them\",\n        \"3\": \"It was carefully made around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    }\n  ],\n  \"problems\": null\n}\n{\n  \"id\": \"reliable\",\n  \"name\": \"Reliable\",\n  \"status\": \"active\",\n  \"definition\": \"Do what I said I would, and keep contact going -- reliable to myself too.\",\n  \"parts\": [\n    {\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"kind\": \"follow_through\"\n    },\n    {\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 14,\n      \"zero_at_days\": 30,\n      \"noun\": \"meetings\"\n    }\n  ],\n  \"problems\": null\n}\n{\n  \"id\": \"creative\",\n  \"name\": \"Creative\",\n  \"status\": \"active\",\n  \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 30\n        },\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"problems\": null\n}\n{\n  \"id\": \"adventurous\",\n  \"name\": \"Adventurous\",\n  \"status\": \"active\",\n  \"definition\": \"Share new experiences with them: new activities, new places.\",\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 90\n        }\n      ]\n    }\n  ],\n  \"problems\": null\n}\n{\n  \"id\": \"generous\",\n  \"name\": \"Generous\",\n  \"status\": \"active\",\n  \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"How much effort did I put into doing this for them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"problems\": null\n}",
    "tool": "get_traits"
   },
   {
@@ -252,6 +255,7 @@
     }
    },
    "is_error": false,
+   "text": "{\n  \"habit\": {\n    \"id\": \"7632uw\",\n    \"name\": \"Daily practice\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": \"20 minutes a day\",\n    \"traits\": null,\n    \"action_path\": \"Music › play guitar\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"7632uw\"\n}",
    "tool": "create_habit"
   },
   {
@@ -263,6 +267,7 @@
    },
    "content": "Error executing tool create_habit: there's already a habit named 'Daily practice' (7632uw); habit names must be unique -- use that one, or pick another name",
    "is_error": true,
+   "text": "Error executing tool create_habit: there's already a habit named 'Daily practice' (7632uw); habit names must be unique -- use that one, or pick another name",
    "tool": "create_habit"
   },
   {
@@ -274,6 +279,7 @@
    },
    "content": "Error executing tool create_habit: habit m8t0mg's action_id 'nosuch' isn't an action or an action group (get_actions and get_action_groups list them)",
    "is_error": true,
+   "text": "Error executing tool create_habit: habit m8t0mg's action_id 'nosuch' isn't an action or an action group (get_actions and get_action_groups list them)",
    "tool": "create_habit"
   },
   {
@@ -306,6 +312,7 @@
     }
    },
    "is_error": false,
+   "text": "{\n  \"habit\": {\n    \"id\": \"mkgvva\",\n    \"name\": \"Music overall\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"action_path\": \"Music\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"mkgvva\"\n}",
    "tool": "create_habit"
   },
   {
@@ -322,6 +329,7 @@
    },
    "content": "Error executing tool create_habit: habit 6gpeqq's traits \"select\" names 'nosuch', which isn't a trait",
    "is_error": true,
+   "text": "Error executing tool create_habit: habit 6gpeqq's traits \"select\" names 'nosuch', which isn't a trait",
    "tool": "create_habit"
   },
   {
@@ -353,6 +361,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -370,6 +379,7 @@
     "traits": null
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habit"
   },
   {
@@ -378,6 +388,7 @@
    },
    "content": "Error executing tool get_habit: There's no habit with the id or name 'Daly practise'; did you mean 7632uw (Daily practice)? (get_habits lists them)",
    "is_error": true,
+   "text": "Error executing tool get_habit: There's no habit with the id or name 'Daly practise'; did you mean 7632uw (Daily practice)? (get_habits lists them)",
    "tool": "get_habit"
   },
   {
@@ -402,6 +413,7 @@
     "traits": null
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
@@ -446,6 +458,7 @@
     }
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
@@ -478,6 +491,7 @@
     }
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
@@ -499,6 +513,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -548,6 +563,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -559,6 +575,7 @@
    },
    "content": "Error executing tool update_habit: There's no habit with the id or name 'nosuch' (get_habits lists them)",
    "is_error": true,
+   "text": "Error executing tool update_habit: There's no habit with the id or name 'nosuch' (get_habits lists them)",
    "tool": "update_habit"
   }
  ],

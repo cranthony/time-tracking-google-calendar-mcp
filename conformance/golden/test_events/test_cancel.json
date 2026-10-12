@@ -60,6 +60,7 @@
     "timeline": "09:00 ┌ A · new\n10:00 └ A ends\n11:00 ┌ B · new\n12:00 └ B ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"A\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"B\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T12:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ A · new\\n10:00 └ A ends\\n11:00 ┌ B · new\\n12:00 └ B ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -98,6 +99,7 @@
     "timeline": "09:00 ✕ A · cancelled (was 09:00–10:00)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"A\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ✕ A · cancelled (was 09:00–10:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": true\n}",
    "tool": "delete_event"
   },
   {
@@ -146,6 +148,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"55925eec0203effa267a7441a2\",\n  \"summary\": \"A\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"6525bebff685bedf57356640a8\",\n  \"summary\": \"B\",\n  \"start\": \"2026-10-07T11:00:00-04:00\",\n  \"end\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "list_events"
   },
   {
@@ -183,6 +186,7 @@
     "timeline": "09:00 ✕ A · cancelled (was 09:00–10:00)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"A\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ✕ A · cancelled (was 09:00–10:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "delete_event"
   },
   {
@@ -212,6 +216,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"6525bebff685bedf57356640a8\",\n  \"summary\": \"B\",\n  \"start\": \"2026-10-07T11:00:00-04:00\",\n  \"end\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "list_events"
   },
   {
@@ -220,6 +225,7 @@
    },
    "content": "Error executing tool get_event: Event 55925eec0203effa267a7441a2 has been cancelled.",
    "is_error": true,
+   "text": "Error executing tool get_event: Event 55925eec0203effa267a7441a2 has been cancelled.",
    "tool": "get_event"
   },
   {
@@ -233,6 +239,7 @@
    },
    "content": "Error executing tool delete_event: event 55925eec0203effa267a7441a2 ('A') is cancelled already",
    "is_error": true,
+   "text": "Error executing tool delete_event: event 55925eec0203effa267a7441a2 ('A') is cancelled already",
    "tool": "delete_event"
   },
   {
@@ -296,6 +303,7 @@
     "timeline": "09:00 ┌ A2 · new\n10:00 └ A2 ends\n11:00 ✕ B · cancelled (was 11:00–12:00)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"B\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T12:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"A2\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ A2 · new\\n10:00 └ A2 ends\\n11:00 ✕ B · cancelled (was 11:00–12:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -325,6 +333,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n  \"summary\": \"A2\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "list_events"
   }
  ],

@@ -6,6 +6,7 @@
    },
    "content": "Error executing tool abandon_compaction: there's no compaction with id 'nosuch'",
    "is_error": true,
+   "text": "Error executing tool abandon_compaction: there's no compaction with id 'nosuch'",
    "tool": "abandon_compaction"
   },
   {
@@ -15,6 +16,7 @@
    },
    "content": "Error executing tool add_proposal_note: proposal 'nosuch' isn't open; there's no open proposal",
    "is_error": true,
+   "text": "Error executing tool add_proposal_note: proposal 'nosuch' isn't open; there's no open proposal",
    "tool": "add_proposal_note"
   },
   {
@@ -23,6 +25,7 @@
    },
    "content": "Error executing tool withdraw_proposal_note: 'nosuch' isn't a feedback id",
    "is_error": true,
+   "text": "Error executing tool withdraw_proposal_note: 'nosuch' isn't a feedback id",
    "tool": "withdraw_proposal_note"
   },
   {
@@ -31,6 +34,7 @@
    },
    "content": "Error executing tool split_recurrence",
    "is_error": true,
+   "text": "Error executing tool split_recurrence",
    "tool": "split_recurrence"
   },
   {
@@ -42,6 +46,7 @@
    },
    "content": "Error executing tool update_circle: There's no circle with the id or name 'nosuch' (get_circles lists them)",
    "is_error": true,
+   "text": "Error executing tool update_circle: There's no circle with the id or name 'nosuch' (get_circles lists them)",
    "tool": "update_circle"
   },
   {
@@ -51,12 +56,14 @@
    },
    "content": "Error executing tool confirm_proposal: proposal 'nosuch' isn't open; there's no open proposal",
    "is_error": true,
+   "text": "Error executing tool confirm_proposal: proposal 'nosuch' isn't open; there's no open proposal",
    "tool": "confirm_proposal"
   },
   {
    "arguments": {},
    "content": "Error executing tool get_proposal: there's no open proposal",
    "is_error": true,
+   "text": "Error executing tool get_proposal: there's no open proposal",
    "tool": "get_proposal"
   },
   {
@@ -71,6 +78,7 @@
    },
    "content": "Error executing tool compact_notes: there's no open proposal 'nosuch'",
    "is_error": true,
+   "text": "Error executing tool compact_notes: there's no open proposal 'nosuch'",
    "tool": "compact_notes"
   }
  ],

@@ -15,6 +15,7 @@
     }
    },
    "is_error": false,
+   "text": "{\n  \"location\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Home\",\n    \"hint\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_location"
   },
   {
@@ -27,6 +28,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Cabin\",\n  \"hint\": null\n}",
    "tool": "get_locations"
   }
  ],

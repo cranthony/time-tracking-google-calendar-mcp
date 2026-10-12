@@ -36,6 +36,7 @@
     "timeline": "09:00 ┌ Meeting · new\n10:00 └ Meeting ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Meeting\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Meeting · new\\n10:00 └ Meeting ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -50,6 +51,7 @@
    },
    "content": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Meeting' (09:00–10:00) overlaps 'Clash' (09:30–10:30, as asked).\n\nThe calendar from Wed 07 Oct 09:30 to Thu 08 Oct 10:30, as this batch would leave it (* = in this batch):\n  09:00–10:00  Meeting  55925eec0203effa267a7441a2\n  09:30–10:30  Clash *  new 1",
    "is_error": true,
+   "text": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Meeting' (09:00–10:00) overlaps 'Clash' (09:30–10:30, as asked).\n\nThe calendar from Wed 07 Oct 09:30 to Thu 08 Oct 10:30, as this batch would leave it (* = in this batch):\n  09:00–10:00  Meeting  55925eec0203effa267a7441a2\n  09:30–10:30  Clash *  new 1",
    "tool": "create_event"
   },
   {
@@ -69,6 +71,7 @@
    },
    "content": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'A' (11:00–12:00, as asked) overlaps 'B' (11:30–12:30, as asked).\n\nThe calendar from Wed 07 Oct 11:00 to Thu 08 Oct 12:30, as this batch would leave it (* = in this batch):\n  11:00–12:00  A *  new 1\n  11:30–12:30  B *  new 2",
    "is_error": true,
+   "text": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'A' (11:00–12:00, as asked) overlaps 'B' (11:30–12:30, as asked).\n\nThe calendar from Wed 07 Oct 11:00 to Thu 08 Oct 12:30, as this batch would leave it (* = in this batch):\n  11:00–12:00  A *  new 1\n  11:30–12:30  B *  new 2",
    "tool": "create_event"
   },
   {
@@ -83,6 +86,7 @@
    },
    "content": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Backwards' (15:00–14:00, as asked) would end no later than it starts: give it some time, or cancel it.\n\nThe calendar from Wed 07 Oct 15:00 to Thu 08 Oct 14:00, as this batch would leave it (* = in this batch):\n  15:00–14:00  Backwards *  new 1",
    "is_error": true,
+   "text": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Backwards' (15:00–14:00, as asked) would end no later than it starts: give it some time, or cancel it.\n\nThe calendar from Wed 07 Oct 15:00 to Thu 08 Oct 14:00, as this batch would leave it (* = in this batch):\n  15:00–14:00  Backwards *  new 1",
    "tool": "create_event"
   },
   {
@@ -97,6 +101,7 @@
    },
    "content": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Empty' (15:00–15:00, as asked) would end no later than it starts: give it some time, or cancel it.\n\nThe calendar from Wed 07 Oct 15:00 to Thu 08 Oct 15:00, as this batch would leave it (* = in this batch):\n  15:00–15:00  Empty *  new 1",
    "is_error": true,
+   "text": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Empty' (15:00–15:00, as asked) would end no later than it starts: give it some time, or cancel it.\n\nThe calendar from Wed 07 Oct 15:00 to Thu 08 Oct 15:00, as this batch would leave it (* = in this batch):\n  15:00–15:00  Empty *  new 1",
    "tool": "create_event"
   },
   {
@@ -126,6 +131,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"55925eec0203effa267a7441a2\",\n  \"summary\": \"Meeting\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "list_events"
   }
  ],

@@ -84,6 +84,7 @@
     "timeline": "09:00 ┌ A · new\n10:00 ├ B · new\n11:00 └ B ends\n13:00 ┌ C · new\n14:00 └ C ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"A\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"B\",\n      \"start\": \"2026-10-07T10:00:00-04:00\",\n      \"end\": \"2026-10-07T11:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"C\",\n      \"start\": \"2026-10-07T13:00:00-04:00\",\n      \"end\": \"2026-10-07T14:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ A · new\\n10:00 ├ B · new\\n11:00 └ B ends\\n13:00 ┌ C · new\\n14:00 └ C ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -143,6 +144,7 @@
     "timeline": "09:30 ┌ A · ⇢30m (was 09:00–10:00)\n10:30 ├ B · ⇢30m (was 10:00–11:00)\n11:30 └ B ends\n13:00 ┌ C\n14:00 └ C ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"A\",\n      \"start\": \"2026-10-07T09:30:00-04:00\",\n      \"end\": \"2026-10-07T10:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"B\",\n      \"start\": \"2026-10-07T10:30:00-04:00\",\n      \"end\": \"2026-10-07T11:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:30 ┌ A · ⇢30m (was 09:00–10:00)\\n10:30 ├ B · ⇢30m (was 10:00–11:00)\\n11:30 └ B ends\\n13:00 ┌ C\\n14:00 └ C ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -158,6 +160,7 @@
    },
    "content": "Error executing tool update_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'B' (13:00–14:00, as asked) overlaps 'C' (13:00–14:00).\n\nThe calendar from Wed 07 Oct 10:30 to Thu 08 Oct 14:00, as this batch would leave it (* = in this batch):\n  13:00–14:00  B *  6525bebff685bedf57356640a8\n  13:00–14:00  C  35d98bd5ab3bf549dd770d737d",
    "is_error": true,
+   "text": "Error executing tool update_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'B' (13:00–14:00, as asked) overlaps 'C' (13:00–14:00).\n\nThe calendar from Wed 07 Oct 10:30 to Thu 08 Oct 14:00, as this batch would leave it (* = in this batch):\n  13:00–14:00  B *  6525bebff685bedf57356640a8\n  13:00–14:00  C  35d98bd5ab3bf549dd770d737d",
    "tool": "update_event"
   },
   {
@@ -197,6 +200,7 @@
     "timeline": "12:00 ┌ C · ⇠1h00m (was 13:00–14:00)\n13:00 └ C ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"C\",\n      \"start\": \"2026-10-07T12:00:00-04:00\",\n      \"end\": \"2026-10-07T13:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"12:00 ┌ C · ⇠1h00m (was 13:00–14:00)\\n13:00 └ C ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -220,6 +224,7 @@
    },
    "content": "Error executing tool update_event: event 55925eec0203effa267a7441a2 is in the batch twice (an update and a shift): give it one change",
    "is_error": true,
+   "text": "Error executing tool update_event: event 55925eec0203effa267a7441a2 is in the batch twice (an update and a shift): give it one change",
    "tool": "update_event"
   }
  ],

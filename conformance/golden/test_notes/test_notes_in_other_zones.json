@@ -14,6 +14,7 @@
     "timestamp": "2026-10-07T13:00:00Z"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T13:00:00+00:00#2\",\n  \"timestamp\": \"2026-10-07T13:00:00Z\",\n  \"description\": \"utc\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -30,6 +31,7 @@
     "timestamp": "2026-10-07T23:00:00+09:00"
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T23:00:00+09:00#3\",\n  \"timestamp\": \"2026-10-07T23:00:00+09:00\",\n  \"description\": \"tokyo\",\n  \"compaction_id\": null\n}",
    "tool": "note"
   },
   {
@@ -49,6 +51,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"2026-10-07T13:00:00+00:00#2\",\n  \"timestamp\": \"2026-10-07T13:00:00Z\",\n  \"description\": \"utc\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T23:00:00+09:00#3\",\n  \"timestamp\": \"2026-10-07T23:00:00+09:00\",\n  \"description\": \"tokyo\",\n  \"compaction_id\": null\n}",
    "tool": "get_notes"
   }
  ],

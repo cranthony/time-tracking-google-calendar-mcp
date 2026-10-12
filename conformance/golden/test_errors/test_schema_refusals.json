@@ -5,16 +5,18 @@
     "max_time": "2026-10-08T00:00:00-04:00",
     "min_time": "yesterday"
    },
-   "content": "Error executing tool list_events: 1 validation error for list_eventsArguments\nmin_time\n  Input should be a valid datetime or date, input is too short [type=datetime_from_date_parsing, input_value='yesterday', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/datetime_from_date_parsing",
+   "content": "Error executing tool list_events: invalid arguments: min_time [datetime_from_date_parsing]",
    "is_error": true,
+   "text": "Error executing tool list_events: invalid arguments: min_time [datetime_from_date_parsing]",
    "tool": "list_events"
   },
   {
    "arguments": {
     "min_time": "2026-10-07T00:00:00-04:00"
    },
-   "content": "Error executing tool list_events: 1 validation error for list_eventsArguments\nmax_time\n  Field required [type=missing, input_value={'min_time': '2026-10-07T00:00:00-04:00'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/<version>/v/missing",
+   "content": "Error executing tool list_events: invalid arguments: max_time [missing]",
    "is_error": true,
+   "text": "Error executing tool list_events: invalid arguments: max_time [missing]",
    "tool": "list_events"
   },
   {
@@ -23,8 +25,9 @@
      "description": "no timestamp"
     }
    },
-   "content": "Error executing tool note: 1 validation error for noteArguments\nnoted_time.timestamp\n  Field required [type=missing, input_value={'description': 'no timestamp'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/<version>/v/missing",
+   "content": "Error executing tool note: invalid arguments: noted_time.timestamp [missing]",
    "is_error": true,
+   "text": "Error executing tool note: invalid arguments: noted_time.timestamp [missing]",
    "tool": "note"
   },
   {
@@ -33,8 +36,9 @@
      "sleeping"
     ]
    },
-   "content": "Error executing tool get_actions: 1 validation error for get_actionsArguments\nstatuses.0\n  Input should be 'proposed', 'active', 'archived' or 'deleted' [type=literal_error, input_value='sleeping', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/literal_error",
+   "content": "Error executing tool get_actions: invalid arguments: statuses.0 [literal_error]",
    "is_error": true,
+   "text": "Error executing tool get_actions: invalid arguments: statuses.0 [literal_error]",
    "tool": "get_actions"
   },
   {
@@ -43,8 +47,9 @@
      "gone"
     ]
    },
-   "content": "Error executing tool get_people: 1 validation error for get_peopleArguments\nstatuses.0\n  Input should be 'active', 'archived' or 'deleted' [type=literal_error, input_value='gone', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/literal_error",
+   "content": "Error executing tool get_people: invalid arguments: statuses.0 [literal_error]",
    "is_error": true,
+   "text": "Error executing tool get_people: invalid arguments: statuses.0 [literal_error]",
    "tool": "get_people"
   },
   {
@@ -53,8 +58,9 @@
      "paused"
     ]
    },
-   "content": "Error executing tool get_habits: 1 validation error for get_habitsArguments\nstatuses.0\n  Input should be 'active', 'archived' or 'deleted' [type=literal_error, input_value='paused', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/literal_error",
+   "content": "Error executing tool get_habits: invalid arguments: statuses.0 [literal_error]",
    "is_error": true,
+   "text": "Error executing tool get_habits: invalid arguments: statuses.0 [literal_error]",
    "tool": "get_habits"
   },
   {
@@ -63,16 +69,18 @@
      "maybe"
     ]
    },
-   "content": "Error executing tool get_traits: 1 validation error for get_traitsArguments\nstatuses.0\n  Input should be 'active', 'off' or 'archived' [type=literal_error, input_value='maybe', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/literal_error",
+   "content": "Error executing tool get_traits: invalid arguments: statuses.0 [literal_error]",
    "is_error": true,
+   "text": "Error executing tool get_traits: invalid arguments: statuses.0 [literal_error]",
    "tool": "get_traits"
   },
   {
    "arguments": {
     "events": "not a list"
    },
-   "content": "Error executing tool create_event: 1 validation error for create_eventArguments\nevents\n  Input should be a valid list [type=list_type, input_value='not a list', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/list_type",
+   "content": "Error executing tool create_event: invalid arguments: events [list_type]",
    "is_error": true,
+   "text": "Error executing tool create_event: invalid arguments: events [list_type]",
    "tool": "create_event"
   },
   {
@@ -88,16 +96,18 @@
      }
     ]
    },
-   "content": "Error executing tool update_event: 1 validation error for update_eventArguments\nupdates.0.clear_fields.0\n  Input should be 'description', 'location', 'priority', 'facts' or 'judgments' [type=literal_error, input_value='summary', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/literal_error",
+   "content": "Error executing tool update_event: invalid arguments: updates.0.clear_fields.0 [literal_error]",
    "is_error": true,
+   "text": "Error executing tool update_event: invalid arguments: updates.0.clear_fields.0 [literal_error]",
    "tool": "update_event"
   },
   {
    "arguments": {
     "hints": "07:30"
    },
-   "content": "Error executing tool set_compaction_schedule_hints: 1 validation error for set_compaction_schedule_hintsArguments\nhints\n  Input should be a valid list [type=list_type, input_value='07:30', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/list_type",
+   "content": "Error executing tool set_compaction_schedule_hints: invalid arguments: hints [list_type]",
    "is_error": true,
+   "text": "Error executing tool set_compaction_schedule_hints: invalid arguments: hints [list_type]",
    "tool": "set_compaction_schedule_hints"
   },
   {
@@ -105,8 +115,9 @@
     "color": "#000000",
     "priority": "high"
    },
-   "content": "Error executing tool update_priority_color: 1 validation error for update_priority_colorArguments\npriority\n  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='high', input_type=str]\n    For further information visit https://errors.pydantic.dev/<version>/v/int_parsing",
+   "content": "Error executing tool update_priority_color: invalid arguments: priority [int_parsing]",
    "is_error": true,
+   "text": "Error executing tool update_priority_color: invalid arguments: priority [int_parsing]",
    "tool": "update_priority_color"
   },
   {
@@ -116,8 +127,9 @@
      "unknown_field": 1
     }
    },
-   "content": "Error executing tool create_location: 1 validation error for create_locationArguments\nlocation.unknown_field\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/<version>/v/unexpected_keyword_argument",
+   "content": "Error executing tool create_location: invalid arguments: location.unknown_field [unexpected_keyword_argument]",
    "is_error": true,
+   "text": "Error executing tool create_location: invalid arguments: location.unknown_field [unexpected_keyword_argument]",
    "tool": "create_location"
   }
  ],

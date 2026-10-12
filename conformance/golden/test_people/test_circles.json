@@ -17,6 +17,7 @@
     "created_id": "4709iy"
    },
    "is_error": false,
+   "text": "{\n  \"circle\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Close friends\",\n    \"note\": \"the inner ring\",\n    \"member_ids\": []\n  },\n  \"created_id\": \"4709iy\"\n}",
    "tool": "create_circle"
   },
   {
@@ -35,6 +36,7 @@
     "created_id": "bcyx3f"
    },
    "is_error": false,
+   "text": "{\n  \"circle\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"member_ids\": []\n  },\n  \"created_id\": \"bcyx3f\"\n}",
    "tool": "create_circle"
   },
   {
@@ -45,6 +47,7 @@
    },
    "content": "Error executing tool create_circle: there's already a circle named 'Close friends' (4709iy); circle names must be unique (a person may share one)",
    "is_error": true,
+   "text": "Error executing tool create_circle: there's already a circle named 'Close friends' (4709iy); circle names must be unique (a person may share one)",
    "tool": "create_circle"
   },
   {
@@ -78,6 +81,7 @@
     }
    },
    "is_error": false,
+   "text": "{\n  \"person\": {\n    \"id\": \"9vxzfr\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"4709iy\",\n      \"bcyx3f\"\n    ],\n    \"what_matters\": null,\n    \"traits\": null,\n    \"circle_names\": [\n      \"Close friends\",\n      \"Family\"\n    ],\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"9vxzfr\"\n}",
    "tool": "create_person"
   },
   {
@@ -91,6 +95,7 @@
    },
    "content": "Error executing tool create_person: person m8t0mg's circles ['nope'] aren't circles (get_circles lists them)",
    "is_error": true,
+   "text": "Error executing tool create_person: person m8t0mg's circles ['nope'] aren't circles (get_circles lists them)",
    "tool": "create_person"
   },
   {
@@ -114,6 +119,7 @@
     }
    ],
    "is_error": false,
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Close friends\",\n  \"note\": \"the inner ring\",\n  \"member_ids\": [\n    \"9vxzfr\"\n  ]\n}\n{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"member_ids\": [\n    \"9vxzfr\"\n  ]\n}",
    "tool": "get_circles"
   },
   {
@@ -138,6 +144,7 @@
     "what_matters": null
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"9vxzfr\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"4709iy\",\n    \"bcyx3f\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": [\n    \"Close friends\",\n    \"Family\"\n  ],\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -153,6 +160,7 @@
     "note": null
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"member_ids\": [\n    \"9vxzfr\"\n  ]\n}",
    "tool": "get_circle"
   },
   {
@@ -161,6 +169,7 @@
    },
    "content": "Error executing tool get_circle: There's no circle with the id or name 'Famly'; did you mean bcyx3f (Family)? (get_circles lists them)",
    "is_error": true,
+   "text": "Error executing tool get_circle: There's no circle with the id or name 'Famly'; did you mean bcyx3f (Family)? (get_circles lists them)",
    "tool": "get_circle"
   },
   {
@@ -180,6 +189,7 @@
     "note": null
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Relatives\",\n  \"note\": null,\n  \"member_ids\": [\n    \"9vxzfr\"\n  ]\n}",
    "tool": "update_circle"
   },
   {
@@ -200,6 +210,7 @@
     "note": null
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Close friends\",\n  \"note\": null,\n  \"member_ids\": [\n    \"9vxzfr\"\n  ]\n}",
    "tool": "update_circle"
   },
   {
@@ -217,6 +228,7 @@
     ]
    },
    "is_error": false,
+   "text": "{\n  \"deleted\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Close friends\",\n    \"note\": null\n  },\n  \"left\": [\n    \"9vxzfr\"\n  ]\n}",
    "tool": "delete_circle"
   },
   {
@@ -239,6 +251,7 @@
     "what_matters": null
    },
    "is_error": false,
+   "text": "{\n  \"id\": \"9vxzfr\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"bcyx3f\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"circle_names\": [\n    \"Relatives\"\n  ],\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -247,6 +260,7 @@
    },
    "content": "Error executing tool delete_circle: There's no circle with the id or name '4709iy' (get_circles lists them)",
    "is_error": true,
+   "text": "Error executing tool delete_circle: There's no circle with the id or name '4709iy' (get_circles lists them)",
    "tool": "delete_circle"
   }
  ],
