@@ -16,12 +16,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
 pub fn now() -> DateTime<FixedOffset> {
-    if let Ok(fixed) = std::env::var("CTT_NOW") {
-        if !fixed.is_empty() {
-            if let Ok(moment) = DateTime::parse_from_rfc3339(&fixed) {
-                return moment;
-            }
-        }
+    now_from(std::env::var("CTT_NOW").ok())
+}
+
+/// `now()`, with `CTT_NOW` as given.
+fn now_from(fixed: Option<String>) -> DateTime<FixedOffset> {
+    if let Some(moment) = fixed.filter(|f| !f.is_empty()).and_then(|f| DateTime::parse_from_rfc3339(&f).ok()) {
+        return moment;
     }
     Utc::now().fixed_offset()
 }
@@ -67,5 +68,22 @@ mod tests {
         };
         assert_eq!(token(1), "4709iy");
         assert_eq!(token(2), "bcyx3f");
+    }
+
+    #[test]
+    fn now_is_the_clock_unless_fixed() {
+        let before = Utc::now();
+        let now = now_from(None);
+        assert!(before <= now && now <= Utc::now());
+        assert_eq!(now_from(Some("2026-10-07T15:30:00-04:00".into())), DateTime::parse_from_rfc3339("2026-10-07T19:30:00Z").unwrap());
+    }
+
+    #[test]
+    fn random_tokens_are_random_unless_deterministic() {
+        // No test sets CTT_DETERMINISTIC_IDS: it's process-wide.
+        let alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
+        let tokens: std::collections::BTreeSet<String> = (0..20).map(|_| random_token(alphabet, 6)).collect();
+        assert_eq!(tokens.len(), 20);
+        assert!(tokens.iter().all(|t| t.len() == 6 && t.chars().all(|c| alphabet.contains(c))));
     }
 }

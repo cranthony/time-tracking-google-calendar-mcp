@@ -106,6 +106,14 @@ impl Google {
     }
 
     pub fn from_token_json(text: &str, token_path: &Path) -> anyhow::Result<Google> {
+        // conformance/'s fake Google (see conformance/fake_google.py).
+        let root = std::env::var("GOOGLE_API_ROOT").ok().filter(|r| !r.is_empty());
+        Google::from_token_json_at(text, token_path, root)
+    }
+
+    /// A client for the Google APIs under `root` (a fake's, for the unit
+    /// tests and conformance/), or Google's own with none.
+    pub fn from_token_json_at(text: &str, token_path: &Path, root: Option<String>) -> anyhow::Result<Google> {
         let raw: Map<String, Value> = serde_json::from_str(text).context("token.json isn't a JSON object")?;
         let text_of = |key: &str| raw.get(key).and_then(Value::as_str).map(str::to_string);
         let expiry = text_of("expiry").and_then(|e| parse_expiry(&e));
@@ -118,10 +126,9 @@ impl Google {
             expiry,
             raw,
         };
-        let (calendar_root, sheets_root) = match std::env::var("GOOGLE_API_ROOT") {
-            // conformance/'s fake Google (see conformance/fake_google.py).
-            Ok(root) if !root.is_empty() => (format!("{root}calendar/v3/"), root),
-            _ => ("https://www.googleapis.com/calendar/v3/".into(), "https://sheets.googleapis.com/".into()),
+        let (calendar_root, sheets_root) = match root {
+            Some(root) => (format!("{root}calendar/v3/"), root),
+            None => ("https://www.googleapis.com/calendar/v3/".into(), "https://sheets.googleapis.com/".into()),
         };
         let agent = ureq::AgentBuilder::new().timeout(std::time::Duration::from_secs(120)).build();
         Ok(Google { credentials: Mutex::new(credentials), token_path: token_path.to_path_buf(), agent, calendar_root, sheets_root })

@@ -965,3 +965,7 @@ pub fn settle_refs(decision: &EventDecision, settled: &Dict<AdditionSettled>) ->
     }
     out
 }
+
+#[cfg(test)]
+#[path = "proposals_tests.rs"]
+mod tests;

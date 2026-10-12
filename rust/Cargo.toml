@@ -31,3 +31,6 @@ uuid = { version = "1.17.0", features = ["v4", "v5"] }
 
 [profile.release]
 debug = false
+
+[dev-dependencies]
+rrule = "0.14.0"

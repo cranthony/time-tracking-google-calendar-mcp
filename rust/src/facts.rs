@@ -251,3 +251,62 @@ pub fn fact_problems(facts: &Facts) -> Vec<String> {
     }
     problems
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn facts(value: Value) -> Facts {
+        Facts::from_public(&value)
+    }
+
+    #[test]
+    fn round_trip_as_compact_json_under_short_keys() {
+        let given = facts(json!({"location_id": "home", "with_ids": ["sam"], "for_ids": ["mom"], "notes": {"self": "tired", "sam": "glad"}}));
+        assert_eq!(given.to_json(), r#"{"location":"home","with":["sam"],"for":["mom"],"notes":{"self":"tired","sam":"glad"}}"#);
+        assert_eq!(Facts::from_json(&given.to_json()), Some(given));
+    }
+
+    #[test]
+    fn from_json_ignores_unknown_keys_and_refuses_what_isnt_facts() {
+        assert_eq!(Facts::from_json(r#"{"with":["sam"],"mood":"good"}"#), Some(facts(json!({"with_ids": ["sam"]}))));
+        assert_eq!(Facts::from_json("not json"), None);
+        assert_eq!(Facts::from_json("[1]"), None);
+    }
+
+    #[test]
+    fn normalized_trims_dedupes_and_drops_blank_notes() {
+        let given = facts(json!({"location_id": " home ", "with_ids": [" sam", "sam", ""], "notes": {"sam": "  so  glad ", "self": "  "}}));
+        assert_eq!(given.normalized(), facts(json!({"location_id": "home", "with_ids": ["sam"], "notes": {"sam": "so glad"}})));
+    }
+
+    #[test]
+    fn empty_and_people() {
+        assert!(Facts::default().is_empty() && facts(json!({"with_ids": [], "notes": {}})).is_empty());
+        assert_eq!(facts(json!({"with_ids": ["a"], "for_ids": ["b"], "notes": {"self": "x", "a": "y"}})).people(), vec!["a", "b", "self"]);
+    }
+
+    #[test]
+    fn problems() {
+        let long = "x".repeat(MAX_NOTE_CHARS + 1);
+        for (given, problem) in [
+            (json!({"location_id": 3}), "\"location_id\" must be a location id"),
+            (json!({"with_ids": "sam"}), "\"with_ids\" must be a list of person ids"),
+            (json!({"with_ids": ["self"]}), "\"with_ids\" never names \"self\""),
+            (json!({"with_ids": ["sam"], "for_ids": ["sam"]}), "['sam'] can't be both \"with\" (there) and \"for\" (not there)"),
+            (json!({"notes": ["x"]}), "\"notes\" must be {person id: a note}"),
+            (json!({"notes": {"self": long}}), "\"notes\" for ['self'] must be at most"),
+            (json!({"for_ids": ["mom"], "notes": {"mom": "x"}}), "\"notes\" are for the people who were there"),
+        ] {
+            let found = fact_problems(&facts(given.clone()));
+            assert!(found.first().is_some_and(|f| f.starts_with(problem)), "{given}: {found:?}");
+        }
+    }
+
+    #[test]
+    fn well_formed_facts_have_no_problems() {
+        let given = facts(json!({"location_id": "home", "with_ids": ["sam"], "for_ids": ["mom"], "notes": {"self": "a", "sam": "b"}}));
+        assert!(fact_problems(&given).is_empty());
+    }
+}
