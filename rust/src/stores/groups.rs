@@ -3,24 +3,15 @@
 
 use crate::google::calendar::EventLabel;
 use crate::py;
-use crate::sheet::rows::{self, Kind, Row, RowType};
+use crate::sheet::rows::{self, RowType};
+use crate::stores::actions::{ActionGroup, ListedActionGroup};
 use crate::stores::locations::dedup;
 use anyhow::bail;
 use regex::Regex;
-use serde_json::{json, Map, Value};
+use serde_json::Value;
 use std::sync::LazyLock;
 
-pub const GROUP_ROW: RowType = RowType {
-    name: "ActionGroup",
-    fields: &[
-        ("id", Kind::Str),
-        ("group_id", Kind::Str),
-        ("name", Kind::Str),
-        ("background_color", Kind::Str),
-        ("priority", Kind::Int),
-        ("note", Kind::Str),
-    ],
-};
+pub const GROUP_ROW: RowType = <ActionGroup as rows::RowItem>::ROW_TYPE;
 pub const GROUP_CLEARABLE_FIELDS: [&str; 4] = ["group_id", "background_color", "priority", "note"];
 pub const MAX_NAME_LENGTH: usize = 50;
 
@@ -104,11 +95,11 @@ pub fn with_priority_labels(raw_labels: &[EventLabel], colors: Option<&Palette>)
 }
 
 /// Why `color` can't be a label's, or `None`.
-pub fn color_problem(color: &Value) -> Option<String> {
-    match color {
-        Value::String(text) if COLOR.is_match(text) => None,
-        Value::String(text) => Some(format!("{} isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"", py::repr(text))),
-        other => Some(format!("{} isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"", python_repr(other))),
+pub fn color_problem(color: &str) -> Option<String> {
+    if COLOR.is_match(color) {
+        None
+    } else {
+        Some(format!("{} isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"", py::repr(color)))
     }
 }
 
@@ -150,88 +141,142 @@ pub fn truthy(value: Option<&Value>) -> bool {
     }
 }
 
+/// What the group tree needs of an item placed in it: an action, or a
+/// group.
+pub trait Placed {
+    fn id(&self) -> Option<&str>;
+    fn group_id(&self) -> Option<&str>;
+    fn name(&self) -> Option<&str>;
+    fn background_color(&self) -> Option<&str>;
+    fn priority(&self) -> Option<i64>;
+    /// The item, if it's a group.
+    fn as_group(&self) -> Option<&ActionGroup> {
+        None
+    }
+}
+
+impl Placed for ActionGroup {
+    fn id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+    fn group_id(&self) -> Option<&str> {
+        self.group_id.as_deref()
+    }
+    fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+    fn background_color(&self) -> Option<&str> {
+        self.background_color.as_deref()
+    }
+    fn priority(&self) -> Option<i64> {
+        self.priority
+    }
+    fn as_group(&self) -> Option<&ActionGroup> {
+        Some(self)
+    }
+}
+
+/// Text that's set: Python's truthiness of a cell.
+pub fn set(text: Option<&str>) -> Option<&str> {
+    text.filter(|t| !t.is_empty())
+}
+
+/// `str()` of an optional text, as Python prints it.
+pub fn str_or_none(text: Option<&str>) -> String {
+    text.unwrap_or("None").to_string()
+}
+
+/// `repr()` of an optional text, as Python prints it.
+pub fn repr_or_none(text: Option<&str>) -> String {
+    text.map(py::repr).unwrap_or_else(|| "None".into())
+}
+
 /// Read-only lookups over one snapshot of the groups, and the palette
 /// that colors what has no color of its own.
 #[derive(Clone)]
 pub struct GroupTree {
-    pub groups: Vec<Row>,
+    pub groups: Vec<ActionGroup>,
     pub palette: Palette,
 }
 
 impl GroupTree {
-    pub fn new(groups: Vec<Row>, palette: Palette) -> GroupTree {
+    pub fn new(groups: Vec<ActionGroup>, palette: Palette) -> GroupTree {
         GroupTree { groups, palette }
     }
 
     /// `by_id`: the last group with this id (Python's dict keeps the last).
-    pub fn by_id(&self, id: &Value) -> Option<&Row> {
-        if !truthy(Some(id)) {
+    pub fn by_id(&self, id: &str) -> Option<&ActionGroup> {
+        if id.is_empty() {
             return None;
         }
-        self.groups.iter().rev().find(|g| truthy(g.get("id")) && g.get("id") == Some(id))
+        self.groups.iter().rev().find(|g| set(g.id.as_deref()) == Some(id))
     }
 
-    /// `item` and the groups it's inside, nearest first, stopping at a
-    /// missing group or a cycle.
-    pub fn chain<'a>(&'a self, item: &'a Row) -> Vec<&'a Row> {
-        let mut chain: Vec<&Row> = vec![item];
-        let mut next = item.get("group_id").filter(|g| truthy(Some(g))).and_then(|g| self.by_id(g));
+    /// The groups `item` is inside, nearest first, stopping at a missing
+    /// group or a cycle.
+    pub fn enclosing<'a>(&'a self, item: &'a dyn Placed) -> Vec<&'a ActionGroup> {
+        let mut found: Vec<&ActionGroup> = Vec::new();
+        let mut next = set(item.group_id()).and_then(|g| self.by_id(g));
         while let Some(group) = next {
             // `group not in chain`: dataclass equality, field by field.
-            if chain.iter().any(|c| *c == group) {
+            if item.as_group() == Some(group) || found.contains(&group) {
                 break;
             }
-            chain.push(group);
-            next = group.get("group_id").filter(|g| truthy(Some(g))).and_then(|g| self.by_id(g));
+            found.push(group);
+            next = set(group.group_id.as_deref()).and_then(|g| self.by_id(g));
         }
-        chain
+        found
     }
 
-    pub fn path(&self, item: &Row) -> String {
-        let chain = self.chain(item);
-        chain.iter().rev().map(|i| rows::text(i, "name").unwrap_or("")).collect::<Vec<_>>().join(" › ")
+    pub fn path(&self, item: &dyn Placed) -> String {
+        let mut names: Vec<&str> = vec![item.name().unwrap_or("")];
+        names.extend(self.enclosing(item).iter().map(|g| g.name.as_deref().unwrap_or("")));
+        names.reverse();
+        names.join(" › ")
     }
 
-    pub fn priority(&self, item: &Row) -> Option<Value> {
-        self.chain(item).iter().find_map(|i| i.get("priority").filter(|p| !p.is_null()).cloned())
+    pub fn priority(&self, item: &dyn Placed) -> Option<i64> {
+        item.priority().or_else(|| self.enclosing(item).iter().find_map(|g| g.priority))
     }
 
-    pub fn priority_int(&self, item: &Row) -> Option<i64> {
-        self.priority(item).and_then(|p| p.as_i64())
-    }
-
-    pub fn color(&self, item: &Row) -> Value {
-        let chain = self.chain(item);
-        if let Some(color) = chain.iter().find_map(|i| i.get("background_color").filter(|c| truthy(Some(c)))) {
-            return color.clone();
+    pub fn color(&self, item: &dyn Placed) -> String {
+        if let Some(color) = set(item.background_color()) {
+            return color.to_string();
         }
-        let priority = self.priority_int(item);
-        json!(palette_get(&self.palette, clamp(priority)).unwrap_or(default_color(priority)))
+        if let Some(color) = self.enclosing(item).iter().find_map(|g| set(g.background_color.as_deref())) {
+            return color.to_string();
+        }
+        let priority = self.priority(item);
+        palette_get(&self.palette, clamp(priority)).unwrap_or(default_color(priority)).to_string()
     }
 
-    pub fn listed(&self, group: &Row) -> Value {
-        let mut out: Map<String, Value> = group.clone();
-        out.insert("path".into(), json!(self.path(group)));
-        out.insert("effective_color".into(), self.color(group));
-        out.insert("effective_priority".into(), self.priority(group).unwrap_or(Value::Null));
-        Value::Object(out)
+    pub fn listed(&self, group: &ActionGroup) -> ListedActionGroup {
+        ListedActionGroup {
+            id: group.id.clone(),
+            group_id: group.group_id.clone(),
+            name: group.name.clone(),
+            background_color: group.background_color.clone(),
+            priority: group.priority,
+            note: group.note.clone(),
+            path: Some(self.path(group)),
+            effective_color: Some(self.color(group)),
+            effective_priority: self.priority(group),
+        }
     }
 
     /// Enclosing groups before those inside them, siblings in sheet order;
     /// groups inside a missing one last.
-    pub fn ordered(&self) -> Vec<&Row> {
-        let parent_of = |g: &Row| -> Option<Value> {
-            g.get("group_id").filter(|p| self.by_id(p).is_some()).cloned()
-        };
+    pub fn ordered(&self) -> Vec<&ActionGroup> {
+        let parent_of = |g: &ActionGroup| -> Option<String> { g.group_id.clone().filter(|p| self.by_id(p).is_some()) };
         let mut ordered: Vec<usize> = Vec::new();
-        fn visit(tree: &GroupTree, index: usize, ordered: &mut Vec<usize>, parent_of: &dyn Fn(&Row) -> Option<Value>) {
+        fn visit(tree: &GroupTree, index: usize, ordered: &mut Vec<usize>, parent_of: &dyn Fn(&ActionGroup) -> Option<String>) {
             if ordered.contains(&index) {
                 return;
             }
             ordered.push(index);
-            let id = tree.groups[index].get("id").cloned().unwrap_or(Value::Null);
+            let Some(id) = set(tree.groups[index].id.as_deref()) else { return };
             for (i, child) in tree.groups.iter().enumerate() {
-                if parent_of(child).as_ref() == Some(&id) && truthy(Some(&id)) {
+                if parent_of(child).as_deref() == Some(id) {
                     visit(tree, i, ordered, parent_of);
                 }
             }
@@ -245,20 +290,20 @@ impl GroupTree {
 }
 
 /// The group with this id, or else this name (ignoring case).
-pub fn find_group(groups: &[Row], id_or_name: &str) -> anyhow::Result<Row> {
-    let key = |row: &Row| rows::text(row, "name").unwrap_or_default().to_lowercase();
+pub fn find_group(groups: &[ActionGroup], id_or_name: &str) -> anyhow::Result<ActionGroup> {
+    let key = |g: &ActionGroup| g.name.as_deref().unwrap_or_default().to_lowercase();
     let by_name = |name: &str| groups.iter().rev().find(|g| key(g) == name).cloned();
-    if let Some(found) = groups.iter().find(|g| rows::text(g, "id") == Some(id_or_name)) {
+    if let Some(found) = groups.iter().find(|g| g.id.as_deref() == Some(id_or_name)) {
         return Ok(found.clone());
     }
     if let Some(found) = by_name(&id_or_name.to_lowercase()) {
         return Ok(found);
     }
-    let ids: Vec<String> = dedup(groups.iter().filter_map(|g| rows::text(g, "id").filter(|i| !i.is_empty()).map(str::to_string)));
+    let ids: Vec<String> = dedup(groups.iter().filter_map(|g| set(g.id.as_deref()).map(str::to_string)));
     let names: Vec<String> = dedup(groups.iter().map(key));
-    let mut close: Vec<Row> = Vec::new();
+    let mut close: Vec<ActionGroup> = Vec::new();
     for id in crate::difflib::get_close_matches(id_or_name, &ids, 3) {
-        if let Some(g) = groups.iter().rev().find(|g| rows::text(g, "id") == Some(id.as_str())) {
+        if let Some(g) = groups.iter().rev().find(|g| g.id.as_deref() == Some(id.as_str())) {
             close.push(g.clone());
         }
     }
@@ -267,7 +312,7 @@ pub fn find_group(groups: &[Row], id_or_name: &str) -> anyhow::Result<Row> {
             close.push(g);
         }
     }
-    let hints = dedup(close.iter().map(|g| format!("{} ({})", python_str(g.get("id")), python_str(g.get("name")))));
+    let hints = dedup(close.iter().map(|g| format!("{} ({})", str_or_none(g.id.as_deref()), str_or_none(g.name.as_deref()))));
     let hint = hints.join(", ");
     bail!(
         "There's no action group with the id or name {}{} (get_action_groups lists them)",
@@ -276,32 +321,29 @@ pub fn find_group(groups: &[Row], id_or_name: &str) -> anyhow::Result<Row> {
     )
 }
 
-fn is_whole_number(value: &Value) -> bool {
-    value.is_i64() || value.is_u64() || value.is_boolean()
-}
-
 /// Everything wrong with the groups as a whole, as phrases.
-pub fn group_problems(groups: &[Row]) -> Vec<String> {
+pub fn group_problems(groups: &[ActionGroup]) -> Vec<String> {
     let mut problems = Vec::new();
     let tree = GroupTree::new(groups.to_vec(), Vec::new());
-    let ids: Vec<Option<&str>> = groups.iter().map(|g| rows::text(g, "id")).collect();
-    let mut repeated: Vec<&str> = ids.iter().flatten().copied().filter(|i| !i.is_empty() && ids.iter().filter(|x| **x == Some(*i)).count() > 1).collect();
+    let ids: Vec<Option<&str>> = groups.iter().map(|g| g.id.as_deref()).collect();
+    let mut repeated: Vec<&str> =
+        ids.iter().flatten().copied().filter(|i| !i.is_empty() && ids.iter().filter(|x| **x == Some(*i)).count() > 1).collect();
     repeated.sort();
     repeated.dedup();
     for id in repeated {
         problems.push(format!("action group id {} is used more than once", py::repr(id)));
     }
-    let mut names: Vec<(String, Row)> = Vec::new();
+    let mut names: Vec<(String, &ActionGroup)> = Vec::new();
     for group in groups {
-        let id = group.get("id").filter(|i| truthy(Some(i)));
+        let id = set(group.id.as_deref());
         let label = match id {
-            Some(id) => format!("action group {}", python_str(Some(id))),
-            None => format!("action group {}", python_repr(group.get("name").unwrap_or(&Value::Null))),
+            Some(id) => format!("action group {id}"),
+            None => format!("action group {}", repr_or_none(group.name.as_deref())),
         };
         if id.is_none() {
-            problems.push(format!("an action group named {} has no id", python_repr(group.get("name").unwrap_or(&Value::Null))));
+            problems.push(format!("an action group named {} has no id", repr_or_none(group.name.as_deref())));
         }
-        match group.get("name").and_then(Value::as_str).filter(|n| !n.trim().is_empty()) {
+        match group.name.as_deref().filter(|n| !n.trim().is_empty()) {
             None => problems.push(format!("{label} needs a name")),
             Some(name) if name.chars().count() > MAX_NAME_LENGTH => {
                 problems.push(format!("{label}'s name {} is longer than {MAX_NAME_LENGTH} characters", py::repr(name)))
@@ -311,27 +353,23 @@ pub fn group_problems(groups: &[Row]) -> Vec<String> {
                 if let Some((_, other)) = names.iter().find(|(k, _)| *k == key) {
                     problems.push(format!(
                         "there's already an action group named {} ({}); group names must be unique (an action may share one)",
-                        python_repr(other.get("name").unwrap_or(&Value::Null)),
-                        python_str(other.get("id"))
+                        repr_or_none(other.name.as_deref()),
+                        str_or_none(other.id.as_deref())
                     ));
                 }
                 names.retain(|(k, _)| *k != key);
-                names.push((key, group.clone()));
+                names.push((key, group));
             }
         }
-        if let Some(parent) = group.get("group_id").filter(|p| !p.is_null()) {
+        if let Some(parent) = group.group_id.as_deref() {
             match tree.by_id(parent) {
-                None => problems.push(format!("{label} is inside {}, which isn't an action group", python_repr(parent))),
+                None => problems.push(format!("{label} is inside {}, which isn't an action group", py::repr(parent))),
                 Some(parent_group) => {
-                    if tree.chain(parent_group).iter().any(|g| g.get("id") == group.get("id")) {
+                    // Its parent, or a group its parent is inside, is it.
+                    if parent_group.id == group.id || tree.enclosing(parent_group).iter().any(|g| g.id == group.id) {
                         problems.push(format!("{label} can't be inside itself, directly or through other groups"));
                     }
                 }
-            }
-        }
-        if let Some(priority) = group.get("priority").filter(|p| !p.is_null()) {
-            if !is_whole_number(priority) {
-                problems.push(format!("{label}'s priority must be a whole number"));
             }
         }
     }

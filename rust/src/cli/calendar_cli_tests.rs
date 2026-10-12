@@ -318,7 +318,7 @@ fn create_and_update_action() {
     ok(&t, &["update_action", &id, "status=archived", "note=x"]);
     ok(&t, &["update_action", &id, "--clear", "note"]);
 
-    let action = t.app.actions().unwrap().get_action(&id).unwrap();
+    let action = serde_json::to_value(t.app.actions().unwrap().get_action(&id).unwrap()).unwrap();
     assert_eq!((action["status"].clone(), action["note"].clone(), action["priority"].clone()), (json!("archived"), Value::Null, json!(2)));
     failed(&t, &["update_action", &id], "usage", "update_action requires at least one key=value or --clear");
     failed(&t, &["create_action", "priority=1"], "exit", "error: ");

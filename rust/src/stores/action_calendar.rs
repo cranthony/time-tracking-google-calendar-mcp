@@ -3,8 +3,8 @@
 
 use crate::event::{Event, Moment};
 use crate::google::calendar::{CalendarClient, EventLabel};
-use crate::sheet::rows;
-use crate::stores::actions::{ActionTree, Actions};
+use crate::stores::actions::{ActionStatus, ActionTree, Actions};
+use crate::stores::groups::set;
 use crate::stores::groups::priority_label_id;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -81,7 +81,7 @@ impl ActionCalendar {
         let primary = doing.action_ids.as_ref().and_then(|ids| ids.first()).and_then(|id| tree.by_id(id));
         let mut held: Option<Vec<String>> = None;
         if let Some(primary) = primary {
-            if rows::text(primary, "status") == Some("proposed") && crate::stores::groups::truthy(primary.get("label_id")) {
+            if primary.status == Some(ActionStatus::Proposed) && set(primary.label_id.as_deref()).is_some() {
                 held = Some(self.client.list_event_labels()?.0.into_iter().filter_map(|l| l.id).collect());
             }
         }
@@ -131,7 +131,7 @@ fn fill_in(event: &Event, tree: &ActionTree) -> Event {
         None => {
             let Some(owner) = tree.action_for_label(event.event_label_id.as_deref()) else { return event };
             event.actions_from_label = true;
-            vec![crate::stores::groups::python_str(owner.get("id"))]
+            vec![owner.id.clone().unwrap_or_else(|| "None".into())]
         }
     };
     if action_ids.is_empty() {
@@ -153,7 +153,7 @@ pub fn with_action_label(event: &Event, tree: &ActionTree, inserting: bool, held
     }
     let none = if inserting { None } else { Some(String::new()) };
     let primary = ids.first().and_then(|id| tree.by_id(id));
-    let label_id = primary.and_then(|p| p.get("label_id")).filter(|l| crate::stores::groups::truthy(Some(l))).and_then(|l| l.as_str());
+    let label_id = primary.and_then(|p| set(p.label_id.as_deref()));
     let (Some(primary), Some(label_id)) = (primary, label_id) else {
         return Event { event_label_id: none, ..event.clone() };
     };
@@ -162,7 +162,7 @@ pub fn with_action_label(event: &Event, tree: &ActionTree, inserting: bool, held
     }
     let holds = match held {
         Some(held) => held.iter().any(|h| h == label_id),
-        None => rows::text(primary, "status") == Some("active"),
+        None => primary.status == Some(ActionStatus::Active),
     };
     Event { event_label_id: if holds { Some(label_id.to_string()) } else { none }, ..event.clone() }
 }

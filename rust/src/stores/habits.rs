@@ -6,7 +6,8 @@ use crate::py;
 use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};
 use crate::sheet::HABITS;
 use crate::stores::foundations::{self, foundation_problems, Node, NodesFn};
-use crate::stores::groups::{python_repr, python_str, truthy, GroupTree};
+use crate::stores::actions::{Action, ActionStatus};
+use crate::stores::groups::{python_repr, python_str, set, truthy, GroupTree};
 use crate::stores::locations::dedup;
 use crate::stores::people::TraitIds;
 use crate::stores::traits::person_traits_problems;
@@ -42,7 +43,7 @@ pub fn subject_id(habit_id: &str) -> String {
 pub type Scopes = Vec<(String, String)>;
 pub type ScopesFn = Arc<dyn Fn() -> anyhow::Result<Scopes> + Send + Sync>;
 
-pub fn action_scopes(actions: &[Row], groups: &GroupTree) -> Scopes {
+pub fn action_scopes(actions: &[Action], groups: &GroupTree) -> Scopes {
     let mut scopes: Scopes = Vec::new();
     let mut put = |id: String, path: String| {
         if let Some(slot) = scopes.iter_mut().find(|(k, _)| *k == id) {
@@ -52,14 +53,14 @@ pub fn action_scopes(actions: &[Row], groups: &GroupTree) -> Scopes {
         }
     };
     for g in &groups.groups {
-        if let Some(id) = g.get("id").filter(|i| truthy(Some(i))) {
-            put(python_str(Some(id)), groups.path(g));
+        if let Some(id) = set(g.id.as_deref()) {
+            put(id.to_string(), groups.path(g));
         }
     }
     for a in actions {
-        if let Some(id) = a.get("id").filter(|i| truthy(Some(i))) {
-            if rows::text(a, "status") != Some("deleted") {
-                put(python_str(Some(id)), groups.path(a));
+        if let Some(id) = set(a.id.as_deref()) {
+            if a.status != Some(ActionStatus::Deleted) {
+                put(id.to_string(), groups.path(a));
             }
         }
     }

@@ -133,7 +133,7 @@ pub fn check_additions(
                     row.insert("id".into(), json!(ref_of(a)));
                     row.insert("label_id".into(), json!(ref_of(a)));
                     status_or_active(&mut row);
-                    all.push(row);
+                    all.push(rows::item_of(row));
                 }
                 problems.extend(action_problems(&all, &store.groups()?.groups).into_iter().map(|p| format!("new actions: {p}")));
             }
@@ -192,13 +192,13 @@ pub fn create_additions(
     if let (false, Some(store)) = (additions.actions.is_empty(), actions) {
         for new in &additions.actions {
             let wanted = folded(text(new, "name").map(str::trim));
-            let found = store.all()?.into_iter().find(|a| folded(text(a, "name")) == wanted);
+            let found = store.all()?.into_iter().find(|a| folded(a.name.as_deref()) == wanted);
             let id = match found {
-                Some(found) => text(&found, "id").unwrap_or_default().to_string(),
+                Some(found) => found.id.unwrap_or_default(),
                 None => {
                     let mut row = with_fields(&ACTION_ROW, base_fields(new));
                     status_or_active(&mut row);
-                    created_id(&store.create_action(&row)?)
+                    store.create_action(&rows::item_of(row))?.created_id
                 }
             };
             put(&mut ids, ref_of(new), id);

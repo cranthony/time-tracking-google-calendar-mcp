@@ -322,8 +322,9 @@ fn tool_impl(mut function: ItemFn, writes: bool) -> syn::Result<Tokens> {
 
 /// A row of a row tab (see `ctt::sheet::rows`): its fields are the tab's
 /// columns, in order, each kept as text (`String`), a whole number (`i64`)
-/// or JSON (anything else), `Option` or not. `#[row(name = "...")]` names
-/// the kind for messages (default: the type's name). Adds the `RowItem`
+/// or JSON (anything else), `Option` or not -- or as text, with
+/// `#[row(text)]` (a literal kept as its name). `#[row(name = "...")]`
+/// names the kind for messages (default: the type's name). Adds the `RowItem`
 /// impl: the row type, and a check that a cell's value fits its field.
 #[proc_macro_derive(RowItem, attributes(row))]
 pub fn derive_row_item(input: TokenStream) -> TokenStream {
@@ -382,7 +383,18 @@ fn row_item_impl(input: &DeriveInput) -> syn::Result<Tokens> {
     let mut checks = Vec::new();
     for field in &named.named {
         let field_name = wire_name(field.ident.as_ref().unwrap());
-        let kind = format_ident!("{}", kind_of(&field.ty));
+        let mut as_text = false;
+        for attr in field.attrs.iter().filter(|a| a.path().is_ident("row")) {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("text") {
+                    as_text = true;
+                    Ok(())
+                } else {
+                    Err(meta.error("unknown row field option"))
+                }
+            })?;
+        }
+        let kind = format_ident!("{}", if as_text { "Str" } else { kind_of(&field.ty) });
         let ty = &field.ty;
         fields.push(quote!((#field_name, crate::sheet::rows::Kind::#kind)));
         checks.push(quote! {

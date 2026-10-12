@@ -160,12 +160,12 @@ fn suggests_close_matches() {
 #[test]
 fn scopes_are_actions_and_groups_with_their_paths_but_not_deleted_actions() {
     let groups = GroupTree::new(
-        vec![GROUP_ROW.from_value(&json!({"id": "creative", "name": "Creative"})), GROUP_ROW.from_value(&json!({"id": "g", "name": "Guitar", "group_id": "creative"}))],
+        vec![crate::sheet::rows::item_of(GROUP_ROW.from_value(&json!({"id": "creative", "name": "Creative"}))), crate::sheet::rows::item_of(GROUP_ROW.from_value(&json!({"id": "g", "name": "Guitar", "group_id": "creative"})))],
         palette(&[]),
     );
     let actions = vec![
-        ACTION_ROW.from_value(&json!({"id": "practice", "name": "Practice guitar", "group_id": "g", "status": "active"})),
-        ACTION_ROW.from_value(&json!({"id": "old", "name": "Old", "status": "deleted"})),
+        crate::sheet::rows::item_of(ACTION_ROW.from_value(&json!({"id": "practice", "name": "Practice guitar", "group_id": "g", "status": "active"}))),
+        crate::sheet::rows::item_of(ACTION_ROW.from_value(&json!({"id": "old", "name": "Old", "status": "deleted"}))),
     ];
 
     let expected: Scopes = vec![

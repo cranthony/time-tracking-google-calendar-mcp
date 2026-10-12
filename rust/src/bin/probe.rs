@@ -602,6 +602,11 @@ fn row(pairs: Value) -> Row {
     pairs.as_object().cloned().unwrap_or_default()
 }
 
+/// A typed item, from its JSON.
+fn typed<T: serde::de::DeserializeOwned>(pairs: Value) -> T {
+    serde_json::from_value(pairs).expect("an item of its type")
+}
+
 /// Run the metadata spreadsheet's newer tabs end to end against Google:
 /// actions and action groups, with their labels on the calendar, and people
 /// and circles, and locations -- the tabs of row-per-item data (sheet/rows.rs)
@@ -628,33 +633,33 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
     println!("\nActions");
     let actions = app.actions()?;
     println!("Scratch spreadsheet: https://docs.google.com/spreadsheets/d/{}", actions.spreadsheet_id());
-    let walk = text(&actions.create_action(&row(json!({"name": "Walk", "status": "active", "priority": 1})))?, "created_id");
-    let idea = text(&actions.create_action(&row(json!({"name": "Juggle", "note": "proposed by the assistant"})))?, "created_id");
+    let walk = actions.create_action(&typed(json!({"name": "Walk", "status": "active", "priority": 1})))?.created_id;
+    let idea = actions.create_action(&typed(json!({"name": "Juggle", "note": "proposed by the assistant"})))?.created_id;
     let all = actions.all()?;
-    let label_id = |id: &str| all.iter().find(|a| a["id"] == json!(id)).map(|a| text(&Value::Object(a.clone()), "label_id")).unwrap_or_default();
-    step("created two actions", all.len() == 2, all.iter().map(|a| a["name"].clone()).collect::<Vec<_>>())?;
+    let label_id = |id: &str| all.iter().find(|a| a.id.as_deref() == Some(id)).and_then(|a| a.label_id.clone()).unwrap_or_default();
+    step("created two actions", all.len() == 2, all.iter().map(|a| a.name.clone()).collect::<Vec<_>>())?;
     let (walk_label, idea_label) = (label_id(&walk), label_id(&idea));
     let now = labels()?;
     step("both hold labels on the calendar", label_name(&now, &walk_label).as_deref() == Some("Walk") && label_name(&now, &idea_label).as_deref() == Some("Juggle"), &now)?;
-    actions.update_action(&row(json!({"id": walk, "name": "Stroll"})), &[])?;
+    actions.update_action(&typed(json!({"id": walk, "name": "Stroll"})), &[])?;
     step("renaming renames the label", label_name(&labels()?, &walk_label).as_deref() == Some("Stroll"), ())?;
-    actions.update_action(&row(json!({"id": idea, "status": "archived"})), &[])?;
+    actions.update_action(&typed(json!({"id": idea, "status": "archived"})), &[])?;
     step("archiving removes the label", label_name(&labels()?, &idea_label).is_none(), ())?;
-    step("found by name", actions.get_action("stroll")?["id"] == json!(walk), ())?;
-    match actions.create_action(&row(json!({"name": "stroll"}))) {
+    step("found by name", actions.get_action("stroll")?.id.as_deref() == Some(walk.as_str()), ())?;
+    match actions.create_action(&typed(json!({"name": "stroll"}))) {
         Ok(_) => step("a duplicate name is refused", false, ())?,
         Err(e) => step("a duplicate name is refused", e.to_string().contains("already an action"), e.to_string())?,
     }
 
     println!("\nAction groups");
-    let outdoors = text(&actions.create_action_group(&row(json!({"name": "Outdoors", "background_color": "#0b8043"})))?, "created_id");
-    actions.update_action(&row(json!({"id": walk, "group_id": outdoors})), &[])?;
+    let outdoors = actions.create_action_group(&typed(json!({"name": "Outdoors", "background_color": "#0b8043"})))?.created_id;
+    actions.update_action(&typed(json!({"id": walk, "group_id": outdoors})), &[])?;
     let color = client.list_event_labels()?.0.into_iter().find(|l| l.id.as_deref() == Some(walk_label.as_str())).map(|l| l.background_color).unwrap_or_default();
     step("an action's label takes its group's color", color.to_lowercase() == "#0b8043", &color)?;
     actions.delete_action_group(&outdoors)?;
     step(
         "deleting the group moves the action to the top",
-        actions.get_action(&walk)?["group_id"].is_null() && actions.get_action_groups()?.as_array().is_some_and(|g| g.is_empty()),
+        actions.get_action(&walk)?.group_id.is_none() && actions.get_action_groups()?.is_empty(),
         (),
     )?;
 

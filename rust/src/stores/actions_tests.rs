@@ -4,9 +4,11 @@
 
 use super::*;
 use crate::sheet::{ACTIONS, ACTION_GROUPS};
-use crate::stores::groups::{default_color, priority_label_id, GROUP_ROW, PRIORITIES};
+use crate::stores::groups::{default_color, priority_label_id, PRIORITIES};
 use crate::testing::app::{test_app, TestApp};
+use crate::sheet::rows::{Row, RowItem};
 use crate::write_lock::WRITE_LOCK;
+use serde_json::{json, Value};
 
 struct Fixture {
     t: TestApp,
@@ -33,12 +35,17 @@ fn fixture_with_labels(labels: Vec<Value>) -> Fixture {
     Fixture { t, actions }
 }
 
-fn action(given: Value) -> Row {
-    ACTION_ROW.from_value(&given)
+fn action(given: Value) -> Action {
+    serde_json::from_value(given).unwrap()
 }
 
-fn group(given: Value) -> Row {
-    GROUP_ROW.from_value(&given)
+fn group(given: Value) -> ActionGroup {
+    serde_json::from_value(given).unwrap()
+}
+
+/// A typed result as JSON, to read as the tools' clients do.
+fn json_of<T: serde::Serialize>(value: T) -> Value {
+    serde_json::to_value(value).unwrap()
 }
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -46,9 +53,9 @@ fn strings(items: &[&str]) -> Vec<String> {
 }
 
 impl Fixture {
-    fn held<T>(&self, f: impl FnOnce(&Actions) -> anyhow::Result<T>) -> anyhow::Result<T> {
+    fn held<T: serde::Serialize>(&self, f: impl FnOnce(&Actions) -> anyhow::Result<T>) -> anyhow::Result<Value> {
         let _held = WRITE_LOCK.hold();
-        f(&self.actions)
+        f(&self.actions).map(json_of)
     }
 
     fn create(&self, given: Value) -> String {
@@ -64,7 +71,7 @@ impl Fixture {
     }
 
     fn all(&self) -> Vec<Row> {
-        self.actions.all().unwrap()
+        self.actions.all().unwrap().iter().map(RowItem::to_row).collect()
     }
 
     fn labels(&self) -> Vec<Value> {
@@ -96,7 +103,7 @@ impl Fixture {
     }
 
     fn get(&self, id_or_name: &str) -> Value {
-        self.actions.get_action(id_or_name).unwrap()
+        json_of(self.actions.get_action(id_or_name).unwrap())
     }
 }
 
@@ -122,7 +129,7 @@ fn adds_an_empty_actions_tab_once() {
         Actions::ensure(&calendar, &sheets, &f.t.spreadsheet()).unwrap()
     };
 
-    let names: Vec<String> = again.all().unwrap().iter().filter_map(|a| rows::text(a, "name").map(str::to_string)).collect();
+    let names: Vec<String> = again.all().unwrap().into_iter().filter_map(|a| a.name).collect();
     assert_eq!(names, strings(&["Walk"]));
     assert!(f.t.fake.tab_titles(&f.t.spreadsheet()).contains(&ACTIONS.1.to_string()));
 }
@@ -218,7 +225,8 @@ fn refuses_what_isnt_well_formed() {
     let cases = [
         (json!({}), "needs a name"),
         (json!({"name": "x".repeat(51)}), "longer than 50 characters"),
-        (json!({"name": "Walk", "status": "inactive"}), "status must be one of proposed, active, archived, deleted"),
+        // A status that isn't one can't be given: the schema refuses it,
+        // and a cell holding one makes the tab unreadable.
     ];
     let f = fixture();
 
@@ -249,7 +257,7 @@ fn archiving_frees_the_label_and_reactivating_restores_the_same_one() {
 /// unnamed label takes one, the priorities four.
 fn crowded(room: usize) -> Fixture {
     let mut labels = vec![json!({"id": "default-1", "backgroundColor": "#039be5"})];
-    labels.extend((0..MAX_LABELS - 5 - room).map(|i| json!({"id": format!("other-{i}"), "name": format!("Other {i}"), "backgroundColor": "#000000"})));
+    labels.extend((0..MAX_LABELS as usize - 5 - room).map(|i| json!({"id": format!("other-{i}"), "name": format!("Other {i}"), "backgroundColor": "#000000"})));
     fixture_with_labels(labels)
 }
 
@@ -268,7 +276,7 @@ fn proposed_actions_hold_labels_only_while_theres_room() {
     let run = f.create(json!({"name": "Run"}));
     let swim = f.create(json!({"name": "Swim"}));
 
-    let listed = f.actions.get_actions(None).unwrap();
+    let listed = json_of(f.actions.get_actions(None).unwrap());
     let holds: Vec<(String, bool)> = listed["actions"].as_array().unwrap().iter().map(|a| (a["name"].as_str().unwrap().to_string(), a["holds_label"].as_bool().unwrap())).collect();
     assert_eq!(holds, vec![("Walk".to_string(), true), ("Run".to_string(), true), ("Swim".to_string(), false)]);
 
@@ -404,8 +412,8 @@ fn lists_proposed_and_active_ones_by_default() {
     f.create(json!({"name": "Fly", "status": "deleted"}));
 
     let names = |listing: Value| -> Vec<String> { listing["actions"].as_array().unwrap().iter().map(|a| a["name"].as_str().unwrap().to_string()).collect() };
-    assert_eq!(names(f.actions.get_actions(None).unwrap()), strings(&["Walk", "Run"]));
-    assert_eq!(names(f.actions.get_actions(Some(&strings(&["archived", "deleted"]))).unwrap()), strings(&["Swim", "Fly"]));
+    assert_eq!(names(json_of(f.actions.get_actions(None).unwrap())), strings(&["Walk", "Run"]));
+    assert_eq!(names(json_of(f.actions.get_actions(Some(&strings(&["archived", "deleted"]))).unwrap())), strings(&["Swim", "Fly"]));
 }
 
 #[test]
@@ -414,7 +422,7 @@ fn counts_label_slots() {
     f.create(json!({"name": "Walk", "status": "active"}));
     f.create(json!({"name": "Swim", "status": "archived"}));
 
-    let listing = f.actions.get_actions(None).unwrap();
+    let listing = json_of(f.actions.get_actions(None).unwrap());
 
     // Walk's, the unnamed label and the four priorities'.
     assert_eq!((listing["label_slots_used"].as_u64(), listing["label_slots_total"].as_u64()), (Some(6), Some(200)));
@@ -439,7 +447,7 @@ fn finds_one_by_id_or_by_name_ignoring_case_and_suggests_close_matches() {
 // -- groups ----------------------------------------------------------------------------------------
 
 fn groups(f: &Fixture) -> Vec<Value> {
-    f.actions.get_action_groups().unwrap().as_array().unwrap().clone()
+    json_of(f.actions.get_action_groups().unwrap()).as_array().unwrap().clone()
 }
 
 #[test]
@@ -453,7 +461,7 @@ fn creates_groups_inside_groups() {
 
     assert_eq!(guitar_listed["path"], "Creative › Guitar");
     assert_eq!(guitar_listed["effective_priority"], 1);
-    assert_eq!(f.actions.get_action_group("guitar").unwrap()["id"], json!(guitar));
+    assert_eq!(json_of(f.actions.get_action_group("guitar").unwrap())["id"], json!(guitar));
     assert!(f.t.fake.tab_titles(&f.t.spreadsheet()).contains(&ACTION_GROUPS.1.to_string()));
 }
 
@@ -535,7 +543,7 @@ fn group_clears_fields() {
 
     f.held(|a| a.update_action_group(&group(json!({"id": inner})), &strings(&["group_id", "note"]))).unwrap();
 
-    let listed = f.actions.get_action_group(&inner).unwrap();
+    let listed = json_of(f.actions.get_action_group(&inner).unwrap());
     assert!(listed["group_id"].is_null() && listed["note"].is_null());
 }
 
@@ -605,7 +613,7 @@ fn the_tree_gives_priorities_names_and_labels() {
     assert_eq!((tree.priority(&cook), tree.priority("nope")), (Some(1), None));
     assert_eq!((tree.name(&cook), tree.name("nope")), ("Cook".to_string(), "(unknown action nope)".to_string()));
     let label = f.label_of(&cook);
-    assert_eq!(tree.action_for_label(Some(&label)).and_then(|a| rows::text(a, "id")), Some(cook.as_str()));
+    assert_eq!(tree.action_for_label(Some(&label)).and_then(|a| a.id.as_deref()), Some(cook.as_str()));
 }
 
 #[test]
@@ -627,7 +635,7 @@ fn the_tree_checks_ids_for_events() {
 fn priority_colors_start_out_as_the_defaults_and_are_made_with_the_first_labels() {
     let f = fixture();
     let colors: Vec<(i64, String)> =
-        f.actions.priority_colors().unwrap().as_array().unwrap().iter().map(|c| (c["priority"].as_i64().unwrap(), c["color"].as_str().unwrap().to_string())).collect();
+        json_of(f.actions.priority_colors().unwrap()).as_array().unwrap().iter().map(|c| (c["priority"].as_i64().unwrap(), c["color"].as_str().unwrap().to_string())).collect();
     assert_eq!(colors, PRIORITIES.iter().map(|p| (*p, default_color(Some(*p)).to_string())).collect::<Vec<_>>());
 
     f.create(json!({"name": "Walk", "status": "active"}));
@@ -646,7 +654,7 @@ fn recoloring_a_priority_recolors_the_actions_that_take_its_color() {
     f.create(json!({"name": "Run", "status": "active", "priority": 1, "background_color": "#222222"}));
     f.create(json!({"name": "Read", "status": "active", "priority": 3}));
 
-    let change = f.held(|a| a.set_priority_color(&json!(1), &json!("#123456"))).unwrap();
+    let change = f.held(|a| a.set_priority_color(1, "#123456")).unwrap();
 
     let ones: Vec<Value> = change["colors"].as_array().unwrap().iter().filter(|c| c["priority"] == 1).map(|c| c["color"].clone()).collect();
     assert_eq!(ones, vec![json!("#123456")]);
@@ -666,7 +674,7 @@ fn refuses_what_isnt_a_priority_or_color() {
     let f = fixture();
 
     for (priority, color, message) in [(4, "#123456", "no priority 4"), (1, "red", "#rrggbb"), (1, "#12345", "#rrggbb")] {
-        refused(f.held(|a| a.set_priority_color(&json!(priority), &json!(color))), message);
+        refused(f.held(|a| a.set_priority_color(priority, color)), message);
     }
 
     assert_eq!(f.label_writes(), 0);
