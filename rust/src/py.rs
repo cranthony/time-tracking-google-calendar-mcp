@@ -80,6 +80,16 @@ pub fn isoformat(moment: &DateTime<FixedOffset>) -> String {
     out
 }
 
+/// A datetime as pydantic writes it in JSON: `isoformat()`, but a zero
+/// offset as "Z".
+pub fn pydantic_datetime(moment: &DateTime<FixedOffset>) -> String {
+    let text = isoformat(moment);
+    match text.strip_suffix("+00:00") {
+        Some(rest) => format!("{rest}Z"),
+        None => text,
+    }
+}
+
 fn offset_text(seconds: i32) -> String {
     let sign = if seconds < 0 { '-' } else { '+' };
     let total = seconds.abs();

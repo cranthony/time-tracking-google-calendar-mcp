@@ -10,7 +10,12 @@ use crate::google::sheets::SheetsClient;
 use crate::google::Google;
 use crate::health::HealthRecorder;
 use crate::sheet::ensure_spreadsheet;
+use crate::stores::actions::Actions;
+use crate::stores::cancellations::Cancellations;
+use crate::stores::habits::{action_scopes, Habits};
 use crate::stores::locations::Locations;
+use crate::stores::people::People;
+use crate::stores::traits::Traits;
 use crate::write_lock::WRITE_LOCK;
 use anyhow::{anyhow, Context};
 use std::path::PathBuf;
@@ -47,6 +52,12 @@ pub struct App {
     google: OnceLock<Arc<Google>>,
     calendar: OnceLock<CalendarClient>,
     locations: OnceLock<Locations>,
+    actions: OnceLock<Actions>,
+    people: OnceLock<People>,
+    traits: OnceLock<Traits>,
+    habits: OnceLock<Habits>,
+    cancellations: OnceLock<Cancellations>,
+    me: OnceLock<std::sync::Weak<App>>,
 }
 
 /// Build a store once, under WRITE_LOCK -- checking again once the lock is
@@ -72,6 +83,12 @@ impl App {
             google: OnceLock::new(),
             calendar: OnceLock::new(),
             locations: OnceLock::new(),
+            actions: OnceLock::new(),
+            people: OnceLock::new(),
+            traits: OnceLock::new(),
+            habits: OnceLock::new(),
+            cancellations: OnceLock::new(),
+            me: OnceLock::new(),
         }
     }
 
@@ -102,6 +119,62 @@ impl App {
         let (calendar, sheets) = self.clients()?;
         let (id, _new) = ensure_spreadsheet(&calendar, &sheets)?;
         Ok((calendar, sheets, id))
+    }
+
+    /// Let stores reach back for others lazily (a person's traits are only
+    /// checked against the Traits tab when they're set).
+    pub fn set_self(self: &Arc<Self>) {
+        let _ = self.me.set(Arc::downgrade(self));
+    }
+
+    fn me(&self) -> Arc<App> {
+        self.me.get().and_then(std::sync::Weak::upgrade).expect("App::set_self was called")
+    }
+
+    pub fn actions(&self) -> anyhow::Result<Actions> {
+        built(&self.actions, || {
+            let (calendar, sheets, id) = self.spreadsheet()?;
+            Actions::ensure(&calendar, &sheets, &id)
+        })
+    }
+
+    pub fn traits(&self) -> anyhow::Result<Traits> {
+        built(&self.traits, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            Traits::ensure(&sheets, &id)
+        })
+    }
+
+    fn trait_ids_fn(&self) -> crate::stores::people::TraitIds {
+        let me = self.me();
+        Arc::new(move || me.traits()?.ids())
+    }
+
+    pub fn people(&self) -> anyhow::Result<People> {
+        built(&self.people, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            People::ensure(&sheets, &id, Some(self.trait_ids_fn()))
+        })
+    }
+
+    pub fn habits(&self) -> anyhow::Result<Habits> {
+        built(&self.habits, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            let me = self.me();
+            let scopes: crate::stores::habits::ScopesFn = Arc::new(move || {
+                let actions = me.actions()?;
+                Ok(action_scopes(&actions.all()?, &actions.groups()?))
+            });
+            Habits::ensure(&sheets, &id, Some(scopes), Some(self.trait_ids_fn()))
+        })
+    }
+
+    pub fn cancellations(&self) -> anyhow::Result<Cancellations> {
+        built(&self.cancellations, || {
+            let (actions, people, traits, habits) = (self.actions()?, self.people()?, self.traits()?, self.habits()?);
+            let (_, sheets, id) = self.spreadsheet()?;
+            Cancellations::ensure(&sheets, &id, people, traits, actions, Some(habits))
+        })
     }
 
     pub fn locations(&self) -> anyhow::Result<Locations> {

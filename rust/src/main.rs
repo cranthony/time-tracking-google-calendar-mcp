@@ -24,6 +24,7 @@ fn main() -> anyhow::Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
         .init();
     let app = Arc::new(app::App::new(app::Config::from_env()));
+    app.set_self();
     let transport = std::env::var("MCP_TRANSPORT").unwrap_or_else(|_| "stdio".into());
     let runtime = tokio::runtime::Builder::new_multi_thread().enable_all().build()?;
     match transport.as_str() {

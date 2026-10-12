@@ -4,6 +4,7 @@
 //! sees as "Error executing tool <name>: <message>".
 
 mod places;
+mod stores;
 
 use crate::app::App;
 use crate::google::calendar::{is_label_conflict, is_time_zone_not_set};
@@ -75,6 +76,33 @@ fn registry() -> &'static [Tool] {
         Tool { name: "create_location", writes: true, run: places::create_location },
         Tool { name: "update_location", writes: true, run: places::update_location },
         Tool { name: "delete_location", writes: true, run: places::delete_location },
+        Tool { name: "get_actions", writes: false, run: stores::get_actions },
+        Tool { name: "get_action", writes: false, run: stores::get_action },
+        Tool { name: "create_action", writes: true, run: stores::create_action },
+        Tool { name: "update_action", writes: true, run: stores::update_action },
+        Tool { name: "get_action_groups", writes: false, run: stores::get_action_groups },
+        Tool { name: "get_action_group", writes: false, run: stores::get_action_group },
+        Tool { name: "create_action_group", writes: true, run: stores::create_action_group },
+        Tool { name: "update_action_group", writes: true, run: stores::update_action_group },
+        Tool { name: "delete_action_group", writes: true, run: stores::delete_action_group },
+        Tool { name: "get_priority_colors", writes: false, run: stores::get_priority_colors },
+        Tool { name: "update_priority_color", writes: true, run: stores::update_priority_color },
+        Tool { name: "get_people", writes: false, run: stores::get_people },
+        Tool { name: "get_person", writes: false, run: stores::get_person },
+        Tool { name: "create_person", writes: true, run: stores::create_person },
+        Tool { name: "update_person", writes: true, run: stores::update_person },
+        Tool { name: "get_circles", writes: false, run: stores::get_circles },
+        Tool { name: "get_circle", writes: false, run: stores::get_circle },
+        Tool { name: "create_circle", writes: true, run: stores::create_circle },
+        Tool { name: "update_circle", writes: true, run: stores::update_circle },
+        Tool { name: "delete_circle", writes: true, run: stores::delete_circle },
+        Tool { name: "get_traits", writes: false, run: stores::get_traits },
+        Tool { name: "create_trait", writes: true, run: stores::create_trait },
+        Tool { name: "update_trait", writes: true, run: stores::update_trait },
+        Tool { name: "get_habits", writes: false, run: stores::get_habits },
+        Tool { name: "get_habit", writes: false, run: stores::get_habit },
+        Tool { name: "create_habit", writes: true, run: stores::create_habit },
+        Tool { name: "update_habit", writes: true, run: stores::update_habit },
     ]
 }
 
@@ -99,6 +127,32 @@ pub fn run(app: &Arc<App>, name: &str, arguments: Value) -> Result<Outcome, Tool
         ))),
         Err(other) => Err(other),
     }
+}
+
+/// Refuse trait parts whose "action" isn't an action (not a deleted one)
+/// or a group -- a trait's own list, or a person's or habit's
+/// {trait id: [parts]}.
+pub fn check_part_actions(app: &App, parts: Option<&Value>) -> Result<(), ToolError> {
+    let listed: Vec<&Value> = match parts {
+        Some(Value::Object(map)) => map.values().filter_map(Value::as_array).flatten().collect(),
+        Some(Value::Array(items)) => items.iter().collect(),
+        _ => Vec::new(),
+    };
+    let named: Vec<&str> = listed.iter().filter_map(|p| p.get("action").and_then(Value::as_str)).collect();
+    if named.is_empty() {
+        return Ok(());
+    }
+    let actions = app.actions()?;
+    let scopes = crate::stores::habits::action_scopes(&actions.all()?, &actions.groups()?);
+    let unknown: Vec<String> =
+        named.iter().filter(|a| !scopes.iter().any(|(k, _)| k == *a)).map(|a| crate::py::repr(a)).collect();
+    if !unknown.is_empty() {
+        return Err(ToolError::Message(format!(
+            "A part's action {} isn't an action or action group (get_actions and get_action_groups list them)",
+            unknown.join(", ")
+        )));
+    }
+    Ok(())
 }
 
 pub fn record_timing(app: &Arc<App>, name: &str, work_ms: i64, ok: bool) {
