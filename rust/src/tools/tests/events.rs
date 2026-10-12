@@ -6,7 +6,13 @@ use crate::facts::Facts;
 use crate::sheet::{ACTIONS, LOCATIONS, PEOPLE};
 use crate::stores::actions::{ActionTree, ACTION_ROW};
 use crate::stores::groups::{palette, GroupTree};
-use crate::tools::events::{public_event, to_event};
+use crate::tools::events::{public_event, PublicEvent};
+
+/// The event a client sends as `value`, as the event tools write it.
+fn to_event(value: &Value, clear_fields: &[crate::tools::events::EventField]) -> Result<Event, crate::tools::ToolError> {
+    let sent: PublicEvent = serde_json::from_value(value.clone()).expect("a PublicEvent");
+    crate::tools::events::to_event(&sent, clear_fields)
+}
 
 fn action(id: &str, name: &str, priority: Option<i64>) -> Value {
     json!({"id": id, "name": name, "status": "active", "label_id": format!("label-{id}"), "priority": priority})

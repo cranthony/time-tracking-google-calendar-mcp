@@ -1,9 +1,9 @@
 //! The compaction tools: compacting notes into the calendar as proposals
 //! the user confirms, judging the events it settles, and correcting notes.
 
-use super::events::{moment, to_json, EventCancel, Facts as PublicFacts, NoteWithId, NotedTime, PublicEvent};
-use super::{from_store, ToolError, ToolResult};
-use crate::contract::{tool, DateTimeText, Schema};
+use super::events::{when_given, EventCancel, Facts as PublicFacts, NoteWithId, NotedTime, PublicEvent};
+use super::{from_store, texts, to_row, ToolError};
+use crate::contract::{tool, wire_text, DateTimeText, Schema};
 use crate::app::App;
 use crate::compaction::additions::Additions;
 use crate::compaction::compactor::{compaction_error, NoteCompactor};
@@ -12,8 +12,13 @@ use crate::compaction::plan::EventDecision;
 use crate::compaction::proposals;
 use crate::facts::Facts;
 use crate::py;
+use crate::sheet::rows::{Row, RowType};
 use crate::stores::action_calendar::ActionCalendar;
+use crate::stores::actions::ACTION_ROW;
+use crate::stores::locations::ROW as LOCATION_ROW;
+use crate::stores::people::PERSON_ROW;
 use indexmap::IndexMap;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
@@ -206,7 +211,7 @@ pub enum ProposalUpdateClearFields {
     #[serde(rename = "priority")]
     Priority,
     #[serde(rename = "facts")]
-    PublicFacts,
+    Facts,
     #[serde(rename = "judgments")]
     Judgments,
 }
@@ -868,11 +873,6 @@ pub struct JudgmentsResult {
     pub message: String,
 }
 
-/// A tool's typed parameters, as the JSON the compactor's calls read.
-fn arguments(pairs: Vec<(&str, Value)>) -> Map<String, Value> {
-    pairs.into_iter().map(|(name, value)| (name.to_string(), value)).collect()
-}
-
 // -- the compactor ------------------------------------------------------------
 
 /// `get_note_compactor`: the compactor over the server's stores, built in
@@ -923,69 +923,186 @@ fn rejected(tool: &str, error: anyhow::Error) -> ToolError {
     }
 }
 
-fn text(value: &Value, key: &str) -> Option<String> {
-    value.get(key).and_then(Value::as_str).map(str::to_string)
-}
-
-fn strings(value: Option<&Value>) -> Option<Vec<String>> {
-    value.filter(|v| !v.is_null()).and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
-}
-
-fn list<'a>(args: &'a Map<String, Value>, key: &str) -> Vec<&'a Value> {
-    args.get(key).and_then(Value::as_array).map(|a| a.iter().collect()).unwrap_or_default()
-}
-
-fn facts_of(value: &Value) -> Option<Facts> {
-    value.get("facts").filter(|f| !f.is_null()).map(Facts::from_public)
-}
-
 /// A compact_notes update or create, as the decision it makes.
-fn decision_of(value: &Value, action: &str) -> Result<EventDecision, ToolError> {
+#[allow(clippy::too_many_arguments)]
+fn decision(
+    action: &str,
+    event_id: Option<String>,
+    summary: Option<String>,
+    start: Option<&DateTimeText>,
+    end: Option<&DateTimeText>,
+    start_note: Option<String>,
+    end_note: Option<String>,
+    annotate: Option<String>,
+    action_ids: Option<Vec<String>>,
+    facts: Option<&PublicFacts>,
+    key: Option<String>,
+) -> Result<EventDecision, ToolError> {
     Ok(EventDecision {
         action: action.into(),
-        event_id: if action == "keep" { text(value, "event_id") } else { None },
-        summary: text(value, "summary"),
-        start: moment(value.get("start"))?,
-        end: moment(value.get("end"))?,
-        start_note: text(value, "start_note"),
-        end_note: text(value, "end_note"),
-        annotate: text(value, "annotate"),
-        action_ids: strings(value.get("action_ids")),
-        facts: facts_of(value),
-        key: if action == "create" { text(value, "key") } else { None },
+        event_id,
+        summary,
+        start: when_given(start)?,
+        end: when_given(end)?,
+        start_note,
+        end_note,
+        annotate,
+        action_ids,
+        facts: facts.map(Facts::from),
+        key,
         ..Default::default()
     })
 }
 
-fn cancel_of(value: &Value) -> EventDecision {
+fn update_decision(u: &CompactionUpdate) -> Result<EventDecision, ToolError> {
+    decision(
+        "keep",
+        Some(u.event_id.clone()),
+        u.summary.clone(),
+        u.start.as_ref(),
+        u.end.as_ref(),
+        u.start_note.clone(),
+        u.end_note.clone(),
+        u.annotate.clone(),
+        u.action_ids.clone(),
+        u.facts.as_ref(),
+        None,
+    )
+}
+
+fn create_decision(c: &CompactionCreate) -> Result<EventDecision, ToolError> {
+    decision(
+        "create",
+        None,
+        Some(c.summary.clone()),
+        c.start.as_ref(),
+        c.end.as_ref(),
+        c.start_note.clone(),
+        c.end_note.clone(),
+        c.annotate.clone(),
+        c.action_ids.clone(),
+        c.facts.as_ref(),
+        c.key.clone(),
+    )
+}
+
+fn cancel_decision(c: &EventCancel) -> EventDecision {
     EventDecision {
-        event_id: text(value, "event_id"),
-        counts_against_follow_through: value.get("counts_against_follow_through").and_then(Value::as_bool),
+        event_id: Some(c.event_id.clone()),
+        counts_against_follow_through: Some(c.counts_against_follow_through),
         ..EventDecision::new("cancel")
     }
 }
 
-fn recap_of(value: &Value) -> proposals::Recap {
-    let points = |key: &str| -> Vec<proposals::RecapPoint> {
-        value
-            .get(key)
-            .and_then(Value::as_array)
-            .map(|items| {
-                items
-                    .iter()
-                    .map(|p| proposals::RecapPoint {
-                        text: text(p, "text").unwrap_or_default(),
-                        event_ids: strings(p.get("event_ids")).unwrap_or_default(),
-                        note_ids: strings(p.get("note_ids")).unwrap_or_default(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
+fn stored_recap(recap: &Recap) -> proposals::Recap {
+    let points = |given: &[RecapPoint]| -> Vec<proposals::RecapPoint> {
+        given
+            .iter()
+            .map(|p| proposals::RecapPoint { text: p.text.clone(), event_ids: p.event_ids.clone(), note_ids: p.note_ids.clone() })
+            .collect()
     };
-    proposals::Recap { overview: text(value, "overview").unwrap_or_default(), did: points("did"), unsure: points("unsure") }
+    proposals::Recap { overview: recap.overview.clone(), did: points(&recap.did), unsure: points(&recap.unsure) }
 }
 
-fn run_get_compaction_status(app: &App, _args: &Map<String, Value>) -> ToolResult {
+/// An addition as the compactor keeps it: the store's row, and its ref.
+fn addition_row<T: Serialize>(row_type: RowType, item: &T, reference: &str) -> Row {
+    let mut row = to_row(row_type, item);
+    row.insert("ref".into(), json!(reference));
+    row
+}
+
+/// What the client sees of a compactor's result (as the tool's type).
+fn shown<T: DeserializeOwned>(tool: &str, result: anyhow::Result<Value>) -> Result<T, ToolError> {
+    match result {
+        Ok(value) => from_store(value),
+        Err(e) => Err(rejected(tool, e)),
+    }
+}
+
+/// An amend_proposal update or create, as the decision it makes -- or
+/// what's wrong with it.
+fn proposal_decision(
+    event: &PublicEvent,
+    action: &str,
+    start_note: Option<String>,
+    end_note: Option<String>,
+    clear_fields: &[String],
+) -> Result<EventDecision, anyhow::Error> {
+    let mut problems: Vec<String> = Vec::new();
+    if event.is_cancelled {
+        problems.push("to cancel an event, put it in `cancels`".into());
+    }
+    if event.judgments.is_some() || clear_fields.iter().any(|c| c == "judgments") {
+        problems.push("judgments are made once a proposal's applied: leave them out".into());
+    }
+    if clear_fields.iter().any(|c| c == "priority") {
+        problems.push("a proposal can't clear an event's priority: set one".into());
+    }
+    let id = event.id.clone().filter(|i| !i.is_empty());
+    if action == "keep" && id.is_none() {
+        problems.push("an update needs the event's id (or a new event's key)".into());
+    }
+    let set = [("description", event.description.is_some()), ("location", event.location.is_some()), ("facts", event.facts.is_some())];
+    let mut both: Vec<&str> = set.iter().filter(|(f, given)| *given && clear_fields.iter().any(|c| c == f)).map(|(f, _)| *f).collect();
+    both.sort();
+    if !both.is_empty() {
+        problems.push(format!("{}: set or cleared, not both", both.join(", ")));
+    }
+    if !problems.is_empty() {
+        let who = crate::compaction::plan::repr_opt(id.as_deref().or(event.summary.as_deref()));
+        let issues: Vec<crate::compaction::plan::Issue> =
+            problems.iter().map(|p| crate::compaction::plan::Issue::plain(format!("{who}: {p}"))).collect();
+        return Err(crate::compaction::plan::error_of(&issues, "malformed_decision").into());
+    }
+    let cleared = |name: &str| clear_fields.iter().any(|c| c == name);
+    Ok(EventDecision {
+        action: action.into(),
+        event_id: if action == "keep" { event.id.clone() } else { None },
+        summary: event.summary.clone(),
+        start: when_given(event.start.as_ref())?,
+        end: when_given(event.end.as_ref())?,
+        start_note,
+        end_note,
+        action_ids: if event.actions_from_label { None } else { event.action_ids.clone() },
+        facts: if cleared("facts") { Some(Facts::default()) } else { event.facts.as_ref().map(Facts::from) },
+        description: if cleared("description") { Some(String::new()) } else { event.description.clone() },
+        location: if cleared("location") { Some(String::new()) } else { event.location.clone() },
+        priority: event.priority,
+        ..Default::default()
+    })
+}
+
+/// An amend_proposal create, as the event it describes.
+fn proposed_event(c: &ProposalCreate) -> PublicEvent {
+    PublicEvent {
+        id: c.id.clone(),
+        summary: c.summary.clone(),
+        start: c.start.clone(),
+        end: c.end.clone(),
+        description: c.description.clone(),
+        location: c.location.clone(),
+        priority: c.priority,
+        action_ids: c.action_ids.clone(),
+        action_names: c.action_names.clone(),
+        actions_from_label: c.actions_from_label,
+        event_label_id: c.event_label_id.clone(),
+        is_cancelled: c.is_cancelled,
+        effective_priority: c.effective_priority,
+        is_end_of_day_sleep: c.is_end_of_day_sleep,
+        recurring_event_id: c.recurring_event_id.clone(),
+        facts: c.facts.clone(),
+        judgments: c.judgments.clone(),
+        ..Default::default()
+    }
+}
+
+// -- the tools ------------------------------------------------------------------
+
+/// When notes were last compacted into the calendar, the latest note
+/// compacted, whether that compaction still has judgments to make, and
+/// the open proposal, if any. Read-only.
+#[tool]
+pub fn get_compaction_status(app: &App) -> Result<CompactionStatus, ToolError> {
     let compactor = compactor(app)?;
     compactor.prefetch()?;
     let (_notes, latest) = app.noted_time_sheet()?.read_with_latest_compacted()?;
@@ -999,280 +1116,7 @@ fn run_get_compaction_status(app: &App, _args: &Map<String, Value>) -> ToolResul
     out.insert("latest_compacted_note".into(), latest.map(|n| n.to_json()).unwrap_or(Value::Null));
     out.insert("judgments_pending".into(), json!(due.filter(|d| !d.events.is_empty()).map(|d| d.compaction_id)));
     out.insert("proposal".into(), compactor.proposal_summary()?.map(|p| p.to_json()).unwrap_or(Value::Null));
-    Ok(Value::Object(out))
-}
-
-fn run_edit_note(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    let timestamp = moment(args.get("timestamp"))?;
-    let description = args.get("description").and_then(Value::as_str);
-    match compactor.edit_note(super::args_str(args, "note_id"), timestamp, description) {
-        Ok(note) => Ok(note.with_id()),
-        Err(e) => Err(rejected("edit_note", e)),
-    }
-}
-
-fn run_delete_note(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    match compactor.delete_note(super::args_str(args, "note_id")) {
-        Ok(note) => Ok(note.to_json()),
-        Err(e) => Err(rejected("delete_note", e)),
-    }
-}
-
-fn run_prepare_compaction(app: &App, _args: &Map<String, Value>) -> ToolResult {
-    Ok(compactor(app)?.prepare()?.to_json())
-}
-
-fn run_compact_notes(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    let mut decisions: Vec<EventDecision> = Vec::new();
-    for u in list(args, "updates") {
-        decisions.push(decision_of(u, "keep")?);
-    }
-    for c in list(args, "creates") {
-        decisions.push(decision_of(c, "create")?);
-    }
-    decisions.extend(list(args, "cancels").into_iter().map(cancel_of));
-    let values = |key: &str| -> Vec<Value> { list(args, key).into_iter().cloned().collect() };
-    let additions = Additions::new(&values("new_actions"), &values("new_people"), &values("new_locations"));
-    let replies: Vec<proposals::FeedbackReply> = list(args, "replies")
-        .into_iter()
-        .map(|r| proposals::FeedbackReply { feedback_id: text(r, "feedback_id").unwrap_or_default(), reply: text(r, "reply").unwrap_or_default() })
-        .collect();
-    let annotate: Vec<(String, String)> = list(args, "annotate_notes")
-        .into_iter()
-        .map(|a| (text(a, "note_id").unwrap_or_default(), text(a, "event_id").unwrap_or_default()))
-        .collect();
-    let create_refs: Vec<Option<String>> = list(args, "creates").into_iter().map(|c| text(c, "ref")).collect();
-    let result = compactor.dry_run(
-        decisions,
-        strings(args.get("ignore_notes")),
-        additions,
-        args.get("proposal_id").and_then(Value::as_str).map(str::to_string),
-        args.get("revision").and_then(Value::as_i64),
-        replies,
-        annotate,
-        args.get("recap").filter(|r| !r.is_null()).map(recap_of),
-        create_refs,
-    );
-    match result {
-        Ok(result) => Ok(result.to_json()),
-        Err(e) => Err(rejected("compact_notes", e)),
-    }
-}
-
-fn run_get_proposal(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    match compactor.get_proposal(args.get("proposal_id").and_then(Value::as_str), args.get("since_revision").and_then(Value::as_i64)) {
-        Ok(p) => Ok(p.to_json()),
-        Err(e) => Err(rejected("get_proposal", e)),
-    }
-}
-
-/// `_proposal_decision`: an amend_proposal update or create, as the
-/// decision it makes.
-fn proposal_decision(
-    event: &Value,
-    action: &str,
-    start_note: Option<String>,
-    end_note: Option<String>,
-    clear_fields: &[String],
-) -> Result<EventDecision, anyhow::Error> {
-    let mut problems: Vec<String> = Vec::new();
-    if event.get("is_cancelled").and_then(Value::as_bool).unwrap_or(false) {
-        problems.push("to cancel an event, put it in `cancels`".into());
-    }
-    if event.get("judgments").is_some_and(|j| !j.is_null()) || clear_fields.iter().any(|c| c == "judgments") {
-        problems.push("judgments are made once a proposal's applied: leave them out".into());
-    }
-    if clear_fields.iter().any(|c| c == "priority") {
-        problems.push("a proposal can't clear an event's priority: set one".into());
-    }
-    let id = text(event, "id").filter(|i| !i.is_empty());
-    if action == "keep" && id.is_none() {
-        problems.push("an update needs the event's id (or a new event's key)".into());
-    }
-    let mut both: Vec<&str> = ["description", "location", "facts"]
-        .into_iter()
-        .filter(|f| clear_fields.iter().any(|c| c == f) && event.get(*f).is_some_and(|v| !v.is_null()))
-        .collect();
-    both.sort();
-    if !both.is_empty() {
-        problems.push(format!("{}: set or cleared, not both", both.join(", ")));
-    }
-    if !problems.is_empty() {
-        let who = crate::compaction::plan::repr_opt(id.as_deref().or(event.get("summary").and_then(Value::as_str)));
-        let issues: Vec<crate::compaction::plan::Issue> =
-            problems.iter().map(|p| crate::compaction::plan::Issue::plain(format!("{who}: {p}"))).collect();
-        return Err(crate::compaction::plan::error_of(&issues, "malformed_decision").into());
-    }
-    let cleared = |name: &str| clear_fields.iter().any(|c| c == name);
-    let from_label = event.get("actions_from_label").and_then(Value::as_bool).unwrap_or(false);
-    Ok(EventDecision {
-        action: action.into(),
-        event_id: if action == "keep" { text(event, "id") } else { None },
-        summary: text(event, "summary"),
-        start: moment(event.get("start"))?,
-        end: moment(event.get("end"))?,
-        start_note,
-        end_note,
-        action_ids: if from_label { None } else { strings(event.get("action_ids")) },
-        facts: if cleared("facts") { Some(Facts::default()) } else { facts_of(event) },
-        description: if cleared("description") { Some(String::new()) } else { text(event, "description") },
-        location: if cleared("location") { Some(String::new()) } else { text(event, "location") },
-        priority: event.get("priority").and_then(Value::as_i64),
-        ..Default::default()
-    })
-}
-
-fn run_amend_proposal(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    let allow = args.get("allow_compacted_changes").and_then(Value::as_bool).unwrap_or(false);
-    let run = || -> anyhow::Result<Value> {
-        let mut decisions: Vec<EventDecision> = Vec::new();
-        for u in list(args, "updates") {
-            let clear: Vec<String> = strings(u.get("clear_fields")).unwrap_or_default();
-            decisions.push(proposal_decision(&u["event"], "keep", text(u, "start_note"), text(u, "end_note"), &clear)?);
-        }
-        for c in list(args, "creates") {
-            decisions.push(proposal_decision(c, "create", text(c, "start_note"), text(c, "end_note"), &[])?);
-        }
-        decisions.extend(list(args, "cancels").into_iter().map(cancel_of));
-        if allow {
-            for d in decisions.iter_mut() {
-                d.allow_history = Some(true);
-            }
-        }
-        let notes: Vec<proposals::NoteEdit> = list(args, "notes").into_iter().map(proposals::NoteEdit::from_value).collect();
-        let additions: Vec<proposals::AdditionChoice> = list(args, "additions").into_iter().map(proposals::AdditionChoice::from_value).collect();
-        let through = moment(args.get("through"))?;
-        let proposal = compactor.amend(
-            super::args_str(args, "proposal_id"),
-            args.get("revision").and_then(Value::as_i64).unwrap_or(0),
-            decisions,
-            strings(args.get("as_planned")).unwrap_or_default(),
-            notes,
-            additions,
-            through,
-        )?;
-        Ok(proposal.to_json())
-    };
-    match run() {
-        Ok(value) => Ok(value),
-        Err(e) => {
-            if let Some(refusal) = compaction_error(&e) {
-                if refusal.categories.iter().any(|c| c == "compacted") && !allow {
-                    let mut wrapped = refusal.clone();
-                    wrapped.message = format!(
-                        "{}\n\nIt changes history, which needs the user's approval: send it again with allow_compacted_changes once they've given it.",
-                        refusal.message
-                    );
-                    return Err(rejected("amend_proposal", wrapped.into()));
-                }
-            }
-            Err(rejected("amend_proposal", e))
-        }
-    }
-}
-
-fn run_add_proposal_note(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    let at = moment(args.get("at"))?;
-    match compactor.add_note(
-        super::args_str(args, "proposal_id"),
-        super::args_str(args, "text"),
-        args.get("event_id").and_then(Value::as_str).map(str::to_string),
-        at,
-        args.get("note_id").and_then(Value::as_str).map(str::to_string),
-    ) {
-        Ok(item) => Ok(item.to_json()),
-        Err(e) => Err(rejected("add_proposal_note", e)),
-    }
-}
-
-fn run_withdraw_proposal_note(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    match compactor.withdraw_note(super::args_str(args, "feedback_id")) {
-        Ok(item) => Ok(item.to_json()),
-        Err(e) => Err(rejected("withdraw_proposal_note", e)),
-    }
-}
-
-fn run_confirm_proposal(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    match compactor.confirm(super::args_str(args, "proposal_id"), args.get("revision").and_then(Value::as_i64).unwrap_or(0)) {
-        Ok(result) => Ok(result.to_json()),
-        Err(e) => Err(rejected("confirm_proposal", e)),
-    }
-}
-
-fn run_finish_proposal(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    match compactor.finish(super::args_str(args, "proposal_id")) {
-        Ok(result) => Ok(result.to_json()),
-        Err(e) => Err(rejected("finish_proposal", e)),
-    }
-}
-
-fn run_prepare_judgments(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    compactor.prefetch()?;
-    let redo = args.get("redo").and_then(Value::as_bool).unwrap_or(false);
-    let due = match compactor.judgments_due(args.get("compaction_id").and_then(Value::as_str), redo) {
-        Ok(due) => due,
-        Err(e) => return Err(rejected("prepare_judgments", e)),
-    };
-    match due {
-        Some(due) => Ok(due.to_json()),
-        None => Err(ToolError::Message("there's no applied compaction to judge".into())),
-    }
-}
-
-fn run_prepare_habit_judgments(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    compactor.prefetch()?;
-    let since = moment(args.get("since"))?;
-    let redo = args.get("redo").and_then(Value::as_bool).unwrap_or(false);
-    match compactor.habit_judgments_due(super::args_str(args, "habit_id"), since, redo) {
-        Ok(due) => Ok(due.to_json()),
-        Err(e) => Err(rejected("prepare_habit_judgments", e)),
-    }
-}
-
-fn run_record_judgments(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    compactor.prefetch()?;
-    let judgments: Vec<judgments::Judgment> = list(args, "judgments")
-        .into_iter()
-        .map(|j| judgments::Judgment {
-            request_id: text(j, "request_id").unwrap_or_default(),
-            rating: j.get("rating").and_then(Value::as_i64).unwrap_or(0),
-            reasoning: text(j, "reasoning").unwrap_or_default(),
-        })
-        .collect();
-    match compactor.record_judgments(super::args_str(args, "compaction_id"), &judgments) {
-        Ok(result) => Ok(result.to_json()),
-        Err(e) => Err(rejected("record_judgments", e)),
-    }
-}
-
-fn run_abandon_compaction(app: &App, args: &Map<String, Value>) -> ToolResult {
-    let compactor = compactor(app)?;
-    match compactor.abandon(super::args_str(args, "proposal_id")) {
-        Ok(result) => Ok(result.to_json()),
-        Err(e) => Err(rejected("abandon_compaction", e)),
-    }
-}
-
-// -- the tools ------------------------------------------------------------------
-
-/// When notes were last compacted into the calendar, the latest note
-/// compacted, whether that compaction still has judgments to make, and
-/// the open proposal, if any. Read-only.
-#[tool]
-pub fn get_compaction_status(app: &App) -> Result<CompactionStatus, ToolError> {
-    from_store(run_get_compaction_status(app, &Map::new())?)
+    from_store(Value::Object(out))
 }
 
 /// Correct an uncompacted note (by its id, from get_notes or
@@ -1284,7 +1128,9 @@ pub fn get_compaction_status(app: &App) -> Result<CompactionStatus, ToolError> {
 /// it's confirmed.
 #[tool(writes)]
 pub fn edit_note(app: &App, note_id: String, timestamp: Option<DateTimeText>, description: Option<String>) -> Result<NoteWithId, ToolError> {
-    from_store(run_edit_note(app, &arguments(vec![("note_id", to_json(&note_id)), ("timestamp", to_json(&timestamp)), ("description", to_json(&description))]))?)
+    let compactor = compactor(app)?;
+    let timestamp = when_given(timestamp.as_ref())?;
+    shown("edit_note", compactor.edit_note(&note_id, timestamp, description.as_deref()).map(|n| n.with_id()))
 }
 
 /// Delete an uncompacted note (by its id, from get_notes or
@@ -1293,7 +1139,8 @@ pub fn edit_note(app: &App, note_id: String, timestamp: Option<DateTimeText>, de
 /// this note is planned again when it's confirmed.
 #[tool(writes)]
 pub fn delete_note(app: &App, note_id: String) -> Result<NotedTime, ToolError> {
-    from_store(run_delete_note(app, &arguments(vec![("note_id", to_json(&note_id))]))?)
+    let compactor = compactor(app)?;
+    shown("delete_note", compactor.delete_note(&note_id).map(|n| n.to_json()))
 }
 
 /// Step 1 of compacting notes into the calendar: proposing what
@@ -1315,7 +1162,7 @@ pub fn delete_note(app: &App, note_id: String) -> Result<NotedTime, ToolError> {
 /// (prepare_judgments, record_judgments). Read-only.
 #[tool(writes)]
 pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
-    from_store(run_prepare_compaction(app, &Map::new())?)
+    from_store(compactor(app)?.prepare()?.to_json())
 }
 
 /// Step 2 of compacting notes: propose what happened -- each day's
@@ -1384,7 +1231,27 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// until they're all recorded.
 #[tool(writes)]
 pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpdate>>, creates: Option<Vec<CompactionCreate>>, cancels: Option<Vec<EventCancel>>, ignore_notes: Option<Vec<String>>, proposal_id: Option<String>, revision: Option<i64>, replies: Option<Vec<FeedbackReply>>, new_actions: Option<Vec<NewAction>>, new_people: Option<Vec<NewPerson>>, new_locations: Option<Vec<NewLocation>>, annotate_notes: Option<Vec<NoteAnnotation>>) -> Result<CompactionResult, ToolError> {
-    from_store(run_compact_notes(app, &arguments(vec![("recap", to_json(&recap)), ("updates", to_json(&updates)), ("creates", to_json(&creates)), ("cancels", to_json(&cancels)), ("ignore_notes", to_json(&ignore_notes)), ("proposal_id", to_json(&proposal_id)), ("revision", to_json(&revision)), ("replies", to_json(&replies)), ("new_actions", to_json(&new_actions)), ("new_people", to_json(&new_people)), ("new_locations", to_json(&new_locations)), ("annotate_notes", to_json(&annotate_notes))]))?)
+    let compactor = compactor(app)?;
+    let (updates, creates, cancels) = (updates.unwrap_or_default(), creates.unwrap_or_default(), cancels.unwrap_or_default());
+    let mut decisions: Vec<EventDecision> = Vec::new();
+    for u in &updates {
+        decisions.push(update_decision(u)?);
+    }
+    for c in &creates {
+        decisions.push(create_decision(c)?);
+    }
+    decisions.extend(cancels.iter().map(cancel_decision));
+    let additions = Additions {
+        actions: new_actions.unwrap_or_default().iter().map(|a| addition_row(ACTION_ROW, a, &a.r#ref)).collect(),
+        people: new_people.unwrap_or_default().iter().map(|p| addition_row(PERSON_ROW, p, &p.r#ref)).collect(),
+        locations: new_locations.unwrap_or_default().iter().map(|l| addition_row(LOCATION_ROW, l, &l.r#ref)).collect(),
+    };
+    let replies: Vec<proposals::FeedbackReply> =
+        replies.unwrap_or_default().into_iter().map(|r| proposals::FeedbackReply { feedback_id: r.feedback_id, reply: r.reply }).collect();
+    let annotate: Vec<(String, String)> = annotate_notes.unwrap_or_default().into_iter().map(|a| (a.note_id, a.event_id)).collect();
+    let create_refs: Vec<Option<String>> = creates.iter().map(|c| c.r#ref.clone()).collect();
+    let result = compactor.dry_run(decisions, ignore_notes, additions, proposal_id, revision, replies, annotate, Some(stored_recap(&recap)), create_refs);
+    shown("compact_notes", result.map(|r| r.to_json()))
 }
 
 /// The open proposal (or the one named) -- its current revision,
@@ -1397,7 +1264,8 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
 /// outcome changed after it. Read-only.
 #[tool]
 pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Option<i64>) -> Result<Proposal, ToolError> {
-    from_store(run_get_proposal(app, &arguments(vec![("proposal_id", to_json(&proposal_id)), ("since_revision", to_json(&since_revision))]))?)
+    let compactor = compactor(app)?;
+    shown("get_proposal", compactor.get_proposal(proposal_id.as_deref(), since_revision).map(|p| p.to_json()))
 }
 
 /// The user's edits to the open proposal, from the app: `updates`,
@@ -1430,7 +1298,53 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// edits, so later revisions keep to it. Nothing is moved to make room.
 #[tool(writes)]
 pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Option<Vec<ProposalUpdate>>, creates: Option<Vec<ProposalCreate>>, cancels: Option<Vec<EventCancel>>, as_planned: Option<Vec<String>>, notes: Option<Vec<NoteEdit>>, additions: Option<Vec<AdditionChoice>>, through: Option<DateTimeText>, #[schema(default = "false")] allow_compacted_changes: bool) -> Result<Proposal, ToolError> {
-    from_store(run_amend_proposal(app, &arguments(vec![("proposal_id", to_json(&proposal_id)), ("revision", to_json(&revision)), ("updates", to_json(&updates)), ("creates", to_json(&creates)), ("cancels", to_json(&cancels)), ("as_planned", to_json(&as_planned)), ("notes", to_json(&notes)), ("additions", to_json(&additions)), ("through", to_json(&through)), ("allow_compacted_changes", to_json(&allow_compacted_changes))]))?)
+    let compactor = compactor(app)?;
+    let allow = allow_compacted_changes;
+    let run = || -> anyhow::Result<Value> {
+        let mut decisions: Vec<EventDecision> = Vec::new();
+        for u in updates.unwrap_or_default() {
+            let clear = texts(u.clear_fields.as_deref().unwrap_or_default());
+            decisions.push(proposal_decision(&u.event, "keep", u.start_note, u.end_note, &clear)?);
+        }
+        for c in creates.unwrap_or_default() {
+            decisions.push(proposal_decision(&proposed_event(&c), "create", c.start_note, c.end_note, &[])?);
+        }
+        decisions.extend(cancels.unwrap_or_default().iter().map(cancel_decision));
+        if allow {
+            for d in decisions.iter_mut() {
+                d.allow_history = Some(true);
+            }
+        }
+        let notes: Vec<proposals::NoteEdit> = notes
+            .unwrap_or_default()
+            .into_iter()
+            .map(|n| proposals::NoteEdit { note_id: n.note_id, use_: wire_text(&n.r#use), event_id: n.event_id })
+            .collect();
+        let additions: Vec<proposals::AdditionChoice> = additions
+            .unwrap_or_default()
+            .into_iter()
+            .map(|a| proposals::AdditionChoice { ref_: a.r#ref, use_: wire_text(&a.r#use), id: a.id, name: a.name, context: a.context, hint: a.hint })
+            .collect();
+        let through = when_given(through.as_ref())?;
+        let proposal = compactor.amend(&proposal_id, revision, decisions, as_planned.unwrap_or_default(), notes, additions, through)?;
+        Ok(proposal.to_json())
+    };
+    match run() {
+        Ok(value) => from_store(value),
+        Err(e) => {
+            if let Some(refusal) = compaction_error(&e) {
+                if refusal.categories.iter().any(|c| c == "compacted") && !allow {
+                    let mut wrapped = refusal.clone();
+                    wrapped.message = format!(
+                        "{}\n\nIt changes history, which needs the user's approval: send it again with allow_compacted_changes once they've given it.",
+                        refusal.message
+                    );
+                    return Err(rejected("amend_proposal", wrapped.into()));
+                }
+            }
+            Err(rejected("amend_proposal", e))
+        }
+    }
 }
 
 /// A note from the user for Claude on the open proposal, about an
@@ -1440,14 +1354,17 @@ pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Op
 /// can't be confirmed. Returns it, with its id.
 #[tool(writes)]
 pub fn add_proposal_note(app: &App, proposal_id: String, text: String, event_id: Option<String>, at: Option<DateTimeText>, note_id: Option<String>) -> Result<Feedback, ToolError> {
-    from_store(run_add_proposal_note(app, &arguments(vec![("proposal_id", to_json(&proposal_id)), ("text", to_json(&text)), ("event_id", to_json(&event_id)), ("at", to_json(&at)), ("note_id", to_json(&note_id))]))?)
+    let compactor = compactor(app)?;
+    let at = when_given(at.as_ref())?;
+    shown("add_proposal_note", compactor.add_note(&proposal_id, &text, event_id, at, note_id).map(|item| item.to_json()))
 }
 
 /// Take back an open note for Claude (by its id). One already
 /// answered can't be.
 #[tool(writes)]
 pub fn withdraw_proposal_note(app: &App, feedback_id: String) -> Result<Feedback, ToolError> {
-    from_store(run_withdraw_proposal_note(app, &arguments(vec![("feedback_id", to_json(&feedback_id))]))?)
+    let compactor = compactor(app)?;
+    shown("withdraw_proposal_note", compactor.withdraw_note(&feedback_id).map(|item| item.to_json()))
 }
 
 /// For the app: the user confirms the open proposal's current
@@ -1463,7 +1380,8 @@ pub fn withdraw_proposal_note(app: &App, feedback_id: String) -> Result<Feedback
 /// to finish_proposal.
 #[tool(writes)]
 pub fn confirm_proposal(app: &App, proposal_id: String, revision: i64) -> Result<ProposalResult, ToolError> {
-    from_store(run_confirm_proposal(app, &arguments(vec![("proposal_id", to_json(&proposal_id)), ("revision", to_json(&revision))]))?)
+    let compactor = compactor(app)?;
+    shown("confirm_proposal", compactor.confirm(&proposal_id, revision).map(|r| r.to_json()))
 }
 
 /// Finish applying a confirmed proposal that stopped partway: what was
@@ -1475,7 +1393,8 @@ pub fn confirm_proposal(app: &App, proposal_id: String, revision: i64) -> Result
 /// to confirm (`rebuilt`).
 #[tool(writes)]
 pub fn finish_proposal(app: &App, proposal_id: String) -> Result<ProposalResult, ToolError> {
-    from_store(run_finish_proposal(app, &arguments(vec![("proposal_id", to_json(&proposal_id))]))?)
+    let compactor = compactor(app)?;
+    shown("finish_proposal", compactor.finish(&proposal_id).map(|r| r.to_json()))
 }
 
 /// The judgments a compaction (by default the last one applied) calls
@@ -1490,7 +1409,16 @@ pub fn finish_proposal(app: &App, proposal_id: String) -> Result<ProposalResult,
 /// redo one with more context. Read-only.
 #[tool]
 pub fn prepare_judgments(app: &App, compaction_id: Option<String>, #[schema(default = "false")] redo: bool) -> Result<JudgmentsDue, ToolError> {
-    from_store(run_prepare_judgments(app, &arguments(vec![("compaction_id", to_json(&compaction_id)), ("redo", to_json(&redo))]))?)
+    let compactor = compactor(app)?;
+    compactor.prefetch()?;
+    let due = match compactor.judgments_due(compaction_id.as_deref(), redo) {
+        Ok(due) => due,
+        Err(e) => return Err(rejected("prepare_judgments", e)),
+    };
+    match due {
+        Some(due) => from_store(due.to_json()),
+        None => Err(ToolError::Message("there's no applied compaction to judge".into())),
+    }
 }
 
 /// A backfill of one habit's judgments (by id or name): for a habit
@@ -1506,7 +1434,10 @@ pub fn prepare_judgments(app: &App, compaction_id: Option<String>, #[schema(defa
 /// record_judgments(backfill_id, judgments). Read-only.
 #[tool]
 pub fn prepare_habit_judgments(app: &App, habit_id: String, since: Option<DateTimeText>, #[schema(default = "false")] redo: bool) -> Result<HabitJudgmentsDue, ToolError> {
-    from_store(run_prepare_habit_judgments(app, &arguments(vec![("habit_id", to_json(&habit_id)), ("since", to_json(&since)), ("redo", to_json(&redo))]))?)
+    let compactor = compactor(app)?;
+    compactor.prefetch()?;
+    let since = when_given(since.as_ref())?;
+    shown("prepare_habit_judgments", compactor.habit_judgments_due(&habit_id, since, redo).map(|due| due.to_json()))
 }
 
 /// Record judgments of a compaction's events (see prepare_judgments, and
@@ -1521,7 +1452,11 @@ pub fn prepare_habit_judgments(app: &App, habit_id: String, since: Option<DateTi
 /// (or the backfill).
 #[tool(writes)]
 pub fn record_judgments(app: &App, compaction_id: String, judgments: Vec<Judgment>) -> Result<JudgmentsResult, ToolError> {
-    from_store(run_record_judgments(app, &arguments(vec![("compaction_id", to_json(&compaction_id)), ("judgments", to_json(&judgments))]))?)
+    let compactor = compactor(app)?;
+    compactor.prefetch()?;
+    let judgments: Vec<judgments::Judgment> =
+        judgments.into_iter().map(|j| judgments::Judgment { request_id: j.request_id, rating: j.rating, reasoning: j.reasoning }).collect();
+    shown("record_judgments", compactor.record_judgments(&compaction_id, &judgments).map(|r| r.to_json()))
 }
 
 /// Give up on a proposal (or a compaction from before proposals, by
@@ -1530,5 +1465,6 @@ pub fn record_judgments(app: &App, compaction_id: String, judgments: Vec<Judgmen
 /// one can be proposed.
 #[tool(writes)]
 pub fn abandon_compaction(app: &App, proposal_id: String) -> Result<CompactionResult, ToolError> {
-    from_store(run_abandon_compaction(app, &arguments(vec![("proposal_id", to_json(&proposal_id))]))?)
+    let compactor = compactor(app)?;
+    shown("abandon_compaction", compactor.abandon(&proposal_id).map(|r| r.to_json()))
 }

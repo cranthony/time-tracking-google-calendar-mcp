@@ -1,9 +1,10 @@
 //! The recurring-series tools (get_recurrence, update_recurrence,
 //! split_recurrence, delete_recurrence).
 
-use super::events::{check_action_ids, check_facts, moment, to_json, EventField, Facts};
+use super::events::{check_action_ids, check_facts, when_given, EventField, Facts};
 use super::stores::prefetch_stores;
 use super::{from_store, texts, ToolError};
+use crate::contract::wire_text;
 use crate::app::App;
 use crate::event::Event;
 use crate::contract::{tool, DateOrDateTime, DateTimeText, Nth, Schema};
@@ -11,7 +12,8 @@ use crate::facts::Facts as EventFacts;
 use crate::py;
 use crate::stores::action_calendar::fill_in_from_actions;
 use crate::stores::actions::ActionTree;
-use crate::stores::recurrences::{describe_rules, is_refusal, Repeat as StoredRepeat};
+use crate::stores::recurrences::{describe_rules, is_refusal, PyDt, Repeat as StoredRepeat, Until};
+use chrono::NaiveDate;
 use crate::zoned;
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
@@ -210,28 +212,47 @@ fn shown_refusal(error: anyhow::Error) -> ToolError {
 }
 
 /// `PublicRecurrence.to_event(clear_fields)`.
-fn to_event(value: &Value, clear_fields: &[String]) -> Result<Event, ToolError> {
-    let text = |key: &str| value.get(key).and_then(Value::as_str).map(str::to_string);
-    let from_label = value.get("actions_from_label").and_then(Value::as_bool).unwrap_or(false);
+fn to_event(series: &PublicRecurrence, clear_fields: &[EventField]) -> Result<Event, ToolError> {
     let event = Event {
-        id: text("id"),
-        summary: text("summary"),
-        start: moment(value.get("start"))?,
-        end: moment(value.get("end"))?,
-        description: text("description"),
-        location: text("location"),
-        priority: value.get("priority").and_then(Value::as_i64),
-        action_ids: if from_label {
-            None
-        } else {
-            value.get("action_ids").and_then(Value::as_array).map(|a| a.iter().filter_map(|i| i.as_str().map(str::to_string)).collect())
-        },
-        facts: value.get("facts").filter(|f| !f.is_null()).map(|f| EventFacts::from_public(f).normalized()),
-        cleared: clear_fields.iter().cloned().collect(),
+        id: series.id.clone(),
+        summary: series.summary.clone(),
+        start: when_given(series.start.as_ref())?,
+        end: when_given(series.end.as_ref())?,
+        description: series.description.clone(),
+        location: series.location.clone(),
+        priority: series.priority,
+        action_ids: if series.actions_from_label { None } else { series.action_ids.clone() },
+        facts: series.facts.as_ref().map(|f| EventFacts::from(f).normalized()),
+        cleared: texts(clear_fields).into_iter().collect(),
         ..Default::default()
     };
     event.check_cleared().map_err(|e| ToolError::Message(e.to_string()))?;
     Ok(event)
+}
+
+/// How a client says a series repeats, as the store keeps it.
+pub fn stored_repeat(repeat: &Repeat) -> anyhow::Result<StoredRepeat> {
+    let times = |given: &Option<Vec<DateTimeText>>| -> anyhow::Result<Option<Vec<PyDt>>> {
+        given.as_ref().map(|items| items.iter().map(|t| PyDt::parse(&t.0)).collect()).transpose()
+    };
+    let until = match &repeat.until {
+        Some(DateOrDateTime(text)) if text.chars().count() == 10 => Some(Until::Date(NaiveDate::parse_from_str(text, "%Y-%m-%d")?)),
+        Some(DateOrDateTime(text)) => Some(Until::DateTime(PyDt::parse(text)?)),
+        None => None,
+    };
+    Ok(StoredRepeat {
+        every: wire_text(&repeat.every),
+        interval: repeat.interval,
+        weekdays: repeat.weekdays.as_deref().map(texts),
+        nth_weekdays: repeat.nth_weekdays.as_ref().map(|items| items.iter().map(|n| (n.nth.0, wire_text(&n.weekday))).collect()),
+        month_days: repeat.month_days.clone(),
+        months: repeat.months.clone(),
+        count: repeat.count,
+        until,
+        week_starts_on: repeat.week_starts_on.as_ref().map(wire_text),
+        skipped: times(&repeat.skipped)?,
+        added: times(&repeat.added)?,
+    })
 }
 
 // -- the tools ------------------------------------------------------------------
@@ -273,14 +294,10 @@ pub fn get_recurrence(app: &App, id: String) -> Result<PublicRecurrence, ToolErr
 #[tool(writes)]
 pub fn update_recurrence(app: &App, recurrence: PublicRecurrence, starting_at_event_id: Option<String>, clear_fields: Option<Vec<EventField>>) -> Result<Vec<PublicRecurrence>, ToolError> {
     prefetch_stores(app)?;
-    let given = to_json(&recurrence);
-    check_action_ids(app, &given, true)?;
-    check_facts(app, &given)?;
-    let changes = to_event(&given, &texts(&clear_fields.unwrap_or_default()))?;
-    let repeat = match &recurrence.repeat {
-        Some(r) => Some(StoredRepeat::from_value(&to_json(r))?),
-        None => None,
-    };
+    check_action_ids(app, recurrence.id.as_deref(), recurrence.action_ids.as_deref(), recurrence.actions_from_label, true)?;
+    check_facts(app, recurrence.facts.as_ref())?;
+    let changes = to_event(&recurrence, &clear_fields.unwrap_or_default())?;
+    let repeat = recurrence.repeat.as_ref().map(stored_repeat).transpose()?;
     let updated = app.recurrences()?.update(&changes, starting_at_event_id.as_deref(), repeat.as_ref()).map_err(shown_refusal)?;
     from_store(public_recurrences(app, &updated)?)
 }

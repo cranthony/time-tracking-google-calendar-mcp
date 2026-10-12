@@ -12,9 +12,8 @@ use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::ActionTree;
 use crate::stores::event_changes::{self, Cancel, EventChanges, Shift};
 use crate::stores::notes::NotedTime as StoredNote;
-use crate::stores::recurrences::Repeat as StoredRepeat;
 use crate::stores::schedule::HINT_ROW;
-use super::recurrences::Repeat;
+use super::recurrences::{stored_repeat, Repeat};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -105,7 +104,7 @@ pub struct Facts {
 ///
 /// Everything before the last compaction (get_compaction_status's
 /// last_compaction) is history: see update_event.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Schema)]
 pub struct PublicEvent {
     pub id: Option<String>,
     pub summary: Option<String>,
@@ -117,9 +116,11 @@ pub struct PublicEvent {
     pub action_ids: Option<Vec<String>>,
     pub action_names: Option<Vec<String>>,
     #[schema(default = "false")]
+    #[serde(default)]
     pub actions_from_label: bool,
     pub event_label_id: Option<String>,
     #[schema(default = "false")]
+    #[serde(default)]
     pub is_cancelled: bool,
     pub effective_priority: Option<i64>,
     pub is_end_of_day_sleep: Option<bool>,
@@ -195,9 +196,26 @@ pub struct CompactionScheduleHints {
     pub time_zone: Option<String>,
 }
 
-/// A typed argument as JSON.
-pub fn to_json<T: Serialize>(value: &T) -> Value {
-    serde_json::to_value(value).expect("an argument is JSON")
+/// An instant a client gave (with an offset, or without one: then it's
+/// taken as UTC, as the arguments' check leaves it).
+pub fn when(text: &DateTimeText) -> anyhow::Result<Moment> {
+    parse_iso(&text.0, None)
+}
+
+pub fn when_given(text: Option<&DateTimeText>) -> anyhow::Result<Option<Moment>> {
+    text.map(when).transpose()
+}
+
+impl From<&Facts> for EventFacts {
+    /// The facts a client gave, as an event keeps them.
+    fn from(facts: &Facts) -> EventFacts {
+        EventFacts {
+            location_id: facts.location_id.clone().map(Value::String),
+            with_ids: facts.with_ids.as_ref().map(|ids| json!(ids)),
+            for_ids: facts.for_ids.as_ref().map(|ids| json!(ids)),
+            notes: facts.notes.as_ref().map(|notes| json!(notes)),
+        }
+    }
 }
 
 // -- PublicEvent -----------------------------------------------------------------
@@ -235,56 +253,38 @@ pub fn public_events(app: &App, events: &[Event]) -> anyhow::Result<Value> {
     Ok(Value::Array(fill_in_from_actions(events, &tree).iter().map(|e| public_event(e, Some(&tree))).collect()))
 }
 
-pub fn moment(value: Option<&Value>) -> anyhow::Result<Option<Moment>> {
-    match value.and_then(Value::as_str) {
-        Some(text) => Ok(Some(parse_iso(text, None)?)),
-        None => Ok(None),
-    }
-}
-
 /// `PublicEvent.to_event(clear_fields)`.
-pub fn to_event(value: &Value, clear_fields: &[String]) -> Result<Event, ToolError> {
-    let text = |key: &str| value.get(key).and_then(Value::as_str).map(str::to_string);
-    let from_label = value.get("actions_from_label").and_then(Value::as_bool).unwrap_or(false);
-    let action_ids = if from_label {
-        None
-    } else {
-        value.get("action_ids").and_then(Value::as_array).map(|ids| ids.iter().filter_map(|i| i.as_str().map(str::to_string)).collect())
-    };
+pub fn to_event(event: &PublicEvent, clear_fields: &[EventField]) -> Result<Event, ToolError> {
     let event = Event {
-        id: text("id"),
-        summary: text("summary"),
-        start: moment(value.get("start"))?,
-        end: moment(value.get("end"))?,
-        description: text("description"),
-        location: text("location"),
-        action_ids,
-        priority: value.get("priority").and_then(Value::as_i64),
-        status: if value.get("is_cancelled").and_then(Value::as_bool).unwrap_or(false) { Some("cancelled".into()) } else { None },
-        facts: value.get("facts").filter(|f| !f.is_null()).map(|f| EventFacts::from_public(f).normalized()),
-        judgments: value.get("judgments").and_then(Value::as_object).cloned(),
-        cleared: clear_fields.iter().cloned().collect(),
+        id: event.id.clone(),
+        summary: event.summary.clone(),
+        start: when_given(event.start.as_ref())?,
+        end: when_given(event.end.as_ref())?,
+        description: event.description.clone(),
+        location: event.location.clone(),
+        action_ids: if event.actions_from_label { None } else { event.action_ids.clone() },
+        priority: event.priority,
+        status: if event.is_cancelled { Some("cancelled".into()) } else { None },
+        facts: event.facts.as_ref().map(|f| EventFacts::from(f).normalized()),
+        judgments: event.judgments.clone(),
+        cleared: texts(clear_fields).into_iter().collect(),
         ..Default::default()
     };
     event.check_cleared().map_err(|e| ToolError::Message(e.to_string()))?;
     Ok(event)
 }
 
-/// `_check_action_ids`: action_ids must be actions, not newly deleted ones.
-pub fn check_action_ids(app: &App, event: &Value, existing: bool) -> Result<(), ToolError> {
-    let ids: Vec<String> = event
-        .get("action_ids")
-        .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(|i| i.as_str().map(str::to_string)).collect())
-        .unwrap_or_default();
-    if ids.is_empty() || event.get("actions_from_label").and_then(Value::as_bool).unwrap_or(false) {
+/// `_check_action_ids`: an event's (or series') action_ids must be
+/// actions, not newly deleted ones -- unless they're from its label.
+pub fn check_action_ids(app: &App, id: Option<&str>, action_ids: Option<&[String]>, from_label: bool, existing: bool) -> Result<(), ToolError> {
+    let ids = action_ids.unwrap_or_default();
+    if ids.is_empty() || from_label {
         return Ok(());
     }
     let tree = app.actions()?.tree()?;
     let mut already: Vec<String> = Vec::new();
-    let id = event.get("id").and_then(Value::as_str).filter(|i| !i.is_empty());
     if existing {
-        if let Some(id) = id {
+        if let Some(id) = id.filter(|i| !i.is_empty()) {
             let any_deleted =
                 ids.iter().any(|a| tree.by_id(a).is_some_and(|row| crate::sheet::rows::text(row, "status") == Some("deleted")));
             if any_deleted {
@@ -293,13 +293,13 @@ pub fn check_action_ids(app: &App, event: &Value, existing: bool) -> Result<(), 
             }
         }
     }
-    tree.check_action_ids(&ids, &already).map_err(|e| ToolError::Message(e.to_string()))
+    tree.check_action_ids(ids, &already).map_err(|e| ToolError::Message(e.to_string()))
 }
 
 /// `_check_facts`: well formed, naming people and a location that exist.
-pub fn check_facts(app: &App, event: &Value) -> Result<(), ToolError> {
-    let Some(raw) = event.get("facts").filter(|f| !f.is_null()) else { return Ok(()) };
-    let facts = EventFacts::from_public(raw).normalized();
+pub fn check_facts(app: &App, facts: Option<&Facts>) -> Result<(), ToolError> {
+    let Some(given) = facts else { return Ok(()) };
+    let facts = EventFacts::from(given).normalized();
     let problems = fact_problems(&facts);
     if !problems.is_empty() {
         return Err(ToolError::Message(format!("Its facts {}", problems.join("; "))));
@@ -326,7 +326,7 @@ pub fn check_facts(app: &App, event: &Value) -> Result<(), ToolError> {
 /// needs on a series' start and end.
 fn with_repeat(app: &App, mut event: Event, repeat: Option<&Repeat>) -> Result<Event, ToolError> {
     let Some(repeat) = repeat else { return Ok(event) };
-    let repeat = StoredRepeat::from_value(&to_json(repeat))?;
+    let repeat = stored_repeat(repeat)?;
     repeat.check().map_err(|e| ToolError::Message(e.to_string()))?;
     let zone = app.calendar_client()?.get_time_zone()?;
     event.recurrence = Some(repeat.to_rules(&zone).map_err(|e| ToolError::Message(e.to_string()))?);
@@ -424,7 +424,7 @@ fn to_cancels(cancels: Vec<EventCancel>) -> Vec<Cancel> {
 #[tool]
 pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText) -> Result<Vec<PublicEvent>, ToolError> {
     prefetch_stores(app)?;
-    let (min, max) = (moment(Some(&json!(min_time.0)))?.unwrap(), moment(Some(&json!(max_time.0)))?.unwrap());
+    let (min, max) = (when(&min_time)?, when(&max_time)?);
     let events: Vec<Event> = app.calendar_client()?.list_events(&min, &max)?.into_iter().filter(|e| !e.is_cancelled()).collect();
     from_store(public_events(app, &events)?)
 }
@@ -489,22 +489,21 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
                 "an update can't cancel an event: put it in cancels, saying with counts_against_follow_through whether the cancellation counts against follow-through".into(),
             ));
         }
-        let event = to_json(&update.event);
-        check_action_ids(app, &event, true)?;
-        check_facts(app, &event)?;
+        let event = &update.event;
+        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, true)?;
+        check_facts(app, event.facts.as_ref())?;
     }
     for event in &creates {
-        let event = to_json(event);
-        check_action_ids(app, &event, false)?;
-        check_facts(app, &event)?;
+        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, false)?;
+        check_facts(app, event.facts.as_ref())?;
     }
     let mut patches = Vec::new();
     for update in &updates {
-        let patch = to_event(&to_json(&update.event), &texts(update.clear_fields.as_deref().unwrap_or_default()))?;
+        let patch = to_event(&update.event, update.clear_fields.as_deref().unwrap_or_default())?;
         patches.push(with_repeat(app, patch, update.event.repeat.as_ref())?);
     }
     let creates: Vec<Event> =
-        creates.iter().map(|e| with_repeat(app, to_event(&to_json(e), &[])?, e.repeat.as_ref())).collect::<Result<_, _>>()?;
+        creates.iter().map(|e| with_repeat(app, to_event(e, &[])?, e.repeat.as_ref())).collect::<Result<_, _>>()?;
     let shifts: Vec<Shift> = shifts.unwrap_or_default().into_iter().map(|s| Shift { event_ids: s.event_ids, minutes: s.minutes }).collect();
     let cancels = to_cancels(cancels.unwrap_or_default());
     from_store(change_events(app, "update_event", patches, creates, cancels, shifts, allow_compacted_changes, dry_run)?)
@@ -535,12 +534,11 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
 pub fn create_event(app: &App, events: Vec<PublicEvent>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
     prefetch_for_changes(app)?;
     for event in &events {
-        let event = to_json(event);
-        check_action_ids(app, &event, false)?;
-        check_facts(app, &event)?;
+        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, false)?;
+        check_facts(app, event.facts.as_ref())?;
     }
     let creates: Vec<Event> =
-        events.iter().map(|e| with_repeat(app, to_event(&to_json(e), &[])?, e.repeat.as_ref())).collect::<Result<_, _>>()?;
+        events.iter().map(|e| with_repeat(app, to_event(e, &[])?, e.repeat.as_ref())).collect::<Result<_, _>>()?;
     from_store(change_events(app, "create_event", Vec::new(), creates, Vec::new(), Vec::new(), allow_compacted_changes, dry_run)?)
 }
 
@@ -571,7 +569,7 @@ pub fn delete_event(app: &App, cancels: Vec<EventCancel>, #[schema(default = "fa
 #[tool(writes)]
 pub fn note(app: &App, noted_time: NotedTime) -> Result<NoteWithId, ToolError> {
     let recorded = StoredNote {
-        timestamp: moment(Some(&json!(noted_time.timestamp.0)))?.unwrap(),
+        timestamp: when(&noted_time.timestamp)?,
         description: noted_time.description,
         compaction_id: None,
     };
