@@ -1,0 +1,32 @@
+usage: calendar_cli [-h]
+                       {list,get,update_properties,update,create,delete,list_raw_labels,create_raw_label,update_raw_label,delete_raw_label,list_actions,create_action,update_action,note,get_notes,edit_note,delete_note} ...
+
+Google Calendar API command-line utilities.
+
+positional arguments:
+  {list,get,update_properties,update,create,delete,list_raw_labels,create_raw_label,update_raw_label,delete_raw_label,list_actions,create_action,update_action,note,get_notes,edit_note,delete_note}
+    list                List events in a window around now.
+    get                 Get a single event by id.
+    update_properties   Set one or more properties on an existing event.
+    update              Move/resize an existing event, refused if it would
+                        overlap another.
+    create              Create a new event, refused if it would overlap
+                        another.
+    delete              Delete an event by id.
+    list_raw_labels     List this calendar's custom event labels, as Calendar
+                        stores them.
+    create_raw_label    Create a new event label, exactly as Calendar stores
+                        it.
+    update_raw_label    Update an existing event label's color and/or name.
+    delete_raw_label    Delete an event label by id.
+    list_actions        List this calendar's actions.
+    create_action       Create a new action.
+    update_action       Update any of an action's properties.
+    note                Record a new uncompacted time note.
+    get_notes           List every uncompacted time note, with its id, sorted
+                        by timestamp.
+    edit_note           Change an uncompacted note's time and/or description.
+    delete_note         Delete an uncompacted note.
+
+options:
+  -h, --help            show this help message and exit

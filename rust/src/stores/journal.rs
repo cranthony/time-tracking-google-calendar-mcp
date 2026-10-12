@@ -2,7 +2,9 @@
 //! compaction_journal.py), one tab of the metadata spreadsheet: one row
 //! per fact, in eight columns --
 //!
-//!     compaction_id | step | kind | event_id | before | after | status | detail
+//! ```text
+//! compaction_id | step | kind | event_id | before | after | status | detail
+//! ```
 //!
 //! Everything here reads the whole tab, in one range: inside a tool call's
 //! cached reads, every later read until it's next written is served from

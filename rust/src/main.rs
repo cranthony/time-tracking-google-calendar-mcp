@@ -1,24 +1,7 @@
 //! The time-tracking Google Calendar MCP server: the Rust port of
 //! server.py. See ../README.md.
 
-pub mod app;
-pub mod compaction;
-pub mod determinism;
-pub mod difflib;
-pub mod dotenv;
-pub mod event;
-pub mod facts;
-pub mod google;
-pub mod health;
-pub mod mcp;
-pub mod py;
-pub mod sheet;
-pub mod stores;
-pub mod timeline;
-pub mod tools;
-pub mod write_lock;
-pub mod zoned;
-
+use ctt::{app, dotenv, mcp};
 use std::sync::Arc;
 
 fn main() -> anyhow::Result<()> {
