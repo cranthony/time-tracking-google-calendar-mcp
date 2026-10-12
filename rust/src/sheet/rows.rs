@@ -176,11 +176,30 @@ impl RowSheet {
         row_type: RowType,
         required: &'static [&'static str],
     ) -> anyhow::Result<RowSheet> {
+        Self::ensure_seeded(sheets, spreadsheet_id, role, title, row_type, required, &[])
+    }
+
+    /// The tab tagged `role`, adding it the first time with its header
+    /// row and `seed`'s rows.
+    pub fn ensure_seeded(
+        sheets: &SheetsClient,
+        spreadsheet_id: &str,
+        role: &str,
+        title: &str,
+        row_type: RowType,
+        required: &'static [&'static str],
+        seed: &[Row],
+    ) -> anyhow::Result<RowSheet> {
         let header: Vec<String> = row_type.fields.iter().map(|(n, _)| n.to_string()).collect();
         let sheet_id = match find_tab(sheets, spreadsheet_id, role)? {
             Some(id) => id,
             None => create_tab(sheets, spreadsheet_id, role, title, None, |new_id| {
-                sheets.write_rows_in_sheet(spreadsheet_id, new_id, HEADER_RANGE, &vec![header.clone()])
+                sheets.write_rows_in_sheet(spreadsheet_id, new_id, HEADER_RANGE, &vec![header.clone()])?;
+                if seed.is_empty() {
+                    return Ok(());
+                }
+                let rows: Rows = seed.iter().map(|item| cells(row_type, &header, item, None)).collect();
+                sheets.write_rows_in_sheet(spreadsheet_id, new_id, DATA_RANGE, &rows)
             })?,
         };
         Ok(RowSheet { sheets: sheets.clone(), spreadsheet_id: spreadsheet_id.into(), sheet_id, row_type, required, title: title.into() })
@@ -303,7 +322,7 @@ impl RowSheet {
         let header: Vec<String> = header_rows.first().map(|h| h.iter().map(|c| c.trim().to_string()).collect()).unwrap_or_default();
         let missing: Vec<&str> = self.required.iter().copied().filter(|name| !header.iter().any(|h| h == name)).collect();
         if !missing.is_empty() {
-            bail!("The {} tab's header row is missing columns: {}", self.row_type.name, py::repr_list(&missing));
+            bail!("The {} tab's header row is missing columns: {}", self.title, py::repr_list(&missing));
         }
         Ok((header, rows))
     }
@@ -334,24 +353,30 @@ impl RowSheet {
     }
 
     fn to_row(&self, header: &[String], item: &Row, original: Option<&Vec<String>>) -> Vec<String> {
-        header
-            .iter()
-            .enumerate()
-            .map(|(i, name)| {
-                if self.row_type.kind(name).is_some() {
-                    match item.get(name) {
-                        None | Some(Value::Null) => String::new(),
-                        Some(Value::String(s)) => s.clone(),
-                        Some(v @ (Value::Array(_) | Value::Object(_))) => py::json_compact_ascii(v),
-                        Some(Value::Bool(b)) => if *b { "True" } else { "False" }.to_string(),
-                        Some(Value::Number(n)) => py::python_number(n),
-                    }
-                } else {
-                    original.and_then(|o| o.get(i)).cloned().unwrap_or_default()
-                }
-            })
-            .collect()
+        cells(self.row_type, header, item, original)
     }
+}
+
+/// `item`'s cells under `header`: its fields' values as text, and the
+/// cells of columns it doesn't have from `original`.
+fn cells(row_type: RowType, header: &[String], item: &Row, original: Option<&Vec<String>>) -> Vec<String> {
+    header
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            if row_type.kind(name).is_some() {
+                match item.get(name) {
+                    None | Some(Value::Null) => String::new(),
+                    Some(Value::String(s)) => s.clone(),
+                    Some(v @ (Value::Array(_) | Value::Object(_))) => py::json_compact_ascii(v),
+                    Some(Value::Bool(b)) => if *b { "True" } else { "False" }.to_string(),
+                    Some(Value::Number(n)) => py::python_number(n),
+                }
+            } else {
+                original.and_then(|o| o.get(i)).cloned().unwrap_or_default()
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]

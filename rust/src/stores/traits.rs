@@ -2,12 +2,15 @@
 //! off events -- kept in the Traits tab, seeded with SEED_TRAITS the first
 //! time.
 
-use crate::google::sheets::{Rows, SheetsClient, TabRange};
+use crate::contract::{wire_text, RowItem, Schema};
+use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
-use crate::sheet::{create_tab, find_tab, TRAITS};
-use crate::stores::groups::{python_repr, python_str};
+use crate::sheet::rows::{self, Row, RowSheet, RowType};
+use crate::sheet::TRAITS;
+use crate::stores::groups::{python_repr, python_str, repr_or_none, str_or_none};
 use anyhow::bail;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::sync::LazyLock;
 
@@ -24,11 +27,7 @@ pub const DEFAULT_LOOKBACK_DAYS: i64 = 30;
 pub const DEFAULT_TARGET: i64 = 1;
 pub const DEFAULT_WITHIN_DAYS: i64 = 14;
 pub const DEFAULT_WINDOW_DAYS: i64 = 30;
-pub const HEADER_ROW: [&str; 5] = ["id", "name", "status", "definition", "parts"];
 pub const CLEARABLE_TRAIT_FIELDS: [&str; 1] = ["definition"];
-const HEADER_RANGE: &str = "A1:Z1";
-const DATA_RANGE: &str = "A2:Z";
-const WHOLE_RANGE: &str = "A1:Z";
 
 /// Each part kind's (required, optional) fields.
 pub fn part_kind(kind: &str) -> Option<(&'static [&'static str], &'static [&'static str])> {
@@ -45,96 +44,48 @@ pub fn part_kind(kind: &str) -> Option<(&'static [&'static str], &'static [&'sta
 
 pub const PART_KIND_NAMES: [&str; 6] = ["judgment", "continuity", "count", "duration", "follow_through", "spacing"];
 
-/// A trait: id, name, status, definition and parts, each a JSON value
-/// (a hand edit can leave any of them any shape).
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub enum TraitStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "off")]
+    Off,
+    #[serde(rename = "archived")]
+    Archived,
+}
+
+/// One trait: how the user wants to be with people, and the parts it's
+/// scored by (see get_traits).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema, RowItem)]
 pub struct Trait {
-    pub id: Option<Value>,
-    pub name: Option<Value>,
-    pub status: Option<Value>,
-    pub definition: Option<Value>,
-    pub parts: Option<Value>,
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[row(text)]
+    pub status: Option<TraitStatus>,
+    pub definition: Option<String>,
+    pub parts: Option<Vec<Map<String, Value>>>,
 }
 
 impl Trait {
-    pub fn get(&self, field: &str) -> &Option<Value> {
-        match field {
-            "id" => &self.id,
-            "name" => &self.name,
-            "status" => &self.status,
-            "definition" => &self.definition,
-            _ => &self.parts,
-        }
-    }
-
-    fn slot(&mut self, field: &str) -> &mut Option<Value> {
-        match field {
-            "id" => &mut self.id,
-            "name" => &mut self.name,
-            "status" => &mut self.status,
-            "definition" => &mut self.definition,
-            _ => &mut self.parts,
-        }
-    }
-
-    pub fn id_str(&self) -> Option<&str> {
-        self.id.as_ref().and_then(Value::as_str)
-    }
-
-    pub fn name_str(&self) -> Option<&str> {
-        self.name.as_ref().and_then(Value::as_str)
-    }
-
-    pub fn status_str(&self) -> Option<&str> {
-        self.status.as_ref().and_then(Value::as_str)
-    }
-
-    pub fn from_value(value: &Value) -> Trait {
-        let mut t = Trait::default();
-        for field in HEADER_ROW {
-            *t.slot(field) = value.get(field).filter(|v| !v.is_null()).cloned();
-        }
-        t
-    }
-
-    pub fn to_json(&self) -> Map<String, Value> {
-        HEADER_ROW.iter().map(|f| (f.to_string(), self.get(f).clone().unwrap_or(Value::Null))).collect()
-    }
-
-    pub fn from_row(header: &[String], data: &[String]) -> Trait {
-        let cell = |name: &str| -> Option<String> {
-            let i = header.iter().position(|h| h == name)?;
-            let text = data.get(i).map(|c| c.trim()).unwrap_or("");
-            if text.is_empty() { None } else { Some(text.to_string()) }
-        };
-        let parts = cell("parts").map(|text| serde_json::from_str::<Value>(&text).unwrap_or(Value::String(text)));
-        Trait {
-            id: cell("id").map(Value::String),
-            name: cell("name").map(Value::String),
-            status: cell("status").map(|s| s.to_lowercase()).filter(|s| !s.is_empty()).map(Value::String),
-            definition: cell("definition").map(Value::String),
-            parts,
-        }
-    }
-
-    pub fn to_row(&self, header: &[String], original: Option<&Vec<String>>) -> Vec<String> {
-        header
-            .iter()
-            .enumerate()
-            .map(|(i, name)| {
-                if HEADER_ROW.contains(&name.as_str()) {
-                    match self.get(name) {
-                        None | Some(Value::Null) => String::new(),
-                        Some(Value::String(s)) => s.clone(),
-                        Some(v) => py::json_compact_ascii(v),
-                    }
-                } else {
-                    original.and_then(|o| o.get(i)).cloned().unwrap_or_default()
-                }
-            })
-            .collect()
+    /// Its parts as JSON values, none when it has none.
+    pub fn part_values(&self) -> Vec<Value> {
+        self.parts.iter().flatten().map(|p| Value::Object(p.clone())).collect()
     }
 }
+
+/// A trait as get_traits lists it: plus anything wrong with it, as hand
+/// edits can leave it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct ListedTrait {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub status: Option<TraitStatus>,
+    pub definition: Option<String>,
+    pub parts: Option<Vec<Map<String, Value>>>,
+    pub problems: Option<Vec<String>>,
+}
+
+pub const TRAIT_ROW: RowType = <Trait as rows::RowItem>::ROW_TYPE;
 
 fn effort_ratings() -> Value {
     json!({
@@ -148,11 +99,11 @@ fn effort_ratings() -> Value {
 /// What a new Traits tab starts with.
 pub fn seed_traits() -> Vec<Trait> {
     let t = |id: &str, name: &str, definition: &str, parts: Value| Trait {
-        id: Some(json!(id)),
-        name: Some(json!(name)),
-        status: Some(json!("active")),
-        definition: Some(json!(definition)),
-        parts: Some(parts),
+        id: Some(id.into()),
+        name: Some(name.into()),
+        status: Some(TraitStatus::Active),
+        definition: Some(definition.into()),
+        parts: Some(parts.as_array().unwrap().iter().map(|p| p.as_object().unwrap().clone()).collect()),
     };
     vec![
         t(
@@ -278,28 +229,21 @@ fn number(value: &Value) -> f64 {
 
 pub fn trait_problems(t: &Trait) -> Vec<String> {
     let mut problems = Vec::new();
-    match t.name.as_ref().and_then(Value::as_str).filter(|n| !n.trim().is_empty()) {
+    match t.name.as_deref().filter(|n| !n.trim().is_empty()) {
         None => problems.push("it needs a name".to_string()),
         Some(name) if name.chars().count() > MAX_NAME_LENGTH => {
             problems.push(format!("its name is longer than {MAX_NAME_LENGTH} characters"))
         }
         _ => {}
     }
-    if !TRAIT_STATUSES.iter().any(|s| t.status_str() == Some(*s)) {
+    if t.status.is_none() {
         problems.push(format!("its status must be one of {}", TRAIT_STATUSES.join(", ")));
     }
-    if let Some(definition) = &t.definition {
-        if !definition.is_null() && !definition.is_string() {
-            problems.push("its definition must be text".into());
-        }
+    let parts = t.part_values();
+    if parts.is_empty() {
+        problems.push("it needs parts: a list of at least one part, each an object with a \"kind\"".into());
+        return problems;
     }
-    let parts = match &t.parts {
-        Some(Value::Array(parts)) if !parts.is_empty() => parts,
-        _ => {
-            problems.push("it needs parts: a list of at least one part, each an object with a \"kind\"".into());
-            return problems;
-        }
-    };
     for (number, part) in parts.iter().enumerate() {
         for p in part_problems(part) {
             problems.push(format!("part {}{} {p}", number + 1, kind_of(part)));
@@ -597,48 +541,35 @@ fn slug(name: &str) -> String {
 
 #[derive(Clone)]
 pub struct Traits {
-    sheets: SheetsClient,
-    spreadsheet_id: String,
-    sheet_id: i64,
+    sheet: RowSheet,
 }
 
 impl Traits {
     pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str) -> anyhow::Result<Traits> {
-        let sheet_id = match find_tab(sheets, spreadsheet_id, TRAITS.0)? {
-            Some(id) => id,
-            None => create_tab(sheets, spreadsheet_id, TRAITS.0, TRAITS.1, None, |new_id| {
-                let header: Vec<String> = HEADER_ROW.iter().map(|s| s.to_string()).collect();
-                sheets.write_rows_in_sheet(spreadsheet_id, new_id, HEADER_RANGE, &vec![header.clone()])?;
-                let rows: Rows = seed_traits().iter().map(|t| t.to_row(&header, None)).collect();
-                sheets.write_rows_in_sheet(spreadsheet_id, new_id, DATA_RANGE, &rows)
-            })?,
-        };
-        Ok(Traits { sheets: sheets.clone(), spreadsheet_id: spreadsheet_id.into(), sheet_id })
+        let seed: Vec<Row> = seed_traits().iter().map(rows::RowItem::to_row).collect();
+        Ok(Traits { sheet: RowSheet::ensure_seeded(sheets, spreadsheet_id, TRAITS.0, TRAITS.1, TRAIT_ROW, &["id", "name", "status", "parts"], &seed)? })
     }
 
     pub fn whole_tab(&self) -> TabRange {
-        TabRange::new(&self.spreadsheet_id, self.sheet_id, WHOLE_RANGE)
+        self.sheet.whole_tab()
     }
 
     pub fn prefetch(&self, ranges: &[TabRange]) -> anyhow::Result<()> {
-        self.sheets.prefetch(ranges)
+        self.sheet.prefetch(ranges)
     }
 
     pub fn all(&self) -> anyhow::Result<Vec<Trait>> {
-        let (header, rows) = self.read()?;
-        Ok(rows.iter().filter(|r| r.iter().any(|c| !c.trim().is_empty())).map(|r| Trait::from_row(&header, r)).collect())
+        self.sheet.read_items()
     }
 
     pub fn ids(&self) -> anyhow::Result<Vec<String>> {
-        // `[t.id for t in all()]`: Nones included as "None" never match a
-        // real id, so they're left out.
-        Ok(self.all()?.into_iter().filter_map(|t| t.id_str().map(str::to_string)).collect())
+        Ok(self.all()?.into_iter().filter_map(|t| t.id).collect())
     }
 
     pub fn by_id(&self) -> anyhow::Result<Vec<(String, Trait)>> {
         let mut out: Vec<(String, Trait)> = Vec::new();
         for t in self.all()? {
-            if let Some(id) = t.id_str().filter(|i| !i.is_empty()).map(str::to_string) {
+            if let Some(id) = t.id.clone().filter(|i| !i.is_empty()) {
                 out.retain(|(k, _)| *k != id);
                 out.push((id, t));
             }
@@ -646,34 +577,38 @@ impl Traits {
         Ok(out)
     }
 
-    pub fn get_traits(&self, statuses: Option<&[String]>) -> anyhow::Result<Value> {
+    pub fn get_traits(&self, statuses: Option<&[String]>) -> anyhow::Result<Vec<ListedTrait>> {
         let statuses = check_statuses(statuses)?;
-        let listed: Vec<Value> = self
+        Ok(self
             .all()?
             .into_iter()
-            .filter(|t| statuses.iter().any(|s| t.status_str() == Some(s.as_str())))
+            .filter(|t| statuses.iter().any(|s| t.status.as_ref().map(wire_text).as_ref() == Some(s)))
             .map(|t| {
                 let problems = trait_problems(&t);
-                let mut out = t.to_json();
-                out.insert("problems".into(), if problems.is_empty() { Value::Null } else { json!(problems) });
-                Value::Object(out)
+                ListedTrait {
+                    id: t.id,
+                    name: t.name,
+                    status: t.status,
+                    definition: t.definition,
+                    parts: t.parts,
+                    problems: if problems.is_empty() { None } else { Some(problems) },
+                }
             })
-            .collect();
-        Ok(Value::Array(listed))
+            .collect())
     }
 
-    pub fn create_trait(&self, given: &Trait) -> anyhow::Result<Value> {
+    pub fn create_trait(&self, given: &Trait) -> anyhow::Result<Trait> {
         let traits = self.all()?;
         let mut new = given.clone();
-        if !new.status.as_ref().is_some_and(|s| crate::stores::groups::truthy(Some(s))) {
-            new.status = Some(json!("active"));
+        if new.status.is_none() {
+            new.status = Some(TraitStatus::Active);
         }
         let problems = trait_problems(&new);
         if !problems.is_empty() {
             bail!("{}", said(&new, &problems));
         }
-        let taken: Vec<Option<&str>> = traits.iter().map(|t| t.id_str()).collect();
-        let base = slug(new.name_str().unwrap_or_default());
+        let taken: Vec<Option<&str>> = traits.iter().map(|t| t.id.as_deref()).collect();
+        let base = slug(new.name.as_deref().unwrap_or_default());
         let mut id = base.clone();
         let mut n = 2;
         while taken.contains(&Some(id.as_str())) {
@@ -681,99 +616,47 @@ impl Traits {
             id = format!("{}-{n}", base.chars().take(keep).collect::<String>());
             n += 1;
         }
-        new.id = Some(json!(id));
+        new.id = Some(id);
         check_unique_name(&new, &traits)?;
         let mut all = traits;
         all.push(new.clone());
-        self.write(&all)?;
-        Ok(Value::Object(new.to_json()))
+        self.sheet.write_items(&all)?;
+        Ok(new)
     }
 
-    pub fn update_trait(&self, given: &Trait, clear_fields: &[String]) -> anyhow::Result<Value> {
-        let Some(id) = given.id_str().filter(|i| !i.is_empty()).map(str::to_string) else {
+    pub fn update_trait(&self, given: &Trait, clear_fields: &[String]) -> anyhow::Result<Trait> {
+        let Some(id) = given.id.clone().filter(|i| !i.is_empty()) else {
             bail!("update_trait needs the trait's id");
         };
-        let mut unknown: Vec<&String> = clear_fields.iter().filter(|c| !CLEARABLE_TRAIT_FIELDS.contains(&c.as_str())).collect();
-        unknown.sort();
-        unknown.dedup();
-        if !unknown.is_empty() {
-            bail!("Can't clear {}; clearable fields are ['definition']", py::repr_list(&unknown));
-        }
-        let mut both: Vec<&String> = clear_fields.iter().filter(|n| given.get(n).is_some()).collect();
-        both.sort();
-        if !both.is_empty() {
-            bail!("Can't both set and clear {}", py::repr_list(&both));
-        }
+        rows::check_clear_item(given, clear_fields, &CLEARABLE_TRAIT_FIELDS)?;
         let mut traits = self.all()?;
-        let Some(index) = traits.iter().position(|t| t.id_str() == Some(id.as_str())) else {
+        let Some(index) = traits.iter().position(|t| t.id.as_deref() == Some(id.as_str())) else {
             let known: Vec<String> =
-                traits.iter().map(|t| format!("{} ({})", python_str(t.id.as_ref()), python_str(t.name.as_ref()))).collect();
+                traits.iter().map(|t| format!("{} ({})", str_or_none(t.id.as_deref()), str_or_none(t.name.as_deref()))).collect();
             bail!("{} isn't a trait; the traits are {}", py::repr(&id), known.join(", "));
         };
-        let mut updated = traits[index].clone();
-        for field in HEADER_ROW {
-            if field != "id" {
-                if let Some(value) = given.get(field) {
-                    *updated.slot(field) = Some(value.clone());
-                }
-            }
-        }
-        for name in clear_fields {
-            *updated.slot(name) = None;
-        }
+        let updated = rows::updated_item(&traits[index], given, clear_fields, &["id"]);
         let problems = trait_problems(&updated);
         if !problems.is_empty() {
             bail!("{}", said(&updated, &problems));
         }
         check_unique_name(&updated, &traits)?;
         traits[index] = updated.clone();
-        self.write(&traits)?;
-        Ok(Value::Object(updated.to_json()))
-    }
-
-    fn read(&self) -> anyhow::Result<(Vec<String>, Rows)> {
-        let mut found = self.sheets.read_ranges_in_sheet(&self.spreadsheet_id, self.sheet_id, &[HEADER_RANGE, DATA_RANGE])?;
-        let rows = found.pop().unwrap_or_default();
-        let header_rows = found.pop().unwrap_or_default();
-        let header: Vec<String> = header_rows.first().map(|h| h.iter().map(|c| c.trim().to_string()).collect()).unwrap_or_default();
-        let missing: Vec<&str> = ["id", "name", "status", "parts"].into_iter().filter(|c| !header.iter().any(|h| h == c)).collect();
-        if !missing.is_empty() {
-            bail!("The Traits tab's header row is missing columns: {}", py::repr_list(&missing));
-        }
-        Ok((header, rows))
-    }
-
-    fn write(&self, traits: &[Trait]) -> anyhow::Result<()> {
-        let (header, previous) = self.read()?;
-        let mut by_id: Vec<(Option<Value>, &Vec<String>)> = Vec::new();
-        for row in &previous {
-            if row.iter().any(|c| !c.trim().is_empty()) {
-                let id = Trait::from_row(&header, row).id;
-                by_id.retain(|(k, _)| *k != id);
-                by_id.push((id, row));
-            }
-        }
-        let mut rows: Rows = traits
-            .iter()
-            .map(|t| t.to_row(&header, by_id.iter().find(|(k, _)| *k == t.id).map(|(_, r)| *r)))
-            .collect();
-        for _ in traits.len()..previous.len() {
-            rows.push(vec![String::new(); header.len()]);
-        }
-        self.sheets.write_rows_in_sheet(&self.spreadsheet_id, self.sheet_id, DATA_RANGE, &rows)
+        self.sheet.write_items(&traits)?;
+        Ok(updated)
     }
 }
 
 fn check_unique_name(t: &Trait, traits: &[Trait]) -> anyhow::Result<()> {
-    let name = t.name_str().unwrap_or_default().to_lowercase();
-    if let Some(clash) = traits.iter().find(|o| o.id != t.id && o.name_str().unwrap_or_default().to_lowercase() == name) {
-        bail!("There's already a trait named {} ({})", python_repr(clash.name.as_ref().unwrap_or(&Value::Null)), python_str(clash.id.as_ref()));
+    let name = t.name.as_deref().unwrap_or_default().to_lowercase();
+    if let Some(clash) = traits.iter().find(|o| o.id != t.id && o.name.as_deref().unwrap_or_default().to_lowercase() == name) {
+        bail!("There's already a trait named {} ({})", repr_or_none(clash.name.as_deref()), str_or_none(clash.id.as_deref()));
     }
     Ok(())
 }
 
 fn said(t: &Trait, problems: &[String]) -> String {
-    let name = match t.name_str().filter(|n| !n.trim().is_empty()) {
+    let name = match t.name.as_deref().filter(|n| !n.trim().is_empty()) {
         Some(n) => format!("The trait {}", py::repr(n)),
         None => "The trait".into(),
     };

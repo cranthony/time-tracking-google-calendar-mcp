@@ -22,11 +22,15 @@ fn fixture() -> Fixture {
 }
 
 fn given(value: Value) -> Trait {
-    Trait::from_value(&value)
+    serde_json::from_value(value).unwrap()
 }
 
 fn json_of(traits: &[Trait]) -> Vec<Value> {
-    traits.iter().map(|t| Value::Object(t.to_json())).collect()
+    traits.iter().map(to_value).collect()
+}
+
+fn to_value<T: serde::Serialize>(value: T) -> Value {
+    serde_json::to_value(value).unwrap()
 }
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -39,9 +43,9 @@ fn refused<T>(result: anyhow::Result<T>, pattern: &str) {
 }
 
 impl Fixture {
-    fn held<T>(&self, f: impl FnOnce(&Traits) -> anyhow::Result<T>) -> anyhow::Result<T> {
+    fn held<T: serde::Serialize>(&self, f: impl FnOnce(&Traits) -> anyhow::Result<T>) -> anyhow::Result<Value> {
         let _held = WRITE_LOCK.hold();
-        f(&self.traits)
+        f(&self.traits).map(to_value)
     }
 
     fn update(&self, value: Value) -> Value {
@@ -49,12 +53,12 @@ impl Fixture {
     }
 
     fn by_id(&self, id: &str) -> Value {
-        self.traits.by_id().unwrap().into_iter().find(|(k, _)| k == id).map(|(_, t)| Value::Object(t.to_json())).unwrap()
+        self.traits.by_id().unwrap().into_iter().find(|(k, _)| k == id).map(|(_, t)| to_value(t)).unwrap()
     }
 
     fn listed_ids(&self, statuses: Option<&[&str]>) -> Vec<Value> {
         let statuses = statuses.map(strings);
-        self.traits.get_traits(statuses.as_deref()).unwrap().as_array().unwrap().iter().map(|t| t["id"].clone()).collect()
+        self.traits.get_traits(statuses.as_deref()).unwrap().iter().map(|t| to_value(t)["id"].clone()).collect()
     }
 }
 
@@ -96,7 +100,7 @@ fn an_existing_tab_isnt_seeded_again() {
         Traits::ensure(&f.sheets, &f.spreadsheet).unwrap()
     };
 
-    assert_eq!(again.by_id().unwrap().into_iter().find(|(k, _)| k == "creative").unwrap().1.status_str(), Some("off"));
+    assert_eq!(again.by_id().unwrap().into_iter().find(|(k, _)| k == "creative").unwrap().1.status, Some(TraitStatus::Off));
     assert_eq!(again.all().unwrap().len(), 5);
 }
 
@@ -118,11 +122,20 @@ fn lists_active_and_off_traits_by_default() {
 }
 
 #[test]
+fn a_cell_that_isnt_a_list_of_parts_fails_the_tab() {
+    let f = fixture();
+    f.fake.set_cell(&f.spreadsheet, TRAITS.1, 1, 4, "not json");
+    f.fake.set_cell(&f.spreadsheet, TRAITS.1, 2, 2, "Retired");
+
+    refused(f.traits.get_traits(None), r"The Traits tab has cells that can't be read: row 2, column parts: 'not json' isn't valid JSON; row 3, column status: 'Retired' doesn't fit");
+}
+
+#[test]
 fn a_hand_edited_trait_shows_its_problems() {
     let f = fixture();
     f.fake.set_cell(&f.spreadsheet, TRAITS.1, 1, 4, r#"[{"kind": "count", "target": 0}]"#);
 
-    let listed = f.traits.get_traits(None).unwrap();
+    let listed = to_value(f.traits.get_traits(None).unwrap());
 
     assert_eq!(listed[0]["problems"], json!(["part 1 (count) \"target\" must be a number above 0"]));
     assert!(listed[1]["problems"].is_null());
@@ -180,7 +193,7 @@ fn renames_and_rewords_keeping_its_id_and_parts() {
     let updated = f.update(json!({"id": "generous", "name": "Giving", "definition": "Give."}));
 
     assert_eq!((updated["id"].clone(), updated["name"].clone(), updated["definition"].clone()), (json!("generous"), json!("Giving"), json!("Give.")));
-    assert_eq!(updated["parts"], seed_traits()[4].parts.clone().unwrap());
+    assert_eq!(updated["parts"], json!(seed_traits()[4].parts));
     assert_eq!(f.by_id("generous"), updated);
 }
 
@@ -204,10 +217,10 @@ fn clears_the_definition() {
 
 #[test]
 fn update_refuses_what_it_cant_do() {
-    let cases: [(Value, &[&str], &str); 6] = [
+    // A status that isn't one is refused by the tool's schema.
+    let cases: [(Value, &[&str], &str); 5] = [
         (json!({"id": "nope", "name": "X"}), &[], "'nope' isn't a trait; the traits are thoughtful"),
         (json!({"id": "creative", "parts": []}), &[], "needs parts"),
-        (json!({"id": "creative", "status": "gone"}), &[], "its status must be one of active, off, archived"),
         (json!({"id": "creative"}), &["name"], "Can't clear"),
         (json!({"id": "creative", "definition": "x"}), &["definition"], "Can't both set and clear"),
         (json!({"name": "x"}), &[], "needs the trait's id"),

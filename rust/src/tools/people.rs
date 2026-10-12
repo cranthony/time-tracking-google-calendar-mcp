@@ -1,20 +1,15 @@
 //! The people, circle, trait and habit tools.
 
 use super::stores::{prefetch_habits, prefetch_people, prefetch_stores};
-use super::{check_part_actions, from_store, refused, texts, ToolError};
+use super::{check_part_actions, refused, texts, ToolError};
 use crate::app::App;
 use crate::contract::{tool, Schema};
 use crate::stores::habits::subject_id;
 pub use crate::stores::habits::{CreatedHabit, Habit, ListedHabit};
 pub use crate::stores::people::{Circle, CreatedCircle, CreatedPerson, DeletedCircle, ListedCircle, ListedPerson, Person, Status};
-use crate::stores::traits::Trait as StoredTrait;
+pub use crate::stores::traits::{ListedTrait, Trait, TraitStatus};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-
-/// A typed argument as JSON.
-fn to_json<T: Serialize>(value: &T) -> Value {
-    serde_json::to_value(value).expect("an argument is JSON")
-}
 
 /// Each habit (by its subject id) with the events the user cancelled
 /// that count against its follow-through.
@@ -43,16 +38,6 @@ fn parts_of(traits: &Option<Map<String, Value>>) -> Option<&Value> {
     traits.as_ref().and_then(|t| t.get("parts"))
 }
 
-
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
-pub enum TraitStatus {
-    #[serde(rename = "active")]
-    Active,
-    #[serde(rename = "off")]
-    Off,
-    #[serde(rename = "archived")]
-    Archived,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub enum TraitField {
@@ -88,29 +73,6 @@ pub enum HabitField {
     Traits,
     #[serde(rename = "foundations")]
     Foundations,
-}
-
-/// A trait as get_traits lists it: plus anything wrong with it, as hand
-/// edits can leave it.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ListedTrait {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub status: Option<TraitStatus>,
-    pub definition: Option<String>,
-    pub parts: Option<Vec<Map<String, Value>>>,
-    pub problems: Option<Vec<String>>,
-}
-
-/// One trait: how the user wants to be with people, and the parts it's
-/// scored by (see get_traits).
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct Trait {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub status: Option<TraitStatus>,
-    pub definition: Option<String>,
-    pub parts: Option<Vec<Map<String, Value>>>,
 }
 
 // -- the tools ------------------------------------------------------------------
@@ -165,7 +127,7 @@ pub struct Trait {
 #[tool]
 pub fn get_traits(app: &App, statuses: Option<Vec<TraitStatus>>) -> Result<Vec<ListedTrait>, ToolError> {
     let statuses = statuses.map(|s| texts(&s));
-    from_store(app.traits()?.get_traits(statuses.as_deref()).map_err(refused)?)
+    app.traits()?.get_traits(statuses.as_deref()).map_err(refused)
 }
 
 /// Add a trait: a name (unique, at most 50 characters), a definition
@@ -178,9 +140,8 @@ pub fn get_traits(app: &App, statuses: Option<Vec<TraitStatus>>) -> Result<Vec<L
 /// select others. Returns the trait as created.
 #[tool(writes)]
 pub fn create_trait(app: &App, r#trait: Trait) -> Result<Trait, ToolError> {
-    let t = StoredTrait::from_value(&to_json(&r#trait));
-    check_part_actions(app, t.parts.as_ref())?;
-    from_store(app.traits()?.create_trait(&t).map_err(refused)?)
+    check_part_actions(app, Some(&Value::Array(r#trait.part_values())))?;
+    app.traits()?.create_trait(&r#trait).map_err(refused)
 }
 
 /// Change a trait, by id: rename it, reword its definition, change its
@@ -193,9 +154,8 @@ pub fn create_trait(app: &App, r#trait: Trait) -> Result<Trait, ToolError> {
 /// trait as updated.
 #[tool(writes)]
 pub fn update_trait(app: &App, r#trait: Trait, clear_fields: Option<Vec<TraitField>>) -> Result<Trait, ToolError> {
-    let t = StoredTrait::from_value(&to_json(&r#trait));
-    check_part_actions(app, t.parts.as_ref())?;
-    from_store(app.traits()?.update_trait(&t, &texts(&clear_fields.unwrap_or_default())).map_err(refused)?)
+    check_part_actions(app, Some(&Value::Array(r#trait.part_values())))?;
+    app.traits()?.update_trait(&r#trait, &texts(&clear_fields.unwrap_or_default())).map_err(refused)
 }
 
 /// The people the user spends time with: by default the active ones,
