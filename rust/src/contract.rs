@@ -91,7 +91,14 @@ simple! {
 
 impl<T: Schema> Schema for Option<T> {
     fn schema(defs: &mut Defs) -> Value {
-        json!({"anyOf": [T::schema(defs), {"type": "null"}]})
+        let inner = T::schema(defs);
+        // A union stays one union, null last, as pydantic writes it.
+        let mut choices = match inner.as_object() {
+            Some(map) if map.len() == 1 && map.contains_key("anyOf") => map["anyOf"].as_array().cloned().unwrap_or_default(),
+            _ => vec![inner],
+        };
+        choices.push(json!({"type": "null"}));
+        json!({ "anyOf": choices })
     }
 
     const OPTIONAL: bool = true;
@@ -122,6 +129,35 @@ pub struct DateTimeText(pub String);
 impl Schema for DateTimeText {
     fn schema(_: &mut Defs) -> Value {
         json!({"format": "date-time", "type": "string"})
+    }
+}
+
+impl Schema for serde_json::Number {
+    fn schema(_: &mut Defs) -> Value {
+        json!({"type": "number"})
+    }
+}
+
+/// A day, or an instant: what a client sends where either will do (a
+/// series' `until`), as text.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct DateOrDateTime(pub String);
+
+impl Schema for DateOrDateTime {
+    fn schema(_: &mut Defs) -> Value {
+        json!({"anyOf": [{"format": "date-time", "type": "string"}, {"format": "date", "type": "string"}]})
+    }
+}
+
+/// Which of a month's weekdays: 1 to 5, or -1 for the last.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct Nth(pub i64);
+
+impl Schema for Nth {
+    fn schema(_: &mut Defs) -> Value {
+        json!({"enum": [1, 2, 3, 4, 5, -1], "type": "integer"})
     }
 }
 

@@ -1,18 +1,84 @@
 //! get_health: the server's health metrics (see crate::health).
 
-use super::{ToolError, ToolResult};
+use super::{from_store, ToolError};
 use crate::app::App;
+use crate::contract::{tool, Schema};
 use crate::health::{iso, latency_summary, round1};
-use serde_json::{json, Map, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Number, Value};
 
-pub fn get_health(app: &App, args: &Map<String, Value>) -> ToolResult {
+/// One tool call: when it ended (UTC), how long the tool's own work
+/// took, and -- if it came over HTTP -- how long the whole request took,
+/// auth and transport included, and how much of that wasn't the tool's
+/// work (`overhead_ms`: `work_ms` and it stack to `total_ms`, to graph on
+/// one timeline). `ok`: it returned, rather than raising; a refusal the
+/// tool returns as its result is still ok.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct HealthCall {
+    pub at: String,
+    pub work_ms: i64,
+    pub total_ms: Option<i64>,
+    pub overhead_ms: Option<i64>,
+    pub ok: bool,
+}
+
+/// The median, 95th percentile and slowest of some calls' latencies.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct LatencySummary {
+    pub median_ms: i64,
+    pub p95_ms: i64,
+    pub max_ms: i64,
+}
+
+/// The server's resident memory (RSS), in MiB, after a tool call --
+/// any tool's -- ended (UTC).
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct MemorySample {
+    pub at: String,
+    pub rss_mib: Number,
+}
+
+/// One tool's last calls (up to 100): how many, how many failed, and
+/// their latencies -- the tool's own work, and the whole request's.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct ToolHealth {
+    pub tool: String,
+    pub count: i64,
+    pub errors: i64,
+    pub work: Option<LatencySummary>,
+    pub total: Option<LatencySummary>,
+    pub calls: Option<Vec<HealthCall>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct HealthReport {
+    pub tools: Vec<ToolHealth>,
+    pub memory: Option<Vec<MemorySample>>,
+    pub memory_latest_mib: Option<Number>,
+    pub memory_min_mib: Option<Number>,
+    pub memory_max_mib: Option<Number>,
+    pub restarts: Vec<String>,
+}
+
+/// The server's health metrics, to graph or look for patterns in: for
+/// each tool, its last 100 calls -- when each ended, how long the tool's
+/// own work took and how long the whole request took (auth and transport
+/// included), and whether it succeeded -- with the median, 95th
+/// percentile and slowest of each; the server's memory after each of its
+/// last 100 calls, whichever tool; and its last 100 restarts. Kept across
+/// restarts, in the Health tab of the calendar's metadata spreadsheet;
+/// the last few seconds' may not be written yet, but are given here.
+///
+/// `tool_name`: just that tool's calls. `samples`: false for just the
+/// summaries, without each call and memory sample. Read-only.
+#[tool]
+pub fn get_health(app: &App, tool_name: Option<String>, #[schema(default = "true")] samples: bool) -> Result<HealthReport, ToolError> {
     if let Some(writer) = app.health_writer() {
         // What the tab kept, from before this start, taken in.
         writer.wait_loaded(10);
     }
-    let samples = args.get("samples").and_then(Value::as_bool).unwrap_or(true);
     let mut calls = app.health.calls();
-    if let Some(tool) = args.get("tool_name").and_then(Value::as_str) {
+    if let Some(tool) = tool_name.as_deref() {
         if !calls.iter().any(|(n, _)| n == tool) {
             let known: Vec<&str> = calls.iter().map(|(n, _)| n.as_str()).collect();
             let known = if known.is_empty() { "none yet".to_string() } else { known.join(", ") };
@@ -48,7 +114,7 @@ pub fn get_health(app: &App, args: &Map<String, Value>) -> ToolResult {
     let mib: Vec<f64> = memory.iter().map(|m| round1(m.rss_kib as f64 / 1024.0)).collect();
     let min = mib.iter().copied().fold(None, |a: Option<f64>, b| Some(a.map_or(b, |a| a.min(b))));
     let max = mib.iter().copied().fold(None, |a: Option<f64>, b| Some(a.map_or(b, |a| a.max(b))));
-    Ok(json!({
+    from_store(json!({
         "tools": tools,
         "memory": if samples {
             Value::Array(memory.iter().zip(&mib).map(|(m, v)| json!({"at": iso(m.at_ms), "rss_mib": v})).collect())
