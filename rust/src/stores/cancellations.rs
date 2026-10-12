@@ -320,3 +320,7 @@ pub fn of_action(events: &[Event], action_id: Option<&Value>, tree: Option<&Acti
     };
     events.iter().filter(|e| e.action_ids.iter().flatten().any(|a| matches(a))).cloned().collect()
 }
+
+#[cfg(test)]
+#[path = "cancellations_tests.rs"]
+mod tests;

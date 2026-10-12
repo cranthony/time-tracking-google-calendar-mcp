@@ -245,3 +245,7 @@ impl RowSheet {
             .collect()
     }
 }
+
+#[cfg(test)]
+#[path = "rows_tests.rs"]
+mod tests;

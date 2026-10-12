@@ -76,3 +76,7 @@ pub fn create_tab(
     sheets.create_sheet_metadata(spreadsheet_id, id, SHEET_ROLE_METADATA_KEY, role)?;
     Ok(id)
 }
+
+#[cfg(test)]
+#[path = "mod_tests.rs"]
+mod tests;

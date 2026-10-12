@@ -167,3 +167,7 @@ pub fn location_problems(locations: &[Row]) -> Vec<String> {
     }
     problems
 }
+
+#[cfg(test)]
+#[path = "locations_tests.rs"]
+mod tests;

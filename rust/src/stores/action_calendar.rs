@@ -167,3 +167,7 @@ pub fn with_action_label(event: &Event, tree: &ActionTree, inserting: bool, held
     };
     Event { event_label_id: if holds { Some(label_id.to_string()) } else { none }, ..event.clone() }
 }
+
+#[cfg(test)]
+#[path = "action_calendar_tests.rs"]
+mod tests;
