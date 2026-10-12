@@ -321,3 +321,7 @@ fn contiguous_runs(sorted: &[i64]) -> Vec<(i64, i64)> {
     }
     runs
 }
+
+#[cfg(test)]
+#[path = "notes_tests.rs"]
+mod tests;
