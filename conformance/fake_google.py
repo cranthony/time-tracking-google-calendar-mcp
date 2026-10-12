@@ -161,10 +161,11 @@ class FakeGoogle:
         self.requests: list[LoggedRequest] = []
         self.rate_limit_next: int = 0
         """Answer this many of the next Sheets requests with 429."""
-        self.fail_next: list[tuple[str, str, int, str]] = []
-        """(method, a piece of the path, status, message): answer the next
-        request that matches each with that error, once -- a write that
-        fails partway through applying something."""
+        self.fail_next: list[tuple] = []
+        """(method, a piece of the path, status, message[, skip]): answer
+        the next request that matches each with that error, once -- a write
+        that fails partway through applying something. With `skip`, that
+        many matching requests go through first."""
         self.token_requests = 0
         self.authkit_requests: list[dict] = []
         self._ids = itertools.count(1)
@@ -899,7 +900,9 @@ class FakeGoogle:
                 failing = next(
                     (f for f in self.fail_next if f[0] == request.method and f[1] in unquote(request.url.path)), None
                 )
-                if failing is not None:
+                if failing is not None and len(failing) > 4 and failing[4] > 0:
+                    self.fail_next[self.fail_next.index(failing)] = (*failing[:4], failing[4] - 1)
+                elif failing is not None:
                     self.fail_next.remove(failing)
                     return GoogleError(failing[2], failing[3]).response()
                 try:
