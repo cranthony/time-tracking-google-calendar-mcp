@@ -810,6 +810,10 @@ pub fn is_refusal(error: &anyhow::Error) -> bool {
 fn _unused(_: DateTime<Utc>) {}
 
 #[cfg(test)]
+#[path = "recurrences_tests.rs"]
+mod store_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

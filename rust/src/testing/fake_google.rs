@@ -163,6 +163,9 @@ pub struct State {
     /// of an event deletes the event first, as if it was deleted
     /// meanwhile.
     pub fail_next: Vec<(String, String, u16, String)>,
+    /// Import "<id>_R<time>" as a plain event, not splitting series <id>
+    /// (it's undocumented, so it might stop).
+    pub imports_dont_split: bool,
     ids: u64,
 }
 
@@ -851,8 +854,13 @@ impl State {
                 return Ok(Self::present(self.calendar(cid)?, existing));
             }
         }
+        let stem = split.as_ref().filter(|_| self.imports_dont_split).map(|_| uid.trim_end_matches("@google.com").to_string());
+        let split = split.filter(|_| !self.imports_dont_split);
         let Some((base_id, at_text)) = split else {
-            let id = self.next_id("import");
+            let id = match stem {
+                Some(stem) => stem,
+                None => self.next_id("import"),
+            };
             let event = self.new_event(cid, body, &id)?;
             let cal = self.calendar(cid)?;
             cal.put(&id, event.clone());
