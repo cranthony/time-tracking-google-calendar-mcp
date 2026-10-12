@@ -5,3 +5,21 @@
 set -euo pipefail
 
 pip install -r requirements.txt
+
+# The Rust server (rust/), built alongside until it's the one started (see
+# render-start.sh). Cargo's home and its build directory live under
+# ~/.cache, which Render's build cache keeps between deploys (pip's cache is
+# there too), so a deploy rebuilds only what changed. Its own toolchain,
+# installed there once, rather than whatever the image has. The binary is
+# copied into the checkout, which is what the running service gets.
+export CARGO_HOME="$HOME/.cache/ctt-cargo"
+export RUSTUP_HOME="$HOME/.cache/ctt-rustup"
+export CARGO_TARGET_DIR="$HOME/.cache/ctt-target"
+export PATH="$CARGO_HOME/bin:$PATH"
+if [ ! -x "$CARGO_HOME/bin/cargo" ]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --no-modify-path
+fi
+cargo --version
+cargo build --release --locked --manifest-path rust/Cargo.toml
+mkdir -p bin
+cp "$CARGO_TARGET_DIR/release/ctt-server" bin/ctt-server

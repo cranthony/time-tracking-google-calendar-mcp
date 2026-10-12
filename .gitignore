@@ -21,3 +21,4 @@ htmlcov/
 
 # Rust build output
 rust/target/
+/bin/
