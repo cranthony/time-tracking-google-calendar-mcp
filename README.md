@@ -387,6 +387,14 @@ Once deployed, add it under claude.ai's **Settings → Connectors → Add custom
 
 ## Running the server
 
+The deployed server is the Rust port, in [`rust/`](rust/) (`scripts/render-build.sh` builds it, `scripts/render-start.sh` starts it). It reads the same configuration as the Python one, a local `.env` included, and is held to it by the [conformance scenarios](#conformance-scenarios). With [Rust](https://rustup.rs) installed:
+
+```bash
+cargo run --release --manifest-path rust/Cargo.toml --bin ctt-server
+```
+
+The Python server below still works the same way, until its code is removed.
+
 With the virtual environment activated, run the server directly:
 
 ```bash
@@ -422,6 +430,13 @@ If you only need to run the server (not the Inspector), `python server.py` works
 See [MCP tools](#mcp-tools) above for what `server.py` currently exposes.
 
 ## Command-line utilities
+
+Each of these has a Rust counterpart over the Rust server's own code, which is what stays once the Python is removed: `create_calendar`, `calendar_cli` (the same commands) and `probe <name>` (one per probe below, plus `clear_fields`, `label_lifecycle` and the `series_*` probes):
+
+```bash
+cargo run --release --manifest-path rust/Cargo.toml --bin calendar_cli -- list 2h 1h
+cargo run --release --manifest-path rust/Cargo.toml --bin probe -- metadata_tabs
+```
 
 [`probes/metadata_tabs.py`](probes/metadata_tabs.py) runs the actions, action groups, people, circles and locations tabs end to end against Google, on a scratch calendar it deletes afterward. It leaves the scratch spreadsheet in Drive, titled "CTT tabs probe (safe to delete)", for you to trash by hand:
 
