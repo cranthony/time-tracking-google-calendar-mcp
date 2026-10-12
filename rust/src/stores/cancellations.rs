@@ -1,6 +1,6 @@
-//! Cancellations (utilities/cancellations.py): the events the user
-//! cancelled that count against someone's follow-through, one row per
-//! event per person (and engagement), in the Cancellations tab.
+//! Cancellations: the events the user cancelled that count against
+//! someone's follow-through, one row per event per person (and engagement),
+//! in the Cancellations tab.
 
 use crate::event::{parse_iso, Event, Moment};
 use crate::facts::{Facts, SELF_ID};

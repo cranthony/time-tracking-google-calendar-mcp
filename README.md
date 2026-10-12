@@ -3,60 +3,43 @@ A Model Context Protocol (MCP) for managing a Google calendar with a set of non-
 
 ## Setup
 
-Create and activate a virtual environment, then install dependencies.
+The server is written in Rust, in [`rust/`](rust/). Install Rust with [rustup](https://rustup.rs), then build it:
 
-**macOS/Linux:**
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+cargo build --release --manifest-path rust/Cargo.toml
 ```
 
-**Windows (PowerShell):**
-```powershell
+That builds the server (`ctt-server`) and the command-line tools (`create_calendar`, `calendar_cli`, `probe`) into `rust/target/release/`. On Windows, use the GNU toolchain (`rustup default stable-x86_64-pc-windows-gnu`) with a MinGW-w64 toolchain on `PATH` (e.g. `winget install BrechtSanders.WinLibs.POSIX.UCRT`), or the MSVC one with Visual Studio's build tools.
+
+The [conformance scenarios](#tests) are run by a Python harness; to run them, install its dependencies in a virtual environment:
+
+```bash
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-For running tests, install the dev dependencies instead (this also installs `requirements.txt`):
-
-```bash
+source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 ```
 
 ## Project layout
 
-- [`calendar_clients/google_auth.py`](calendar_clients/google_auth.py) — the OAuth plumbing shared by both API clients below: `SCOPES` (every scope either one needs) and `load_credentials` (loads/refreshes/runs the consent flow). Split out on its own so `CalendarClient` and `SheetsClient` can each be built from one shared token rather than each owning (and duplicating) credential loading.
-- [`calendar_clients/google_calendar.py`](calendar_clients/google_calendar.py) — Google Calendar API access, behind a `CalendarClient` class and plain `Event`/`Calendar`/`EventLabel` dataclasses. Kept separate from `server.py` so the Calendar logic can be unit tested without hitting the real API — tests construct a `CalendarClient` around a mocked `service` object instead. `CalendarClient` is a thin, pure API wrapper (list/get/create/update/delete, plus event-label management); its `EventLabel` is a *raw* label, exactly as Calendar represents one — labels are managed through actions (see [Actions](#actions) below). Inside `cached_calendar_listings()` — which `server.py` wraps every MCP tool call in, alongside `cached_sheet_reads()` (below) — a `list_events` within a range already listed in the same call (same calendar) is answered from memory, filtered to its own range; any write through any `CalendarClient` forgets every listing first. Compaction lists overlapping stretches of the same days many times in one step, so `NoteCompactor` lists them all once up front and the rest come from that: a two-day dry run makes one Calendar listing instead of six.
-- [`calendar_clients/google_sheets.py`](calendar_clients/google_sheets.py) — Google Sheets API access, behind a `SheetsClient` class — the same thin-wrapper role as `CalendarClient`, but for spreadsheets: create one, add/rename/color a tab, read/write rows (optionally addressed to a tab by its sheetId, so there's no title lookup to spend a read request on), narrow a column, tag a tab with developer metadata and find it again by that tag. Never touches the Drive API directly — a spreadsheet's id is looked up via `CalendarClient.get_calendar_metadata` instead (see [Calendar metadata sheets](#calendar-metadata-sheets) below). Knows nothing about actions, time notes, or any other meaning attached to a tab. Every request retries with backoff (for up to about a minute) when Sheets answers 429 — its read quota is only 60 requests per minute per user — and on nothing else, since some requests aren't safe to repeat. `server.py` also wraps every MCP tool call in `cached_sheet_reads()`, so a tab read more than once in the same call (a compaction step reads the notes tab and the journal several times) costs one request, not several; any write to that tab forgets it, and nothing is kept between calls, so edits you make in the spreadsheet by hand are always seen by the next call.
-- [`utilities/event_changes.py`](utilities/event_changes.py) — changing several events at once, as one batch: `EventChanges.check` validates a batch of updates, creates, cancels and shifts, and refuses one whose result would have an event it moves or creates overlap another (or take no time), naming every problem and the stretch of calendar it touches as it would leave it; `apply` writes it. Nothing is ever moved to make room. The event tools and `calendar_cli.py` go through it, and compaction checks its plans with the same guard (`overlap_problems`, `rejection`).
-- [`utilities/action_calendar.py`](utilities/action_calendar.py) — `ActionCalendar` wraps a `CalendarClient` with an `Actions`: on read (`list_events`/`get_event`) it fills in an event's actions (from its label, for an event never given any) and the `action_priority` it inherits from them; on write it derives the event's label from its first action. The event's own `priority` is never touched. The event tools and compaction read and write events through it, and read `Event.effective_priority` (the event's own priority, falling back to its actions') — see [Actions](#actions) below.
-- [`utilities/calendar_metadata_sheet.py`](utilities/calendar_metadata_sheet.py) — owns the *spreadsheet* a calendar's Sheet-backed data (actions, people, uncompacted time notes, ...) lives in: `ensure_spreadsheet` finds or creates it, `ensure_tab` finds or creates/tags one of its tabs by role, and `create_tab` creates one but only tags it once its first rows are written. See [Calendar metadata sheets](#calendar-metadata-sheets) below.
-- [`utilities/row_sheet.py`](utilities/row_sheet.py) — `RowSheet`, a tab of one dataclass per row, read and written by header name (columns it doesn't know are kept as they are): what the actions, action groups, people, circles and locations tabs are built on.
-- [`utilities/actions.py`](utilities/actions.py) and [`utilities/action_groups.py`](utilities/action_groups.py) — `Actions`: the actions and the groups that roll them up, kept in step with the calendar's event labels. `ActionTree` answers the read-only questions events need (an action's priority, which action holds a label). See [Actions](#actions) below.
-- [`utilities/people.py`](utilities/people.py) and [`utilities/locations.py`](utilities/locations.py) — `People` (people, the user always among them as `self`, and circles) and `Locations`. See [People, circles and locations](#people-circles-and-locations) below.
-- [`utilities/traits.py`](utilities/traits.py) — `Traits`, how the user wants to be, each rated from parts. See [Traits](#traits) below.
-- [`utilities/facts.py`](utilities/facts.py) — an event's `Facts`: where it was, who it was with and for, and a note on each person there, as compaction establishes them.
-- [`utilities/noted_time_sheet.py`](utilities/noted_time_sheet.py) — a thin, per-tab API: `NotedTimeSheet.ensure` (the noted-times tab of a given calendar metadata spreadsheet, via `calendar_metadata_sheet.ensure_tab`) and, bound to one already-known tab, `read`/`read_with_rows`/`append`/`mark_compacted`/`garbage_collect` its rows as this module's own `NotedTime` dataclass (`timestamp`/`description`/`compaction_id`). Compacting a note stamps its `compaction_id` rather than deleting it; a note's row, together with its timestamp, forms its id, stable unless `garbage_collect` shifts it (see [Compacting notes](#compacting-notes) below). A noted time has no Calendar API counterpart to reconcile with, so there's no layer above this one. See [Calendar metadata sheets](#calendar-metadata-sheets) below.
-- [`utilities/note_compaction.py`](utilities/note_compaction.py) — `plan_compaction`, a pure function (no API access) that turns a day's notes, plus a model's decisions about which events they show happened differently, into the calendar changes that realign the day to them. See [Compacting notes](#compacting-notes) below.
-- [`utilities/compaction_timeline.py`](utilities/compaction_timeline.py) — `Timeline`, the view of a compaction (each day's notes and its events in time order), as data and as narrow fixed-width text.
-- [`utilities/compaction_journal.py`](utilities/compaction_journal.py) — `CompactionJournal`, the write-ahead journal tab that records each proposal's revisions, the user's edits and feedback, and each confirmed compaction's progress, so a failed one can be resumed exactly.
-- [`utilities/compaction_proposals.py`](utilities/compaction_proposals.py) — proposals: the user's edits and feedback, the shapes the proposal tools return, and how a revision's decisions are made from Claude's and the user's (`merge`). See [docs/compaction-proposals.md](docs/compaction-proposals.md).
-- [`utilities/note_compactor.py`](utilities/note_compactor.py) — `NoteCompactor`, which ties the notes tab, the calendar, the planner and the journal together behind the `prepare_compaction`/`compact_notes`/`get_proposal`/`amend_proposal`/`add_proposal_note`/`withdraw_proposal_note`/`confirm_proposal`/`finish_proposal`/`abandon_compaction` tools; [`utilities/compaction_additions.py`](utilities/compaction_additions.py) has the actions, people and locations a compaction adds as it goes.
-- [`utilities/health.py`](utilities/health.py) — health metrics: each tool's call latencies, memory and restarts, recorded in memory and written to the Health tab in the background, for `get_health` (see [Calendar metadata sheets](#calendar-metadata-sheets)).
-- [`utilities/memory_diagnostics.py`](utilities/memory_diagnostics.py) — `track(label)`, a context manager wrapping an operation (every MCP tool, `load_credentials`) to log RSS, `tracemalloc` growth, and `objgraph` object-count growth since the previously tracked operation — for narrowing down what's driving this process's memory usage. `tracemalloc` itself is only traced while RSS is at or above half of this process's own memory limit (read from the `MEMORY_LIMIT_BYTES` environment variable if set, else from the cgroup enforcing it, `memory.max`/`memory.limit_in_bytes`) -- started the moment it first crosses that threshold, stopped the moment it first drops back below (no hysteresis, and always logged one last time right before stopping) -- so its overhead is only paid while things are actually near an OOM kill.
-- [`server.py`](server.py) — the MCP server; its tools call into `calendar_clients/google_calendar.py` rather than talking to `googleapiclient`/OAuth directly.
-- [`workos_auth.py`](workos_auth.py) — verifies bearer tokens issued by WorkOS AuthKit, for when `server.py` is hosted remotely over `streamable-http` instead of run locally over stdio — see [Deploying](#deploying) below.
-- [`create_calendar.py`](create_calendar.py) — a standalone bootstrap script (not an MCP tool) that creates the dedicated calendar this app needs, and its calendar metadata spreadsheet (Actions and uncompacted time notes tabs both provisioned) — see [Calendar access model](#calendar-access-model) below.
-- [`calendar_cli.py`](calendar_cli.py) — a dev-only command-line tool for poking at the calendar directly (`list`/`get`/`update_properties`/`create`) without going through an MCP host — see [Command-line utilities](#command-line-utilities) below.
-- [`config.py`](config.py) — reads configuration from environment variables — see [Configuration](#configuration) below.
-- [`render.yaml`](render.yaml) — a Render Blueprint for hosting this remotely — see [Deploying](#deploying) below.
-- [`tests/`](tests/) — unit tests for the above, mocking the Google API (and WorkOS's JWKS) rather than hitting them.
+All of it is in [`rust/src/`](rust/src/) (`lib.rs` lists the modules the server and the tools share):
+
+- [`main.rs`](rust/src/main.rs) — the server: loads `.env`, builds the [`App`](rust/src/app.rs) (configuration, the Google clients, and each store, built the first time a tool needs it), and serves MCP over stdio or streamable HTTP ([`mcp/`](rust/src/mcp/): the protocol, argument checks against [`contract/tools.json`](contract/tools.json), and the HTTP transport with WorkOS bearer-token checks, CORS and the OAuth proxy for browser clients).
+- [`tools/`](rust/src/tools/) — the MCP tools, each taking its checked arguments and returning its result as JSON. Their names, descriptions and input/output schemas are [`contract/tools.json`](contract/tools.json), which the server sends as it is: edit it to change a tool's description or schema.
+- [`google/`](rust/src/google/) — Google API access: the OAuth token (refreshed as it expires, and the consent flow the command-line tools run for a first one), [`calendar.rs`](rust/src/google/calendar.rs) (`CalendarClient`: events, labels, the calendar's own metadata) and [`sheets.rs`](rust/src/google/sheets.rs) (`SheetsClient`). Inside a tool call, a `list_events` within a range already listed is answered from memory (`CachedListings`), and so is a tab read again (`CachedReads`); any write forgets what it touches, and nothing is kept between calls, so hand edits are always seen. Sheets requests retry with backoff on 429 (its read quota is 60 a minute).
+- [`event.rs`](rust/src/event.rs) and [`facts.rs`](rust/src/facts.rs) — an event as the server sees it, its facts, and how both are written to Calendar.
+- [`sheet/`](rust/src/sheet/) — the calendar's metadata spreadsheet and its tabs (see [Calendar metadata sheets](#calendar-metadata-sheets)), and tabs of one item per row, read and written by header name.
+- [`stores/`](rust/src/stores/) — what's kept: actions and groups, people and circles, locations, traits, habits, cancellations, the noted-times tab, the compaction schedule, the compaction journal; and [`event_changes.rs`](rust/src/stores/event_changes.rs) (batches of event changes, refused if they'd overlap), [`action_calendar.rs`](rust/src/stores/action_calendar.rs) (events read and written through their actions) and [`recurrences.rs`](rust/src/stores/recurrences.rs) (recurring series).
+- [`compaction/`](rust/src/compaction/) — compacting notes: the planner ([`plan.rs`](rust/src/compaction/plan.rs)), proposals, what a compaction adds, judgments, and [`compactor.rs`](rust/src/compaction/compactor.rs), which ties them to the journal; [`timeline.rs`](rust/src/timeline.rs) draws them.
+- [`health.rs`](rust/src/health.rs) — health metrics for `get_health`.
+- [`bin/`](rust/src/bin/) — the command-line tools: [`create_calendar`](rust/src/cli/create_calendar.rs), [`calendar_cli`](rust/src/cli/calendar_cli.rs) and [`probe`](rust/src/bin/probe.rs) (see [Command-line utilities](#command-line-utilities)).
+
+The server began as a Python one, and was ported to Rust call for call: some names (and the error texts) still read the way Python wrote them.
+
+Also here: [`conformance/`](conformance/) (the [tests](#tests)), [`scripts/`](scripts/) and [`render.yaml`](render.yaml) (see [Deploying](#deploying)).
 
 ## Calendar access model
 
-This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [`calendar_clients/google_auth.py`](calendar_clients/google_auth.py)) — not the broader `calendar.events`/`calendar.events.owned` scopes. That has real consequences:
+This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [`rust/src/google/mod.rs`](rust/src/google/mod.rs)) — not the broader `calendar.events`/`calendar.events.owned` scopes. That has real consequences:
 
 - This app can only read and write events on calendars **it has created itself**.
 - It has **no access to the user's existing calendars** — not `"primary"`, not any calendar they made by hand in the Calendar UI. API calls against any calendar this app didn't create itself will fail.
@@ -64,19 +47,19 @@ This app requests only the `calendar.app.created` OAuth scope (see `SCOPES` in [
 
 `SCOPES` also includes `drive.file`, for the [calendar metadata sheet](#calendar-metadata-sheets) — the same "can't touch anything it didn't make" model as `calendar.app.created`, but for Google Sheets: this app can only see/create spreadsheets it made itself, never the user's other Drive files. It's required by the Sheets API's own `spreadsheets.create` even though this app never calls the Drive API directly — a spreadsheet's id is looked up from the calendar itself, not by searching Drive (see [Calendar metadata sheets](#calendar-metadata-sheets)). If you're upgrading an install whose `token.json` predates this scope, delete it and let the consent flow run again (see [Google OAuth credentials](#google-oauth-credentials) below) — the old token won't carry the new scope.
 
-**Bootstrapping:** there's no calendar to operate on until this app creates one. Run [`create_calendar.py`](create_calendar.py) once — it only needs `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` (see [Configuration](#configuration) below), not `GOOGLE_CALENDAR_ID` — and it prints the new calendar's ID, then ensures that calendar's metadata spreadsheet (Actions and uncompacted time notes tabs both provisioned) in the same step (see [Calendar metadata sheets](#calendar-metadata-sheets) below) and prints its URL too:
+**Bootstrapping:** there's no calendar to operate on until this app creates one. Run [`create_calendar`](rust/src/cli/create_calendar.rs) once (see [Command-line utilities](#command-line-utilities)) — it only needs `GOOGLE_OAUTH_CREDENTIALS_PATH`/`GOOGLE_OAUTH_TOKEN_PATH` (see [Configuration](#configuration) below), not `GOOGLE_CALENDAR_ID` — and it prints the new calendar's ID, then ensures that calendar's metadata spreadsheet (Actions and uncompacted time notes tabs both provisioned) in the same step (see [Calendar metadata sheets](#calendar-metadata-sheets) below) and prints its URL too:
 
 ```bash
-python create_calendar.py "Time Tracking"
+create_calendar "Time Tracking"
 ```
 
 Then set `GOOGLE_CALENDAR_ID` to the ID it prints. If the app hasn't been used to create a calendar yet — including the very first time you set this up — this is the step to run first.
 
-If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` doesn't create a new calendar at all — it just ensures the metadata spreadsheet and its tabs for that already-configured calendar instead (useful if you set this app up before the spreadsheet, or one of its tabs, existed). Either way, provisioning the spreadsheet/tabs themselves is a one-time, human-run bootstrap step just like the calendar itself — there's deliberately no MCP tool or CLI command for *that* (though there is for adding data to them once they exist — see [MCP tools](#mcp-tools) and [Calendar metadata sheets](#calendar-metadata-sheets) below).
+If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar` doesn't create a new calendar at all — it just ensures the metadata spreadsheet and its tabs for that already-configured calendar instead (useful if you set this app up before the spreadsheet, or one of its tabs, existed). Either way, provisioning the spreadsheet/tabs themselves is a one-time, human-run bootstrap step just like the calendar itself — there's deliberately no MCP tool or CLI command for *that* (though there is for adding data to them once they exist — see [MCP tools](#mcp-tools) and [Calendar metadata sheets](#calendar-metadata-sheets) below).
 
 ## MCP tools
 
-[`server.py`](server.py) exposes the calendar as MCP tools:
+The server exposes the calendar as MCP tools ([`rust/src/tools/`](rust/src/tools/); their schemas are [`contract/tools.json`](contract/tools.json)):
 
 | Tool | Signature |
 | --- | --- |
@@ -137,23 +120,23 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar.py` d
 | `abandon_compaction` | `(proposal_id: str) -> CompactionResult` |
 | `set_time_zone` | `(time_zone: str) -> str` |
 
-**Batches of event changes.** `create_event`, `update_event` and `delete_event` each take several events at once, as one batch ([`utilities/event_changes.py`](utilities/event_changes.py)): `update_event` takes `updates` (an `EventUpdate`: the event's id and the fields to set, with its own `clear_fields`), `creates`, `cancels` (an `EventCancel`: an event id and `counts_against_follow_through`, required — a commitment dropped, or just a change of plan) and `shifts` (an `EventShift`: event ids and `minutes`, moving each by the same amount — each an update); `create_event` takes only creates, and `delete_event` only cancels. An event can be in only one of them. **Nothing is moved to make room:** every event the batch creates or updates must end after it starts and must not overlap any other event, on the calendar or in the batch, so whatever's in the way is moved, shortened or cancelled in the same call. A batch that breaks this changes nothing, and the error says everything needed to send a valid one at once: the rule, every problem, and the calendar from the earliest time the batch touches through the end of that night, as the batch would leave it, its events starred and history marked. Overlaps between events the batch doesn't move or create are left alone, and an update that doesn't move an event isn't checked. Each returns an `EventChangesResult`: the events changed, and a `timeline` of them beside the events around them, drawn as compaction draws its plans; `dry_run` returns that without writing anything. Cancelling patches the event's `status` to `"cancelled"` rather than deleting it, as `Event.status` recommends for a recurring event's instance. **History is protected:** everything before the last compaction (its `now`, `get_compaction_status`'s `last_compaction`) is history. An event that started before then can't be changed or cancelled, and no event can be created, or moved, to start before then, unless `allow_compacted_changes` is set — which the tools say to set only when you've explicitly approved changing history — except that an event still going on then may run on (an update moving only its end, to no earlier than the last compaction). Refusals are logged like compaction's (see [Rejections are logged](#compacting-notes)).
+**Batches of event changes.** `create_event`, `update_event` and `delete_event` each take several events at once, as one batch ([`rust/src/stores/event_changes.rs`](rust/src/stores/event_changes.rs)): `update_event` takes `updates` (an `EventUpdate`: the event's id and the fields to set, with its own `clear_fields`), `creates`, `cancels` (an `EventCancel`: an event id and `counts_against_follow_through`, required — a commitment dropped, or just a change of plan) and `shifts` (an `EventShift`: event ids and `minutes`, moving each by the same amount — each an update); `create_event` takes only creates, and `delete_event` only cancels. An event can be in only one of them. **Nothing is moved to make room:** every event the batch creates or updates must end after it starts and must not overlap any other event, on the calendar or in the batch, so whatever's in the way is moved, shortened or cancelled in the same call. A batch that breaks this changes nothing, and the error says everything needed to send a valid one at once: the rule, every problem, and the calendar from the earliest time the batch touches through the end of that night, as the batch would leave it, its events starred and history marked. Overlaps between events the batch doesn't move or create are left alone, and an update that doesn't move an event isn't checked. Each returns an `EventChangesResult`: the events changed, and a `timeline` of them beside the events around them, drawn as compaction draws its plans; `dry_run` returns that without writing anything. Cancelling patches the event's `status` to `"cancelled"` rather than deleting it, as `Event.status` recommends for a recurring event's instance. **History is protected:** everything before the last compaction (its `now`, `get_compaction_status`'s `last_compaction`) is history. An event that started before then can't be changed or cancelled, and no event can be created, or moved, to start before then, unless `allow_compacted_changes` is set — which the tools say to set only when you've explicitly approved changing history — except that an event still going on then may run on (an update moving only its end, to no earlier than the last compaction). Refusals are logged like compaction's (see [Rejections are logged](#compacting-notes)).
 
 
-Every event tool uses `PublicEvent` (defined in `server.py`), not `Event`, as its input/output type — `Event` minus whatever fields are named in `INTERNAL_EVENT_FIELDS`, plus `is_cancelled` (which has no `Event` equivalent — it's derived from the hidden `status` field). `is_end_of_day_sleep` and `recurring_event_id` are visible but read-only, like the `effective_*` fields below: `PublicEvent.to_event` ignores them, so `update_event`/`create_event` can't change them. `recurring_event_id` is assigned by Google, and `is_end_of_day_sleep` decides where compaction's days end, so a wrong mark would quietly change what each compaction takes on; it's set by hand with `calendar_cli.py update_properties`. Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli.py` still operates on `Event` directly and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
+Every event tool uses `PublicEvent`, not the server's whole event, as its input/output type — the event minus its internal fields, plus `is_cancelled` (which has no `Event` equivalent — it's derived from the hidden `status` field). `is_end_of_day_sleep` and `recurring_event_id` are visible but read-only, like the `effective_*` fields below: `PublicEvent.to_event` ignores them, so `update_event`/`create_event` can't change them. `recurring_event_id` is assigned by Google, and `is_end_of_day_sleep` decides where compaction's days end, so a wrong mark would quietly change what each compaction takes on; it's set by hand with `calendar_cli update_properties`. Agents communicating with this MCP only see the fields in `PublicEvent`. `calendar_cli` still operates on the whole event and has full access to every field, since it's a human-run dev tool, not something the agent talks to.
 
 
-Every event tool's `PublicEvent`s also carry a read-only `effective_priority`: the priority that applies, i.e. `Event`'s property of the same name: the event's own `priority`, falling back, when it has none, to the highest priority among all its actions (each action's own, or its nearest group's — filled in via `utilities/action_calendar.py`'s `fill_in_from_actions`; see [Actions](#actions) below). `priority` itself stays the event's own value, and `update_event`/`create_event` ignore `effective_priority`, so sending a listed event straight back to `update_event` never copies its actions' priority onto the event — which would otherwise stop it following later changes to its actions.
+Every event tool's `PublicEvent`s also carry a read-only `effective_priority`: the priority that applies, i.e. `Event`'s property of the same name: the event's own `priority`, falling back, when it has none, to the highest priority among all its actions (each action's own, or its nearest group's — filled in via `rust/src/stores/action_calendar.rs`'s `fill_in_from_actions`; see [Actions](#actions) below). `priority` itself stays the event's own value, and `update_event`/`create_event` ignore `effective_priority`, so sending a listed event straight back to `update_event` never copies its actions' priority onto the event — which would otherwise stop it following later changes to its actions.
 
 `PublicEvent.action_ids` are what was done at an event, the first setting its color; it's how `create_event`/`update_event` tie an event to actions (`[]` removes them), and ids that aren't actions are refused with the closest matches suggested. `action_names` (their names, in the same order) and `event_label_id` (derived from the first action) are read-only. `PublicEvent.facts` are what compaction established about a past event (see [Compacting notes](#compacting-notes)); `update_event` can replace them whole, or clear them.
 
 `list_events`/`get_event` still don't surface a cancelled event at all: `list_events` omits it, and `get_event` raises a `ToolError`. But when an operation like `create_event` cancels an event as a side effect of making room, or `delete_event` cancels the event it was asked to remove, that cancellation is a direct result of the agent's own action, so it's worth surfacing rather than hiding — its `PublicEvent` comes back with the rest of its fields intact and `is_cancelled=True`. `is_cancelled` is read-only: `update_event` refuses to set it, so `delete_event` is the one way to cancel an event — and it says whether the cancellation counts against follow-through (`counts_against_follow_through`, `False` by default: a change of plan). There's no way to un-cancel an event through this API.
 
-Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar.py`.
+Calendar creation is deliberately *not* an MCP tool — see [Calendar access model](#calendar-access-model) above — so the model can't create new calendars on its own; that's a one-time, human-run bootstrap step via `create_calendar`.
 
 The action, group, people, circle, location, habit and trait tools manage what events are tagged with and what traits are read from — see [Actions](#actions), [People, circles and locations](#people-circles-and-locations) and [Traits](#traits) below. Each kind has tools to list them all, get one by id or name (suggesting close matches when there's none), create one (returning the new id as `created_id`) and update one (whichever fields are given are set, and those in `clear_fields` blanked; ids never change). Action groups, circles and locations have no status, so they have delete tools; actions, people and habits are archived or deleted by status instead, so events naming them still make sense.
 
-The `note` tool records a new time note (`utilities/noted_time_sheet.py`'s `NotedTime`: a required `timestamp`, and an optional free-text `description` of what it marks) by appending it to this calendar's noted-times tab (via `NotedTimeSheet.append`, which writes only the new row — see [Calendar metadata sheets](#calendar-metadata-sheets) below), returning the note as recorded along with its id (`NoteWithId`: the note's timestamp and sheet row together, e.g. `2026-01-01T09:05:00+00:00#5`). A caller can't set a note's `compaction_id`; only compaction does. `get_notes` lists the notes that haven't been compacted yet, sorted by timestamp and each with its id (or all of them with `include_compacted`).
+The `note` tool records a new time note (`rust/src/stores/notes.rs`'s `NotedTime`: a required `timestamp`, and an optional free-text `description` of what it marks) by appending it to this calendar's noted-times tab (via `NotedTimeSheet.append`, which writes only the new row — see [Calendar metadata sheets](#calendar-metadata-sheets) below), returning the note as recorded along with its id (`NoteWithId`: the note's timestamp and sheet row together, e.g. `2026-01-01T09:05:00+00:00#5`). A caller can't set a note's `compaction_id`; only compaction does. `get_notes` lists the notes that haven't been compacted yet, sorted by timestamp and each with its id (or all of them with `include_compacted`).
 
 `edit_note` corrects an uncompacted note by id — a new `timestamp` and/or `description` (whichever is left out keeps its value; an empty `description` clears it) — and returns it with its id, which changes if its timestamp did. `delete_note` removes one, by blanking its row rather than deleting it, so no other note's id changes. Both refuse a stale id (the note was edited or removed since it was listed), an already-compacted note (change the calendar event it became instead), and a note in a compaction that's partway through being applied — that compaction stamps its notes last, so changing one midway would get the changed note stamped. A proposal that included the note is planned again when it's confirmed (confirming re-checks the notes), for the user to confirm that instead. Notes are otherwise turned into calendar changes by compacting them — see [Compacting notes](#compacting-notes) below.
 
@@ -191,15 +174,15 @@ Reading free-form text is a job for a model, and the MCP client already is one �
 - a create (`CompactionCreate`: `summary`, a start and an end — each a time or a note): something unplanned happened.
 - **Not remembering where one event ended and the next began** is an update growing one (renamed after both, if you like) and a cancel of the other that doesn't count. The model is told to do this only after you've confirmed it — never just because the notes are sparse.
 
-**Actions and facts.** Compaction establishes each past event's facts, which traits are judged from later: what the user was doing (its **actions**), where it was, who was there, who it was for, and a subjective note on each person who was there (`self` for the user) — whatever might help judge it later. `prepare_compaction` sends every active and proposed action (their groups left out), every active person and every location, to settle them from. Updates and creates take `action_ids` (the first setting the event's color; for an update, leaving them out keeps them, and `[]` clears them) and `facts` ([`utilities/facts.py`](utilities/facts.py): `location_id`, `with_ids`, `for_ids` and `notes`, replacing the event's facts whole). For a past event with no actions, `suggested_action_ids` are those of the latest event with the same title in the previous 4 weeks. When an action, a person or a place isn't there yet, the model adds it in the same call — `new_actions`, `new_people` and `new_locations`, each with a `ref` like `new:ukulele` that the updates and creates use in place of its id — rather than by separate tools, so the user confirms them with the plan; they're created when it's applied (or found again, if a commit is resumed), and every ref is replaced by the real id as events are written. The user can settle one sooner in the app, without confirming the rest (`amend_proposal`'s `additions`): create it now, say it's one already there, or drop it. Facts are stored in the event's private extended properties as JSON, split across several when they're long. Unknown or deleted actions, people and locations that aren't there, and refs that aren't added are all refused at the dry run.
+**Actions and facts.** Compaction establishes each past event's facts, which traits are judged from later: what the user was doing (its **actions**), where it was, who was there, who it was for, and a subjective note on each person who was there (`self` for the user) — whatever might help judge it later. `prepare_compaction` sends every active and proposed action (their groups left out), every active person and every location, to settle them from. Updates and creates take `action_ids` (the first setting the event's color; for an update, leaving them out keeps them, and `[]` clears them) and `facts` ([`rust/src/facts.rs`](rust/src/facts.rs): `location_id`, `with_ids`, `for_ids` and `notes`, replacing the event's facts whole). For a past event with no actions, `suggested_action_ids` are those of the latest event with the same title in the previous 4 weeks. When an action, a person or a place isn't there yet, the model adds it in the same call — `new_actions`, `new_people` and `new_locations`, each with a `ref` like `new:ukulele` that the updates and creates use in place of its id — rather than by separate tools, so the user confirms them with the plan; they're created when it's applied (or found again, if a commit is resumed), and every ref is replaced by the real id as events are written. The user can settle one sooner in the app, without confirming the rest (`amend_proposal`'s `additions`): create it now, say it's one already there, or drop it. Facts are stored in the event's private extended properties as JSON, split across several when they're long. Unknown or deleted actions, people and locations that aren't there, and refs that aren't added are all refused at the dry run.
 
 Notes that don't set an edge have their text added to the description of the event they fall within (with their time), so they survive compaction. `compact_notes`'s `ignore_notes` lists any that shouldn't be added, and `annotate_notes` any that belong with another event; the user can change either for a note in the app (`amend_proposal`'s `notes`). Google Calendar silently cuts a description longer than 8,192 characters (`MAX_DESCRIPTION_BYTES`, counted as UTF-8 bytes to be safe), so a plan that would grow one past that is rejected, naming the notes to leave out.
 
-**What happens to the rest of the calendar** (all in `utilities/note_compaction.py`'s `plan_compaction`). Every resulting past event — decided, or untouched and so on schedule — is settled: once the compaction is stamped, everything before its `now` is history. Nothing is written on an event to say so, so an event that happened as planned isn't written at all. **Only what's happened is settled:** an event still going on is settled up to now — its start, and its lasting until now, are fact — and it can run on past its planned end; the next compaction says where it ended. A later compaction keeps to what an earlier one settled: it can't move the start of an event that started before the last compaction, end it before then, or cancel or merge it away (refused as `compacted`), though its end can run later; nor can any event it places run back over one before its window (refused as an `overlap`). `prepare_compaction` gives such an event a `history_until`: how far it's settled. Each event a compaction settles is also given the priority its actions give it then, as its own `priority`, unless it has one: actions' priorities change often, and what happened keeps the priority it had. **Nothing is moved to make room.** If dinner's noted end runs into the reading planned after it, the plan is refused — the same refusal, from the same code, as a batch of event changes (see [MCP tools](#mcp-tools)): every problem, and the day as it would leave it — and the model says which edge gives way in the same call, asking you if the notes don't tell it. That goes for events still to come as much as past ones, and for end-of-day sleep events too: a note can't silently eat into last night's sleep.
+**What happens to the rest of the calendar** (all in `rust/src/compaction/plan.rs`'s `plan_compaction`). Every resulting past event — decided, or untouched and so on schedule — is settled: once the compaction is stamped, everything before its `now` is history. Nothing is written on an event to say so, so an event that happened as planned isn't written at all. **Only what's happened is settled:** an event still going on is settled up to now — its start, and its lasting until now, are fact — and it can run on past its planned end; the next compaction says where it ended. A later compaction keeps to what an earlier one settled: it can't move the start of an event that started before the last compaction, end it before then, or cancel or merge it away (refused as `compacted`), though its end can run later; nor can any event it places run back over one before its window (refused as an `overlap`). `prepare_compaction` gives such an event a `history_until`: how far it's settled. Each event a compaction settles is also given the priority its actions give it then, as its own `priority`, unless it has one: actions' priorities change often, and what happened keeps the priority it had. **Nothing is moved to make room.** If dinner's noted end runs into the reading planned after it, the plan is refused — the same refusal, from the same code, as a batch of event changes (see [MCP tools](#mcp-tools)): every problem, and the day as it would leave it — and the model says which edge gives way in the same call, asking you if the notes don't tell it. That goes for events still to come as much as past ones, and for end-of-day sleep events too: a note can't silently eat into last night's sleep.
 
 **Moving bedtime** (the day's own end-of-day sleep event) moves where the day ends. A later bedtime just leaves the evening free; an earlier one needs whatever runs past it ended or cancelled in the same call. Its end — your wake-up time — is the start of the *next* day. When the next day is in the same compaction, moving the wake-up moves the border between them, as above. When it isn't, compacting this day never adjusts it: moving only its start changes only the bedtime, and if its end does move, the plan carries a warning to check the next morning's events (and move them with `update_event` if they now overlap).
 
-**The timeline** (`utilities/compaction_timeline.py`) is the notes and events in time order, so you can see which note moved which event and which notes just describe what was going on. It's plain data — each note with the edges it set or the event it was added to, each event with its planned and resulting times and a status (`on_schedule`, `adjusted`, `new`, `cancelled`, `merged`, `planned`) — for a client that can draw it, plus `text`, a fixed-width rendering for one that can't — one column, 40 characters wide so it reads on a phone, each moment's notes followed by the event edges at it:
+**The timeline** (`rust/src/timeline.rs`) is the notes and events in time order, so you can see which note moved which event and which notes just describe what was going on. It's plain data — each note with the edges it set or the event it was added to, each event with its planned and resulting times and a status (`on_schedule`, `adjusted`, `new`, `cancelled`, `merged`, `planned`) — for a client that can draw it, plus `text`, a fixed-width rendering for one that can't — one column, 40 characters wide so it reads on a phone, each moment's notes followed by the event edges at it:
 
 ```
 17:00 ┌ Work
@@ -222,20 +205,20 @@ Notes that don't set an edge have their text added to the description of the eve
 
 **Changing a proposal.** Nothing touches the calendar until it's confirmed, so a proposal you don't like costs nothing: edit it in the app, or tell Claude what's wrong — a note in the app, or in a conversation — and it calls `compact_notes` again with corrected decisions. Every change is a new revision, and only the newest can be confirmed, so a stale one can't be applied by mistake. Once a compaction has been applied, its events are ordinary events: adjust them with `update_event` like any other.
 
-**Rejections are logged.** Every compaction or event tool call refused with a `ChangeError` (a `CompactionError` is one) — `compact_notes`, `get_proposal`, `amend_proposal`, `add_proposal_note`, `withdraw_proposal_note`, `confirm_proposal`, `finish_proposal`, `edit_note`, `delete_note`, `prepare_judgments`, `record_judgments`, `abandon_compaction`, `create_event`, `update_event`, `delete_event` — logs one warning line naming the tool, the categories of mistake it held, and the full message: `compaction rejected: tool=compact_notes categories=overlap,unknown_note: ...`. Each problem is tagged where it's found (`utilities/note_compaction.py`'s `Problem`) — `overlap`, `unknown_note`, `unknown_event`, `duplicate_decision`, `nonpositive_length`, `malformed_decision`, `note_after_now`, `description_too_long`, `compacted`, `duplicate_change`, `unknown_event`, `facts`, `actions`, `additions`, `stale`, `open_compaction`, `judgment`, and a few for refused state changes — so the logs show which instructions a model gets wrong, and how often.
+**Rejections are logged.** Every compaction or event tool call refused with a `ChangeError` (a `CompactionError` is one) — `compact_notes`, `get_proposal`, `amend_proposal`, `add_proposal_note`, `withdraw_proposal_note`, `confirm_proposal`, `finish_proposal`, `edit_note`, `delete_note`, `prepare_judgments`, `record_judgments`, `abandon_compaction`, `create_event`, `update_event`, `delete_event` — logs one warning line naming the tool, the categories of mistake it held, and the full message: `compaction rejected: tool=compact_notes categories=overlap,unknown_note: ...`. Each problem is tagged where it's found (`rust/src/compaction/plan.rs`'s `Problem`) — `overlap`, `unknown_note`, `unknown_event`, `duplicate_decision`, `nonpositive_length`, `malformed_decision`, `note_after_now`, `description_too_long`, `compacted`, `duplicate_change`, `unknown_event`, `facts`, `actions`, `additions`, `stale`, `open_compaction`, `judgment`, and a few for refused state changes — so the logs show which instructions a model gets wrong, and how often.
 
 There's no CLI command for this: comparing the notes to the plan needs a model, which is what the MCP client is.
 
 ## Calendar metadata sheets
 
-Each calendar this app manages has one shared **calendar metadata spreadsheet** ([`utilities/calendar_metadata_sheet.py`](utilities/calendar_metadata_sheet.py)), titled "Calendar Metadata" — one tab per kind of Sheet-backed data this app keeps for that calendar. Today that's:
+Each calendar this app manages has one shared **calendar metadata spreadsheet** ([`rust/src/sheet/mod.rs`](rust/src/sheet/mod.rs)), titled "Calendar Metadata" — one tab per kind of Sheet-backed data this app keeps for that calendar. Today that's:
 
 - **Actions** and **Action Groups**, **People** and **Circles**, **Locations** — one row per item, read by header name (so you can reorder columns or add your own; see [Actions](#actions) and [People, circles and locations](#people-circles-and-locations) below). Ids are short and assigned; a list or object (a person's circles, their traits) is JSON in its cell.
 - **Traits** — one row per trait: id, name, status, definition and parts (JSON). See [Traits](#traits) below.
-- **Compaction Schedule** — when the user's scheduled routines (compacting notes, answering the notes left on a proposal) usually run: one row per hint, its `time` ("HH:MM", 24-hour, in the calendar's time zone) and an optional `label` ([`utilities/compaction_schedule.py`](utilities/compaction_schedule.py)). Nothing runs at them: a routine sets them with `set_compaction_schedule_hints`, the whole list at once, and the user's app reads them with `get_compaction_schedule_hints` to fetch soon after each, so it has what the routine made. They can be edited here by hand too.
-- **Health** — the server's health metrics ([`utilities/health.py`](utilities/health.py)), for `get_health` to give back to graph: one row per series, its samples compactly encoded (about a kilobyte for a hundred). Each tool's last 100 calls -- when each ended, how long the tool's own work took, how long the whole request took (auth and transport included, when it came over HTTP), and whether it succeeded; the server's resident memory after each of its last 100 calls, whichever tool; and its last 100 starts (there's one server, so each after the first is a restart -- a crash or a deploy). A call is recorded in memory, a few microseconds' work; a background thread writes what changed every 30 seconds, and as the server exits, holding a lock of its own rather than the one tools' writes hold, so it never makes a tool wait. A `source` column leaves room for the app's own series.
+- **Compaction Schedule** — when the user's scheduled routines (compacting notes, answering the notes left on a proposal) usually run: one row per hint, its `time` ("HH:MM", 24-hour, in the calendar's time zone) and an optional `label` ([`rust/src/stores/schedule.rs`](rust/src/stores/schedule.rs)). Nothing runs at them: a routine sets them with `set_compaction_schedule_hints`, the whole list at once, and the user's app reads them with `get_compaction_schedule_hints` to fetch soon after each, so it has what the routine made. They can be edited here by hand too.
+- **Health** — the server's health metrics ([`rust/src/health.rs`](rust/src/health.rs)), for `get_health` to give back to graph: one row per series, its samples compactly encoded (about a kilobyte for a hundred). Each tool's last 100 calls -- when each ended, how long the tool's own work took, how long the whole request took (auth and transport included, when it came over HTTP), and whether it succeeded; the server's resident memory after each of its last 100 calls, whichever tool; and its last 100 starts (there's one server, so each after the first is a restart -- a crash or a deploy). A call is recorded in memory, a few microseconds' work; a background thread writes what changed every 30 seconds, and as the server exits, holding a lock of its own rather than the one tools' writes hold, so it never makes a tool wait. A `source` column leaves room for the app's own series.
 - **Noted Times** — time notes: three columns, **Timestamp**, **Description** (optional) and **Compaction ID** (blank until the note has been compacted; see [Compacting notes](#compacting-notes)). A note's id is its timestamp and row together, and stamping a note verifies its row still holds that timestamp — which also catches a row shifted by garbage collection (below), not just a hand edit.
-- **Compactions** — the write-ahead journal of note compactions: one row per fact (each proposal's revisions, each decision, each calendar change with its before/after state and whether it's been applied, and the user's edits and feedback). See `utilities/compaction_journal.py` and [docs/compaction-proposals.md](docs/compaction-proposals.md).
+- **Compactions** — the write-ahead journal of note compactions: one row per fact (each proposal's revisions, each decision, each calendar change with its before/after state and whether it's been applied, and the user's edits and feedback). See `rust/src/stores/journal.rs` and [docs/compaction-proposals.md](docs/compaction-proposals.md).
 
 Both the Noted Times and Compactions tabs only ever grow, so each keeps itself under a row budget (50 for notes, 100 for compactions) by physically deleting old, no-longer-needed rows once it goes over — trimming it to half that (25 and 50), so the very next append doesn't set it off again. That keeps both small enough to read whole, in one request each, every time (Google Sheets throttles read requests to 60 a minute). `NotedTimeSheet.garbage_collect` (run before `note` appends a new one) deletes already-*compacted* notes, always keeping the one with the latest timestamp (the next compaction shows it as context), and `CompactionJournal.garbage_collect` (run as each compaction step starts) deletes finished compactions and proposals, oldest first and wherever they are in the tab, always preserving the open proposal and the most recently *stamped* compaction (its `now` anchors the next round — see [Compacting notes](#compacting-notes)); of the open proposal's replaced revisions, it keeps the newest three whole and only the first row of older ones. The notes tab stops at the first row it can't safely delete, so an unusually large uncompacted backlog, or an unusually long-lived proposal, can leave a tab over budget rather than lose something still needed. Deleting rows also shrinks the tab's grid, and a write past the end of the grid fails, so whenever garbage collection leaves a tab with fewer than 1000 rows in all (`calendar_metadata_sheet.MIN_TAB_ROWS`, what Sheets gives a new tab), empty rows are added at the bottom to make up the difference.
 
@@ -251,7 +234,7 @@ Both the Noted Times and Compactions tabs only ever grow, so each keeps itself u
 Actions replaced goals: an action is a verb for what the user is doing in a moment ("play guitar", "eat a meal"), and events are tagged with them. Groups roll actions up ("Creative" → "Guitar" → "play guitar") for targets and finding one's way around, but aren't actions themselves: no event can be tagged with one, and actions are always the leaves.
 
 - **Each action reserves one event label.** Active actions always hold theirs; proposed ones (made by the assistant and not yet reviewed) hold theirs while there's room among the calendar's 200; archived and deleted ones don't, and get the same label back if they're made active again. A label is named after its action and colored with its own `background_color`, else its nearest group's, else its priority's color (its own or inherited, from the [priority labels](#event-colors)); that's its `effective_color`, and the priority its events take is its `effective_priority`. Labels that aren't any action's — Calendar's own unnamed ones, and the labels of the goals actions replaced — are left alone, but for the four [priority labels](#event-colors). A change that would need more labels than the calendar has room for for its active actions is refused before anything is written.
-- **Events do actions.** `Event.action_ids` (a private extended property) records which; the first decides the event's label (`utilities/action_calendar.py`). Calendar rejects *inserting* an event with a label it doesn't have, but accepts re-sending one an existing event already has, so an update keeps an archived action's own label on an event that already carries it. An event never given actions but carrying an action's label (one picked in Calendar, say) is read as doing that action.
+- **Events do actions.** `Event.action_ids` (a private extended property) records which; the first decides the event's label (`rust/src/stores/action_calendar.rs`). Calendar rejects *inserting* an event with a label it doesn't have, but accepts re-sending one an existing event already has, so an update keeps an archived action's own label on an event that already carries it. An event never given actions but carrying an action's label (one picked in Calendar, say) is read as doing that action.
 - **Priority is inherited.** An action without its own priority takes its nearest group's, and an event without its own takes the highest (lowest-numbered) among its actions'. `Event.action_priority` holds what it inherits (filled in on read, never written), and `effective_priority` — what compaction and the time summaries read — combines the two.
 - **Names are unique**, ignoring case: among actions (whatever their status) and, separately, among groups — an action may share a group's name. Deleting a group moves its actions and groups up into its own enclosing group.
 
@@ -259,26 +242,26 @@ Actions replaced goals: an action is a verb for what the user is doing in a mome
 
 - **People** are who the user spends time with: a name, a `context` that tells them apart ("met at salsa" — a name and context together are unique), a status (`active`, `archived` or `deleted`), the `circles` they're in, `what_matters` to them, and their `traits` (which traits apply to them, and their own parts for any — see [Traits](#traits)). The user is always one of them, with the id `self`, whether or not the People tab has a row for them.
 - **Circles** are groups people belong to ("Family"), a person belonging to any number; names are unique. Deleting a circle takes its people out of it.
-- **Follow-through counts what the user cancelled**, not what's cancelled on the calendar (a deleted series, a reshuffled plan, a merge). A cancellation is recorded ([`utilities/cancellations.py`](utilities/cancellations.py)) in the **Cancellations** tab, one row per person per event, when a compaction's `cancel` decision (it didn't happen) is applied, or `delete_event` is called with `counts_against_follow_through` — and only for the people a follow-through part matches, as the event was planned: the user and everyone it was with (`with_ids`) for a `with` part, everyone it was for (`for_ids`) for a `for` part, and only an event of the part's `action`, if it has one. The compaction timeline lists each such cancellation at the end of its day, under `Follow-through:` (`✗`, with whom it counts against). A row recorded by mistake can be deleted from the tab by hand; rows are kept for 490 days. `get_people` and `get_person` return each person with theirs (`cancelled_events`, newest first).
+- **Follow-through counts what the user cancelled**, not what's cancelled on the calendar (a deleted series, a reshuffled plan, a merge). A cancellation is recorded ([`rust/src/stores/cancellations.rs`](rust/src/stores/cancellations.rs)) in the **Cancellations** tab, one row per person per event, when a compaction's `cancel` decision (it didn't happen) is applied, or `delete_event` is called with `counts_against_follow_through` — and only for the people a follow-through part matches, as the event was planned: the user and everyone it was with (`with_ids`) for a `with` part, everyone it was for (`for_ids`) for a `for` part, and only an event of the part's `action`, if it has one. The compaction timeline lists each such cancellation at the end of its day, under `Follow-through:` (`✗`, with whom it counts against). A row recorded by mistake can be deleted from the tab by hand; rows are kept for 490 days. `get_people` and `get_person` return each person with theirs (`cancelled_events`, newest first).
 - **Locations** are where events happen: a unique name and a `hint` for recognizing when an event or note refers to it.
-- **Habits** ([`utilities/habits.py`](utilities/habits.py); the design is in [`docs/habits.md`](docs/habits.md)) are what the user wants to do well, rated by traits as a person is: a unique name, the action or action group whose events they're about (`action_id` — only the user's events with that action, or any action under that group, are in scope, as the actions and groups are when it's used), a status (`active`, `archived` or `deleted`), a `note` (what it's for, and what doing it well looks like) and `traits`, as a person's: every active trait by default, and their own parts — their own rubrics — for any. They live in the **Habits** tab. An event in a habit's scope is judged for it as for a person there, under `habit:<id>` (see Traits below), and a cancel that counts is recorded against it as against the user; `get_habits` returns each habit's `cancelled_events`. A habit made, or given a new rubric, has its settled events judged only when the user asks: `prepare_habit_judgments` gives a backfill of them (a `backfill_id`, and what's due, as `prepare_judgments` gives a compaction's), and `record_judgments` records them by that id.
+- **Habits** ([`rust/src/stores/habits.rs`](rust/src/stores/habits.rs); the design is in [`docs/habits.md`](docs/habits.md)) are what the user wants to do well, rated by traits as a person is: a unique name, the action or action group whose events they're about (`action_id` — only the user's events with that action, or any action under that group, are in scope, as the actions and groups are when it's used), a status (`active`, `archived` or `deleted`), a `note` (what it's for, and what doing it well looks like) and `traits`, as a person's: every active trait by default, and their own parts — their own rubrics — for any. They live in the **Habits** tab. An event in a habit's scope is judged for it as for a person there, under `habit:<id>` (see Traits below), and a cancel that counts is recorded against it as against the user; `get_habits` returns each habit's `cancelled_events`. A habit made, or given a new rubric, has its settled events judged only when the user asks: `prepare_habit_judgments` gives a backfill of them (a `backfill_id`, and what's due, as `prepare_judgments` gives a compaction's), and `record_judgments` records them by that id.
 
 ## Traits
 
 How the user wants to be with people (and with themselves): Thoughtful, Reliable, Creative, Adventurous and Generous to start with. Nothing about a trait is hard-coded.
 
-- **The Traits tab** of the metadata spreadsheet holds each trait's id (a slug of its first name, never changed), name, status (`active`, `off` or `archived`), definition and parts (JSON). It's created and seeded the first time it's needed, can be edited by hand, and `create_trait`/`update_trait` check a trait before saving it ([`utilities/traits.py`](utilities/traits.py)'s `trait_problems`), so a bad part is refused rather than silently unrated.
+- **The Traits tab** of the metadata spreadsheet holds each trait's id (a slug of its first name, never changed), name, status (`active`, `off` or `archived`), definition and parts (JSON). It's created and seeded the first time it's needed, can be edited by hand, and `create_trait`/`update_trait` check a trait before saving it ([`rust/src/stores/traits.rs`](rust/src/stores/traits.rs)'s `trait_problems`), so a bad part is refused rather than silently unrated.
 - **Parts.** Each part is one of `judgment` (each event judged by the assistant against a `rubric`, on a scale of `ratings` such as `{"0": "routine", ..., "3": "adventurous"}`, from the `facts` it names: `action`, `action_history`, `location`, `location_history` (the history ones with a `lookback_days`, 30 by default), `general_notes`, `person_notes` and `what_matters` (what's important to the person, from their `what_matters`)), `continuity`, `count`, `duration` or `follow_through`. Every part can take a `weight` and an `engagement_type`: `with` (the default; the events the person was at) or `for` (what was done for them while they weren't there). `continuity`, `count`, `duration` and `follow_through` can take an `action` (an action or action group id), to count only its events. `get_traits` describes each.
-- **Per person.** A person's `traits` ([`utilities/people.py`](utilities/people.py)) select which traits apply to them (`"select": "all"` or a list of trait ids) and can replace a trait's parts for them alone (`"parts": {"reliable": [...]}`), so each person keeps their own cadences. Without it, every active trait applies, as the Traits tab has it.
+- **Per person.** A person's `traits` ([`rust/src/stores/people.rs`](rust/src/stores/people.rs)) select which traits apply to them (`"select": "all"` or a list of trait ids) and can replace a trait's parts for them alone (`"parts": {"reliable": [...]}`), so each person keeps their own cadences. Without it, every active trait applies, as the Traits tab has it.
 - **Facts.** Traits are read off the facts compaction establishes for each event (see [Compacting notes](#compacting-notes)).
 - **Scores.** The client scores each person's traits itself, from the calendar: their events' judgments, facts and actions, and their cancellations (`get_people`). The server keeps no scores.
-- **Judgments complete a compaction.** Once its facts are written, each event with facts is judged ([`utilities/judgments.py`](utilities/judgments.py)) for each person it was about — the user (`self`) and everyone there, for a trait's `with` judgment parts; everyone it was done for, for its `for` parts — against every judgment part of the traits that apply to them — and for each of the user's habits it's in the scope of, for their `with` parts, under `habit:<id>`, its note standing in for what matters. Nothing about judging is sent before the user approves the plan. The applied compaction's result carries the plan's final `timeline` and, beside it, the judgments due (`judgments`), in one compact list: each event with the people it was about and the parts to judge for each (`<trait id>/<part key>`), then each of those parts once — its rubric and ratings, keyed `<trait id>/<part key>`, or `…@<person id>` for a person's own parts — and each person's history (what they did and where) over the days their parts look back. The events are judged as that timeline shows them, and each judgment's request id is `<event id>/<person id>/<trait id>/<part key>`. The model makes them all itself, never asking the user — a rating and one succinct line of reasoning each — and records them with `record_judgments`; the compaction isn't complete until every one is, and `prepare_compaction` and `get_compaction_status` say so (`judgments_pending`). They're kept on the event (`Event.judgments`, JSON in private properties like facts) by person, trait and part, with the scale they were rated on; nothing rolls them up yet. `prepare_judgments(redo=True)` hands them back, with the judgments made, to redo one with more context, and `update_event` can overwrite a rating by hand.
+- **Judgments complete a compaction.** Once its facts are written, each event with facts is judged ([`rust/src/compaction/judgments.rs`](rust/src/compaction/judgments.rs)) for each person it was about — the user (`self`) and everyone there, for a trait's `with` judgment parts; everyone it was done for, for its `for` parts — against every judgment part of the traits that apply to them — and for each of the user's habits it's in the scope of, for their `with` parts, under `habit:<id>`, its note standing in for what matters. Nothing about judging is sent before the user approves the plan. The applied compaction's result carries the plan's final `timeline` and, beside it, the judgments due (`judgments`), in one compact list: each event with the people it was about and the parts to judge for each (`<trait id>/<part key>`), then each of those parts once — its rubric and ratings, keyed `<trait id>/<part key>`, or `…@<person id>` for a person's own parts — and each person's history (what they did and where) over the days their parts look back. The events are judged as that timeline shows them, and each judgment's request id is `<event id>/<person id>/<trait id>/<part key>`. The model makes them all itself, never asking the user — a rating and one succinct line of reasoning each — and records them with `record_judgments`; the compaction isn't complete until every one is, and `prepare_compaction` and `get_compaction_status` say so (`judgments_pending`). They're kept on the event (`Event.judgments`, JSON in private properties like facts) by person, trait and part, with the scale they were rated on; nothing rolls them up yet. `prepare_judgments(redo=True)` hands them back, with the judgments made, to redo one with more context, and `update_event` can overwrite a rating by hand.
 
 **`get_compaction_status()`** says when notes were last compacted into the calendar, and which note was the latest compacted.
 
 ## Event colors
 
-An event's color is its label's. An event doing actions gets its first action's label (see [Actions](#actions) above); one without an action's label gets its priority's: four labels, "Priority 0" to "Priority 3", reserved for that ([`utilities/priority_labels.py`](utilities/priority_labels.py)) -- its own priority's, or else its actions', or else priority 2's. They have fixed ids, are made the first time they're needed, and count against the calendar's 200 labels. They start out as:
+An event's color is its label's. An event doing actions gets its first action's label (see [Actions](#actions) above); one without an action's label gets its priority's: four labels, "Priority 0" to "Priority 3", reserved for that ([`rust/src/stores/groups.rs`](rust/src/stores/groups.rs)) -- its own priority's, or else its actions', or else priority 2's. They have fixed ids, are made the first time they're needed, and count against the calendar's 200 labels. They start out as:
 
 | Priority | Color |
 | --- | --- |
@@ -291,61 +274,55 @@ An event's color is its label's. An event doing actions gets its first action's 
 
 The server never writes an event's own `colorId`: it overrides the label's color, and writing one -- even clearing it -- can drop the event's label.
 
-`event_label_id` (the API's own `eventLabelId` field) is derived from the event's actions (see [Actions](#actions) above) and is read-only to the MCP tools; `calendar_cli.py`'s `update_properties` can still set it directly (`event_label_id=<label-id>`). Calendar itself tolerates an existing event pointing at a label that's since been removed (it keeps the id, and the event can still be updated), but it rejects *inserting* an event with one. So a created event's label always follows its actions, and one a compaction plan creates that names a removed label quietly drops it rather than failing the whole commit. A `create` decision in compaction naming an unknown label fails its dry run. Updating an event doesn't check its label.
+`event_label_id` (the API's own `eventLabelId` field) is derived from the event's actions (see [Actions](#actions) above) and is read-only to the MCP tools; `calendar_cli`'s `update_properties` can still set it directly (`event_label_id=<label-id>`). Calendar itself tolerates an existing event pointing at a label that's since been removed (it keeps the id, and the event can still be updated), but it rejects *inserting* an event with one. So a created event's label always follows its actions, and one a compaction plan creates that names a removed label quietly drops it rather than failing the whole commit. A `create` decision in compaction naming an unknown label fails its dry run. Updating an event doesn't check its label.
 
 ## Google OAuth credentials
 
-`calendar_clients/google_auth.py`'s `load_credentials` — used by both `CalendarClient.from_credentials` and `SheetsClient.from_credentials` (and by `config`'s builders, which load it once and share it between the two — see [Project layout](#project-layout) above) — needs two files, neither of which should ever be committed:
+The server's OAuth token ([`rust/src/google/mod.rs`](rust/src/google/mod.rs)), shared by its Calendar and Sheets clients, needs two files, neither of which should ever be committed:
 
 - **`credentials.json`** — the OAuth *client* secret, downloaded once from the [Google Cloud Console](https://console.cloud.google.com/) for the Google Cloud project you register this server under (APIs & Services → Credentials → create an OAuth client ID of type "Desktop app", then download its JSON). This identifies the application, not you as a user — you obtain it yourself and supply its path.
-- **`token.json`** — the *user's* actual access + refresh token, carrying every scope in `SCOPES` (Calendar and Drive/Sheets both). You don't create this yourself: the first time `load_credentials` runs without a valid cached token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. Every later run reads the cached file back and refreshes it as the access token expires; rewriting it back to `token_path` afterward is best-effort — if the path turns out not to be writable (see [Deploying](#deploying) below), the refresh still succeeds in memory, just without being persisted.
+- **`token.json`** — the *user's* actual access + refresh token, carrying every scope in `SCOPES` (Calendar and Drive/Sheets both). You don't create this yourself: the first time a command-line tool (`create_calendar`, say) runs without a usable token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. (The server never does: it needs a token already there.) Every later run reads the cached file back and refreshes it as the access token expires; rewriting it back to `token_path` afterward is best-effort — if the path turns out not to be writable (see [Deploying](#deploying) below), the refresh still succeeds in memory, just without being persisted.
 
-Both paths are required arguments (no defaults), so where they live is up to whatever wires up the server. For local development, the filenames `credentials.json` and `token.json` are gitignored, so you can drop both files straight into the project root without risk of committing them.
+Where they live is set by the [configuration](#configuration). For local development, the filenames `credentials.json` and `token.json` are gitignored, so you can drop both files straight into the project root without risk of committing them.
 
 ## Configuration
 
-[`config.py`](config.py) reads the server's configuration from environment variables, rather than anything being hardcoded or committed:
+The server reads its configuration from environment variables ([`rust/src/app.rs`](rust/src/app.rs), and [`rust/src/mcp/http.rs`](rust/src/mcp/http.rs) for the HTTP ones), rather than anything being hardcoded or committed:
 
 | Variable | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `GOOGLE_CALENDAR_ID` | Yes | — | The calendar to operate on — must be the ID of a calendar this app created itself; see [Calendar access model](#calendar-access-model) above. Run `create_calendar.py` if you don't have one yet. |
+| `GOOGLE_CALENDAR_ID` | Yes | — | The calendar to operate on — must be the ID of a calendar this app created itself; see [Calendar access model](#calendar-access-model) above. Run `create_calendar` if you don't have one yet. |
 | `GOOGLE_OAUTH_CREDENTIALS_PATH` | No | `credentials.json` | Path to the OAuth client secret file — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to the gitignored local filename; override to something with real protections when deployed (see [Deploying](#deploying)). |
 | `GOOGLE_OAUTH_TOKEN_PATH` | No | `token.json` | Path to the cached OAuth user token — see [Google OAuth credentials](#google-oauth-credentials) above. Defaults to the gitignored local filename; override to something with real protections when deployed (see [Deploying](#deploying)). |
-| `MCP_TRANSPORT` | No | `stdio` | `stdio` runs the server as a subprocess a local MCP host spawns directly (Claude Desktop's local config, `mcp dev`). `streamable-http` runs it as a standalone HTTP server instead — set this when hosting it remotely (see [Deploying](#deploying)); the variables below only matter in that case. |
+| `MCP_TRANSPORT` | No | `stdio` | `stdio` runs the server as a subprocess a local MCP host spawns directly (Claude Desktop's local config, say). `streamable-http` runs it as a standalone HTTP server instead — set this when hosting it remotely (see [Deploying](#deploying)); the variables below only matter in that case. |
 | `WORKOS_AUTHKIT_DOMAIN` | Only for `streamable-http` | — | The WorkOS AuthKit domain (e.g. `https://your-tenant.authkit.app`) that issues and signs bearer tokens for callers of this server — see [Deploying](#deploying). Unrelated to the Google OAuth variables above: this controls who's allowed to talk to *this* server, not this server's own credential to talk to Google. |
 | `MCP_ALLOWED_USER_IDS` | Only for `streamable-http` | — | Comma-separated WorkOS user ids (`user_...`) allowed to use the server. Tokens for anyone else are rejected, and the server refuses to start without this — see [Deploying](#deploying). |
 | `MCP_PUBLIC_URL` | No | derived from `RENDER_EXTERNAL_URL` | This server's own public MCP endpoint URL (e.g. `https://your-service.onrender.com/mcp`) — used as the OAuth resource identifier and the audience bearer tokens must carry. On Render this is derived automatically from `RENDER_EXTERNAL_URL` (which Render sets for you); set it explicitly elsewhere. |
 | `MCP_CORS_ALLOWED_ORIGINS` | No | — | Comma-separated browser origins (e.g. `https://tracker.example.com`) allowed to call the `streamable-http` endpoint cross-origin, for a web-based MCP client like the Time Tracker web app. `http://localhost` and `http://127.0.0.1` on any port are always allowed, so local development needs nothing set. Safe to widen: the server authenticates by bearer token, never cookies, so a cross-origin page can't borrow the user's access. |
 | `PORT` | No | `10000` | The port `streamable-http` binds to (always alongside host `0.0.0.0`, as every Render web service requires). Render sets this for you automatically. |
-| `MEMORY_LIMIT_BYTES` | No | read from the cgroup enforcing it | *Not read via `config.py`* — read directly by [`utilities/memory_diagnostics.py`](utilities/memory_diagnostics.py). This process's own memory limit, in bytes; only needed if the cgroup value can't be read (see that module). |
 
-To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — `config.py` loads `.env` automatically (via `python-dotenv`) if one is present. `.env` is gitignored, so nothing personal ends up committed.
+To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — the server and the tools read a `.env` in their working directory if there is one (a variable already set wins). `.env` is gitignored, so nothing personal ends up committed.
 
 If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) instead of run standalone, set these same variables in that host's server config under its `env` field — no `.env` file needed in that case.
 
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
-python -m pytest
+cargo test --manifest-path rust/Cargo.toml
+cargo build --manifest-path rust/Cargo.toml
+python -m pytest -n auto
 ```
 
-The tests need no credentials or configuration. [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs them on Python 3.11 and 3.13 for every pull request into `main` and every push to it. To block merging until they pass, make the `pytest (Python 3.11)` and `pytest (Python 3.13)` checks required for `main` in the repository's branch protection settings (Settings → Branches, or Rules → Rulesets).
+`cargo test` runs the Rust unit tests. The rest is the conformance scenarios: [`conformance/`](conformance/) holds scenarios that drive the server the way a client does, over MCP, against [`conformance/fake_google.py`](conformance/fake_google.py): an in-memory fake of the parts of Google Calendar and Sheets this server uses, served over HTTP and faithful to what the [probes](#command-line-utilities) found Google does. When a scenario ends, three things are compared with its golden record in `conformance/golden/`: every tool result, every request the server sent Google, and Google's state afterwards. The records were written by the original Python server, and the Rust one was ported to match them exactly; they're the spec of what the server does. If two servers send Google the same requests, Google does the same for both, so this holds even where the fake gets Google wrong. They need no credentials or configuration.
 
-### Conformance scenarios
-
-[`conformance/`](conformance/) holds scenarios that drive the server the way a client does, over MCP, against [`conformance/fake_google.py`](conformance/fake_google.py): an in-memory fake of the parts of Google Calendar and Sheets this server uses, served over HTTP and faithful to what [`probes/`](probes/) found Google does. They're what the server's Rust port is held to. When a scenario ends, three things are compared with its golden record in `conformance/golden/`, which the Python server wrote: every tool result, every request the server sent Google, and Google's state afterwards. If two servers send Google the same requests, Google does the same for both, so this holds even where the fake gets Google wrong.
-
-```bash
-python -m pytest conformance -n auto
-```
-
-Set `CTT_SERVER` to a command line to run another build (the Rust binary, say), and `CTT_SERVER_LOG` to a file to keep its logs. After a deliberate change, rewrite the records from the Python server with `CTT_UPDATE_GOLDEN=1`. The server under test runs with these variables set, and none of them is set outside the scenarios:
+The scenarios run the debug build in `rust/target` (or else the release one); set `CTT_SERVER` to a command line to run another, and `CTT_SERVER_LOG` to a file to keep its logs. `CTT_ACTUAL_DIR` writes each scenario's record as this run made it, to compare whole. After a deliberate change of behaviour, rewrite the records with `CTT_UPDATE_GOLDEN=1`, and read the diff. The server under test runs with these variables set, and none of them is set outside the scenarios:
 
 - `GOOGLE_API_ROOT`: where Google's APIs are (the fake's address).
 - `CTT_NOW`: a fixed time the server takes as now.
-- `CTT_DETERMINISTIC_IDS`: makes generated ids a fixed sequence (see [`utilities/determinism.py`](utilities/determinism.py)).
+- `CTT_DETERMINISTIC_IDS`: makes generated ids a fixed sequence (see [`rust/src/determinism.rs`](rust/src/determinism.rs)).
 - `CTT_HEALTH_WRITER=off`: no background writes to the Health tab, which would interleave with the tools' requests.
+
+[`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs all of it for every pull request into `main` and every push to it (`conformance (Rust server)`, the check `main`'s ruleset requires).
 
 ## Deploying
 
@@ -357,10 +334,10 @@ Hosting this remotely (e.g. on [Render](https://render.com/)) involves **two ind
 A [`render.yaml`](render.yaml) blueprint is included, covering the build/start command and plain env vars. The build and start commands are [`scripts/render-build.sh`](scripts/render-build.sh) and [`scripts/render-start.sh`](scripts/render-start.sh) (set in the dashboard as `bash scripts/render-build.sh`/`bash scripts/render-start.sh` if the service wasn't created from the blueprint), so changing how the server builds or starts is a commit, not a dashboard edit. Two things still need to be done by hand in Render's dashboard regardless (a blueprint can't express either):
 
 **1. Google Calendar credentials** (unchanged from before): don't put `credentials.json`/`token.json` in the repo or a regular env var — Render's **Secret Files** feature is built for exactly this: add each file under the service's Environment tab, and Render mounts it at `/etc/secrets/<filename>` at runtime, separate from your source and the regular env var list.
-- Run `python create_calendar.py` locally first — it needs an interactive browser for the OAuth consent flow, so it can't run on Render itself. This both generates `token.json` and creates the dedicated calendar in one step; paste the resulting `token.json` into the Secret File, and set `GOOGLE_CALENDAR_ID` on Render to the ID it printed.
+- Run `create_calendar` locally first — it needs an interactive browser for the OAuth consent flow, so it can't run on Render itself. This both generates `token.json` and creates the dedicated calendar in one step; paste the resulting `token.json` into the Secret File, and set `GOOGLE_CALENDAR_ID` on Render to the ID it printed.
 - Secret File mounts may be read-only, so `token.json`'s refresh-and-rewrite (see [Google OAuth credentials](#google-oauth-credentials) above) is best-effort by design — a failed write there just means the next process restart refreshes again from the same cached refresh token, which Google doesn't rotate on a normal refresh.
 
-**2. A WorkOS account, configured for AuthKit**, to authenticate *callers* of this server. This app never issues tokens or holds a password itself — over `streamable-http` it's only an OAuth *Resource Server*, checking that a request's bearer token was really issued by WorkOS for this server ([`workos_auth.py`](workos_auth.py) does the actual JWT/JWKS verification). WorkOS AuthKit is the *Authorization Server*: it's what Claude.ai's connector UI talks to when it discovers this server needs auth, dynamically registers itself as a client, and runs you through the login/consent flow — none of that is code in this repo. **You don't create or configure any OAuth application/client yourself** — Claude.ai registers its own at connect time, which is the entire point of Dynamic Client Registration/CIMD below.
+**2. A WorkOS account, configured for AuthKit**, to authenticate *callers* of this server. This app never issues tokens or holds a password itself — over `streamable-http` it's only an OAuth *Resource Server*, checking that a request's bearer token was really issued by WorkOS for this server ([`rust/src/mcp/http.rs`](rust/src/mcp/http.rs) does the actual JWT/JWKS verification). WorkOS AuthKit is the *Authorization Server*: it's what Claude.ai's connector UI talks to when it discovers this server needs auth, dynamically registers itself as a client, and runs you through the login/consent flow — none of that is code in this repo. **You don't create or configure any OAuth application/client yourself** — Claude.ai registers its own at connect time, which is the entire point of Dynamic Client Registration/CIMD below.
 
 To set that up:
 
@@ -375,11 +352,11 @@ Don't try to test this by visiting the AuthKit domain directly in a browser — 
 
 With both in place, set `MCP_TRANSPORT=streamable-http` (already in `render.yaml`) and deploy. `MCP_PUBLIC_URL` doesn't need setting explicitly on Render — it's derived from `RENDER_EXTERNAL_URL`, which Render provides automatically.
 
-Local development is entirely unaffected by any of this: `python server.py` with no `MCP_TRANSPORT` set (the default) still runs over stdio, and none of `WORKOS_AUTHKIT_DOMAIN`/`MCP_PUBLIC_URL` is read in that case.
+Local development is entirely unaffected by any of this: the server with no `MCP_TRANSPORT` set (the default) runs over stdio, and none of `WORKOS_AUTHKIT_DOMAIN`/`MCP_PUBLIC_URL` is read in that case.
 
 ### Browser-based clients
 
-A client running in a web page (like the Time Tracker web app) can't talk to AuthKit's registration and token endpoints directly: AuthKit answers them without CORS headers, so the browser hides the responses. For those clients only, this server offers `POST /oauth/register` and `POST /oauth/token`, which forward the request to the same endpoints under `WORKOS_AUTHKIT_DOMAIN` and return AuthKit's response unchanged (see [`oauth_proxy.py`](oauth_proxy.py)). Nothing to configure in WorkOS: the web client still registers itself through DCR, just via this server. Its origin does need to be allowed by `MCP_CORS_ALLOWED_ORIGINS` (localhost always is). Claude.ai and the native apps never use these routes.
+A client running in a web page (like the Time Tracker web app) can't talk to AuthKit's registration and token endpoints directly: AuthKit answers them without CORS headers, so the browser hides the responses. For those clients only, this server offers `POST /oauth/register` and `POST /oauth/token`, which forward the request to the same endpoints under `WORKOS_AUTHKIT_DOMAIN` and return AuthKit's response unchanged (see [`rust/src/mcp/http.rs`](rust/src/mcp/http.rs)). Nothing to configure in WorkOS: the web client still registers itself through DCR, just via this server. Its origin does need to be allowed by `MCP_CORS_ALLOWED_ORIGINS` (localhost always is). Claude.ai and the native apps never use these routes.
 
 ### Connecting from Claude.ai
 
@@ -387,160 +364,107 @@ Once deployed, add it under claude.ai's **Settings → Connectors → Add custom
 
 ## Running the server
 
-The deployed server is the Rust port, in [`rust/`](rust/) (`scripts/render-build.sh` builds it, `scripts/render-start.sh` starts it). It reads the same configuration as the Python one, a local `.env` included, and is held to it by the [conformance scenarios](#conformance-scenarios). With [Rust](https://rustup.rs) installed:
-
 ```bash
 cargo run --release --manifest-path rust/Cargo.toml --bin ctt-server
 ```
 
-The Python server below still works the same way, until its code is removed.
-
-With the virtual environment activated, run the server directly:
-
-```bash
-python server.py
-```
-
-Or launch it with the MCP Inspector for interactive testing:
-
-```bash
-mcp dev server.py
-```
-
-`mcp dev` requires two tools outside the Python virtual environment: **Node.js/npx** (to launch the Inspector UI itself) and **uv** (the Inspector uses it to run the server in an isolated, on-the-fly environment). Neither is something pip/venv can provide — a venv only manages Python packages already on your machine, not other language runtimes or tools.
-
-**Installing Node.js (provides `npx`):**
-- **macOS:** `brew install node`
-- **Windows:** `winget install OpenJS.NodeJS.LTS` (or download the installer from [nodejs.org](https://nodejs.org))
-- **Linux:** use your distro's package manager (e.g. `sudo apt install nodejs npm`) or install via [nvm](https://github.com/nvm-sh/nvm)
-
-**Installing uv:**
-- **macOS/Linux:** `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- **Windows:** `winget install astral-sh.uv` (or `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`)
-
-After installing, restart your terminal and verify with:
-
-```bash
-npx --version
-uv --version
-```
-
-If you only need to run the server (not the Inspector), `python server.py` works without Node.js or uv.
-
-See [MCP tools](#mcp-tools) above for what `server.py` currently exposes.
+With no `MCP_TRANSPORT` set it serves MCP over stdio, for a local MCP host to run as a subprocess: point the host's config at `rust/target/release/ctt-server` (with the [configuration](#configuration) in its `env`, or a `.env` in its working directory). See [MCP tools](#mcp-tools) above for what it exposes.
 
 ## Command-line utilities
 
-Each of these has a Rust counterpart over the Rust server's own code, which is what stays once the Python is removed: `create_calendar`, `calendar_cli` (the same commands) and `probe <name>` (one per probe below, plus `clear_fields`, `label_lifecycle` and the `series_*` probes):
+The tools are built with the server (see [Setup](#setup)), into `rust/target/release/` (or run one with `cargo run --release --manifest-path rust/Cargo.toml --bin <tool> -- <args>`). Each reads the same [configuration](#configuration), a `.env` included.
 
-```bash
-cargo run --release --manifest-path rust/Cargo.toml --bin calendar_cli -- list 2h 1h
-cargo run --release --manifest-path rust/Cargo.toml --bin probe -- metadata_tabs
-```
+[`create_calendar`](rust/src/cli/create_calendar.rs) makes the calendar this app needs — see [Calendar access model](#calendar-access-model).
 
-[`probes/metadata_tabs.py`](probes/metadata_tabs.py) runs the actions, action groups, people, circles and locations tabs end to end against Google, on a scratch calendar it deletes afterward. It leaves the scratch spreadsheet in Drive, titled "CTT tabs probe (safe to delete)", for you to trash by hand:
+[`probe <name>`](rust/src/bin/probe.rs) runs one of the probes: each finds out empirically, against Google, how its APIs behave where their docs don't say, or checks the server's own writes, on a scratch calendar it deletes afterward (`--keep` keeps it). What each found is in its comments.
 
-```bash
-python -m probes.metadata_tabs
-```
+- `cancelled_events [--days N] [--raw]` — what Google Calendar returns for your cancelled events. Nothing reads them from Calendar any more (`list_events` leaves them out, and the Cancellations tab records the ones that count). It lists the configured calendar's last days with and without `showDeleted`, and only reads.
+- `clear_fields` — that clearing an event's fields (`clear_fields`) removes them, on events and series.
+- `label_lifecycle [--pause]` — what an event does when its label is removed, then added back.
+- `metadata_tabs` — the actions, groups, people, circles and locations tabs end to end, and facts on events. It leaves its scratch spreadsheet in Drive, for you to trash by hand: this app can't.
+- `series_edits`, `series_deletes`, `series_splits` — which of a recurring series' instances an edit or delete reaches, and ending a series Google split itself.
+- `server` — the server itself, over MCP against Google, on a scratch calendar: the stores, events, a whole compaction (a proposal, an edit, confirming, judging), a habit backfill and health. Run it before deploying a change you're unsure of.
 
-[`probes/cancelled_events.py`](probes/cancelled_events.py) checks what Google Calendar returns for your cancelled events. Nothing reads them from Calendar any more -- `list_events` leaves them out, and the Cancellations tab records the ones that count -- but its docstring keeps what it found. It lists the configured calendar's last `--days` (default 14) days with and without `showDeleted`, and prints, for each cancelled event, which fields it kept (start, end, `action_ids`, label, ...). It only reads. `--raw` prints each one's JSON too:
-
-```bash
-python -m probes.cancelled_events --days 30
-```
-
-[`calendar_cli.py`](calendar_cli.py) is a dev tool for calling the calendar directly from a terminal, without going through an MCP host — useful for poking around or debugging. It's not named `calendar.py`: that would shadow Python's stdlib `calendar` module, which `google-auth`/`httplib2` (both used by `calendar_clients/google_calendar.py`) import internally. Its one extra dependency, `pytimeparse`, lives in `requirements-dev.txt`, not `requirements.txt` — install the dev dependencies (see [Setup](#setup)) to use it.
+[`calendar_cli`](rust/src/cli/calendar_cli.rs) is a dev tool for calling the calendar directly from a terminal, without going through an MCP host — useful for poking around or debugging.
 
 ```bash
 # Events from 1 hour ago to 1 hour from now (the default window)
-python calendar_cli.py list
+calendar_cli list
 
 # Events from 30 minutes ago to 2 hours from now
-python calendar_cli.py list 30m 2h
+calendar_cli list 30m 2h
 
 # A single event by id
-python calendar_cli.py get <event-id>
+calendar_cli get <event-id>
 
 # Set one or more properties on an existing event
-python calendar_cli.py update_properties <event-id> priority=1 location="Room A"
+calendar_cli update_properties <event-id> priority=1 location="Room A"
 
 # Move/resize an existing event (refused if it would overlap another)
-python calendar_cli.py update <event-id> start=2026-01-01T09:30:00-05:00 end=2026-01-01T10:00:00-05:00
+calendar_cli update <event-id> start=2026-01-01T09:30:00-05:00 end=2026-01-01T10:00:00-05:00
 
 # Create a new event (refused if it would overlap another)
-python calendar_cli.py create summary="Focus block" start=2026-01-01T09:00:00-05:00 end=2026-01-01T10:00:00-05:00 priority=1
+calendar_cli create summary="Focus block" start=2026-01-01T09:00:00-05:00 end=2026-01-01T10:00:00-05:00 priority=1
 
 # Delete an event by id
-python calendar_cli.py delete <event-id>
+calendar_cli delete <event-id>
 
 # List this calendar's custom event labels, as Calendar itself stores
 # them (each action in play holds one -- see the action commands below)
-python calendar_cli.py list_raw_labels
+calendar_cli list_raw_labels
 
 # Create a new event label -- background_color is required
-python calendar_cli.py create_raw_label background_color="#8e24aa" name="Design Work"
+calendar_cli create_raw_label background_color="#8e24aa" name="Design Work"
 
 # Update an existing event label's color and/or name
-python calendar_cli.py update_raw_label <label-id> background_color="#d50000"
+calendar_cli update_raw_label <label-id> background_color="#d50000"
 
 # Delete an event label by id
-python calendar_cli.py delete_raw_label <label-id>
+calendar_cli delete_raw_label <label-id>
 
 # List the proposed and active actions (--status for others, --all for every status)
-python calendar_cli.py list_actions
+calendar_cli list_actions
 
 # Create an action (its id is assigned; list_actions shows it)
-python calendar_cli.py create_action name="Play guitar" status=active priority=1
+calendar_cli create_action name="Play guitar" status=active priority=1
 
 # Update an action's properties -- archiving frees its label
-python calendar_cli.py update_action <action-id> status=archived
+calendar_cli update_action <action-id> status=archived
 
 # Blank properties instead (here, so it's in no group)
-python calendar_cli.py update_action <action-id> --clear group_id
+calendar_cli update_action <action-id> --clear group_id
 
 # Tie an event to actions (the first sets its color), which also sets its label
-python calendar_cli.py update_properties <event-id> action_ids=<action-id>,<other-action-id>
+calendar_cli update_properties <event-id> action_ids=<action-id>,<other-action-id>
 
 # Record a note for right now -- description is optional
-python calendar_cli.py note 0s "Started focus block"
+calendar_cli note 0s "Started focus block"
 
 # A note for 30 minutes ago, with no description
-python calendar_cli.py note 30m
+calendar_cli note 30m
 
 # List the notes that haven't been compacted yet, each with its id
-python calendar_cli.py get_notes
+calendar_cli get_notes
 
 # Correct a note's description, or move it to 20 minutes ago / an exact time
-python calendar_cli.py edit_note "2026-01-01T09:05:00+00:00#5" --description "Started standup"
-python calendar_cli.py edit_note "2026-01-01T09:05:00+00:00#5" --ago 20m
-python calendar_cli.py edit_note "2026-01-01T09:05:00+00:00#5" --at 2026-01-01T09:10:00-04:00
+calendar_cli edit_note "2026-01-01T09:05:00+00:00#5" --description "Started standup"
+calendar_cli edit_note "2026-01-01T09:05:00+00:00#5" --ago 20m
+calendar_cli edit_note "2026-01-01T09:05:00+00:00#5" --at 2026-01-01T09:10:00-04:00
 
 # Delete a note
-python calendar_cli.py delete_note "2026-01-01T09:05:00+00:00#5"
+calendar_cli delete_note "2026-01-01T09:05:00+00:00#5"
 ```
 
-`from`/`to` are each a duration relative to *now* — parsed with [pytimeparse](https://pypi.org/project/pytimeparse/) (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`) — giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
+`from`/`to` are each a duration relative to *now*, as [pytimeparse](https://pypi.org/project/pytimeparse/) reads them (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`), giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
 
-`update_properties` takes one or more `key=value` pairs, where each `key` is an `Event` attribute (`summary`, `start`, `end`, `description`, `location`, `priority` — not `id`, since changing it would repoint the patch at a different event). It builds an `Event` with just those attributes set (everything else `None`) and patches it straight in, without fetching the event first — Calendar's `patch` semantics mean any attribute you don't mention is left exactly as it was server-side. `start`/`end` take an ISO 8601 datetime with a UTC offset (e.g. `2026-01-01T09:00:00-05:00`, or a trailing `Z`).
+`update_properties` takes one or more `key=value` pairs, each an event attribute (`summary`, `start`, `end`, `description`, `location`, `status`, `priority`, `is_end_of_day_sleep`, `event_label_id`, `action_ids`, `facts`, `judgments` — not `id`, since changing it would repoint the patch at a different event), and patches just those straight in, without fetching the event first: anything not mentioned is left as it was. `start`/`end` take an ISO 8601 datetime with a UTC offset (e.g. `2026-01-01T09:00:00-05:00`, or a trailing `Z`). `facts` is JSON as stored, e.g. `'{"location":"l7k2qp","with":["p3x9aa"],"notes":{"self":"tired"}}'`, and replaces the event's facts whole.
 
-`update` takes the same `key=value` pairs as `update_properties` (at least one of `start`/`end` is required this time — whichever is omitted is kept as the event's current value) and moves the event the way `server.py`'s `update_event` MCP tool does ([`utilities/event_changes.py`](utilities/event_changes.py)): nothing else is moved to make room, so a new time that would overlap another event is refused, printing every problem and the events around them, and exiting non-zero. Prints the event as written. Use `update_properties` instead for a plain patch that doesn't move the event (e.g. just renaming it).
+`update` takes the same pairs (at least one of `start`/`end`; whichever is omitted is kept) and moves the event the way the `update_event` tool does: nothing else is moved to make room, so a new time that would overlap another event is refused, printing every problem and the events around them, and exiting non-zero. `create` takes them too (`summary`, `start` and `end` required) and creates the event the way `create_event` does. Both print the event as written.
 
-`create` takes the same `key=value` pairs as `update_properties` (`summary`, `start`, and `end` are required this time) and builds a new `Event` from them, then creates it the way `server.py`'s `create_event` MCP tool does — refused, the same way, if it would overlap another event. Prints the event as written.
+For a recurring event, the id from `list`/`get` names one specific *instance*. To change a property for the entire series, use the `recurring_event_id` that `get` shows. See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for how instances and series relate.
 
-For a recurring event, the id from `list`/`get` names one specific *instance*.  To change a property for the entire series of recurring events, use the `recurring_event_id` that's visible from `get`.  See Google's [recurring events guide](https://developers.google.com/workspace/calendar/api/guides/recurringevents) for more on how instances and recurring events relate.
+`list_raw_labels`/`create_raw_label`/`update_raw_label`/`delete_raw_label` manage this calendar's event labels exactly as Google Calendar's API represents them — with no concept of priority: Calendar itself has no field for one, so they take only `background_color=value`/`name=value`. Labels are normally managed through actions, which leave any label that isn't an action's alone.
 
-`list_raw_labels`/`create_raw_label`/`update_raw_label`/`delete_raw_label` manage this calendar's custom event labels exactly as Google Calendar's API represents them (`CalendarClient.list_event_labels`/`create_event_label`/`update_event_label`/`delete_event_label`, `calendar_clients/google_calendar.py`'s `EventLabel`) — a richer, arbitrary-hex-color alternative to `Event.colorId`'s 11 fixed colors, but with no concept of priority: Calendar itself has no field for one, so `create_raw_label`/`update_raw_label` take only `background_color=value`/`name=value` pairs, and `background_color` is required for `create_raw_label`. Labels are normally managed through actions (below), which leave any label that isn't an action's alone.
+`list_actions` (proposed and active actions; `--status <status>`, repeatable, or `--all`), `create_action` and `update_action <action_id>` manage this calendar's actions, the same way the MCP tools do (see [Actions](#actions)), each printing the resulting actions one per line: id, status, and path. They take `key=value` pairs for an action's fields (`name`, `group_id`, `status`, `background_color`, `priority`, `note`); `update_action` also takes `--clear <attribute>`, repeatable.
 
-`list_actions` (proposed and active actions; `--status <status>`, repeatable, for others, or `--all`), `create_action` and `update_action <action_id>` manage this calendar's actions, the same way the MCP tools do (see [Actions](#actions) above), and each prints the resulting actions, one per line: id, status, and path. They take `key=value` pairs for an action's fields (`name`, `group_id`, `status`, `background_color`, `priority`, `note`); `update_action` also takes `--clear <attribute>`, repeatable. `update_properties`'s `action_ids=a1,a2` sets an event's actions, and the label they imply.
-
-`note` takes a positional `ago` (required -- like `from`/`to` above, a pytimeparse duration, e.g. `"1h"`, `"90m"`, `"0s"` for right now, resolved via `resolve_note_timestamp` the same way `list`'s window is resolved via `resolve_window`) and an optional positional `description` (quote it if it contains spaces), builds a `utilities/noted_time_sheet.py` `NotedTime` from them, and appends it to this calendar's noted-times tab via `NotedTimeSheet.append` — see [MCP tools](#mcp-tools) and [Calendar metadata sheets](#calendar-metadata-sheets) above. `get_notes` lists every uncompacted note with its id (via `NotedTimeSheet.read_with_rows`). `edit_note <note_id>` takes `--ago` (a duration before now, like `note`'s) or `--at` (an ISO 8601 time, local if it has no UTC offset) for a new time, and/or `--description` (`""` clears it); `delete_note <note_id>` removes the note. Both refuse a compacted note, a stale id, or a note in a compaction that's partway through being applied, printing why and exiting non-zero — see `edit_note`/`delete_note` under [MCP tools](#mcp-tools).
-
-
-## Running tests
-
-With the dev dependencies installed:
-
-```bash
-pytest
-```
+`note` takes how long ago the note is for (a duration, like `list`'s; `0s` for right now) and an optional description. `get_notes` lists every uncompacted note with its id. `edit_note <note_id>` takes `--ago` (a duration before now) or `--at` (an ISO 8601 time, local if it has no UTC offset), and/or `--description` (`""` clears it); `delete_note <note_id>` removes the note. Both refuse a compacted note, a stale id, or a note in a compaction that's partway through being applied, printing why and exiting non-zero.

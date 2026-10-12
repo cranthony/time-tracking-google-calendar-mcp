@@ -31,7 +31,7 @@ that action, or any action under that group, count toward it.
 ## 1. The store and tools
 
 The **Habits** tab of the calendar's metadata spreadsheet
-(utilities/habits.py), one row per habit: `id`, `name` (unique),
+(rust/src/stores/habits.rs), one row per habit: `id`, `name` (unique),
 `action_id` (an action's or a group's id), `status` (`active`,
 `archived` or `deleted`; deleted habits are kept, so judgments naming
 them still make sense), `note` (what it's for, and what doing it well

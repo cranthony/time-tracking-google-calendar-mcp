@@ -1,5 +1,11 @@
--r requirements.txt
+# What the conformance scenarios (conformance/) need: an MCP client, the
+# fake Google they serve (starlette/uvicorn, with WorkOS-style JWTs), and
+# pytest. The server itself is Rust (rust/) and needs none of this.
+mcp==2.2.0
+uvicorn==0.52.4
+starlette==1.6.0
+PyJWT[crypto]==2.14.0
+python-dateutil==2.9.0.post0
 pytest==9.1.1
 pytest-asyncio==1.4.0
 pytest-xdist==3.8.0
-python-dateutil==2.9.0.post0

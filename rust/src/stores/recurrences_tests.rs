@@ -1,4 +1,4 @@
-//! tests/test_recurrences.py, against the fake Google's series.
+//! The module's tests, against the fake Google's series.
 
 use super::*;
 use crate::testing::app::{test_app, TestApp};

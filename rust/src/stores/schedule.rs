@@ -1,6 +1,5 @@
-//! Compaction schedule hints (utilities/compaction_schedule.py): when the
-//! user's scheduled routines run, as times of day, in the Compaction
-//! Schedule tab.
+//! Compaction schedule hints: when the user's scheduled routines run, as
+//! times of day, in the Compaction Schedule tab.
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};

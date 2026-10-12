@@ -1,4 +1,4 @@
-//! tests/test_calendar_metadata_sheet.py, against the fake Google.
+//! The module's tests, against the fake Google.
 
 use super::*;
 use crate::testing::fake_google::FakeGoogle;

@@ -1,11 +1,10 @@
-//! The time-tracking Google Calendar MCP server: the Rust port of
-//! server.py. See ../README.md.
+//! The time-tracking Google Calendar MCP server. See ../README.md.
 
 use ctt::{app, dotenv, mcp};
 use std::sync::Arc;
 
 fn main() -> anyhow::Result<()> {
-    // Before anything reads the environment, as config.py's load_dotenv().
+    // Before anything reads the environment.
     dotenv::load(std::path::Path::new(".env"));
     // Logs go to stderr: over stdio, stdout carries the protocol.
     tracing_subscriber::fmt()

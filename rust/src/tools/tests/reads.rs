@@ -1,10 +1,10 @@
-//! tests/test_sheet_read_requests.py: how many Google Sheets read requests
-//! each tool makes. Sheets throttles reads to 60 a minute per user, and a
-//! call that runs out waits for the quota to roll over -- so every read
-//! counts. Every tool here reads the spreadsheet in one request: a tool
-//! that reads more than one tab prefetches them together. If a count goes
-//! up, find a way not to (usually by prefetching whatever tab the tool
-//! newly reads); compaction's tools are pinned in the compactor's tests.
+//! How many Google Sheets read requests each tool makes. Sheets throttles
+//! reads to 60 a minute per user, and a call that runs out waits for the
+//! quota to roll over -- so every read counts. Every tool here reads the
+//! spreadsheet in one request: a tool that reads more than one tab
+//! prefetches them together. If a count goes up, find a way not to (usually
+//! by prefetching whatever tab the tool newly reads); compaction's tools
+//! are pinned in the compactor's tests.
 
 use super::*;
 use crate::testing::{event_at, facts};

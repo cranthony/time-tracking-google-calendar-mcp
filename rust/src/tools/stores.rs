@@ -1,6 +1,6 @@
 //! The tools over the metadata tabs: actions and groups, priority colors,
-//! people and circles, traits, habits -- and the prefetches server.py
-//! makes so a tool reads all its tabs in one request.
+//! people and circles, traits, habits -- and the prefetches that make a
+//! tool read all its tabs in one request.
 
 use super::{args_str, args_strings, refused, refused_or_conflict, ToolResult};
 use crate::app::App;

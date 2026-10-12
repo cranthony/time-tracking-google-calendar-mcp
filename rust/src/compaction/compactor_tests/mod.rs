@@ -1,7 +1,7 @@
-//! tests/test_note_compactor.py, against the fake Google: the notes, the
-//! journal and the stores in a real metadata spreadsheet, the events on a
-//! real (fake) calendar. Where Python checked a MagicMock client's calls,
-//! these check the requests the fake was sent, or what it now holds.
+//! The module's tests, against the fake Google: the notes, the journal and
+//! the stores in a real metadata spreadsheet, the events on a real (fake)
+//! calendar. Where Python checked a MagicMock client's calls, these check
+//! the requests the fake was sent, or what it now holds.
 
 use super::*;
 use crate::compaction::plan::EventDecision;

@@ -1,20 +1,21 @@
-"""An in-memory fake of the parts of Google Calendar v3 and Google Sheets
-v4 this server uses, served over HTTP -- so the server under test (the
-Python one or its Rust port) talks to it exactly as it talks to Google,
-through its own HTTP client.
+"""An in-memory fake of the parts of Google Calendar v3 and Google
+Sheets v4 this server uses, served over HTTP -- so the server under test
+talks to it exactly as it talks to Google, through its own HTTP client.
 
-It's faithful where the server depends on Google's behaviour, as
-probes/ found it: recurring series expanded into instances (with
-singleEvents), instances edited on their own as exceptions, what a patch
-to a series' master does to them, a series ended early by UNTIL, series
-split by importing "<id>_R<time>@google.com", extendedProperties.private
-merged by a patch with null removing a key, calendar etags checked by
-If-Match, deleted events answering 410, and Sheets' grid that
-values.update grows but batchUpdateByDataFilter doesn't.
+It's faithful where the server depends on Google's behaviour, as the
+probes (rust/src/bin/probe.rs) found it: recurring series expanded into
+instances (with singleEvents), instances edited on their own as
+exceptions, what a patch to a series' master does to them, a series
+ended early by UNTIL, series split by importing
+"<id>_R<time>@google.com", extendedProperties.private merged by a patch
+with null removing a key, calendar etags checked by If-Match, deleted
+events answering 410, and Sheets' grid that values.update grows but
+batchUpdateByDataFilter doesn't.
 
 Every request is logged (`FakeGoogle.requests`), so a scenario can check
-that two servers sent Google the same requests: then Google would have
-done the same for both, whatever this fake gets wrong about it.
+that the server sent Google the requests its golden record has: then
+Google would do the same as before, whatever this fake gets wrong
+about it.
 """
 
 from __future__ import annotations
@@ -484,7 +485,7 @@ class FakeGoogle:
             event = self._new_event(calendar, body, self._next_id("import"))
             calendar.events[event["id"]] = event
             return self._present(calendar, event)
-        # Google's own "this and following" split, as probes/series_splits.py
+        # Google's own "this and following" split, as the series_splits probe
         # found it: the series (or its latest part) is ended at the local
         # midnight before the split's day, and the rest is a new series.
         base_id = split["base"]
@@ -569,7 +570,7 @@ class FakeGoogle:
     def _check_rule_change(self, calendar: FakeCalendar, current: dict, rules: list[str] | None) -> None:
         """An "_R" series Google split itself can't have its rules changed:
         it's deleted instead, or the change fails if its first event is
-        cancelled (probes/series_splits.py)."""
+        cancelled (the series_splits probe)."""
         if not re.search(r"_R\d{8}T\d{6}$", current.get("id", "")) or rules == current.get("recurrence"):
             return
         first = self._occurrences(calendar, current, None)[:1]
@@ -579,7 +580,7 @@ class FakeGoogle:
 
     def _apply_master_change(self, calendar: FakeCalendar, before: dict, after: dict, *, times_changed: bool | None = None) -> None:
         """What a write to a series' master does to its exceptions
-        (probes/series_edits.py and series_deletes.py)."""
+        (the series_edits and series_deletes probes)."""
         if not before.get("recurrence") or before.get("recurringEventId"):
             return
         zone = calendar.zone

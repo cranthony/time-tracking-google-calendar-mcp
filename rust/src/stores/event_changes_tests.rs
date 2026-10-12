@@ -1,4 +1,4 @@
-//! tests/test_event_changes.py, against the fake Google.
+//! The module's tests, against the fake Google.
 
 use super::*;
 use crate::testing::app::{test_app, TestApp};

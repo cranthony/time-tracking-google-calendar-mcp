@@ -1,4 +1,4 @@
-//! The planner's tests (tests/test_note_compaction.py, ported).
+//! The planner's tests.
 
 use super::*;
 use crate::event::MAX_DESCRIPTION_BYTES;

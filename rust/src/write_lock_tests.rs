@@ -1,4 +1,4 @@
-//! tests/test_write_lock.py.
+//! The write lock's tests.
 
 use super::*;
 

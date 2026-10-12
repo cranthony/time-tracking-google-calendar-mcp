@@ -1,6 +1,5 @@
-//! The write-ahead journal of note compactions (utilities/
-//! compaction_journal.py), one tab of the metadata spreadsheet: one row
-//! per fact, in eight columns --
+//! The write-ahead journal of note compactions, one tab of the metadata
+//! spreadsheet: one row per fact, in eight columns --
 //!
 //! ```text
 //! compaction_id | step | kind | event_id | before | after | status | detail
@@ -593,8 +592,22 @@ impl CompactionJournal {
         Ok(())
     }
 
-    /// `garbage_collect`: delete rows nothing needs any more, anywhere in
-    /// the tab, bottom first (see the Python for what's kept).
+    /// Delete rows nothing needs any more, anywhere in the tab, bottom
+    /// first:
+    ///
+    /// - Of an open proposal's superseded revisions, all but the newest
+    ///   `WHOLE_SUPERSEDED` lose every row but their `compaction` ones
+    ///   (whose `changed` lists still say what each revision changed).
+    /// - Once the tab has more than `MAX_ROWS` data rows, whole
+    ///   finished blocks go, oldest first, until it's down to
+    ///   `TRIM_TO_ROWS`: a stamped, abandoned or superseded compaction
+    ///   (or a failed one, its proposal finished), and a finished
+    ///   proposal's edits and feedback. Never the most recently stamped
+    ///   batch, which `last_stamped_now` depends on, nor anything of an
+    ///   open proposal or a compaction still planned or open.
+    ///
+    /// Superseded revisions were never applied, and nothing reads them
+    /// once a newer one exists, so they're safe to delete.
     pub fn garbage_collect(&self) -> anyhow::Result<()> {
         let rows = self.read_rows()?;
         let details: Vec<Value> =

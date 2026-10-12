@@ -1,9 +1,7 @@
 //! The server's state: configuration, the Google clients, and each store,
 //! built the first time a tool needs it -- under WRITE_LOCK, since building
-//! one can write (a new spreadsheet or tab) -- as server.py's get_*
-//! helpers and config.py's build_* functions do. Each store is built the
-//! way Python builds it, request for request: its own look at the
-//! calendar's metadata spreadsheet, then its tab.
+//! one can write (a new spreadsheet or tab). Each store makes its own
+//! look at the calendar's metadata spreadsheet, then its tab.
 
 use crate::google::calendar::CalendarClient;
 use crate::google::sheets::SheetsClient;

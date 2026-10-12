@@ -1,7 +1,7 @@
-//! Google Sheets, behind a thin client (calendar_clients/google_sheets.py):
-//! spreadsheets, tabs, rows and columns, knowing nothing of what a tab
-//! means. Reads of a tab inside one tool call are cached (see
-//! `CachedReads`), and a 429 is retried with backoff, as in Python.
+//! Google Sheets, behind a thin client: spreadsheets, tabs, rows and
+//! columns, knowing nothing of what a tab means. Reads of a tab inside one
+//! tool call are cached (see `CachedReads`), and a 429 is retried with
+//! backoff, as in Python.
 
 use super::{status_of, Google};
 use crate::py;

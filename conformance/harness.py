@@ -1,17 +1,15 @@
 """Run a server under test against conformance/fake_google.py, over MCP.
 
-The server is whatever `CTT_SERVER` names: "python" (the default) runs
-`python server.py`; anything else is a command line for another build
-(the Rust port's binary, say). Either way it's started as a subprocess
-over stdio, with its Google API root pointed at the fake, a fixed clock
-(`CTT_NOW`), deterministic ids (`CTT_DETERMINISTIC_IDS`) and no
-background health writer (`CTT_HEALTH_WRITER=off`) -- see
-utilities/determinism.py.
+The server is the Rust build in rust/target (debug, or else release --
+`cargo build` first), or whatever command line `CTT_SERVER` names. It's
+started as a subprocess over stdio, with its Google API root pointed at
+the fake, a fixed clock (`CTT_NOW`), deterministic ids
+(`CTT_DETERMINISTIC_IDS`) and no background health writer
+(`CTT_HEALTH_WRITER=off`) -- see rust/src/determinism.rs.
 
 What each call returned, the requests the server sent Google, and the
 fake's state afterwards are all recorded on the `Session`, for a
-scenario to check and for `CTT_RECORD`/`CTT_COMPARE` to compare across
-servers (see conftest.py).
+scenario to check and for conftest.py to compare with its golden record.
 """
 
 from __future__ import annotations
@@ -76,10 +74,15 @@ class FakeGoogleServer:
 
 
 def server_command() -> list[str]:
-    spec = os.environ.get("CTT_SERVER", "python")
-    if spec == "python":
-        return [sys.executable, str(ROOT / "server.py")]
-    return shlex.split(spec, posix=os.name != "nt")
+    spec = os.environ.get("CTT_SERVER")
+    if spec:
+        return shlex.split(spec, posix=os.name != "nt")
+    name = "ctt-server.exe" if os.name == "nt" else "ctt-server"
+    for profile in ("debug", "release"):
+        built = ROOT / "rust" / "target" / profile / name
+        if built.exists():
+            return [str(built)]
+    raise RuntimeError("No Rust server build: run `cargo build --manifest-path rust/Cargo.toml` first, or set CTT_SERVER")
 
 
 @dataclass

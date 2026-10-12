@@ -1,6 +1,6 @@
-//! tests/test_actions.py, against the fake Google's calendar labels.
-//! Python shrank MAX_LABELS for two tests; here the calendar is filled
-//! with other apps' labels instead, leaving the same room.
+//! The module's tests, against the fake Google's calendar labels. Python
+//! shrank MAX_LABELS for two tests; here the calendar is filled with other
+//! apps' labels instead, leaving the same room.
 
 use super::*;
 use crate::sheet::{ACTIONS, ACTION_GROUPS};

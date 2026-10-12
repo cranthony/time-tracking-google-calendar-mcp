@@ -1,5 +1,5 @@
-//! A calendar's locations (utilities/locations.py): where its events
-//! happen, each a name and a hint for recognizing it, in the Locations tab.
+//! A calendar's locations: where its events happen, each a name and a hint
+//! for recognizing it, in the Locations tab.
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;

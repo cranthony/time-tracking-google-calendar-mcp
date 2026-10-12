@@ -1,5 +1,5 @@
-//! tests/test_locations.py, against the fake Google. (Its test of the
-//! Location schema's unknown fields is the tools' argument checking.)
+//! The module's tests, against the fake Google. (A location's unknown
+//! fields are refused by the tools' argument checking.)
 
 use super::*;
 use crate::testing::fake_google::FakeGoogle;

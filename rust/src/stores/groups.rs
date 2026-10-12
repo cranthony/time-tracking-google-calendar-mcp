@@ -1,6 +1,5 @@
-//! Action groups (utilities/action_groups.py) and the priority palette
-//! (utilities/priority_labels.py): what actions inherit their color and
-//! priority from.
+//! Action groups and the priority palette: what actions inherit their color
+//! and priority from.
 
 use crate::google::calendar::EventLabel;
 use crate::py;

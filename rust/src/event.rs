@@ -1,6 +1,5 @@
-//! A calendar event, decoupled from the API's raw resource shape -- the
-//! `Event` of calendar_clients/google_calendar.py, read from and written
-//! to the API exactly as it does.
+//! A calendar event, decoupled from the API's raw resource shape, and how
+//! it's read from and written to the API.
 
 use crate::facts::Facts;
 use crate::py;

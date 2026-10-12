@@ -1,6 +1,5 @@
-//! Habits (utilities/habits.py): what the user wants to do well, each
-//! scoped to one action or action group and rated by traits as a person
-//! is, in the Habits tab.
+//! Habits: what the user wants to do well, each scoped to one action or
+//! action group and rated by traits as a person is, in the Habits tab.
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;

@@ -1,6 +1,5 @@
-//! The event tools (server.py's list_events, get_event, create_event,
-//! update_event, delete_event), the calendar's time zone, schedule hints
-//! and time notes.
+//! The event tools (list_events, get_event, create_event, update_event,
+//! delete_event), the calendar's time zone, schedule hints and time notes.
 
 use super::stores::{prefetch, prefetch_stores};
 use super::{args_str, args_strings, refused, ToolError, ToolResult};

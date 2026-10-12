@@ -1,6 +1,6 @@
 //! Command-line utilities for the Google Calendar API, over the server's
-//! own clients and stores (calendar_cli.py, ported). A dev tool, not
-//! something the deployed server needs: the calendar_cli binary runs it.
+//! own clients and stores. A dev tool, not something the deployed server
+//! needs: the calendar_cli binary runs it.
 //!
 //! Usage:
 //!     calendar_cli list [from] [to]

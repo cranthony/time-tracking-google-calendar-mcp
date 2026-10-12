@@ -1,8 +1,8 @@
-//! A tab holding one item per row (utilities/row_sheet.py): actions,
-//! groups, people, circles, locations, habits. Columns are found by header
-//! name, so columns added by hand are kept, and a field gets its column
-//! the first time a row has a value for it. A cell is its field's text: a
-//! number as digits, a list or object as JSON, nothing for null.
+//! A tab holding one item per row: actions, groups, people, circles,
+//! locations, habits. Columns are found by header name, so columns added by
+//! hand are kept, and a field gets its column the first time a row has a
+//! value for it. A cell is its field's text: a number as digits, a list or
+//! object as JSON, nothing for null.
 //!
 //! A row is an ordered JSON object with every field of its kind (null for
 //! unset) -- not a typed struct, because a cell edited by hand that can't

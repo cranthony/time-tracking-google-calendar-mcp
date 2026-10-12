@@ -1,5 +1,5 @@
-//! tests/test_google_auth.py, against the fake Google's token endpoint.
-//! (Its memory tracking was dropped from the port, and the per-thread
+//! The module's tests, against the fake Google's token endpoint. (Its
+//! memory tracking was dropped from the port, and the per-thread
 //! connections it tests are ureq's own.)
 
 use super::*;

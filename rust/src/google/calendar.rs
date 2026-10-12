@@ -1,8 +1,7 @@
-//! Google Calendar, behind a thin client (calendar_clients/
-//! google_calendar.py's CalendarClient): list/get/create/update/delete
-//! events, labels guarded by the calendar's etag, and this app's metadata
-//! in the calendar's description. Listings inside one tool call are
-//! cached (see `CachedListings`).
+//! Google Calendar, behind a thin client (CalendarClient):
+//! list/get/create/update/delete events, labels guarded by the calendar's
+//! etag, and this app's metadata in the calendar's description. Listings
+//! inside one tool call are cached (see `CachedListings`).
 
 use super::{segment, status_of, Google};
 use crate::event::{Event, Moment};
@@ -358,8 +357,21 @@ impl CalendarClient {
         Event::from_api(&self.call("POST", &self.events_path(), &query, Some(&Value::Object(body)))?)
     }
 
-    /// Import `event` with the iCalendar UID `ical_uid` (see Python's
-    /// import_event for what a "_R" UID does).
+    /// Import `event` with the iCalendar UID `ical_uid` (events.import),
+    /// which Calendar gives an id of its own. Importing a UID again
+    /// updates the event it made the first time rather than making
+    /// another.
+    ///
+    /// A UID of the form "<series id>_R<time, UTC>@google.com" -- as in
+    /// "abc123_R20261019T223000@google.com" -- makes Calendar split the
+    /// series itself, leaving what its "this and following" edit leaves
+    /// (undocumented, so check the result): the series
+    /// `<series id>` (or its latest part, itself split that way, from
+    /// before that time) is ended at the local midnight before that
+    /// time's day, and the event made is the series' rest, with the id
+    /// "<series id>_R<time>" -- events after it that were edited on their
+    /// own move to it. Found with the series_splits probe; see
+    /// stores::recurrences.
     pub fn import_event(&self, event: &Event, ical_uid: &str) -> anyhow::Result<Event> {
         writing("CalendarClient.import_event")?;
         let mut body = event.insert_body()?;
@@ -367,8 +379,19 @@ impl CalendarClient {
         Event::from_api(&self.call("POST", &format!("{}/import", self.events_path()), &[], Some(&Value::Object(body)))?)
     }
 
-    /// Patch `event.id` with what's set; nulls remove (see Python's
-    /// update_event, including what a master's patch does to instances).
+    /// Patch the event `event.id` with `event`'s fields that are set;
+    /// those left unset are kept, and extended properties not in the
+    /// body are kept too (Google merges extendedProperties.private) --
+    /// except those named in `event.cleared`, which are removed.
+    ///
+    /// `event.id` may be a recurring series' master: the patch then
+    /// reaches every instance, including ones edited on their own
+    /// (exceptions), whose fields other than their times are all reset
+    /// to the master's -- even fields the patch doesn't set, such as an
+    /// instance's own priority, action_ids or description. A patch with
+    /// `start`/`end` resets the exceptions' times too, moving every
+    /// instance onto the series' times. Found with
+    /// the series_edits probe.
     pub fn update_event(&self, event: &Event) -> anyhow::Result<Event> {
         writing("CalendarClient.update_event")?;
         let id = event.id.as_deref().ok_or_else(|| anyhow!("event.id is required to update an event"))?;

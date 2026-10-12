@@ -1,6 +1,6 @@
-//! Traits (utilities/traits.py): how the user wants to be with people,
-//! each rated from parts read off events -- kept in the Traits tab, seeded
-//! with SEED_TRAITS the first time.
+//! Traits: how the user wants to be with people, each rated from parts read
+//! off events -- kept in the Traits tab, seeded with SEED_TRAITS the first
+//! time.
 
 use crate::google::sheets::{Rows, SheetsClient, TabRange};
 use crate::py;
@@ -144,7 +144,7 @@ fn effort_ratings() -> Value {
     })
 }
 
-/// What a new Traits tab starts with -- key for key as utilities/traits.py.
+/// What a new Traits tab starts with.
 pub fn seed_traits() -> Vec<Trait> {
     let t = |id: &str, name: &str, definition: &str, parts: Value| Trait {
         id: Some(json!(id)),

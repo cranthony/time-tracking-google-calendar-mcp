@@ -1,8 +1,8 @@
-//! tests/test_judgments.py, against the fake Google: the stores' tabs and
-//! the calendar seeded directly. (Python's requests also carried each
-//! part's resolved facts and a framing sentence, which no tool returned;
-//! the Rust port gives what the tools do -- each part once, and each
-//! person's history -- so those tests check that instead.)
+//! The module's tests, against the fake Google: the stores' tabs and the
+//! calendar seeded directly. (Python's requests also carried each part's
+//! resolved facts and a framing sentence, which no tool returned; the Rust
+//! port gives what the tools do -- each part once, and each person's
+//! history -- so those tests check that instead.)
 
 use super::*;
 use crate::sheet::{ACTIONS, ACTION_GROUPS, HABITS, LOCATIONS, PEOPLE, TRAITS};

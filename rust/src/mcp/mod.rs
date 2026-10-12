@@ -1,7 +1,6 @@
-//! The MCP protocol, as the Python server speaks it: JSON-RPC requests
-//! (initialize, ping, tools/list, tools/call) answered with the same
-//! results, keys in the same order -- the HTTP scenarios compare bodies
-//! byte for byte. Transports (stdio, streamable HTTP) hand messages here.
+//! The MCP protocol: JSON-RPC requests (initialize, ping, tools/list,
+//! tools/call) answered as conformance/'s golden records have them, keys
+//! in order -- the HTTP scenarios compare bodies byte for byte. Transports (stdio, streamable HTTP) hand messages here.
 
 pub mod http;
 pub mod schema;
@@ -12,7 +11,8 @@ use crate::tools::{self, Outcome, ToolError};
 use serde_json::{json, Map, Value};
 use std::sync::{Arc, LazyLock};
 
-/// The tool list, exactly as the Python server sends it.
+/// The tool list, as tools/list sends it: each tool's name, description,
+/// and input and output schemas, kept by hand in contract/tools.json.
 pub static CONTRACT: LazyLock<Vec<Value>> = LazyLock::new(|| {
     serde_json::from_str(include_str!("../../../contract/tools.json")).expect("contract/tools.json is valid JSON")
 });

@@ -69,8 +69,7 @@ fn the_metadata_urls_follow_the_resource() {
 }
 
 // -- the endpoints, served ---------------------------------------------------------------
-// tests/test_workos_auth.py, tests/test_oauth_proxy.py, test_server.py's
-// TestWithCors and test_health.py's timing over HTTP: a real server on a
+// Token checks, the OAuth proxy, CORS and timing over HTTP: a real server on a
 // local port, with a fixed RSA test key standing in for AuthKit's.
 
 const AUTHKIT: &str = "https://example.authkit.app";

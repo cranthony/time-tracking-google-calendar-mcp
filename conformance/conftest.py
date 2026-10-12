@@ -4,17 +4,17 @@ Each scenario gets a fresh fake Google holding one calendar, and the
 server under test (see harness.py) running against it. When the scenario
 ends, what happened -- every call's result, every request the server
 sent Google, and Google's state after -- is compared with the scenario's
-golden record in conformance/golden/, which the Python server wrote: a
-server that differs from it in any of those fails. That's how the Rust
-port is held to the Python server's behaviour; the scenarios' own
-assertions say what that behaviour is meant to be.
+golden record in conformance/golden/: a server that differs from it in
+any of those fails. The records were written by the original Python
+server, which the Rust one was ported from and held to; the scenarios'
+own assertions say what that behaviour is meant to be.
 
-    python -m pytest conformance                         # the Python server
-    CTT_SERVER=rust/target/release/ctt-server python -m pytest conformance
-    CTT_UPDATE_GOLDEN=1 python -m pytest conformance     # rewrite the records
+    python -m pytest -n auto                       # the Rust build in rust/target
+    CTT_SERVER=path/to/ctt-server python -m pytest -n auto
+    CTT_UPDATE_GOLDEN=1 python -m pytest           # rewrite the records
 
-Only rewrite the records from the Python server, and only for a
-deliberate change.
+Only rewrite the records for a deliberate change of behaviour, and read
+the diff: whatever it shows is what the server now does differently.
 """
 
 from __future__ import annotations
@@ -77,7 +77,7 @@ def check_golden(request, record: dict) -> None:
         path.write_text(rendered, encoding="utf-8", newline="\n")
         return
     if not path.exists():
-        pytest.fail(f"no golden record {path.relative_to(GOLDEN.parent)}; write it from the Python server with CTT_UPDATE_GOLDEN=1")
+        pytest.fail(f"no golden record {path.relative_to(GOLDEN.parent)}; write it with CTT_UPDATE_GOLDEN=1")
     expected = json.loads(path.read_text(encoding="utf-8"))
     actual = json.loads(rendered)
     if os.environ.get("CTT_ACTUAL_DIR"):

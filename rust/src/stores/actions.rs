@@ -1,6 +1,6 @@
-//! Actions (utilities/actions.py): what the user does with their time,
-//! each holding one of the calendar's event labels while it's in play,
-//! kept with the action groups in the Actions and Action Groups tabs.
+//! Actions: what the user does with their time, each holding one of the
+//! calendar's event labels while it's in play, kept with the action groups
+//! in the Actions and Action Groups tabs.
 
 use crate::google::calendar::{CalendarClient, EventLabel};
 use crate::google::sheets::{SheetsClient, TabRange};

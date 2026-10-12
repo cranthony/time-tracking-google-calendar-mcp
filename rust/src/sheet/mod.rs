@@ -1,5 +1,4 @@
-//! The calendar's metadata spreadsheet (utilities/calendar_metadata_sheet.py)
-//! and its row-per-item tabs (utilities/row_sheet.py).
+//! The calendar's metadata spreadsheet and its row-per-item tabs.
 
 pub mod rows;
 

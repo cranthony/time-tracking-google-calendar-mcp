@@ -1,7 +1,7 @@
-//! The tools, as server.py defines them: each takes its checked arguments
-//! (see mcp::schema) and returns its result as the JSON pydantic would
-//! give -- fields in declaration order -- or a ToolError, which the client
-//! sees as "Error executing tool <name>: <message>".
+//! The tools: each takes its checked arguments (see mcp::schema) and
+//! returns its result as the JSON pydantic would give -- fields in
+//! declaration order -- or a ToolError, which the client sees as "Error
+//! executing tool <name>: <message>".
 
 mod compaction;
 mod events;
