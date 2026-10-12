@@ -31,7 +31,7 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
             let (app, session, stdout) = (app.clone(), session.clone(), stdout.clone());
             running.spawn(async move {
                 let response = tokio::task::spawn_blocking(move || {
-                    let mut session = session.lock().unwrap_or_else(|e| e.into_inner());
+                    let session = session.lock().unwrap_or_else(|e| e.into_inner());
                     // Only the session's flags are shared; a call itself
                     // doesn't need the lock held while it runs.
                     let mut local = super::Session { initialized: session.initialized };

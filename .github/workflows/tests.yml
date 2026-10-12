@@ -54,3 +54,31 @@ jobs:
             requirements-dev.txt
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest conformance -q -n auto
+
+  rust:
+    # The Rust port of the server (rust/): its own tests, then the same
+    # conformance scenarios, against the Rust binary -- held to the golden
+    # records the Python server wrote.
+    name: conformance (Rust server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: cargo build --locked
+        working-directory: rust
+      - run: cargo test --locked
+        working-directory: rust
+      - run: python -m pytest conformance -q -n auto
+        env:
+          CTT_SERVER: ${{ github.workspace }}/rust/target/debug/ctt-server
