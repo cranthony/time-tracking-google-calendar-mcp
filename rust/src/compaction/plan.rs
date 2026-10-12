@@ -1385,3 +1385,7 @@ pub fn planned_timeline(
     let timeline = build_timeline(timeline_notes, events, Some(now), false, None);
     with_context(timeline, previous_note, last_compaction)
 }
+
+#[cfg(test)]
+#[path = "plan_tests.rs"]
+mod tests;
