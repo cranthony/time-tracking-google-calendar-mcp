@@ -161,13 +161,30 @@ pub fn decode_times(text: &str) -> anyhow::Result<Vec<i64>> {
 
 // -- recording -------------------------------------------------------------------
 
+#[cfg(test)]
+thread_local! {
+    /// The unit tests' memory reading (Some(None): none to be had).
+    pub static TEST_RSS: std::cell::Cell<Option<Option<i64>>> = const { std::cell::Cell::new(None) };
+    /// The unit tests' clock: each reading 1234 ms after the last.
+    pub static TEST_CLOCK_MS: std::cell::Cell<Option<i64>> = const { std::cell::Cell::new(None) };
+}
+
 /// This process's resident memory, in KiB (Linux only).
 pub fn rss_kib() -> Option<i64> {
+    #[cfg(test)]
+    if let Some(rss) = TEST_RSS.with(std::cell::Cell::get) {
+        return rss;
+    }
     let status = std::fs::read_to_string("/proc/self/status").ok()?;
     status.lines().find(|l| l.starts_with("VmRSS:"))?.split_whitespace().nth(1)?.parse().ok()
 }
 
 fn now_ms() -> i64 {
+    #[cfg(test)]
+    if let Some(ms) = TEST_CLOCK_MS.with(std::cell::Cell::get) {
+        TEST_CLOCK_MS.with(|c| c.set(Some(ms + 1234)));
+        return ms + 1234;
+    }
     Utc::now().timestamp_millis()
 }
 
@@ -505,6 +522,10 @@ pub fn latency_summary(values: &[i64]) -> Option<Value> {
 pub fn round1(x: f64) -> f64 {
     round_half_even(x * 10.0) / 10.0
 }
+
+#[cfg(test)]
+#[path = "health_tests.rs"]
+mod recorder_tests;
 
 #[cfg(test)]
 mod tests {
