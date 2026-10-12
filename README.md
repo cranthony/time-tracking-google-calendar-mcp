@@ -23,8 +23,8 @@ pip install -r requirements-dev.txt
 
 All of it is in [`rust/src/`](rust/src/) (`lib.rs` lists the modules the server and the tools share):
 
-- [`main.rs`](rust/src/main.rs) — the server: loads `.env`, builds the [`App`](rust/src/app.rs) (configuration, the Google clients, and each store, built the first time a tool needs it), and serves MCP over stdio or streamable HTTP ([`mcp/`](rust/src/mcp/): the protocol, argument checks against [`contract/tools.json`](contract/tools.json), and the HTTP transport with WorkOS bearer-token checks, CORS and the OAuth proxy for browser clients).
-- [`tools/`](rust/src/tools/) — the MCP tools, each taking its checked arguments and returning its result as JSON. Their names, descriptions and input/output schemas are what tools/list sends: a typed tool's are derived from its code ([`contract.rs`](rust/src/contract.rs): its doc comment, its parameters' and result's types, via `#[tool]` and `#[derive(Schema)]` from [`derive/`](rust/derive/)); the rest's are still [`contract/tools.json`](contract/tools.json), edited by hand.
+- [`main.rs`](rust/src/main.rs) — the server: loads `.env`, builds the [`App`](rust/src/app.rs) (configuration, the Google clients, and each store, built the first time a tool needs it), and serves MCP over stdio or streamable HTTP ([`mcp/`](rust/src/mcp/): the protocol, argument checks against each tool's input schema, and the HTTP transport with WorkOS bearer-token checks, CORS and the OAuth proxy for browser clients).
+- [`tools/`](rust/src/tools/) — the MCP tools, each taking its checked arguments and returning its result as JSON. Their names, descriptions and input/output schemas, which tools/list sends, are derived from the code ([`contract.rs`](rust/src/contract.rs): each tool's doc comment and its parameters' and result's types, via `#[tool]` and `#[derive(Schema)]` from [`derive/`](rust/derive/)). [`contract/tools.json`](contract/tools.json) is a snapshot of them that a test keeps current: after a deliberate change, `CTT_UPDATE_CONTRACT=1 cargo test` rewrites it, and its diff shows what clients will see change.
 - [`google/`](rust/src/google/) — Google API access: the OAuth token (refreshed as it expires, and the consent flow the command-line tools run for a first one), [`calendar.rs`](rust/src/google/calendar.rs) (`CalendarClient`: events, labels, the calendar's own metadata) and [`sheets.rs`](rust/src/google/sheets.rs) (`SheetsClient`). Inside a tool call, a `list_events` within a range already listed is answered from memory (`CachedListings`), and so is a tab read again (`CachedReads`); any write forgets what it touches, and nothing is kept between calls, so hand edits are always seen. Sheets requests retry with backoff on 429 (its read quota is 60 a minute).
 - [`event.rs`](rust/src/event.rs) and [`facts.rs`](rust/src/facts.rs) — an event as the server sees it, its facts, and how both are written to Calendar.
 - [`sheet/`](rust/src/sheet/) — the calendar's metadata spreadsheet and its tabs (see [Calendar metadata sheets](#calendar-metadata-sheets)), and tabs of one item per row, read and written by header name.
@@ -59,7 +59,7 @@ If `GOOGLE_CALENDAR_ID` is *already* set when you run it, `create_calendar` does
 
 ## MCP tools
 
-The server exposes the calendar as MCP tools ([`rust/src/tools/`](rust/src/tools/); their schemas are [`contract/tools.json`](contract/tools.json)):
+The server exposes the calendar as MCP tools ([`rust/src/tools/`](rust/src/tools/); a snapshot of their schemas is [`contract/tools.json`](contract/tools.json)):
 
 | Tool | Signature |
 | --- | --- |

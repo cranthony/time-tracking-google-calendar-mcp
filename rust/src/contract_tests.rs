@@ -1,31 +1,32 @@
-//! The derived contract against contract/tools.json, byte for byte.
+//! The contract's shape, and contract/tools.json as a snapshot of it.
 
 use super::*;
-use crate::mcp::HAND_WRITTEN;
 
-fn pretty(value: &Value) -> String {
-    serde_json::to_string_pretty(value).unwrap()
+/// The contract as contract/tools.json has it.
+fn rendered() -> String {
+    serde_json::to_string_pretty(&*crate::mcp::CONTRACT).unwrap() + "\n"
 }
 
 #[test]
-fn each_typed_tool_is_described_as_tools_json_has_it() {
-    for tool in crate::tools::typed() {
-        let expected = HAND_WRITTEN.iter().find(|e| e["name"] == tool.name).unwrap_or_else(|| panic!("{} isn't in tools.json", tool.name));
-        let derived = tool.entry();
-        if derived != *expected || pretty(&derived) != pretty(expected) {
-            let (want, got) = (pretty(expected), pretty(&derived));
-            let first = want.lines().zip(got.lines()).position(|(a, b)| a != b).unwrap_or(want.lines().count().min(got.lines().count()));
-            let around = |text: &str| text.lines().skip(first.saturating_sub(3)).take(8).collect::<Vec<_>>().join("\n");
-            panic!("{}'s entry differs at line {first}:\n--- tools.json\n{}\n--- derived\n{}", tool.name, around(&want), around(&got));
-        }
+fn tools_json_is_the_contract() {
+    // A deliberate change: CTT_UPDATE_CONTRACT=1 cargo test, and commit
+    // the file -- its diff is what clients will see change.
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../contract/tools.json");
+    let derived = rendered();
+    if std::env::var_os("CTT_UPDATE_CONTRACT").is_some() {
+        std::fs::write(&path, &derived).unwrap();
+        return;
     }
-}
-
-#[test]
-fn every_tool_is_typed_or_hand_written_but_not_both_unknown() {
-    let names: Vec<&str> = crate::mcp::CONTRACT.iter().filter_map(|e| e["name"].as_str()).collect();
-    for tool in crate::tools::typed() {
-        assert!(names.contains(&tool.name), "{} is typed but not listed", tool.name);
+    let committed = std::fs::read_to_string(&path).unwrap().replace("\r\n", "\n");
+    if committed != derived {
+        let first = committed.lines().zip(derived.lines()).position(|(a, b)| a != b).unwrap_or(committed.lines().count().min(derived.lines().count()));
+        let around = |text: &str| text.lines().skip(first.saturating_sub(3)).take(8).collect::<Vec<_>>().join("\n");
+        panic!(
+            "contract/tools.json isn't the contract (rerun with CTT_UPDATE_CONTRACT=1 to write it), from line {}:\n--- tools.json\n{}\n--- derived\n{}",
+            first + 1,
+            around(&committed),
+            around(&derived)
+        );
     }
 }
 

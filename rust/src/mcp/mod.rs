@@ -12,22 +12,9 @@ use serde_json::{json, Map, Value};
 use std::sync::{Arc, LazyLock};
 
 /// The tool list, as tools/list sends it: each tool's name, description,
-/// and input and output schemas -- derived from the code for a typed tool
-/// (see `contract`), else as contract/tools.json has it.
-pub static CONTRACT: LazyLock<Vec<Value>> = LazyLock::new(|| {
-    HAND_WRITTEN
-        .iter()
-        .map(|entry| match tools::typed().iter().find(|t| entry["name"].as_str() == Some(t.name)) {
-            Some(tool) => tool.entry(),
-            None => entry.clone(),
-        })
-        .collect()
-});
-
-/// contract/tools.json, in tools/list's order.
-pub static HAND_WRITTEN: LazyLock<Vec<Value>> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../../../contract/tools.json")).expect("contract/tools.json is valid JSON")
-});
+/// and input and output schemas, derived from the code (see `contract`;
+/// contract/tools.json is a snapshot of it).
+pub static CONTRACT: LazyLock<Vec<Value>> = LazyLock::new(|| tools::registry().iter().map(|t| t.entry()).collect());
 
 const HANDSHAKE_PROTOCOL_VERSIONS: [&str; 4] = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"];
 const LATEST_HANDSHAKE_VERSION: &str = "2025-11-25";
