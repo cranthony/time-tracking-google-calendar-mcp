@@ -737,6 +737,10 @@ impl CompactionJournal {
     }
 }
 
+#[cfg(test)]
+#[path = "journal_tests.rs"]
+mod tests;
+
 fn open_proposal_of(rows: &Rows) -> Option<String> {
     let mut statuses: Vec<((String, i64), Vec<String>)> = Vec::new();
     for row in rows {

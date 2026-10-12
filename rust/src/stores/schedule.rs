@@ -82,6 +82,10 @@ impl CompactionSchedule {
     }
 }
 
+#[cfg(test)]
+#[path = "schedule_tests.rs"]
+mod tests;
+
 fn in_order(mut hints: Vec<Row>) -> Vec<Row> {
     hints.sort_by_key(|h| {
         let normalized = normalized_time(time_of(h));
