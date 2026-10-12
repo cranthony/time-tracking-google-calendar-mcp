@@ -5,8 +5,32 @@ use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
 use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};
 use crate::sheet::LOCATIONS;
+use crate::contract::Schema;
 use anyhow::bail;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+
+/// One location -- see the module docstring.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Schema)]
+#[schema(deny_unknown)]
+pub struct Location {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub hint: Option<String>,
+}
+
+/// A location's fields that clear_fields can blank.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Schema)]
+#[serde(rename_all = "lowercase")]
+pub enum ClearableField {
+    Hint,
+}
+
+#[derive(Debug, Serialize, Deserialize, Schema)]
+pub struct CreatedLocation {
+    pub location: Location,
+    pub created_id: String,
+}
 
 pub const ROW: RowType = RowType { name: "Location", fields: &[("id", Kind::Str), ("name", Kind::Str), ("hint", Kind::Str)] };
 pub const CLEARABLE_FIELDS: [&str; 1] = ["hint"];

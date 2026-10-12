@@ -300,7 +300,7 @@ const READ_ONLY_TOOLS: [&str; 24] = [
 fn every_tool_but_the_read_only_ones_holds_the_write_lock() {
     // A new tool has to be put on one side or the other: a read-only one
     // that reaches a write fails, so only list one here that never writes.
-    let mut read_only: Vec<&str> = crate::tools::registry().iter().filter(|t| !t.writes).map(|t| t.name).collect();
+    let mut read_only: Vec<&str> = crate::tools::listed().into_iter().filter(|(_, writes)| !writes).map(|(name, _)| name).collect();
     read_only.sort();
     let mut expected = READ_ONLY_TOOLS.to_vec();
     expected.sort();
@@ -308,7 +308,7 @@ fn every_tool_but_the_read_only_ones_holds_the_write_lock() {
     // And every tool the contract lists is registered.
     let contract = crate::mcp::CONTRACT.iter().filter_map(|t| t["name"].as_str());
     for name in contract {
-        assert!(crate::tools::registry().iter().any(|t| t.name == name), "{name}");
+        assert!(crate::tools::listed().iter().any(|(n, _)| *n == name), "{name}");
     }
 }
 

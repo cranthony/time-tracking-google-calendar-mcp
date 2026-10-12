@@ -10,6 +10,8 @@ name = "ctt-server"
 path = "src/main.rs"
 
 [dependencies]
+ctt-derive = { path = "derive" }
+indexmap = { version = "2.2.6", features = ["serde"] }
 anyhow = "1.0.86"
 axum = "0.8.4"
 base64 = "0.22.1"

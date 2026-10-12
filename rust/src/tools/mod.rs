@@ -73,13 +73,22 @@ struct Tool {
     run: fn(&App, &Map<String, Value>) -> ToolResult,
 }
 
+/// The tools with typed arguments and results (see `contract`).
+pub fn typed() -> &'static [crate::contract::ToolDef] {
+    static TYPED: std::sync::LazyLock<Vec<crate::contract::ToolDef>> = std::sync::LazyLock::new(|| {
+        vec![
+            places::get_locations_tool(),
+            places::get_location_tool(),
+            places::create_location_tool(),
+            places::update_location_tool(),
+            places::delete_location_tool(),
+        ]
+    });
+    &TYPED
+}
+
 fn registry() -> &'static [Tool] {
     &[
-        Tool { name: "get_locations", writes: false, run: places::get_locations },
-        Tool { name: "get_location", writes: false, run: places::get_location },
-        Tool { name: "create_location", writes: true, run: places::create_location },
-        Tool { name: "update_location", writes: true, run: places::update_location },
-        Tool { name: "delete_location", writes: true, run: places::delete_location },
         Tool { name: "get_actions", writes: false, run: stores::get_actions },
         Tool { name: "get_action", writes: false, run: stores::get_action },
         Tool { name: "create_action", writes: true, run: stores::create_action },
@@ -140,21 +149,35 @@ fn registry() -> &'static [Tool] {
     ]
 }
 
+/// Every tool's name, and whether it may write: typed or not.
+pub fn listed() -> Vec<(&'static str, bool)> {
+    typed().iter().map(|t| (t.name, t.writes)).chain(registry().iter().map(|t| (t.name, t.writes))).collect()
+}
+
 /// Run `name` with `arguments`: inside one call's read caches, holding
 /// WRITE_LOCK if it writes, telling the model to set a time zone if the
 /// calendar has none.
 pub fn run(app: &Arc<App>, name: &str, arguments: Value) -> Result<Outcome, ToolError> {
-    let Some(tool) = registry().iter().find(|t| t.name == name) else {
-        return Err(ToolError::Unexpected(anyhow::anyhow!("{name} isn't ported yet")));
-    };
     let arguments = match arguments {
         Value::Object(map) => map,
         _ => Map::new(),
     };
-    let _held = tool.writes.then(|| WRITE_LOCK.hold());
+    let typed = typed().iter().find(|t| t.name == name);
+    let untyped = registry().iter().find(|t| t.name == name);
+    let writes = match (typed, untyped) {
+        (Some(tool), _) => tool.writes,
+        (None, Some(tool)) => tool.writes,
+        (None, None) => return Err(ToolError::Unexpected(anyhow::anyhow!("{name} isn't ported yet"))),
+    };
+    let _held = writes.then(|| WRITE_LOCK.hold());
     let _reads = CachedReads::start();
     let _listings = CachedListings::start();
-    match (tool.run)(app, &arguments) {
+    let outcome = match (typed, untyped) {
+        (Some(tool), _) => (tool.run)(app, Value::Object(arguments)),
+        (None, Some(tool)) => (tool.run)(app, &arguments),
+        (None, None) => unreachable!(),
+    };
+    match outcome {
         Ok(value) => Ok(Outcome(value)),
         Err(ToolError::Unexpected(error)) if is_time_zone_not_set(&error) => Err(ToolError::Message(format!(
             "The calendar has no time zone set, so its days and times can't be put in the user's local time. Call set_time_zone with the user's IANA time zone (e.g. \"America/New_York\"), asking them for it if you don't know it, then call {name} again."
