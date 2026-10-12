@@ -33,7 +33,7 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
 
-pub use ctt_derive::{tool, Schema};
+pub use ctt_derive::{tool, RowItem, Schema};
 
 /// The models a schema refers to, by title.
 #[derive(Default)]

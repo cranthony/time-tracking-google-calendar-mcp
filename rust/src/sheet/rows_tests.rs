@@ -136,3 +136,45 @@ fn a_cell_that_isnt_its_kind_doesnt_stop_a_write() {
 
     assert_eq!(f.fake.rows(&f.spreadsheet, "Rows")[1][..2], strings(&["a", "Uno"]));
 }
+
+/// A typed row of the same tab.
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize, crate::contract::RowItem)]
+#[row(name = "Row")]
+struct Item {
+    id: Option<String>,
+    name: Option<String>,
+    count: Option<i64>,
+    tags: Option<Vec<String>>,
+}
+
+#[test]
+fn its_type_gives_a_typed_row_its_columns() {
+    assert_eq!(format!("{:?}", <Item as RowItem>::ROW_TYPE.fields), format!("{:?}", ROWS.fields));
+}
+
+#[test]
+fn reads_and_writes_typed_rows() {
+    let f = fixture();
+    let one = Item { id: Some("a".into()), name: Some("One".into()), count: Some(3), tags: Some(strings(&["x"])) };
+
+    {
+        let _held = WRITE_LOCK.hold();
+        f.sheet.write_items(&[one]).unwrap();
+    }
+
+    assert_eq!(
+        f.sheet.read_items::<Item>().unwrap(),
+        vec![Item { id: Some("a".into()), name: Some("One".into()), count: Some(3), tags: Some(strings(&["x"])) }]
+    );
+}
+
+#[test]
+fn json_that_doesnt_fit_its_field_is_named() {
+    let f = fixture();
+    f.set(1, &["a", "One", "3", "[1]"]);
+
+    let error = f.sheet.read_items::<Item>().unwrap_err();
+
+    let cells = error.downcast_ref::<CellError>().expect("a CellError");
+    assert_eq!(cells.cells, vec!["row 2, column tags: '[1]' doesn't fit (invalid type: integer `1`, expected a string)".to_string()]);
+}

@@ -351,9 +351,8 @@ impl Judging {
             }
         }
         for l in self.locations.all()? {
-            if truthy(l.get("id")) {
-                let id = python_str(l.get("id"));
-                names.push((id.clone(), if truthy(l.get("name")) { python_str(l.get("name")) } else { id }));
+            if let Some(id) = l.id.filter(|i| !i.is_empty()) {
+                names.push((id.clone(), l.name.filter(|n| !n.is_empty()).unwrap_or(id)));
             }
         }
         Ok(names)

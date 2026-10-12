@@ -506,7 +506,7 @@ impl NoteCompactor {
                 None => None,
             },
             locations: match &self.locations {
-                Some(l) => Some(l.all()?.iter().map(|l| json!({"id": l.get("id"), "name": l.get("name"), "hint": l.get("hint")})).collect()),
+                Some(l) => Some(l.all()?.iter().map(|l| json!({"id": l.id, "name": l.name, "hint": l.hint})).collect()),
                 None => None,
             },
             previous_note,
@@ -559,7 +559,10 @@ impl NoteCompactor {
             names.extend(p.all()?.iter().filter_map(named));
         }
         if let Some(l) = &self.locations {
-            names.extend(l.all()?.iter().filter_map(named));
+            names.extend(l.all()?.into_iter().filter_map(|l| {
+                let id = l.id.filter(|i| !i.is_empty())?;
+                Some((id.clone(), l.name.filter(|n| !n.is_empty()).unwrap_or(id)))
+            }));
         }
         if let Some(additions) = additions {
             names.extend(additions.refs().into_iter().map(|(r, name)| (r, format!("{name} (new)"))));
@@ -1402,7 +1405,7 @@ impl NoteCompactor {
             None => Vec::new(),
         };
         let there_locations = match &self.locations {
-            Some(l) => ids(l.all())?,
+            Some(l) => l.all()?.into_iter().map(|l| l.id.unwrap_or_else(|| "None".into())).collect(),
             None => Vec::new(),
         };
         let mut problems: Vec<String> = Vec::new();
@@ -2061,7 +2064,7 @@ impl NoteCompactor {
             None => None,
         };
         let locations: Option<Vec<String>> = match &self.locations {
-            Some(l) => Some(l.all()?.iter().map(|r| python_str(r.get("id"))).collect()),
+            Some(l) => Some(l.all()?.into_iter().map(|l| l.id.unwrap_or_else(|| "None".into())).collect()),
             None => None,
         };
         let mut new_people: Vec<String> = additions.people.iter().map(ref_of).collect();

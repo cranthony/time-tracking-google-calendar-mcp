@@ -31,6 +31,7 @@ use ctt::google::calendar::CalendarClient;
 use ctt::google::{segment, status_of, Google};
 use ctt::sheet::rows::Row;
 use ctt::stores::action_calendar::ActionCalendar;
+use ctt::stores::locations::Location;
 use ctt::stores::recurrences::{split_series_id, Recurrences, Repeat};
 use ctt::write_lock::WRITE_LOCK;
 use serde_json::{json, Map, Value};
@@ -675,9 +676,9 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
 
     println!("\nLocations");
     let locations = app.locations()?;
-    let home = text(&locations.create_location(&row(json!({"name": "Home", "hint": "the apartment"})))?, "created_id");
-    locations.update_location(&row(json!({"id": home, "hint": "the apartment; 'my place'"})), &[])?;
-    step("a location reads back by name", locations.get_location("home")?["hint"] == json!("the apartment; 'my place'"), ())?;
+    let home = locations.create_location(&Location { name: Some("Home".into()), hint: Some("the apartment".into()), ..Default::default() })?.created_id;
+    locations.update_location(&Location { id: Some(home.clone()), hint: Some("the apartment; 'my place'".into()), ..Default::default() }, &[])?;
+    step("a location reads back by name", locations.get_location("home")?.hint.as_deref() == Some("the apartment; 'my place'"), ())?;
     locations.delete_location(&home)?;
     step("deleting removes it", locations.all()?.is_empty(), ())?;
 

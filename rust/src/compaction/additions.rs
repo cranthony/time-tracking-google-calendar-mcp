@@ -4,7 +4,7 @@
 
 use crate::event::Event;
 use crate::facts::Facts;
-use crate::sheet::rows::{Row, RowType};
+use crate::sheet::rows::{self, Row, RowType};
 use crate::stores::actions::{action_problems, Actions, ACTION_ROW};
 use crate::stores::groups::truthy;
 use crate::stores::locations::{location_problems, Locations, ROW as LOCATION_ROW};
@@ -162,7 +162,7 @@ pub fn check_additions(
                 for l in &additions.locations {
                     let mut row = with_fields(&LOCATION_ROW, base_fields(l));
                     row.insert("id".into(), json!(ref_of(l)));
-                    all.push(row);
+                    all.push(rows::item_of(row));
                 }
                 problems.extend(location_problems(&all).into_iter().map(|p| format!("new locations: {p}")));
             }
@@ -218,10 +218,10 @@ pub fn create_additions(
     if let (false, Some(store)) = (additions.locations.is_empty(), locations) {
         for new in &additions.locations {
             let wanted = folded(text(new, "name").map(str::trim));
-            let found = store.all()?.into_iter().find(|l| folded(text(l, "name")) == wanted);
+            let found = store.all()?.into_iter().find(|l| folded(l.name.as_deref()) == wanted);
             let id = match found {
-                Some(found) => text(&found, "id").unwrap_or_default().to_string(),
-                None => created_id(&store.create_location(&with_fields(&LOCATION_ROW, base_fields(new)))?),
+                Some(found) => found.id.unwrap_or_default(),
+                None => store.create_location(&rows::item_of(with_fields(&LOCATION_ROW, base_fields(new))))?.created_id,
             };
             put(&mut ids, ref_of(new), id);
         }
