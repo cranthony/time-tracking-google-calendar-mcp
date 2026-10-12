@@ -3,9 +3,10 @@
 use super::stores::{prefetch_habits, prefetch_people, prefetch_stores};
 use super::{check_part_actions, from_store, refused, texts, to_row, ToolError};
 use crate::app::App;
-use crate::contract::{tool, DateTimeText, Schema};
+use crate::contract::{tool, Schema};
 use crate::stores::habits::{subject_id, HABIT_ROW};
-use crate::stores::people::{CIRCLE_ROW, PERSON_ROW};
+pub use crate::stores::cancellations::CancelledEvent;
+pub use crate::stores::people::{Circle, CreatedCircle, CreatedPerson, DeletedCircle, ListedCircle, ListedPerson, Person, Status};
 use crate::stores::traits::Trait as StoredTrait;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -15,20 +16,32 @@ fn to_json<T: Serialize>(value: &T) -> Value {
     serde_json::to_value(value).expect("an argument is JSON")
 }
 
-/// Each person (or habit, by its subject id) with the events the user
-/// cancelled that count against their follow-through.
+/// Each habit (by its subject id) with the events the user cancelled
+/// that count against its follow-through.
 fn with_cancellations(app: &App, mut items: Vec<Map<String, Value>>, subject: impl Fn(&Map<String, Value>) -> String) -> anyhow::Result<Vec<Value>> {
     let by_person = app.cancellations()?.by_person()?;
     for item in items.iter_mut() {
         let id = subject(item);
         let events = by_person.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone()).unwrap_or_default();
-        item.insert("cancelled_events".into(), Value::Array(events));
+        item.insert("cancelled_events".into(), to_json(&events));
     }
     Ok(items.into_iter().map(Value::Object).collect())
 }
 
-fn person_id(item: &Map<String, Value>) -> String {
-    crate::stores::groups::python_str(item.get("id"))
+/// Each person with the events the user cancelled that count against
+/// their follow-through.
+fn people_with_cancellations(app: &App, mut people: Vec<ListedPerson>) -> anyhow::Result<Vec<ListedPerson>> {
+    let by_person = app.cancellations()?.by_person()?;
+    for person in people.iter_mut() {
+        let id = person.id.clone().unwrap_or_else(|| "None".into());
+        person.cancelled_events = Some(by_person.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone()).unwrap_or_default());
+    }
+    Ok(people)
+}
+
+/// A person's traits' parts, for checking their actions.
+fn parts_of(traits: &Option<Map<String, Value>>) -> Option<&Value> {
+    traits.as_ref().and_then(|t| t.get("parts"))
 }
 
 fn habit_subject(item: &Map<String, Value>) -> String {
@@ -49,16 +62,6 @@ pub enum TraitStatus {
 pub enum TraitField {
     #[serde(rename = "definition")]
     Definition,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
-pub enum Status {
-    #[serde(rename = "active")]
-    Active,
-    #[serde(rename = "archived")]
-    Archived,
-    #[serde(rename = "deleted")]
-    Deleted,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -112,86 +115,6 @@ pub struct Trait {
     pub status: Option<TraitStatus>,
     pub definition: Option<String>,
     pub parts: Option<Vec<Map<String, Value>>>,
-}
-
-/// An event the user cancelled, as it counts against one person's
-/// follow-through -- one row of the Cancellations tab.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct CancelledEvent {
-    pub event_id: Option<String>,
-    pub summary: Option<String>,
-    pub start: Option<DateTimeText>,
-    pub end: Option<DateTimeText>,
-    pub action_ids: Option<Vec<String>>,
-    pub engagement: Option<String>,
-    pub parts: Option<Vec<String>>,
-    pub cancelled_at: Option<DateTimeText>,
-    pub source: Option<String>,
-}
-
-/// A person as the people tools return them: plus their circles'
-/// names, and the events the user cancelled that count against their
-/// follow-through.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ListedPerson {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub context: Option<String>,
-    pub status: Option<Status>,
-    pub circles: Option<Vec<String>>,
-    pub what_matters: Option<String>,
-    pub traits: Option<Map<String, Value>>,
-    pub foundations: Option<Vec<String>>,
-    pub circle_names: Option<Vec<String>>,
-    pub cancelled_events: Option<Vec<CancelledEvent>>,
-}
-
-/// One person the user spends time with (see get_people).
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct Person {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub context: Option<String>,
-    pub status: Option<Status>,
-    pub circles: Option<Vec<String>>,
-    pub what_matters: Option<String>,
-    pub traits: Option<Map<String, Value>>,
-    pub foundations: Option<Vec<String>>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct CreatedPerson {
-    pub person: ListedPerson,
-    pub created_id: String,
-}
-
-/// A circle as the circle tools return it: plus who's in it.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct ListedCircle {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub note: Option<String>,
-    pub member_ids: Option<Vec<String>>,
-}
-
-/// One circle: a group of people, such as family (see get_circles).
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct Circle {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub note: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct CreatedCircle {
-    pub circle: ListedCircle,
-    pub created_id: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DeletedCircle {
-    pub deleted: Circle,
-    pub left: Vec<String>,
 }
 
 /// A habit as the habit tools return it: plus its action's or
@@ -334,7 +257,7 @@ pub fn get_people(app: &App, statuses: Option<Vec<Status>>) -> Result<Vec<Listed
     prefetch_people(app)?;
     let statuses = statuses.map(|s| texts(&s));
     let people = app.people()?.get_people(statuses.as_deref()).map_err(refused)?;
-    from_store(Value::Array(with_cancellations(app, people, person_id)?))
+    Ok(people_with_cancellations(app, people)?)
 }
 
 /// One person, by id ("self" for the user) or else by name (ignoring
@@ -345,7 +268,7 @@ pub fn get_people(app: &App, statuses: Option<Vec<Status>>) -> Result<Vec<Listed
 pub fn get_person(app: &App, id_or_name: String) -> Result<ListedPerson, ToolError> {
     prefetch_people(app)?;
     let person = app.people()?.get_person(&id_or_name).map_err(refused)?;
-    from_store(with_cancellations(app, vec![person], person_id)?.remove(0))
+    Ok(people_with_cancellations(app, vec![person])?.remove(0))
 }
 
 /// Add a person: a name, and optionally a context (what tells them
@@ -364,9 +287,8 @@ pub fn get_person(app: &App, id_or_name: String) -> Result<ListedPerson, ToolErr
 #[tool(writes)]
 pub fn create_person(app: &App, person: Person) -> Result<CreatedPerson, ToolError> {
     prefetch_stores(app)?;
-    let person = to_row(PERSON_ROW, &person);
-    check_part_actions(app, person.get("traits").and_then(|t| t.get("parts")))?;
-    from_store(app.people()?.create_person(&person).map_err(refused)?)
+    check_part_actions(app, parts_of(&person.traits))?;
+    app.people()?.create_person(&person).map_err(refused)
 }
 
 /// Update a person by id ("self" for the user): their name, context,
@@ -380,14 +302,13 @@ pub fn create_person(app: &App, person: Person) -> Result<CreatedPerson, ToolErr
 #[tool(writes)]
 pub fn update_person(app: &App, person: Person, clear_fields: Option<Vec<PersonField>>) -> Result<ListedPerson, ToolError> {
     prefetch_stores(app)?;
-    let person = to_row(PERSON_ROW, &person);
-    check_part_actions(app, person.get("traits").and_then(|t| t.get("parts")))?;
+    check_part_actions(app, parts_of(&person.traits))?;
     let clear = texts(&clear_fields.unwrap_or_default());
     let updated = app.people()?.update_person(&person, &clear).map_err(refused)?;
-    if updated.get("status").and_then(Value::as_str) == Some("deleted") {
-        app.habits()?.drop_foundation(&person_id(&updated))?;
+    if updated.status == Some(Status::Deleted) {
+        app.habits()?.drop_foundation(updated.id.as_deref().unwrap_or("None"))?;
     }
-    from_store(Value::Object(updated))
+    Ok(updated)
 }
 
 /// Every circle: a group people belong to ("Close friends",
@@ -396,7 +317,7 @@ pub fn update_person(app: &App, person: Person, clear_fields: Option<Vec<PersonF
 #[tool]
 pub fn get_circles(app: &App) -> Result<Vec<ListedCircle>, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.people()?.get_circles().map_err(refused)?)
+    app.people()?.get_circles().map_err(refused)
 }
 
 /// One circle, by id or else by name (ignoring case), as get_circles
@@ -404,7 +325,7 @@ pub fn get_circles(app: &App) -> Result<Vec<ListedCircle>, ToolError> {
 #[tool]
 pub fn get_circle(app: &App, id_or_name: String) -> Result<ListedCircle, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.people()?.get_circle(&id_or_name).map_err(refused)?)
+    app.people()?.get_circle(&id_or_name).map_err(refused)
 }
 
 /// Add a circle: a name (unique among circles, though a person may
@@ -414,7 +335,7 @@ pub fn get_circle(app: &App, id_or_name: String) -> Result<ListedCircle, ToolErr
 #[tool(writes)]
 pub fn create_circle(app: &App, circle: Circle) -> Result<CreatedCircle, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.people()?.create_circle(&to_row(CIRCLE_ROW, &circle)).map_err(refused)?)
+    app.people()?.create_circle(&circle).map_err(refused)
 }
 
 /// Rename a circle or change its note, by id. Returns it as updated.
@@ -422,7 +343,7 @@ pub fn create_circle(app: &App, circle: Circle) -> Result<CreatedCircle, ToolErr
 pub fn update_circle(app: &App, circle: Circle, clear_fields: Option<Vec<CircleField>>) -> Result<ListedCircle, ToolError> {
     prefetch_stores(app)?;
     let clear = texts(&clear_fields.unwrap_or_default());
-    from_store(app.people()?.update_circle(&to_row(CIRCLE_ROW, &circle), &clear).map_err(refused)?)
+    app.people()?.update_circle(&circle, &clear).map_err(refused)
 }
 
 /// Delete a circle, by id. Its people aren't deleted: they just leave
@@ -431,7 +352,7 @@ pub fn update_circle(app: &App, circle: Circle, clear_fields: Option<Vec<CircleF
 #[tool(writes)]
 pub fn delete_circle(app: &App, circle_id: String) -> Result<DeletedCircle, ToolError> {
     prefetch_stores(app)?;
-    from_store(app.people()?.delete_circle(&circle_id).map_err(refused)?)
+    app.people()?.delete_circle(&circle_id).map_err(refused)
 }
 
 /// The user's habits: by default the active ones, not archived (set

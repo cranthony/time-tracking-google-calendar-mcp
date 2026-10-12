@@ -4,6 +4,7 @@ use super::*;
 use crate::google::sheets::SheetsClient;
 use crate::testing::fake_google::FakeGoogle;
 use crate::write_lock::WRITE_LOCK;
+use serde_json::{json, Map, Value};
 
 struct Fixture {
     fake: FakeGoogle,
@@ -21,12 +22,24 @@ fn fixture() -> Fixture {
     Fixture { fake, spreadsheet, people }
 }
 
-fn person(given: Value) -> Row {
-    PERSON_ROW.from_value(&given)
+fn person(given: Value) -> Person {
+    serde_json::from_value(given).unwrap()
 }
 
-fn circle(given: Value) -> Row {
-    CIRCLE_ROW.from_value(&given)
+fn circle(given: Value) -> Circle {
+    serde_json::from_value(given).unwrap()
+}
+
+/// A typed result as a JSON object, to read as the tools' clients do.
+fn object<T: serde::Serialize>(value: T) -> Map<String, Value> {
+    match serde_json::to_value(value).unwrap() {
+        Value::Object(map) => map,
+        other => panic!("not an object: {other}"),
+    }
+}
+
+fn json_of<T: serde::Serialize>(value: T) -> Value {
+    serde_json::to_value(value).unwrap()
 }
 
 fn strings(items: &[&str]) -> Vec<String> {
@@ -39,9 +52,9 @@ fn refused<T>(result: anyhow::Result<T>, pattern: &str) {
 }
 
 impl Fixture {
-    fn held<T>(&self, f: impl FnOnce(&People) -> anyhow::Result<T>) -> anyhow::Result<T> {
+    fn held<T: serde::Serialize>(&self, f: impl FnOnce(&People) -> anyhow::Result<T>) -> anyhow::Result<Value> {
         let _held = WRITE_LOCK.hold();
-        f(&self.people)
+        f(&self.people).map(json_of)
     }
 
     fn create(&self, given: Value) -> String {
@@ -53,16 +66,17 @@ impl Fixture {
     }
 
     fn update(&self, given: Value, clear: &[&str]) -> anyhow::Result<Map<String, Value>> {
-        self.held(|p| p.update_person(&person(given), &strings(clear)))
+        let _held = WRITE_LOCK.hold();
+        self.people.update_person(&person(given), &strings(clear)).map(object)
     }
 
     fn listed(&self, statuses: Option<&[&str]>) -> Vec<Map<String, Value>> {
         let statuses = statuses.map(strings);
-        self.people.get_people(statuses.as_deref()).unwrap()
+        self.people.get_people(statuses.as_deref()).unwrap().into_iter().map(object).collect()
     }
 
     fn get(&self, id_or_name: &str) -> Map<String, Value> {
-        self.people.get_person(id_or_name).unwrap()
+        object(json_of(self.people.get_person(id_or_name).unwrap()))
     }
 }
 
@@ -152,11 +166,12 @@ fn people_already_sharing_a_name_arent_stuck() {
 }
 
 #[test]
-fn refuses_unknown_circles_and_a_bad_status() {
+fn refuses_unknown_circles() {
+    // (A status that isn't one can't be given: the schema refuses it, and
+    // a cell holding one makes the tab unreadable.)
     let f = fixture();
 
     refused(f.held(|p| p.create_person(&person(json!({"name": "Sam", "circles": ["nope"]})))), r"circles \['nope'\] aren't circles");
-    refused(f.held(|p| p.create_person(&person(json!({"name": "Sam", "status": "gone"})))), "status must be one of active, archived, deleted");
 }
 
 // -- updating -----------------------------------------------------------------------------
@@ -215,10 +230,10 @@ fn circles_are_created_listed_and_found() {
     let family = f.circle(json!({"name": "Family", "note": "by blood or choice"}));
     let sam = f.create(json!({"name": "Sam", "circles": [family]}));
 
-    let listed = f.people.get_circles().unwrap();
+    let listed = json_of(f.people.get_circles().unwrap());
 
     assert_eq!(listed, json!([{"id": family, "name": "Family", "note": "by blood or choice", "member_ids": [sam]}]));
-    assert_eq!(f.people.get_circle("family").unwrap()["id"], json!(family));
+    assert_eq!(json_of(f.people.get_circle("family").unwrap())["id"], json!(family));
 }
 
 #[test]
@@ -253,7 +268,7 @@ fn deleting_a_circle_takes_its_people_out_of_it() {
     assert_eq!((deleted["deleted"]["name"].clone(), deleted["left"].clone()), (json!("Family"), json!([sam, alex])));
     assert_eq!(f.get(&sam)["circles"], json!([friends]));
     assert!(f.get(&alex)["circles"].is_null());
-    let names: Vec<Value> = f.people.get_circles().unwrap().as_array().unwrap().iter().map(|c| c["name"].clone()).collect();
+    let names: Vec<Value> = json_of(f.people.get_circles().unwrap()).as_array().unwrap().iter().map(|c| c["name"].clone()).collect();
     assert_eq!(names, vec![json!("Friends")]);
 }
 
@@ -306,7 +321,7 @@ fn a_person_with_foundations_even_none_is_on_the_habit_graph() {
     let people = f.people.clone().with_habits(habits);
     let held = |given: Value, clear: &[&str]| {
         let _held = WRITE_LOCK.hold();
-        people.update_person(&person(given), &strings(clear))
+        people.update_person(&person(given), &strings(clear)).map(json_of)
     };
     let family = f.create(json!({"name": "Family"}));
     let friend = f.create(json!({"name": "Friend"}));

@@ -148,7 +148,7 @@ pub fn check_additions(
                     let mut row = with_fields(&PERSON_ROW, base_fields(p));
                     row.insert("id".into(), json!(ref_of(p)));
                     status_or_active(&mut row);
-                    all.push(row);
+                    all.push(rows::item_of(row));
                 }
                 problems.extend(person_problems(&all, &store.circles()?, None).into_iter().map(|p| format!("new people: {p}")));
             }
@@ -188,7 +188,6 @@ pub fn create_additions(
         Some(slot) => slot.1 = id,
         None => ids.push((r, id)),
     };
-    let created_id = |value: &Value| value["created_id"].as_str().unwrap_or_default().to_string();
     if let (false, Some(store)) = (additions.actions.is_empty(), actions) {
         for new in &additions.actions {
             let wanted = folded(text(new, "name").map(str::trim));
@@ -207,10 +206,10 @@ pub fn create_additions(
     if let (false, Some(store)) = (additions.people.is_empty(), people) {
         for new in &additions.people {
             let key = (folded(text(new, "name").map(str::trim)), folded(text(new, "context").map(str::trim)));
-            let found = store.all()?.into_iter().find(|p| (folded(text(p, "name")), folded(text(p, "context"))) == key);
+            let found = store.all()?.into_iter().find(|p| (folded(p.name.as_deref()), folded(p.context.as_deref())) == key);
             let id = match found {
-                Some(found) => text(&found, "id").unwrap_or_default().to_string(),
-                None => created_id(&store.create_person(&with_fields(&PERSON_ROW, base_fields(new)))?),
+                Some(found) => found.id.unwrap_or_default(),
+                None => store.create_person(&rows::item_of(with_fields(&PERSON_ROW, base_fields(new))))?.created_id,
             };
             put(&mut ids, ref_of(new), id);
         }
