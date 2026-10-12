@@ -7,6 +7,7 @@ mod actions;
 mod compaction;
 mod events;
 mod health;
+mod people;
 mod places;
 mod recurrences;
 mod stores;
@@ -109,6 +110,22 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
             actions::delete_action_group_tool(),
             actions::get_priority_colors_tool(),
             actions::update_priority_color_tool(),
+            people::get_people_tool(),
+            people::get_person_tool(),
+            people::create_person_tool(),
+            people::update_person_tool(),
+            people::get_circles_tool(),
+            people::get_circle_tool(),
+            people::create_circle_tool(),
+            people::update_circle_tool(),
+            people::delete_circle_tool(),
+            people::get_traits_tool(),
+            people::create_trait_tool(),
+            people::update_trait_tool(),
+            people::get_habits_tool(),
+            people::get_habit_tool(),
+            people::create_habit_tool(),
+            people::update_habit_tool(),
         ]
     });
     &TYPED
@@ -116,22 +133,6 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
 
 fn registry() -> &'static [Tool] {
     &[
-        Tool { name: "get_people", writes: false, run: stores::get_people },
-        Tool { name: "get_person", writes: false, run: stores::get_person },
-        Tool { name: "create_person", writes: true, run: stores::create_person },
-        Tool { name: "update_person", writes: true, run: stores::update_person },
-        Tool { name: "get_circles", writes: false, run: stores::get_circles },
-        Tool { name: "get_circle", writes: false, run: stores::get_circle },
-        Tool { name: "create_circle", writes: true, run: stores::create_circle },
-        Tool { name: "update_circle", writes: true, run: stores::update_circle },
-        Tool { name: "delete_circle", writes: true, run: stores::delete_circle },
-        Tool { name: "get_traits", writes: false, run: stores::get_traits },
-        Tool { name: "create_trait", writes: true, run: stores::create_trait },
-        Tool { name: "update_trait", writes: true, run: stores::update_trait },
-        Tool { name: "get_habits", writes: false, run: stores::get_habits },
-        Tool { name: "get_habit", writes: false, run: stores::get_habit },
-        Tool { name: "create_habit", writes: true, run: stores::create_habit },
-        Tool { name: "update_habit", writes: true, run: stores::update_habit },
         Tool { name: "list_events", writes: false, run: events::list_events },
         Tool { name: "get_event", writes: false, run: events::get_event },
         Tool { name: "create_event", writes: true, run: events::create_event },
