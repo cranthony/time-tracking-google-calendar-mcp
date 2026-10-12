@@ -83,7 +83,19 @@ impl<'a> Validator<'a> {
             errors.push(ArgError { loc: loc.into(), kind: "literal_error", message: format!("must be one of {}", listed.join(", ")) });
             return Value::Null;
         }
-        match schema.get("type").and_then(Value::as_str) {
+        // A list of types: null, if it's one of them and that's what was
+        // given; otherwise the other.
+        let ty = match schema.get("type") {
+            Some(Value::Array(types)) => {
+                let allows_null = types.iter().any(|t| t == "null");
+                if value.is_null() && allows_null {
+                    return Value::Null;
+                }
+                types.iter().filter_map(Value::as_str).find(|t| *t != "null")
+            }
+            other => other.and_then(Value::as_str),
+        };
+        match ty {
             Some("null") => {
                 if value.is_null() {
                     Value::Null

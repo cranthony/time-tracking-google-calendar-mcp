@@ -10,7 +10,7 @@ use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-/// One location -- see the module docstring.
+/// One location: where the user's events happen (see get_locations).
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Schema)]
 #[schema(deny_unknown)]
 pub struct Location {

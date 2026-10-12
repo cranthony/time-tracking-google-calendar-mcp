@@ -59,7 +59,8 @@ pub struct ActionList {
     pub label_slots_total: i64,
 }
 
-/// One action -- see the module docstring.
+/// One action: what the user does with their time, a verb phrase (see
+/// get_actions).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Action {
     pub id: Option<String>,
@@ -104,7 +105,8 @@ pub struct ListedActionGroup {
     pub effective_priority: Option<i64>,
 }
 
-/// One action group -- see the module docstring.
+/// One action group: a name that rolls actions up (see
+/// get_action_groups).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ActionGroup {
     pub id: Option<String>,
@@ -125,7 +127,7 @@ pub struct CreatedActionGroup {
     pub created_id: String,
 }
 
-/// One priority's color: its label's (see utilities/priority_labels.py).
+/// One priority's color: its label's.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct PriorityColor {
     pub priority: i64,

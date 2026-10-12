@@ -33,8 +33,10 @@ pub enum EventField {
     Judgments,
 }
 
-/// What compaction established about an event -- see the module
-/// docstring. Every field is optional.
+/// What compaction established about an event: where it was
+/// (location_id), who was there with the user (with_ids), who it was for
+/// (for_ids), and a note on how it was for each person there (notes).
+/// Every field is optional.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Facts {
     pub location_id: Option<String>,
@@ -43,13 +45,7 @@ pub struct Facts {
     pub notes: Option<IndexMap<String, String>>,
 }
 
-/// Event, minus the fields named in INTERNAL_EVENT_FIELDS, plus
-/// is_cancelled (which has no Event equivalent -- Event's status is one
-/// of INTERNAL_EVENT_FIELDS, hidden entirely). Every MCP tool
-/// returns/accepts this instead of Event directly, so those fields never
-/// appear in the tool schema the agent sees (via tools/list) or in any
-/// tool result -- the agent has no way to know they exist, not just that
-/// their value is hidden.
+/// A calendar event, as every event tool takes and returns it.
 ///
 /// is_cancelled is read-only: update_event refuses to set it -- cancel
 /// an event with delete_event, which says whether the cancellation counts
@@ -58,8 +54,8 @@ pub struct Facts {
 /// action_ids are what was done at the event (see get_actions), the
 /// first setting its label and color; setting them is how an event is
 /// tied to actions. action_names (their names, in the same order) and
-/// event_label_id (derived from the first action -- see utilities/
-/// action_calendar.py) are read-only: to_event ignores them.
+/// event_label_id (derived from the first action) are read-only: an
+/// update ignores them.
 ///
 /// actions_from_label is true when an event was never given actions, so
 /// its action_ids are inferred from its label (the action that holds the
@@ -67,24 +63,24 @@ pub struct Facts {
 /// leaves them inferred, whatever action_ids says; to store actions, send
 /// action_ids with actions_from_label false (or left out).
 ///
-/// effective_priority is read-only: Event's property of the same name,
-/// the priority that applies, i.e. priority falling back,
+/// effective_priority is read-only: the priority that applies, i.e.
+/// priority falling back,
 /// when the event doesn't set one, to the highest (lowest-numbered)
 /// priority among its actions (each action's own, or its nearest
 /// group's). Kept separate from priority so that sending a listed event
 /// straight back to update_event never copies its actions' priority onto
 /// the event itself, which would stop it following later changes to the
-/// actions. to_event ignores it.
+/// actions. An update ignores it.
 ///
-/// is_end_of_day_sleep/recurring_event_id are read-only too, and
-/// to_event ignores them as well. is_end_of_day_sleep decides where a
-/// day ends for compaction (see utilities/note_compactor.py),
-/// so a wrong mark would quietly change what later updates shrink, move
-/// or cancel; it's only set by hand, via calendar_cli.py.
-/// recurring_event_id is assigned by Google and can't be set at all.
+/// is_end_of_day_sleep/recurring_event_id are read-only too, and an
+/// update ignores them as well. is_end_of_day_sleep decides where a day
+/// ends for compaction, so a wrong mark would quietly change what later
+/// updates shrink, move or cancel; it's only set by hand, with
+/// calendar_cli. recurring_event_id is assigned by Google and can't be
+/// set at all.
 ///
-/// facts are what compaction established about a past event (see
-/// utilities/facts.py), for traits' judgments later: location_id (see
+/// facts are what compaction established about a past event, for
+/// traits' judgments later: location_id (see
 /// get_locations), with_ids (the people there with the user -- never
 /// "self", who's at every event), for_ids (people it was done for who
 /// weren't there) and notes ({person id: a subjective note on how it was
@@ -163,8 +159,8 @@ pub struct NotedTime {
     pub compaction_id: Option<String>,
 }
 
-/// A note as handed to a client: its fields plus its `SheetNote.id`,
-/// which `NotedTimeSheet.edit`/`delete` (and compaction) refer to it by.
+/// A note, with the id that edit_note and delete_note (and compaction)
+/// refer to it by.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct NoteWithId {
     pub id: String,
@@ -173,7 +169,7 @@ pub struct NoteWithId {
     pub compaction_id: Option<String>,
 }
 
-/// One time a routine runs -- see the module docstring.
+/// One time a routine runs: when (time) and what it's called (label).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ScheduleHint {
     pub id: Option<String>,

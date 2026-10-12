@@ -31,13 +31,6 @@ fn tools_json_is_the_contract() {
 }
 
 #[test]
-fn titles_fields_as_pydantic_does() {
-    assert_eq!(title_case("created_id"), "Created Id");
-    assert_eq!(title_case("id_or_name"), "Id Or Name");
-    assert_eq!(title_case("id"), "Id");
-}
-
-#[test]
 fn sorts_keys_but_keeps_field_order() {
     let sorted = sort_keys(json!({"type": "object", "properties": {"b": {"type": "x", "title": "B"}, "a": {}}, "additionalProperties": false}));
     assert_eq!(sorted.to_string(), r#"{"additionalProperties":false,"properties":{"b":{"title":"B","type":"x"},"a":{}},"type":"object"}"#);
@@ -47,4 +40,12 @@ fn sorts_keys_but_keeps_field_order() {
 fn a_literal_is_its_const_or_enum() {
     assert_eq!(literal(&["hint"]), json!({"const": "hint", "type": "string"}));
     assert_eq!(literal(&["a", "b"]), json!({"enum": ["a", "b"], "type": "string"}));
+}
+
+#[test]
+fn an_option_of_a_plain_type_takes_null_as_a_type() {
+    let mut defs = Defs::default();
+    assert_eq!(<Option<String>>::schema(&mut defs), json!({"type": ["string", "null"]}));
+    assert_eq!(<Option<Vec<String>>>::schema(&mut defs), json!({"items": {"type": "string"}, "type": ["array", "null"]}));
+    assert_eq!(<Option<DateOrDateTime>>::schema(&mut defs)["anyOf"].as_array().unwrap().len(), 3);
 }

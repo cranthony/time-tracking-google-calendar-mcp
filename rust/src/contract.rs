@@ -5,21 +5,20 @@
 //! snapshot of it, which a test keeps current (CTT_UPDATE_CONTRACT=1
 //! rewrites it), so a change to what clients see shows in a diff.
 //!
-//! The schemas are in the shape pydantic gave them, so clients see what
-//! they always have:
+//! The schemas' shape:
 //!
-//! - A struct is a model, in `$defs` under its title and referred to by
+//! - A struct is a model, in `$defs` under its name and referred to by
 //!   `$ref`: `additionalProperties` (false, if it refuses unknown
 //!   fields), its doc comment as `description`, `properties` in field
-//!   order, `required`, `title`, `type: object`.
-//! - A field has a `title` (its name in title case, "created_id" ->
-//!   "Created Id") unless it's a `$ref`, a `description` from its doc
-//!   comment, and a `default`: null for an `Option`, unless it's
-//!   `#[schema(required)]`, or what `#[schema(default)]` says. A field
-//!   without one is `required`.
-//! - `Option<T>` is `anyOf: [T, null]`; `Vec<T>` an array of T; a map of
-//!   text to T an object with T as `additionalProperties`; a free-form
-//!   object `additionalProperties: true`.
+//!   order, `required`, `type: object`.
+//! - A field has its doc comment as `description`, and the `default`
+//!   `#[schema(default)]` gives it. It's `required` unless it has a
+//!   default or is an `Option` (one that has to be given, if only as
+//!   null, is `#[schema(required)]`) or `#[schema(optional)]`.
+//! - `Option<T>` is T with null allowed: `"type": [T's type, "null"]`
+//!   for a plain type, else `anyOf: [T, null]`. `Vec<T>` is an array of
+//!   T; a map of text to T an object with T as `additionalProperties`; a
+//!   free-form object `additionalProperties: true`.
 //! - A tool's arguments are a model of its parameters, inlined, titled
 //!   "<tool>Arguments". Its result is inlined the same way if it's a
 //!   model (without its description or `additionalProperties`), or else
@@ -94,7 +93,15 @@ simple! {
 impl<T: Schema> Schema for Option<T> {
     fn schema(defs: &mut Defs) -> Value {
         let inner = T::schema(defs);
-        // A union stays one union, null last, as pydantic writes it.
+        // A plain type takes null as one of its types.
+        if let Some(Value::String(ty)) = inner.get("type") {
+            if inner.get("enum").is_none() && inner.get("const").is_none() {
+                let mut nullable = inner.clone();
+                nullable["type"] = json!([ty, "null"]);
+                return nullable;
+            }
+        }
+        // A union stays one union, null last.
         let mut choices = match inner.as_object() {
             Some(map) if map.len() == 1 && map.contains_key("anyOf") => map["anyOf"].as_array().cloned().unwrap_or_default(),
             _ => vec![inner],
@@ -189,50 +196,19 @@ impl Field {
         optional: bool,
         description: Option<&'static str>,
     ) -> Field {
-        let default = match default {
-            Some(json) => Some(serde_json::from_str(json).unwrap_or_else(|e| panic!("{name}'s default {json:?}: {e}"))),
-            None if T::OPTIONAL && !required => Some(Value::Null),
-            None => None,
-        };
+        let default = default.map(|json| serde_json::from_str(json).unwrap_or_else(|e| panic!("{name}'s default {json:?}: {e}")));
+        let optional = optional || (T::OPTIONAL && !required);
         Field { name, schema: T::schema(defs), default, optional, description }
     }
 }
-
-/// "created_id" -> "Created Id", as pydantic titles a field.
-fn title_case(name: &str) -> String {
-    name.split('_')
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().chain(chars.flat_map(char::to_lowercase)).collect(),
-                None => String::new(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn is_reference(schema: &Value) -> bool {
-    schema.get("$ref").is_some() || schema.pointer("/anyOf/0/$ref").is_some()
-}
-
-/// Where a model keeps its `#[schema(optional)]` fields while it's built:
-/// a result inlined at the top lists them as required, as pydantic does
-/// (it always sends them); anywhere else they're left out.
-const OPTIONAL_KEY: &str = "__optional";
 
 /// A model's `properties` and `required`.
 fn object(fields: Vec<Field>) -> Map<String, Value> {
     let mut properties = Map::new();
     let mut required = Vec::new();
-    let mut optional = Vec::new();
     for field in fields {
         let mut schema = field.schema;
-        let reference = is_reference(&schema);
         let map = schema.as_object_mut().expect("a schema is an object");
-        if !reference {
-            map.insert("title".into(), json!(title_case(field.name)));
-        }
         if let Some(description) = field.description {
             map.insert("description".into(), json!(description));
         }
@@ -240,7 +216,7 @@ fn object(fields: Vec<Field>) -> Map<String, Value> {
             Some(default) => {
                 map.insert("default".into(), default);
             }
-            None if field.optional => optional.push(json!(field.name)),
+            None if field.optional => {}
             None => required.push(json!(field.name)),
         }
         properties.insert(field.name.to_string(), schema);
@@ -251,22 +227,7 @@ fn object(fields: Vec<Field>) -> Map<String, Value> {
         out.insert("required".into(), Value::Array(required));
     }
     out.insert("type".into(), json!("object"));
-    if !optional.is_empty() {
-        out.insert(OPTIONAL_KEY.into(), Value::Array(optional));
-    }
     out
-}
-
-/// Drop every model's optional fields' note.
-fn strip_optional(value: &mut Value) {
-    match value {
-        Value::Object(map) => {
-            map.remove(OPTIONAL_KEY);
-            map.values_mut().for_each(strip_optional);
-        }
-        Value::Array(items) => items.iter_mut().for_each(strip_optional),
-        _ => {}
-    }
 }
 
 /// Add the model `title` to `defs`; its `$ref`.
@@ -278,7 +239,6 @@ pub fn model(defs: &mut Defs, title: &str, description: Option<&str>, deny_unkno
     if let Some(description) = description {
         schema.insert("description".into(), json!(description));
     }
-    schema.insert("title".into(), json!(title));
     defs.models.insert(title.to_string(), Value::Object(schema));
     json!({"$ref": format!("#/$defs/{title}")})
 }
@@ -294,10 +254,6 @@ pub fn arguments(_defs: &mut Defs, title: &str, fields: Vec<Field>) -> Value {
 /// but `properties`', and the top level's `$defs` and `title` last.
 fn top(mut schema: Map<String, Value>, defs: Defs) -> Value {
     let models: Map<String, Value> = defs.models.into_iter().filter(|(_, m)| !m.is_null()).collect();
-    let mut models = Value::Object(models);
-    strip_optional(&mut models);
-    let Value::Object(models) = models else { unreachable!() };
-    schema.remove(OPTIONAL_KEY);
     if !models.is_empty() {
         schema.insert("$defs".into(), Value::Object(models));
     }
@@ -367,21 +323,9 @@ impl ToolDef {
                 let Some(Value::Object(mut inlined)) = defs.models.remove(title) else { unreachable!("a $ref is in $defs") };
                 inlined.remove("description");
                 inlined.remove("additionalProperties");
-                if let Some(Value::Array(optional)) = inlined.remove(OPTIONAL_KEY) {
-                    // Required in field order, as pydantic lists them.
-                    let names: Vec<String> = inlined["properties"].as_object().map(|p| p.keys().cloned().collect()).unwrap_or_default();
-                    let listed: Vec<Value> = inlined.get("required").and_then(Value::as_array).cloned().unwrap_or_default();
-                    let required: Vec<Value> =
-                        names.into_iter().map(Value::String).filter(|n| listed.contains(n) || optional.contains(n)).collect();
-                    inlined.insert("required".into(), Value::Array(required));
-                }
                 inlined
             }
             None => {
-                let mut result = result;
-                if !is_reference(&result) {
-                    result.as_object_mut().expect("a schema is an object").insert("title".into(), json!("Result"));
-                }
                 let mut wrapper = Map::new();
                 wrapper.insert("properties".into(), json!({"result": result}));
                 wrapper.insert("required".into(), json!(["result"]));
