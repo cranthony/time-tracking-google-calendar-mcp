@@ -1,6 +1,6 @@
-//! Changing events several at once (utilities/event_changes.py): a batch
-//! of updates, creates, cancels and shifts, checked whole -- nothing moved
-//! to make room, nothing before the last compaction changed unless asked
+//! Changing events several at once: a batch of updates, creates, cancels
+//! and shifts, checked whole -- nothing moved to make room, nothing before
+//! the last compaction changed unless asked
 //! -- then written.
 
 use crate::event::{Event, Moment};

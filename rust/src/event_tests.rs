@@ -1,5 +1,5 @@
-//! tests/test_google_calendar.py's TestEvent. (Its tests of naive
-//! datetimes can't arise: a Moment always has an offset.)
+//! Event's tests. (Naive datetimes can't arise: a Moment always has an
+//! offset.)
 
 use super::*;
 use crate::facts::Facts;

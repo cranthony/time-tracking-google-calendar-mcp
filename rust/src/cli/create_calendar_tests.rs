@@ -1,4 +1,4 @@
-//! tests/test_create_calendar.py, against the fake Google.
+//! create_calendar, against the fake Google.
 
 use super::*;
 use crate::sheet::{ACTIONS, TIME_NOTES};

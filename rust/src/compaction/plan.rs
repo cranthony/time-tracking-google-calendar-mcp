@@ -1,6 +1,6 @@
-//! Compaction planning (utilities/note_compaction.py): realigning a day's
-//! planned events to its notes, from a model's decisions, into calendar
-//! changes and a timeline -- deterministic, no API access.
+//! Compaction planning: realigning a day's planned events to its notes,
+//! from a model's decisions, into calendar changes and a timeline --
+//! deterministic, no API access.
 
 use crate::event::{parse_iso, Event, Moment, MAX_DESCRIPTION_BYTES};
 use crate::facts::Facts;

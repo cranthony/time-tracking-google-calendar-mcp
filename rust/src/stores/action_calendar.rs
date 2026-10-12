@@ -1,6 +1,5 @@
-//! Events tied to actions (utilities/action_calendar.py): what an event
-//! inherits from its actions is filled in on read, and its label derived
-//! from them on write.
+//! Events tied to actions: what an event inherits from its actions is
+//! filled in on read, and its label derived from them on write.
 
 use crate::event::{Event, Moment};
 use crate::google::calendar::{CalendarClient, EventLabel};

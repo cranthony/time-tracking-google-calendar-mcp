@@ -1,6 +1,5 @@
-//! People and circles (utilities/people.py): who the user spends time
-//! with -- the user themself always first, as "self" -- in the People and
-//! Circles tabs.
+//! People and circles: who the user spends time with -- the user themself
+//! always first, as "self" -- in the People and Circles tabs.
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;

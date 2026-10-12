@@ -1,10 +1,10 @@
-//! The one lock every write to Google holds, and the check that it does
-//! -- as calendar_clients/write_lock.py. Tools run on worker threads, so
-//! calls that arrive together run at once: reading alongside one another
-//! is fine, but a write reads, decides, then writes, and two interleaved
-//! can lose one's write. So a tool that may write holds `WRITE_LOCK` for
-//! its whole call, and each write to Google checks this thread holds it
-//! (or `HEALTH_TAB_LOCK`, for the Health tab's background writer).
+//! The one lock every write to Google holds, and the check that it does.
+//! Tools run on worker threads, so calls that arrive together run at once:
+//! reading alongside one another is fine, but a write reads, decides, then
+//! writes, and two interleaved can lose one's write. So a tool that may
+//! write holds `WRITE_LOCK` for its whole call, and each write to Google
+//! checks this thread holds it (or `HEALTH_TAB_LOCK`, for the Health tab's
+//! background writer).
 
 use std::cell::Cell;
 use std::sync::{Mutex, MutexGuard};

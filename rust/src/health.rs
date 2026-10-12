@@ -1,8 +1,7 @@
-//! Health metrics (utilities/health.py): each tool call's latency, the
-//! memory after it, and the server's starts -- the last KEEP of each,
-//! recorded in memory and written to the Health tab in the background, in
-//! the same encoding Python reads and writes (so either server carries on
-//! the other's series).
+//! Health metrics: each tool call's latency, the memory after it, and the
+//! server's starts -- the last KEEP of each, recorded in memory and written
+//! to the Health tab in the background, in the same encoding Python reads
+//! and writes (so either server carries on the other's series).
 
 use crate::google::sheets::SheetsClient;
 use crate::sheet::rows::{self, Kind, Row, RowSheet, RowType};
@@ -543,7 +542,7 @@ mod tests {
 
     #[test]
     fn reads_what_python_wrote() {
-        // health.encode_times([1, 2, 3]) from utilities/health.py.
+        // encode_times([1, 2, 3]) as the Python server wrote it.
         assert_eq!(decode_times("1eNpjZmJiAgAAHAAK").unwrap(), vec![1, 2, 3]);
     }
 }

@@ -1,5 +1,5 @@
-//! An event's facts (utilities/facts.py): what compaction established
-//! about it -- where, who with, who for, and a note on each person there.
+//! An event's facts: what compaction established about it -- where, who
+//! with, who for, and a note on each person there.
 //!
 //! The fields hold JSON values rather than typed ones: facts read back
 //! from an event someone edited by hand can be any shape, and the checks

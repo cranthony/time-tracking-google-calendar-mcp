@@ -1,10 +1,9 @@
-//! MCP over streamable HTTP, as on Render (server.py with
-//! MCP_TRANSPORT=streamable-http): an OAuth resource server whose bearer
-//! tokens WorkOS AuthKit issues (workos_auth.py), CORS for browser clients
-//! (with_cors), the OAuth proxy to AuthKit (oauth_proxy.py), and each tool
-//! call's whole-request time for the health metrics (with_health). Every
-//! answer is what the Python server sends -- status, headers that matter,
-//! body byte for byte.
+//! MCP over streamable HTTP, as on Render (MCP_TRANSPORT=streamable-http):
+//! an OAuth resource server whose bearer tokens WorkOS AuthKit issues, CORS
+//! for browser clients (with_cors), the OAuth proxy to AuthKit, and each
+//! tool call's whole-request time for the health metrics (with_health).
+//! Every answer -- status, headers that matter, body byte for byte -- is
+//! held to conformance/'s golden records.
 
 use crate::app::App;
 use axum::body::{Body, Bytes};
@@ -462,7 +461,7 @@ async fn oauth_token(State(shared): State<Arc<Shared>>, headers: HeaderMap, body
     forward(shared, "/oauth2/token", headers, body).await
 }
 
-/// oauth_proxy.py: the request to AuthKit unchanged (its Content-Type and
+/// The request to AuthKit unchanged (its Content-Type and
 /// Accept), AuthKit's answer back unchanged (its status, Content-Type and
 /// Cache-Control, and body).
 async fn forward(shared: Arc<Shared>, upstream: &'static str, headers: HeaderMap, body: Bytes) -> Response {

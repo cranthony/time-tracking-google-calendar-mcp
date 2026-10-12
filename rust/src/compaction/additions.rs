@@ -1,6 +1,6 @@
-//! The actions, people and locations a compaction adds as it goes
-//! (utilities/compaction_additions.py): each with a `ref` ("new:ukulele")
-//! the plan's decisions name it by, created only when the plan is applied.
+//! The actions, people and locations a compaction adds as it goes each with
+//! a `ref` ("new:ukulele") the plan's decisions name it by, created only
+//! when the plan is applied.
 
 use crate::event::Event;
 use crate::facts::Facts;

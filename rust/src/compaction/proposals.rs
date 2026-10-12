@@ -1,7 +1,6 @@
-//! Compaction proposals (utilities/compaction_proposals.py): the user's
-//! edits and feedback as they're kept, the shapes the tools hand back, and
-//! how a revision's decisions are made from Claude's and the user's
-//! (`merge`).
+//! Compaction proposals: the user's edits and feedback as they're kept, the
+//! shapes the tools hand back, and how a revision's decisions are made from
+//! Claude's and the user's (`merge`).
 
 use super::additions::REF_PREFIX;
 use super::plan::{CompactionChange, EventDecision};

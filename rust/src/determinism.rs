@@ -1,6 +1,5 @@
-//! The clock and the random ids, made fixed for conformance/ when asked --
-//! exactly as utilities/determinism.py does, so both servers make the
-//! same ids in the same order:
+//! The clock and the random ids, made fixed for conformance/ when asked, so
+//! the server makes the same ids in the same order every run:
 //!
 //! - `now()` is the current time, or always `CTT_NOW` (ISO 8601 with an
 //!   offset) if that's set.
@@ -71,7 +70,6 @@ mod tests {
 
     #[test]
     fn the_fixed_sequence_matches_python() {
-        // tests/test_determinism.py pins the same two.
         let letters: Vec<char> = "0123456789abcdefghijklmnopqrstuvwxyz".chars().collect();
         let token = |n: u64| -> String {
             let digest = Sha256::digest(format!("ctt-id:{n}").as_bytes());

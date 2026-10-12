@@ -1,8 +1,7 @@
-//! tests/test_server.py and tests/test_sheet_read_requests.py: the tools,
-//! called as a client calls them -- MCP tools/call, its arguments checked
-//! against the contract's schema -- on the fake Google. Where Python
-//! checked that a tool delegated to a mocked store, these check what the
-//! store then holds, or what the tool hands back.
+//! The tools, called as a client calls them -- MCP tools/call, its
+//! arguments checked against the contract's schema -- on the fake Google.
+//! Where Python checked that a tool delegated to a mocked store, these
+//! check what the store then holds, or what the tool hands back.
 
 use crate::event::{Event, Moment};
 use crate::testing::app::{test_app, TestApp};

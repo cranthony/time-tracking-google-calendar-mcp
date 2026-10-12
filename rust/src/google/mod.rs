@@ -1,7 +1,7 @@
-//! Talking to Google: OAuth credentials (calendar_clients/google_auth.py)
-//! and one place every request goes through, so errors come back as
-//! Google's status codes for callers to act on (a 409 on a create that
-//! already happened, a 412 on a stale etag, a 429 to retry...).
+//! Talking to Google: OAuth credentials and one place every request goes
+//! through, so errors come back as Google's status codes for callers to act
+//! on (a 409 on a create that already happened, a 412 on a stale etag, a
+//! 429 to retry...).
 
 pub mod calendar;
 pub mod consent;
@@ -13,8 +13,16 @@ use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-/// Every scope this app asks for: see calendar_clients/google_auth.py's
-/// SCOPES for why each, and why both come from one token.
+/// Every scope this app asks for, for Calendar and Sheets alike: both
+/// are reached with the same OAuth token, so it's asked for with the
+/// union of what either needs.
+///
+/// calendar.app.created: only the calendars this app created itself --
+/// none of the user's own, not even "primary". create_calendar makes
+/// that dedicated calendar; see the README's "Calendar access model".
+///
+/// drive.file: the calendar's metadata spreadsheet, which this app
+/// creates and keeps its tabs in; only files this app created.
 pub const SCOPES: [&str; 2] =
     ["https://www.googleapis.com/auth/calendar.app.created", "https://www.googleapis.com/auth/drive.file"];
 

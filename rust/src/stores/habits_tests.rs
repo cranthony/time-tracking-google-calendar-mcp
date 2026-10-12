@@ -1,4 +1,4 @@
-//! tests/test_habits.py, against the fake Google.
+//! The module's tests, against the fake Google.
 
 use super::*;
 use crate::sheet::HABITS;

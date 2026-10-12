@@ -1,6 +1,5 @@
-//! tests/test_config.py: the server's configuration, and building its
-//! clients and stores. (The HTTP transport's own settings are tested in
-//! mcp/http_tests.rs.)
+//! The server's configuration, and building its clients and stores. (The
+//! HTTP transport's own settings are tested in mcp/http_tests.rs.)
 
 use super::*;
 use crate::testing::app::test_app;

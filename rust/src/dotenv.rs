@@ -1,7 +1,7 @@
-//! `load_dotenv()`, as config.py calls it: settings from a `.env` file in
-//! the working directory, for running the server locally (see
-//! .env.example). A variable already set in the environment wins, and a
-//! missing file is no error -- deployed, the environment is set for real.
+//! `load_dotenv()`: settings from a `.env` file in the working directory,
+//! for running the server locally (see .env.example). A variable already
+//! set in the environment wins, and a missing file is no error -- deployed,
+//! the environment is set for real.
 
 use std::path::Path;
 

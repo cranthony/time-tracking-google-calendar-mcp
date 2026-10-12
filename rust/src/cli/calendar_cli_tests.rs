@@ -1,5 +1,4 @@
-//! tests/test_calendar_cli.py: its parsing, and each command run on the
-//! fake Google.
+//! calendar_cli's parsing, and each command run on the fake Google.
 
 use super::*;
 use crate::sheet::ACTIONS;

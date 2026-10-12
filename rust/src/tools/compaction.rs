@@ -1,6 +1,5 @@
-//! The compaction tools (server.py's): compacting notes into the calendar
-//! as proposals the user confirms, judging the events it settles, and
-//! correcting notes.
+//! The compaction tools: compacting notes into the calendar as proposals
+//! the user confirms, judging the events it settles, and correcting notes.
 
 use super::events::moment;
 use super::{ToolError, ToolResult};

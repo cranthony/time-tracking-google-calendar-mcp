@@ -1,5 +1,5 @@
-//! The recurring-series tools (server.py's get_recurrence,
-//! update_recurrence, split_recurrence, delete_recurrence).
+//! The recurring-series tools (get_recurrence, update_recurrence,
+//! split_recurrence, delete_recurrence).
 
 use super::events::{check_action_ids, check_facts, moment};
 use super::stores::prefetch_stores;

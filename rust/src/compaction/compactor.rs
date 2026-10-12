@@ -1,8 +1,94 @@
-//! Compacting notes (utilities/note_compactor.py): the policy that ties the
-//! notes tab, the calendar, the planner and the journal together -- a
-//! compaction is a proposal the user confirms. See the Python module for
-//! the whole design; this follows it call for call, so the requests it
-//! makes are the same.
+//! Compacting notes: the application-level policy that ties the notes tab
+//! (stores::notes), the calendar, the planner (compaction::plan) and the
+//! write-ahead journal (stores::journal) together.
+//!
+//! A compaction is a *proposal* the user confirms (see
+//! compaction::proposals, and docs/compaction-proposals.md for the
+//! contract). The flow, as the MCP tools expose it:
+//!
+//! 1. `prepare` -- read-only. Hands the client every day from the last
+//!    compaction up to now, notes or not (each uncompacted note with a
+//!    stable id and a shortlist of nearby planned events), those days'
+//!    planned events, the two side by side as a `Timeline` (see
+//!    timeline.rs), and the open proposal, if there is one. The
+//!    client compares them and decides, event by event, what the notes show
+//!    happened differently.
+//! 2. `dry_run` (compact_notes) -- validates the client's decisions, lays
+//!    the user's edits over them, and writes the plan to the journal as a
+//!    proposal's revision, returning it (and the resulting timeline).
+//!    Nothing on the calendar changes. The user reviews it in the app:
+//!    `amend` (their edits), `add_note`/`withdraw_note` (feedback for the
+//!    client, answered by its next revision), `get_proposal`.
+//! 3. `confirm` -- the user's alone: plans the revision again, and if
+//!    nothing changed, applies it (`commit`), journaling each step as it
+//!    goes, and stamping each day's notes as compacted once that day's steps
+//!    are done. If it dies partway, `finish` resumes it: the journal
+//!    remembers exactly what was confirmed and how far it got. A write that
+//!    can never succeed proposes what's left of it again (`rebuild`). A
+//!    proposal can be `abandon`ed.
+//! 4. `record_judgments` -- the facts written, the client judges the traits
+//!    of each event's people (see compaction::judgments). Nothing about
+//!    judging is sent before the user approves the plan: the commit hands
+//!    back the plan's final timeline and, beside it, the judgments due, in
+//!    one compact list (each event's people and their parts, then each part
+//!    and each person's history once). A compaction isn't complete until
+//!    they're all judged. `judgments_due` hands them over again -- to
+//!    finish, or redo.
+//!
+//! One span, all at once: one compaction takes on every day from the last
+//! compaction up to now (at most `MAX_DAYS` of them), notes or not, and
+//! plans them together, as one span, which the user reviews whole. It
+//! starts in the day the last compaction ran in (before there's been one,
+//! the one the oldest note falls in, or today): when the last end-of-day
+//! sleep event that began before then ends (or at the note, if it's
+//! earlier -- a note written before the planned wake-up time). It runs
+//! through its last night: the end-of-day sleep event that ends after now
+//! (or 24 hours past its last day's start, if there isn't one). Its other
+//! nights are events like any other, each decided once; nothing about
+//! them moves where a day starts, which is only how the timeline heads
+//! its days. A cancelled last night -- no sleep -- runs it on to the next
+//! night. One that ends later than planned -- slept in -- takes in the
+//! events it now runs into, up to its new end, for the decisions to
+//! settle (see `cut`). Before, each day was a compaction of its own,
+//! planned after the one before it: a proposal journaled then, as a batch
+//! of days, is planned as one span too. In the journal, it's one
+//! compaction (see stores::journal) -- the compaction id
+//! the MCP tools use -- applied, then stamped, whole. Notes written after
+//! now wait for a later compaction.
+//!
+//! A day can take several compactions, so the events offered -- the
+//! *compaction window* -- start at the later of the span's start and the
+//! last *stamped* compaction's `now`: whatever an earlier compaction already
+//! settled isn't offered again. Nor is anything after it skipped: a day
+//! with no notes is confirmed as planned. The one event that ended within `LOOKBACK_MINUTES`
+//! before the compaction window starts is offered too, so an event the last
+//! compaction closed off at "now" (or the night's sleep) can still be
+//! stretched. The latest compacted note, however long ago it was written,
+//! is offered as `previous_note`: what the user last said before the window
+//! often says what was going on as it began. The timeline shows it too, and
+//! when the last compaction ran, as context, above the span's first day.
+//! Every past event offered is recorded as on schedule unless the client's
+//! decisions say otherwise (see compaction::plan).
+//!
+//! The events offered run on past `now`, through the span's last night,
+//! because an event that ran long runs into what follows it, and nothing is
+//! moved to make room: the decisions have to move what follows too, and
+//! nothing may overlap any of the span's events, past or still to come (see
+//! compaction::plan). So they're part of the plan -- and of the
+//! proposal's `events`, as `planned` -- and confirming checks them too: one
+//! the plan writes that has changed since makes a new revision, and one that
+//! now overlaps what the plan keeps hands it to Claude (see `confirm`).
+//! Events after the last night aren't read. But compaction is about recording the past,
+//! so the timeline shown to the user stops at `now`: a later event appears
+//! in it only if it's near enough to a note to be one of its candidates
+//! (lunch at noon, for an 11:45 "starting lunch") or -- after a dry run --
+//! if the plan changes it.
+//!
+//! `prepare` also garbage-collects the journal (`CompactionJournal::
+//! garbage_collect`) before doing anything else -- see there, and
+//! `NotedTimeSheet::garbage_collect` (called from `note`/`append` instead,
+//! since that's where the notes tab grows), for what that means for row
+//! numbers and ids.
 
 use super::additions::{check_additions, create_additions, ref_of, resolve, Additions, REF_PREFIX};
 use super::guide::{APPROVAL_RULE, DECISION_GUIDE};
@@ -310,9 +396,8 @@ impl NoteCompactor {
         }
     }
 
-    /// The span's calendar: what the plan's days are read from (the
-    /// Python's `_PlannedCalendar`, which nothing applies changes to any
-    /// more), only what overlaps the window.
+    /// The span's calendar: what the plan's days are read from (which
+    /// nothing applies changes to any more), only what overlaps the window.
     fn span_events(&self, time_min: Moment, time_max: Moment) -> anyhow::Result<Vec<Event>> {
         Ok(self
             .calendar
@@ -2082,8 +2167,20 @@ impl NoteCompactor {
         Ok((Some(day), remaining))
     }
 
-    /// `_day`: the span from the day the oldest note (or the anchor) falls
-    /// in up to `now` -- see the Python for every rule.
+    /// The span from the day the oldest of `notes` falls in -- or, with
+    /// none, the one `window_start` does, or with an `anchor` (see
+    /// `walk`), the one that does -- up to `now`, with its notes. It
+    /// starts when the night before that ends (or at the note, if it was
+    /// written before the wake-up time) and runs through its last night:
+    /// the end-of-day sleep that ends after `now` -- or, with more than
+    /// `max_days` days to `now`, the last that starts within them, its
+    /// end the span's `now`. Without one, it runs 24 hours past its
+    /// start, or to `now`. Its compaction window starts at
+    /// `window_start`, if given, or else no earlier than `last_stamped`.
+    /// `first`: whether it's shown the latest compacted note and the last
+    /// compaction, as context. `sleepless`: nights that don't end it, and
+    /// `overrun`: where its last night now ends, if that's later -- the
+    /// events up to then are its too (see `cut`).
     #[allow(clippy::too_many_arguments)]
     fn day(
         &self,

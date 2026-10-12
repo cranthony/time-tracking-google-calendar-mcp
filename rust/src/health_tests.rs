@@ -1,7 +1,7 @@
-//! tests/test_health.py: encoding, the recorder, the Health tab and its
-//! writer, and get_health. (Python's writer test of retrying to open the
-//! tab waits out FLUSH_SECONDS here, so isn't ported; its HTTP timing test
-//! is with the transport's tests.)
+//! Encoding, the recorder, the Health tab and its writer, and get_health.
+//! (Python's writer test of retrying to open the tab waits out
+//! FLUSH_SECONDS here, so isn't ported; its HTTP timing test is with the
+//! transport's tests.)
 
 use super::*;
 use crate::testing::app::test_app;

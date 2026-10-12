@@ -1,6 +1,5 @@
-//! tests/test_action_calendar.py: what an event takes from its actions,
-//! and the label it's written with -- the ActionCalendar against the
-//! fake Google.
+//! What an event takes from its actions, and the label it's written with --
+//! the ActionCalendar against the fake Google.
 
 use super::*;
 use crate::sheet::{ACTIONS, ACTION_GROUPS};

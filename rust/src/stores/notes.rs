@@ -1,6 +1,6 @@
-//! The time notes tab (utilities/noted_time_sheet.py): moments worth
-//! recording, each a timestamp and an optional description, stamped with
-//! the compaction that consumed it. A note's id is its timestamp and row.
+//! The time notes tab: moments worth recording, each a timestamp and an
+//! optional description, stamped with the compaction that consumed it. A
+//! note's id is its timestamp and row.
 
 use crate::event::{parse_iso, Moment};
 use crate::google::sheets::{Rows, SheetsClient, TabRange};

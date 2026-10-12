@@ -1,6 +1,6 @@
-//! Recurring series as a whole (utilities/recurrences.py): reading one,
-//! editing it whole or from an event on, splitting it, deleting it -- and
-//! `Repeat`, its rules as a client reads and writes them.
+//! Recurring series as a whole: reading one, editing it whole or from an
+//! event on, splitting it, deleting it -- and `Repeat`, its rules as a
+//! client reads and writes them.
 
 use crate::event::{Event, Moment};
 use crate::google::status_of;

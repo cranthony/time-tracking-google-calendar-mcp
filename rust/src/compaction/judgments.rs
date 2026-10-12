@@ -1,7 +1,7 @@
-//! Judging traits (utilities/judgments.py): the last step of a compaction,
-//! once its events' facts are written -- each event with facts judged for
-//! each person (and habit) it was about, against the judgment parts of
-//! the traits that apply to them.
+//! Judging traits: the last step of a compaction, once its events' facts
+//! are written -- each event with facts judged for each person (and habit)
+//! it was about, against the judgment parts of the traits that apply to
+//! them.
 
 use crate::event::{Event, Moment};
 use crate::facts::SELF_ID;

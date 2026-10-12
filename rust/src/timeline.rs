@@ -1,6 +1,6 @@
-//! The timeline of a compaction, or of a batch of event changes
-//! (utilities/compaction_timeline.py): notes and event edges in time order,
-//! as data and as one narrow fixed-width column of text.
+//! The timeline of a compaction, or of a batch of event changes notes and
+//! event edges in time order, as data and as one narrow fixed-width column
+//! of text.
 
 use crate::py;
 use chrono::{DateTime, Duration, FixedOffset, Offset};

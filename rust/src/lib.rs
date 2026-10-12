@@ -1,5 +1,4 @@
-//! The time-tracking Google Calendar MCP server, ported from Python (see
-//! ../README.md): what the server (src/main.rs) and the command-line tools
+//! The time-tracking Google Calendar MCP server (see ../README.md): what the server (src/main.rs) and the command-line tools
 //! (src/bin/) share.
 
 pub mod app;

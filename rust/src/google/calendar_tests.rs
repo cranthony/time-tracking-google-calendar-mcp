@@ -1,7 +1,6 @@
-//! tests/test_google_calendar.py's client tests, against the fake Google.
-//! (TestCalendar's Calendar class isn't in the port, and TestEventLabel's
-//! type checks -- no priority field, a required color -- are the
-//! compiler's.)
+//! The calendar client's tests, against the fake Google. (TestCalendar's
+//! Calendar class isn't in the port, and TestEventLabel's type checks -- no
+//! priority field, a required color -- are the compiler's.)
 
 use super::*;
 use crate::testing::fake_google::{FakeGoogle, LoggedRequest};

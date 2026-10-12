@@ -1,4 +1,4 @@
-//! Proposals' tests (tests/test_compaction_proposals.py, ported).
+//! Proposals' tests.
 
 use super::*;
 use crate::compaction::plan::CompactionPlan;

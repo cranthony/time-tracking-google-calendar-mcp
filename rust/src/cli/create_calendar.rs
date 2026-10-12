@@ -1,5 +1,5 @@
-//! Create a new Google Calendar for this app to use, and print its ID
-//! (create_calendar.py, ported; the create_calendar binary runs it).
+//! Create a new Google Calendar for this app to use, and print its ID (the
+//! create_calendar binary runs it).
 //!
 //! This app's OAuth scope (calendar.app.created) only lets it see and
 //! manage calendars it has created itself -- see the README's "Calendar

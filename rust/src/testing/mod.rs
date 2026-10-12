@@ -1,5 +1,5 @@
 //! Helpers for the unit tests: events and times from short strings, so a
-//! test's day reads at a glance (tests/event_time_helpers.py, ported).
+//! test's day reads at a glance.
 //!
 //! All times are on one day (`DAY`, in UTC); "+1" after a time means the
 //! day after (an overnight sleep spans "20:00-07:00+1").
@@ -90,7 +90,7 @@ pub mod fake_google;
 
 #[cfg(test)]
 mod tests {
-    //! tests/test_event_time_helpers.py.
+    //! The helpers' own tests.
     use super::*;
 
     fn utc(day: u32, hour: u32, minute: u32) -> Moment {

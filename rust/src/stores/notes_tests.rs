@@ -1,4 +1,4 @@
-//! tests/test_noted_time_sheet.py, against the fake Google.
+//! The module's tests, against the fake Google.
 
 use super::*;
 use crate::sheet::TIME_NOTES;
