@@ -74,3 +74,7 @@ pub fn require(what: &str) -> anyhow::Result<()> {
         anyhow::bail!("{what} writes to Google, so its caller must hold WRITE_LOCK")
     }
 }
+
+#[cfg(test)]
+#[path = "write_lock_tests.rs"]
+mod tests;

@@ -34,7 +34,12 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Config {
-        let var = |name: &str| std::env::var(name).ok().filter(|v| !v.is_empty());
+        Config::from_vars(|name| std::env::var(name).ok())
+    }
+
+    /// The configuration from `get`, an environment's variables.
+    pub fn from_vars(get: impl Fn(&str) -> Option<String>) -> Config {
+        let var = |name: &str| get(name).filter(|v| !v.is_empty());
         Config {
             calendar_id: var("GOOGLE_CALENDAR_ID"),
             token_path: PathBuf::from(var("GOOGLE_OAUTH_TOKEN_PATH").unwrap_or_else(|| "token.json".into())),
@@ -258,3 +263,7 @@ impl App {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "app_tests.rs"]
+mod tests;

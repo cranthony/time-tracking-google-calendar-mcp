@@ -39,26 +39,29 @@ pub struct HttpConfig {
     pub port: u16,
 }
 
-fn required(name: &str, message: &str) -> anyhow::Result<String> {
-    std::env::var(name).ok().filter(|v| !v.is_empty()).ok_or_else(|| anyhow::anyhow!("{message}"))
-}
-
 impl HttpConfig {
     pub fn from_env() -> anyhow::Result<HttpConfig> {
+        HttpConfig::from_vars(|name| std::env::var(name).ok())
+    }
+
+    /// The configuration from `get`, an environment's variables.
+    pub fn from_vars(get: impl Fn(&str) -> Option<String>) -> anyhow::Result<HttpConfig> {
+        let var = |name: &str| get(name).filter(|v| !v.is_empty());
+        let required = |name: &str, message: &str| var(name).ok_or_else(|| anyhow::anyhow!("{message}"));
         let authkit_domain = required(
             "WORKOS_AUTHKIT_DOMAIN",
             "WORKOS_AUTHKIT_DOMAIN is not set. Set it to your WorkOS AuthKit domain (e.g. \"https://your-tenant.authkit.app\") -- see the README's \"Deploying\" section.",
         )?;
-        let resource = match std::env::var("MCP_PUBLIC_URL").ok().filter(|v| !v.is_empty()) {
+        let resource = match var("MCP_PUBLIC_URL") {
             Some(url) => url,
-            None => match std::env::var("RENDER_EXTERNAL_URL").ok().filter(|v| !v.is_empty()) {
+            None => match var("RENDER_EXTERNAL_URL") {
                 Some(url) => format!("{}/mcp", url.trim_end_matches('/')),
                 None => anyhow::bail!(
                     "Neither MCP_PUBLIC_URL nor RENDER_EXTERNAL_URL is set. Set MCP_PUBLIC_URL to this server's public MCP endpoint URL (e.g. \"https://your-service.onrender.com/mcp\") -- see the README's \"Deploying\" section."
                 ),
             },
         };
-        let allowed_user_ids: Vec<String> = std::env::var("MCP_ALLOWED_USER_IDS")
+        let allowed_user_ids: Vec<String> = var("MCP_ALLOWED_USER_IDS")
             .unwrap_or_default()
             .split(',')
             .map(|s| s.trim().to_string())
@@ -69,13 +72,13 @@ impl HttpConfig {
                 "MCP_ALLOWED_USER_IDS is not set. Set it to your WorkOS user id (e.g. \"user_01ABC...\", from the Users page of the WorkOS dashboard) -- see the README's \"Deploying\" section."
             );
         }
-        let cors_origins = std::env::var("MCP_CORS_ALLOWED_ORIGINS")
+        let cors_origins = var("MCP_CORS_ALLOWED_ORIGINS")
             .unwrap_or_default()
             .split(',')
             .map(|s| s.trim().trim_end_matches('/').to_string())
             .filter(|s| !s.is_empty())
             .collect();
-        let port = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(10000);
+        let port = var("PORT").and_then(|p| p.parse().ok()).unwrap_or(10000);
         Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port })
     }
 
@@ -116,14 +119,27 @@ struct Shared {
 pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
     let config = HttpConfig::from_env()?;
     let port = config.port;
-    let shared = Arc::new(Shared {
+    let router = router(shared(app, config));
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
+    tracing::info!("Uvicorn running on http://0.0.0.0:{port}");
+    axum::serve(listener, router).with_graceful_shutdown(shutdown()).await?;
+    Ok(())
+}
+
+fn shared(app: Arc<App>, config: HttpConfig) -> Arc<Shared> {
+    Arc::new(Shared {
         app,
         config,
         sessions: Mutex::new(HashMap::new()),
         keys: Mutex::new(Vec::new()),
         agent: ureq::AgentBuilder::new().timeout(Duration::from_secs(30)).build(),
-    });
-    let router = Router::new()
+    })
+}
+
+/// The endpoints: MCP, its protected-resource metadata, and the OAuth
+/// proxy -- behind CORS.
+fn router(shared: Arc<Shared>) -> Router {
+    Router::new()
         .route(PROTECTED_RESOURCE_PATH, get(protected_resource))
         .route("/mcp", get(mcp_get).post(mcp_post).delete(mcp_delete))
         .route("/oauth/register", post(oauth_register))
@@ -131,11 +147,7 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
         .method_not_allowed_fallback(method_not_allowed)
         .fallback(not_found)
         .layer(middleware::from_fn_with_state(shared.clone(), cors))
-        .with_state(shared);
-    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
-    tracing::info!("Uvicorn running on http://0.0.0.0:{port}");
-    axum::serve(listener, router).with_graceful_shutdown(shutdown()).await?;
-    Ok(())
+        .with_state(shared)
 }
 
 /// Render stops a service with SIGTERM: finish what's under way, then exit.
@@ -499,3 +511,7 @@ async fn forward(shared: Arc<Shared>, upstream: &'static str, headers: HeaderMap
         _ => text_response(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"),
     }
 }
+
+#[cfg(test)]
+#[path = "http_tests.rs"]
+mod tests;
