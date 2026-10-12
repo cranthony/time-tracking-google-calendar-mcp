@@ -14,7 +14,7 @@ use crate::stores::groups::{python_str, repr_or_none, str_or_none, truthy};
 use crate::stores::habits::{self, subject_id, Habit, Habits};
 use crate::stores::locations::Locations;
 use crate::stores::people::{People, Person};
-use crate::stores::traits::{fact_lookbacks, part_keys, part_problems, Trait, Traits};
+use crate::stores::traits::{fact_lookbacks, part_keys, part_problems, Trait, TraitStatus, Traits};
 use chrono::Duration;
 use serde_json::{json, Map, Value};
 
@@ -342,7 +342,7 @@ impl Judging {
     }
 
     fn active_traits(&self) -> anyhow::Result<Vec<Trait>> {
-        Ok(self.traits.all()?.into_iter().filter(|t| t.status_str() == Some("active") && truthy(t.id.as_ref())).collect())
+        Ok(self.traits.all()?.into_iter().filter(|t| t.status == Some(TraitStatus::Active) && t.id.as_deref().is_some_and(|i| !i.is_empty())).collect())
     }
 
     fn names(&self, subjects: &Subjects) -> anyhow::Result<Vec<(String, String)>> {
@@ -451,7 +451,7 @@ impl Judging {
                 }
                 let person = subjects.get(&person_id).cloned().unwrap_or_else(|| Subject::bare(&person_id));
                 for (t, parts) in traits_for(person.traits.as_ref(), &traits) {
-                    let trait_id = python_str(t.id.as_ref());
+                    let trait_id = str_or_none(t.id.as_deref());
                     for (part, key) in parts.iter().zip(part_keys(&parts)) {
                         if !is_judgment(part) || engagement_of(part) != engagement {
                             continue;
@@ -551,7 +551,7 @@ impl Judging {
         for (_, person) in &subjects.people {
             let overrides = person.traits.as_ref().and_then(|t| t.get("parts")).and_then(Value::as_object).cloned().unwrap_or_default();
             for (t, trait_parts) in traits_for(person.traits.as_ref(), &traits) {
-                let trait_id = python_str(t.id.as_ref());
+                let trait_id = str_or_none(t.id.as_deref());
                 let own = truthy(overrides.get(&trait_id));
                 for (part, key) in trait_parts.iter().zip(part_keys(&trait_parts)) {
                     if !is_judgment(part) {
@@ -567,8 +567,8 @@ impl Judging {
                     if !parts.iter().any(|p| p.key == name) {
                         parts.push(JudgmentPart {
                             key: name,
-                            trait_name: if truthy(t.name.as_ref()) { python_str(t.name.as_ref()) } else { trait_id.clone() },
-                            definition: t.definition.clone(),
+                            trait_name: t.name.clone().filter(|n| !n.is_empty()).unwrap_or_else(|| trait_id.clone()),
+                            definition: t.definition.clone().map(Value::String),
                             engagement: engagement_of(part),
                             rubric: part.get("rubric").cloned().unwrap_or(Value::Null),
                             ratings: part.get("ratings").cloned().unwrap_or(json!({})),

@@ -10,10 +10,10 @@ use crate::contract::{DateTimeText, RowItem, Schema};
 use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::CANCELLATIONS;
 use crate::stores::actions::{ActionTree, Actions};
-use crate::stores::groups::{python_str, set, str_or_none, truthy};
+use crate::stores::groups::{set, str_or_none, truthy};
 use crate::stores::habits::{subject_id, Habits, SUBJECT_PREFIX};
 use crate::stores::people::People;
-use crate::stores::traits::{part_keys, part_problems, Trait, Traits};
+use crate::stores::traits::{part_keys, part_problems, Trait, TraitStatus, Traits};
 use chrono::{DateTime, Duration, FixedOffset};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -193,7 +193,7 @@ impl Cancellations {
                             by_engagement.len() - 1
                         }
                     };
-                    by_engagement[index].1.push(format!("{}/{key}", python_str(t.id.as_ref())));
+                    by_engagement[index].1.push(format!("{}/{key}", str_or_none(t.id.as_deref())));
                     let name = trait_name(&t);
                     if !by_engagement[index].2.contains(&name) {
                         by_engagement[index].2.push(name);
@@ -226,7 +226,7 @@ impl Cancellations {
                         {
                             continue;
                         }
-                        keys.push(format!("{}/{key}", python_str(t.id.as_ref())));
+                        keys.push(format!("{}/{key}", str_or_none(t.id.as_deref())));
                         let name = trait_name(&t);
                         if !names.contains(&name) {
                             names.push(name);
@@ -286,9 +286,9 @@ impl Cancellations {
 }
 
 fn trait_name(t: &Trait) -> String {
-    match t.name.as_ref().filter(|n| truthy(Some(n))) {
-        Some(name) => python_str(Some(name)),
-        None => python_str(t.id.as_ref()),
+    match t.name.as_deref().filter(|n| !n.is_empty()) {
+        Some(name) => name.to_string(),
+        None => str_or_none(t.id.as_deref()),
     }
 }
 
@@ -296,7 +296,7 @@ fn trait_name(t: &Trait) -> String {
 /// each with its parts for them.
 pub fn traits_for(spec: Option<&Value>, traits: &[Trait]) -> Vec<(Trait, Vec<Value>)> {
     let active: Vec<&Trait> =
-        traits.iter().filter(|t| t.status_str() == Some("active") && t.id.as_ref().is_some_and(|i| truthy(Some(i)))).collect();
+        traits.iter().filter(|t| t.status == Some(TraitStatus::Active) && t.id.as_deref().is_some_and(|i| !i.is_empty())).collect();
     let empty = Map::new();
     let spec = spec.and_then(Value::as_object).unwrap_or(&empty);
     let select = spec.get("select").cloned().unwrap_or(json!("all"));
@@ -305,15 +305,14 @@ pub fn traits_for(spec: Option<&Value>, traits: &[Trait]) -> Vec<(Trait, Vec<Val
         active
     } else {
         let listed: Vec<Value> = select.as_array().cloned().unwrap_or_default();
-        active.into_iter().filter(|t| listed.contains(t.id.as_ref().unwrap())).collect()
+        active.into_iter().filter(|t| listed.contains(&json!(t.id))).collect()
     };
     chosen
         .into_iter()
         .map(|t| {
-            let id = python_str(t.id.as_ref());
-            let own = overrides.get(&id).filter(|p| truthy(Some(p))).cloned();
-            let parts = own.or_else(|| t.parts.clone().filter(|p| truthy(Some(p)))).unwrap_or(json!([]));
-            (t.clone(), parts.as_array().cloned().unwrap_or_default())
+            let id = str_or_none(t.id.as_deref());
+            let own = overrides.get(&id).filter(|p| truthy(Some(p))).and_then(Value::as_array).cloned();
+            (t.clone(), own.unwrap_or_else(|| t.part_values()))
         })
         .collect()
 }
