@@ -473,7 +473,7 @@ fn cancels_several_saying_which_count() {
     let cancelled: Vec<(Value, Value)> = result["events"].as_array().unwrap().iter().map(|e| (e["id"].clone(), e["is_cancelled"].clone())).collect();
     assert_eq!(cancelled, vec![(json!("abc123"), json!(true)), (json!("def456"), json!(true))]);
     let rows = server.t.app.cancellations().unwrap().all().unwrap();
-    assert!(!rows.is_empty() && rows.iter().all(|r| r["event_id"] == "def456" && r["source"] == "delete_event"), "{rows:?}");
+    assert!(!rows.is_empty() && rows.iter().all(|r| r.event_id.as_deref() == Some("def456") && r.source.as_deref() == Some("delete_event")), "{rows:?}");
 }
 
 // -- notes -------------------------------------------------------------------------------------

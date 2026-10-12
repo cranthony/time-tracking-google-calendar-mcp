@@ -13,7 +13,7 @@ use crate::stores::cancellations::{of_action, traits_for};
 use crate::stores::groups::{python_repr, python_str, truthy};
 use crate::stores::habits::{self, subject_id, Habits};
 use crate::stores::locations::Locations;
-use crate::stores::people::People;
+use crate::stores::people::{People, Person};
 use crate::stores::traits::{fact_lookbacks, part_keys, part_problems, Trait, Traits};
 use chrono::Duration;
 use serde_json::{json, Map, Value};
@@ -39,14 +39,14 @@ pub struct Subject {
 }
 
 impl Subject {
-    fn of(row: &Row) -> Subject {
-        let get = |k: &str| row.get(k).filter(|v| !v.is_null()).cloned();
+    fn of(person: &Person) -> Subject {
+        let text = |t: &Option<String>| t.clone().map(Value::String);
         Subject {
-            id: rows::text(row, "id").unwrap_or_default().into(),
-            name: get("name"),
-            context: get("context"),
-            what_matters: get("what_matters"),
-            traits: get("traits"),
+            id: person.id.clone().unwrap_or_default(),
+            name: text(&person.name),
+            context: text(&person.context),
+            what_matters: text(&person.what_matters),
+            traits: person.traits.clone().map(Value::Object),
         }
     }
 
@@ -301,9 +301,9 @@ impl Judging {
             Some(slot) => slot.1 = subject,
             None => people.push((key.to_string(), subject)),
         };
-        for row in self.people.all()? {
-            if truthy(row.get("id")) {
-                let subject = Subject::of(&row);
+        for person in self.people.all()? {
+            if person.id.as_deref().is_some_and(|i| !i.is_empty()) {
+                let subject = Subject::of(&person);
                 set(&mut people, &subject.id.clone(), subject);
             }
         }

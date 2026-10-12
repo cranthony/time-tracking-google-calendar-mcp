@@ -298,11 +298,11 @@ impl Settling {
     }
 
     fn person_id(&self, name: &str) -> String {
-        self.setup.compactor.people.as_ref().unwrap().get_person(name).unwrap()["id"].as_str().unwrap().to_string()
+        self.setup.compactor.people.as_ref().map(|p| serde_json::to_value(p.get_person(name).unwrap()).unwrap()).unwrap()["id"].as_str().unwrap().to_string()
     }
 
     fn people_names(&self) -> Vec<String> {
-        self.setup.compactor.people.as_ref().unwrap().all().unwrap().iter().map(|p| p["name"].as_str().unwrap().to_string()).collect()
+        self.setup.compactor.people.as_ref().unwrap().all().unwrap().into_iter().map(|p| p.name.unwrap()).collect()
     }
 }
 
@@ -320,7 +320,7 @@ fn creating_a_person_now_names_them_by_id_from_then_on() {
 
     let proposal = s.settle(1, json!({"ref": "new:alex", "use": "create", "context": "Sam's college friend"})).unwrap();
 
-    let alex = s.setup.compactor.people.as_ref().unwrap().get_person("alex").unwrap();
+    let alex = s.setup.compactor.people.as_ref().map(|p| serde_json::to_value(p.get_person("alex").unwrap()).unwrap()).unwrap();
     assert_eq!((alex["context"].as_str(), alex["status"].as_str()), (Some("Sam's college friend"), Some("active")));
     let id = alex["id"].as_str().unwrap().to_string();
     assert_eq!(settled(&proposal), vec![json!({"ref": "new:alex", "use": "create", "id": id})]);

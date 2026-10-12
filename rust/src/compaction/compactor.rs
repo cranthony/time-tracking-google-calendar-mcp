@@ -500,7 +500,7 @@ impl NoteCompactor {
                 Some(p) => Some(
                     p.get_people(None)?
                         .iter()
-                        .map(|p| json!({"id": p.get("id"), "name": p.get("name"), "context": p.get("context"), "what_matters": p.get("what_matters")}))
+                        .map(|p| json!({"id": p.id, "name": p.name, "context": p.context, "what_matters": p.what_matters}))
                         .collect(),
                 ),
                 None => None,
@@ -545,13 +545,6 @@ impl NoteCompactor {
     /// `additions`), with its name.
     fn names(&self, additions: Option<&Additions>) -> anyhow::Result<Vec<(String, String)>> {
         let mut names: Vec<(String, String)> = Vec::new();
-        let named = |row: &rows::Row| -> Option<(String, String)> {
-            if !truthy(row.get("id")) {
-                return None;
-            }
-            let id = python_str(row.get("id"));
-            Some((id.clone(), if truthy(row.get("name")) { python_str(row.get("name")) } else { id }))
-        };
         if let Some(a) = &self.actions {
             names.extend(a.all()?.into_iter().filter_map(|a| {
                 let id = a.id.filter(|i| !i.is_empty())?;
@@ -559,7 +552,10 @@ impl NoteCompactor {
             }));
         }
         if let Some(p) = &self.people {
-            names.extend(p.all()?.iter().filter_map(named));
+            names.extend(p.all()?.into_iter().filter_map(|p| {
+                let id = p.id.filter(|i| !i.is_empty())?;
+                Some((id.clone(), p.name.filter(|n| !n.is_empty()).unwrap_or(id)))
+            }));
         }
         if let Some(l) = &self.locations {
             names.extend(l.all()?.into_iter().filter_map(|l| {
@@ -1396,15 +1392,12 @@ impl NoteCompactor {
                 }
             }
         }
-        let ids = |rows: anyhow::Result<Vec<rows::Row>>| -> anyhow::Result<Vec<String>> {
-            Ok(rows?.iter().map(|r| python_str(r.get("id"))).collect())
-        };
         let there_actions = match &self.actions {
             Some(a) => a.all()?.into_iter().map(|a| a.id.unwrap_or_else(|| "None".into())).collect(),
             None => Vec::new(),
         };
         let there_people = match &self.people {
-            Some(p) => ids(p.all())?,
+            Some(p) => p.all()?.into_iter().map(|p| p.id.unwrap_or_else(|| "None".into())).collect(),
             None => Vec::new(),
         };
         let there_locations = match &self.locations {
@@ -2063,7 +2056,7 @@ impl NoteCompactor {
 
     fn checked_facts(&self, decisions: Vec<EventDecision>, additions: &Additions, settled: &[String]) -> anyhow::Result<Vec<EventDecision>> {
         let people: Option<Vec<String>> = match &self.people {
-            Some(p) => Some(p.all()?.iter().map(|r| python_str(r.get("id"))).collect()),
+            Some(p) => Some(p.all()?.into_iter().map(|p| p.id.unwrap_or_else(|| "None".into())).collect()),
             None => None,
         };
         let locations: Option<Vec<String>> = match &self.locations {

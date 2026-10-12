@@ -205,7 +205,7 @@ fn a_new_event_needs_a_start_and_an_end() {
 
 fn recorded(f: &Fixture) -> Vec<(String, String)> {
     let text = |row: &crate::sheet::rows::Row, name: &str| row.get(name).and_then(Value::as_str).unwrap_or_default().to_string();
-    f.t.app.cancellations().unwrap().all().unwrap().iter().map(|r| (text(r, "id"), text(r, "source"))).collect()
+    f.t.app.cancellations().unwrap().all().unwrap().iter().map(crate::sheet::rows::RowItem::to_row).collect::<Vec<_>>().iter().map(|r| (text(r, "id"), text(r, "source"))).collect()
 }
 
 #[test]

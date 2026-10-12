@@ -297,7 +297,7 @@ pub fn check_facts(app: &App, facts: Option<&Facts>) -> Result<(), ToolError> {
     if !problems.is_empty() {
         return Err(ToolError::Message(format!("Its facts {}", problems.join("; "))));
     }
-    let people: Vec<Value> = app.people()?.all()?.iter().map(|p| p.get("id").cloned().unwrap_or(Value::Null)).collect();
+    let people: Vec<Value> = app.people()?.all()?.into_iter().map(|p| json!(p.id)).collect();
     let unknown: Vec<String> = facts.people().into_iter().filter(|i| !people.contains(&json!(i))).collect();
     if !unknown.is_empty() {
         return Err(ToolError::Message(format!("Its facts name {}, who aren't people (get_people lists them)", py::repr_list(&unknown))));

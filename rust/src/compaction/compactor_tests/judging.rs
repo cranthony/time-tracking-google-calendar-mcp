@@ -387,7 +387,7 @@ fn cancel(event_id: &str) -> EventDecision {
 
 fn cancellations(setup: &Setup) -> Vec<(String, String, String)> {
     let text = |row: &crate::sheet::rows::Row, name: &str| row.get(name).and_then(Value::as_str).unwrap_or_default().to_string();
-    setup.compactor.cancellations.as_ref().unwrap().all().unwrap().iter().map(|r| (text(r, "id"), text(r, "summary"), text(r, "source"))).collect()
+    setup.compactor.cancellations.as_ref().unwrap().all().unwrap().iter().map(crate::sheet::rows::RowItem::to_row).collect::<Vec<_>>().iter().map(|r| (text(r, "id"), text(r, "summary"), text(r, "source"))).collect()
 }
 
 #[test]

@@ -29,7 +29,6 @@ use ctt::event::{parse_iso, Event, CLEARABLE_EVENT_FIELDS, PREFIX};
 use ctt::facts::Facts;
 use ctt::google::calendar::CalendarClient;
 use ctt::google::{segment, status_of, Google};
-use ctt::sheet::rows::Row;
 use ctt::stores::action_calendar::ActionCalendar;
 use ctt::stores::locations::Location;
 use ctt::stores::recurrences::{split_series_id, Recurrences, Repeat};
@@ -598,10 +597,6 @@ fn step(what: &str, ok: bool, detail: impl std::fmt::Debug) -> anyhow::Result<()
     Ok(())
 }
 
-fn row(pairs: Value) -> Row {
-    pairs.as_object().cloned().unwrap_or_default()
-}
-
 /// A typed item, from its JSON.
 fn typed<T: serde::de::DeserializeOwned>(pairs: Value) -> T {
     serde_json::from_value(pairs).expect("an item of its type")
@@ -628,7 +623,6 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
         Ok(client.list_event_labels()?.0.into_iter().filter_map(|l| Some((l.id?, l.name?))).collect())
     };
     let label_name = |labels: &[(String, String)], id: &str| labels.iter().find(|(i, _)| i == id).map(|(_, n)| n.clone());
-    let text = |v: &Value, k: &str| v.get(k).and_then(Value::as_str).unwrap_or("").to_string();
 
     println!("\nActions");
     let actions = app.actions()?;
@@ -665,19 +659,23 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
 
     println!("\nPeople and circles");
     let people = app.people()?;
-    step("self is there before any row", people.get_people(None)?.iter().map(|p| p["id"].clone()).collect::<Vec<_>>() == vec![json!("self")], ())?;
-    let family = text(&people.create_circle(&row(json!({"name": "Family"})))?, "created_id");
-    let sam = text(&people.create_person(&row(json!({"name": "Sam", "context": "cousin", "circles": [family]})))?, "created_id");
-    people.update_person(&row(json!({"id": "self", "what_matters": "music"})), &[])?;
+    step("self is there before any row", people.get_people(None)?.iter().map(|p| p.id.clone()).collect::<Vec<_>>() == vec![Some("self".to_string())], ())?;
+    let family = people.create_circle(&typed(json!({"name": "Family"})))?.created_id;
+    let sam = people.create_person(&typed(json!({"name": "Sam", "context": "cousin", "circles": [family]})))?.created_id;
+    people.update_person(&typed(json!({"id": "self", "what_matters": "music"})), &[])?;
     let listed = people.get_people(None)?;
-    let find = |id: &str| listed.iter().find(|p| p["id"] == json!(id)).cloned().unwrap_or_default();
-    step("people and self's row read back", find(&sam)["circle_names"] == json!(["Family"]) && find("self")["what_matters"] == json!("music"), ())?;
-    match people.create_person(&row(json!({"name": "sam", "context": "Cousin"}))) {
+    let find = |id: &str| listed.iter().find(|p| p.id.as_deref() == Some(id)).cloned();
+    step(
+        "people and self's row read back",
+        find(&sam).and_then(|p| p.circle_names) == Some(vec!["Family".to_string()]) && find("self").and_then(|p| p.what_matters).as_deref() == Some("music"),
+        (),
+    )?;
+    match people.create_person(&typed(json!({"name": "sam", "context": "Cousin"}))) {
         Ok(_) => step("a duplicate name and context is refused", false, ())?,
         Err(e) => step("a duplicate name and context is refused", e.to_string().contains("already a person"), e.to_string())?,
     }
     people.delete_circle(&family)?;
-    step("deleting a circle takes its people out", people.get_person(&sam)?["circles"].is_null(), ())?;
+    step("deleting a circle takes its people out", people.get_person(&sam)?.circles.is_none(), ())?;
 
     println!("\nLocations");
     let locations = app.locations()?;

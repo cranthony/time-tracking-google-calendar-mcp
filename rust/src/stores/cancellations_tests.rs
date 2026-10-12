@@ -1,6 +1,7 @@
 //! The module's tests, against the fake Google.
 
 use super::*;
+use crate::sheet::rows::{Row, RowItem};
 use crate::facts::Facts;
 use crate::sheet::{ACTIONS, ACTION_GROUPS, HABITS, PEOPLE, TRAITS};
 use crate::testing::app::{test_app, TestApp};
@@ -61,11 +62,17 @@ impl Fixture {
 
     fn record(&self, given: &Event, source: &str, when: Moment) -> Vec<Row> {
         let _held = WRITE_LOCK.hold();
-        self.store.record(given, source, Some(when)).unwrap()
+        self.store.record(given, source, Some(when)).unwrap().iter().map(RowItem::to_row).collect()
     }
 
     fn by_person(&self, person: &str) -> Vec<Value> {
-        self.store.by_person().unwrap().into_iter().find(|(p, _)| p == person).map(|(_, v)| v).unwrap_or_default()
+        let found = self.store.by_person().unwrap().into_iter().find(|(p, _)| p == person).map(|(_, v)| v).unwrap_or_default();
+        found.iter().map(|e| serde_json::to_value(e).unwrap()).collect()
+    }
+
+    /// The tab's rows.
+    fn rows(&self) -> Vec<Row> {
+        self.store.all().unwrap().iter().map(RowItem::to_row).collect()
     }
 }
 
@@ -127,7 +134,7 @@ fn recording_writes_a_row_per_person_and_again_harmlessly() {
     f.record(&given, "compaction abc", at());
     f.record(&given, "compaction abc", at());
 
-    let rows = f.store.all().unwrap();
+    let rows = f.rows();
     let shown: Vec<(String, String, Value)> = rows.iter().map(|r| (text(r, "id"), text(r, "source"), r["parts"].clone())).collect();
     assert_eq!(
         shown,
@@ -136,7 +143,7 @@ fn recording_writes_a_row_per_person_and_again_harmlessly() {
             ("c1/self/with".to_string(), "compaction abc".to_string(), json!(["reliable/follow_through"])),
         ]
     );
-    let sam = to_event(rows.iter().find(|r| text(r, "person_id") == "sam").unwrap()).unwrap();
+    let sam = to_event(&rows::item_of(rows.iter().find(|r| text(r, "person_id") == "sam").unwrap().clone())).unwrap();
     assert_eq!((sam.start, sam.end, sam.action_ids.clone()), (Some(at()), Some(at() + chrono::Duration::hours(1)), Some(strings(&["gym"]))));
     assert_eq!(sam.facts.unwrap().with(), strings(&["sam"]));
 }
@@ -151,7 +158,7 @@ fn rows_older_than_it_keeps_are_dropped_as_new_ones_are_written() {
 
     f.record(&event("new", &["gym"], &[], &[]), "delete_event", at());
 
-    let ids: Vec<String> = f.store.all().unwrap().iter().map(|r| text(r, "event_id")).collect();
+    let ids: Vec<String> = f.rows().iter().map(|r| text(r, "event_id")).collect();
     assert_eq!(ids, strings(&["new"]));
 }
 
@@ -222,7 +229,7 @@ fn a_habits_cancellations_are_recorded_and_listed_under_its_id() {
     let listed = f.by_person("habit:fit");
     assert_eq!(listed.len(), 1);
     assert_eq!((listed[0]["event_id"].clone(), listed[0]["engagement"].clone(), listed[0]["parts"].clone()), (json!("c1"), json!("with"), json!(["reliable/follow_through"])));
-    let row = f.store.all().unwrap().into_iter().find(|r| text(r, "person_id") == "habit:fit").unwrap();
+    let row = f.rows().into_iter().find(|r| text(r, "person_id") == "habit:fit").unwrap();
     // As follow-through reads it: the user's, with no one in its facts.
-    assert!(to_event(&row).unwrap().facts.is_none_or(|facts| facts.is_empty()));
+    assert!(to_event(&rows::item_of(row)).unwrap().facts.is_none_or(|facts| facts.is_empty()));
 }
