@@ -166,6 +166,9 @@ pub fn run(app: &Arc<App>, name: &str, arguments: Value) -> Result<Outcome, Tool
     let outcome = (tool.run)(app, Value::Object(arguments));
     match outcome {
         Ok(value) => Ok(Outcome(value)),
+        Err(ToolError::Unexpected(error)) if error.downcast_ref::<crate::sheet::rows::CellError>().is_some() => {
+            Err(ToolError::Message(error.to_string()))
+        }
         Err(ToolError::Unexpected(error)) if is_time_zone_not_set(&error) => Err(ToolError::Message(format!(
             "The calendar has no time zone set, so its days and times can't be put in the user's local time. Call set_time_zone with the user's IANA time zone (e.g. \"America/New_York\"), asking them for it if you don't know it, then call {name} again."
         ))),

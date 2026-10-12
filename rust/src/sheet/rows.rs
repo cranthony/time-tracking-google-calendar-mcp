@@ -5,9 +5,10 @@
 //! object as JSON, nothing for null.
 //!
 //! A row is an ordered JSON object with every field of its kind (null for
-//! unset) -- not a typed struct, because a cell edited by hand that can't
-//! be read as its field's kind is kept as text, for the store's checks to
-//! report, exactly as Python's dataclass rows hold whatever they're given.
+//! unset). A cell edited by hand that can't be read as its field's kind (a
+//! number that isn't one, JSON that isn't JSON) makes the tab unreadable:
+//! reading it fails with a `CellError` naming each such cell, which every
+//! tool shows as it is, so the user can fix the cell.
 
 use super::{create_tab, find_tab};
 use crate::google::sheets::{Rows, SheetsClient, TabRange};
@@ -22,6 +23,27 @@ const ID_ALPHABET: &str = "0123456789abcdefghijklmnopqrstuvwxyz";
 const ID_LENGTH: usize = 6;
 
 pub type Row = Map<String, Value>;
+
+/// A tab with cells that can't be read as their columns' kinds: each by
+/// its row (as the spreadsheet numbers it) and column.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CellError {
+    pub tab: String,
+    pub cells: Vec<String>,
+}
+
+impl std::fmt::Display for CellError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "The {} tab has cells that can't be read: {}. Fix them in the spreadsheet, or clear them.",
+            self.tab,
+            self.cells.join("; ")
+        )
+    }
+}
+
+impl std::error::Error for CellError {}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Kind {
@@ -110,6 +132,7 @@ pub struct RowSheet {
     sheet_id: i64,
     row_type: RowType,
     required: &'static [&'static str],
+    title: String,
 }
 
 impl RowSheet {
@@ -129,7 +152,7 @@ impl RowSheet {
                 sheets.write_rows_in_sheet(spreadsheet_id, new_id, HEADER_RANGE, &vec![header.clone()])
             })?,
         };
-        Ok(RowSheet { sheets: sheets.clone(), spreadsheet_id: spreadsheet_id.into(), sheet_id, row_type, required })
+        Ok(RowSheet { sheets: sheets.clone(), spreadsheet_id: spreadsheet_id.into(), sheet_id, row_type, required, title: title.into() })
     }
 
     pub fn spreadsheet_id(&self) -> &str {
@@ -148,10 +171,22 @@ impl RowSheet {
         self.sheets.prefetch(ranges)
     }
 
-    /// Every row, in sheet order, blank rows skipped.
+    /// Every row, in sheet order, blank rows skipped -- or a CellError
+    /// naming every cell that can't be read.
     pub fn read(&self) -> anyhow::Result<Vec<Row>> {
         let (header, rows) = self.read_raw()?;
-        Ok(rows.iter().filter(|r| r.iter().any(|c| !c.trim().is_empty())).map(|r| self.from_row(&header, r)).collect())
+        let mut items = Vec::new();
+        let mut bad = Vec::new();
+        for (i, row) in rows.iter().enumerate() {
+            if row.iter().any(|c| !c.trim().is_empty()) {
+                // The spreadsheet's numbering: the header is row 1.
+                items.push(self.from_row(&header, row, i + 2, &mut bad));
+            }
+        }
+        if !bad.is_empty() {
+            return Err(CellError { tab: self.title.clone(), cells: bad }.into());
+        }
+        Ok(items)
     }
 
     /// Overwrite the data rows with `items`, keeping unknown columns'
@@ -165,9 +200,15 @@ impl RowSheet {
             }
         }
         let mut by_id: Vec<(Value, &Vec<String>)> = Vec::new();
+        let id_column = header.iter().position(|h| h == "id");
         for row in &previous {
             if row.iter().any(|c| !c.trim().is_empty()) {
-                let id = self.from_row(&header, row).get("id").cloned().unwrap_or(Value::Null);
+                let id = id_column
+                    .and_then(|i| row.get(i))
+                    .map(|c| c.trim())
+                    .filter(|c| !c.is_empty())
+                    .map(|c| Value::String(c.into()))
+                    .unwrap_or(Value::Null);
                 if let Some(slot) = by_id.iter_mut().find(|(k, _)| *k == id) {
                     slot.1 = row;
                 } else {
@@ -207,7 +248,9 @@ impl RowSheet {
         Ok((header, rows))
     }
 
-    fn from_row(&self, header: &[String], data: &[String]) -> Row {
+    /// Spreadsheet row `number`'s item, adding to `bad` each cell that
+    /// can't be read as its column's kind.
+    fn from_row(&self, header: &[String], data: &[String], number: usize, bad: &mut Vec<String>) -> Row {
         let mut row = self.row_type.empty();
         for (i, name) in header.iter().enumerate() {
             let Some(kind) = self.row_type.kind(name) else { continue };
@@ -216,11 +259,16 @@ impl RowSheet {
                 continue;
             }
             let value = match kind {
-                Kind::Int => crate::event::python_int(text).map(Value::from).unwrap_or_else(|| Value::String(text.into())),
-                Kind::Json => serde_json::from_str(text).unwrap_or_else(|_| Value::String(text.into())),
-                Kind::Str => Value::String(text.into()),
+                Kind::Int => crate::event::python_int(text).map(Value::from).ok_or("isn't a whole number"),
+                Kind::Json => serde_json::from_str(text).map_err(|_| "isn't valid JSON"),
+                Kind::Str => Ok(Value::String(text.into())),
             };
-            row.insert(name.clone(), value);
+            match value {
+                Ok(value) => {
+                    row.insert(name.clone(), value);
+                }
+                Err(why) => bad.push(format!("row {number}, column {name}: {} {why}", py::repr(text))),
+            }
         }
         row
     }

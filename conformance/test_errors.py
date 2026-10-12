@@ -69,3 +69,34 @@ async def test_health(session):
     one = await session.call("get_health", tool_name="get_locations")
     assert [t["tool"] for t in one["tools"]] == ["get_locations"]
     await session.call_error("get_health", tool_name="never_called")
+
+
+def set_cell(google, title: str, row: int, column: str, text: str) -> None:
+    """Edit one cell of a tab by hand: data row `row` (1 for the first),
+    the column headed `column`."""
+    spreadsheet = next(iter(google.spreadsheets.values()))
+    tab = next(t for t in spreadsheet["sheets"] if t["properties"]["title"] == title)
+    index = next(c for (r, c), v in tab["cells"].items() if r == 0 and v == column)
+    tab["cells"][(row, index)] = text
+
+
+async def test_bad_cells(session, google):
+    """Cells edited by hand that can't be read as their column's kind: a
+    number that isn't one, JSON that isn't JSON. Every tool reading the tab
+    says which cell, and the others go on working."""
+    group = (await session.call("create_action_group", group={"name": "Music", "priority": 1}))["created_id"]
+    await session.call("create_action", action={"name": "play guitar", "status": "active", "group_id": group, "priority": 2})
+    family = (await session.call("create_circle", circle={"name": "Family"}))["created_id"]
+    await session.call("create_person", person={"name": "Sam Example", "circles": [family]})
+    await session.call("create_location", location={"name": "Home"})
+    set_cell(google, "Actions", 1, "priority", "high")
+    for tool, args in [
+        ("get_actions", {}), ("get_action", {"id_or_name": "play guitar"}), ("get_action_groups", {}),
+        ("list_events", {"min_time": "2026-10-07T00:00:00-04:00", "max_time": "2026-10-08T00:00:00-04:00"}),
+        ("create_action", {"action": {"name": "read"}}), ("get_locations", {}),
+    ]:
+        await session.attempt(tool, **args)
+    set_cell(google, "Actions", 1, "priority", "2")
+    set_cell(google, "People", 1, "circles", "family")
+    for tool, args in [("get_people", {}), ("get_person", {"id_or_name": "Sam Example"}), ("get_circles", {}), ("get_actions", {})]:
+        await session.attempt(tool, **args)

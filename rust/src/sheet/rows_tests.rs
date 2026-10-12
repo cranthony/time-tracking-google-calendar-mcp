@@ -112,9 +112,27 @@ fn a_shorter_list_blanks_the_rows_left_over() {
 }
 
 #[test]
-fn a_cell_that_isnt_its_kind_is_kept_as_text() {
+fn cells_that_arent_their_kind_make_the_tab_unreadable_naming_each() {
+    let f = fixture();
+    f.set(1, &["a", "One", "lots"]);
+    f.set(2, &["b", "Two", "3", "[\"x\""]);
+
+    let error = f.sheet.read().unwrap_err();
+
+    let cells = error.downcast_ref::<CellError>().expect("a CellError");
+    assert_eq!(
+        cells.to_string(),
+        "The Rows tab has cells that can't be read: row 2, column count: 'lots' isn't a whole number; row 3, column tags: '[\"x\"' isn't valid JSON. Fix them in the spreadsheet, or clear them."
+    );
+}
+
+#[test]
+fn a_cell_that_isnt_its_kind_doesnt_stop_a_write() {
+    // A write finds each row's earlier cells by its id alone.
     let f = fixture();
     f.set(1, &["a", "One", "lots"]);
 
-    assert_eq!(f.sheet.read().unwrap(), vec![row(json!({"id": "a", "name": "One", "count": "lots"}))]);
+    f.write(&[row(json!({"id": "a", "name": "Uno"}))]);
+
+    assert_eq!(f.fake.rows(&f.spreadsheet, "Rows")[1][..2], strings(&["a", "Uno"]));
 }
