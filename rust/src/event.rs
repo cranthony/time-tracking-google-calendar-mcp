@@ -179,7 +179,7 @@ impl Event {
             body.insert("eventLabelId".into(), json!(label));
         }
         let mut private: Vec<(String, Option<String>)> = Vec::new();
-        let mut set = |private: &mut Vec<(String, Option<String>)>, key: String, value: Option<String>| {
+        let set = |private: &mut Vec<(String, Option<String>)>, key: String, value: Option<String>| {
             if let Some(slot) = private.iter_mut().find(|(k, _)| *k == key) {
                 slot.1 = value;
             } else {
