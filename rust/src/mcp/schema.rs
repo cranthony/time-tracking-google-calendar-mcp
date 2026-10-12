@@ -1,5 +1,5 @@
-//! Checking a tool's arguments against its input schema (from
-//! contract/tools.json), the way pydantic's lax mode does: what it
+//! Checking a tool's arguments against its input schema (see
+//! crate::contract), the way pydantic's lax mode does: what it
 //! accepts (a "5" for an integer, "yes" for a boolean), what it fills in
 //! (defaults), what it drops (fields a dataclass doesn't have, unless the
 //! schema forbids them) -- and, for what it refuses, which field and what

@@ -1,7 +1,9 @@
 //! The tools' contract -- each tool's name, description, and input and
 //! output schemas, as tools/list sends them -- derived from the code:
 //! `#[derive(Schema)]` on argument and result types, `#[tool]` on each
-//! tool function (see the ctt-derive crate).
+//! tool function (see the ctt-derive crate). contract/tools.json is a
+//! snapshot of it, which a test keeps current (CTT_UPDATE_CONTRACT=1
+//! rewrites it), so a change to what clients see shows in a diff.
 //!
 //! The schemas are in the shape pydantic gave them, so clients see what
 //! they always have:

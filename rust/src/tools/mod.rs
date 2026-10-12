@@ -84,21 +84,22 @@ pub fn args_strings(args: &Map<String, Value>, name: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-struct Tool {
-    name: &'static str,
-    writes: bool,
-    run: fn(&App, &Map<String, Value>) -> ToolResult,
-}
-
-/// The tools with typed arguments and results (see `contract`).
-pub fn typed() -> &'static [crate::contract::ToolDef] {
-    static TYPED: std::sync::LazyLock<Vec<crate::contract::ToolDef>> = std::sync::LazyLock::new(|| {
+/// Every tool, in the order tools/list sends them.
+pub fn registry() -> &'static [crate::contract::ToolDef] {
+    static TOOLS: std::sync::LazyLock<Vec<crate::contract::ToolDef>> = std::sync::LazyLock::new(|| {
         vec![
-            places::get_locations_tool(),
-            places::get_location_tool(),
-            places::create_location_tool(),
-            places::update_location_tool(),
-            places::delete_location_tool(),
+            events::list_events_tool(),
+            events::get_event_tool(),
+            events::update_event_tool(),
+            recurrences::get_recurrence_tool(),
+            recurrences::update_recurrence_tool(),
+            recurrences::split_recurrence_tool(),
+            recurrences::delete_recurrence_tool(),
+            events::create_event_tool(),
+            events::delete_event_tool(),
+            people::get_traits_tool(),
+            people::create_trait_tool(),
+            people::update_trait_tool(),
             actions::get_actions_tool(),
             actions::get_action_tool(),
             actions::create_action_tool(),
@@ -106,10 +107,10 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
             actions::get_action_groups_tool(),
             actions::get_action_group_tool(),
             actions::create_action_group_tool(),
-            actions::update_action_group_tool(),
-            actions::delete_action_group_tool(),
             actions::get_priority_colors_tool(),
             actions::update_priority_color_tool(),
+            actions::update_action_group_tool(),
+            actions::delete_action_group_tool(),
             people::get_people_tool(),
             people::get_person_tool(),
             people::create_person_tool(),
@@ -119,29 +120,18 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
             people::create_circle_tool(),
             people::update_circle_tool(),
             people::delete_circle_tool(),
-            people::get_traits_tool(),
-            people::create_trait_tool(),
-            people::update_trait_tool(),
+            places::get_locations_tool(),
+            places::get_location_tool(),
+            places::create_location_tool(),
+            places::update_location_tool(),
+            places::delete_location_tool(),
             people::get_habits_tool(),
             people::get_habit_tool(),
             people::create_habit_tool(),
             people::update_habit_tool(),
-            events::list_events_tool(),
-            events::get_event_tool(),
-            events::create_event_tool(),
-            events::update_event_tool(),
-            events::delete_event_tool(),
-            events::set_time_zone_tool(),
-            events::get_compaction_schedule_hints_tool(),
-            events::set_compaction_schedule_hints_tool(),
+            compaction::get_compaction_status_tool(),
             events::note_tool(),
             events::get_notes_tool(),
-            recurrences::get_recurrence_tool(),
-            recurrences::update_recurrence_tool(),
-            recurrences::split_recurrence_tool(),
-            recurrences::delete_recurrence_tool(),
-            health::get_health_tool(),
-            compaction::get_compaction_status_tool(),
             compaction::edit_note_tool(),
             compaction::delete_note_tool(),
             compaction::prepare_compaction_tool(),
@@ -156,19 +146,18 @@ pub fn typed() -> &'static [crate::contract::ToolDef] {
             compaction::prepare_habit_judgments_tool(),
             compaction::record_judgments_tool(),
             compaction::abandon_compaction_tool(),
+            events::get_compaction_schedule_hints_tool(),
+            events::set_compaction_schedule_hints_tool(),
+            events::set_time_zone_tool(),
+            health::get_health_tool(),
         ]
     });
-    &TYPED
+    &TOOLS
 }
 
-fn registry() -> &'static [Tool] {
-    &[
-    ]
-}
-
-/// Every tool's name, and whether it may write: typed or not.
+/// Every tool's name, and whether it may write.
 pub fn listed() -> Vec<(&'static str, bool)> {
-    typed().iter().map(|t| (t.name, t.writes)).chain(registry().iter().map(|t| (t.name, t.writes))).collect()
+    registry().iter().map(|t| (t.name, t.writes)).collect()
 }
 
 /// Run `name` with `arguments`: inside one call's read caches, holding
@@ -179,21 +168,13 @@ pub fn run(app: &Arc<App>, name: &str, arguments: Value) -> Result<Outcome, Tool
         Value::Object(map) => map,
         _ => Map::new(),
     };
-    let typed = typed().iter().find(|t| t.name == name);
-    let untyped = registry().iter().find(|t| t.name == name);
-    let writes = match (typed, untyped) {
-        (Some(tool), _) => tool.writes,
-        (None, Some(tool)) => tool.writes,
-        (None, None) => return Err(ToolError::Unexpected(anyhow::anyhow!("{name} isn't ported yet"))),
+    let Some(tool) = registry().iter().find(|t| t.name == name) else {
+        return Err(ToolError::Unexpected(anyhow::anyhow!("no tool is called {name}")));
     };
-    let _held = writes.then(|| WRITE_LOCK.hold());
+    let _held = tool.writes.then(|| WRITE_LOCK.hold());
     let _reads = CachedReads::start();
     let _listings = CachedListings::start();
-    let outcome = match (typed, untyped) {
-        (Some(tool), _) => (tool.run)(app, Value::Object(arguments)),
-        (None, Some(tool)) => (tool.run)(app, &arguments),
-        (None, None) => unreachable!(),
-    };
+    let outcome = (tool.run)(app, Value::Object(arguments));
     match outcome {
         Ok(value) => Ok(Outcome(value)),
         Err(ToolError::Unexpected(error)) if is_time_zone_not_set(&error) => Err(ToolError::Message(format!(
