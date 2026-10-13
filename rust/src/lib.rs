@@ -24,3 +24,6 @@ pub mod write_lock;
 pub mod zoned;
 #[cfg(test)]
 pub mod testing;
+#[cfg(test)]
+#[path = "readme_tests.rs"]
+mod readme;
