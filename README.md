@@ -1,6 +1,36 @@
 # time-tracking-google-calendar-mcp
 A Model Context Protocol (MCP) for managing a Google calendar with a set of non-overlapping events representing one person's time
 
+<!-- toc: written by `CTT_UPDATE_README=1 cargo test` from the headings below; don't edit by hand -->
+
+**Contents**
+
+- [Setup](#setup)
+- [Project layout](#project-layout)
+- [Calendar access model](#calendar-access-model)
+- [MCP tools](#mcp-tools)
+  - [Why tools, not resources](#why-tools-not-resources)
+- [Compacting notes](#compacting-notes)
+- [Calendar metadata sheets](#calendar-metadata-sheets)
+- [Actions](#actions)
+- [People, circles and locations](#people-circles-and-locations)
+- [Traits](#traits)
+- [Event colors](#event-colors)
+- [Google OAuth credentials](#google-oauth-credentials)
+- [Configuration](#configuration)
+- [Tests](#tests)
+- [Deploying](#deploying)
+  - [Browser-based clients](#browser-based-clients)
+  - [Without sign-in, behind a corporate proxy](#without-sign-in-behind-a-corporate-proxy)
+  - [Behind an IAP proxy](#behind-an-iap-proxy)
+  - [Serving the web app](#serving-the-web-app)
+  - [Setting up Google access from a browser](#setting-up-google-access-from-a-browser)
+  - [Connecting from Claude.ai](#connecting-from-claudeai)
+- [Running the server](#running-the-server)
+- [Command-line utilities](#command-line-utilities)
+
+<!-- /toc -->
+
 ## Setup
 
 The server is written in Rust, in [`rust/`](rust/). Install Rust with [rustup](https://rustup.rs), then build it:
@@ -321,7 +351,7 @@ cargo build --manifest-path rust/Cargo.toml
 python -m pytest -n auto
 ```
 
-`cargo test` runs the Rust unit tests. The rest is the conformance scenarios: [`conformance/`](conformance/) holds scenarios that drive the server the way a client does, over MCP, against [`conformance/fake_google.py`](conformance/fake_google.py): an in-memory fake of the parts of Google Calendar and Sheets this server uses, served over HTTP and faithful to what the [probes](#command-line-utilities) found Google does. When a scenario ends, three things are compared with its golden record in `conformance/golden/`: every tool result, every request the server sent Google, and Google's state afterwards. The records were written by the original Python server, and the Rust one was ported to match them exactly; they're the spec of what the server does. If two servers send Google the same requests, Google does the same for both, so this holds even where the fake gets Google wrong. They need no credentials or configuration.
+`cargo test` runs the Rust unit tests — among them, that this README's table of contents follows its headings, and that its links to its own headings reach one (after adding, renaming or removing a heading, `CTT_UPDATE_README=1 cargo test` rewrites the contents). The rest is the conformance scenarios: [`conformance/`](conformance/) holds scenarios that drive the server the way a client does, over MCP, against [`conformance/fake_google.py`](conformance/fake_google.py): an in-memory fake of the parts of Google Calendar and Sheets this server uses, served over HTTP and faithful to what the [probes](#command-line-utilities) found Google does. When a scenario ends, three things are compared with its golden record in `conformance/golden/`: every tool result, every request the server sent Google, and Google's state afterwards. The records were written by the original Python server, and the Rust one was ported to match them exactly; they're the spec of what the server does. If two servers send Google the same requests, Google does the same for both, so this holds even where the fake gets Google wrong. They need no credentials or configuration.
 
 The scenarios run the debug build in `rust/target` (or else the release one); set `CTT_SERVER` to a command line to run another, and `CTT_SERVER_LOG` to a file to keep its logs. `CTT_ACTUAL_DIR` writes each scenario's record as this run made it, to compare whole. After a deliberate change of behaviour, rewrite the records with `CTT_UPDATE_GOLDEN=1`, and read the diff. The server under test runs with these variables set, and none of them is set outside the scenarios:
 
