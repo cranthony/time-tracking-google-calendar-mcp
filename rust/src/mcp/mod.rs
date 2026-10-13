@@ -3,6 +3,7 @@
 //! in order -- the HTTP scenarios compare bodies byte for byte. Transports (stdio, streamable HTTP) hand messages here.
 
 pub mod http;
+pub mod proxy;
 pub mod schema;
 pub mod stdio;
 

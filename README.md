@@ -300,6 +300,10 @@ The server reads its configuration from environment variables ([`rust/src/app.rs
 | `MCP_PUBLIC_URL` | No | derived from `RENDER_EXTERNAL_URL` | This server's own public MCP endpoint URL (e.g. `https://your-service.onrender.com/mcp`) — used as the OAuth resource identifier and the audience bearer tokens must carry. On Render this is derived automatically from `RENDER_EXTERNAL_URL` (which Render sets for you); set it explicitly elsewhere. |
 | `MCP_CORS_ALLOWED_ORIGINS` | No | — | Comma-separated browser origins (e.g. `https://tracker.example.com`) allowed to call the `streamable-http` endpoint cross-origin, for a web-based MCP client like the Time Tracker web app. `http://localhost` and `http://127.0.0.1` on any port are always allowed, so local development needs nothing set. Safe to widen: the server authenticates by bearer token, never cookies, so a cross-origin page can't borrow the user's access. |
 | `STATIC_SITE_DIR` | No | — | A directory holding a built web app (with its `index.html`) for the `streamable-http` server to serve at `/`, beside `/mcp` — see [Serving the web app](#serving-the-web-app). Unset, nothing is served there. |
+| `ALLOWED_PROXY_EMAIL` | No | — | The service account of the IAP proxy in front of the `streamable-http` server: with `ALLOWED_HOST` and `PROXY_AUDIENCE` (all three, or none), every request must come through it — see [Behind an IAP proxy](#behind-an-iap-proxy). Required on Cloud Run for a build without sign-in. |
+| `ALLOWED_HOST` | No | — | The `Host` the proxy forwards (e.g. `tracker.corp.example`; any port is ignored). |
+| `PROXY_AUDIENCE` | No | — | The `aud` the proxy's tokens are minted for, exactly as they carry it (e.g. a GCP project address). |
+| `PROXY_TOKEN_SIGNATURE` | No | — | The text the proxy leaves in place of the token's signature (e.g. `SIGNATURE_REMOVED_BY_GOOGLE`): set, a token must end in exactly that. Only with the three above. |
 | `PORT` | No | `10000` | The port `streamable-http` binds to (always alongside host `0.0.0.0`, as every Render web service requires). Render sets this for you automatically. |
 
 To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — the server and the tools read a `.env` in their working directory if there is one (a variable already set wins). `.env` is gitignored, so nothing personal ends up committed.
@@ -370,12 +374,24 @@ AUTH_DISABLED=true cargo build --release --manifest-path rust/Cargo.toml --bin c
 `AUTH_DISABLED` is read when the server is **built**, not when it runs ([`rust/src/auth_mode.rs`](rust/src/auth_mode.rs), [`rust/build.rs`](rust/build.rs)): `true`, `1` or `yes`, in any case, turn sign-in off, and anything else leaves it on. A binary built without it always requires WorkOS sign-in, whatever its environment says. Setting `AUTH_DISABLED` in the environment of a normal build just logs that it's ignored.
 
 Such a build trusts every request as the server's single user, token or not, and it makes this hard to miss:
-- **It won't run on Render.** It refuses to start if `RENDER_EXTERNAL_URL` is set, so the public deployment can't lose its sign-in.
+- **It won't run on Render.** It refuses to start if `RENDER_EXTERNAL_URL` is set, so the public deployment can't lose its sign-in. On Cloud Run (`K_SERVICE` set) it runs only [behind an IAP proxy](#behind-an-iap-proxy).
 - **It needs no WorkOS settings.** `WORKOS_AUTHKIT_DOMAIN` and `MCP_ALLOWED_USER_IDS` aren't read, and it logs any that are set as ignored.
 - **It says so.** It logs a warning at startup and for every new session, and tells every client in the MCP handshake: a `_meta` flag, `"time-tracking/authDisabled": true`, for clients to check (the Time Tracker app shows a banner for it), plus `instructions` and a server title ending "(sign-in off)" for people to read. `get_health` reports `"auth": "disabled"` instead of `"required"`.
 - **It offers nothing to sign in with.** There's no protected-resource metadata, no `WWW-Authenticate` challenge, and no OAuth proxy.
 
 The proxy's own header isn't read: the server can't tell who's behind it, and doesn't need to, since it serves one user. CI builds and tests this variant on every PR (`cargo test (AUTH_DISABLED)`), but never deploys it.
+
+### Behind an IAP proxy
+
+Where an IAP-style proxy signs people in and forwards their requests (on Cloud Run, say), the server can take only what came through it: set `ALLOWED_PROXY_EMAIL` (the proxy's service account), `ALLOWED_HOST` (the hostname it forwards) and `PROXY_AUDIENCE` (the audience its tokens are minted for). Then every request — `/mcp`, the static site, everything — must carry the proxy's OIDC token in `X-Serverless-Authorization`, and is refused with `403 Forbidden` unless ([`rust/src/mcp/proxy.rs`](rust/src/mcp/proxy.rs)):
+- its `Host` is `ALLOWED_HOST` (in any case, any port);
+- the token is Google's (`iss` `https://accounts.google.com`), for `PROXY_AUDIENCE` (`aud`, or one of a list), unexpired (`exp`, and an `iat` not in the future, a minute's leeway each way);
+- its `email` is `ALLOWED_PROXY_EMAIL` (in any case), with `email_verified` true;
+- with `PROXY_TOKEN_SIGNATURE` set, its signature part — what the proxy leaves in the signature's place — is exactly that text.
+
+The log says why a request was refused, never with its token. Set all three or none: the server refuses to start with only some. A build [without sign-in](#without-sign-in-behind-a-corporate-proxy) refuses to start on Cloud Run without them; a build with sign-in can use them too, checking both the proxy's token and the user's.
+
+**The proxy strips the token's signature, so the server checks its claims, not the signature**: anyone who could reach the server directly could write a token that passes. The check is only as strong as the guarantee that nothing but the proxy can reach the server — on Cloud Run, set ingress to internal (or internal and Cloud Load Balancing, behind the proxy), and grant `roles/run.invoker` only to the proxy's service account, never `allUsers` or `allAuthenticatedUsers`.
 
 ### Serving the web app
 

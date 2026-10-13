@@ -66,6 +66,19 @@ fn a_static_site_needs_its_index_html() {
 }
 
 #[test]
+fn skipping_sign_in_on_cloud_run_needs_the_proxy_check() {
+    let proxied = [("K_SERVICE", "tracker"), ("ALLOWED_PROXY_EMAIL", "proxy@p.iam.gserviceaccount.com"), ("ALLOWED_HOST", "tracker.corp.example"), ("PROXY_AUDIENCE", "aud")];
+
+    let refused = disabled(&proxied[..1]).err().unwrap().to_string();
+    assert!(refused.contains("runs there only behind the IAP proxy"), "{refused}");
+    assert_eq!(disabled(&proxied).unwrap().proxy.unwrap().host, "tracker.corp.example");
+    // Elsewhere, and where sign-in is required, it's up to the deployment.
+    assert!(disabled(&[]).unwrap().proxy.is_none());
+    assert!(config(&proxied[..1]).unwrap().proxy.is_none());
+    assert!(config(&proxied).unwrap().proxy.is_some());
+}
+
+#[test]
 fn the_port_defaults_to_renders() {
     assert_eq!(config(&[]).unwrap().port, 10000);
     assert_eq!(config(&[("PORT", "8000")]).unwrap().port, 8000);
@@ -132,6 +145,7 @@ fn http_config(authkit: &str) -> HttpConfig {
         auth_disabled: false,
         ignored: Vec::new(),
         static_site: None,
+        proxy: None,
     }
 }
 
@@ -585,4 +599,58 @@ fn without_a_site_a_page_load_is_not_found() {
 
     let answer = send("GET", &format!("{}/", served.url), &[PAGE], None);
     assert_eq!((answer.status, answer.body.as_str()), (404, "Not Found"));
+}
+
+// -- served, behind the proxy check ---------------------------------------------------------
+
+const PROXY_EMAIL: &str = "proxy@corp-project.iam.gserviceaccount.com";
+const PROXY_AUDIENCE: &str = "//iam.googleapis.com/projects/123456";
+
+fn served_behind_proxy(auth_disabled: bool) -> Served {
+    let proxy = ProxyCheck { email: PROXY_EMAIL.into(), host: "127.0.0.1".into(), audience: PROXY_AUDIENCE.into(), signature: None };
+    served_with(HttpConfig { proxy: Some(proxy), auth_disabled, static_site: Some(site_dir()), ..http_config(AUTHKIT) })
+}
+
+/// The proxy's token, its signature stripped, with `changes` to its claims.
+fn proxy_token(changes: Value) -> String {
+    let mut claims = json!({"iss": "https://accounts.google.com", "aud": PROXY_AUDIENCE, "email": PROXY_EMAIL, "email_verified": true, "iat": now(), "exp": now() + 3600});
+    for (k, v) in changes.as_object().unwrap() {
+        claims[k] = v.clone();
+    }
+    let part = |v: &Value| base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, v.to_string());
+    format!("Bearer {}.{}.", part(&json!({"alg": "RS256", "typ": "JWT"})), part(&claims))
+}
+
+#[test]
+fn behind_the_proxy_only_what_came_through_it_is_served() {
+    let served = served_behind_proxy(false);
+    let through = proxy_token(json!({}));
+
+    let page = send("GET", &format!("{}/", served.url), &[PAGE, ("X-Serverless-Authorization", &through)], None);
+    assert_eq!((page.status, page.body.as_str()), (200, INDEX));
+    for headers in [vec![PAGE], vec![PAGE, ("X-Serverless-Authorization", "Bearer forged")]] {
+        let refused = send("GET", &format!("{}/", served.url), &headers, None);
+        assert_eq!((refused.status, refused.body.as_str()), (403, "Forbidden"), "{headers:?}");
+    }
+    let elsewhere = proxy_token(json!({"email": "someone@corp.example"}));
+    assert_eq!(send("GET", &format!("{}/main.dart.js", served.url), &[("X-Serverless-Authorization", &elsewhere)], None).status, 403);
+    // The endpoints too, sign-in or not.
+    assert_eq!(send("GET", &format!("{}/.well-known/oauth-protected-resource/mcp", served.url), &[], None).status, 403);
+    let metadata = send("GET", &format!("{}/.well-known/oauth-protected-resource/mcp", served.url), &[("X-Serverless-Authorization", &through)], None);
+    assert_eq!(metadata.status, 200);
+}
+
+#[test]
+fn behind_the_proxy_without_sign_in_mcp_works_through_it() {
+    let served = served_behind_proxy(true);
+    let body = json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}}});
+    let initialize = |headers: &[(&str, &str)]| {
+        let mut all = vec![("Content-Type", "application/json"), ACCEPT];
+        all.extend_from_slice(headers);
+        send("POST", &format!("{}/mcp", served.url), &all, Some(body.to_string().as_bytes()))
+    };
+
+    assert_eq!(initialize(&[]).status, 403);
+    assert_eq!(initialize(&[("X-Serverless-Authorization", &proxy_token(json!({"exp": now() - 120})))]).status, 403);
+    assert_eq!(initialize(&[("X-Serverless-Authorization", &proxy_token(json!({})))]).status, 200);
 }
