@@ -8,6 +8,7 @@
 //! held to conformance/'s golden records.
 
 use crate::app::App;
+use crate::mcp::proxy::{self, ProxyCheck};
 use axum::body::{Body, Bytes};
 use axum::extract::{Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, StatusCode};
@@ -49,6 +50,10 @@ pub struct HttpConfig {
     /// The static site served at "/" beside the endpoints (a built web
     /// app): STATIC_SITE_DIR, if set.
     pub static_site: Option<PathBuf>,
+    /// The check that every request came through the IAP proxy in front
+    /// (crate::mcp::proxy), if ALLOWED_PROXY_EMAIL, ALLOWED_HOST and
+    /// PROXY_AUDIENCE ask for it.
+    pub proxy: Option<ProxyCheck>,
 }
 
 /// The settings only sign-in reads.
@@ -77,10 +82,16 @@ impl HttpConfig {
             .collect();
         let port = var("PORT").and_then(|p| p.parse().ok()).unwrap_or(10000);
         let static_site = var("STATIC_SITE_DIR").map(|dir| static_site_dir(&dir)).transpose()?;
+        let proxy = ProxyCheck::from_vars(&var)?;
         if auth_disabled {
             if var("RENDER_EXTERNAL_URL").is_some() {
                 anyhow::bail!(
                     "This build skips sign-in (it was built with AUTH_DISABLED), and RENDER_EXTERNAL_URL says it's on Render: it won't run where the internet can reach it. Deploy a build made without AUTH_DISABLED."
+                );
+            }
+            if var("K_SERVICE").is_some() && proxy.is_none() {
+                anyhow::bail!(
+                    "This build skips sign-in (it was built with AUTH_DISABLED), and K_SERVICE says it's on Cloud Run: it runs there only behind the IAP proxy. Set ALLOWED_PROXY_EMAIL, ALLOWED_HOST and PROXY_AUDIENCE -- see the README's \"Behind an IAP proxy\" section."
                 );
             }
             return Ok(HttpConfig {
@@ -92,6 +103,7 @@ impl HttpConfig {
                 auth_disabled,
                 ignored: SIGN_IN_VARS.into_iter().filter(|name| var(name).is_some()).collect(),
                 static_site,
+                proxy,
             });
         }
         let required = |name: &str, message: &str| var(name).ok_or_else(|| anyhow::anyhow!("{message}"));
@@ -119,7 +131,7 @@ impl HttpConfig {
                 "MCP_ALLOWED_USER_IDS is not set. Set it to your WorkOS user id (e.g. \"user_01ABC...\", from the Users page of the WorkOS dashboard) -- see the README's \"Deploying\" section."
             );
         }
-        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new(), static_site })
+        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new(), static_site, proxy })
     }
 
     /// The domain as an issuer URL (pydantic's AnyHttpUrl gives a bare host
@@ -169,6 +181,9 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
     if let Some(dir) = &config.static_site {
         tracing::info!("Serving the static site in {} at /", dir.display());
     }
+    if let Some(check) = &config.proxy {
+        tracing::info!("Taking only requests through the proxy: {} for {}, Host {}", check.email, check.audience, check.host);
+    }
     let port = config.port;
     let router = router(shared(app, config));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
@@ -202,7 +217,25 @@ fn router(shared: Arc<Shared>) -> Router {
         .method_not_allowed_fallback(method_not_allowed)
         .fallback(site)
         .layer(middleware::from_fn_with_state(shared.clone(), cors))
+        .layer(middleware::from_fn_with_state(shared.clone(), through_proxy))
         .with_state(shared)
+}
+
+/// With a proxy check, only what came through the proxy (see
+/// crate::mcp::proxy): anything else is refused, the log saying why.
+async fn through_proxy(State(shared): State<Arc<Shared>>, request: Request, next: Next) -> Response {
+    let problem = shared.config.proxy.as_ref().and_then(|check| {
+        let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok());
+        let host = header("host").or_else(|| request.uri().authority().map(|a| a.as_str()));
+        check.problem(header(proxy::TOKEN_HEADER), host, chrono::Utc::now().timestamp())
+    });
+    match problem {
+        None => next.run(request).await,
+        Some(problem) => {
+            tracing::warn!("Refused {} {}: not through the proxy -- {problem}", request.method(), request.uri().path());
+            text_response(StatusCode::FORBIDDEN, "Forbidden")
+        }
+    }
 }
 
 /// STATIC_SITE_DIR's directory, which must hold the site's index.html.
