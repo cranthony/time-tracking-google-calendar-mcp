@@ -14,7 +14,7 @@ fn readme() -> String {
     std::fs::read_to_string(readme_path()).unwrap().replace("\r\n", "\n")
 }
 
-/// The headings of `text` below its title (levels 2 and 3), outside code
+/// The headings of `text` below its title (levels 2 to 4), outside code
 /// blocks: (level, title).
 fn headings(text: &str) -> Vec<(usize, String)> {
     let mut fence: Option<String> = None;
@@ -34,7 +34,7 @@ fn headings(text: &str) -> Vec<(usize, String)> {
             continue;
         }
         let level = line.chars().take_while(|c| *c == '#').count();
-        if (2..=3).contains(&level) && line[level..].starts_with(' ') {
+        if (2..=4).contains(&level) && line[level..].starts_with(' ') {
             found.push((level, line[level..].trim().trim_end_matches('#').trim().to_string()));
         }
     }
@@ -120,7 +120,7 @@ fn headings_are_slugged_as_github_does() {
     assert_eq!(slug("Without sign-in, behind a corporate proxy"), "without-sign-in-behind-a-corporate-proxy");
     assert_eq!(slug("People, circles and locations"), "people-circles-and-locations");
     assert_eq!(slug("Why `tools`, not resources?"), "why-tools-not-resources");
-    let found = headings("# Title\n## A\n```bash\n# not a heading\n## nor this\n```\n### B b\n## A\n####### no\n");
-    assert_eq!(found, vec![(2, "A".to_string()), (3, "B b".to_string()), (2, "A".to_string())]);
-    assert_eq!(anchors(&found), vec!["a", "b-b", "a-1"]);
+    let found = headings("# Title\n## A\n```bash\n# not a heading\n## nor this\n```\n### B b\n#### C\n## A\n##### too deep\n####### no\n");
+    assert_eq!(found, vec![(2, "A".to_string()), (3, "B b".to_string()), (4, "C".to_string()), (2, "A".to_string())]);
+    assert_eq!(anchors(&found), vec!["a", "b-b", "c", "a-1"]);
 }
