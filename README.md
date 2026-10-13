@@ -371,7 +371,7 @@ AUTH_DISABLED=true cargo build --release --manifest-path rust/Cargo.toml --bin c
 Such a build trusts every request as the server's single user, token or not, and it makes this hard to miss:
 - **It won't run on Render.** It refuses to start if `RENDER_EXTERNAL_URL` is set, so the public deployment can't lose its sign-in.
 - **It needs no WorkOS settings.** `WORKOS_AUTHKIT_DOMAIN` and `MCP_ALLOWED_USER_IDS` aren't read, and it logs any that are set as ignored.
-- **It says so.** It logs a warning at startup and for every new session, and tells every client in the MCP handshake: `instructions`, and a server title ending "(sign-in off)". `get_health` reports `"auth": "disabled"` instead of `"required"`.
+- **It says so.** It logs a warning at startup and for every new session, and tells every client in the MCP handshake: a `_meta` flag, `"time-tracking/authDisabled": true`, for clients to check (the Time Tracker app shows a banner for it), plus `instructions` and a server title ending "(sign-in off)" for people to read. `get_health` reports `"auth": "disabled"` instead of `"required"`.
 - **It offers nothing to sign in with.** There's no protected-resource metadata, no `WWW-Authenticate` challenge, and no OAuth proxy.
 
 The proxy's own header isn't read: the server can't tell who's behind it, and doesn't need to, since it serves one user. CI builds and tests this variant on every PR (`cargo test (AUTH_DISABLED)`), but never deploys it.

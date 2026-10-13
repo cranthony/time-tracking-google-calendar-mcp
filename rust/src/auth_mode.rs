@@ -28,6 +28,10 @@ pub fn name() -> &'static str {
 /// that skips sign-in.
 pub const WARNING: &str = "AUTHENTICATION DISABLED: this build (AUTH_DISABLED) trusts every request as the single user. Run it only behind a proxy that signs people in.";
 
+/// The flag in the MCP handshake's `_meta`, true in a build that skips
+/// sign-in: what a client checks, rather than the words below.
+pub const META_KEY: &str = "time-tracking/authDisabled";
+
 /// What a client is told as it connects to a build that skips sign-in.
 pub const INSTRUCTIONS: &str =
     "Authentication is disabled in this build of the server (AUTH_DISABLED): it trusts every request as its single user, and relies on the network in front of it to sign people in.";
