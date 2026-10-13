@@ -306,6 +306,7 @@ The server reads its configuration from environment variables ([`rust/src/app.rs
 | `ALLOWED_HOST` | No | — | The `Host` the proxy forwards (e.g. `tracker.corp.example`; any port is ignored). |
 | `PROXY_AUDIENCE` | No | — | The `aud` the proxy's tokens are minted for, exactly as they carry it (e.g. a GCP project address). |
 | `PROXY_TOKEN_SIGNATURE` | No | — | The text the proxy leaves in place of the token's signature (e.g. `SIGNATURE_REMOVED_BY_GOOGLE`): set, a token must end in exactly that. Only with the three above. |
+| `SETUP_TOKEN_SECRET` | No | — | A Secret Manager secret (`projects/<project>/secrets/<secret>`) that a [browser setup](#setting-up-google-access-from-a-browser) adds each new Google token to as a new version, as the service's own account (on Cloud Run). Unset, the setup page shows the token for you to keep. |
 | `PORT` | No | `10000` | The port `streamable-http` binds to (always alongside host `0.0.0.0`, as every Render web service requires). Render sets this for you automatically. |
 
 To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — the server and the tools read a `.env` in their working directory if there is one (a variable already set wins). `.env` is gitignored, so nothing personal ends up committed.
@@ -411,13 +412,21 @@ Copy a new build over the directory to deploy it; the server needn't restart.
 Over HTTP, the server can get its Google token — or a new one, when the old stops working — from a browser, instead of from `create_calendar` on a machine of yours ([`rust/src/setup.rs`](rust/src/setup.rs)). Ask for a link with the `google_setup_link` tool (from Claude, say: "give me a Google setup link"), open it, and sign in with Google; the server takes on the token at once:
 - **With no calendar** (`GOOGLE_CALENDAR_ID` unset), it makes this app's calendar and its spreadsheet, as `create_calendar` does, and shows the calendar's id — set `GOOGLE_CALENDAR_ID` to it, or a restart starts over.
 - **With one**, it checks the new token can see that calendar before taking it on: signed in with another account (or another OAuth client — see below), it's refused, and the old token stays.
-- Either way it shows the token, to keep as the server's `token.json` (on Render, paste it into the Secret File; elsewhere, wherever `GOOGLE_OAUTH_TOKEN_PATH` points). It writes it to `GOOGLE_OAUTH_TOKEN_PATH` itself too, if it can — a read-only secret mount can't be, so keep it, or the next restart has only the old token.
+- Either way it keeps the token: with `SETUP_TOKEN_SECRET` (below), in Secret Manager itself; otherwise it shows the token, to keep as the server's `token.json` (on Render, paste it into the Secret File; elsewhere, wherever `GOOGLE_OAUTH_TOKEN_PATH` points). It writes it to `GOOGLE_OAUTH_TOKEN_PATH` itself too, if it can — a read-only secret mount can't be, so keep it, or the next restart has only the old token.
 
 The tool gives a link only when there's something to set up: when Google access works, it refuses, and so does `/setup`. Whoever can call the tool can set up the server's Google access, so it's exactly as protected as the server's tools: WorkOS sign-in, or the [IAP proxy](#behind-an-iap-proxy). The link works once, for 10 minutes; the setup it starts belongs to the browser that opened it (an HTTP-only cookie) and lasts 15 minutes. The pages are never cached, and the token is never logged.
 
 It signs in with the OAuth client in `GOOGLE_OAUTH_CREDENTIALS_PATH`, so the server needs `credentials.json` too:
 - **A web application's client** (Google Cloud Console → Credentials → OAuth client ID → "Web application") sends the browser straight back: register `<this server's URL>/setup/callback` (e.g. `https://your-service.onrender.com/setup/callback`) as one of its authorized redirect URIs.
 - **A desktop app's client** (the kind `create_calendar` uses) can only send the browser back to `localhost`, where nothing answers: the page tells you to copy the address the sign-in tab lands on, and paste it in to finish.
+
+**On Cloud Run, the server can keep the token in Secret Manager itself**, with nothing to copy: set `SETUP_TOKEN_SECRET` to the secret mounted at `GOOGLE_OAUTH_TOKEN_PATH` (its `latest` version, e.g. `--set-secrets=/secrets/token.json=ctt-google-token:latest`, `GOOGLE_OAUTH_TOKEN_PATH=/secrets/token.json`), and let the service's own account add versions to that one secret:
+
+```bash
+gcloud secrets add-iam-policy-binding ctt-google-token --member=serviceAccount:<the service's account> --role=roles/secretmanager.secretVersionAdder
+```
+
+A setup then adds the new token as the secret's next version, as that account (its token comes from the metadata server: no key is kept anywhere), and the page shows the version instead of the token. The running server uses the token at once; a new instance reads the `latest` version as it starts. Old versions stay until you destroy them (`gcloud secrets versions destroy`) — Secret Manager's free tier covers six. If the write fails (a missing role, say), the setup still finishes, and the page says why and shows the token to add by hand.
 
 A calendar belongs to the app that made it (`calendar.app.created`), and whether that means the OAuth client or its whole Cloud project isn't documented. Before switching an existing calendar to a new web client, check with [`probe other_client --client <its credentials.json>`](#command-line-utilities): if the new client can't see the calendar, keep using the client that made it (a desktop app's, with the paste).
 

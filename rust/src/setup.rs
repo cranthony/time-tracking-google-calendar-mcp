@@ -9,8 +9,11 @@
 //! the user pastes into /setup/paste. The code becomes a token the server
 //! takes on at once: with no calendar, it makes one (and its metadata
 //! spreadsheet), as create_calendar does; with one, it checks the new token
-//! can see it. The page shows the token, to keep in token.json's secret.
-//! Once Google access works, there's nothing to set up: the tool refuses.
+//! can see it. With SETUP_TOKEN_SECRET (on Cloud Run), it adds the token
+//! to that Secret Manager secret as a new version itself, as the service's
+//! own account; otherwise the page shows the token, to keep in
+//! token.json's secret. Once Google access works, there's nothing to set
+//! up: the tool refuses.
 
 use crate::app::App;
 use crate::cli::create_calendar::{DEFAULT_DESCRIPTION, DEFAULT_SUMMARY};
@@ -18,7 +21,9 @@ use crate::google::calendar::CalendarClient;
 use crate::google::consent::{self, Client};
 use crate::google::Google;
 use crate::write_lock::WRITE_LOCK;
-use anyhow::{bail, Context};
+use anyhow::{anyhow, bail, Context};
+use base64::Engine;
+use serde_json::{json, Value};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -70,12 +75,61 @@ pub struct Finished {
     pub spreadsheet_url: String,
     /// Whether the token was written to GOOGLE_OAUTH_TOKEN_PATH.
     pub saved: bool,
+    /// With SETUP_TOKEN_SECRET, the secret version the token was added as
+    /// -- or why it couldn't be.
+    pub stored: Option<Result<String, String>>,
+}
+
+/// The Secret Manager secret a setup adds the token to (SETUP_TOKEN_SECRET:
+/// "projects/<project>/secrets/<secret>"), as the service's own account,
+/// whose token the metadata server gives.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TokenSecret {
+    pub name: String,
+    pub metadata_root: String,
+    pub api_root: String,
+}
+
+impl TokenSecret {
+    /// The secret `name`, on Google Cloud.
+    pub fn new(name: &str) -> TokenSecret {
+        TokenSecret {
+            name: name.to_string(),
+            metadata_root: "http://metadata.google.internal/".into(),
+            api_root: "https://secretmanager.googleapis.com/".into(),
+        }
+    }
+
+    /// Add `token` as the secret's new version: its name.
+    pub fn store(&self, token: &str) -> anyhow::Result<String> {
+        let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(30)).build();
+        let answer = |result: Result<ureq::Response, ureq::Error>, what: &str| -> anyhow::Result<Value> {
+            match result {
+                Ok(response) => response.into_json().with_context(|| format!("{what} answered with something that isn't JSON")),
+                Err(ureq::Error::Status(status, response)) => bail!("{what} refused ({status}): {}", response.into_string().unwrap_or_default().trim()),
+                Err(error) => Err(error).with_context(|| format!("couldn't reach {what}")),
+            }
+        };
+        let metadata = agent
+            .get(&format!("{}computeMetadata/v1/instance/service-accounts/default/token", self.metadata_root))
+            .set("Metadata-Flavor", "Google")
+            .call();
+        let access = answer(metadata, "the metadata server (for the service's own account)")?;
+        let access = access["access_token"].as_str().ok_or_else(|| anyhow!("the metadata server gave no access_token"))?;
+        let added = agent
+            .post(&format!("{}v1/{}:addVersion", self.api_root, self.name))
+            .set("Authorization", &format!("Bearer {access}"))
+            .send_json(json!({"payload": {"data": base64::engine::general_purpose::STANDARD.encode(token)}}));
+        let added = answer(added, "Secret Manager")?;
+        added["name"].as_str().map(str::to_string).ok_or_else(|| anyhow!("Secret Manager gave no version name"))
+    }
 }
 
 /// The setups under way, and the links that start them.
 #[derive(Default)]
 pub struct Setup {
     base: OnceLock<String>,
+    token_secret: OnceLock<TokenSecret>,
     links: Mutex<Vec<(String, Instant)>>,
     flows: Mutex<Vec<Flow>>,
 }
@@ -106,6 +160,11 @@ impl Setup {
 
     pub fn base(&self) -> Option<&str> {
         self.base.get().map(String::as_str)
+    }
+
+    /// Add each new token to `secret` too (SETUP_TOKEN_SECRET).
+    pub fn set_token_secret(&self, secret: TokenSecret) {
+        let _ = self.token_secret.set(secret);
     }
 
     /// A new link's token, good once within LINK_MINUTES.
@@ -190,12 +249,20 @@ impl Setup {
         let actions = app.actions()?;
         app.noted_time_sheet()?;
         let saved = std::fs::write(&app.config.token_path, &token).is_ok();
+        let stored = self.token_secret.get().map(|secret| {
+            secret.store(&token).map_err(|error| {
+                let why = format!("Couldn't add the token to the secret {}: {error:#}", secret.name);
+                tracing::warn!("{why}");
+                why
+            })
+        });
         Ok(Finished {
             token,
             calendar_id,
             created,
             spreadsheet_url: format!("https://docs.google.com/spreadsheets/d/{}/edit", actions.spreadsheet_id()),
             saved,
+            stored,
         })
     }
 }
@@ -258,6 +325,20 @@ pub fn finished_page(finished: &Finished) -> String {
     } else {
         format!("<p>The new token works with the calendar (<code>{}</code>).</p>", escape(&finished.calendar_id))
     };
+    let head = format!("{calendar}\n<p>Metadata spreadsheet: <a href=\"{sheet}\">{sheet}</a></p>", sheet = escape(&finished.spreadsheet_url));
+    let failed = match &finished.stored {
+        Some(Ok(version)) => {
+            return page(
+                "Google access is set up",
+                &format!(
+                    "{head}\n<p>The token is saved as a new version of its secret: <code>{}</code>. The server reads it from there when it next starts (mount the secret's <code>latest</code> version at <code>GOOGLE_OAUTH_TOKEN_PATH</code>), so there's nothing to copy.</p>",
+                    escape(version)
+                ),
+            )
+        }
+        Some(Err(why)) => format!("<p class=\"warn\">{}. Add it to the secret yourself, below.</p>", escape(why)),
+        None => String::new(),
+    };
     let saved = if finished.saved {
         "<p>The token was also written to <code>GOOGLE_OAUTH_TOKEN_PATH</code>.</p>"
     } else {
@@ -266,14 +347,13 @@ pub fn finished_page(finished: &Finished) -> String {
     page(
         "Google access is set up",
         &format!(
-            r#"{calendar}
-<p>Metadata spreadsheet: <a href="{sheet}">{sheet}</a></p>
+            r#"{head}
+{failed}
 {saved}
 <h2>The token</h2>
 <p>Keep it as the server's <code>token.json</code>: on Render, paste it into the <code>token.json</code> Secret File; on Cloud Run, add it as a new version of the secret mounted at <code>GOOGLE_OAUTH_TOKEN_PATH</code> (<code>gcloud secrets versions add SECRET --data-file=-</code>, then paste it). It's a credential: don't keep it anywhere else. This page isn't cached; it's shown only now.</p>
 <p><textarea id="token" rows="8" readonly>{token}</textarea></p>
 <p><button class="button" type="button" onclick="navigator.clipboard.writeText(document.getElementById('token').value).then(() => this.textContent = 'Copied')">Copy the token</button></p>"#,
-            sheet = escape(&finished.spreadsheet_url),
             token = escape(&finished.token),
         ),
     )

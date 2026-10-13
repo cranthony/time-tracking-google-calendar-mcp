@@ -54,6 +54,9 @@ pub struct HttpConfig {
     /// (crate::mcp::proxy), if ALLOWED_PROXY_EMAIL, ALLOWED_HOST and
     /// PROXY_AUDIENCE ask for it.
     pub proxy: Option<ProxyCheck>,
+    /// The Secret Manager secret a browser setup adds each new Google
+    /// token to (crate::setup): SETUP_TOKEN_SECRET, if set.
+    pub token_secret: Option<String>,
 }
 
 /// The settings only sign-in reads.
@@ -83,6 +86,7 @@ impl HttpConfig {
         let port = var("PORT").and_then(|p| p.parse().ok()).unwrap_or(10000);
         let static_site = var("STATIC_SITE_DIR").map(|dir| static_site_dir(&dir)).transpose()?;
         let proxy = ProxyCheck::from_vars(&var)?;
+        let token_secret = var("SETUP_TOKEN_SECRET").map(|name| token_secret_name(&name)).transpose()?;
         if auth_disabled {
             if var("RENDER_EXTERNAL_URL").is_some() {
                 anyhow::bail!(
@@ -104,6 +108,7 @@ impl HttpConfig {
                 ignored: SIGN_IN_VARS.into_iter().filter(|name| var(name).is_some()).collect(),
                 static_site,
                 proxy,
+                token_secret,
             });
         }
         let required = |name: &str, message: &str| var(name).ok_or_else(|| anyhow::anyhow!("{message}"));
@@ -131,7 +136,7 @@ impl HttpConfig {
                 "MCP_ALLOWED_USER_IDS is not set. Set it to your WorkOS user id (e.g. \"user_01ABC...\", from the Users page of the WorkOS dashboard) -- see the README's \"Deploying\" section."
             );
         }
-        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new(), static_site, proxy })
+        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new(), static_site, proxy, token_secret })
     }
 
     /// The domain as an issuer URL (pydantic's AnyHttpUrl gives a bare host
@@ -195,6 +200,10 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
     }
     let port = config.port;
     app.setup.set_base(&config.public_base().unwrap_or_else(|| format!("http://localhost:{port}")));
+    if let Some(name) = &config.token_secret {
+        tracing::info!("A browser setup adds each new Google token to the secret {name}");
+        app.setup.set_token_secret(crate::setup::TokenSecret::new(name));
+    }
     let router = router(shared(app, config));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     tracing::info!("Uvicorn running on http://0.0.0.0:{port}");
@@ -381,6 +390,18 @@ async fn setup_paste(State(shared): State<Arc<Shared>>, headers: HeaderMap, body
     let query = address.trim().split_once('?').map(|(_, q)| q).unwrap_or("");
     let answer = crate::google::consent::query_params(query.split('#').next().unwrap_or(""));
     setup_finish(shared, &headers, answer).await
+}
+
+/// SETUP_TOKEN_SECRET: a secret's resource name, "projects/<p>/secrets/<s>".
+fn token_secret_name(name: &str) -> anyhow::Result<String> {
+    let name = name.trim();
+    let parts: Vec<&str> = name.split('/').collect();
+    if parts.len() != 4 || parts[0] != "projects" || parts[2] != "secrets" || parts[1].is_empty() || parts[3].is_empty() {
+        anyhow::bail!(
+            "SETUP_TOKEN_SECRET is {name:?}, but it should name a Secret Manager secret as \"projects/<project>/secrets/<secret>\" -- see the README's \"Setting up Google access from a browser\" section."
+        );
+    }
+    Ok(name.to_string())
 }
 
 /// STATIC_SITE_DIR's directory, which must hold the site's index.html.
