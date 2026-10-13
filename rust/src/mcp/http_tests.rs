@@ -146,6 +146,7 @@ fn http_config(authkit: &str) -> HttpConfig {
         ignored: Vec::new(),
         static_site: None,
         proxy: None,
+        token_secret: None,
     }
 }
 
@@ -759,6 +760,18 @@ fn setup_refuses_a_missing_link_and_a_server_already_set_up() {
     let refused = send_raw("GET", &format!("{}/setup/callback?error=access_denied", served.url), None, None);
     assert_eq!(refused.status, 400);
     assert!(refused.body.contains("access_denied"));
+}
+
+#[test]
+fn the_token_secret_is_a_secrets_resource_name() {
+    assert_eq!(config(&[]).unwrap().token_secret, None);
+    let name = "projects/corp-project/secrets/ctt-google-token";
+    assert_eq!(config(&[("SETUP_TOKEN_SECRET", name)]).unwrap().token_secret.as_deref(), Some(name));
+    assert_eq!(disabled(&[("SETUP_TOKEN_SECRET", name)]).unwrap().token_secret.as_deref(), Some(name));
+    for wrong in ["ctt-google-token", "projects/p/secrets/s/versions/latest", "projects//secrets/s"] {
+        let refused = config(&[("SETUP_TOKEN_SECRET", wrong)]).err().unwrap().to_string();
+        assert!(refused.contains("should name a Secret Manager secret"), "{wrong}: {refused}");
+    }
 }
 
 #[test]

@@ -166,6 +166,8 @@ pub struct State {
     /// Import "<id>_R<time>" as a plain event, not splitting series <id>
     /// (it's undocumented, so it might stop).
     pub imports_dont_split: bool,
+    /// Each version added to a Secret Manager secret: (secret, its data).
+    pub secret_versions: Vec<(String, String)>,
     ids: u64,
 }
 
@@ -507,6 +509,15 @@ impl State {
         let segments: Vec<String> = path.trim_start_matches('/').split('/').map(decode).collect();
         let s: Vec<&str> = segments.iter().map(String::as_str).collect();
         match (method, s.as_slice()) {
+            ("POST", ["v1", "projects", project, "secrets", added]) if added.ends_with(":addVersion") => {
+                use base64::Engine;
+                let secret = format!("projects/{project}/secrets/{}", added.trim_end_matches(":addVersion"));
+                let data = body["payload"]["data"].as_str().unwrap_or_default();
+                let decoded = base64::engine::general_purpose::STANDARD.decode(data).map_err(|_| err(400, "payload.data isn't base64"))?;
+                self.secret_versions.push((secret.clone(), String::from_utf8_lossy(&decoded).into_owned()));
+                let number = self.secret_versions.iter().filter(|(s, _)| *s == secret).count();
+                Ok(Some(json!({"name": format!("{secret}/versions/{number}"), "state": "ENABLED"})))
+            }
             ("POST", ["calendar", "v3", "calendars"]) => {
                 let id = self.add_calendar(
                     body["summary"].as_str().unwrap_or(""),
@@ -1192,6 +1203,11 @@ impl FakeGoogle {
         self.with(|s| s.requests.clone())
     }
 
+    /// Each version added to a Secret Manager secret: (secret, its data).
+    pub fn secret_versions(&self) -> Vec<(String, String)> {
+        self.with(|s| s.secret_versions.clone())
+    }
+
     pub fn clear_requests(&self) {
         self.with(|s| s.requests.clear())
     }
@@ -1292,6 +1308,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                 let mut length = 0usize;
                 let mut if_match: Option<String> = None;
                 let mut bearer: Option<String> = None;
+                let mut metadata_flavor: Option<String> = None;
                 loop {
                     let mut header = String::new();
                     if reader.read_line(&mut header).unwrap_or(0) == 0 {
@@ -1306,6 +1323,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                             "content-length" => length = value.trim().parse().unwrap_or(0),
                             "if-match" => if_match = Some(value.trim().to_string()),
                             "authorization" => bearer = value.trim().strip_prefix("Bearer ").map(str::to_string),
+                            "metadata-flavor" => metadata_flavor = Some(value.trim().to_string()),
                             _ => {}
                         }
                     }
@@ -1343,6 +1361,16 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                         answer["refresh_token"] = json!(format!("refresh-{}", s.ids));
                     }
                     (200, Some(answer))
+                } else if method == "GET" && path == "/computeMetadata/v1/instance/service-accounts/default/token" {
+                    // The metadata server: the service account's token, only
+                    // for a request that says it's for the metadata server.
+                    let mut s = state.lock().unwrap();
+                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: None, body: Value::Null, bearer: None });
+                    if metadata_flavor.as_deref() == Some("Google") {
+                        (200, Some(json!({"access_token": "metadata-token", "expires_in": 3599, "token_type": "Bearer"})))
+                    } else {
+                        (403, Some(error_body(403, "Missing Metadata-Flavor:Google header.")))
+                    }
                 } else if bearer.is_none() {
                     (401, Some(error_body(401, "Request is missing required authentication credential.")))
                 } else {

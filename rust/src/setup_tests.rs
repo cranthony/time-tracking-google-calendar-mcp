@@ -165,6 +165,7 @@ fn the_finished_page_shows_the_token_escaped() {
         created: true,
         spreadsheet_url: "https://docs.google.com/spreadsheets/d/s/edit".into(),
         saved: false,
+        stored: None,
     };
 
     let html = finished_page(&finished);
@@ -172,4 +173,53 @@ fn the_finished_page_shows_the_token_escaped() {
     assert!(html.contains("{&quot;token&quot;: &quot;&lt;a&amp;b&gt;&quot;}"), "{html}");
     assert!(html.contains("Set <code>GOOGLE_CALENDAR_ID</code> to <code>c@group.calendar.google.com</code>"));
     assert!(html.contains("couldn't be written"));
+}
+
+const SECRET: &str = "projects/corp-project/secrets/ctt-google-token";
+
+fn secret_on(fake: &FakeGoogle) -> TokenSecret {
+    TokenSecret { name: SECRET.into(), metadata_root: fake.root.clone(), api_root: fake.root.clone() }
+}
+
+#[test]
+fn with_a_token_secret_the_token_is_added_to_it_and_not_shown() {
+    let fake = FakeGoogle::start();
+    let app = app_on(&fake, None, false);
+    app.setup.set_token_secret(secret_on(&fake));
+
+    let (session, url, _) = app.setup.start(&app, "https://tracker.example").unwrap();
+    let finished = app.setup.finish(&app, &session, "code-5", &url_param(&url, "state")).unwrap();
+
+    assert_eq!(finished.stored, Some(Ok(format!("{SECRET}/versions/1"))));
+    assert_eq!(fake.secret_versions(), vec![(SECRET.to_string(), finished.token.clone())]);
+    let added = fake.requests().into_iter().find(|r| r.path.ends_with(":addVersion")).unwrap();
+    assert_eq!(added.bearer.as_deref(), Some("metadata-token"));
+    let html = finished_page(&finished);
+    assert!(html.contains("saved as a new version of its secret") && html.contains("/versions/1"), "{html}");
+    assert!(!html.contains("refresh-") && !html.contains("<textarea"), "{html}");
+}
+
+#[test]
+fn a_secret_that_cant_be_written_leaves_the_token_to_copy() {
+    let fake = FakeGoogle::start();
+    let app = app_on(&fake, None, false);
+    app.setup.set_token_secret(secret_on(&fake));
+    fake.with(|s| s.fail_next.push(("POST".into(), ":addVersion".into(), 403, "Permission 'secretmanager.versions.add' denied".into())));
+
+    let (session, url, _) = app.setup.start(&app, "https://tracker.example").unwrap();
+    let finished = app.setup.finish(&app, &session, "code-6", &url_param(&url, "state")).unwrap();
+
+    let why = finished.stored.clone().unwrap().err().unwrap();
+    assert!(why.contains(SECRET) && why.contains("403") && why.contains("secretmanager.versions.add"), "{why}");
+    // Set up all the same: the server is using the token.
+    assert_eq!(need(&app), None);
+    let html = finished_page(&finished);
+    assert!(html.contains("Add it to the secret yourself") && html.contains("<textarea"), "{html}");
+}
+
+#[test]
+fn the_metadata_server_needs_its_header() {
+    let fake = FakeGoogle::start();
+    let answer = ureq::get(&format!("{}computeMetadata/v1/instance/service-accounts/default/token", fake.root)).call();
+    assert!(matches!(answer, Err(ureq::Error::Status(403, _))));
 }
