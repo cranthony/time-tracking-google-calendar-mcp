@@ -18,6 +18,8 @@ use axum::Router;
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::convert::Infallible;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
@@ -44,6 +46,9 @@ pub struct HttpConfig {
     /// The sign-in settings given, though a build that skips sign-in
     /// doesn't read them.
     pub ignored: Vec<&'static str>,
+    /// The static site served at "/" beside the endpoints (a built web
+    /// app): STATIC_SITE_DIR, if set.
+    pub static_site: Option<PathBuf>,
 }
 
 /// The settings only sign-in reads.
@@ -71,6 +76,7 @@ impl HttpConfig {
             .filter(|s| !s.is_empty())
             .collect();
         let port = var("PORT").and_then(|p| p.parse().ok()).unwrap_or(10000);
+        let static_site = var("STATIC_SITE_DIR").map(|dir| static_site_dir(&dir)).transpose()?;
         if auth_disabled {
             if var("RENDER_EXTERNAL_URL").is_some() {
                 anyhow::bail!(
@@ -85,6 +91,7 @@ impl HttpConfig {
                 port,
                 auth_disabled,
                 ignored: SIGN_IN_VARS.into_iter().filter(|name| var(name).is_some()).collect(),
+                static_site,
             });
         }
         let required = |name: &str, message: &str| var(name).ok_or_else(|| anyhow::anyhow!("{message}"));
@@ -112,7 +119,7 @@ impl HttpConfig {
                 "MCP_ALLOWED_USER_IDS is not set. Set it to your WorkOS user id (e.g. \"user_01ABC...\", from the Users page of the WorkOS dashboard) -- see the README's \"Deploying\" section."
             );
         }
-        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new() })
+        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new(), static_site })
     }
 
     /// The domain as an issuer URL (pydantic's AnyHttpUrl gives a bare host
@@ -159,6 +166,9 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
     } else if std::env::var("AUTH_DISABLED").is_ok_and(|v| !v.is_empty()) {
         tracing::warn!("AUTH_DISABLED is set in the environment, but it's read when the server is built, not when it runs: this build requires sign-in as usual.");
     }
+    if let Some(dir) = &config.static_site {
+        tracing::info!("Serving the static site in {} at /", dir.display());
+    }
     let port = config.port;
     let router = router(shared(app, config));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
@@ -190,9 +200,69 @@ fn router(shared: Arc<Shared>) -> Router {
     }
     router
         .method_not_allowed_fallback(method_not_allowed)
-        .fallback(not_found)
+        .fallback(site)
         .layer(middleware::from_fn_with_state(shared.clone(), cors))
         .with_state(shared)
+}
+
+/// STATIC_SITE_DIR's directory, which must hold the site's index.html.
+fn static_site_dir(dir: &str) -> anyhow::Result<PathBuf> {
+    let path = PathBuf::from(dir);
+    if !path.join("index.html").is_file() {
+        anyhow::bail!(
+            "STATIC_SITE_DIR is {dir:?}, but there's no index.html in it. Set it to the directory of a built web app (e.g. the Flutter app's build/web), or unset it -- see the README's \"Serving the web app\" section."
+        );
+    }
+    Ok(path)
+}
+
+/// The static site, for whatever the endpoints don't answer: its files
+/// for a GET or HEAD -- or, for a page a browser loads that isn't one,
+/// its index.html, so the app's own paths survive a reload. Anything
+/// else (an API request, a probe of /.well-known/, another method) gets
+/// the 404 it gets without a site. Every answer is revalidated, so a new
+/// deploy is picked up at once.
+async fn site(State(shared): State<Arc<Shared>>, request: Request) -> Response {
+    let Some(dir) = shared.config.static_site.clone() else {
+        return not_found().await;
+    };
+    if request.method() != Method::GET && request.method() != Method::HEAD {
+        return not_found().await;
+    }
+    let page = is_page_load(&request);
+    let index = dir.join("index.html");
+    let fallback = tower::service_fn(move |request: Request| {
+        let index = index.clone();
+        async move {
+            if !page {
+                return Ok::<Response, Infallible>(not_found().await);
+            }
+            Ok(serve_file(&index, request).await)
+        }
+    });
+    let served = tower::ServiceExt::oneshot(tower_http::services::ServeDir::new(&dir).fallback(fallback), request).await;
+    let mut response = match served {
+        Ok(response) => response.into_response(),
+        Err(never) => match never {},
+    };
+    if response.status().is_success() || response.status() == StatusCode::NOT_MODIFIED {
+        response.headers_mut().insert("cache-control", HeaderValue::from_static("no-cache"));
+    }
+    response
+}
+
+/// `request` as a browser's page load: one that takes HTML, not under
+/// /.well-known/ (which clients probe, and must find missing).
+fn is_page_load(request: &Request) -> bool {
+    let accepts_html = request.headers().get("accept").and_then(|a| a.to_str().ok()).is_some_and(|a| a.contains("text/html"));
+    accepts_html && !request.uri().path().starts_with("/.well-known/")
+}
+
+async fn serve_file(path: &Path, request: Request) -> Response {
+    match tower::ServiceExt::oneshot(tower_http::services::ServeFile::new(path), request).await {
+        Ok(response) => response.into_response(),
+        Err(never) => match never {},
+    }
 }
 
 /// Render stops a service with SIGTERM: finish what's under way, then exit.

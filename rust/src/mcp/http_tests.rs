@@ -54,6 +54,18 @@ fn the_cors_origins_are_split_trimmed_and_lose_trailing_slashes() {
 }
 
 #[test]
+fn a_static_site_needs_its_index_html() {
+    let site = site_dir();
+
+    assert!(config(&[]).unwrap().static_site.is_none());
+    assert_eq!(config(&[("STATIC_SITE_DIR", site.to_str().unwrap())]).unwrap().static_site, Some(site.clone()));
+    assert_eq!(disabled(&[("STATIC_SITE_DIR", site.to_str().unwrap())]).unwrap().static_site, Some(site.clone()));
+    let empty = site.parent().unwrap().to_path_buf();
+    let refused = config(&[("STATIC_SITE_DIR", empty.to_str().unwrap())]).err().unwrap().to_string();
+    assert!(refused.contains("there's no index.html in it"), "{refused}");
+}
+
+#[test]
 fn the_port_defaults_to_renders() {
     assert_eq!(config(&[]).unwrap().port, 10000);
     assert_eq!(config(&[("PORT", "8000")]).unwrap().port, 8000);
@@ -119,6 +131,7 @@ fn http_config(authkit: &str) -> HttpConfig {
         port: 0,
         auth_disabled: false,
         ignored: Vec::new(),
+        static_site: None,
     }
 }
 
@@ -481,4 +494,95 @@ fn the_handshake_says_whether_this_build_skips_sign_in() {
     let result = &serde_json::from_str::<Value>(data).unwrap()["result"];
     let flag = &result["_meta"][crate::auth_mode::META_KEY];
     assert_eq!(flag, &if crate::auth_mode::disabled() { json!(true) } else { Value::Null }, "{result}");
+}
+
+// -- served, with a static site -------------------------------------------------------------
+
+const INDEX: &str = "<!doctype html><title>app</title>";
+
+/// A built web app in a directory of its own, beside a file that isn't
+/// the site's.
+fn site_dir() -> std::path::PathBuf {
+    let parent = std::env::temp_dir().join(format!("ctt-site-{}", uuid::Uuid::new_v4().simple()));
+    let site = parent.join("web");
+    std::fs::create_dir_all(site.join("assets")).unwrap();
+    std::fs::write(site.join("index.html"), INDEX).unwrap();
+    std::fs::write(site.join("main.dart.js"), "main();").unwrap();
+    std::fs::write(site.join("assets").join("app.wasm"), b"\0asm").unwrap();
+    std::fs::write(parent.join("secret.txt"), "secret").unwrap();
+    site
+}
+
+fn served_site(auth_disabled: bool) -> Served {
+    served_with(HttpConfig { static_site: Some(site_dir()), auth_disabled, ..http_config(AUTHKIT) })
+}
+
+const PAGE: (&str, &str) = ("Accept", "text/html,application/xhtml+xml,*/*;q=0.8");
+
+#[test]
+fn a_static_site_serves_its_files_revalidated() {
+    let served = served_site(false);
+
+    let index = send("GET", &format!("{}/", served.url), &[PAGE], None);
+    assert_eq!((index.status, index.body.as_str()), (200, INDEX));
+    assert_eq!(index.header("cache-control"), Some("no-cache"));
+    let script = send("GET", &format!("{}/main.dart.js", served.url), &[], None);
+    assert_eq!((script.status, script.body.as_str()), (200, "main();"));
+    assert!(script.header("content-type").unwrap().contains("javascript"), "{:?}", script.headers);
+    let wasm = send("GET", &format!("{}/assets/app.wasm", served.url), &[], None);
+    assert_eq!(wasm.header("content-type"), Some("application/wasm"));
+    let again = send("GET", &format!("{}/main.dart.js", served.url), &[("If-Modified-Since", script.header("last-modified").unwrap())], None);
+    assert_eq!(again.status, 304);
+}
+
+#[test]
+fn a_page_the_site_doesnt_have_is_its_index_but_nothing_else_is() {
+    let served = served_site(false);
+
+    let deep = send("GET", &format!("{}/today/2026-10-12", served.url), &[PAGE], None);
+    assert_eq!((deep.status, deep.body.as_str()), (200, INDEX));
+    // An API request, a probe of /.well-known/ or another method gets the
+    // 404 it got before.
+    assert_eq!(send("GET", &format!("{}/missing.js", served.url), &[], None).status, 404);
+    assert_eq!(send("GET", &format!("{}/.well-known/oauth-authorization-server", served.url), &[PAGE], None).status, 404);
+    assert_eq!(send("POST", &format!("{}/main.dart.js", served.url), &[], Some(b"{}")).status, 404);
+}
+
+#[test]
+fn a_static_site_never_serves_what_isnt_in_it() {
+    let served = served_site(false);
+
+    for path in ["/%2e%2e/secret.txt", "/..%2fsecret.txt", "/assets/%2e%2e/%2e%2e/secret.txt"] {
+        let answer = send("GET", &format!("{}{path}", served.url), &[], None);
+        assert!(!answer.body.contains("secret"), "{path}: {}", answer.body);
+        assert_ne!(answer.status, 200, "{path}");
+    }
+}
+
+#[test]
+fn the_endpoints_come_before_the_site() {
+    let served = served_site(false);
+
+    let mcp = send("GET", &format!("{}/mcp", served.url), &[PAGE], None);
+    assert_eq!(mcp.status, 401);
+    assert_ne!(mcp.body, INDEX);
+    let metadata = send("GET", &format!("{}/.well-known/oauth-protected-resource/mcp", served.url), &[], None);
+    assert_eq!(metadata.status, 200);
+    assert!(metadata.body.contains("authorization_servers"), "{}", metadata.body);
+}
+
+#[test]
+fn skipping_sign_in_with_a_site_still_has_no_metadata() {
+    let served = served_site(true);
+
+    assert_eq!(send("GET", &format!("{}/.well-known/oauth-protected-resource/mcp", served.url), &[PAGE], None).status, 404);
+    assert_eq!(send("GET", &format!("{}/", served.url), &[PAGE], None).body, INDEX);
+}
+
+#[test]
+fn without_a_site_a_page_load_is_not_found() {
+    let served = served(AUTHKIT);
+
+    let answer = send("GET", &format!("{}/", served.url), &[PAGE], None);
+    assert_eq!((answer.status, answer.body.as_str()), (404, "Not Found"));
 }

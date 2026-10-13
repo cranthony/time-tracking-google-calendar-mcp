@@ -299,6 +299,7 @@ The server reads its configuration from environment variables ([`rust/src/app.rs
 | `MCP_ALLOWED_USER_IDS` | Only for `streamable-http` | — | Comma-separated WorkOS user ids (`user_...`) allowed to use the server. Tokens for anyone else are rejected, and the server refuses to start without this — see [Deploying](#deploying). |
 | `MCP_PUBLIC_URL` | No | derived from `RENDER_EXTERNAL_URL` | This server's own public MCP endpoint URL (e.g. `https://your-service.onrender.com/mcp`) — used as the OAuth resource identifier and the audience bearer tokens must carry. On Render this is derived automatically from `RENDER_EXTERNAL_URL` (which Render sets for you); set it explicitly elsewhere. |
 | `MCP_CORS_ALLOWED_ORIGINS` | No | — | Comma-separated browser origins (e.g. `https://tracker.example.com`) allowed to call the `streamable-http` endpoint cross-origin, for a web-based MCP client like the Time Tracker web app. `http://localhost` and `http://127.0.0.1` on any port are always allowed, so local development needs nothing set. Safe to widen: the server authenticates by bearer token, never cookies, so a cross-origin page can't borrow the user's access. |
+| `STATIC_SITE_DIR` | No | — | A directory holding a built web app (with its `index.html`) for the `streamable-http` server to serve at `/`, beside `/mcp` — see [Serving the web app](#serving-the-web-app). Unset, nothing is served there. |
 | `PORT` | No | `10000` | The port `streamable-http` binds to (always alongside host `0.0.0.0`, as every Render web service requires). Render sets this for you automatically. |
 
 To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — the server and the tools read a `.env` in their working directory if there is one (a variable already set wins). `.env` is gitignored, so nothing personal ends up committed.
@@ -375,6 +376,17 @@ Such a build trusts every request as the server's single user, token or not, and
 - **It offers nothing to sign in with.** There's no protected-resource metadata, no `WWW-Authenticate` challenge, and no OAuth proxy.
 
 The proxy's own header isn't read: the server can't tell who's behind it, and doesn't need to, since it serves one user. CI builds and tests this variant on every PR (`cargo test (AUTH_DISABLED)`), but never deploys it.
+
+### Serving the web app
+
+The server can serve the Time Tracker web app itself, from the same origin as `/mcp`: build it (`flutter build web` in the client repo) and point `STATIC_SITE_DIR` at the result, e.g. `STATIC_SITE_DIR=/srv/time-tracker/build/web`. The app then calls `/mcp` on its own origin, so it needs no `MCP_CORS_ALLOWED_ORIGINS` entry, and it works behind whatever hostname a proxy gives it. It works in both kinds of build: with sign-in, the app is public (it holds no secrets) and signs in as usual; [without sign-in](#without-sign-in-behind-a-corporate-proxy), the proxy in front signs people in to both.
+
+The server refuses to start if the directory has no `index.html`. What it serves ([`rust/src/mcp/http.rs`](rust/src/mcp/http.rs)):
+- **The endpoints come first.** `/mcp`, the protected-resource metadata and the OAuth proxy answer as always; the site only gets the paths they don't.
+- **The site's files,** for a `GET` or `HEAD`, with their content types (`application/wasm` included) and `Last-Modified`, each marked `Cache-Control: no-cache` so a browser revalidates and a new deploy is picked up at once. Nothing outside the directory is served, and directories aren't listed.
+- **`index.html` for any other page a browser loads** (a request that accepts `text/html`), so the app's own paths survive a reload. Anything else — a script or asset that isn't there, any other method, and anything under `/.well-known/`, which MCP clients probe for sign-in — gets the same `404` as without a site.
+
+Copy a new build over the directory to deploy it; the server needn't restart.
 
 ### Connecting from Claude.ai
 
