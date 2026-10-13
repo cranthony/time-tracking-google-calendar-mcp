@@ -3,16 +3,17 @@
 //! Each makes a throwaway calendar (this app's calendar.app.created scope
 //! allows that), runs its steps, prints what it finds and deletes the
 //! calendar again; nothing else in your account is touched.
-//! `cancelled_events` only reads the configured calendar.
+//! `cancelled_events` and `other_client` only read the configured calendar.
 //!
 //! Usage:
-//!     probe <name> [--keep] [--pause] [--raw] [--days N] [--server PATH]
+//!     probe <name> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]
 //!
 //! where <name> is one of:
 //!     cancelled_events  whether events.list shows cancelled events, and what they keep
 //!     clear_fields      that clearing an event's fields (clear_fields) removes them
 //!     label_lifecycle   what an event does when its label is removed, then added back
 //!     metadata_tabs     the metadata spreadsheet's tabs end to end, and facts on events
+//!     other_client      whether another OAuth client (--client PATH) sees the configured calendar
 //!     series_edits      which instances an edit to a recurring series reaches
 //!     series_deletes    what deleting a series (whole, or from an event on) leaves
 //!     series_splits     ending a series Google split itself ("_R" ids), and Recurrences on it
@@ -49,6 +50,8 @@ struct Options {
     days: i64,
     /// The server binary `server` runs (default: ctt-server beside this one).
     server: Option<std::path::PathBuf>,
+    /// The other OAuth client's secret file, for `other_client`.
+    client: Option<std::path::PathBuf>,
 }
 
 fn main() {
@@ -61,9 +64,9 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: probe <cancelled_events|clear_fields|label_lifecycle|metadata_tabs|series_edits|series_deletes|series_splits|server> [--keep] [--pause] [--raw] [--days N] [--server PATH]";
+    let usage = "usage: probe <cancelled_events|clear_fields|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|server> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
     let Some(name) = args.first().cloned() else { anyhow::bail!("{usage}") };
-    let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None };
+    let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None, client: None };
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -78,11 +81,18 @@ fn run() -> anyhow::Result<()> {
                 i += 1;
                 options.server = Some(args.get(i).ok_or_else(|| anyhow!("--server takes a path"))?.into());
             }
+            "--client" => {
+                i += 1;
+                options.client = Some(args.get(i).ok_or_else(|| anyhow!("--client takes a path"))?.into());
+            }
             other => anyhow::bail!("{usage}\nunrecognized argument: {other}"),
         }
         i += 1;
     }
     let config = Config::from_env();
+    if name == "other_client" {
+        return other_client(&config, &options);
+    }
     let google = Arc::new(Google::load_or_consent(&config.token_path, &config.credentials_path)?);
     let _held = WRITE_LOCK.hold();
     if name == "cancelled_events" {
@@ -286,6 +296,52 @@ fn indented(value: &Value, indent: &str) -> String {
 /// with it, and prints how many cancelled events each returned and, for
 /// each cancelled one, which fields it kept. It only reads: nothing is
 /// written.
+/// The port `other_client` listens on for Google's redirect: register
+/// `http://localhost:8765/` as one of the client's redirect URIs.
+const OTHER_CLIENT_PORT: u16 = 8765;
+
+/// `other_client --client PATH`: whether a token from another OAuth client
+/// -- a web application's, for the server's /setup, say -- can see the
+/// calendar GOOGLE_CALENDAR_ID names, which this app's usual client made.
+/// calendar.app.created limits access to calendars "this app" created, and
+/// whether "app" is the client or its Cloud project isn't documented. Signs
+/// in with the other client (in the browser, as create_calendar does) into
+/// a throwaway token, reads the calendar and its next events, and deletes
+/// the token again; nothing is written.
+///
+/// Findings: not run yet.
+fn other_client(config: &Config, options: &Options) -> anyhow::Result<()> {
+    let path = options.client.as_deref().ok_or_else(|| anyhow!("other_client needs --client PATH, the other OAuth client's secret file"))?;
+    let calendar_id = config.calendar_id()?;
+    let client = ctt::google::consent::read_client(path)?;
+    println!(
+        "Signing in with the {} client {} (its redirect URIs must include http://localhost:{OTHER_CLIENT_PORT}/)",
+        if client.web { "web application" } else { "desktop app" },
+        client.id
+    );
+    let token = std::env::temp_dir().join(format!("ctt-other-client-{}.json", uuid::Uuid::new_v4().simple()));
+    ctt::google::consent::consent_on(&token, &client, OTHER_CLIENT_PORT)?;
+    let read = (|| -> anyhow::Result<(Value, usize)> {
+        let google = Arc::new(Google::load(&token, path)?);
+        let calendar = CalendarClient::new(google, calendar_id);
+        let found = calendar.get_calendar()?;
+        let now = Utc::now().fixed_offset();
+        Ok((found, calendar.list_events(&now, &(now + Duration::days(7)))?.len()))
+    })();
+    let _ = std::fs::remove_file(&token);
+    match read {
+        Ok((found, events)) => {
+            println!("SEES IT: the other client reads {calendar_id} ({}) and its next week's {events} events.", found["summary"].as_str().unwrap_or("?"));
+            println!("So calendar.app.created's \"app\" is the Cloud project: /setup can use this client and keep the calendar.");
+        }
+        Err(error) => {
+            println!("DOESN'T SEE IT: {error:#}");
+            println!("So calendar.app.created's \"app\" is the client: /setup must use the client that made the calendar (a desktop app's, with the pasted address).");
+        }
+    }
+    Ok(())
+}
+
 fn cancelled_events(google: &Arc<Google>, calendar_id: &str, options: &Options) -> anyhow::Result<()> {
     let raw = Raw { google: google.clone(), calendar_id: calendar_id.into() };
     let end = Utc::now().fixed_offset();

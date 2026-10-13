@@ -57,6 +57,10 @@ impl Config {
 pub struct App {
     pub config: Config,
     pub health: HealthRecorder,
+    /// Setting up Google access from a browser (crate::setup).
+    pub setup: crate::setup::Setup,
+    /// The calendar a setup made, where GOOGLE_CALENDAR_ID wasn't set.
+    calendar_made: OnceLock<String>,
     google: OnceLock<Arc<Google>>,
     calendar: OnceLock<CalendarClient>,
     locations: OnceLock<Locations>,
@@ -93,6 +97,8 @@ impl App {
         App {
             config,
             health: HealthRecorder::new(),
+            setup: crate::setup::Setup::default(),
+            calendar_made: OnceLock::new(),
             google: OnceLock::new(),
             calendar: OnceLock::new(),
             locations: OnceLock::new(),
@@ -130,10 +136,40 @@ impl App {
         Ok(self.google.get().unwrap().clone())
     }
 
+    /// The credentials, if they've been loaded.
+    pub fn loaded_google(&self) -> Option<Arc<Google>> {
+        self.google.get().cloned()
+    }
+
+    /// Use `google`'s token from now on: in place of the one loaded (for
+    /// every client holding it), or as the first.
+    pub fn install_google(&self, google: Arc<Google>) {
+        match self.google.get() {
+            Some(current) => current.take_credentials_of(&google),
+            None => {
+                let _ = self.google.set(google);
+            }
+        }
+    }
+
+    /// The calendar: GOOGLE_CALENDAR_ID's, or the one a setup made.
+    pub fn calendar_id(&self) -> anyhow::Result<String> {
+        match self.calendar_made.get() {
+            Some(id) => Ok(id.clone()),
+            None => self.config.calendar_id().map(str::to_string),
+        }
+    }
+
+    /// Use `id`, a calendar a setup just made, where GOOGLE_CALENDAR_ID
+    /// isn't set.
+    pub fn set_calendar_id(&self, id: &str) {
+        let _ = self.calendar_made.set(id.to_string());
+    }
+
     /// `_build_calendar_and_sheets_clients`: a fresh pair of clients.
     pub fn clients(&self) -> anyhow::Result<(CalendarClient, SheetsClient)> {
         let google = self.google()?;
-        Ok((CalendarClient::new(google.clone(), self.config.calendar_id()?), SheetsClient::new(google)))
+        Ok((CalendarClient::new(google.clone(), &self.calendar_id()?), SheetsClient::new(google)))
     }
 
     pub fn calendar_client(&self) -> anyhow::Result<CalendarClient> {

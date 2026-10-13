@@ -1337,7 +1337,12 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                     let mut s = state.lock().unwrap();
                     s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: None, body: body.clone(), bearer: None });
                     s.ids += 1;
-                    (200, Some(json!({"access_token": format!("fresh-{}", s.ids), "expires_in": 3600, "token_type": "Bearer"})))
+                    let mut answer = json!({"access_token": format!("fresh-{}", s.ids), "expires_in": 3600, "token_type": "Bearer"});
+                    // An authorization code's exchange: a refresh token too.
+                    if body.get("grant_type") == Some(&json!("authorization_code")) {
+                        answer["refresh_token"] = json!(format!("refresh-{}", s.ids));
+                    }
+                    (200, Some(answer))
                 } else if bearer.is_none() {
                     (401, Some(error_body(401, "Request is missing required authentication credential.")))
                 } else {
