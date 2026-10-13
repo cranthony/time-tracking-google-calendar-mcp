@@ -160,7 +160,12 @@ fn served(authkit: &str) -> Served {
 }
 
 fn served_with(config: HttpConfig) -> Served {
-    let t = crate::testing::app::test_app();
+    served_on(crate::testing::app::test_app().app, config)
+}
+
+/// The router for `app` on a local port.
+fn served_on(app: Arc<App>, config: HttpConfig) -> Served {
+    let t = Served { url: String::new(), app };
     let state = shared(t.app.clone(), config);
     *state.keys.lock().unwrap() = vec![keys()["key"]["jwk"].clone()];
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -653,4 +658,113 @@ fn behind_the_proxy_without_sign_in_mcp_works_through_it() {
     assert_eq!(initialize(&[]).status, 403);
     assert_eq!(initialize(&[("X-Serverless-Authorization", &proxy_token(json!({"exp": now() - 120})))]).status, 403);
     assert_eq!(initialize(&[("X-Serverless-Authorization", &proxy_token(json!({})))]).status, 200);
+}
+
+// -- served: setting up Google access -----------------------------------------------------
+
+use crate::setup::tests::{app_on, url_param};
+
+/// A request that doesn't follow redirects, with `cookie` if given.
+fn send_raw(method: &str, url: &str, cookie: Option<&str>, body: Option<&str>) -> Answer {
+    let agent = ureq::AgentBuilder::new().redirects(0).build();
+    let mut request = agent.request(method, url);
+    if let Some(cookie) = cookie {
+        request = request.set("Cookie", cookie);
+    }
+    let result = match body {
+        Some(body) => request.set("Content-Type", "application/x-www-form-urlencoded").send_string(body),
+        None => request.call(),
+    };
+    let response = match result {
+        Ok(r) => r,
+        Err(ureq::Error::Status(_, r)) => r,
+        Err(e) => panic!("{e}"),
+    };
+    let status = response.status();
+    let headers = response.headers_names().into_iter().map(|n| (n.clone(), response.header(&n).unwrap_or_default().to_string())).collect();
+    Answer { status, headers, body: response.into_string().unwrap_or_default() }
+}
+
+/// The server for a fresh app (no calendar) on the fake, with its
+/// client secret file: a web application's or a desktop app's.
+fn served_fresh(fake: &crate::testing::fake_google::FakeGoogle, web: bool) -> Served {
+    let served = served_on(app_on(fake, None, web), http_config(AUTHKIT));
+    served.app.setup.set_base(&served.url);
+    served
+}
+
+/// The cookie a setup page set, as the browser sends it back.
+fn cookie_of(answer: &Answer) -> String {
+    answer.header("set-cookie").unwrap().split(';').next().unwrap().to_string()
+}
+
+#[test]
+fn a_setup_link_with_a_desktop_client_finishes_with_the_pasted_address() {
+    let fake = crate::testing::fake_google::FakeGoogle::start();
+    let served = served_fresh(&fake, false);
+    let link = served.app.setup.new_link();
+
+    let page = send_raw("GET", &format!("{}/setup?link={link}", served.url), None, None);
+    assert_eq!(page.status, 200);
+    assert_eq!(page.header("cache-control"), Some("no-store"));
+    let cookie = page.header("set-cookie").unwrap();
+    assert!(cookie.contains("HttpOnly") && cookie.contains("Secure") && cookie.contains("SameSite=Lax") && cookie.contains("Path=/setup"), "{cookie}");
+    let href = page.body.split("href=\"").nth(1).unwrap().split('"').next().unwrap().replace("&amp;", "&");
+    let state = url_param(&href, "state");
+    // The link is used up.
+    assert_eq!(send_raw("GET", &format!("{}/setup?link={link}", served.url), None, None).status, 403);
+
+    let address = format!("http://localhost/?state={state}&code=4/abc&scope=x");
+    let form = format!("address={}", address.replace('&', "%26").replace('?', "%3F").replace('/', "%2F").replace(':', "%3A").replace('=', "%3D"));
+    let without_cookie = send_raw("POST", &format!("{}/setup/paste", served.url), None, Some(&form));
+    assert_eq!(without_cookie.status, 403);
+    let finished = send_raw("POST", &format!("{}/setup/paste", served.url), Some(&cookie_of(&page)), Some(&form));
+
+    assert_eq!(finished.status, 200, "{}", finished.body);
+    assert_eq!(finished.header("cache-control"), Some("no-store"));
+    let calendar = served.app.calendar_id().unwrap();
+    assert!(finished.body.contains(&calendar) && finished.body.contains("refresh-"), "{}", finished.body);
+}
+
+#[test]
+fn a_setup_link_with_a_web_client_goes_to_google_and_back() {
+    let fake = crate::testing::fake_google::FakeGoogle::start();
+    let served = served_fresh(&fake, true);
+
+    let start = send_raw("GET", &format!("{}/setup?link={}", served.url, served.app.setup.new_link()), None, None);
+    assert_eq!(start.status, 303);
+    let location = start.header("location").unwrap().to_string();
+    assert_eq!(url_param(&location, "redirect_uri"), format!("{}/setup/callback", served.url));
+    let state = url_param(&location, "state");
+
+    let back = format!("{}/setup/callback?state={state}&code=4%2Fxyz", served.url);
+    let finished = send_raw("GET", &back, Some(&cookie_of(&start)), None);
+    assert_eq!(finished.status, 200, "{}", finished.body);
+    assert!(served.app.calendar_id().is_ok());
+    // Once set up, a new link has nothing to start.
+    let start = send_raw("GET", &format!("{}/setup?link={}", served.url, served.app.setup.new_link()), None, None);
+    assert_eq!(start.status, 409, "{}", start.body);
+}
+
+#[test]
+fn setup_refuses_a_missing_link_and_a_server_already_set_up() {
+    let served = served(AUTHKIT);
+    served.app.setup.set_base(&served.url);
+
+    assert_eq!(send_raw("GET", &format!("{}/setup", served.url), None, None).status, 403);
+    assert_eq!(send_raw("GET", &format!("{}/setup?link=guessed", served.url), None, None).status, 403);
+    let working = send_raw("GET", &format!("{}/setup?link={}", served.url, served.app.setup.new_link()), None, None);
+    assert_eq!(working.status, 409);
+    assert!(working.body.contains("nothing to set up"));
+    let refused = send_raw("GET", &format!("{}/setup/callback?error=access_denied", served.url), None, None);
+    assert_eq!(refused.status, 400);
+    assert!(refused.body.contains("access_denied"));
+}
+
+#[test]
+fn the_public_base_is_the_mcp_url_without_mcp_or_the_proxys_host() {
+    assert_eq!(config(&[]).unwrap().public_base().as_deref(), Some("https://explicit.example"));
+    let proxied = [("ALLOWED_PROXY_EMAIL", "p@x.iam.gserviceaccount.com"), ("ALLOWED_HOST", "tracker.corp.example"), ("PROXY_AUDIENCE", "a")];
+    assert_eq!(disabled(&proxied).unwrap().public_base().as_deref(), Some("https://tracker.corp.example"));
+    assert_eq!(disabled(&[]).unwrap().public_base(), None);
 }

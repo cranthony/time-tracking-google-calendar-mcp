@@ -31,6 +31,7 @@ All of it is in [`rust/src/`](rust/src/) (`lib.rs` lists the modules the server 
 - [`stores/`](rust/src/stores/) — what's kept: actions and groups, people and circles, locations, traits, habits, cancellations, the noted-times tab, the compaction schedule, the compaction journal; and [`event_changes.rs`](rust/src/stores/event_changes.rs) (batches of event changes, refused if they'd overlap), [`action_calendar.rs`](rust/src/stores/action_calendar.rs) (events read and written through their actions) and [`recurrences.rs`](rust/src/stores/recurrences.rs) (recurring series).
 - [`compaction/`](rust/src/compaction/) — compacting notes: the planner ([`plan.rs`](rust/src/compaction/plan.rs)), proposals, what a compaction adds, judgments, and [`compactor.rs`](rust/src/compaction/compactor.rs), which ties them to the journal; [`timeline.rs`](rust/src/timeline.rs) draws them.
 - [`health.rs`](rust/src/health.rs) — health metrics for `get_health`.
+- [`setup.rs`](rust/src/setup.rs) — setting up Google access from a browser, for `google_setup_link` and `/setup`.
 - [`bin/`](rust/src/bin/) — the command-line tools: [`create_calendar`](rust/src/cli/create_calendar.rs), [`calendar_cli`](rust/src/cli/calendar_cli.rs) and [`probe`](rust/src/bin/probe.rs) (see [Command-line utilities](#command-line-utilities)).
 
 The server began as a Python one, and was ported to Rust call for call: some names (and the error texts) still read the way Python wrote them.
@@ -102,6 +103,7 @@ The server exposes the calendar as MCP tools ([`rust/src/tools/`](rust/src/tools
 | `get_compaction_schedule_hints` | `() -> CompactionScheduleHints` |
 | `set_compaction_schedule_hints` | `(hints: list[ScheduleHint]) -> CompactionScheduleHints` |
 | `get_health` | `(tool_name: str \| None = None, samples: bool = True) -> HealthReport` |
+| `google_setup_link` | `() -> SetupLink` |
 | `note` | `(noted_time: NotedTime) -> NoteWithId` |
 | `get_notes` | `(include_compacted: bool = False) -> list[NoteWithId]` |
 | `edit_note` | `(note_id: str, timestamp: datetime \| None, description: str \| None) -> NoteWithId` |
@@ -281,7 +283,7 @@ The server never writes an event's own `colorId`: it overrides the label's color
 The server's OAuth token ([`rust/src/google/mod.rs`](rust/src/google/mod.rs)), shared by its Calendar and Sheets clients, needs two files, neither of which should ever be committed:
 
 - **`credentials.json`** — the OAuth *client* secret, downloaded once from the [Google Cloud Console](https://console.cloud.google.com/) for the Google Cloud project you register this server under (APIs & Services → Credentials → create an OAuth client ID of type "Desktop app", then download its JSON). This identifies the application, not you as a user — you obtain it yourself and supply its path.
-- **`token.json`** — the *user's* actual access + refresh token, carrying every scope in `SCOPES` (Calendar and Drive/Sheets both). You don't create this yourself: the first time a command-line tool (`create_calendar`, say) runs without a usable token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. (The server never does: it needs a token already there.) Every later run reads the cached file back and refreshes it as the access token expires; rewriting it back to `token_path` afterward is best-effort — if the path turns out not to be writable (see [Deploying](#deploying) below), the refresh still succeeds in memory, just without being persisted.
+- **`token.json`** — the *user's* actual access + refresh token, carrying every scope in `SCOPES` (Calendar and Drive/Sheets both). You don't create this yourself: the first time a command-line tool (`create_calendar`, say) runs without a usable token, it opens a browser for you to log into Google and grant access, then writes the resulting credentials to this path. (The server never opens a browser itself, but over HTTP it can [set up its token from yours](#setting-up-google-access-from-a-browser).) Every later run reads the cached file back and refreshes it as the access token expires; rewriting it back to `token_path` afterward is best-effort — if the path turns out not to be writable (see [Deploying](#deploying) below), the refresh still succeeds in memory, just without being persisted.
 
 Where they live is set by the [configuration](#configuration). For local development, the filenames `credentials.json` and `token.json` are gitignored, so you can drop both files straight into the project root without risk of committing them.
 
@@ -404,6 +406,21 @@ The server refuses to start if the directory has no `index.html`. What it serves
 
 Copy a new build over the directory to deploy it; the server needn't restart.
 
+### Setting up Google access from a browser
+
+Over HTTP, the server can get its Google token — or a new one, when the old stops working — from a browser, instead of from `create_calendar` on a machine of yours ([`rust/src/setup.rs`](rust/src/setup.rs)). Ask for a link with the `google_setup_link` tool (from Claude, say: "give me a Google setup link"), open it, and sign in with Google; the server takes on the token at once:
+- **With no calendar** (`GOOGLE_CALENDAR_ID` unset), it makes this app's calendar and its spreadsheet, as `create_calendar` does, and shows the calendar's id — set `GOOGLE_CALENDAR_ID` to it, or a restart starts over.
+- **With one**, it checks the new token can see that calendar before taking it on: signed in with another account (or another OAuth client — see below), it's refused, and the old token stays.
+- Either way it shows the token, to keep as the server's `token.json` (on Render, paste it into the Secret File; elsewhere, wherever `GOOGLE_OAUTH_TOKEN_PATH` points). It writes it to `GOOGLE_OAUTH_TOKEN_PATH` itself too, if it can — a read-only secret mount can't be, so keep it, or the next restart has only the old token.
+
+The tool gives a link only when there's something to set up: when Google access works, it refuses, and so does `/setup`. Whoever can call the tool can set up the server's Google access, so it's exactly as protected as the server's tools: WorkOS sign-in, or the [IAP proxy](#behind-an-iap-proxy). The link works once, for 10 minutes; the setup it starts belongs to the browser that opened it (an HTTP-only cookie) and lasts 15 minutes. The pages are never cached, and the token is never logged.
+
+It signs in with the OAuth client in `GOOGLE_OAUTH_CREDENTIALS_PATH`, so the server needs `credentials.json` too:
+- **A web application's client** (Google Cloud Console → Credentials → OAuth client ID → "Web application") sends the browser straight back: register `<this server's URL>/setup/callback` (e.g. `https://your-service.onrender.com/setup/callback`) as one of its authorized redirect URIs.
+- **A desktop app's client** (the kind `create_calendar` uses) can only send the browser back to `localhost`, where nothing answers: the page tells you to copy the address the sign-in tab lands on, and paste it in to finish.
+
+A calendar belongs to the app that made it (`calendar.app.created`), and whether that means the OAuth client or its whole Cloud project isn't documented. Before switching an existing calendar to a new web client, check with [`probe other_client --client <its credentials.json>`](#command-line-utilities): if the new client can't see the calendar, keep using the client that made it (a desktop app's, with the paste).
+
 ### Connecting from Claude.ai
 
 Once deployed, add it under claude.ai's **Settings → Connectors → Add custom connector**, using your server's URL plus `/mcp` (e.g. `https://your-service.onrender.com/mcp`). Claude.ai takes it from there — discovering that the server requires auth, finding your WorkOS AuthKit project, registering itself as a client, and walking you through the login/consent flow — before it can call any tool.
@@ -427,6 +444,7 @@ The tools are built with the server (see [Setup](#setup)), into `rust/target/rel
 - `cancelled_events [--days N] [--raw]` — what Google Calendar returns for your cancelled events. Nothing reads them from Calendar any more (`list_events` leaves them out, and the Cancellations tab records the ones that count). It lists the configured calendar's last days with and without `showDeleted`, and only reads.
 - `clear_fields` — that clearing an event's fields (`clear_fields`) removes them, on events and series.
 - `label_lifecycle [--pause]` — what an event does when its label is removed, then added back.
+- `other_client --client PATH` — whether another OAuth client (a web application's, for [`/setup`](#setting-up-google-access-from-a-browser)) can see the calendar `GOOGLE_CALENDAR_ID` names, which your usual client made: it signs in with that client in the browser (register `http://localhost:8765/` as one of its redirect URIs) into a throwaway token, and only reads.
 - `metadata_tabs` — the actions, groups, people, circles and locations tabs end to end, and facts on events. It leaves its scratch spreadsheet in Drive, for you to trash by hand: this app can't.
 - `series_edits`, `series_deletes`, `series_splits` — which of a recurring series' instances an edit or delete reaches, and ending a series Google split itself.
 - `server` — the server itself, over MCP against Google, on a scratch calendar: the stores, events, a whole compaction (a proposal, an edit, confirming, judging), a habit backfill and health. Run it before deploying a change you're unsure of.

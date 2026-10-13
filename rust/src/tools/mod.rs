@@ -10,6 +10,7 @@ mod health;
 mod people;
 mod places;
 mod recurrences;
+mod setup;
 mod stores;
 
 use crate::app::App;
@@ -134,6 +135,7 @@ pub fn registry() -> &'static [crate::contract::ToolDef] {
             events::set_compaction_schedule_hints_tool(),
             events::set_time_zone_tool(),
             health::get_health_tool(),
+            setup::google_setup_link_tool(),
         ]
     });
     &TOOLS

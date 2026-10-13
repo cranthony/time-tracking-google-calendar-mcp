@@ -113,6 +113,19 @@ impl Google {
         Google::load(token_path, credentials_path)
     }
 
+    /// A client for `text`'s token, at the same APIs as this one.
+    pub fn with_token_json(&self, text: &str) -> anyhow::Result<Google> {
+        let root = if self.sheets_root.starts_with("https://sheets.googleapis.com") { None } else { Some(self.sheets_root.clone()) };
+        Google::from_token_json_at(text, &self.token_path, root)
+    }
+
+    /// Take on `other`'s token in place of this one's, for every client
+    /// already holding this one.
+    pub fn take_credentials_of(&self, other: &Google) {
+        let theirs = other.credentials.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        *self.credentials.lock().unwrap_or_else(|e| e.into_inner()) = theirs;
+    }
+
     pub fn from_token_json(text: &str, token_path: &Path) -> anyhow::Result<Google> {
         // conformance/'s fake Google (see conformance/fake_google.py).
         let root = std::env::var("GOOGLE_API_ROOT").ok().filter(|r| !r.is_empty());

@@ -17498,5 +17498,35 @@
         }
       }
     }
+  },
+  {
+    "description": "A link to set up the server's Google access in a browser, when it\nneeds it: there's no calendar yet (GOOGLE_CALENDAR_ID isn't set), or\nthe Google token stopped working (revoked, or expired). Give the user\nthe link to open: they sign in with Google there, and the server takes\non the new token at once -- making the calendar and its spreadsheet if\nthere's none -- and shows the token, to keep as the server's\ntoken.json secret. The link works once, for a few minutes, and only\nfrom this server's own URL. Refused when Google access already works,\nand over stdio (run create_calendar instead).",
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+      "title": "google_setup_linkArguments"
+    },
+    "name": "google_setup_link",
+    "outputSchema": {
+      "properties": {
+        "url": {
+          "description": "The page to open in a browser: good once, within `expires_in_minutes`.",
+          "type": "string"
+        },
+        "expires_in_minutes": {
+          "type": "integer"
+        },
+        "reason": {
+          "description": "Why Google access needs setting up.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "expires_in_minutes",
+        "reason"
+      ],
+      "type": "object"
+    }
   }
 ]

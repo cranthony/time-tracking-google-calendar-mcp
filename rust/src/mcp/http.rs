@@ -150,6 +150,15 @@ impl HttpConfig {
         self.authkit_domain.trim_end_matches('/').to_string()
     }
 
+    /// Where a browser reaches this server: MCP_PUBLIC_URL without /mcp,
+    /// or the host the proxy forwards.
+    pub fn public_base(&self) -> Option<String> {
+        if !self.resource.is_empty() {
+            return Some(self.resource.trim_end_matches('/').trim_end_matches("/mcp").to_string());
+        }
+        self.proxy.as_ref().map(|p| format!("https://{}", p.host))
+    }
+
     fn resource_metadata_url(&self) -> String {
         let (scheme, rest) = self.resource.split_once("://").unwrap_or(("https", &self.resource));
         let (host, path) = match rest.find('/') {
@@ -185,6 +194,7 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
         tracing::info!("Taking only requests through the proxy: {} for {}, Host {}", check.email, check.audience, check.host);
     }
     let port = config.port;
+    app.setup.set_base(&config.public_base().unwrap_or_else(|| format!("http://localhost:{port}")));
     let router = router(shared(app, config));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     tracing::info!("Uvicorn running on http://0.0.0.0:{port}");
@@ -206,7 +216,11 @@ fn shared(app: Arc<App>, config: HttpConfig) -> Arc<Shared> {
 /// proxy -- behind CORS. A build that skips sign-in has only MCP: nothing
 /// to send a client off to sign in.
 fn router(shared: Arc<Shared>) -> Router {
-    let mut router = Router::new().route("/mcp", get(mcp_get).post(mcp_post).delete(mcp_delete));
+    let mut router = Router::new()
+        .route("/mcp", get(mcp_get).post(mcp_post).delete(mcp_delete))
+        .route("/setup", get(setup_start))
+        .route("/setup/callback", get(setup_callback))
+        .route("/setup/paste", post(setup_paste));
     if !shared.config.auth_disabled {
         router = router
             .route(PROTECTED_RESOURCE_PATH, get(protected_resource))
@@ -236,6 +250,137 @@ async fn through_proxy(State(shared): State<Arc<Shared>>, request: Request, next
             text_response(StatusCode::FORBIDDEN, "Forbidden")
         }
     }
+}
+
+// -- setting up Google access (crate::setup) ---------------------------------------
+
+/// A setup page: never cached, never sent on as a referrer.
+fn setup_page(status: StatusCode, html: String) -> Response {
+    let mut response = Response::new(Body::from(html));
+    *response.status_mut() = status;
+    let headers = response.headers_mut();
+    headers.insert("content-type", HeaderValue::from_static("text/html; charset=utf-8"));
+    headers.insert("cache-control", HeaderValue::from_static("no-store"));
+    headers.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
+    response
+}
+
+fn query_of(request: &Request) -> Vec<(String, String)> {
+    crate::google::consent::query_params(request.uri().query().unwrap_or(""))
+}
+
+fn param(params: &[(String, String)], key: &str) -> Option<String> {
+    params.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
+}
+
+/// The browser's setup session, from its cookie.
+fn setup_session(headers: &HeaderMap) -> Option<String> {
+    let cookies = headers.get_all("cookie").iter().filter_map(|c| c.to_str().ok()).collect::<Vec<_>>().join("; ");
+    cookies.split(';').filter_map(|c| c.trim().split_once('=')).find(|(k, _)| *k == crate::setup::COOKIE).map(|(_, v)| v.to_string())
+}
+
+/// Where the browser reached this server: its configured URL, or the Host
+/// it asked for (http on localhost, https elsewhere).
+fn browser_base(shared: &Shared, headers: &HeaderMap) -> String {
+    if let Some(base) = shared.app.setup.base() {
+        return base.to_string();
+    }
+    let host = headers.get("host").and_then(|h| h.to_str().ok()).unwrap_or("localhost");
+    let local = ["localhost", "127.0.0.1", "[::1]"].iter().any(|l| host == *l || host.starts_with(&format!("{l}:")));
+    format!("{}://{host}", if local { "http" } else { "https" })
+}
+
+/// /setup?link=...: a link from google_setup_link starts a setup, off to
+/// Google (or, for a desktop app's client, a page to paste its answer in).
+async fn setup_start(State(shared): State<Arc<Shared>>, request: Request) -> Response {
+    let link = param(&query_of(&request), "link").unwrap_or_default();
+    if !shared.app.setup.take_link(&link) {
+        return setup_page(
+            StatusCode::FORBIDDEN,
+            crate::setup::error_page("This setup link is missing, expired, or already used. Ask for a new one with the google_setup_link tool."),
+        );
+    }
+    let base = browser_base(&shared, request.headers());
+    let app = shared.app.clone();
+    let started = tokio::task::spawn_blocking(move || -> anyhow::Result<Option<(String, String, bool)>> {
+        if crate::setup::need(&app).is_none() {
+            return Ok(None);
+        }
+        app.setup.start(&app, &base).map(Some)
+    })
+    .await;
+    let (session, url, web) = match started {
+        Ok(Ok(Some(started))) => started,
+        Ok(Ok(None)) => {
+            return setup_page(StatusCode::CONFLICT, crate::setup::error_page("Google access already works with the calendar: there's nothing to set up."))
+        }
+        Ok(Err(error)) => return setup_page(StatusCode::INTERNAL_SERVER_ERROR, crate::setup::error_page(&format!("{error:#}"))),
+        Err(error) => return setup_page(StatusCode::INTERNAL_SERVER_ERROR, crate::setup::error_page(&error.to_string())),
+    };
+    let mut response = if web {
+        let mut response = setup_page(StatusCode::SEE_OTHER, String::new());
+        if let Ok(location) = HeaderValue::from_str(&url) {
+            response.headers_mut().insert("location", location);
+        }
+        response
+    } else {
+        setup_page(StatusCode::OK, crate::setup::paste_page(&url))
+    };
+    let cookie = format!("{}={session}; Path=/setup; HttpOnly; Secure; SameSite=Lax; Max-Age=900", crate::setup::COOKIE);
+    if let Ok(cookie) = HeaderValue::from_str(&cookie) {
+        response.headers_mut().insert("set-cookie", cookie);
+    }
+    response
+}
+
+/// Finish the browser's setup with Google's answer (its query parameters).
+async fn setup_finish(shared: Arc<Shared>, headers: &HeaderMap, answer: Vec<(String, String)>) -> Response {
+    if let Some(error) = param(&answer, "error") {
+        return setup_page(StatusCode::BAD_REQUEST, crate::setup::error_page(&format!("Google didn't grant access ({error}). Ask google_setup_link for a new link to try again.")));
+    }
+    let (Some(code), Some(state)) = (param(&answer, "code"), param(&answer, "state")) else {
+        return setup_page(StatusCode::BAD_REQUEST, crate::setup::error_page("That isn't Google's answer: it has no code. Copy the whole address the sign-in tab ended on."));
+    };
+    let Some(session) = setup_session(headers) else {
+        return setup_page(
+            StatusCode::FORBIDDEN,
+            crate::setup::error_page("This browser didn't start this setup (it has no setup cookie): finish in the browser you opened the link in, or ask google_setup_link for a new link."),
+        );
+    };
+    let app = shared.app.clone();
+    let finished = tokio::task::spawn_blocking(move || app.setup.finish(&app, &session, &code, &state)).await;
+    match finished {
+        Ok(Ok(finished)) => {
+            tracing::info!("Google access set up: calendar {}{}", finished.calendar_id, if finished.created { " (new)" } else { "" });
+            let mut response = setup_page(StatusCode::OK, crate::setup::finished_page(&finished));
+            let expired = format!("{}=; Path=/setup; HttpOnly; Secure; SameSite=Lax; Max-Age=0", crate::setup::COOKIE);
+            if let Ok(expired) = HeaderValue::from_str(&expired) {
+                response.headers_mut().insert("set-cookie", expired);
+            }
+            response
+        }
+        Ok(Err(error)) => {
+            tracing::warn!("Google setup failed: {error:#}");
+            setup_page(StatusCode::BAD_REQUEST, crate::setup::error_page(&format!("{error:#}")))
+        }
+        Err(error) => setup_page(StatusCode::INTERNAL_SERVER_ERROR, crate::setup::error_page(&error.to_string())),
+    }
+}
+
+/// /setup/callback: where Google sends a web application client's browser.
+async fn setup_callback(State(shared): State<Arc<Shared>>, request: Request) -> Response {
+    let answer = query_of(&request);
+    let headers = request.headers().clone();
+    setup_finish(shared, &headers, answer).await
+}
+
+/// /setup/paste: the address a desktop app client's browser landed on.
+async fn setup_paste(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: Bytes) -> Response {
+    let form = crate::google::consent::query_params(&String::from_utf8_lossy(&body));
+    let address = param(&form, "address").unwrap_or_default();
+    let query = address.trim().split_once('?').map(|(_, q)| q).unwrap_or("");
+    let answer = crate::google::consent::query_params(query.split('#').next().unwrap_or(""));
+    setup_finish(shared, &headers, answer).await
 }
 
 /// STATIC_SITE_DIR's directory, which must hold the site's index.html.

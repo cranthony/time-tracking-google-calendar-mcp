@@ -321,11 +321,11 @@ fn delete_recurrence_returns_what_is_left_of_the_series() {
 
 // -- the write lock --------------------------------------------------------------------------------
 
-const READ_ONLY_TOOLS: [&str; 24] = [
+const READ_ONLY_TOOLS: [&str; 25] = [
     "list_events", "get_event", "get_recurrence", "get_compaction_status", "get_proposal", "get_notes", "get_traits", "get_actions",
     "get_action", "get_action_groups", "get_action_group", "get_priority_colors", "get_people", "get_person", "get_circles",
     "get_circle", "get_locations", "get_location", "get_habits", "get_habit", "get_compaction_schedule_hints", "prepare_judgments",
-    "prepare_habit_judgments", "get_health",
+    "prepare_habit_judgments", "get_health", "google_setup_link",
 ];
 
 #[test]

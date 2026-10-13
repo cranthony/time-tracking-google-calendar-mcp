@@ -15,6 +15,7 @@ pub mod google;
 pub mod health;
 pub mod mcp;
 pub mod py;
+pub mod setup;
 pub mod sheet;
 pub mod stores;
 pub mod timeline;
