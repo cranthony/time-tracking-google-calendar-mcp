@@ -131,8 +131,10 @@ fn initialize_result(params: &Value) -> Value {
         "protocolVersion": negotiated,
         "serverInfo": {"name": SERVER_NAME, "version": ""}
     });
-    // A build that skips sign-in says so to whoever connects.
+    // A build that skips sign-in says so to whoever connects: a flag for
+    // clients to check, and words for people (and models) to read.
     if crate::auth_mode::disabled() {
+        result["_meta"] = json!({crate::auth_mode::META_KEY: true});
         result["instructions"] = json!(crate::auth_mode::INSTRUCTIONS);
         result["serverInfo"]["title"] = json!(format!("{SERVER_NAME} (sign-in off)"));
     }

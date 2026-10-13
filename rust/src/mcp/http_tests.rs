@@ -477,4 +477,8 @@ fn the_handshake_says_whether_this_build_skips_sign_in() {
 
     let says = answer.body.contains("Authentication is disabled") && answer.body.contains("(sign-in off)");
     assert_eq!(says, crate::auth_mode::disabled(), "{}", answer.body);
+    let data = answer.body.split("data: ").nth(1).unwrap().trim();
+    let result = &serde_json::from_str::<Value>(data).unwrap()["result"];
+    let flag = &result["_meta"][crate::auth_mode::META_KEY];
+    assert_eq!(flag, &if crate::auth_mode::disabled() { json!(true) } else { Value::Null }, "{result}");
 }
