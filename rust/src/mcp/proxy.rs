@@ -4,7 +4,9 @@
 //! the Host it forwards, ALLOWED_HOST.
 //!
 //! The proxy strips the token's signature before passing it on, so the
-//! server can't verify it: it checks the claims. That's only as strong as
+//! server can't verify it: it checks the claims -- and, with
+//! PROXY_TOKEN_SIGNATURE, that what the proxy left in the signature's place
+//! is that text. That's only as strong as
 //! the guarantee that nothing but the proxy can reach the server -- Cloud
 //! Run's ingress and invoker IAM have to make sure of that (see the
 //! README's "Behind an IAP proxy").
@@ -19,20 +21,32 @@ const LEEWAY_SECONDS: i64 = 60;
 pub const TOKEN_HEADER: &str = "x-serverless-authorization";
 /// The settings, all three needed once any is set.
 pub const VARS: [&str; 3] = ["ALLOWED_PROXY_EMAIL", "ALLOWED_HOST", "PROXY_AUDIENCE"];
+/// What the proxy leaves in place of the token's signature, checked if set.
+pub const SIGNATURE_VAR: &str = "PROXY_TOKEN_SIGNATURE";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProxyCheck {
     pub email: String,
     pub host: String,
     pub audience: String,
+    /// What the token's signature must be: the text the proxy leaves in
+    /// its place.
+    pub signature: Option<String>,
 }
 
 impl ProxyCheck {
     /// The check `get`'s variables ask for: none if none is set, or an
     /// error naming those missing if only some are.
     pub fn from_vars(get: impl Fn(&str) -> Option<String>) -> anyhow::Result<Option<ProxyCheck>> {
-        let values: Vec<Option<String>> = VARS.iter().map(|name| get(name).map(|v| v.trim().to_string()).filter(|v| !v.is_empty())).collect();
+        let value = |name: &str| get(name).map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+        let values: Vec<Option<String>> = VARS.iter().map(|name| value(name)).collect();
+        let signature = value(SIGNATURE_VAR);
         if values.iter().all(Option::is_none) {
+            if signature.is_some() {
+                anyhow::bail!(
+                    "PROXY_TOKEN_SIGNATURE is set, but the proxy check is off: it needs ALLOWED_PROXY_EMAIL, ALLOWED_HOST and PROXY_AUDIENCE too -- see the README's \"Behind an IAP proxy\" section."
+                );
+            }
             return Ok(None);
         }
         let missing: Vec<&str> = VARS.iter().zip(&values).filter(|(_, v)| v.is_none()).map(|(name, _)| *name).collect();
@@ -43,7 +57,7 @@ impl ProxyCheck {
             );
         }
         let [email, host, audience] = [values[0].clone().unwrap(), values[1].clone().unwrap(), values[2].clone().unwrap()];
-        Ok(Some(ProxyCheck { email, host: bare_host(&host).to_lowercase(), audience }))
+        Ok(Some(ProxyCheck { email, host: bare_host(&host).to_lowercase(), audience, signature }))
     }
 
     /// What's wrong with a request carrying `token` (X-Serverless-
@@ -59,10 +73,15 @@ impl ProxyCheck {
         let Some(token) = token else {
             return Some("no X-Serverless-Authorization token".into());
         };
-        let claims = match claims_of(token) {
-            Ok(claims) => claims,
+        let (claims, signature) = match claims_of(token) {
+            Ok(parts) => parts,
             Err(why) => return Some(format!("the X-Serverless-Authorization token {why}")),
         };
+        if let Some(expected) = &self.signature {
+            if signature != Some(expected.as_str()) {
+                return Some("the token's signature isn't PROXY_TOKEN_SIGNATURE".into());
+            }
+        }
         let text = |name: &str| claims.get(name).and_then(Value::as_str);
         if !text("iss").is_some_and(|iss| ISSUERS.contains(&iss)) {
             return Some("the token isn't Google's (iss)".into());
@@ -108,17 +127,22 @@ fn bare_host(host: &str) -> &str {
 }
 
 /// The claims of `token` ("Bearer header.payload[.signature]", the
-/// signature usually stripped), unverified -- or what's wrong with it.
-fn claims_of(token: &str) -> Result<serde_json::Map<String, Value>, &'static str> {
+/// signature usually stripped), unverified, and its signature part, if it
+/// has one -- or what's wrong with it.
+fn claims_of(token: &str) -> Result<(serde_json::Map<String, Value>, Option<&str>), &'static str> {
     let token = token.trim();
     let token = token.strip_prefix("Bearer ").or_else(|| token.strip_prefix("bearer ")).unwrap_or(token).trim();
     let mut parts = token.split('.');
     let (Some(_header), Some(payload)) = (parts.next(), parts.next()) else {
         return Err("isn't a JWT");
     };
+    let signature = parts.next();
+    if parts.next().is_some() {
+        return Err("isn't a JWT");
+    }
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload.trim_end_matches('=')).map_err(|_| "isn't a JWT")?;
     match serde_json::from_slice(&bytes) {
-        Ok(Value::Object(claims)) => Ok(claims),
+        Ok(Value::Object(claims)) => Ok((claims, signature)),
         _ => Err("isn't a JWT"),
     }
 }

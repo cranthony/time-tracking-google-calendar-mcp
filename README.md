@@ -303,6 +303,7 @@ The server reads its configuration from environment variables ([`rust/src/app.rs
 | `ALLOWED_PROXY_EMAIL` | No | — | The service account of the IAP proxy in front of the `streamable-http` server: with `ALLOWED_HOST` and `PROXY_AUDIENCE` (all three, or none), every request must come through it — see [Behind an IAP proxy](#behind-an-iap-proxy). Required on Cloud Run for a build without sign-in. |
 | `ALLOWED_HOST` | No | — | The `Host` the proxy forwards (e.g. `tracker.corp.example`; any port is ignored). |
 | `PROXY_AUDIENCE` | No | — | The `aud` the proxy's tokens are minted for, exactly as they carry it (e.g. a GCP project address). |
+| `PROXY_TOKEN_SIGNATURE` | No | — | The text the proxy leaves in place of the token's signature (e.g. `SIGNATURE_REMOVED_BY_GOOGLE`): set, a token must end in exactly that. Only with the three above. |
 | `PORT` | No | `10000` | The port `streamable-http` binds to (always alongside host `0.0.0.0`, as every Render web service requires). Render sets this for you automatically. |
 
 To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — the server and the tools read a `.env` in their working directory if there is one (a variable already set wins). `.env` is gitignored, so nothing personal ends up committed.
@@ -385,7 +386,8 @@ The proxy's own header isn't read: the server can't tell who's behind it, and do
 Where an IAP-style proxy signs people in and forwards their requests (on Cloud Run, say), the server can take only what came through it: set `ALLOWED_PROXY_EMAIL` (the proxy's service account), `ALLOWED_HOST` (the hostname it forwards) and `PROXY_AUDIENCE` (the audience its tokens are minted for). Then every request — `/mcp`, the static site, everything — must carry the proxy's OIDC token in `X-Serverless-Authorization`, and is refused with `403 Forbidden` unless ([`rust/src/mcp/proxy.rs`](rust/src/mcp/proxy.rs)):
 - its `Host` is `ALLOWED_HOST` (in any case, any port);
 - the token is Google's (`iss` `https://accounts.google.com`), for `PROXY_AUDIENCE` (`aud`, or one of a list), unexpired (`exp`, and an `iat` not in the future, a minute's leeway each way);
-- its `email` is `ALLOWED_PROXY_EMAIL` (in any case), with `email_verified` true.
+- its `email` is `ALLOWED_PROXY_EMAIL` (in any case), with `email_verified` true;
+- with `PROXY_TOKEN_SIGNATURE` set, its signature part — what the proxy leaves in the signature's place — is exactly that text.
 
 The log says why a request was refused, never with its token. Set all three or none: the server refuses to start with only some. A build [without sign-in](#without-sign-in-behind-a-corporate-proxy) refuses to start on Cloud Run without them; a build with sign-in can use them too, checking both the proxy's token and the user's.
 

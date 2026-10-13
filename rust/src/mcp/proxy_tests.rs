@@ -14,8 +14,10 @@ fn vars(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
 }
 
 fn check() -> ProxyCheck {
-    ProxyCheck { email: EMAIL.into(), host: HOST.into(), audience: AUDIENCE.into() }
+    ProxyCheck { email: EMAIL.into(), host: HOST.into(), audience: AUDIENCE.into(), signature: None }
 }
+
+const PLACEHOLDER: &str = "SIGNATURE_REMOVED_BY_GOOGLE";
 
 /// A token with `changes` to the proxy's usual claims (null removes one),
 /// its signature stripped as the proxy passes it on.
@@ -39,6 +41,29 @@ fn the_settings_are_all_or_nothing() {
     assert_eq!(ProxyCheck::from_vars(vars(&all)).unwrap(), Some(check()));
     let refused = ProxyCheck::from_vars(vars(&all[..1])).err().unwrap().to_string();
     assert!(refused.contains("ALLOWED_HOST and PROXY_AUDIENCE isn't set"), "{refused}");
+    // The signature's text is optional, but only with the rest.
+    let signed = [all.as_slice(), &[("PROXY_TOKEN_SIGNATURE", PLACEHOLDER)]].concat();
+    assert_eq!(ProxyCheck::from_vars(vars(&signed)).unwrap().unwrap().signature.as_deref(), Some(PLACEHOLDER));
+    let alone = ProxyCheck::from_vars(vars(&[("PROXY_TOKEN_SIGNATURE", PLACEHOLDER)])).err().unwrap().to_string();
+    assert!(alone.contains("PROXY_TOKEN_SIGNATURE is set, but the proxy check is off"), "{alone}");
+}
+
+#[test]
+fn with_a_signature_set_the_token_must_end_in_it() {
+    let signed = ProxyCheck { signature: Some(PLACEHOLDER.into()), ..check() };
+    let ending = |signature: &str| format!("{}{signature}", token(json!({})));
+
+    assert_eq!(signed.problem(Some(&ending(PLACEHOLDER)), Some(HOST), NOW), None);
+    for wrong in ["", "signature_removed_by_google", "SIGNATURE_REMOVED_BY_GOOGLEX", "real-signature-bytes"] {
+        let problem = signed.problem(Some(&ending(wrong)), Some(HOST), NOW).unwrap_or_default();
+        assert!(problem.contains("signature isn't PROXY_TOKEN_SIGNATURE"), "{wrong:?}: {problem:?}");
+    }
+    let unsigned = token(json!({})).trim_end_matches('.').to_string();
+    assert!(signed.problem(Some(&unsigned), Some(HOST), NOW).is_some());
+    let extra = format!("{}.more", ending(PLACEHOLDER));
+    assert!(signed.problem(Some(&extra), Some(HOST), NOW).unwrap().contains("isn't a JWT"));
+    // Without it, any signature part (or none) is taken.
+    assert_eq!(check().problem(Some(&ending("anything")), Some(HOST), NOW), None);
 }
 
 #[test]

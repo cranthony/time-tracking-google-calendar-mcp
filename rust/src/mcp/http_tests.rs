@@ -607,7 +607,7 @@ const PROXY_EMAIL: &str = "proxy@corp-project.iam.gserviceaccount.com";
 const PROXY_AUDIENCE: &str = "//iam.googleapis.com/projects/123456";
 
 fn served_behind_proxy(auth_disabled: bool) -> Served {
-    let proxy = ProxyCheck { email: PROXY_EMAIL.into(), host: "127.0.0.1".into(), audience: PROXY_AUDIENCE.into() };
+    let proxy = ProxyCheck { email: PROXY_EMAIL.into(), host: "127.0.0.1".into(), audience: PROXY_AUDIENCE.into(), signature: None };
     served_with(HttpConfig { proxy: Some(proxy), auth_disabled, static_site: Some(site_dir()), ..http_config(AUTHKIT) })
 }
 
