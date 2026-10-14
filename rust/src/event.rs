@@ -312,7 +312,7 @@ fn chunk_key(name: &str, index: usize) -> String {
     }
 }
 
-pub fn read_chunks(private: &Map<String, Value>, name: &str) -> Option<String> {
+fn read_chunks(private: &Map<String, Value>, name: &str) -> Option<String> {
     let first = private.get(&chunk_key(name, 0))?.as_str()?;
     let mut text = first.to_string();
     for index in 1..chunks(name) {

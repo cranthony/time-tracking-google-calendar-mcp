@@ -76,7 +76,7 @@ impl From<EventBuilder> for Event {
     }
 }
 
-/// Facts from JSON as they're stored ({"location": ..., "with": [...]}).
+/// Facts from JSON as they're stored ({"locations": [...], "with": [...]}).
 pub fn facts(json: Value) -> Facts {
     Facts::from_json(&json.to_string()).unwrap()
 }
