@@ -16,6 +16,7 @@ struct Filled {
     sam: String,
     family: String,
     home: String,
+    brooklyn: String,
     outside: String,
 }
 
@@ -23,7 +24,7 @@ fn id(created: Value) -> String {
     created["created_id"].as_str().unwrap().to_string()
 }
 
-/// An action in a group, a person in a circle, a location, a habit, an
+/// An action in a group, a person in a circle, a location in a group, a habit, an
 /// event with an action and facts, and a note, so every tab the tools read
 /// has something in it.
 fn filled() -> Filled {
@@ -32,7 +33,8 @@ fn filled() -> Filled {
     let walk = id(s.ok("create_action", json!({"action": {"name": "Walk", "group_id": outdoors, "status": "active"}})));
     let family = id(s.ok("create_circle", json!({"circle": {"name": "Family"}})));
     let sam = id(s.ok("create_person", json!({"person": {"name": "Sam", "circles": [family]}})));
-    let home = id(s.ok("create_location", json!({"location": {"name": "Home"}})));
+    let brooklyn = id(s.ok("create_location_group", json!({"group": {"name": "Brooklyn"}})));
+    let home = id(s.ok("create_location", json!({"location": {"name": "Home", "group_id": brooklyn}})));
     let outside = id(s.ok("create_habit", json!({"habit": {"name": "Outside", "action_id": outdoors}})));
     s.seed(&[
         event_at("08:00-09:00").id("walked").summary("Walk").actions(&[&walk]).facts(facts(json!({"location": home, "with": [sam]}))).build(),
@@ -42,7 +44,7 @@ fn filled() -> Filled {
     s.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:30:00+00:00", "description": "walked"}}));
     // Finding a tab is a one-time read, whichever tool's first.
     s.ok("get_compaction_status", json!({}));
-    Filled { s, walk, outdoors, sam, family, home, outside }
+    Filled { s, walk, outdoors, sam, family, home, brooklyn, outside }
 }
 
 impl Filled {
@@ -74,11 +76,15 @@ fn every_tool_reads_the_spreadsheet_in_one_request() {
         ("get_circle", "get_circle", json!({"id_or_name": "family"})),
         ("create_circle", "create_circle", json!({"circle": {"name": "Friends"}})),
         ("update_circle", "update_circle", json!({"circle": {"id": f.family, "note": "n"}})),
-        // Locations only.
+        // Locations and their groups, prefetched together.
         ("get_locations", "get_locations", json!({})),
         ("get_location", "get_location", json!({"id_or_name": "home"})),
         ("create_location", "create_location", json!({"location": {"name": "Studio"}})),
         ("update_location", "update_location", json!({"location": {"id": f.home, "hint": "the apartment"}})),
+        ("get_location_groups", "get_location_groups", json!({})),
+        ("get_location_group", "get_location_group", json!({"id_or_name": "brooklyn"})),
+        ("create_location_group", "create_location_group", json!({"group": {"name": "New York"}})),
+        ("update_location_group", "update_location_group", json!({"group": {"id": f.brooklyn, "note": "n"}})),
         // Habits, with the actions and traits they're checked against.
         ("get_habits", "get_habits", json!({})),
         ("get_habit", "get_habit", json!({"id_or_name": "outside"})),
@@ -101,6 +107,7 @@ fn every_tool_reads_the_spreadsheet_in_one_request() {
         // Deleting tabs' rows: last, since they remove what others use.
         ("delete_circle", "delete_circle", json!({"circle_id": f.family})),
         ("delete_location", "delete_location", json!({"location_id": f.home})),
+        ("delete_location_group", "delete_location_group", json!({"group_id": f.brooklyn})),
     ];
 
     let mut counts = Vec::new();
@@ -135,5 +142,5 @@ fn an_event_tool_reads_every_tab_it_needs_in_one_request() {
         })
         .collect();
     read.sort();
-    assert_eq!(read, strings(&["Action Groups", "Actions", "Circles", "Locations", "People"]));
+    assert_eq!(read, strings(&["Action Groups", "Actions", "Circles", "Location Groups", "Locations", "People"]));
 }

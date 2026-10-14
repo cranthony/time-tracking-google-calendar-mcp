@@ -535,7 +535,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      }
@@ -558,6 +559,97 @@
         },
         "metadataKey": "sheet-role",
         "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "location-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Location Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000015
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "location-groups",
         "visibility": "PROJECT"
        }
       }
@@ -622,7 +714,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000015,
+        "sheetId": 1000017,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -655,7 +747,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000015,
+        "sheetId": 1000017,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -719,7 +811,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000015
+         "sheetId": 1000017
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -787,7 +879,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000017,
+        "sheetId": 1000019,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -820,7 +912,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000017
+         "sheetId": 1000019
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -888,7 +980,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000019,
+        "sheetId": 1000021,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -925,7 +1017,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000019
+         "sheetId": 1000021
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -992,7 +1084,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000021
+         "sheetId": 1000023
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -1015,7 +1107,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1088,7 +1180,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000019,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1096,7 +1188,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1111,8 +1203,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000019,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1213,6 +1313,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1307,7 +1415,7 @@
        "sheetId": 1000015
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "location-groups",
       "visibility": "PROJECT"
      },
      {
@@ -1315,7 +1423,7 @@
        "sheetId": 1000017
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
@@ -1323,12 +1431,20 @@
        "sheetId": 1000019
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000021
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000023
       },
       "metadataKey": "sheet-role",
       "metadataValue": "compactions",
@@ -1405,7 +1521,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000019,
+       "sheetId": 1000021,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -1464,7 +1580,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -1494,7 +1610,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000017,
+       "sheetId": 1000019,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -1512,6 +1628,32 @@
         "note",
         "traits",
         "foundations"
+       ]
+      ]
+     },
+     "Location Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000015,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Location Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
        ]
       ]
      },
@@ -1537,7 +1679,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      },
@@ -1593,7 +1736,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000015,
+       "sheetId": 1000017,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,

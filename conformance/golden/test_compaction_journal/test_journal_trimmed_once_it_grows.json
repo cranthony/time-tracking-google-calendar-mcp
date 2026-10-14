@@ -22790,7 +22790,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      }
@@ -22813,6 +22814,97 @@
         },
         "metadataKey": "sheet-role",
         "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/0875516a173447c3cae7380dc4xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "location-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/0875516a173447c3cae7380dc4xxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Location Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/0875516a173447c3cae7380dc4xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000557,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/0875516a173447c3cae7380dc4xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000557
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "location-groups",
         "visibility": "PROJECT"
        }
       }
@@ -22876,7 +22968,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000557
+         "sheetId": 1000559
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -22899,7 +22991,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -22979,7 +23071,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000559,
+        "sheetId": 1000561,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -23012,7 +23104,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000559,
+        "sheetId": 1000561,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -23076,7 +23168,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000559
+         "sheetId": 1000561
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -23144,7 +23236,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000561,
+        "sheetId": 1000563,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -23177,7 +23269,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000561
+         "sheetId": 1000563
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -23245,7 +23337,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000563,
+        "sheetId": 1000565,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -23282,7 +23374,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000563
+         "sheetId": 1000565
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -23311,7 +23403,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -23359,7 +23451,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -23376,6 +23468,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -24410,7 +24510,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -24458,7 +24558,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -24475,6 +24575,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -25480,7 +25588,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 23,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -25731,7 +25839,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -25779,7 +25887,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -25796,6 +25904,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -26021,7 +26137,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -26060,7 +26176,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 17,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 16
        }
@@ -26099,7 +26215,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 18,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 17
        }
@@ -26138,7 +26254,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 19,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 18
        }
@@ -26177,7 +26293,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 20,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 19
        }
@@ -26216,7 +26332,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 21,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 20
        }
@@ -26255,7 +26371,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 22,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 21
        }
@@ -26294,7 +26410,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 23,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 22
        }
@@ -26322,7 +26438,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -26396,7 +26512,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -26430,7 +26546,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -26478,7 +26594,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -26495,6 +26611,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -27555,7 +27679,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -27603,7 +27727,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -27620,6 +27744,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -28495,7 +28627,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 45,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 0,
         "startRowIndex": 23
        }
@@ -28746,7 +28878,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -28794,7 +28926,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -28811,6 +28943,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -29062,7 +29202,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 24,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 23
        }
@@ -29101,7 +29241,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 39,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 38
        }
@@ -29140,7 +29280,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 40,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 39
        }
@@ -29179,7 +29319,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 41,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 40
        }
@@ -29218,7 +29358,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 42,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 41
        }
@@ -29257,7 +29397,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 43,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 42
        }
@@ -29296,7 +29436,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 44,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 43
        }
@@ -29335,7 +29475,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 45,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 44
        }
@@ -29363,7 +29503,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 24,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 23
        }
@@ -29437,7 +29577,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 24,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 23
        }
@@ -29471,7 +29611,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -29519,7 +29659,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -29536,6 +29676,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -30596,7 +30744,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -30644,7 +30792,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -30661,6 +30809,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -31380,7 +31536,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 67,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 0,
         "startRowIndex": 45
        }
@@ -31631,7 +31787,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -31679,7 +31835,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -31696,6 +31852,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -31947,7 +32111,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 46,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 45
        }
@@ -31986,7 +32150,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 61,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 60
        }
@@ -32025,7 +32189,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 62,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 61
        }
@@ -32064,7 +32228,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 63,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 62
        }
@@ -32103,7 +32267,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 64,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 63
        }
@@ -32142,7 +32306,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 65,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 64
        }
@@ -32181,7 +32345,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 66,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 65
        }
@@ -32220,7 +32384,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 67,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 66
        }
@@ -32248,7 +32412,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 46,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 45
        }
@@ -32322,7 +32486,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 46,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 45
        }
@@ -32356,7 +32520,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -32404,7 +32568,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -32421,6 +32585,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -33481,7 +33653,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -33529,7 +33701,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -33546,6 +33718,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -34109,7 +34289,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 89,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 0,
         "startRowIndex": 67
        }
@@ -34360,7 +34540,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -34408,7 +34588,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -34425,6 +34605,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -34676,7 +34864,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 68,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 67
        }
@@ -34715,7 +34903,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 83,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 82
        }
@@ -34754,7 +34942,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 84,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 83
        }
@@ -34793,7 +34981,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 85,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 84
        }
@@ -34832,7 +35020,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 86,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 85
        }
@@ -34871,7 +35059,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 87,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 86
        }
@@ -34910,7 +35098,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 88,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 87
        }
@@ -34949,7 +35137,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 89,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 88
        }
@@ -34977,7 +35165,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 68,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 67
        }
@@ -35051,7 +35239,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 68,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 67
        }
@@ -35085,7 +35273,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -35133,7 +35321,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -35150,6 +35338,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -36184,7 +36380,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -36232,7 +36428,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -36249,6 +36445,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -36656,7 +36860,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 111,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 0,
         "startRowIndex": 89
        }
@@ -36907,7 +37111,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -36955,7 +37159,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -36972,6 +37176,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -36993,7 +37205,7 @@
        "range": {
         "dimension": "ROWS",
         "endIndex": 67,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startIndex": 1
        }
       }
@@ -37017,7 +37229,7 @@
       "appendDimension": {
        "dimension": "ROWS",
        "length": 66,
-       "sheetId": 1000557
+       "sheetId": 1000559
       }
      }
     ]
@@ -37033,7 +37245,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -37283,7 +37495,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -37304,7 +37516,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 24,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 23
        }
@@ -37343,7 +37555,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 39,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 38
        }
@@ -37382,7 +37594,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 40,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 39
        }
@@ -37421,7 +37633,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 41,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 40
        }
@@ -37460,7 +37672,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 42,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 41
        }
@@ -37499,7 +37711,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 43,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 42
        }
@@ -37538,7 +37750,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 44,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 43
        }
@@ -37577,7 +37789,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 45,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 44
        }
@@ -37605,7 +37817,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 24,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 23
        }
@@ -37679,7 +37891,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 24,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 23
        }
@@ -37713,7 +37925,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -37761,7 +37973,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -37778,6 +37990,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -38656,7 +38876,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -38704,7 +38924,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -38721,6 +38941,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -38972,7 +39200,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 67,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 0,
         "startRowIndex": 45
        }
@@ -39223,7 +39451,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -39271,7 +39499,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -39288,6 +39516,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -39539,7 +39775,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 46,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 45
        }
@@ -39578,7 +39814,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 61,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 60
        }
@@ -39617,7 +39853,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 62,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 61
        }
@@ -39656,7 +39892,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 63,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 62
        }
@@ -39695,7 +39931,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 64,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 63
        }
@@ -39734,7 +39970,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 65,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 64
        }
@@ -39773,7 +40009,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 66,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 65
        }
@@ -39812,7 +40048,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 67,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 66
        }
@@ -39840,7 +40076,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 46,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 45
        }
@@ -39914,7 +40150,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 46,
-        "sheetId": 1000557,
+        "sheetId": 1000559,
         "startColumnIndex": 6,
         "startRowIndex": 45
        }
@@ -39948,7 +40184,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -39996,7 +40232,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -40013,6 +40249,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -40735,7 +40979,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -40783,7 +41027,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000559,
+       "sheetId": 1000557,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -40800,6 +41044,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000563,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000565,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -45116,7 +45368,7 @@
        "sheetId": 1000557
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "compactions",
+      "metadataValue": "location-groups",
       "visibility": "PROJECT"
      },
      {
@@ -45124,7 +45376,7 @@
        "sheetId": 1000559
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "compactions",
       "visibility": "PROJECT"
      },
      {
@@ -45132,12 +45384,20 @@
        "sheetId": 1000561
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000563
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "habits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000565
       },
       "metadataKey": "sheet-role",
       "metadataValue": "cancellations",
@@ -45214,7 +45474,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000563,
+       "sheetId": 1000565,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -45273,7 +45533,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000557,
+       "sheetId": 1000559,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -45837,7 +46097,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000561,
+       "sheetId": 1000563,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -45855,6 +46115,32 @@
         "note",
         "traits",
         "foundations"
+       ]
+      ]
+     },
+     "Location Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000557,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Location Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
        ]
       ]
      },
@@ -45880,7 +46166,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      },
@@ -46171,7 +46458,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000559,
+       "sheetId": 1000561,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,

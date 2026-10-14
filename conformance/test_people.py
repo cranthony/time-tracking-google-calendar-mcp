@@ -86,6 +86,24 @@ async def test_locations(session):
     await session.call_error("update_location", location={"id": home, "name": "x"})
 
 
+async def test_location_groups(session):
+    city = (await session.call("create_location_group", group={"name": "New York"}))["created_id"]
+    borough = (await session.call("create_location_group", group={"name": "Brooklyn", "group_id": city}))["created_id"]
+    await session.call_error("create_location_group", group={"name": "brooklyn"})
+    home = (await session.call("create_location", location={"name": "Home", "group_id": borough}))["created_id"]
+    assert (await session.call("get_location", id_or_name=home))["path"] == "New York › Brooklyn › Home"
+    assert [g["path"] for g in await session.call("get_location_groups")] == ["New York", "New York › Brooklyn"]
+    assert (await session.call("get_location_group", id_or_name="brooklyn"))["id"] == borough
+    await session.call_error("update_location_group", group={"id": city, "group_id": borough})
+    noted = await session.call("update_location_group", group={"id": borough, "note": "across the bridge"})
+    assert noted["note"] == "across the bridge"
+    await session.call_error("update_location", location={"id": home, "group_id": "nowhere"})
+    deleted = await session.call("delete_location_group", group_id=borough)
+    assert [l["path"] for l in deleted["moved_locations"]] == ["New York › Home"]
+    ungrouped = await session.call("update_location", location={"id": home}, clear_fields=["group_id"])
+    assert not ungrouped.get("group_id")
+
+
 async def test_rows_edited_by_hand(session, google):
     """A tab edited in the spreadsheet by hand is read as it now is."""
     await session.call("create_location", location={"name": "Home"})

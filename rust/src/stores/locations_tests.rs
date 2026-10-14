@@ -114,3 +114,76 @@ fn suggests_close_matches() {
 
     refused(f.locations.get_location("salsa studo"), &format!(r"did you mean {studio} \(Salsa studio\)"));
 }
+
+// -- location groups ---------------------------------------------------------------------------------
+
+impl Fixture {
+    fn group(&self, given: Value) -> String {
+        self.held(|l| l.create_location_group(&serde_json::from_value(given).unwrap())).unwrap().created_id
+    }
+}
+
+#[test]
+fn groups_nest_and_give_their_locations_paths() {
+    let f = fixture();
+    let city = f.group(json!({"name": "New York"}));
+    let borough = f.group(json!({"name": "Brooklyn", "group_id": city, "note": "across the bridge"}));
+    let home = f.create(json!({"name": "Home", "group_id": borough}));
+    let cafe = f.create(json!({"name": "Cafe"}));
+
+    let groups = f.locations.get_location_groups().unwrap();
+    assert_eq!(groups.iter().map(|g| g.path.as_str()).collect::<Vec<_>>(), ["New York", "New York › Brooklyn"]);
+    assert_eq!(f.locations.get_location_group("BROOKLYN").unwrap().note.as_deref(), Some("across the bridge"));
+    let listed = f.locations.listed_locations().unwrap();
+    assert_eq!(listed.iter().map(|l| l.path.as_str()).collect::<Vec<_>>(), ["New York › Brooklyn › Home", "Cafe"]);
+    assert_eq!(f.locations.listed_location(&home).unwrap().group_id.as_deref(), Some(borough.as_str()));
+    // Ids are never shared between a location and a group.
+    assert!(![&city, &borough].contains(&&cafe));
+}
+
+#[test]
+fn a_location_is_only_in_a_group_that_is_there() {
+    let f = fixture();
+    refused(f.held(|l| l.create_location(&location(json!({"name": "Home", "group_id": "nowhere"})))), "isn't a location group");
+    let home = f.create(json!({"name": "Home"}));
+    let group = f.group(json!({"name": "Brooklyn"}));
+    f.held(|l| l.update_location(&location(json!({"id": home, "group_id": group})), &[])).unwrap();
+    let cleared = f.held(|l| l.update_location(&location(json!({"id": home})), &["group_id".to_string()])).unwrap();
+    assert!(cleared.group_id.is_none());
+}
+
+#[test]
+fn group_names_are_unique_and_groups_never_hold_themselves() {
+    let f = fixture();
+    let city = f.group(json!({"name": "New York"}));
+    let borough = f.group(json!({"name": "Brooklyn", "group_id": city}));
+    let group = |given: Value| serde_json::from_value::<LocationGroup>(given).unwrap();
+
+    refused(f.held(|l| l.create_location_group(&group(json!({"name": "brooklyn"})))), "already a location group named 'Brooklyn'");
+    refused(f.held(|l| l.create_location_group(&group(json!({"name": "Queens", "group_id": "nowhere"})))), "isn't a location group");
+    refused(f.held(|l| l.update_location_group(&group(json!({"id": city, "group_id": borough})), &[])), "can't be inside itself");
+    refused(f.held(|l| l.update_location_group(&group(json!({"id": city, "group_id": city})), &[])), "can't be inside itself");
+    // A location may share a group's name.
+    f.create(json!({"name": "Brooklyn"}));
+    let moved = f.held(|l| l.update_location_group(&group(json!({"id": borough})), &["group_id".to_string()])).unwrap();
+    assert_eq!(moved.path, "Brooklyn");
+}
+
+#[test]
+fn deleting_a_group_moves_what_was_in_it_up() {
+    let f = fixture();
+    let city = f.group(json!({"name": "New York"}));
+    let borough = f.group(json!({"name": "Brooklyn", "group_id": city}));
+    let slope = f.group(json!({"name": "Park Slope", "group_id": borough}));
+    let home = f.create(json!({"name": "Home", "group_id": borough}));
+    f.create(json!({"name": "Cafe", "group_id": slope}));
+
+    let deleted = f.held(|l| l.delete_location_group(&borough)).unwrap();
+
+    assert_eq!(deleted.deleted.name.as_deref(), Some("Brooklyn"));
+    assert_eq!(deleted.moved_groups.iter().map(|g| g.path.as_str()).collect::<Vec<_>>(), ["New York › Park Slope"]);
+    assert_eq!(deleted.moved_locations.iter().map(|l| l.path.as_str()).collect::<Vec<_>>(), ["New York › Home"]);
+    assert_eq!(f.locations.get_location(&home).unwrap().group_id.as_deref(), Some(city.as_str()));
+    refused(f.held(|l| l.delete_location_group("Park Slope")), "Delete a location group by its id");
+    refused(f.held(|l| l.delete_location_group("Brooklyn")), "no location group with the id or name 'Brooklyn'");
+}

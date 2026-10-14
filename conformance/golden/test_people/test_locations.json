@@ -10,6 +10,7 @@
    "content": {
     "created_id": "co2yzn",
     "location": {
+     "group_id": null,
      "hint": "the apartment; 'my place'",
      "id": "co2yzn",
      "map_location": null,
@@ -17,7 +18,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": \"the apartment; 'my place'\",\n    \"map_location\": null\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": \"the apartment; 'my place'\",\n    \"map_location\": null,\n    \"group_id\": null\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_location"
   },
   {
@@ -29,6 +30,7 @@
    "content": {
     "created_id": "3dnjav",
     "location": {
+     "group_id": null,
      "hint": null,
      "id": "3dnjav",
      "map_location": null,
@@ -36,7 +38,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Salsa studio\",\n    \"hint\": null,\n    \"map_location\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Salsa studio\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_location"
   },
   {
@@ -54,20 +56,24 @@
    "arguments": {},
    "content": [
     {
+     "group_id": null,
      "hint": "the apartment; 'my place'",
      "id": "co2yzn",
      "map_location": null,
-     "name": "Home"
+     "name": "Home",
+     "path": "Home"
     },
     {
+     "group_id": null,
      "hint": null,
      "id": "3dnjav",
      "map_location": null,
-     "name": "Salsa studio"
+     "name": "Salsa studio",
+     "path": "Salsa studio"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Salsa studio\",\n  \"hint\": null,\n  \"map_location\": null\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Home\"\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Salsa studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Salsa studio\"\n}",
    "tool": "get_locations"
   },
   {
@@ -75,13 +81,15 @@
     "id_or_name": "HOME"
    },
    "content": {
+    "group_id": null,
     "hint": "the apartment; 'my place'",
     "id": "co2yzn",
     "map_location": null,
-    "name": "Home"
+    "name": "Home",
+    "path": "Home"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Home\"\n}",
    "tool": "get_location"
   },
   {
@@ -102,13 +110,14 @@
     }
    },
    "content": {
+    "group_id": null,
     "hint": "downtown",
     "id": "3dnjav",
     "map_location": null,
     "name": "Dance studio"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": \"downtown\",\n  \"map_location\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": \"downtown\",\n  \"map_location\": null,\n  \"group_id\": null\n}",
    "tool": "update_location"
   },
   {
@@ -121,13 +130,14 @@
     }
    },
    "content": {
+    "group_id": null,
     "hint": null,
     "id": "3dnjav",
     "map_location": null,
     "name": "Dance studio"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null\n}",
    "tool": "update_location"
   },
   {
@@ -138,13 +148,14 @@
     }
    },
    "content": {
+    "group_id": null,
     "hint": null,
     "id": "3dnjav",
     "map_location": "12 Elm St",
     "name": "Dance studio"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": \"12 Elm St\"\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": \"12 Elm St\",\n  \"group_id\": null\n}",
    "tool": "update_location"
   },
   {
@@ -157,13 +168,14 @@
     }
    },
    "content": {
+    "group_id": null,
     "hint": null,
     "id": "3dnjav",
     "map_location": null,
     "name": "Dance studio"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null\n}",
    "tool": "update_location"
   },
   {
@@ -171,27 +183,30 @@
     "location_id": "co2yzn"
    },
    "content": {
+    "group_id": null,
     "hint": "the apartment; 'my place'",
     "id": "co2yzn",
     "map_location": null,
     "name": "Home"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null\n}",
    "tool": "delete_location"
   },
   {
    "arguments": {},
    "content": [
     {
+     "group_id": null,
      "hint": null,
      "id": "3dnjav",
      "map_location": null,
-     "name": "Dance studio"
+     "name": "Dance studio",
+     "path": "Dance studio"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Dance studio\"\n}",
    "tool": "get_locations"
   },
   {
@@ -312,7 +327,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      }
@@ -350,9 +366,99 @@
    "body": {
     "dataFilters": [
      {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "location-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Location Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000007
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "location-groups",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -361,9 +467,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -393,6 +499,7 @@
         "co2yzn",
         "Home",
         "the apartment; 'my place'",
+        "",
         ""
        ]
       ]
@@ -411,7 +518,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -420,9 +526,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -452,12 +558,14 @@
         "co2yzn",
         "Home",
         "the apartment; 'my place'",
+        "",
         ""
        ],
        [
         "3dnjav",
         "Salsa studio",
         "",
+        "",
         ""
        ]
       ]
@@ -476,7 +584,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -485,9 +592,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -504,7 +611,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -513,9 +619,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -532,7 +638,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -541,9 +646,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -560,7 +665,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -569,9 +673,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -588,7 +692,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -597,9 +700,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -629,12 +732,14 @@
         "co2yzn",
         "Home",
         "the apartment; 'my place'",
+        "",
         ""
        ],
        [
         "3dnjav",
         "Dance studio",
         "downtown",
+        "",
         ""
        ]
       ]
@@ -653,7 +758,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -662,9 +766,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -694,11 +798,13 @@
         "co2yzn",
         "Home",
         "the apartment; 'my place'",
+        "",
         ""
        ],
        [
         "3dnjav",
         "Dance studio",
+        "",
         "",
         ""
        ]
@@ -718,7 +824,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -727,9 +832,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -759,13 +864,15 @@
         "co2yzn",
         "Home",
         "the apartment; 'my place'",
+        "",
         ""
        ],
        [
         "3dnjav",
         "Dance studio",
         "",
-        "12 Elm St"
+        "12 Elm St",
+        ""
        ]
       ]
      }
@@ -783,7 +890,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -792,9 +898,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -824,11 +930,13 @@
         "co2yzn",
         "Home",
         "the apartment; 'my place'",
+        "",
         ""
        ],
        [
         "3dnjav",
         "Dance studio",
+        "",
         "",
         ""
        ]
@@ -889,9 +997,11 @@
         "3dnjav",
         "Dance studio",
         "",
+        "",
         ""
        ],
        [
+        "",
         "",
         "",
         "",
@@ -913,7 +1023,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -922,9 +1031,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -969,7 +1078,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -978,9 +1086,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -1015,12 +1123,46 @@
       "metadataKey": "sheet-role",
       "metadataValue": "locations",
       "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "location-groups",
+      "visibility": "PROJECT"
      }
     ],
     "properties": {
      "title": "Calendar Metadata"
     },
     "tabs": {
+     "Location Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Location Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     },
      "Locations": {
       "column_widths": {},
       "properties": {
@@ -1043,7 +1185,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ],
        [
         "3dnjav",
