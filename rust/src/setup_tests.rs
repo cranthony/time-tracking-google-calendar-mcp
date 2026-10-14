@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 /// A scratch directory of its own.
 fn scratch() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ctt-setup-{}", uuid::Uuid::new_v4().simple()));
+    let dir = std::env::temp_dir().join(format!("time-tracker-setup-{}", uuid::Uuid::new_v4().simple()));
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
@@ -175,7 +175,7 @@ fn the_finished_page_shows_the_token_escaped() {
     assert!(html.contains("couldn't be written"));
 }
 
-const SECRET: &str = "projects/corp-project/secrets/ctt-google-token";
+const SECRET: &str = "projects/corp-project/secrets/time-tracker-google-token";
 
 fn secret_on(fake: &FakeGoogle) -> TokenSecret {
     TokenSecret { name: SECRET.into(), metadata_root: fake.root.clone(), api_root: fake.root.clone() }

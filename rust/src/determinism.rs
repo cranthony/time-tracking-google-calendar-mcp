@@ -1,12 +1,14 @@
 //! The clock and the random ids, made fixed for conformance/ when asked, so
 //! the server makes the same ids in the same order every run:
 //!
-//! - `now()` is the current time, or always `CTT_NOW` (ISO 8601 with an
+//! - `now()` is the current time, or always `TIME_TRACKER_NOW` (ISO 8601 with an
 //!   offset) if that's set.
 //! - `random_token(alphabet, length)` is random, or with
-//!   `CTT_DETERMINISTIC_IDS` set, token n (from 1, across the process) is
+//!   `TIME_TRACKER_DETERMINISTIC_IDS` set, token n (from 1, across the process) is
 //!   the first `length` bytes of SHA-256("ctt-id:<n>"), each mapped to
-//!   `alphabet[byte % len]`.
+//!   `alphabet[byte % len]`. ("ctt" is the server's old name, kept here because
+//!   it seeds the ids in conformance/'s golden records, which the Python
+//!   server wrote.)
 
 use chrono::{DateTime, FixedOffset, Utc};
 use sha2::{Digest, Sha256};
@@ -26,10 +28,10 @@ pub fn now() -> DateTime<FixedOffset> {
     if let Some(now) = TEST_NOW.with(std::cell::Cell::get) {
         return now;
     }
-    now_from(std::env::var("CTT_NOW").ok())
+    now_from(std::env::var("TIME_TRACKER_NOW").ok())
 }
 
-/// `now()`, with `CTT_NOW` as given.
+/// `now()`, with `TIME_TRACKER_NOW` as given.
 fn now_from(fixed: Option<String>) -> DateTime<FixedOffset> {
     if let Some(moment) = fixed.filter(|f| !f.is_empty()).and_then(|f| DateTime::parse_from_rfc3339(&f).ok()) {
         return moment;
@@ -39,7 +41,7 @@ fn now_from(fixed: Option<String>) -> DateTime<FixedOffset> {
 
 pub fn random_token(alphabet: &str, length: usize) -> String {
     let letters: Vec<char> = alphabet.chars().collect();
-    if std::env::var("CTT_DETERMINISTIC_IDS").map(|v| !v.is_empty()).unwrap_or(false) {
+    if std::env::var("TIME_TRACKER_DETERMINISTIC_IDS").map(|v| !v.is_empty()).unwrap_or(false) {
         let n = COUNTER.fetch_add(1, Ordering::SeqCst);
         let digest = Sha256::digest(format!("ctt-id:{n}").as_bytes());
         return digest[..length].iter().map(|b| letters[*b as usize % letters.len()]).collect();
@@ -89,7 +91,7 @@ mod tests {
 
     #[test]
     fn random_tokens_are_random_unless_deterministic() {
-        // No test sets CTT_DETERMINISTIC_IDS: it's process-wide.
+        // No test sets TIME_TRACKER_DETERMINISTIC_IDS: it's process-wide.
         let alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
         let tokens: std::collections::BTreeSet<String> = (0..20).map(|_| random_token(alphabet, 6)).collect();
         assert_eq!(tokens.len(), 20);

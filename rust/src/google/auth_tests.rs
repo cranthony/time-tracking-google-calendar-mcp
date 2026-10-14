@@ -6,7 +6,7 @@ use super::*;
 use crate::testing::fake_google::FakeGoogle;
 
 fn temp_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("ctt-auth-{}-{name}", uuid::Uuid::new_v4()))
+    std::env::temp_dir().join(format!("time-tracker-auth-{}-{name}", uuid::Uuid::new_v4()))
 }
 
 fn token_json(fake: &FakeGoogle, token: &str, expiry: &str, refresh_token: Option<&str>) -> String {

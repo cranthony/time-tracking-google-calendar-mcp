@@ -10,8 +10,8 @@ server, which the Rust one was ported from and held to; the scenarios'
 own assertions say what that behaviour is meant to be.
 
     python -m pytest -n auto                       # the Rust build in rust/target
-    CTT_SERVER=path/to/time-tracker-server python -m pytest -n auto
-    CTT_UPDATE_GOLDEN=1 python -m pytest           # rewrite the records
+    TIME_TRACKER_SERVER=path/to/time-tracker-server python -m pytest -n auto
+    TIME_TRACKER_UPDATE_GOLDEN=1 python -m pytest           # rewrite the records
 
 Only rewrite the records for a deliberate change of behaviour, and read
 the diff: whatever it shows is what the server now does differently.
@@ -72,17 +72,17 @@ def check_golden(request, record: dict) -> None:
     module = Path(request.node.fspath).stem
     path = GOLDEN / module / f"{request.node.name}.json"
     rendered = json.dumps(record, indent=1, ensure_ascii=False, sort_keys=True) + "\n"
-    if os.environ.get("CTT_UPDATE_GOLDEN"):
+    if os.environ.get("TIME_TRACKER_UPDATE_GOLDEN"):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(rendered, encoding="utf-8", newline="\n")
         return
     if not path.exists():
-        pytest.fail(f"no golden record {path.relative_to(GOLDEN.parent)}; write it with CTT_UPDATE_GOLDEN=1")
+        pytest.fail(f"no golden record {path.relative_to(GOLDEN.parent)}; write it with TIME_TRACKER_UPDATE_GOLDEN=1")
     expected = json.loads(path.read_text(encoding="utf-8"))
     actual = json.loads(rendered)
-    if os.environ.get("CTT_ACTUAL_DIR"):
+    if os.environ.get("TIME_TRACKER_ACTUAL_DIR"):
         # The record as this run made it, to compare whole.
-        actual_path = Path(os.environ["CTT_ACTUAL_DIR"]) / module / f"{request.node.name}.json"
+        actual_path = Path(os.environ["TIME_TRACKER_ACTUAL_DIR"]) / module / f"{request.node.name}.json"
         actual_path.parent.mkdir(parents=True, exist_ok=True)
         actual_path.write_text(rendered, encoding="utf-8", newline="\n")
     difference = _first_difference(expected, actual)

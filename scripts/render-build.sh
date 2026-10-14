@@ -10,9 +10,9 @@
 # checkout, which is what the running service gets.
 set -euo pipefail
 
-export CARGO_HOME="$HOME/.cache/ctt-cargo"
-export RUSTUP_HOME="$HOME/.cache/ctt-rustup"
-export CARGO_TARGET_DIR="$HOME/.cache/ctt-target"
+export CARGO_HOME="$HOME/.cache/time-tracker-cargo"
+export RUSTUP_HOME="$HOME/.cache/time-tracker-rustup"
+export CARGO_TARGET_DIR="$HOME/.cache/time-tracker-target"
 export PATH="$CARGO_HOME/bin:$PATH"
 if [ ! -x "$CARGO_HOME/bin/cargo" ]; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --no-modify-path

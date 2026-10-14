@@ -1,5 +1,5 @@
 [package]
-name = "ctt"
+name = "time-tracker"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -10,7 +10,7 @@ name = "time-tracker-server"
 path = "src/main.rs"
 
 [dependencies]
-ctt-derive = { path = "derive" }
+time-tracker-derive = { path = "derive" }
 indexmap = { version = "2.2.6", features = ["serde"] }
 anyhow = "1.0.86"
 axum = "0.8.4"

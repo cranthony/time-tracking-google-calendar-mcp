@@ -35,7 +35,7 @@ const FLOW_MINUTES: u64 = 15;
 /// so the page fails to load, and the user pastes its address.
 pub const DESKTOP_REDIRECT: &str = "http://localhost/";
 /// The cookie that ties a started setup to the browser that started it.
-pub const COOKIE: &str = "ctt_setup";
+pub const COOKIE: &str = "time_tracker_setup";
 
 /// Why Google access needs setting up.
 #[derive(Debug, Clone, PartialEq)]

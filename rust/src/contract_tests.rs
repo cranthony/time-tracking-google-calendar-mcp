@@ -9,11 +9,11 @@ fn rendered() -> String {
 
 #[test]
 fn tools_json_is_the_contract() {
-    // A deliberate change: CTT_UPDATE_CONTRACT=1 cargo test, and commit
+    // A deliberate change: TIME_TRACKER_UPDATE_CONTRACT=1 cargo test, and commit
     // the file -- its diff is what clients will see change.
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../contract/tools.json");
     let derived = rendered();
-    if std::env::var_os("CTT_UPDATE_CONTRACT").is_some() {
+    if std::env::var_os("TIME_TRACKER_UPDATE_CONTRACT").is_some() {
         std::fs::write(&path, &derived).unwrap();
         return;
     }
@@ -22,7 +22,7 @@ fn tools_json_is_the_contract() {
         let first = committed.lines().zip(derived.lines()).position(|(a, b)| a != b).unwrap_or(committed.lines().count().min(derived.lines().count()));
         let around = |text: &str| text.lines().skip(first.saturating_sub(3)).take(8).collect::<Vec<_>>().join("\n");
         panic!(
-            "contract/tools.json isn't the contract (rerun with CTT_UPDATE_CONTRACT=1 to write it), from line {}:\n--- tools.json\n{}\n--- derived\n{}",
+            "contract/tools.json isn't the contract (rerun with TIME_TRACKER_UPDATE_CONTRACT=1 to write it), from line {}:\n--- tools.json\n{}\n--- derived\n{}",
             first + 1,
             around(&committed),
             around(&derived)

@@ -25,15 +25,15 @@
 use anyhow::{anyhow, Context};
 use chrono::{DateTime, Datelike, Duration, FixedOffset, TimeZone, Utc};
 use chrono_tz::Tz;
-use ctt::app::{App, Config};
-use ctt::event::{parse_iso, Event, CLEARABLE_EVENT_FIELDS, PREFIX};
-use ctt::facts::Facts;
-use ctt::google::calendar::CalendarClient;
-use ctt::google::{segment, status_of, Google};
-use ctt::stores::action_calendar::ActionCalendar;
-use ctt::stores::locations::Location;
-use ctt::stores::recurrences::{split_series_id, Recurrences, Repeat};
-use ctt::write_lock::WRITE_LOCK;
+use time_tracker::app::{App, Config};
+use time_tracker::event::{parse_iso, Event, CLEARABLE_EVENT_FIELDS, PREFIX};
+use time_tracker::facts::Facts;
+use time_tracker::google::calendar::CalendarClient;
+use time_tracker::google::{segment, status_of, Google};
+use time_tracker::stores::action_calendar::ActionCalendar;
+use time_tracker::stores::locations::Location;
+use time_tracker::stores::recurrences::{split_series_id, Recurrences, Repeat};
+use time_tracker::write_lock::WRITE_LOCK;
 use serde_json::{json, Map, Value};
 use std::io::Write;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -55,7 +55,7 @@ struct Options {
 }
 
 fn main() {
-    ctt::dotenv::load(std::path::Path::new(".env"));
+    time_tracker::dotenv::load(std::path::Path::new(".env"));
     if let Err(error) = run() {
         eprintln!("{error:#}");
         std::process::exit(1);
@@ -99,13 +99,13 @@ fn run() -> anyhow::Result<()> {
         return cancelled_events(&google, config.calendar_id()?, &options);
     }
     let (title, zone) = match name.as_str() {
-        "clear_fields" => ("CTT clear-fields probe (safe to delete)", Some(TIME_ZONE)),
-        "label_lifecycle" => ("CTT label probe (safe to delete)", None),
-        "metadata_tabs" => ("CTT tabs probe (safe to delete)", None),
-        "series_edits" => ("CTT series probe (safe to delete)", Some(TIME_ZONE)),
-        "series_deletes" => ("CTT series delete probe (safe to delete)", Some(TIME_ZONE)),
-        "series_splits" => ("CTT series split probe (safe to delete)", Some(TIME_ZONE)),
-        "server" => ("CTT server probe (safe to delete)", Some(TIME_ZONE)),
+        "clear_fields" => ("Time tracker clear-fields probe (safe to delete)", Some(TIME_ZONE)),
+        "label_lifecycle" => ("Time tracker label probe (safe to delete)", None),
+        "metadata_tabs" => ("Time tracker tabs probe (safe to delete)", None),
+        "series_edits" => ("Time tracker series probe (safe to delete)", Some(TIME_ZONE)),
+        "series_deletes" => ("Time tracker series delete probe (safe to delete)", Some(TIME_ZONE)),
+        "series_splits" => ("Time tracker series split probe (safe to delete)", Some(TIME_ZONE)),
+        "server" => ("Time tracker server probe (safe to delete)", Some(TIME_ZONE)),
         _ => anyhow::bail!("{usage}"),
     };
     let calendar_id = CalendarClient::new(google.clone(), "").create_calendar(title, None, zone)?;
@@ -232,7 +232,7 @@ fn zone() -> Tz {
 }
 
 fn when(moment: &Moment) -> Value {
-    json!({"dateTime": ctt::py::isoformat(moment), "timeZone": TIME_ZONE})
+    json!({"dateTime": time_tracker::py::isoformat(moment), "timeZone": TIME_ZONE})
 }
 
 /// 9:00 tomorrow, New York time (or `hour`, on the Monday after next week).
@@ -313,14 +313,14 @@ const OTHER_CLIENT_PORT: u16 = 8765;
 fn other_client(config: &Config, options: &Options) -> anyhow::Result<()> {
     let path = options.client.as_deref().ok_or_else(|| anyhow!("other_client needs --client PATH, the other OAuth client's secret file"))?;
     let calendar_id = config.calendar_id()?;
-    let client = ctt::google::consent::read_client(path)?;
+    let client = time_tracker::google::consent::read_client(path)?;
     println!(
         "Signing in with the {} client {} (its redirect URIs must include http://localhost:{OTHER_CLIENT_PORT}/)",
         if client.web { "web application" } else { "desktop app" },
         client.id
     );
-    let token = std::env::temp_dir().join(format!("ctt-other-client-{}.json", uuid::Uuid::new_v4().simple()));
-    ctt::google::consent::consent_on(&token, &client, OTHER_CLIENT_PORT)?;
+    let token = std::env::temp_dir().join(format!("time-tracker-other-client-{}.json", uuid::Uuid::new_v4().simple()));
+    time_tracker::google::consent::consent_on(&token, &client, OTHER_CLIENT_PORT)?;
     let read = (|| -> anyhow::Result<(Value, usize)> {
         let google = Arc::new(Google::load(&token, path)?);
         let calendar = CalendarClient::new(google, calendar_id);
@@ -349,8 +349,8 @@ fn cancelled_events(google: &Arc<Google>, calendar_id: &str, options: &Options) 
     println!("Calendar {calendar_id}, {} to {} UTC\n", start.format("%Y-%m-%d %H:%M"), end.format("%Y-%m-%d %H:%M"));
     let listing = |deleted: bool| {
         raw.list(&[
-            ("timeMin", ctt::py::isoformat(&start)),
-            ("timeMax", ctt::py::isoformat(&end)),
+            ("timeMin", time_tracker::py::isoformat(&start)),
+            ("timeMax", time_tracker::py::isoformat(&end)),
             ("singleEvents", "true".into()),
             ("orderBy", "startTime".into()),
             ("maxResults", "2500".into()),
@@ -379,7 +379,7 @@ fn cancelled_events(google: &Arc<Google>, calendar_id: &str, options: &Options) 
         let missing: Vec<&str> = ["summary", "start", "end", "action_ids"].into_iter().filter(|f| !kept.iter().any(|k| k == f)).collect();
         let at = event.get("start").or_else(|| event.get("originalStartTime")).and_then(|w| w.get("dateTime")).and_then(Value::as_str).unwrap_or("?");
         let also = if plain.iter().any(|e| e["id"] == event["id"]) { "also listed without showDeleted" } else { "" };
-        println!("- {at}  {}  id={}  {also}", ctt::py::repr(event["summary"].as_str().unwrap_or("(no summary)")), event["id"].as_str().unwrap_or(""));
+        println!("- {at}  {}  id={}  {also}", time_tracker::py::repr(event["summary"].as_str().unwrap_or("(no summary)")), event["id"].as_str().unwrap_or(""));
         println!("    kept: {}", if kept.is_empty() { "nothing but its id".into() } else { kept.join(", ") });
         if !missing.is_empty() {
             println!("    missing: {}", missing.join(", "));
@@ -581,8 +581,8 @@ fn label_lifecycle(raw: &Raw, options: &Options) -> anyhow::Result<()> {
         let start = start - Duration::seconds(start.timestamp() % 3600) - Duration::nanoseconds(start.timestamp_subsec_nanos() as i64) + Duration::hours(hour);
         let mut body = json!({
             "summary": summary,
-            "start": {"dateTime": ctt::py::isoformat(&start)},
-            "end": {"dateTime": ctt::py::isoformat(&(start + Duration::minutes(30)))},
+            "start": {"dateTime": time_tracker::py::isoformat(&start)},
+            "end": {"dateTime": time_tracker::py::isoformat(&(start + Duration::minutes(30)))},
         });
         if let Some(l) = label {
             body["eventLabelId"] = json!(l);
@@ -667,7 +667,7 @@ fn typed<T: serde::de::DeserializeOwned>(pairs: Value) -> T {
 /// allows that), which gets its own metadata spreadsheet, runs every step
 /// against them, prints what happened, then deletes the calendar --
 /// nothing else in your account is touched. The spreadsheet is renamed
-/// "CTT tabs probe (safe to delete)" and left in Drive: this app's Google
+/// "Time tracker tabs probe (safe to delete)" and left in Drive: this app's Google
 /// Cloud project doesn't enable the Drive API, so it can't trash it.
 fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
     let mut config = Config { calendar_id: Some(raw.calendar_id.clone()), token_path: base.token_path.clone(), credentials_path: base.credentials_path.clone() };
@@ -798,10 +798,10 @@ fn describe_series_event(event: &Value) -> String {
         format!("priority={}", get("priority")),
         format!("goals={}", get("goal_ids")),
         format!("color={}", event["colorId"].as_str().unwrap_or("-")),
-        format!("summary={}", ctt::py::repr(event["summary"].as_str().unwrap_or("-"))),
+        format!("summary={}", time_tracker::py::repr(event["summary"].as_str().unwrap_or("-"))),
     ];
     if let Some(d) = event["description"].as_str() {
-        fields.push(format!("description={}", ctt::py::repr(d)));
+        fields.push(format!("description={}", time_tracker::py::repr(d)));
     }
     fields.join("  ")
 }
@@ -940,10 +940,10 @@ fn describe_brief(event: &Value) -> String {
         format!("orig={}", if original.is_empty() { "-".into() } else { local(&original) }),
         format!("start={}", event.pointer("/start/dateTime").and_then(Value::as_str).map(local).unwrap_or_else(|| "-".into())),
         format!("status={}", event["status"].as_str().unwrap_or("?")),
-        format!("summary={}", ctt::py::repr(event["summary"].as_str().unwrap_or("-"))),
+        format!("summary={}", time_tracker::py::repr(event["summary"].as_str().unwrap_or("-"))),
     ];
     if let Some(d) = event["description"].as_str() {
-        fields.push(format!("description={}", ctt::py::repr(d)));
+        fields.push(format!("description={}", time_tracker::py::repr(d)));
     }
     fields.join("  ")
 }
@@ -1171,7 +1171,7 @@ fn series_splits(raw: &Raw, _config: &Config) -> anyhow::Result<()> {
                 item["status"].as_str().unwrap_or("").to_string(),
             ];
             if let Some(d) = item["description"].as_str() {
-                fields.push(ctt::py::repr(d));
+                fields.push(time_tracker::py::repr(d));
             }
             println!("     {}", fields.join("  "));
         }
@@ -1397,7 +1397,7 @@ impl Drop for Mcp {
 /// can't trash it (see metadata_tabs).
 fn server(raw: &Raw, config: &Config, binary: &std::path::Path) -> anyhow::Result<()> {
     let days = seed_planned_days(raw)?;
-    let scratch = std::env::temp_dir().join(format!("ctt-probe-{}", std::process::id()));
+    let scratch = std::env::temp_dir().join(format!("time-tracker-probe-{}", std::process::id()));
     std::fs::create_dir_all(&scratch)?;
     let token = scratch.join("token.json");
     std::fs::copy(&config.token_path, &token).context("copying the token")?;
@@ -1407,7 +1407,7 @@ fn server(raw: &Raw, config: &Config, binary: &std::path::Path) -> anyhow::Resul
         ("GOOGLE_OAUTH_TOKEN_PATH", token.display().to_string()),
         ("GOOGLE_OAUTH_CREDENTIALS_PATH", credentials.display().to_string()),
         ("MCP_TRANSPORT", "stdio".to_string()),
-        ("CTT_HEALTH_WRITER", "off".to_string()),
+        ("TIME_TRACKER_HEALTH_WRITER", "off".to_string()),
     ];
     let outcome = Mcp::start(binary, &env).and_then(|mut mcp| walk_server(&mut mcp, &days));
     let _ = std::fs::remove_dir_all(&scratch);

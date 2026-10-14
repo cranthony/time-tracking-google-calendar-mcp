@@ -1183,7 +1183,7 @@ impl FakeGoogle {
     /// A client of the fake, with a token that needs no refreshing.
     pub fn google(&self) -> Arc<Google> {
         let token = json!({"token": "fake", "refresh_token": "fake-refresh", "expiry": "2099-01-01T00:00:00Z"}).to_string();
-        let path = std::env::temp_dir().join(format!("ctt-fake-token-{}.json", uuid::Uuid::new_v4()));
+        let path = std::env::temp_dir().join(format!("time-tracker-fake-token-{}.json", uuid::Uuid::new_v4()));
         Arc::new(Google::from_token_json_at(&token, &path, Some(self.root.clone())).unwrap())
     }
 
