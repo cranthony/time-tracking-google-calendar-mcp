@@ -1180,8 +1180,9 @@ pub fn facts_lines(facts: Option<&Facts>, names: &[(String, String)]) -> Vec<Str
     let Some(facts) = facts.filter(|f| !f.is_empty()) else { return Vec::new() };
     let named = |ids: &[String]| ids.iter().map(|i| name_of(names, i)).collect::<Vec<_>>().join(", ");
     let mut parts: Vec<String> = Vec::new();
-    if let Some(location) = facts.location().filter(|l| !l.is_empty()) {
-        parts.push(format!("@ {}", name_of(names, &location)));
+    let locations = facts.locations();
+    if !locations.is_empty() {
+        parts.push(format!("@ {}", locations.iter().map(|l| name_of(names, l)).collect::<Vec<_>>().join(", ")));
     }
     if crate::stores::groups::truthy(facts.with_ids.as_ref()) {
         parts.push(format!("with {}", named(&facts.with())));
@@ -1222,7 +1223,7 @@ fn timeline_of(
             return Vec::new();
         }
         let mut gaps: Vec<String> = if final_.action_ids.as_ref().is_some_and(|a| !a.is_empty()) { Vec::new() } else { vec!["action".into()] };
-        if !final_.facts.as_ref().is_some_and(|f| f.location().is_some_and(|l| !l.is_empty())) {
+        if !final_.facts.as_ref().is_some_and(|f| !f.locations().is_empty()) {
             gaps.push("location".into());
         }
         gaps

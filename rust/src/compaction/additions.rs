@@ -5,7 +5,6 @@
 use crate::event::Event;
 use crate::facts::Facts;
 use crate::stores::actions::{action_problems, Action, ActionStatus, Actions};
-use crate::stores::groups::truthy;
 use crate::stores::locations::{location_problems, Location, Locations};
 use crate::stores::people::{person_problems, People, Person, Status};
 use crate::py;
@@ -306,10 +305,7 @@ pub fn resolve(event: &Event, ids: &[(String, String)]) -> Event {
             })
         };
         out.facts = Some(Facts {
-            location_id: match &facts.location_id {
-                Some(l) if truthy(Some(l)) => Some(mapped_value(ids, l)),
-                other => other.clone(),
-            },
+            location_ids: list(&facts.location_ids),
             with_ids: list(&facts.with_ids),
             for_ids: list(&facts.for_ids),
             notes: facts.notes.as_ref().map(|n| match n {

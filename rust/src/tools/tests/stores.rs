@@ -232,7 +232,7 @@ fn shows_a_series_in_its_own_time_zone_with_its_schedule_in_words() {
     let server = Server::new();
     server.t.app.actions().unwrap();
     server.t.seed(ACTIONS.1, &[json!({"id": "g1", "name": "Work", "status": "active", "label_id": "l1"})]);
-    server.seed(&[Event { action_ids: Some(strings(&["g1"])), facts: Some(crate::testing::facts(json!({"with": ["sam"], "location": "home"}))), ..standup("RRULE:FREQ=WEEKLY;BYDAY=MO") }]);
+    server.seed(&[Event { action_ids: Some(strings(&["g1"])), facts: Some(crate::testing::facts(json!({"with": ["sam"], "locations": ["home"]}))), ..standup("RRULE:FREQ=WEEKLY;BYDAY=MO") }]);
 
     let public = server.ok("get_recurrence", json!({"id": "series1"}));
 
@@ -240,7 +240,7 @@ fn shows_a_series_in_its_own_time_zone_with_its_schedule_in_words() {
     assert_eq!(public["schedule"], "Every week on Mon");
     assert_eq!(public["action_names"], json!(["Work"]));
     assert_eq!((public["repeat"]["every"].clone(), public["repeat"]["weekdays"].clone()), (json!("week"), json!(["mon"])));
-    assert_eq!((public["facts"]["with_ids"].clone(), public["facts"]["location_id"].clone()), (json!(["sam"]), json!("home")));
+    assert_eq!((public["facts"]["with_ids"].clone(), public["facts"]["location_ids"].clone()), (json!(["sam"]), json!(["home"])));
 }
 
 #[test]
@@ -287,10 +287,10 @@ fn update_recurrence_sets_facts_normalized() {
     server.t.seed(crate::sheet::LOCATIONS.1, &[json!({"id": "home", "name": "Home"})]);
     server.seed(&[standup("RRULE:FREQ=WEEKLY;BYDAY=MO")]);
 
-    server.ok("update_recurrence", json!({"recurrence": {"id": "series1", "facts": {"with_ids": [" sam"], "location_id": "home"}}}));
+    server.ok("update_recurrence", json!({"recurrence": {"id": "series1", "facts": {"with_ids": [" sam"], "location_ids": ["home"]}}}));
 
     let facts = server.event("series1").facts.unwrap();
-    assert_eq!((facts.with(), facts.location()), (strings(&["sam"]), Some("home".to_string())));
+    assert_eq!((facts.with(), facts.locations()), (strings(&["sam"]), strings(&["home"])));
 }
 
 #[test]

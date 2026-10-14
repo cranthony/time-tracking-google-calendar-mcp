@@ -144,7 +144,7 @@ pub struct Repeat {
 /// on its own -- until the series is next edited, which resets them
 /// (see update_recurrence). actions_from_label is as for PublicEvent.
 /// facts are those of every event in it: usually who it's with or for,
-/// and where (location_id) -- set them to replace them whole.
+/// and where (location_ids) -- set them to replace them whole.
 ///
 /// schedule, action_names, event_label_id and effective_priority are
 /// read-only: update_recurrence ignores them, as it does time_zone.

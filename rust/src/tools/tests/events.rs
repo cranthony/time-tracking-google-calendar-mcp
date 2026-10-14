@@ -354,9 +354,9 @@ fn sets_facts_normalized() {
     let server = two();
     with_people_and_places(&server);
 
-    server.ok("update_event", json!({"updates": [update("abc123", json!({"facts": {"location_id": "home", "with_ids": [" sam"], "notes": {"sam": " glad  "}}}))]}));
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"facts": {"location_ids": ["home"], "with_ids": [" sam"], "notes": {"sam": " glad  "}}}))]}));
 
-    let expected = Facts::from_public(&json!({"location_id": "home", "with_ids": ["sam"], "notes": {"sam": "glad"}}));
+    let expected = Facts::from_public(&json!({"location_ids": ["home"], "with_ids": ["sam"], "notes": {"sam": "glad"}}));
     assert_eq!(server.event("abc123").facts.map(|f| f.to_public()), Some(expected.to_public()));
 }
 
@@ -368,7 +368,7 @@ fn refuses_facts_that_arent_well_formed() {
     for (facts, message) in [
         (json!({"with_ids": ["self"]}), r#"Its facts "with_ids" never names "self""#),
         (json!({"for_ids": ["p9"]}), r"Its facts name \['p9'\], who aren't people"),
-        (json!({"location_id": "nowhere"}), r"Its facts' location 'nowhere' isn't a location"),
+        (json!({"location_ids": ["nowhere"]}), r"Its facts' location 'nowhere' isn't a location"),
     ] {
         server.refused("update_event", json!({"updates": [update("abc123", json!({"facts": facts}))]}), message);
     }

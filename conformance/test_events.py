@@ -170,11 +170,11 @@ async def test_facts_and_judgments(session):
     park_id = park["id"] if "id" in park else park["created_id"]
     [event] = (await session.call(
         "create_event",
-        events=[{"summary": "Walk", "start": at(9), "end": at(10), "facts": {"location_id": park_id, "with_ids": [friend_id], "notes": {friend_id: "enjoyed it", "self": "tired"}}}],
+        events=[{"summary": "Walk", "start": at(9), "end": at(10), "facts": {"location_ids": [park_id], "with_ids": [friend_id], "notes": {friend_id: "enjoyed it", "self": "tired"}}}],
     ))["events"]
-    assert event["facts"]["location_id"] == park_id
+    assert event["facts"]["location_ids"] == [park_id]
     await session.call_error("create_event", events=[{"summary": "Bad", "start": at(11), "end": at(12), "facts": {"with_ids": ["nobody"]}}])
-    await session.call_error("create_event", events=[{"summary": "Bad", "start": at(11), "end": at(12), "facts": {"location_id": "nowhere"}}])
+    await session.call_error("create_event", events=[{"summary": "Bad", "start": at(11), "end": at(12), "facts": {"location_ids": ["nowhere"]}}])
     await session.call_error("create_event", events=[{"summary": "Bad", "start": at(11), "end": at(12), "facts": {"with_ids": ["self"]}}])
     judged = await session.call(
         "update_event",

@@ -942,10 +942,6 @@ pub fn settle_refs(decision: &EventDecision, settled: &Dict<AdditionSettled>) ->
         out.action_ids = Some(named(ids));
     }
     if let Some(facts) = &decision.facts {
-        let location = match &facts.location_id {
-            Some(Value::String(l)) if !l.is_empty() => id_of(l).map(Value::String),
-            other => other.clone(),
-        };
         let notes = match &facts.notes {
             Some(Value::Object(map)) => {
                 let mut kept = Map::new();
@@ -960,7 +956,7 @@ pub fn settle_refs(decision: &EventDecision, settled: &Dict<AdditionSettled>) ->
             }
             other => other.clone(),
         };
-        out.facts = Some(Facts { location_id: location, with_ids: named_value(&facts.with_ids), for_ids: named_value(&facts.for_ids), notes });
+        out.facts = Some(Facts { location_ids: named_value(&facts.location_ids), with_ids: named_value(&facts.with_ids), for_ids: named_value(&facts.for_ids), notes });
     }
     out
 }

@@ -50,7 +50,9 @@
      {
       "end": "2026-10-07T10:00:00-04:00",
       "facts": {
-       "location_id": "3dnjav",
+       "location_ids": [
+        "3dnjav"
+       ],
        "notes": {
         "co2yzn": "enjoyed it",
         "self": "tired"
@@ -78,6 +80,9 @@
       "facts": {
        "for_ids": null,
        "location_id": "3dnjav",
+       "location_ids": [
+        "3dnjav"
+       ],
        "notes": {
         "co2yzn": "enjoyed it",
         "self": "tired"
@@ -100,7 +105,7 @@
     "timeline": "09:00 ┌ Walk · new\n10:00 └ Walk ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_id\": \"3dnjav\",\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"location_id\": \"3dnjav\",\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -129,7 +134,9 @@
      {
       "end": "2026-10-07T12:00:00-04:00",
       "facts": {
-       "location_id": "nowhere"
+       "location_ids": [
+        "nowhere"
+       ]
       },
       "start": "2026-10-07T11:00:00-04:00",
       "summary": "Bad"
@@ -196,6 +203,9 @@
       "facts": {
        "for_ids": null,
        "location_id": "3dnjav",
+       "location_ids": [
+        "3dnjav"
+       ],
        "notes": {
         "co2yzn": "enjoyed it",
         "self": "tired"
@@ -228,7 +238,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_id\": \"3dnjav\",\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      }\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"location_id\": \"3dnjav\",\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      }\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -1587,7 +1597,7 @@
     "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-facts": "{\"location\":\"3dnjav\",\"with\":[\"co2yzn\"],\"notes\":{\"co2yzn\":\"enjoyed it\",\"self\":\"tired\"}}"
+      "cascading-time-tracker-facts": "{\"locations\":[\"3dnjav\"],\"with\":[\"co2yzn\"],\"notes\":{\"co2yzn\":\"enjoyed it\",\"self\":\"tired\"}}"
      }
     },
     "start": {

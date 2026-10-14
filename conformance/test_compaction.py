@@ -60,7 +60,7 @@ async def test_full_round(session, plan):
         recap={**RECAP, "did": [{"text": "Breakfast ran late.", "event_ids": [d5["Breakfast"]], "note_ids": [note["finished breakfast"]]}], "unsure": [{"text": "Was the walk *work*?", "event_ids": ["walk"], "note_ids": []}]},
         updates=[
             {"event_id": d5["Breakfast"], "end_note": note["finished breakfast"], "action_ids": [eat]},
-            {"event_id": d5["Lunch"], "facts": {"with_ids": [friend], "location_id": "new:cafe"}, "action_ids": [eat]},
+            {"event_id": d5["Lunch"], "facts": {"with_ids": [friend], "location_ids": ["new:cafe"]}, "action_ids": [eat]},
             {"event_id": d5["Dinner"], "end_note": note["dinner done"]},
             {"event_id": d6["Afternoon work"], "end_note": note["left work early, walked in the park"]},
         ],

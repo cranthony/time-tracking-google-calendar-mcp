@@ -1496,7 +1496,7 @@ fn walk_server(mcp: &mut Mcp, days: &[PlannedDay]) -> anyhow::Result<()> {
             "recap": {"overview": "Probe.", "did": [{"text": "Recorded the probe days.", "event_ids": [], "note_ids": []}], "unsure": []},
             "updates": [
                 {"event_id": d1["Breakfast"], "end_note": note("finished breakfast"), "action_ids": [eat]},
-                {"event_id": d1["Lunch"], "action_ids": [eat], "facts": {"with_ids": [friend], "location_id": cafe, "notes": {friend.clone(): "chatty"}}},
+                {"event_id": d1["Lunch"], "action_ids": [eat], "facts": {"with_ids": [friend], "location_ids": [cafe], "notes": {friend.clone(): "chatty"}}},
                 {"event_id": d2["Dinner"], "end_note": note("dinner done")},
             ],
             "creates": [{"summary": "Probe stroll", "start": at(second, "19:30"), "end": at(second, "20:00"), "action_ids": ["new:stroll"]}],

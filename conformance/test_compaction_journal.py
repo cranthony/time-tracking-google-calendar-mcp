@@ -47,7 +47,7 @@ async def test_rebuild_after_a_keyed_create_and_new_facts(session, google, plan)
     proposed = await propose(
         session,
         updates=[
-            {"event_id": d6["Work"], "end_note": note["worked from home"], "facts": {"location_id": home, "notes": {"self": "quiet"}}},
+            {"event_id": d6["Work"], "end_note": note["worked from home"], "facts": {"location_ids": [home], "notes": {"self": "quiet"}}},
             {"event_id": d6["Dinner"], "end_note": note["dinner done"]},
         ],
         creates=[
