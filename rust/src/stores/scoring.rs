@@ -167,7 +167,8 @@ pub struct ScoringDefault {
 pub const DEFAULT_ROW: RowType = <ScoringDefault as rows::RowItem>::ROW_TYPE;
 
 /// How scores combine wherever nothing says otherwise: each an
-/// aggregation (see get_scoring_defaults), or null for the plain mean.
+/// aggregation (see get_scoring_defaults), or null for the plain mean --
+/// for habit_layers, the lowest score.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
 pub struct ScoringDefaults {
     /// How a person's or habit's traits combine into their score, by
