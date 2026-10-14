@@ -37,7 +37,7 @@ fn filled() -> Filled {
     let home = id(s.ok("create_location", json!({"location": {"name": "Home", "group_id": brooklyn}})));
     let outside = id(s.ok("create_habit", json!({"habit": {"name": "Outside", "action_id": outdoors}})));
     s.seed(&[
-        event_at("08:00-09:00").id("walked").summary("Walk").actions(&[&walk]).facts(facts(json!({"location": home, "with": [sam]}))).build(),
+        event_at("08:00-09:00").id("walked").summary("Walk").actions(&[&walk]).facts(facts(json!({"locations": [home], "with": [sam]}))).build(),
         event_at("20:00-22:00").id("evening").summary("Evening").priority(2).build(),
         event_at("22:00-06:00+1").id("sleep").summary("Sleep").priority(0).sleep().build(),
     ]);
@@ -93,7 +93,7 @@ fn every_tool_reads_the_spreadsheet_in_one_request() {
         // Events: the actions', people's and locations' tabs together.
         ("list_events", "list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"})),
         ("get_event", "get_event", json!({"id": "walked"})),
-        ("update_event (facts)", "update_event", json!({"updates": [{"event": {"id": "walked", "facts": {"location": f.home, "notes": {"self": "nice"}}}}]})),
+        ("update_event (facts)", "update_event", json!({"updates": [{"event": {"id": "walked", "facts": {"location_ids": [f.home], "notes": {"self": "nice"}}}}]})),
         ("update_event", "update_event", json!({"updates": [{"event": {"id": "evening", "start": "2026-01-01T20:15:00Z"}}]})),
         ("create_event", "create_event", json!({"events": [{"summary": "Stroll", "start": "2026-01-04T10:00:00Z", "end": "2026-01-04T11:00:00Z"}]})),
         ("delete_event", "delete_event", json!({"cancels": [{"event_id": "walked", "counts_against_follow_through": false}]})),

@@ -182,7 +182,7 @@ fn new_ones_are_named_by_ref_shown_and_created_when_applied() {
     assert_eq!(event.action_ids, Some(vec![coffee.id.clone().unwrap()]));
     assert_eq!(
         event.facts.map(|f| f.to_public()),
-        Some(facts(json!({"location": cafe, "with": ["sam", alex.clone()], "notes": {alex: "new in town"}})).to_public())
+        Some(facts(json!({"locations": [cafe], "with": ["sam", alex.clone()], "notes": {alex: "new in town"}})).to_public())
     );
 }
 

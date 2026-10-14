@@ -28,9 +28,9 @@ pub struct Facts {
 const FIELDS: [(&str, &str); 4] =
     [("location_ids", "locations"), ("with_ids", "with"), ("for_ids", "for"), ("notes", "notes")];
 
-/// The field a client gave a single location in, and the key it was
-/// stored under, before an event could have several: read as a list of one.
-const LEGACY_LOCATION: (&str, &str) = ("location_id", "location");
+/// The field a client gave a single location in, before an event could
+/// have several: read as a list of one.
+const LEGACY_LOCATION_ID: &str = "location_id";
 
 /// `value`, a location id given alone, as a list of one; `None` for none
 /// (null or blank).
@@ -169,9 +169,6 @@ impl Facts {
                 *slot = Some(value.clone());
             }
         }
-        if facts.location_ids.is_none() {
-            facts.location_ids = map.get(LEGACY_LOCATION.1).and_then(one_location);
-        }
         Some(facts)
     }
 
@@ -184,7 +181,7 @@ impl Facts {
         for (name, _) in FIELDS {
             map.insert(name.to_string(), self.field(name).clone().unwrap_or(Value::Null));
         }
-        map.insert(LEGACY_LOCATION.0.into(), self.locations().into_iter().next().map(Value::String).unwrap_or(Value::Null));
+        map.insert(LEGACY_LOCATION_ID.into(), self.locations().into_iter().next().map(Value::String).unwrap_or(Value::Null));
         Value::Object(map)
     }
 
@@ -193,14 +190,8 @@ impl Facts {
     /// have several locations gives it, is read as a list of one.
     pub fn from_public(value: &Value) -> Facts {
         let get = |key: &str| value.get(key).filter(|v| !v.is_null()).cloned();
-        let location_ids = get("location_ids").or_else(|| value.get(LEGACY_LOCATION.0).and_then(one_location));
+        let location_ids = get("location_ids").or_else(|| value.get(LEGACY_LOCATION_ID).and_then(one_location));
         Facts { location_ids, with_ids: get("with_ids"), for_ids: get("for_ids"), notes: get("notes") }
-    }
-
-    /// Whether `raw`, facts as an event stores them, keeps a location
-    /// under the key from before an event could have several.
-    pub fn has_legacy_location(raw: &str) -> bool {
-        serde_json::from_str::<Value>(raw).ok().is_some_and(|v| v.get(LEGACY_LOCATION.1).is_some())
     }
 }
 
@@ -291,16 +282,19 @@ mod tests {
     }
 
     #[test]
-    fn a_single_location_from_before_is_read_as_a_list_of_one() {
+    fn a_clients_single_location_id_is_read_as_a_list_of_one() {
         let one = facts(json!({"location_ids": ["home"], "with_ids": ["sam"]}));
-        assert_eq!(Facts::from_json(r#"{"location":"home","with":["sam"]}"#), Some(one.clone()));
         assert_eq!(facts(json!({"location_id": "home", "with_ids": ["sam"]})), one);
-        assert_eq!(Facts::from_json(r#"{"location":" ","with":["sam"]}"#), Some(facts(json!({"with_ids": ["sam"]}))));
+        assert_eq!(facts(json!({"location_id": " ", "with_ids": ["sam"]})), facts(json!({"with_ids": ["sam"]})));
         // Both given: the list wins.
         assert_eq!(facts(json!({"location_ids": ["park"], "location_id": "home"})).locations(), vec!["park"]);
-        assert_eq!(Facts::from_json(r#"{"locations":["park"],"location":"home"}"#).unwrap().locations(), vec!["park"]);
-        assert!(Facts::has_legacy_location(r#"{"location":"home"}"#));
-        assert!(!Facts::has_legacy_location(r#"{"locations":["home"]}"#));
+        // And sent back, the first, so such a client keeps it.
+        assert_eq!(facts(json!({"location_ids": ["park", "home"]})).to_public()["location_id"], "park");
+    }
+
+    #[test]
+    fn a_location_stored_the_old_way_is_no_longer_read() {
+        assert_eq!(Facts::from_json(r#"{"location":"home","with":["sam"]}"#), Some(facts(json!({"with_ids": ["sam"]}))));
     }
 
     #[test]

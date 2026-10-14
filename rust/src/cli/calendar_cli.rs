@@ -20,7 +20,6 @@
 //!     calendar_cli get_notes
 //!     calendar_cli edit_note <note_id> [--ago <ago> | --at <time>] [--description <text>]
 //!     calendar_cli delete_note <note_id>
-//!     calendar_cli migrate_locations [--apply]
 //!
 //! See ../README.md ("calendar_cli") for what each does. Durations (`list`'s
 //! from/to, `note`'s ago) are pytimeparse's: "1h", "90m", "2d", "1:30".
@@ -28,7 +27,7 @@
 use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone};
 use crate::app::{App, Config};
 use crate::compaction::compactor::{compaction_error, delete_note, edit_note};
-use crate::event::{parse_iso, read_chunks, Event};
+use crate::event::{parse_iso, Event};
 use crate::facts::Facts;
 use crate::google::calendar::EventLabel;
 use crate::py;
@@ -584,127 +583,7 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
             wln!(out, "Deleted:");
             wln!(out, "{}", note_details(&deleted));
         }
-        "migrate_locations" => {
-            let apply = match rest {
-                [] => false,
-                [flag] if flag == "--apply" => true,
-                [other, ..] => return Err(usage(format!("unrecognized arguments: {other}"))),
-            };
-            migrate_locations(app, now, apply, out)?;
-        }
         other => return Err(usage(format!("argument command: invalid choice: {}", py::repr(other)))),
-    }
-    Ok(())
-}
-
-/// How far back `migrate_locations` looks for events, and how far ahead
-/// for a series' next event, to split it there.
-const MIGRATE_SINCE_DAYS: i64 = 20 * 366;
-const MIGRATE_AHEAD_DAYS: i64 = 14;
-/// How far ahead it looks for series with no event in those two weeks,
-/// whose own facts it rewrites.
-const MIGRATE_SERIES_AHEAD_DAYS: i64 = 2 * 366;
-
-/// Whether `resource`, an event as Calendar gives it, keeps its facts'
-/// location under the key from before an event could have several.
-fn legacy_location(resource: &Value) -> bool {
-    let empty = serde_json::Map::new();
-    let private = resource.pointer("/extendedProperties/private").and_then(Value::as_object).unwrap_or(&empty);
-    read_chunks(private, "facts").is_some_and(|raw| Facts::has_legacy_location(&raw))
-}
-
-/// Rewrites every event's facts that keep a single location the old way
-/// ("location") the new way ("locations", a list). Each event that isn't
-/// in a series, and each past event of one, is rewritten on its own; a
-/// series with an event in the next two weeks is split there ("this and
-/// following"), the copy from then on written anew, so the past stays as
-/// it was. Then each series' own facts are rewritten -- which changes
-/// none of its past events, each rewritten already. Without `apply`,
-/// says what it would do.
-fn migrate_locations(app: &Arc<App>, now: Moment, apply: bool, out: &mut dyn Write) -> Result<(), Failure> {
-    let client = app.calendar_client()?;
-    let recurrences = app.recurrences()?;
-    let ahead = now + chrono::Duration::days(MIGRATE_AHEAD_DAYS);
-    let listed = client.list_event_resources(
-        &(now - chrono::Duration::days(MIGRATE_SINCE_DAYS)),
-        &(now + chrono::Duration::days(MIGRATE_SERIES_AHEAD_DAYS)),
-        None,
-    )?;
-    let verb = if apply { "Rewrote" } else { "Would rewrite" };
-    let rewrite = |id: &str| -> anyhow::Result<()> {
-        let event = client.get_event(id)?;
-        client.update_event(&Event { id: event.id, facts: Some(event.facts.unwrap_or_default()), ..Default::default() })?;
-        Ok(())
-    };
-    // Each series, by id, with its first event from now on, if any, and
-    // its later events, which may each have been edited on their own.
-    let mut series: Vec<(String, Option<(Moment, String)>, Vec<String>)> = Vec::new();
-    let (mut singles, mut past) = (0, 0);
-    for resource in &listed {
-        let event = Event::from_api(resource)?;
-        if event.is_cancelled() {
-            continue;
-        }
-        let id = event.id.clone().unwrap_or_default();
-        let Some(parent) = event.recurring_event_id.clone().filter(|p| !p.is_empty()) else {
-            if legacy_location(resource) {
-                singles += 1;
-                if apply {
-                    rewrite(&id)?;
-                }
-            }
-            continue;
-        };
-        let at = event.original_start.unwrap_or(event.start());
-        let slot = match series.iter().position(|(s, _, _)| *s == parent) {
-            Some(i) => i,
-            None => {
-                series.push((parent.clone(), None, Vec::new()));
-                series.len() - 1
-            }
-        };
-        if at >= now {
-            if legacy_location(resource) {
-                series[slot].2.push(id.clone());
-            }
-            if at < ahead && series[slot].1.is_none() {
-                series[slot].1 = Some((at, id));
-            }
-        } else if legacy_location(resource) {
-            past += 1;
-            if apply {
-                rewrite(&id)?;
-            }
-        }
-    }
-    wln!(out, "{verb} {singles} event(s) not in a series, and {past} past event(s) of a series.");
-    for (series_id, next, later) in &series {
-        if !legacy_location(&client.get_event_resource(series_id)?) {
-            continue;
-        }
-        let summary = client.get_event(series_id)?.summary.unwrap_or_default();
-        match next {
-            Some((at, event_id)) => {
-                wln!(out, "{} series {series_id} ({summary}) from {} on, and its own facts.", if apply { "Split" } else { "Would split" }, py::isoformat(at));
-                if apply {
-                    // The copy from then on is written anew: the new way.
-                    recurrences.split(event_id).map_err(refused)?;
-                }
-            }
-            None => wln!(out, "{verb} series {series_id} ({summary})'s own facts."),
-        }
-        if apply {
-            rewrite(series_id)?;
-            // Not split: a later event edited on its own keeps its facts
-            // apart from the series'.
-            if next.is_none() {
-                for id in later {
-                    if legacy_location(&client.get_event_resource(id)?) {
-                        rewrite(id)?;
-                    }
-                }
-            }
-        }
     }
     Ok(())
 }
@@ -770,7 +649,7 @@ mod tests {
         assert!(set_event_attribute(&mut event, "start=2026-01-01T09:00:00").is_err());
         assert!(set_event_attribute(&mut event, "colour=red").is_err());
         assert!(set_event_attribute(&mut event, "facts=[]").is_err());
-        set_event_attribute(&mut event, r#"facts={"with":[" p1 ","p1"],"location":"l"}"#).ok().unwrap();
+        set_event_attribute(&mut event, r#"facts={"with":[" p1 ","p1"],"locations":["l"]}"#).ok().unwrap();
         assert_eq!(facts_repr(event.facts.as_ref().unwrap()), "Facts(location_ids=['l'], with_ids=['p1'], for_ids=None, notes=None)");
     }
 

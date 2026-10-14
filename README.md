@@ -311,9 +311,6 @@ calendar_cli edit_note "2026-01-01T09:05:00+00:00#5" --at 2026-01-01T09:10:00-04
 
 # Delete a note
 calendar_cli delete_note "2026-01-01T09:05:00+00:00#5"
-
-# Rewrite facts that keep one location the old way (--apply to write)
-calendar_cli migrate_locations
 ```
 
 `from`/`to` are each a duration relative to *now*, as [pytimeparse](https://pypi.org/project/pytimeparse/) reads them (e.g. `"1h"`, `"90m"`, `"2d"`, `"1:30"`), giving a window from `now - from` to `now + to`. Both are optional and default to `1h`.
@@ -329,8 +326,6 @@ For a recurring event, the id from `list`/`get` names one specific *instance*. T
 `list_actions` (proposed and active actions; `--status <status>`, repeatable, or `--all`), `create_action` and `update_action <action_id>` manage this calendar's actions, the same way the MCP tools do (see [Actions](#actions)), each printing the resulting actions one per line: id, status, and path. They take `key=value` pairs for an action's fields (`name`, `group_id`, `status`, `background_color`, `priority`, `note`); `update_action` also takes `--clear <attribute>`, repeatable.
 
 `note` takes how long ago the note is for (a duration, like `list`'s; `0s` for right now) and an optional description. `get_notes` lists every uncompacted note with its id. `edit_note <note_id>` takes `--ago` (a duration before now) or `--at` (an ISO 8601 time, local if it has no UTC offset), and/or `--description` (`""` clears it); `delete_note <note_id>` removes the note. Both refuse a compacted note, a stale id, or a note in a compaction that's partway through being applied, printing why and exiting non-zero.
-
-`migrate_locations` rewrites the facts of every event that keeps its location the way it was kept before an event could have several (`"location": id`, read now as a list of one) as a list (`"locations": [id]`). An event not in a series, and each past event of a series, is rewritten on its own; a series with an event in the next two weeks is split there, "this and following", its copy from then on written anew, so no past event changes but its facts' format; then each series' own facts are rewritten. It looks back 20 years. Without `--apply`, it only says what it would do.
 
 ## How it works
 
