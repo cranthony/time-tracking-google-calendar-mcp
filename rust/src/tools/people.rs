@@ -397,7 +397,7 @@ pub fn update_habit(app: &App, habit: Habit, clear_fields: Option<Vec<HabitField
 /// a circle's people combine into its score, unless its own scoring says)
 /// and habit_layers (how the habits and people in each layer of the habit
 /// graph combine into the layer's score). Each is an aggregation, or null
-/// for the plain mean. An aggregation -- this, a trait's scoring, a
+/// for the plain mean -- for habit_layers, the lowest score. An aggregation -- this, a trait's scoring, a
 /// person's or habit's traits' scoring and part_scoring, and a circle's
 /// scoring -- is an object with any of: "statistic": "mean" (weighted;
 /// the default) or "percentile" (with "percentile": 0-100 -- the lowest

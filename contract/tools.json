@@ -9030,7 +9030,7 @@
     }
   },
   {
-    "description": "How scores combine wherever nothing says otherwise -- the defaults the\nuser's app scores by: traits (how a person's or habit's traits combine\ninto their score, unless their traits' own scoring says), circles (how\na circle's people combine into its score, unless its own scoring says)\nand habit_layers (how the habits and people in each layer of the habit\ngraph combine into the layer's score). Each is an aggregation, or null\nfor the plain mean. An aggregation -- this, a trait's scoring, a\nperson's or habit's traits' scoring and part_scoring, and a circle's\nscoring -- is an object with any of: \"statistic\": \"mean\" (weighted;\nthe default) or \"percentile\" (with \"percentile\": 0-100 -- the lowest\nscore with at least that share of the weight at or below it, so 0 is\nthe lowest score and 100 the highest); \"weights\": {id: weight, 0 or\nmore} (each 1 unless given; ids as the level says -- part ids, trait\nids, person ids, or \"habit:<id>\" for habits); \"limit\" (a whole number)\nand \"limit_by\": \"best\" or \"worst\" -- only the limit highest or lowest\nscores count; \"cap_below\": {\"threshold\": score, \"cap\": score} -- with\nany score under threshold, the result is at most cap; and \"missing\":\n\"skip\" (the default: what has nothing to rate it by is left out) or a\nscore to count it as. Scores are 0-100. Read-only.",
+    "description": "How scores combine wherever nothing says otherwise -- the defaults the\nuser's app scores by: traits (how a person's or habit's traits combine\ninto their score, unless their traits' own scoring says), circles (how\na circle's people combine into its score, unless its own scoring says)\nand habit_layers (how the habits and people in each layer of the habit\ngraph combine into the layer's score). Each is an aggregation, or null\nfor the plain mean -- for habit_layers, the lowest score. An aggregation -- this, a trait's scoring, a\nperson's or habit's traits' scoring and part_scoring, and a circle's\nscoring -- is an object with any of: \"statistic\": \"mean\" (weighted;\nthe default) or \"percentile\" (with \"percentile\": 0-100 -- the lowest\nscore with at least that share of the weight at or below it, so 0 is\nthe lowest score and 100 the highest); \"weights\": {id: weight, 0 or\nmore} (each 1 unless given; ids as the level says -- part ids, trait\nids, person ids, or \"habit:<id>\" for habits); \"limit\" (a whole number)\nand \"limit_by\": \"best\" or \"worst\" -- only the limit highest or lowest\nscores count; \"cap_below\": {\"threshold\": score, \"cap\": score} -- with\nany score under threshold, the result is at most cap; and \"missing\":\n\"skip\" (the default: what has nothing to rate it by is left out) or a\nscore to count it as. Scores are 0-100. Read-only.",
     "inputSchema": {
       "properties": {},
       "type": "object",
@@ -9095,7 +9095,7 @@
       "type": "object",
       "$defs": {
         "ScoringDefaults": {
-          "description": "How scores combine wherever nothing says otherwise: each an\naggregation (see get_scoring_defaults), or null for the plain mean.",
+          "description": "How scores combine wherever nothing says otherwise: each an\naggregation (see get_scoring_defaults), or null for the plain mean --\nfor habit_layers, the lowest score.",
           "properties": {
             "traits": {
               "additionalProperties": true,
