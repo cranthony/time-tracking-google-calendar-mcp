@@ -56,7 +56,7 @@ const EVENT_ATTRIBUTES: [&str; 12] = [
     "status", "summary",
 ];
 const RAW_LABEL_ATTRIBUTES: [&str; 2] = ["background_color", "name"];
-const ACTION_ATTRIBUTES: [&str; 6] = ["background_color", "group_id", "name", "note", "priority", "status"];
+const ACTION_ATTRIBUTES: [&str; 7] = ["background_color", "commute", "group_id", "name", "note", "priority", "status"];
 
 /// A mistake in how it was called: printed with the usage, exit status 2
 /// (argparse's).
@@ -232,6 +232,7 @@ fn set_action_attribute(row: &mut Row, pair: &str) -> Result<(), Failure> {
     let (key, raw) = split_pair(pair, &ACTION_ATTRIBUTES)?;
     let value = match key {
         "priority" => json!(raw.trim().parse::<i64>().map_err(|_| invalid(key, format!("invalid literal for int() with base 10: {}", py::repr(raw))))?),
+        "commute" => json!(parse_bool(raw).map_err(|e| invalid(key, e))?),
         "status" if !ACTION_STATUSES.contains(&raw) => return Err(invalid(key, format!("expected one of {}", ACTION_STATUSES.join(", ")))),
         _ => json!(raw),
     };

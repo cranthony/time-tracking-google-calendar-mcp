@@ -13,8 +13,9 @@ pub use crate::stores::actions::*;
 /// phrase for what they're doing in a moment ("play guitar", "eat a
 /// meal"). By default the proposed and active ones, not archived or
 /// deleted ones. Each has its id, group_id (the action group it's in, if
-/// any), name, status, label_id, background_color, priority and note,
-/// plus its path through its groups ("Creative › Guitar › Play guitar"),
+/// any), name, status, label_id, background_color, priority, note and
+/// commute (true for a way of getting from one place to another, such as
+/// "drive" or "walk", which a travel time can be by), plus its path through its groups ("Creative › Guitar › Play guitar"),
 /// its effective_color and effective_priority (its own, or else its
 /// nearest group's) and whether it holds_label: active actions always hold one of the calendar's event
 /// labels, and proposed ones do while there's room. Also how many of the
@@ -41,7 +42,8 @@ pub fn get_action(app: &App, id_or_name: String) -> Result<ListedAction, ToolErr
 /// group, see get_action_groups), a background_color (hex; inherited
 /// from its groups when unset, or else derived from priority), a priority
 /// (taken by its events that don't set their own; inherited from its
-/// groups when unset) and a note. id and
+/// groups when unset), a note and commute (true if it's a way of
+/// getting from one place to another, e.g. "drive"). id and
 /// label_id are assigned. status is "proposed" unless given: leave it so
 /// when you're adding an action no existing one matched, so the user can
 /// review it; give "active" when the user asked for it. Returns the new
@@ -55,8 +57,8 @@ pub fn create_action(app: &App, action: Action) -> Result<CreatedAction, ToolErr
 }
 
 /// Update an action by id: its group_id, name (still unique),
-/// status, background_color, priority or note. Omitted properties keep
-/// their value; list one in clear_fields to blank it instead. label_id
+/// status, background_color, priority, note or commute. Omitted
+/// properties keep their value; list one in clear_fields to blank it instead. label_id
 /// can't be changed. status is proposed (not yet reviewed by the user;
 /// holds a label while there's room), active (holds a label), archived
 /// (not done any more) or deleted (shouldn't have existed); archiving or

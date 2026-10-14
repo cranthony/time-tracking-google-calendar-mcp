@@ -4975,7 +4975,7 @@
     }
   },
   {
-    "description": "Every action: what the user does with their time, each a verb\nphrase for what they're doing in a moment (\"play guitar\", \"eat a\nmeal\"). By default the proposed and active ones, not archived or\ndeleted ones. Each has its id, group_id (the action group it's in, if\nany), name, status, label_id, background_color, priority and note,\nplus its path through its groups (\"Creative › Guitar › Play guitar\"),\nits effective_color and effective_priority (its own, or else its\nnearest group's) and whether it holds_label: active actions always hold one of the calendar's event\nlabels, and proposed ones do while there's room. Also how many of the\ncalendar's label slots are in use. Read-only.",
+    "description": "Every action: what the user does with their time, each a verb\nphrase for what they're doing in a moment (\"play guitar\", \"eat a\nmeal\"). By default the proposed and active ones, not archived or\ndeleted ones. Each has its id, group_id (the action group it's in, if\nany), name, status, label_id, background_color, priority, note and\ncommute (true for a way of getting from one place to another, such as\n\"drive\" or \"walk\", which a travel time can be by), plus its path through its groups (\"Creative › Guitar › Play guitar\"),\nits effective_color and effective_priority (its own, or else its\nnearest group's) and whether it holds_label: active actions always hold one of the calendar's event\nlabels, and proposed ones do while there's room. Also how many of the\ncalendar's label slots are in use. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -5078,6 +5078,12 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             },
@@ -5186,6 +5192,12 @@
             "null"
           ]
         },
+        "commute": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "path": {
           "type": [
             "string",
@@ -5215,7 +5227,7 @@
     }
   },
   {
-    "description": "Create an action: a name (a verb phrase for what the user is doing,\ne.g. \"practice guitar\"; at most 50 characters, and unique among all\nactions, whatever their status), and optionally a group_id (an action\ngroup, see get_action_groups), a background_color (hex; inherited\nfrom its groups when unset, or else derived from priority), a priority\n(taken by its events that don't set their own; inherited from its\ngroups when unset) and a note. id and\nlabel_id are assigned. status is \"proposed\" unless given: leave it so\nwhen you're adding an action no existing one matched, so the user can\nreview it; give \"active\" when the user asked for it. Returns the new\naction's id as created_id, and, as changed, the new action (plus any\nproposed action that lost its label to make room), with\nlabel_slots_used of label_slots_total.",
+    "description": "Create an action: a name (a verb phrase for what the user is doing,\ne.g. \"practice guitar\"; at most 50 characters, and unique among all\nactions, whatever their status), and optionally a group_id (an action\ngroup, see get_action_groups), a background_color (hex; inherited\nfrom its groups when unset, or else derived from priority), a priority\n(taken by its events that don't set their own; inherited from its\ngroups when unset), a note and commute (true if it's a way of\ngetting from one place to another, e.g. \"drive\"). id and\nlabel_id are assigned. status is \"proposed\" unless given: leave it so\nwhen you're adding an action no existing one matched, so the user can\nreview it; give \"active\" when the user asked for it. Returns the new\naction's id as created_id, and, as changed, the new action (plus any\nproposed action that lost its label to make room), with\nlabel_slots_used of label_slots_total.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -5285,6 +5297,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "commute": {
+              "description": "Whether it's a way of getting from one place to another (\"drive\",\n\"walk\"), which a travel time can be by.",
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -5382,6 +5401,12 @@
                 "null"
               ]
             },
+            "commute": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
             "path": {
               "type": [
                 "string",
@@ -5413,7 +5438,7 @@
     }
   },
   {
-    "description": "Update an action by id: its group_id, name (still unique),\nstatus, background_color, priority or note. Omitted properties keep\ntheir value; list one in clear_fields to blank it instead. label_id\ncan't be changed. status is proposed (not yet reviewed by the user;\nholds a label while there's room), active (holds a label), archived\n(not done any more) or deleted (shouldn't have existed); archiving or\ndeleting frees its label, and making it active again restores it.\nReturns, as changed, the action as updated, plus any proposed action\nthat gained or lost its label as a result, with label_slots_used of\nlabel_slots_total.",
+    "description": "Update an action by id: its group_id, name (still unique),\nstatus, background_color, priority, note or commute. Omitted\nproperties keep their value; list one in clear_fields to blank it instead. label_id\ncan't be changed. status is proposed (not yet reviewed by the user;\nholds a label while there's room), active (holds a label), archived\n(not done any more) or deleted (shouldn't have existed); archiving or\ndeleting frees its label, and making it active again restores it.\nReturns, as changed, the action as updated, plus any proposed action\nthat gained or lost its label as a result, with label_slots_used of\nlabel_slots_total.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -5498,6 +5523,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "commute": {
+              "description": "Whether it's a way of getting from one place to another (\"drive\",\n\"walk\"), which a travel time can be by.",
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -5588,6 +5620,12 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             },
@@ -5935,6 +5973,12 @@
                 "null"
               ]
             },
+            "commute": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
             "path": {
               "type": [
                 "string",
@@ -6180,6 +6224,12 @@
                 "null"
               ]
             },
+            "commute": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
             "path": {
               "type": [
                 "string",
@@ -6391,6 +6441,12 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             },
@@ -6632,6 +6688,12 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             },
