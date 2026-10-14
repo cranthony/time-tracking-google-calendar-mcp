@@ -5,10 +5,8 @@
 //!   offset) if that's set.
 //! - `random_token(alphabet, length)` is random, or with
 //!   `TIME_TRACKER_DETERMINISTIC_IDS` set, token n (from 1, across the process) is
-//!   the first `length` bytes of SHA-256("ctt-id:<n>"), each mapped to
-//!   `alphabet[byte % len]`. ("ctt" is the server's old name, kept here because
-//!   it seeds the ids in conformance/'s golden records, which the Python
-//!   server wrote.)
+//!   the first `length` bytes of SHA-256("tt-id:<n>"), each mapped to
+//!   `alphabet[byte % len]`.
 
 use chrono::{DateTime, FixedOffset, Utc};
 use sha2::{Digest, Sha256};
@@ -43,7 +41,7 @@ pub fn random_token(alphabet: &str, length: usize) -> String {
     let letters: Vec<char> = alphabet.chars().collect();
     if std::env::var("TIME_TRACKER_DETERMINISTIC_IDS").map(|v| !v.is_empty()).unwrap_or(false) {
         let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let digest = Sha256::digest(format!("ctt-id:{n}").as_bytes());
+        let digest = Sha256::digest(format!("tt-id:{n}").as_bytes());
         return digest[..length].iter().map(|b| letters[*b as usize % letters.len()]).collect();
     }
     let mut bytes = vec![0u8; length];
@@ -71,14 +69,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_fixed_sequence_matches_python() {
+    fn the_fixed_sequence_is_pinned() {
         let letters: Vec<char> = "0123456789abcdefghijklmnopqrstuvwxyz".chars().collect();
         let token = |n: u64| -> String {
-            let digest = Sha256::digest(format!("ctt-id:{n}").as_bytes());
+            let digest = Sha256::digest(format!("tt-id:{n}").as_bytes());
             digest[..6].iter().map(|b| letters[*b as usize % 36]).collect()
         };
-        assert_eq!(token(1), "4709iy");
-        assert_eq!(token(2), "bcyx3f");
+        assert_eq!(token(1), "co2yzn");
+        assert_eq!(token(2), "3dnjav");
     }
 
     #[test]

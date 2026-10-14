@@ -798,14 +798,14 @@
       },
       "before": null,
       "event_id": null,
-      "key": "4fc5264a5a79c1",
+      "key": "0c2ebf677741c1",
       "reason": "something the notes show happened that wasn't planned"
      }
     ],
-    "compaction_id": "4fc5264a5a79r1",
+    "compaction_id": "0c2ebf677741r1",
     "judgments": null,
-    "message": "proposal 4fc5264a5a79 revision 1: 3 calendar change(s) for 2 note(s) over 3 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
-    "proposal_id": "4fc5264a5a79",
+    "message": "proposal 0c2ebf677741 revision 1: 3 calendar change(s) for 2 note(s) over 3 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
+    "proposal_id": "0c2ebf677741",
     "revision": 1,
     "status": "proposed",
     "timeline": {
@@ -941,7 +941,7 @@
        "actions": [],
        "end": "2026-10-05T20:00:00-04:00",
        "end_note": null,
-       "event_id": "4fc5264a5a79c1",
+       "event_id": "0c2ebf677741c1",
        "facts": [],
        "follow_through": [],
        "merged_into": null,
@@ -1221,17 +1221,17 @@
     "warnings": []
    },
    "is_error": false,
-   "text": "{\n  \"status\": \"proposed\",\n  \"message\": \"proposal 4fc5264a5a79 revision 1: 3 calendar change(s) for 2 note(s) over 3 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\",\n  \"compaction_id\": \"4fc5264a5a79r1\",\n  \"proposal_id\": \"4fc5264a5a79\",\n  \"revision\": 1,\n  \"changes\": [\n    {\n      \"action\": \"update\",\n      \"reason\": \"realigned to match the notes\",\n      \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"key\": null,\n      \"before\": {\n        \"summary\": \"Lunch\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T13:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      },\n      \"after\": {\n        \"summary\": \"Lunch\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T12:40:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      }\n    },\n    {\n      \"action\": \"update\",\n      \"reason\": \"realigned to match the notes\",\n      \"event_id\": \"f43e48437258cfca35d17613c4\",\n      \"key\": null,\n      \"before\": {\n        \"summary\": \"Dinner\",\n        \"start\": \"2026-10-05T18:00:00-04:00\",\n        \"end\": \"2026-10-05T19:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      },\n      \"after\": {\n        \"summary\": \"Dinner\",\n        \"start\": \"2026-10-05T18:00:00-04:00\",\n        \"end\": \"2026-10-05T19:20:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      }\n    },\n    {\n      \"action\": \"create\",\n      \"reason\": \"something the notes show happened that wasn't planned\",\n      \"event_id\": null,\n      \"key\": \"4fc5264a5a79c1\",\n      \"before\": null,\n      \"after\": {\n        \"summary\": \"Walk\",\n        \"start\": \"2026-10-05T19:30:00-04:00\",\n        \"end\": \"2026-10-05T20:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": null,\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      }\n    }\n  ],\n  \"warnings\": [],\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"2026-10-05T12:40:00-04:00#2\",\n        \"time\": \"2026-10-05T12:40:00-04:00\",\n        \"text\": \"lunch done\",\n        \"anchors\": [\n          \"end of Lunch\"\n        ],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      },\n      {\n        \"id\": \"2026-10-05T19:20:00-04:00#3\",\n        \"time\": \"2026-10-05T19:20:00-04:00\",\n        \"text\": \"dinner done\",\n        \"anchors\": [\n          \"end of Dinner\"\n        ],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"b0beb355f2460d88416e307a4a\",\n        \"start\": \"2026-10-04T22:30:00-04:00\",\n        \"end\": \"2026-10-05T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-04T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-05T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"d820ae0f22570a19812dcb76c2\",\n        \"start\": \"2026-10-05T07:00:00-04:00\",\n        \"end\": \"2026-10-05T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"3bc8a594c0be6dfabc4993e74e\",\n        \"start\": \"2026-10-05T08:00:00-04:00\",\n        \"end\": \"2026-10-05T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"adjusted\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T12:40:00-04:00\",\n        \"planned_start\": \"2026-10-05T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": \"2026-10-05T12:40:00-04:00#2\",\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"2a2bbdacdbfc08240bd7b31473\",\n        \"start\": \"2026-10-05T13:00:00-04:00\",\n        \"end\": \"2026-10-05T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"adjusted\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"start\": \"2026-10-05T18:00:00-04:00\",\n        \"end\": \"2026-10-05T19:20:00-04:00\",\n        \"planned_start\": \"2026-10-05T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": \"2026-10-05T19:20:00-04:00#3\",\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Walk\",\n        \"status\": \"new\",\n        \"event_id\": \"4fc5264a5a79c1\",\n        \"start\": \"2026-10-05T19:30:00-04:00\",\n        \"end\": \"2026-10-05T20:00:00-04:00\",\n        \"planned_start\": null,\n        \"planned_end\": null,\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"983cc1ee90e3562d53bf2811fa\",\n        \"start\": \"2026-10-05T22:30:00-04:00\",\n        \"end\": \"2026-10-06T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-06T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"80ef6e6b3e64378a65837bc042\",\n        \"start\": \"2026-10-06T07:00:00-04:00\",\n        \"end\": \"2026-10-06T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"95245adbc9680701fe3defce4d\",\n        \"start\": \"2026-10-06T08:00:00-04:00\",\n        \"end\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ce6e21fbbbbbae2bda5a8a102b\",\n        \"start\": \"2026-10-06T12:00:00-04:00\",\n        \"end\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ee7f6f96ac6a86131c31dc7199\",\n        \"start\": \"2026-10-06T13:00:00-04:00\",\n        \"end\": \"2026-10-06T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n        \"start\": \"2026-10-06T18:00:00-04:00\",\n        \"end\": \"2026-10-06T19:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"afaf1b5f5b5363588c57736ee3\",\n        \"start\": \"2026-10-06T22:30:00-04:00\",\n        \"end\": \"2026-10-07T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-07T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a85f2d467494a9d0220c19d15f\",\n        \"start\": \"2026-10-07T07:00:00-04:00\",\n        \"end\": \"2026-10-07T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-07T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"f8bd16c38f3a1abffb065946d7\",\n        \"start\": \"2026-10-07T08:00:00-04:00\",\n        \"end\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"05fc5d4746a5de646b6c1f42ef\",\n        \"start\": \"2026-10-07T12:00:00-04:00\",\n        \"end\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"planned\",\n        \"event_id\": \"23a1388e7f1d12ac272a90633f\",\n        \"start\": \"2026-10-07T13:00:00-04:00\",\n        \"end\": \"2026-10-07T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      }\n    ],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": true,\n    \"text\": \"━━ Mon 05 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n12:40 ● lunch done\\n     →└ Lunch ends · −20m (was 13:00)\\n13:00 ┌ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n          ⚠ no action, no location\\n19:20 ● dinner done\\n     →└ Dinner ends · +20m (was 19:00)\\n19:30 ┌ Walk · new\\n          ⚠ no action, no location\\n20:00 └ Walk ends\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Sleep: action, location\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Dinner: action, location\\n  ⚠ Walk: action, location\\n  ⚠ Sleep: action, location\\n\\n━━ Tue 06 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n          ⚠ no action, no location\\n19:00 └ Dinner ends\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Dinner: action, location\\n  ⚠ Sleep: action, location\\n\\n━━ Wed 07 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\\n17:00 └ Afternoon work ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n⚠ missing action or location\\n+/− late/early   ⇢/⇠ moved\"\n  },\n  \"additions\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"status\": \"proposed\",\n  \"message\": \"proposal 0c2ebf677741 revision 1: 3 calendar change(s) for 2 note(s) over 3 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\",\n  \"compaction_id\": \"0c2ebf677741r1\",\n  \"proposal_id\": \"0c2ebf677741\",\n  \"revision\": 1,\n  \"changes\": [\n    {\n      \"action\": \"update\",\n      \"reason\": \"realigned to match the notes\",\n      \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"key\": null,\n      \"before\": {\n        \"summary\": \"Lunch\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T13:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      },\n      \"after\": {\n        \"summary\": \"Lunch\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T12:40:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      }\n    },\n    {\n      \"action\": \"update\",\n      \"reason\": \"realigned to match the notes\",\n      \"event_id\": \"f43e48437258cfca35d17613c4\",\n      \"key\": null,\n      \"before\": {\n        \"summary\": \"Dinner\",\n        \"start\": \"2026-10-05T18:00:00-04:00\",\n        \"end\": \"2026-10-05T19:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      },\n      \"after\": {\n        \"summary\": \"Dinner\",\n        \"start\": \"2026-10-05T18:00:00-04:00\",\n        \"end\": \"2026-10-05T19:20:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      }\n    },\n    {\n      \"action\": \"create\",\n      \"reason\": \"something the notes show happened that wasn't planned\",\n      \"event_id\": null,\n      \"key\": \"0c2ebf677741c1\",\n      \"before\": null,\n      \"after\": {\n        \"summary\": \"Walk\",\n        \"start\": \"2026-10-05T19:30:00-04:00\",\n        \"end\": \"2026-10-05T20:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": null,\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      }\n    }\n  ],\n  \"warnings\": [],\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"2026-10-05T12:40:00-04:00#2\",\n        \"time\": \"2026-10-05T12:40:00-04:00\",\n        \"text\": \"lunch done\",\n        \"anchors\": [\n          \"end of Lunch\"\n        ],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      },\n      {\n        \"id\": \"2026-10-05T19:20:00-04:00#3\",\n        \"time\": \"2026-10-05T19:20:00-04:00\",\n        \"text\": \"dinner done\",\n        \"anchors\": [\n          \"end of Dinner\"\n        ],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"b0beb355f2460d88416e307a4a\",\n        \"start\": \"2026-10-04T22:30:00-04:00\",\n        \"end\": \"2026-10-05T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-04T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-05T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"d820ae0f22570a19812dcb76c2\",\n        \"start\": \"2026-10-05T07:00:00-04:00\",\n        \"end\": \"2026-10-05T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"3bc8a594c0be6dfabc4993e74e\",\n        \"start\": \"2026-10-05T08:00:00-04:00\",\n        \"end\": \"2026-10-05T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"adjusted\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T12:40:00-04:00\",\n        \"planned_start\": \"2026-10-05T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": \"2026-10-05T12:40:00-04:00#2\",\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"2a2bbdacdbfc08240bd7b31473\",\n        \"start\": \"2026-10-05T13:00:00-04:00\",\n        \"end\": \"2026-10-05T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"adjusted\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"start\": \"2026-10-05T18:00:00-04:00\",\n        \"end\": \"2026-10-05T19:20:00-04:00\",\n        \"planned_start\": \"2026-10-05T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": \"2026-10-05T19:20:00-04:00#3\",\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Walk\",\n        \"status\": \"new\",\n        \"event_id\": \"0c2ebf677741c1\",\n        \"start\": \"2026-10-05T19:30:00-04:00\",\n        \"end\": \"2026-10-05T20:00:00-04:00\",\n        \"planned_start\": null,\n        \"planned_end\": null,\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"983cc1ee90e3562d53bf2811fa\",\n        \"start\": \"2026-10-05T22:30:00-04:00\",\n        \"end\": \"2026-10-06T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-06T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"80ef6e6b3e64378a65837bc042\",\n        \"start\": \"2026-10-06T07:00:00-04:00\",\n        \"end\": \"2026-10-06T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"95245adbc9680701fe3defce4d\",\n        \"start\": \"2026-10-06T08:00:00-04:00\",\n        \"end\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ce6e21fbbbbbae2bda5a8a102b\",\n        \"start\": \"2026-10-06T12:00:00-04:00\",\n        \"end\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ee7f6f96ac6a86131c31dc7199\",\n        \"start\": \"2026-10-06T13:00:00-04:00\",\n        \"end\": \"2026-10-06T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n        \"start\": \"2026-10-06T18:00:00-04:00\",\n        \"end\": \"2026-10-06T19:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"afaf1b5f5b5363588c57736ee3\",\n        \"start\": \"2026-10-06T22:30:00-04:00\",\n        \"end\": \"2026-10-07T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-07T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a85f2d467494a9d0220c19d15f\",\n        \"start\": \"2026-10-07T07:00:00-04:00\",\n        \"end\": \"2026-10-07T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-07T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"f8bd16c38f3a1abffb065946d7\",\n        \"start\": \"2026-10-07T08:00:00-04:00\",\n        \"end\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"05fc5d4746a5de646b6c1f42ef\",\n        \"start\": \"2026-10-07T12:00:00-04:00\",\n        \"end\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"planned\",\n        \"event_id\": \"23a1388e7f1d12ac272a90633f\",\n        \"start\": \"2026-10-07T13:00:00-04:00\",\n        \"end\": \"2026-10-07T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      }\n    ],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": true,\n    \"text\": \"━━ Mon 05 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n12:40 ● lunch done\\n     →└ Lunch ends · −20m (was 13:00)\\n13:00 ┌ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n          ⚠ no action, no location\\n19:20 ● dinner done\\n     →└ Dinner ends · +20m (was 19:00)\\n19:30 ┌ Walk · new\\n          ⚠ no action, no location\\n20:00 └ Walk ends\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Sleep: action, location\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Dinner: action, location\\n  ⚠ Walk: action, location\\n  ⚠ Sleep: action, location\\n\\n━━ Tue 06 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n          ⚠ no action, no location\\n19:00 └ Dinner ends\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Dinner: action, location\\n  ⚠ Sleep: action, location\\n\\n━━ Wed 07 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\\n17:00 └ Afternoon work ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n⚠ missing action or location\\n+/− late/early   ⇢/⇠ moved\"\n  },\n  \"additions\": null,\n  \"judgments\": null\n}",
    "tool": "compact_notes"
   },
   {
    "arguments": {
-    "proposal_id": "4fc5264a5a79",
+    "proposal_id": "0c2ebf677741",
     "revision": 1
    },
-   "content": "Error executing tool confirm_proposal: applying proposal 4fc5264a5a79 stopped partway (<HttpError 500>); what's done stays done -- finish it with finish_proposal",
+   "content": "Error executing tool confirm_proposal: applying proposal 0c2ebf677741 stopped partway (<HttpError 500>); what's done stays done -- finish it with finish_proposal",
    "is_error": true,
-   "text": "Error executing tool confirm_proposal: applying proposal 4fc5264a5a79 stopped partway (<HttpError 500>); what's done stays done -- finish it with finish_proposal",
+   "text": "Error executing tool confirm_proposal: applying proposal 0c2ebf677741 stopped partway (<HttpError 500>); what's done stays done -- finish it with finish_proposal",
    "tool": "confirm_proposal"
   },
   {
@@ -1241,7 +1241,7 @@
     "last_compaction": null,
     "latest_compacted_note": null,
     "proposal": {
-     "id": "4fc5264a5a79",
+     "id": "0c2ebf677741",
      "open_feedback": 0,
      "revision": 1,
      "state": "applying",
@@ -1250,12 +1250,12 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"last_compaction\": null,\n  \"latest_compacted_note\": null,\n  \"judgments_pending\": null,\n  \"proposal\": {\n    \"id\": \"4fc5264a5a79\",\n    \"revision\": 1,\n    \"state\": \"applying\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"open_feedback\": 0\n  }\n}",
+   "text": "{\n  \"last_compaction\": null,\n  \"latest_compacted_note\": null,\n  \"judgments_pending\": null,\n  \"proposal\": {\n    \"id\": \"0c2ebf677741\",\n    \"revision\": 1,\n    \"state\": \"applying\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"open_feedback\": 0\n  }\n}",
    "tool": "get_compaction_status"
   },
   {
    "arguments": {
-    "proposal_id": "4fc5264a5a79",
+    "proposal_id": "0c2ebf677741",
     "recap": {
      "did": [
       {
@@ -1269,9 +1269,9 @@
     },
     "revision": 1
    },
-   "content": "Error executing tool compact_notes: compaction 4fc5264a5a79r1 is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, before starting another",
+   "content": "Error executing tool compact_notes: compaction 0c2ebf677741r1 is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, before starting another",
    "is_error": true,
-   "text": "Error executing tool compact_notes: compaction 4fc5264a5a79r1 is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, before starting another",
+   "text": "Error executing tool compact_notes: compaction 0c2ebf677741r1 is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, before starting another",
    "tool": "compact_notes"
   },
   {
@@ -1279,12 +1279,12 @@
     "as_planned": [
      "c5aefcb1a0e717b26c9d3d4839"
     ],
-    "proposal_id": "4fc5264a5a79",
+    "proposal_id": "0c2ebf677741",
     "revision": 1
    },
-   "content": "Error executing tool amend_proposal: proposal 4fc5264a5a79 is being applied; it can't be changed now",
+   "content": "Error executing tool amend_proposal: proposal 0c2ebf677741 is being applied; it can't be changed now",
    "is_error": true,
-   "text": "Error executing tool amend_proposal: proposal 4fc5264a5a79 is being applied; it can't be changed now",
+   "text": "Error executing tool amend_proposal: proposal 0c2ebf677741 is being applied; it can't be changed now",
    "tool": "amend_proposal"
   },
   {
@@ -1292,23 +1292,23 @@
     "description": "x",
     "note_id": "2026-10-05T12:40:00-04:00#2"
    },
-   "content": "Error executing tool edit_note: note '2026-10-05T12:40:00-04:00#2' is part of compaction 4fc5264a5a79r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
+   "content": "Error executing tool edit_note: note '2026-10-05T12:40:00-04:00#2' is part of compaction 0c2ebf677741r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
    "is_error": true,
-   "text": "Error executing tool edit_note: note '2026-10-05T12:40:00-04:00#2' is part of compaction 4fc5264a5a79r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
+   "text": "Error executing tool edit_note: note '2026-10-05T12:40:00-04:00#2' is part of compaction 0c2ebf677741r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
    "tool": "edit_note"
   },
   {
    "arguments": {
     "note_id": "2026-10-05T19:20:00-04:00#3"
    },
-   "content": "Error executing tool delete_note: note '2026-10-05T19:20:00-04:00#3' is part of compaction 4fc5264a5a79r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
+   "content": "Error executing tool delete_note: note '2026-10-05T19:20:00-04:00#3' is part of compaction 0c2ebf677741r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
    "is_error": true,
-   "text": "Error executing tool delete_note: note '2026-10-05T19:20:00-04:00#3' is part of compaction 4fc5264a5a79r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
+   "text": "Error executing tool delete_note: note '2026-10-05T19:20:00-04:00#3' is part of compaction 0c2ebf677741r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
    "tool": "delete_note"
   },
   {
    "arguments": {
-    "proposal_id": "4fc5264a5a79"
+    "proposal_id": "0c2ebf677741"
    },
    "content": {
     "message": "applied 3 change(s) and marked 2 note(s) compacted.",
@@ -1393,7 +1393,7 @@
        },
        "before": null,
        "event_id": null,
-       "key": "4fc5264a5a79c1",
+       "key": "0c2ebf677741c1",
        "reason": "something the notes show happened that wasn't planned"
       }
      ],
@@ -1401,7 +1401,7 @@
      "created": "2026-10-07T15:30:00-04:00",
      "events": null,
      "feedback": [],
-     "id": "4fc5264a5a79",
+     "id": "0c2ebf677741",
      "notes": [],
      "problem": null,
      "reason": "proposed",
@@ -1430,15 +1430,15 @@
     "status": "applied"
    },
    "is_error": false,
-   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"applied 3 change(s) and marked 2 note(s) compacted.\",\n  \"proposal\": {\n    \"id\": \"4fc5264a5a79\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T12:40:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:20:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"create\",\n        \"reason\": \"something the notes show happened that wasn't planned\",\n        \"event_id\": null,\n        \"key\": \"4fc5264a5a79c1\",\n        \"before\": null,\n        \"after\": {\n          \"summary\": \"Walk\",\n          \"start\": \"2026-10-05T19:30:00-04:00\",\n          \"end\": \"2026-10-05T20:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": null,\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      }\n    ],\n    \"warnings\": [],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"What the notes say.\",\n      \"did\": [\n        {\n          \"text\": \"Recorded the days.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
+   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"applied 3 change(s) and marked 2 note(s) compacted.\",\n  \"proposal\": {\n    \"id\": \"0c2ebf677741\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T12:40:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:20:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"create\",\n        \"reason\": \"something the notes show happened that wasn't planned\",\n        \"event_id\": null,\n        \"key\": \"0c2ebf677741c1\",\n        \"before\": null,\n        \"after\": {\n          \"summary\": \"Walk\",\n          \"start\": \"2026-10-05T19:30:00-04:00\",\n          \"end\": \"2026-10-05T20:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": null,\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      }\n    ],\n    \"warnings\": [],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"What the notes say.\",\n      \"did\": [\n        {\n          \"text\": \"Recorded the days.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
    "tool": "finish_proposal"
   },
   {
    "arguments": {
-    "proposal_id": "4fc5264a5a79"
+    "proposal_id": "0c2ebf677741"
    },
    "content": {
-    "message": "proposal 4fc5264a5a79 was already applied",
+    "message": "proposal 0c2ebf677741 was already applied",
     "proposal": {
      "additions": null,
      "by": "claude",
@@ -1520,7 +1520,7 @@
        },
        "before": null,
        "event_id": null,
-       "key": "4fc5264a5a79c1",
+       "key": "0c2ebf677741c1",
        "reason": "something the notes show happened that wasn't planned"
       }
      ],
@@ -1528,7 +1528,7 @@
      "created": "2026-10-07T15:30:00-04:00",
      "events": null,
      "feedback": [],
-     "id": "4fc5264a5a79",
+     "id": "0c2ebf677741",
      "notes": [],
      "problem": null,
      "reason": "proposed",
@@ -1557,16 +1557,16 @@
     "status": "applied"
    },
    "is_error": false,
-   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"proposal 4fc5264a5a79 was already applied\",\n  \"proposal\": {\n    \"id\": \"4fc5264a5a79\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T12:40:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:20:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"create\",\n        \"reason\": \"something the notes show happened that wasn't planned\",\n        \"event_id\": null,\n        \"key\": \"4fc5264a5a79c1\",\n        \"before\": null,\n        \"after\": {\n          \"summary\": \"Walk\",\n          \"start\": \"2026-10-05T19:30:00-04:00\",\n          \"end\": \"2026-10-05T20:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": null,\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      }\n    ],\n    \"warnings\": [],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"What the notes say.\",\n      \"did\": [\n        {\n          \"text\": \"Recorded the days.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
+   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"proposal 0c2ebf677741 was already applied\",\n  \"proposal\": {\n    \"id\": \"0c2ebf677741\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T12:40:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:20:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"create\",\n        \"reason\": \"something the notes show happened that wasn't planned\",\n        \"event_id\": null,\n        \"key\": \"0c2ebf677741c1\",\n        \"before\": null,\n        \"after\": {\n          \"summary\": \"Walk\",\n          \"start\": \"2026-10-05T19:30:00-04:00\",\n          \"end\": \"2026-10-05T20:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": null,\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      }\n    ],\n    \"warnings\": [],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"What the notes say.\",\n      \"did\": [\n        {\n          \"text\": \"Recorded the days.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
    "tool": "finish_proposal"
   },
   {
    "arguments": {
-    "proposal_id": "4fc5264a5a79"
+    "proposal_id": "0c2ebf677741"
    },
-   "content": "Error executing tool abandon_compaction: compaction 4fc5264a5a79 is already complete; there's nothing to abandon",
+   "content": "Error executing tool abandon_compaction: compaction 0c2ebf677741 is already complete; there's nothing to abandon",
    "is_error": true,
-   "text": "Error executing tool abandon_compaction: compaction 4fc5264a5a79 is already complete; there's nothing to abandon",
+   "text": "Error executing tool abandon_compaction: compaction 0c2ebf677741 is already complete; there's nothing to abandon",
    "tool": "abandon_compaction"
   }
  ],
@@ -3196,17 +3196,17 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "compaction",
         "",
         "",
         "",
         "proposed",
-        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-05T12:40:00-04:00#2\", \"2026-10-05T19:20:00-04:00#3\"], \"warnings\": [], \"ignore_notes\": [], \"proposal\": \"4fc5264a5a79\", \"revision\": 1, \"from\": \"2026-10-05T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"c5aefcb1a0e717b26c9d3d4839\": \"a62d6d080a\", \"f43e48437258cfca35d17613c4\": \"bd329728b1\", \"4fc5264a5a79c1\": \"3e1a443351\"}, \"key_seq\": 1, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"What the notes say.\", \"did\": [{\"text\": \"Recorded the days.\"}], \"unsure\": []}, \"recap_revision\": 1}"
+        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-05T12:40:00-04:00#2\", \"2026-10-05T19:20:00-04:00#3\"], \"warnings\": [], \"ignore_notes\": [], \"proposal\": \"0c2ebf677741\", \"revision\": 1, \"from\": \"2026-10-05T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"c5aefcb1a0e717b26c9d3d4839\": \"a62d6d080a\", \"f43e48437258cfca35d17613c4\": \"bd329728b1\", \"0c2ebf677741c1\": \"3e1a443351\"}, \"key_seq\": 1, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"What the notes say.\", \"did\": [{\"text\": \"Recorded the days.\"}], \"unsure\": []}, \"recap_revision\": 1}"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "claude_decision",
         "c5aefcb1a0e717b26c9d3d4839",
@@ -3216,7 +3216,7 @@
         ""
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "claude_decision",
         "f43e48437258cfca35d17613c4",
@@ -3226,17 +3226,17 @@
         ""
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "claude_decision",
-        "4fc5264a5a79c1",
-        "{\"action\": \"create\", \"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\", \"key\": \"4fc5264a5a79c1\"}",
+        "0c2ebf677741c1",
+        "{\"action\": \"create\", \"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\", \"key\": \"0c2ebf677741c1\"}",
         "",
         "",
         ""
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "decision",
         "c5aefcb1a0e717b26c9d3d4839",
@@ -3246,7 +3246,7 @@
         ""
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
@@ -3256,17 +3256,17 @@
         ""
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "decision",
         "",
-        "{\"action\": \"create\", \"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\", \"key\": \"4fc5264a5a79c1\"}",
+        "{\"action\": \"create\", \"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\", \"key\": \"0c2ebf677741c1\"}",
         "",
         "",
         ""
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "1",
         "update",
         "c5aefcb1a0e717b26c9d3d4839",
@@ -3276,7 +3276,7 @@
         "realigned to match the notes"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "2",
         "update",
         "f43e48437258cfca35d17613c4",
@@ -3286,10 +3286,10 @@
         "realigned to match the notes"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "3",
         "create",
-        "4fc5264a5a79c1",
+        "0c2ebf677741c1",
         "",
         "{\"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\"}",
         "pending",
@@ -4077,7 +4077,7 @@
      "dateTime": "2026-10-05T20:00:00-04:00"
     },
     "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-    "id": "cmp4fc5264a5a79r1s003",
+    "id": "cmp0c2ebf677741r1s003",
     "start": {
      "dateTime": "2026-10-05T19:30:00-04:00"
     },
@@ -4164,10 +4164,10 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4fc5264a5a79r1"
+        "0c2ebf677741r1"
        ],
        [
-        "4fc5264a5a79r1"
+        "0c2ebf677741r1"
        ]
       ]
      }
@@ -4626,13 +4626,13 @@
       "status": "confirmed",
       "summary": "Lunch"
      },
-     "cmp4fc5264a5a79r1s003": {
+     "cmp0c2ebf677741r1s003": {
       "end": {
        "dateTime": "2026-10-05T20:00:00-04:00"
       },
       "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "cmp4fc5264a5a79r1s003@google.com",
-      "id": "cmp4fc5264a5a79r1s003",
+      "iCalUID": "cmp0c2ebf677741r1s003@google.com",
+      "id": "cmp0c2ebf677741r1s003",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-05T19:30:00-04:00"
@@ -4982,59 +4982,59 @@
         "detail"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "compaction",
         "",
         "",
         "",
         "stamped",
-        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-05T12:40:00-04:00#2\", \"2026-10-05T19:20:00-04:00#3\"], \"warnings\": [], \"ignore_notes\": [], \"proposal\": \"4fc5264a5a79\", \"revision\": 1, \"from\": \"2026-10-05T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"c5aefcb1a0e717b26c9d3d4839\": \"a62d6d080a\", \"f43e48437258cfca35d17613c4\": \"bd329728b1\", \"4fc5264a5a79c1\": \"3e1a443351\"}, \"key_seq\": 1, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"What the notes say.\", \"did\": [{\"text\": \"Recorded the days.\"}], \"unsure\": []}, \"recap_revision\": 1}"
+        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-05T12:40:00-04:00#2\", \"2026-10-05T19:20:00-04:00#3\"], \"warnings\": [], \"ignore_notes\": [], \"proposal\": \"0c2ebf677741\", \"revision\": 1, \"from\": \"2026-10-05T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"c5aefcb1a0e717b26c9d3d4839\": \"a62d6d080a\", \"f43e48437258cfca35d17613c4\": \"bd329728b1\", \"0c2ebf677741c1\": \"3e1a443351\"}, \"key_seq\": 1, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"What the notes say.\", \"did\": [{\"text\": \"Recorded the days.\"}], \"unsure\": []}, \"recap_revision\": 1}"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "claude_decision",
         "c5aefcb1a0e717b26c9d3d4839",
         "{\"action\": \"keep\", \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\", \"end_note\": \"2026-10-05T12:40:00-04:00#2\"}"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "claude_decision",
         "f43e48437258cfca35d17613c4",
         "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"end_note\": \"2026-10-05T19:20:00-04:00#3\"}"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "claude_decision",
-        "4fc5264a5a79c1",
-        "{\"action\": \"create\", \"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\", \"key\": \"4fc5264a5a79c1\"}"
+        "0c2ebf677741c1",
+        "{\"action\": \"create\", \"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\", \"key\": \"0c2ebf677741c1\"}"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "decision",
         "c5aefcb1a0e717b26c9d3d4839",
         "{\"action\": \"keep\", \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\", \"end_note\": \"2026-10-05T12:40:00-04:00#2\"}"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
         "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"end_note\": \"2026-10-05T19:20:00-04:00#3\"}"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "0",
         "decision",
         "",
-        "{\"action\": \"create\", \"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\", \"key\": \"4fc5264a5a79c1\"}"
+        "{\"action\": \"create\", \"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\", \"key\": \"0c2ebf677741c1\"}"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "1",
         "update",
         "c5aefcb1a0e717b26c9d3d4839",
@@ -5044,7 +5044,7 @@
         "realigned to match the notes"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "2",
         "update",
         "f43e48437258cfca35d17613c4",
@@ -5054,10 +5054,10 @@
         "realigned to match the notes"
        ],
        [
-        "4fc5264a5a79r1",
+        "0c2ebf677741r1",
         "3",
         "create",
-        "4fc5264a5a79c1",
+        "0c2ebf677741c1",
         "",
         "{\"summary\": \"Walk\", \"start\": \"2026-10-05T19:30:00-04:00\", \"end\": \"2026-10-05T20:00:00-04:00\"}",
         "done",
@@ -5145,12 +5145,12 @@
        [
         "2026-10-05T12:40:00-04:00",
         "lunch done",
-        "4fc5264a5a79r1"
+        "0c2ebf677741r1"
        ],
        [
         "2026-10-05T19:20:00-04:00",
         "dinner done",
-        "4fc5264a5a79r1"
+        "0c2ebf677741r1"
        ]
       ]
      },

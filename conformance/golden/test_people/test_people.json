@@ -29,14 +29,14 @@
     }
    },
    "content": {
-    "created_id": "4709iy",
+    "created_id": "co2yzn",
     "person": {
      "cancelled_events": null,
      "circle_names": null,
      "circles": null,
      "context": "met at salsa",
      "foundations": null,
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "Alex Example",
      "status": "active",
      "traits": null,
@@ -44,7 +44,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Alex Example\",\n    \"context\": \"met at salsa\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": \"music\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Alex Example\",\n    \"context\": \"met at salsa\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": \"music\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -55,14 +55,14 @@
     }
    },
    "content": {
-    "created_id": "bcyx3f",
+    "created_id": "3dnjav",
     "person": {
      "cancelled_events": null,
      "circle_names": null,
      "circles": null,
      "context": "from work",
      "foundations": null,
-     "id": "bcyx3f",
+     "id": "3dnjav",
      "name": "Alex Example",
      "status": "active",
      "traits": null,
@@ -70,7 +70,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"Alex Example\",\n    \"context\": \"from work\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"bcyx3f\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Alex Example\",\n    \"context\": \"from work\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_person"
   },
   {
@@ -80,9 +80,9 @@
      "name": "Alex Example"
     }
    },
-   "content": "Error executing tool create_person: there's already a person named 'Alex Example' with the context 'met at salsa' (4709iy); a person's name and context together must be unique -- give a context that tells them apart",
+   "content": "Error executing tool create_person: there's already a person named 'Alex Example' with the context 'met at salsa' (co2yzn); a person's name and context together must be unique -- give a context that tells them apart",
    "is_error": true,
-   "text": "Error executing tool create_person: there's already a person named 'Alex Example' with the context 'met at salsa' (4709iy); a person's name and context together must be unique -- give a context that tells them apart",
+   "text": "Error executing tool create_person: there's already a person named 'Alex Example' with the context 'met at salsa' (co2yzn); a person's name and context together must be unique -- give a context that tells them apart",
    "tool": "create_person"
   },
   {
@@ -91,23 +91,23 @@
      "name": "Alex Example"
     }
    },
-   "content": "Error executing tool create_person: there's already a person named 'Alex Example' with the context 'met at salsa' (4709iy); a name someone else has needs a context that tells them apart (e.g. \"met at salsa\")",
+   "content": "Error executing tool create_person: there's already a person named 'Alex Example' with the context 'met at salsa' (co2yzn); a name someone else has needs a context that tells them apart (e.g. \"met at salsa\")",
    "is_error": true,
-   "text": "Error executing tool create_person: there's already a person named 'Alex Example' with the context 'met at salsa' (4709iy); a name someone else has needs a context that tells them apart (e.g. \"met at salsa\")",
+   "text": "Error executing tool create_person: there's already a person named 'Alex Example' with the context 'met at salsa' (co2yzn); a name someone else has needs a context that tells them apart (e.g. \"met at salsa\")",
    "tool": "create_person"
   },
   {
    "arguments": {
     "id_or_name": "alex example"
    },
-   "content": "Error executing tool get_person: There's more than one person named 'alex example': 4709iy (met at salsa), bcyx3f (from work); give the id",
+   "content": "Error executing tool get_person: There's more than one person named 'alex example': co2yzn (met at salsa), 3dnjav (from work); give the id",
    "is_error": true,
-   "text": "Error executing tool get_person: There's more than one person named 'alex example': 4709iy (met at salsa), bcyx3f (from work); give the id",
+   "text": "Error executing tool get_person: There's more than one person named 'alex example': co2yzn (met at salsa), 3dnjav (from work); give the id",
    "tool": "get_person"
   },
   {
    "arguments": {
-    "id_or_name": "4709iy"
+    "id_or_name": "co2yzn"
    },
    "content": {
     "cancelled_events": [],
@@ -115,14 +115,14 @@
     "circles": null,
     "context": "met at salsa",
     "foundations": null,
-    "id": "4709iy",
+    "id": "co2yzn",
     "name": "Alex Example",
     "status": "active",
     "traits": null,
     "what_matters": "music"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex Example\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": \"music\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex Example\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": \"music\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -149,9 +149,9 @@
    "arguments": {
     "id_or_name": "Alix Exampel"
    },
-   "content": "Error executing tool get_person: There's no person with the id or name 'Alix Exampel'; did you mean 4709iy (Alex Example), bcyx3f (Alex Example)? (get_people lists them)",
+   "content": "Error executing tool get_person: There's no person with the id or name 'Alix Exampel'; did you mean co2yzn (Alex Example), 3dnjav (Alex Example)? (get_people lists them)",
    "is_error": true,
-   "text": "Error executing tool get_person: There's no person with the id or name 'Alix Exampel'; did you mean 4709iy (Alex Example), bcyx3f (Alex Example)? (get_people lists them)",
+   "text": "Error executing tool get_person: There's no person with the id or name 'Alix Exampel'; did you mean co2yzn (Alex Example), 3dnjav (Alex Example)? (get_people lists them)",
    "tool": "get_person"
   },
   {
@@ -160,7 +160,7 @@
      "what_matters"
     ],
     "person": {
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "Alex E."
     }
    },
@@ -170,20 +170,20 @@
     "circles": null,
     "context": "met at salsa",
     "foundations": null,
-    "id": "4709iy",
+    "id": "co2yzn",
     "name": "Alex E.",
     "status": "active",
     "traits": null,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   },
   {
    "arguments": {
     "person": {
-     "id": "bcyx3f",
+     "id": "3dnjav",
      "status": "archived"
     }
    },
@@ -193,14 +193,14 @@
     "circles": null,
     "context": "from work",
     "foundations": null,
-    "id": "bcyx3f",
+    "id": "3dnjav",
     "name": "Alex Example",
     "status": "archived",
     "traits": null,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   },
   {
@@ -224,7 +224,7 @@
      "circles": null,
      "context": "met at salsa",
      "foundations": null,
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "Alex E.",
      "status": "active",
      "traits": null,
@@ -232,7 +232,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_people"
   },
   {
@@ -261,7 +261,7 @@
      "circles": null,
      "context": "met at salsa",
      "foundations": null,
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "Alex E.",
      "status": "active",
      "traits": null,
@@ -273,7 +273,7 @@
      "circles": null,
      "context": "from work",
      "foundations": null,
-     "id": "bcyx3f",
+     "id": "3dnjav",
      "name": "Alex Example",
      "status": "archived",
      "traits": null,
@@ -281,7 +281,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"4709iy\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_people"
   },
   {
@@ -1362,7 +1362,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Alex Example",
         "met at salsa",
         "active",
@@ -1448,7 +1448,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Alex Example",
         "met at salsa",
         "active",
@@ -1458,7 +1458,7 @@
         ""
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Alex Example",
         "from work",
         "active",
@@ -1946,7 +1946,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Alex E.",
         "met at salsa",
         "active",
@@ -1956,7 +1956,7 @@
         ""
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Alex Example",
         "from work",
         "active",
@@ -2042,7 +2042,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Alex E.",
         "met at salsa",
         "active",
@@ -2052,7 +2052,7 @@
         ""
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Alex Example",
         "from work",
         "archived",
@@ -2390,7 +2390,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Alex E.",
         "met at salsa",
         "active",
@@ -2400,7 +2400,7 @@
         ""
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Alex Example",
         "from work",
         "archived",
@@ -2715,13 +2715,13 @@
         "foundations"
        ],
        [
-        "4709iy",
+        "co2yzn",
         "Alex E.",
         "met at salsa",
         "active"
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Alex Example",
         "from work",
         "archived"

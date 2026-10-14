@@ -5,7 +5,7 @@ server under test (see harness.py) running against it. When the scenario
 ends, what happened -- every call's result, every request the server
 sent Google, and Google's state after -- is compared with the scenario's
 golden record in conformance/golden/: a server that differs from it in
-any of those fails. The records were written by the original Python
+any of those fails. The records were first written by the original Python
 server, which the Rust one was ported from and held to; the scenarios'
 own assertions say what that behaviour is meant to be.
 

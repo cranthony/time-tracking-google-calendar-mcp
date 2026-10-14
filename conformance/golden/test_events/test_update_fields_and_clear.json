@@ -15,8 +15,8 @@
       "effective_priority": null,
       "group_id": null,
       "holds_label": true,
-      "id": "4709iy",
-      "label_id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+      "id": "co2yzn",
+      "label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
       "name": "play guitar",
       "note": null,
       "path": "play guitar",
@@ -24,12 +24,12 @@
       "status": "active"
      }
     ],
-    "created_id": "4709iy",
+    "created_id": "co2yzn",
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {
@@ -48,8 +48,8 @@
       "effective_priority": 1,
       "group_id": null,
       "holds_label": true,
-      "id": "bcyx3f",
-      "label_id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+      "id": "3dnjav",
+      "label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
       "name": "play piano",
       "note": null,
       "path": "play piano",
@@ -57,12 +57,12 @@
       "status": "active"
      }
     ],
-    "created_id": "bcyx3f",
+    "created_id": "3dnjav",
     "label_slots_total": 200,
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -70,7 +70,7 @@
     "events": [
      {
       "action_ids": [
-       "4709iy"
+       "co2yzn"
       ],
       "description": "d",
       "end": "2026-10-07T10:00:00-04:00",
@@ -86,7 +86,7 @@
     "events": [
      {
       "action_ids": [
-       "4709iy"
+       "co2yzn"
       ],
       "action_names": [
        "play guitar"
@@ -95,7 +95,7 @@
       "description": "d",
       "effective_priority": 4,
       "end": "2026-10-07T10:00:00-04:00",
-      "event_label_id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
       "facts": null,
       "id": "556e592a0b77b0b17318b41f08",
       "is_cancelled": false,
@@ -111,7 +111,7 @@
     "timeline": "09:00 ┌ Practice · new\n10:00 └ Practice ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": \"d\",\n      \"location\": \"l\",\n      \"priority\": 4,\n      \"action_ids\": [\n        \"4709iy\"\n      ],\n      \"action_names\": [\n        \"play guitar\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 4,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Practice · new\\n10:00 └ Practice ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": \"d\",\n      \"location\": \"l\",\n      \"priority\": 4,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"play guitar\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 4,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Practice · new\\n10:00 └ Practice ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -124,8 +124,8 @@
       ],
       "event": {
        "action_ids": [
-        "bcyx3f",
-        "4709iy"
+        "3dnjav",
+        "co2yzn"
        ],
        "id": "556e592a0b77b0b17318b41f08",
        "summary": "Piano practice"
@@ -138,8 +138,8 @@
     "events": [
      {
       "action_ids": [
-       "bcyx3f",
-       "4709iy"
+       "3dnjav",
+       "co2yzn"
       ],
       "action_names": [
        "play piano",
@@ -149,7 +149,7 @@
       "description": null,
       "effective_priority": 1,
       "end": "2026-10-07T10:00:00-04:00",
-      "event_label_id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+      "event_label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
       "facts": null,
       "id": "556e592a0b77b0b17318b41f08",
       "is_cancelled": false,
@@ -165,7 +165,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Piano practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": \"l\",\n      \"priority\": null,\n      \"action_ids\": [\n        \"bcyx3f\",\n        \"4709iy\"\n      ],\n      \"action_names\": [\n        \"play piano\",\n        \"play guitar\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 1,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Piano practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": \"l\",\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\",\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"play piano\",\n        \"play guitar\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 1,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -835,11 +835,11 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "play guitar",
         "active",
-        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "",
         ""
@@ -880,7 +880,7 @@
       },
       {
        "backgroundColor": "#a4bdfc",
-       "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+       "id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
        "name": "play guitar"
       }
      ]
@@ -965,21 +965,21 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "play guitar",
         "active",
-        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "",
         ""
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "",
         "play piano",
         "active",
-        "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "",
         "1",
         ""
@@ -1020,12 +1020,12 @@
       },
       {
        "backgroundColor": "#a4bdfc",
-       "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+       "id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
        "name": "play guitar"
       },
       {
        "backgroundColor": "#fbd75b",
-       "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+       "id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
        "name": "play piano"
       }
      ]
@@ -1644,10 +1644,10 @@
     "end": {
      "dateTime": "2026-10-07T10:00:00-04:00"
     },
-    "eventLabelId": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+    "eventLabelId": "bb82ecea-50c0-514b-956e-fe110410c9e6",
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-action_ids": "4709iy",
+      "cascading-time-tracker-action_ids": "co2yzn",
       "cascading-time-tracker-priority": "4"
      }
     },
@@ -1766,10 +1766,10 @@
   {
    "body": {
     "description": null,
-    "eventLabelId": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+    "eventLabelId": "7a8759ac-8307-5cf3-937d-398ec33255fd",
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-action_ids": "bcyx3f 4709iy",
+      "cascading-time-tracker-action_ids": "3dnjav co2yzn",
       "cascading-time-tracker-priority": null
      }
     },
@@ -2119,12 +2119,12 @@
        },
        {
         "backgroundColor": "#a4bdfc",
-        "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "name": "play guitar"
        },
        {
         "backgroundColor": "#fbd75b",
-        "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "name": "play piano"
        }
       ]
@@ -2271,18 +2271,18 @@
         "note"
        ],
        [
-        "4709iy",
+        "co2yzn",
         "",
         "play guitar",
         "active",
-        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7"
+        "bb82ecea-50c0-514b-956e-fe110410c9e6"
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "",
         "play piano",
         "active",
-        "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "",
         "1"
        ]

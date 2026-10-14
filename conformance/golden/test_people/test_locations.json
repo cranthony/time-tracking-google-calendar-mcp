@@ -8,15 +8,15 @@
     }
    },
    "content": {
-    "created_id": "4709iy",
+    "created_id": "co2yzn",
     "location": {
      "hint": "the apartment; 'my place'",
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "Home"
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Home\",\n    \"hint\": \"the apartment; 'my place'\"\n  },\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": \"the apartment; 'my place'\"\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_location"
   },
   {
@@ -26,15 +26,15 @@
     }
    },
    "content": {
-    "created_id": "bcyx3f",
+    "created_id": "3dnjav",
     "location": {
      "hint": null,
-     "id": "bcyx3f",
+     "id": "3dnjav",
      "name": "Salsa studio"
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"bcyx3f\",\n    \"name\": \"Salsa studio\",\n    \"hint\": null\n  },\n  \"created_id\": \"bcyx3f\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Salsa studio\",\n    \"hint\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_location"
   },
   {
@@ -43,9 +43,9 @@
      "name": "home"
     }
    },
-   "content": "Error executing tool create_location: there's already a location named 'Home' (4709iy); location names must be unique -- use that one, or pick another name",
+   "content": "Error executing tool create_location: there's already a location named 'Home' (co2yzn); location names must be unique -- use that one, or pick another name",
    "is_error": true,
-   "text": "Error executing tool create_location: there's already a location named 'Home' (4709iy); location names must be unique -- use that one, or pick another name",
+   "text": "Error executing tool create_location: there's already a location named 'Home' (co2yzn); location names must be unique -- use that one, or pick another name",
    "tool": "create_location"
   },
   {
@@ -53,17 +53,17 @@
    "content": [
     {
      "hint": "the apartment; 'my place'",
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "Home"
     },
     {
      "hint": null,
-     "id": "bcyx3f",
+     "id": "3dnjav",
      "name": "Salsa studio"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\"\n}\n{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Salsa studio\",\n  \"hint\": null\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\"\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Salsa studio\",\n  \"hint\": null\n}",
    "tool": "get_locations"
   },
   {
@@ -72,37 +72,37 @@
    },
    "content": {
     "hint": "the apartment; 'my place'",
-    "id": "4709iy",
+    "id": "co2yzn",
     "name": "Home"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\"\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\"\n}",
    "tool": "get_location"
   },
   {
    "arguments": {
     "id_or_name": "Hom"
    },
-   "content": "Error executing tool get_location: There's no location with the id or name 'Hom'; did you mean 4709iy (Home)? (get_locations lists them)",
+   "content": "Error executing tool get_location: There's no location with the id or name 'Hom'; did you mean co2yzn (Home)? (get_locations lists them)",
    "is_error": true,
-   "text": "Error executing tool get_location: There's no location with the id or name 'Hom'; did you mean 4709iy (Home)? (get_locations lists them)",
+   "text": "Error executing tool get_location: There's no location with the id or name 'Hom'; did you mean co2yzn (Home)? (get_locations lists them)",
    "tool": "get_location"
   },
   {
    "arguments": {
     "location": {
      "hint": "downtown",
-     "id": "bcyx3f",
+     "id": "3dnjav",
      "name": "Dance studio"
     }
    },
    "content": {
     "hint": "downtown",
-    "id": "bcyx3f",
+    "id": "3dnjav",
     "name": "Dance studio"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Dance studio\",\n  \"hint\": \"downtown\"\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": \"downtown\"\n}",
    "tool": "update_location"
   },
   {
@@ -111,29 +111,29 @@
      "hint"
     ],
     "location": {
-     "id": "bcyx3f"
+     "id": "3dnjav"
     }
    },
    "content": {
     "hint": null,
-    "id": "bcyx3f",
+    "id": "3dnjav",
     "name": "Dance studio"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Dance studio\",\n  \"hint\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null\n}",
    "tool": "update_location"
   },
   {
    "arguments": {
-    "location_id": "4709iy"
+    "location_id": "co2yzn"
    },
    "content": {
     "hint": "the apartment; 'my place'",
-    "id": "4709iy",
+    "id": "co2yzn",
     "name": "Home"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\"\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\"\n}",
    "tool": "delete_location"
   },
   {
@@ -141,33 +141,33 @@
    "content": [
     {
      "hint": null,
-     "id": "bcyx3f",
+     "id": "3dnjav",
      "name": "Dance studio"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"bcyx3f\",\n  \"name\": \"Dance studio\",\n  \"hint\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null\n}",
    "tool": "get_locations"
   },
   {
    "arguments": {
-    "location_id": "4709iy"
+    "location_id": "co2yzn"
    },
-   "content": "Error executing tool delete_location: There's no location with the id or name '4709iy' (get_locations lists them)",
+   "content": "Error executing tool delete_location: There's no location with the id or name 'co2yzn' (get_locations lists them)",
    "is_error": true,
-   "text": "Error executing tool delete_location: There's no location with the id or name '4709iy' (get_locations lists them)",
+   "text": "Error executing tool delete_location: There's no location with the id or name 'co2yzn' (get_locations lists them)",
    "tool": "delete_location"
   },
   {
    "arguments": {
     "location": {
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "x"
     }
    },
-   "content": "Error executing tool update_location: There's no location with the id or name '4709iy' (get_locations lists them)",
+   "content": "Error executing tool update_location: There's no location with the id or name 'co2yzn' (get_locations lists them)",
    "is_error": true,
-   "text": "Error executing tool update_location: There's no location with the id or name '4709iy' (get_locations lists them)",
+   "text": "Error executing tool update_location: There's no location with the id or name 'co2yzn' (get_locations lists them)",
    "tool": "update_location"
   }
  ],
@@ -344,7 +344,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Home",
         "the apartment; 'my place'"
        ]
@@ -402,12 +402,12 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Home",
         "the apartment; 'my place'"
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Salsa studio",
         ""
        ]
@@ -577,12 +577,12 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Home",
         "the apartment; 'my place'"
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Dance studio",
         "downtown"
        ]
@@ -640,12 +640,12 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Home",
         "the apartment; 'my place'"
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Dance studio",
         ""
        ]
@@ -703,7 +703,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "bcyx3f",
+        "3dnjav",
         "Dance studio",
         ""
        ],
@@ -860,7 +860,7 @@
         "hint"
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "Dance studio"
        ]
       ]

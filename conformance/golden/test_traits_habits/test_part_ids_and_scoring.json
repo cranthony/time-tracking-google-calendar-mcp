@@ -54,7 +54,7 @@
        },
        "location"
       ],
-      "id": "4709iy",
+      "id": "co2yzn",
       "kind": "judgment",
       "ratings": {
        "0": "routine",
@@ -73,7 +73,7 @@
       "window_days": 30
      },
      {
-      "id": "bcyx3f",
+      "id": "3dnjav",
       "kind": "continuity",
       "last_within_days": 14,
       "next_within_days": 14
@@ -83,7 +83,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"4709iy\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"bcyx3f\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    }\n  ],\n  \"scoring\": null\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    }\n  ],\n  \"scoring\": null\n}",
    "tool": "create_trait"
   },
   {
@@ -99,7 +99,7 @@
       "limit_by": "worst",
       "missing": "skip",
       "weights": {
-       "4709iy": 2
+       "co2yzn": 2
       }
      }
     }
@@ -118,7 +118,7 @@
        },
        "location"
       ],
-      "id": "4709iy",
+      "id": "co2yzn",
       "kind": "judgment",
       "ratings": {
        "0": "routine",
@@ -137,7 +137,7 @@
       "window_days": 30
      },
      {
-      "id": "bcyx3f",
+      "id": "3dnjav",
       "kind": "continuity",
       "last_within_days": 14,
       "next_within_days": 14
@@ -152,13 +152,13 @@
      "limit_by": "worst",
      "missing": "skip",
      "weights": {
-      "4709iy": 2
+      "co2yzn": 2
      }
     },
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"4709iy\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"bcyx3f\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    }\n  ],\n  \"scoring\": {\n    \"weights\": {\n      \"4709iy\": 2\n    },\n    \"limit\": 1,\n    \"limit_by\": \"worst\",\n    \"cap_below\": {\n      \"threshold\": 40,\n      \"cap\": 50\n    },\n    \"missing\": \"skip\"\n  }\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    }\n  ],\n  \"scoring\": {\n    \"weights\": {\n      \"co2yzn\": 2\n    },\n    \"limit\": 1,\n    \"limit_by\": \"worst\",\n    \"cap_below\": {\n      \"threshold\": 40,\n      \"cap\": 50\n    },\n    \"missing\": \"skip\"\n  }\n}",
    "tool": "update_trait"
   },
   {
@@ -175,7 +175,7 @@
         },
         "location"
        ],
-       "id": "4709iy",
+       "id": "co2yzn",
        "kind": "judgment",
        "ratings": {
         "0": "routine",
@@ -217,7 +217,7 @@
        },
        "location"
       ],
-      "id": "4709iy",
+      "id": "co2yzn",
       "kind": "judgment",
       "ratings": {
        "0": "routine",
@@ -236,7 +236,7 @@
       "window_days": 30
      },
      {
-      "id": "7632uw",
+      "id": "a0g0jc",
       "interval_days": 21,
       "kind": "count",
       "noun": "visits",
@@ -253,13 +253,13 @@
      "limit_by": "worst",
      "missing": "skip",
      "weights": {
-      "4709iy": 2
+      "co2yzn": 2
      }
     },
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"4709iy\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"7632uw\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": {\n    \"weights\": {\n      \"4709iy\": 2\n    },\n    \"limit\": 1,\n    \"limit_by\": \"worst\",\n    \"cap_below\": {\n      \"threshold\": 40,\n      \"cap\": 50\n    },\n    \"missing\": \"skip\"\n  }\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": {\n    \"weights\": {\n      \"co2yzn\": 2\n    },\n    \"limit\": 1,\n    \"limit_by\": \"worst\",\n    \"cap_below\": {\n      \"threshold\": 40,\n      \"cap\": 50\n    },\n    \"missing\": \"skip\"\n  }\n}",
    "tool": "update_trait"
   },
   {
@@ -273,9 +273,9 @@
      }
     }
    },
-   "content": "Error executing tool update_trait: The trait 'Daring': its scoring: \"weights\" names 'nosuch', which isn't one of its parts (by id: 4709iy, 7632uw)",
+   "content": "Error executing tool update_trait: The trait 'Daring': its scoring: \"weights\" names 'nosuch', which isn't one of its parts (by id: co2yzn, a0g0jc)",
    "is_error": true,
-   "text": "Error executing tool update_trait: The trait 'Daring': its scoring: \"weights\" names 'nosuch', which isn't one of its parts (by id: 4709iy, 7632uw)",
+   "text": "Error executing tool update_trait: The trait 'Daring': its scoring: \"weights\" names 'nosuch', which isn't one of its parts (by id: co2yzn, a0g0jc)",
    "tool": "update_trait"
   },
   {
@@ -340,7 +340,7 @@
       "part_scoring": {
        "daring": {
         "weights": {
-         "4709iy": 3
+         "co2yzn": 3
         }
        }
       },
@@ -352,21 +352,21 @@
     }
    },
    "content": {
-    "created_id": "mkgvva",
+    "created_id": "lejxa2",
     "person": {
      "cancelled_events": null,
      "circle_names": null,
      "circles": null,
      "context": null,
      "foundations": null,
-     "id": "mkgvva",
+     "id": "lejxa2",
      "name": "Sam",
      "status": "active",
      "traits": {
       "part_scoring": {
        "daring": {
         "weights": {
-         "4709iy": 3
+         "co2yzn": 3
         }
        }
       },
@@ -379,12 +379,12 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"mkgvva\",\n    \"name\": \"Sam\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": {\n      \"scoring\": {\n        \"statistic\": \"percentile\",\n        \"percentile\": 0\n      },\n      \"part_scoring\": {\n        \"daring\": {\n          \"weights\": {\n            \"4709iy\": 3\n          }\n        }\n      }\n    },\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"mkgvva\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"lejxa2\",\n    \"name\": \"Sam\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": {\n      \"scoring\": {\n        \"statistic\": \"percentile\",\n        \"percentile\": 0\n      },\n      \"part_scoring\": {\n        \"daring\": {\n          \"weights\": {\n            \"co2yzn\": 3\n          }\n        }\n      }\n    },\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"lejxa2\"\n}",
    "tool": "create_person"
   },
   {
    "arguments": {
-    "id_or_name": "mkgvva"
+    "id_or_name": "lejxa2"
    },
    "content": {
     "cancelled_events": [],
@@ -392,14 +392,14 @@
     "circles": null,
     "context": null,
     "foundations": null,
-    "id": "mkgvva",
+    "id": "lejxa2",
     "name": "Sam",
     "status": "active",
     "traits": {
      "part_scoring": {
       "daring": {
        "weights": {
-        "4709iy": 3
+        "co2yzn": 3
        }
       }
      },
@@ -411,7 +411,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"mkgvva\",\n  \"name\": \"Sam\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": {\n    \"scoring\": {\n      \"statistic\": \"percentile\",\n      \"percentile\": 0\n    },\n    \"part_scoring\": {\n      \"daring\": {\n        \"weights\": {\n          \"4709iy\": 3\n        }\n      }\n    }\n  },\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"lejxa2\",\n  \"name\": \"Sam\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": {\n    \"scoring\": {\n      \"statistic\": \"percentile\",\n      \"percentile\": 0\n    },\n    \"part_scoring\": {\n      \"daring\": {\n        \"weights\": {\n          \"co2yzn\": 3\n        }\n      }\n    }\n  },\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -420,47 +420,47 @@
      "name": "Friends",
      "scoring": {
       "weights": {
-       "mkgvva": 2
+       "lejxa2": 2
       }
      }
     }
    },
    "content": {
     "circle": {
-     "id": "6gpeqq",
+     "id": "s3wod9",
      "member_ids": [],
      "name": "Friends",
      "note": null,
      "scoring": {
       "weights": {
-       "mkgvva": 2
+       "lejxa2": 2
       }
      }
     },
-    "created_id": "6gpeqq"
+    "created_id": "s3wod9"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"6gpeqq\",\n    \"name\": \"Friends\",\n    \"note\": null,\n    \"scoring\": {\n      \"weights\": {\n        \"mkgvva\": 2\n      }\n    },\n    \"member_ids\": []\n  },\n  \"created_id\": \"6gpeqq\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"s3wod9\",\n    \"name\": \"Friends\",\n    \"note\": null,\n    \"scoring\": {\n      \"weights\": {\n        \"lejxa2\": 2\n      }\n    },\n    \"member_ids\": []\n  },\n  \"created_id\": \"s3wod9\"\n}",
    "tool": "create_circle"
   },
   {
    "arguments": {
     "circle": {
-     "id": "6gpeqq"
+     "id": "s3wod9"
     },
     "clear_fields": [
      "scoring"
     ]
    },
    "content": {
-    "id": "6gpeqq",
+    "id": "s3wod9",
     "member_ids": [],
     "name": "Friends",
     "note": null,
     "scoring": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"6gpeqq\",\n  \"name\": \"Friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": []\n}",
+   "text": "{\n  \"id\": \"s3wod9\",\n  \"name\": \"Friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": []\n}",
    "tool": "update_circle"
   },
   {
@@ -472,9 +472,9 @@
      }
     }
    },
-   "content": "Error executing tool create_circle: circle c133sb's scoring: \"statistic\" must be \"mean\" or \"percentile\"",
+   "content": "Error executing tool create_circle: circle htmn3w's scoring: \"statistic\" must be \"mean\" or \"percentile\"",
    "is_error": true,
-   "text": "Error executing tool create_circle: circle c133sb's scoring: \"statistic\" must be \"mean\" or \"percentile\"",
+   "text": "Error executing tool create_circle: circle htmn3w's scoring: \"statistic\" must be \"mean\" or \"percentile\"",
    "tool": "create_circle"
   },
   {
@@ -840,7 +840,7 @@
         "Daring",
         "active",
         "d",
-        "[{\"id\":\"4709iy\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"bcyx3f\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14}]",
+        "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"3dnjav\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14}]",
         ""
        ]
       ]
@@ -941,8 +941,8 @@
         "Daring",
         "active",
         "d",
-        "[{\"id\":\"4709iy\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"bcyx3f\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14}]",
-        "{\"weights\":{\"4709iy\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}"
+        "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"3dnjav\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14}]",
+        "{\"weights\":{\"co2yzn\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}"
        ]
       ]
      }
@@ -1042,8 +1042,8 @@
         "Daring",
         "active",
         "d",
-        "[{\"id\":\"4709iy\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"7632uw\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
-        "{\"weights\":{\"4709iy\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}"
+        "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
+        "{\"weights\":{\"co2yzn\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}"
        ]
       ]
      }
@@ -1719,13 +1719,13 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "mkgvva",
+        "lejxa2",
         "Sam",
         "",
         "active",
         "",
         "",
-        "{\"scoring\":{\"statistic\":\"percentile\",\"percentile\":0},\"part_scoring\":{\"daring\":{\"weights\":{\"4709iy\":3}}}}",
+        "{\"scoring\":{\"statistic\":\"percentile\",\"percentile\":0},\"part_scoring\":{\"daring\":{\"weights\":{\"co2yzn\":3}}}}",
         ""
        ]
       ]
@@ -2086,10 +2086,10 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "6gpeqq",
+        "s3wod9",
         "Friends",
         "",
-        "{\"weights\":{\"mkgvva\":2}}"
+        "{\"weights\":{\"lejxa2\":2}}"
        ]
       ]
      }
@@ -2168,7 +2168,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "6gpeqq",
+        "s3wod9",
         "Friends",
         "",
         ""
@@ -2718,7 +2718,7 @@
         "scoring"
        ],
        [
-        "6gpeqq",
+        "s3wod9",
         "Friends"
        ]
       ]
@@ -2806,13 +2806,13 @@
         "foundations"
        ],
        [
-        "mkgvva",
+        "lejxa2",
         "Sam",
         "",
         "active",
         "",
         "",
-        "{\"scoring\":{\"statistic\":\"percentile\",\"percentile\":0},\"part_scoring\":{\"daring\":{\"weights\":{\"4709iy\":3}}}}"
+        "{\"scoring\":{\"statistic\":\"percentile\",\"percentile\":0},\"part_scoring\":{\"daring\":{\"weights\":{\"co2yzn\":3}}}}"
        ]
       ]
      },
@@ -2928,8 +2928,8 @@
         "Daring",
         "active",
         "d",
-        "[{\"id\":\"4709iy\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"7632uw\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
-        "{\"weights\":{\"4709iy\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}"
+        "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
+        "{\"weights\":{\"co2yzn\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}"
        ]
       ]
      }
