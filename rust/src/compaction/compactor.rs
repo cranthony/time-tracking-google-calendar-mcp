@@ -117,7 +117,7 @@ use crate::stores::journal::{
     CompactionJournal, JournalCompaction, JournalStep, PlannedDay, RevisionMeta, ABANDONED, APPLIED, APPLYING, FAILED, OPEN_STATUSES,
     PLANNED, PROPOSED, STAMPED, SUPERSEDED,
 };
-use crate::stores::locations::Locations;
+use crate::stores::locations::{listed, Locations};
 use crate::stores::notes::{NotedTime, NotedTimeSheet, SheetNote};
 use crate::stores::people::People;
 use crate::timeline::{join_days, render, split_days, Timeline};
@@ -505,7 +505,22 @@ impl NoteCompactor {
                 None => None,
             },
             locations: match &self.locations {
-                Some(l) => Some(l.all()?.iter().map(|l| json!({"id": l.id, "name": l.name, "hint": l.hint})).collect()),
+                Some(l) => {
+                    let groups = l.groups()?;
+                    Some(
+                        l.all()?
+                            .iter()
+                            .map(|l| {
+                                let mut context = json!({"id": l.id, "name": l.name, "hint": l.hint});
+                                // Where it is among the groups, if it's in one.
+                                if l.group_id.as_deref().is_some_and(|g| !g.is_empty()) {
+                                    context["path"] = json!(listed(l, &groups).path);
+                                }
+                                context
+                            })
+                            .collect(),
+                    )
+                }
                 None => None,
             },
             previous_note,
@@ -528,7 +543,7 @@ impl NoteCompactor {
                 tabs.extend(p.whole_tabs());
             }
             if let Some(l) = &self.locations {
-                tabs.push(l.whole_tab());
+                tabs.extend(l.whole_tabs());
             }
             if let Some(j) = &self.judging {
                 tabs.extend(j.whole_tabs());

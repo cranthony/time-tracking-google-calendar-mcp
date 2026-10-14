@@ -354,7 +354,7 @@
       "end": "2026-10-07T11:30:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "6525bebff685bedf57356640a8",
+      "id": "35d98bd5ab3bf549dd770d737d",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -368,16 +368,16 @@
     "timeline": "11:00 ┌ One-off · new\n11:30 └ One-off ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"One-off\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T11:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"11:00 ┌ One-off · new\\n11:30 └ One-off ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"One-off\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T11:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"11:00 ┌ One-off · new\\n11:30 └ One-off ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
    "arguments": {
-    "id": "6525bebff685bedf57356640a8"
+    "id": "35d98bd5ab3bf549dd770d737d"
    },
-   "content": "Error executing tool get_recurrence: Event 6525bebff685bedf57356640a8 isn't part of a recurring series",
+   "content": "Error executing tool get_recurrence: Event 35d98bd5ab3bf549dd770d737d isn't part of a recurring series",
    "is_error": true,
-   "text": "Error executing tool get_recurrence: Event 6525bebff685bedf57356640a8 isn't part of a recurring series",
+   "text": "Error executing tool get_recurrence: Event 35d98bd5ab3bf549dd770d737d isn't part of a recurring series",
    "tool": "get_recurrence"
   }
  ],
@@ -865,7 +865,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      }
@@ -888,6 +889,97 @@
         },
         "metadataKey": "sheet-role",
         "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "location-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Location Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000017,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000017
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "location-groups",
         "visibility": "PROJECT"
        }
       }
@@ -938,6 +1030,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1041,6 +1141,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1096,6 +1204,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1161,6 +1277,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1233,7 +1357,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000017,
+        "sheetId": 1000019,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1266,7 +1390,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000017,
+        "sheetId": 1000019,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -1330,7 +1454,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000017
+         "sheetId": 1000019
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -1398,7 +1522,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000019,
+        "sheetId": 1000021,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1431,7 +1555,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000019
+         "sheetId": 1000021
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -1499,7 +1623,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1536,7 +1660,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000021
+         "sheetId": 1000023
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -1603,7 +1727,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000023
+         "sheetId": 1000025
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -1626,7 +1750,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000023,
+        "sheetId": 1000025,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1699,7 +1823,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000021,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1707,7 +1831,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000017,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1722,8 +1846,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000021,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1883,6 +2015,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1896,7 +2036,7 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6525bebff685bedf57356640a8",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/35d98bd5ab3bf549dd770d737d",
    "query": {}
   }
  ],
@@ -1904,13 +2044,13 @@
   "calendars": {
    "9c738956aad29c37be54c43467@group.calendar.google.com": {
     "events": {
-     "6525bebff685bedf57356640a8": {
+     "35d98bd5ab3bf549dd770d737d": {
       "end": {
        "dateTime": "2026-10-07T11:30:00-04:00"
       },
       "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "6525bebff685bedf57356640a8@google.com",
-      "id": "6525bebff685bedf57356640a8",
+      "iCalUID": "35d98bd5ab3bf549dd770d737d@google.com",
+      "id": "35d98bd5ab3bf549dd770d737d",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-07T11:00:00-04:00"
@@ -2019,7 +2159,7 @@
        "sheetId": 1000017
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "location-groups",
       "visibility": "PROJECT"
      },
      {
@@ -2027,7 +2167,7 @@
        "sheetId": 1000019
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
@@ -2035,12 +2175,20 @@
        "sheetId": 1000021
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000023
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000025
       },
       "metadataKey": "sheet-role",
       "metadataValue": "compactions",
@@ -2117,7 +2265,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2176,7 +2324,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2206,7 +2354,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000019,
+       "sheetId": 1000021,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2224,6 +2372,32 @@
         "note",
         "traits",
         "foundations"
+       ]
+      ]
+     },
+     "Location Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000017,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Location Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
        ]
       ]
      },
@@ -2249,7 +2423,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      },
@@ -2305,7 +2480,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000017,
+       "sheetId": 1000019,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,

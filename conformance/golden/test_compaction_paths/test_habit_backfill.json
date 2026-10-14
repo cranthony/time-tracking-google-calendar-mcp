@@ -1560,7 +1560,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      }
@@ -1583,6 +1584,97 @@
         },
         "metadataKey": "sheet-role",
         "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "location-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Location Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000063,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000063
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "location-groups",
         "visibility": "PROJECT"
        }
       }
@@ -1633,6 +1725,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1777,7 +1877,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000069,
+        "sheetId": 1000071,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1810,7 +1910,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000069,
+        "sheetId": 1000071,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -1874,7 +1974,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000069
+         "sheetId": 1000071
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -1896,7 +1996,7 @@
       "gridRange": {
        "endColumnIndex": 26,
        "endRowIndex": 1,
-       "sheetId": 1000069,
+       "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1904,7 +2004,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -1925,7 +2025,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 7,
-        "sheetId": 1000069,
+        "sheetId": 1000071,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2043,7 +2143,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000071,
+        "sheetId": 1000073,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2076,7 +2176,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000071
+         "sheetId": 1000073
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -2097,7 +2197,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2121,7 +2221,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2142,7 +2242,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 2,
-        "sheetId": 1000071,
+        "sheetId": 1000073,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2221,7 +2321,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000073,
+        "sheetId": 1000075,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2258,7 +2358,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000073
+         "sheetId": 1000075
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -2325,7 +2425,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000075
+         "sheetId": 1000077
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -2348,7 +2448,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2421,7 +2521,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000073,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2429,7 +2529,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2444,8 +2544,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2576,7 +2684,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000079
+         "sheetId": 1000081
         },
         "metadataKey": "sheet-role",
         "metadataValue": "uncompacted-time-notes",
@@ -2599,7 +2707,7 @@
        "gridRange": {
         "endColumnIndex": 3,
         "endRowIndex": 1,
-        "sheetId": 1000079,
+        "sheetId": 1000081,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2627,7 +2735,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2635,7 +2743,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2683,7 +2791,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2703,6 +2811,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -2719,7 +2835,7 @@
       "gridRange": {
        "endColumnIndex": 3,
        "endRowIndex": 1,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2727,7 +2843,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -2748,7 +2864,7 @@
        "gridRange": {
         "endColumnIndex": 3,
         "endRowIndex": 2,
-        "sheetId": 1000079,
+        "sheetId": 1000081,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2776,7 +2892,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2784,7 +2900,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2832,7 +2948,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2849,6 +2965,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2944,7 +3068,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 3,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2987,7 +3111,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2995,7 +3119,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3043,7 +3167,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3060,6 +3184,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3155,7 +3287,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -3192,7 +3324,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 3,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 6,
         "startRowIndex": 2
        }
@@ -3220,7 +3352,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -3248,7 +3380,7 @@
        "gridRange": {
         "endColumnIndex": 3,
         "endRowIndex": 2,
-        "sheetId": 1000079,
+        "sheetId": 1000081,
         "startColumnIndex": 2,
         "startRowIndex": 1
        }
@@ -3276,7 +3408,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -3302,7 +3434,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3310,7 +3442,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3358,7 +3490,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3375,6 +3507,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3494,7 +3634,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3502,7 +3642,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3550,7 +3690,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3567,6 +3707,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3585,7 +3733,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3593,7 +3741,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3641,7 +3789,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3661,195 +3809,11 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-07T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-06-02T15:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-07T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-06-02T15:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-07T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-06-02T15:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-07T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-06-02T15:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000079,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
      },
      {
       "gridRange": {
-       "endColumnIndex": 8,
+       "endColumnIndex": 26,
        "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3969,7 +3933,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3977,7 +3941,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4025,7 +3989,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4042,6 +4006,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4161,7 +4133,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4169,7 +4141,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4217,7 +4189,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4234,6 +4206,214 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-07T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-06-02T15:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-07T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-06-02T15:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "14"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-07T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-06-02T15:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "21"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-07T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-06-02T15:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 3,
+       "sheetId": 1000081,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000077,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4481,7 +4661,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4489,7 +4669,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4537,7 +4717,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4554,6 +4734,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4673,7 +4861,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4697,7 +4885,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4718,7 +4906,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 2,
-        "sheetId": 1000071,
+        "sheetId": 1000073,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -4750,7 +4938,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4758,7 +4946,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4806,7 +4994,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000063,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4823,6 +5011,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5320,10 +5516,10 @@
      },
      {
       "location": {
-       "sheetId": 1000069
+       "sheetId": 1000063
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "location-groups",
       "visibility": "PROJECT"
      },
      {
@@ -5331,7 +5527,7 @@
        "sheetId": 1000071
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
@@ -5339,7 +5535,7 @@
        "sheetId": 1000073
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
@@ -5347,12 +5543,20 @@
        "sheetId": 1000075
       },
       "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000077
+      },
+      "metadataKey": "sheet-role",
       "metadataValue": "compactions",
       "visibility": "PROJECT"
      },
      {
       "location": {
-       "sheetId": 1000079
+       "sheetId": 1000081
       },
       "metadataKey": "sheet-role",
       "metadataValue": "uncompacted-time-notes",
@@ -5436,7 +5640,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000073,
+       "sheetId": 1000075,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5495,7 +5699,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5545,7 +5749,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5573,6 +5777,32 @@
        ]
       ]
      },
+     "Location Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000063,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Location Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     },
      "Locations": {
       "column_widths": {},
       "properties": {
@@ -5595,7 +5825,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      },
@@ -5607,7 +5838,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000079,
+       "sheetId": 1000081,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5681,7 +5912,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000069,
+       "sheetId": 1000071,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,

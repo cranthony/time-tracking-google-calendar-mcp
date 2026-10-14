@@ -209,7 +209,7 @@ def test_tokens(http):
         http._session_id = None
         http.initialize(token)
         status, listed = http.rpc("tools/list", token=token)
-        assert status == 200 and len(listed["result"]["tools"]) == 65
+        assert status == 200 and len(listed["result"]["tools"]) == 70
 
 
 def test_tool_calls_over_http(http):

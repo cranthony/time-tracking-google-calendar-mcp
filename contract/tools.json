@@ -8020,7 +8020,7 @@
     }
   },
   {
-    "description": "Every location: a place the user's events happen (\"Home\", \"Salsa\nstudio\"), each with an id, a name, a hint for recognizing when an\nevent or note refers to it, and a map location: where it is, as a maps\napp would find it, for its events with no location of their own.\nRead-only.",
+    "description": "Every location: a place the user's events happen (\"Home\", \"Salsa\nstudio\"), each with an id, a name, a hint for recognizing when an\nevent or note refers to it, a map location: where it is, as a maps\napp would find it, for its events with no location of their own, and\nthe location group it's in (group_id), with its path through its\ngroups (\"New York › Brooklyn › Home\"). Read-only.",
     "inputSchema": {
       "properties": {},
       "type": "object",
@@ -8031,7 +8031,7 @@
       "properties": {
         "result": {
           "items": {
-            "$ref": "#/$defs/Location"
+            "$ref": "#/$defs/ListedLocation"
           },
           "type": "array"
         }
@@ -8041,9 +8041,8 @@
       ],
       "type": "object",
       "$defs": {
-        "Location": {
-          "additionalProperties": false,
-          "description": "One location: where the user's events happen (see get_locations).",
+        "ListedLocation": {
+          "description": "A location as get_locations lists it: with its path through its groups\n(\"New York › Brooklyn › Home\").",
           "properties": {
             "id": {
               "type": [
@@ -8064,13 +8063,24 @@
               ]
             },
             "map_location": {
-              "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
               "type": [
                 "string",
                 "null"
               ]
+            },
+            "group_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": "string"
             }
           },
+          "required": [
+            "path"
+          ],
           "type": "object"
         }
       },
@@ -8078,7 +8088,7 @@
     }
   },
   {
-    "description": "One location, by id or else by name (ignoring case). If there's\nnone, the error suggests close matches. Read-only.",
+    "description": "One location, by id or else by name (ignoring case), as get_locations\nlists it. If there's none, the error suggests close matches.\nRead-only.",
     "inputSchema": {
       "properties": {
         "id_or_name": {
@@ -8113,18 +8123,29 @@
           ]
         },
         "map_location": {
-          "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
           "type": [
             "string",
             "null"
           ]
+        },
+        "group_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
         }
       },
+      "required": [
+        "path"
+      ],
       "type": "object"
     }
   },
   {
-    "description": "Add a location: a name (unique among locations) and a hint for\nrecognizing when an event or note refers to it -- other names for it,\nan address, what happens there (\"the apartment; 'home', 'my place'\")\n-- and, if it has one, a map_location: an address, a place's name or a\nlink, opened for its events with no location of their own. id is\nassigned. Returns the location and its id as created_id.",
+    "description": "Add a location: a name (unique among locations) and a hint for\nrecognizing when an event or note refers to it -- other names for it,\nan address, what happens there (\"the apartment; 'home', 'my place'\")\n-- and, if it has one, a map_location: an address, a place's name or a\nlink, opened for its events with no location of their own, and a\ngroup_id: the location group it's in. id is assigned. Returns the\nlocation and its id as created_id.",
     "inputSchema": {
       "properties": {
         "location": {
@@ -8160,6 +8181,13 @@
             },
             "map_location": {
               "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "group_id": {
+              "description": "The location group it's in, if any (see get_location_groups).",
               "type": [
                 "string",
                 "null"
@@ -8215,6 +8243,13 @@
                 "string",
                 "null"
               ]
+            },
+            "group_id": {
+              "description": "The location group it's in, if any (see get_location_groups).",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8223,7 +8258,7 @@
     }
   },
   {
-    "description": "Rename a location or change its hint or map_location, by id. Omitted\nproperties keep their value; list hint or map_location in clear_fields\nto blank it. Returns it as updated.",
+    "description": "Rename a location or change its hint, map_location or group_id, by\nid. Omitted properties keep their value; list hint, map_location or\ngroup_id in clear_fields to blank it. Returns it as updated.",
     "inputSchema": {
       "properties": {
         "location": {
@@ -8233,7 +8268,8 @@
           "items": {
             "enum": [
               "hint",
-              "map_location"
+              "map_location",
+              "group_id"
             ],
             "type": "string"
           },
@@ -8276,6 +8312,13 @@
                 "string",
                 "null"
               ]
+            },
+            "group_id": {
+              "description": "The location group it's in, if any (see get_location_groups).",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8306,6 +8349,13 @@
         },
         "map_location": {
           "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "group_id": {
+          "description": "The location group it's in, if any (see get_location_groups).",
           "type": [
             "string",
             "null"
@@ -8356,9 +8406,483 @@
             "string",
             "null"
           ]
+        },
+        "group_id": {
+          "description": "The location group it's in, if any (see get_location_groups).",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "type": "object"
+    }
+  },
+  {
+    "description": "Every location group: a name that gathers locations (\"Brooklyn\", \"New\nYork\"). Groups can be inside other groups (group_id), and a location is\nin at most one group. Enclosing groups come before the ones inside\nthem. Each has its id, group_id, name, note, and its path through the\ngroups it's inside (\"New York › Brooklyn\"). Read-only.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+      "title": "get_location_groupsArguments"
+    },
+    "name": "get_location_groups",
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "$ref": "#/$defs/ListedLocationGroup"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "$defs": {
+        "ListedLocationGroup": {
+          "description": "A location group as get_location_groups lists it: with its path\nthrough the groups it's inside (\"New York › Brooklyn\").",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "group_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        }
+      },
+      "title": "get_location_groupsOutput"
+    }
+  },
+  {
+    "description": "One location group, by its id or else its name (ignoring case), as\nget_location_groups lists it. If there's none, the error suggests close\nmatches. Read-only.",
+    "inputSchema": {
+      "properties": {
+        "id_or_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id_or_name"
+      ],
+      "type": "object",
+      "title": "get_location_groupArguments"
+    },
+    "name": "get_location_group",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "group_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "description": "Create a location group: a name (unique among groups, though a\nlocation may share it; at most 50 characters), and optionally a\ngroup_id (the group it's inside) and a note. id is assigned, and is\nnever a location's. Put locations in it with update_location's\ngroup_id. Returns the group and its id as created_id.",
+    "inputSchema": {
+      "properties": {
+        "group": {
+          "$ref": "#/$defs/LocationGroup"
+        }
+      },
+      "required": [
+        "group"
+      ],
+      "type": "object",
+      "$defs": {
+        "LocationGroup": {
+          "additionalProperties": false,
+          "description": "One location group: a name that gathers locations -- a neighborhood,\na city -- inside another group, if it has a group_id (see\nget_location_groups).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "group_id": {
+              "description": "The group it's inside, if any.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "create_location_groupArguments"
+    },
+    "name": "create_location_group",
+    "outputSchema": {
+      "properties": {
+        "group": {
+          "$ref": "#/$defs/ListedLocationGroup"
+        },
+        "created_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "group",
+        "created_id"
+      ],
+      "type": "object",
+      "$defs": {
+        "ListedLocationGroup": {
+          "description": "A location group as get_location_groups lists it: with its path\nthrough the groups it's inside (\"New York › Brooklyn\").",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "group_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "Update a location group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups) or note. Omitted properties keep their value; list group_id or\nnote in clear_fields to blank it. A group can't end up inside itself.\nReturns it as updated.",
+    "inputSchema": {
+      "properties": {
+        "group": {
+          "$ref": "#/$defs/LocationGroup"
+        },
+        "clear_fields": {
+          "items": {
+            "enum": [
+              "group_id",
+              "note"
+            ],
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "group"
+      ],
+      "type": "object",
+      "$defs": {
+        "LocationGroup": {
+          "additionalProperties": false,
+          "description": "One location group: a name that gathers locations -- a neighborhood,\na city -- inside another group, if it has a group_id (see\nget_location_groups).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "group_id": {
+              "description": "The group it's inside, if any.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "update_location_groupArguments"
+    },
+    "name": "update_location_group",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "group_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "description": "Delete a location group, by id. Its locations and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), and the groups and locations moved up out of it.",
+    "inputSchema": {
+      "properties": {
+        "group_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "group_id"
+      ],
+      "type": "object",
+      "title": "delete_location_groupArguments"
+    },
+    "name": "delete_location_group",
+    "outputSchema": {
+      "properties": {
+        "deleted": {
+          "$ref": "#/$defs/LocationGroup"
+        },
+        "moved_groups": {
+          "items": {
+            "$ref": "#/$defs/ListedLocationGroup"
+          },
+          "type": "array"
+        },
+        "moved_locations": {
+          "items": {
+            "$ref": "#/$defs/ListedLocation"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "deleted",
+        "moved_groups",
+        "moved_locations"
+      ],
+      "type": "object",
+      "$defs": {
+        "ListedLocation": {
+          "description": "A location as get_locations lists it: with its path through its groups\n(\"New York › Brooklyn › Home\").",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "hint": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "map_location": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "group_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "ListedLocationGroup": {
+          "description": "A location group as get_location_groups lists it: with its path\nthrough the groups it's inside (\"New York › Brooklyn\").",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "group_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "LocationGroup": {
+          "additionalProperties": false,
+          "description": "One location group: a name that gathers locations -- a neighborhood,\na city -- inside another group, if it has a group_id (see\nget_location_groups).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "group_id": {
+              "description": "The group it's inside, if any.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      }
     }
   },
   {

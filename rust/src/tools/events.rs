@@ -344,7 +344,7 @@ pub fn prefetch_for_changes(app: &App) -> anyhow::Result<()> {
         (app.actions()?, app.people()?, app.locations()?, app.cancellations()?, app.journal()?);
     let mut ranges = actions.whole_tabs();
     ranges.extend(people.whole_tabs());
-    ranges.push(locations.whole_tab());
+    ranges.extend(locations.whole_tabs());
     ranges.extend(cancellations.whole_tabs());
     ranges.push(journal.whole_tab());
     prefetch(app, ranges)

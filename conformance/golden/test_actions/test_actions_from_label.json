@@ -76,7 +76,7 @@
       "end": "2026-10-07T10:00:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "b31766454241b44ec99625d763",
+      "id": "6f361080491b75223aa352fa08",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -90,12 +90,12 @@
     "timeline": "09:00 ┌ Practice · new\n10:00 └ Practice ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"b31766454241b44ec99625d763\",\n      \"summary\": \"Practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Practice · new\\n10:00 └ Practice ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"6f361080491b75223aa352fa08\",\n      \"summary\": \"Practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Practice · new\\n10:00 └ Practice ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
    "arguments": {
-    "id": "b31766454241b44ec99625d763"
+    "id": "6f361080491b75223aa352fa08"
    },
    "content": {
     "action_ids": [
@@ -110,7 +110,7 @@
     "end": "2026-10-07T10:00:00-04:00",
     "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
     "facts": null,
-    "id": "b31766454241b44ec99625d763",
+    "id": "6f361080491b75223aa352fa08",
     "is_cancelled": false,
     "is_end_of_day_sleep": null,
     "judgments": null,
@@ -121,7 +121,7 @@
     "summary": "Practice"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"b31766454241b44ec99625d763\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": true,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"6f361080491b75223aa352fa08\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": true,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "get_event"
   },
   {
@@ -133,7 +133,7 @@
         "co2yzn"
        ],
        "actions_from_label": true,
-       "id": "b31766454241b44ec99625d763",
+       "id": "6f361080491b75223aa352fa08",
        "summary": "Guitar"
       }
      }
@@ -155,7 +155,7 @@
       "end": "2026-10-07T10:00:00-04:00",
       "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
       "facts": null,
-      "id": "b31766454241b44ec99625d763",
+      "id": "6f361080491b75223aa352fa08",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -169,12 +169,12 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"b31766454241b44ec99625d763\",\n      \"summary\": \"Guitar\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"play guitar\"\n      ],\n      \"actions_from_label\": true,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"6f361080491b75223aa352fa08\",\n      \"summary\": \"Guitar\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"play guitar\"\n      ],\n      \"actions_from_label\": true,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
    "arguments": {
-    "id": "b31766454241b44ec99625d763"
+    "id": "6f361080491b75223aa352fa08"
    },
    "content": {
     "action_ids": [
@@ -189,7 +189,7 @@
     "end": "2026-10-07T10:00:00-04:00",
     "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
     "facts": null,
-    "id": "b31766454241b44ec99625d763",
+    "id": "6f361080491b75223aa352fa08",
     "is_cancelled": false,
     "is_end_of_day_sleep": null,
     "judgments": null,
@@ -200,7 +200,7 @@
     "summary": "Guitar"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"b31766454241b44ec99625d763\",\n  \"summary\": \"Guitar\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": true,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"6f361080491b75223aa352fa08\",\n  \"summary\": \"Guitar\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": true,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "get_event"
   }
  ],
@@ -688,7 +688,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      }
@@ -711,6 +712,97 @@
         },
         "metadataKey": "sheet-role",
         "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "location-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Location Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000015
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "location-groups",
         "visibility": "PROJECT"
        }
       }
@@ -761,6 +853,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -894,6 +994,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -963,7 +1071,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -996,7 +1104,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -1060,7 +1168,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000021
+         "sheetId": 1000023
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -1128,7 +1236,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000023,
+        "sheetId": 1000025,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1161,7 +1269,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000023
+         "sheetId": 1000025
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -1229,7 +1337,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000025,
+        "sheetId": 1000027,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1266,7 +1374,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000025
+         "sheetId": 1000027
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -1333,7 +1441,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000027
+         "sheetId": 1000029
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -1356,7 +1464,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000027,
+        "sheetId": 1000029,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1429,7 +1537,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000025,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1437,7 +1545,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000021,
+       "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1452,8 +1560,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000027,
+       "sheetId": 1000029,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1581,6 +1697,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1594,7 +1718,7 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b31766454241b44ec99625d763",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6f361080491b75223aa352fa08",
    "query": {}
   },
   {
@@ -1643,7 +1767,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000025,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1651,7 +1775,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000021,
+       "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1666,8 +1790,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000027,
+       "sheetId": 1000029,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1684,7 +1816,7 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b31766454241b44ec99625d763",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6f361080491b75223aa352fa08",
    "query": {}
   },
   {
@@ -1693,7 +1825,7 @@
    },
    "if_match": null,
    "method": "PATCH",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b31766454241b44ec99625d763",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6f361080491b75223aa352fa08",
    "query": {}
   },
   {
@@ -1738,6 +1870,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1751,7 +1891,7 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b31766454241b44ec99625d763",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6f361080491b75223aa352fa08",
    "query": {}
   }
  ],
@@ -1759,13 +1899,13 @@
   "calendars": {
    "9c738956aad29c37be54c43467@group.calendar.google.com": {
     "events": {
-     "b31766454241b44ec99625d763": {
+     "6f361080491b75223aa352fa08": {
       "end": {
        "dateTime": "2026-10-07T10:00:00-04:00"
       },
       "eventLabelId": "bb82ecea-50c0-514b-956e-fe110410c9e6",
-      "iCalUID": "b31766454241b44ec99625d763@google.com",
-      "id": "b31766454241b44ec99625d763",
+      "iCalUID": "6f361080491b75223aa352fa08@google.com",
+      "id": "6f361080491b75223aa352fa08",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-07T09:00:00-04:00"
@@ -1857,10 +1997,10 @@
      },
      {
       "location": {
-       "sheetId": 1000021
+       "sheetId": 1000015
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "location-groups",
       "visibility": "PROJECT"
      },
      {
@@ -1868,7 +2008,7 @@
        "sheetId": 1000023
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
@@ -1876,12 +2016,20 @@
        "sheetId": 1000025
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000027
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000029
       },
       "metadataKey": "sheet-role",
       "metadataValue": "compactions",
@@ -1965,7 +2113,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000025,
+       "sheetId": 1000027,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2024,7 +2172,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000027,
+       "sheetId": 1000029,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2054,7 +2202,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2072,6 +2220,32 @@
         "note",
         "traits",
         "foundations"
+       ]
+      ]
+     },
+     "Location Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000015,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Location Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
        ]
       ]
      },
@@ -2097,7 +2271,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      },
@@ -2153,7 +2328,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,

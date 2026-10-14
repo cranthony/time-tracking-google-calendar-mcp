@@ -14,7 +14,7 @@ pub fn prefetch_stores(app: &App) -> anyhow::Result<()> {
     let locations = app.locations()?;
     let mut ranges = actions.whole_tabs();
     ranges.extend(people.whole_tabs());
-    ranges.push(locations.whole_tab());
+    ranges.extend(locations.whole_tabs());
     actions.prefetch(&ranges)
 }
 
@@ -23,7 +23,7 @@ pub fn prefetch_people(app: &App) -> anyhow::Result<()> {
     let (actions, people, locations, cancellations) = (app.actions()?, app.people()?, app.locations()?, app.cancellations()?);
     let mut ranges = actions.whole_tabs();
     ranges.extend(people.whole_tabs());
-    ranges.push(locations.whole_tab());
+    ranges.extend(locations.whole_tabs());
     ranges.extend(cancellations.whole_tabs());
     actions.prefetch(&ranges)
 }

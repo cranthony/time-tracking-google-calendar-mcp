@@ -34,6 +34,7 @@
    "content": {
     "created_id": "3dnjav",
     "location": {
+     "group_id": null,
      "hint": null,
      "id": "3dnjav",
      "map_location": null,
@@ -41,7 +42,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"The Park\",\n    \"hint\": null,\n    \"map_location\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"The Park\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_location"
   },
   {
@@ -91,7 +92,7 @@
         "co2yzn"
        ]
       },
-      "id": "55925eec0203effa267a7441a2",
+      "id": "6525bebff685bedf57356640a8",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -105,7 +106,7 @@
     "timeline": "09:00 ┌ Walk · new\n10:00 └ Walk ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"location_id\": \"3dnjav\",\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"location_id\": \"3dnjav\",\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -173,7 +174,7 @@
     "updates": [
      {
       "event": {
-       "id": "55925eec0203effa267a7441a2",
+       "id": "6525bebff685bedf57356640a8",
        "judgments": {
         "self": {
          "kindness": {
@@ -214,7 +215,7 @@
         "co2yzn"
        ]
       },
-      "id": "55925eec0203effa267a7441a2",
+      "id": "6525bebff685bedf57356640a8",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": {
@@ -238,7 +239,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"location_id\": \"3dnjav\",\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      }\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"location_id\": \"3dnjav\",\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        }\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      }\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -250,7 +251,7 @@
        "facts"
       ],
       "event": {
-       "id": "55925eec0203effa267a7441a2"
+       "id": "6525bebff685bedf57356640a8"
       }
      }
     ]
@@ -267,7 +268,7 @@
       "end": "2026-10-07T10:00:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "55925eec0203effa267a7441a2",
+      "id": "6525bebff685bedf57356640a8",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -281,7 +282,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"55925eec0203effa267a7441a2\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   }
  ],
@@ -769,7 +770,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ]
       ]
      }
@@ -792,6 +794,97 @@
         },
         "metadataKey": "sheet-role",
         "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "location-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Location Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000015
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "location-groups",
         "visibility": "PROJECT"
        }
       }
@@ -845,6 +938,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -895,7 +996,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000013,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -904,9 +1004,9 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000013,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
       }
      }
     ],
@@ -935,6 +1035,7 @@
        [
         "3dnjav",
         "The Park",
+        "",
         "",
         ""
        ]
@@ -1001,7 +1102,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000015,
+        "sheetId": 1000017,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1034,7 +1135,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000015,
+        "sheetId": 1000017,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -1098,7 +1199,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000015
+         "sheetId": 1000017
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -1166,7 +1267,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000017,
+        "sheetId": 1000019,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1199,7 +1300,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000017
+         "sheetId": 1000019
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -1267,7 +1368,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000019,
+        "sheetId": 1000021,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1304,7 +1405,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000019
+         "sheetId": 1000021
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -1371,7 +1472,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000021
+         "sheetId": 1000023
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -1394,7 +1495,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1467,7 +1568,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000019,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1475,7 +1576,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1490,8 +1591,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000019,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1660,7 +1769,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000019,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1668,7 +1777,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1683,8 +1792,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000019,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1743,7 +1860,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000019,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1751,7 +1868,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1766,8 +1883,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000019,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1826,7 +1951,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000019,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1834,7 +1959,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1849,8 +1974,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000019,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1909,7 +2042,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000019,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1917,7 +2050,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1932,8 +2065,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000019,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1950,14 +2091,14 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/55925eec0203effa267a7441a2",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6525bebff685bedf57356640a8",
    "query": {}
   },
   {
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/55925eec0203effa267a7441a2",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6525bebff685bedf57356640a8",
    "query": {}
   },
   {
@@ -1970,7 +2111,7 @@
    },
    "if_match": null,
    "method": "PATCH",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/55925eec0203effa267a7441a2",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6525bebff685bedf57356640a8",
    "query": {}
   },
   {
@@ -2019,7 +2160,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000019,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2027,7 +2168,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2042,8 +2183,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000019,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2060,14 +2209,14 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/55925eec0203effa267a7441a2",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6525bebff685bedf57356640a8",
    "query": {}
   },
   {
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/55925eec0203effa267a7441a2",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6525bebff685bedf57356640a8",
    "query": {}
   },
   {
@@ -2081,7 +2230,7 @@
    },
    "if_match": null,
    "method": "PATCH",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/55925eec0203effa267a7441a2",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6525bebff685bedf57356640a8",
    "query": {}
   }
  ],
@@ -2089,7 +2238,7 @@
   "calendars": {
    "9c738956aad29c37be54c43467@group.calendar.google.com": {
     "events": {
-     "55925eec0203effa267a7441a2": {
+     "6525bebff685bedf57356640a8": {
       "end": {
        "dateTime": "2026-10-07T10:00:00-04:00"
       },
@@ -2097,8 +2246,8 @@
       "extendedProperties": {
        "private": {}
       },
-      "iCalUID": "55925eec0203effa267a7441a2@google.com",
-      "id": "55925eec0203effa267a7441a2",
+      "iCalUID": "6525bebff685bedf57356640a8@google.com",
+      "id": "6525bebff685bedf57356640a8",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-07T09:00:00-04:00"
@@ -2188,7 +2337,7 @@
        "sheetId": 1000015
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "location-groups",
       "visibility": "PROJECT"
      },
      {
@@ -2196,7 +2345,7 @@
        "sheetId": 1000017
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
@@ -2204,12 +2353,20 @@
        "sheetId": 1000019
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000021
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000023
       },
       "metadataKey": "sheet-role",
       "metadataValue": "compactions",
@@ -2286,7 +2443,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000019,
+       "sheetId": 1000021,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2345,7 +2502,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2375,7 +2532,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000017,
+       "sheetId": 1000019,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2393,6 +2550,32 @@
         "note",
         "traits",
         "foundations"
+       ]
+      ]
+     },
+     "Location Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000015,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Location Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note"
        ]
       ]
      },
@@ -2418,7 +2601,8 @@
         "id",
         "name",
         "hint",
-        "map_location"
+        "map_location",
+        "group_id"
        ],
        [
         "3dnjav",
@@ -2484,7 +2668,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000015,
+       "sheetId": 1000017,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
