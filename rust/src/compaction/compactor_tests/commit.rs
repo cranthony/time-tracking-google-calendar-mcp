@@ -265,3 +265,38 @@ fn the_next_days_compaction_window_starts_where_the_last_one_left_off() {
     assert_eq!(context.compaction_window_start, Some(time_at("07:10+1")));
     assert_eq!(event_ids(&context)[..2], strings(&["s1", "gr1"]));
 }
+
+#[test]
+fn the_requests_a_compaction_of_many_events_and_notes_makes() {
+    // Six pieces of work, each moved to the notes that start and end it,
+    // and every note annotated with its event. [Sheets reads, Sheets
+    // writes, Calendar reads, Calendar writes] for each step: committing
+    // writes the journal once per event changed, so Sheets' 60 writes a
+    // minute caps how many changes a compaction can make before it waits.
+    let at = |minutes: usize| format!("{:02}:{:02}", 8 + minutes / 60, minutes % 60);
+    let mut events: Vec<Event> = (0..6).map(|i| event_at(&format!("{}-{}", at(30 * i), at(30 * i + 30))).id(&format!("w{i}")).summary("Work").priority(2).build()).collect();
+    events.push(event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build());
+    let times: Vec<String> = (0..7).map(|i| at(30 * i + 5)).collect();
+    let notes: Vec<(&str, &str)> = times.iter().map(|time| (time.as_str(), "working")).collect();
+    let setup = Setup::new(&notes, Some(events), &at(200));
+    let mut made = Vec::new();
+    let mut step = |label: &'static str| {
+        made.push((label, setup.t.fake.quota_counts()));
+        setup.t.fake.clear_requests();
+    };
+
+    setup.prepare();
+    step("prepare");
+    let ids: Vec<String> = (0..7).map(|i| setup.note_id(i + 2)).collect();
+    setup.t.fake.clear_requests();
+    let decisions = (0..6)
+        .map(|i| EventDecision { event_id: Some(format!("w{i}")), start_note: Some(ids[i].clone()), end_note: Some(ids[i + 1].clone()), ..EventDecision::new("keep") })
+        .collect();
+    let annotate_notes = ids.iter().enumerate().map(|(i, id)| (id.clone(), format!("w{}", i.min(5)))).collect();
+    let id = setup.try_dry_run(decisions, DryRun { annotate_notes, ..Default::default() }).unwrap().compaction_id.unwrap();
+    step("dry_run");
+    assert_eq!(setup.commit(&id).status, "applied");
+    step("commit");
+
+    assert_eq!(made, vec![("prepare", [1, 0, 2, 0]), ("dry_run", [1, 1, 1, 0]), ("commit", [1, 10, 1, 6])]);
+}
