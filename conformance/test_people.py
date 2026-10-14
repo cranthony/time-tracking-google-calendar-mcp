@@ -104,6 +104,32 @@ async def test_location_groups(session):
     assert not ungrouped.get("group_id")
 
 
+async def test_travel_times(session):
+    drive = (await session.call("create_action", action={"name": "Drive", "status": "active"}))["changed"][0]["id"]
+    brooklyn = (await session.call("create_location_group", group={"name": "Brooklyn"}))["created_id"]
+    home = (await session.call("create_location", location={"name": "Home", "group_id": brooklyn}))["created_id"]
+    work = (await session.call("create_location", location={"name": "Work"}))["created_id"]
+    created = await session.call(
+        "create_travel_time",
+        travel_time={"from_id": brooklyn, "to_id": work, "times": [{"mode_id": drive, "minutes": 25, "max_minutes": 40}], "note": "the bridge"},
+    )
+    both_ways = created["created_id"]
+    await session.call_error("create_travel_time", travel_time={"from_id": work, "to_id": brooklyn})
+    await session.call_error("create_travel_time", travel_time={"from_id": home, "to_id": work, "times": [{"mode_id": "fly", "minutes": 5}]})
+    await session.call("create_travel_time", travel_time={"from_id": work, "to_id": home, "one_way": True, "times": [{"mode_id": drive, "minutes": 50}]})
+    there = await session.call("estimate_travel_time", from_id=home, to_id=work, mode_id=drive)
+    assert (there["from_id"], there["times"][0]["minutes"]) == (brooklyn, 25)
+    back = await session.call("estimate_travel_time", from_id=work, to_id=home)
+    assert back["travel_time"]["one_way"] is True and back["times"][0]["minutes"] == 50
+    assert await session.call("estimate_travel_time", from_id=home, to_id=brooklyn) is None
+    assert len(await session.call("get_travel_times", place_id=home)) == 1
+    updated = await session.call("update_travel_time", travel_time={"id": both_ways}, clear_fields=["note"])
+    assert not updated.get("note")
+    assert (await session.call("delete_travel_time", travel_time_id=both_ways))["id"] == both_ways
+    await session.call("delete_location", location_id=home)
+    assert await session.call("get_travel_times") == []
+
+
 async def test_rows_edited_by_hand(session, google):
     """A tab edited in the spreadsheet by hand is read as it now is."""
     await session.call("create_location", location={"name": "Home"})

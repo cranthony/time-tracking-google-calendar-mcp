@@ -24,6 +24,7 @@ pub const PEOPLE: (&str, &str) = ("people", "People");
 pub const CIRCLES: (&str, &str) = ("circles", "Circles");
 pub const LOCATIONS: (&str, &str) = ("locations", "Locations");
 pub const LOCATION_GROUPS: (&str, &str) = ("location-groups", "Location Groups");
+pub const TRAVEL_TIMES: (&str, &str) = ("travel-times", "Travel Times");
 pub const HABITS: (&str, &str) = ("habits", "Habits");
 pub const COMPACTION_SCHEDULE: (&str, &str) = ("compaction-schedule", "Compaction Schedule");
 pub const CANCELLATIONS: (&str, &str) = ("cancellations", "Cancellations");

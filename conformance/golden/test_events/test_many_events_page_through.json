@@ -137,7 +137,7 @@
       "end": "2026-10-07T06:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "6525bebff685bedf57356640a8",
+      "id": "35d98bd5ab3bf549dd770d737d",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -156,7 +156,7 @@
       "end": "2026-10-07T06:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "35d98bd5ab3bf549dd770d737d",
+      "id": "9c3c1046e8cb7fa96f6b8bd88d",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -175,7 +175,7 @@
       "end": "2026-10-07T07:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "9c3c1046e8cb7fa96f6b8bd88d",
+      "id": "556e592a0b77b0b17318b41f08",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -194,7 +194,7 @@
       "end": "2026-10-07T07:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "556e592a0b77b0b17318b41f08",
+      "id": "3521324c178091b5c4ed4ca4c3",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -213,7 +213,7 @@
       "end": "2026-10-07T08:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "3521324c178091b5c4ed4ca4c3",
+      "id": "4ae9a7381c23235f0631d97fad",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -232,7 +232,7 @@
       "end": "2026-10-07T08:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "4ae9a7381c23235f0631d97fad",
+      "id": "f25a39bee62b88efbce3359cff",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -251,7 +251,7 @@
       "end": "2026-10-07T09:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "f25a39bee62b88efbce3359cff",
+      "id": "ecd953174a9e540d04e29086a6",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -270,7 +270,7 @@
       "end": "2026-10-07T09:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "ecd953174a9e540d04e29086a6",
+      "id": "ef75dc0bc0c128f2cdca7830dc",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -289,7 +289,7 @@
       "end": "2026-10-07T10:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "ef75dc0bc0c128f2cdca7830dc",
+      "id": "253ff45db2ccd0691eff5c50c4",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -308,7 +308,7 @@
       "end": "2026-10-07T10:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "253ff45db2ccd0691eff5c50c4",
+      "id": "b8d341a83248e6df0b12de9aab",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -327,7 +327,7 @@
       "end": "2026-10-07T11:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "b8d341a83248e6df0b12de9aab",
+      "id": "449a39431d90f573fef724f914",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -346,7 +346,7 @@
       "end": "2026-10-07T11:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "449a39431d90f573fef724f914",
+      "id": "0e873f5e6145a62c5f1548a1b0",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -365,7 +365,7 @@
       "end": "2026-10-07T12:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "0e873f5e6145a62c5f1548a1b0",
+      "id": "475f19314ee7fcc44f01ea6642",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -384,7 +384,7 @@
       "end": "2026-10-07T12:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "475f19314ee7fcc44f01ea6642",
+      "id": "1344a7bd454cb0e31306211480",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -403,7 +403,7 @@
       "end": "2026-10-07T13:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "1344a7bd454cb0e31306211480",
+      "id": "44ace686e89a0044cab2787ec8",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -422,7 +422,7 @@
       "end": "2026-10-07T13:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "44ace686e89a0044cab2787ec8",
+      "id": "034f175dd99ad72d0b5985a67f",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -441,7 +441,7 @@
       "end": "2026-10-07T14:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "034f175dd99ad72d0b5985a67f",
+      "id": "f42a0aecbe0df7a492057896ac",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -460,7 +460,7 @@
       "end": "2026-10-07T14:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "f42a0aecbe0df7a492057896ac",
+      "id": "5aa9b62d45d0a3e988d67de839",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -479,7 +479,7 @@
       "end": "2026-10-07T15:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "5aa9b62d45d0a3e988d67de839",
+      "id": "2f5fa290c3875a02dd0d202e52",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -498,7 +498,7 @@
       "end": "2026-10-07T15:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "2f5fa290c3875a02dd0d202e52",
+      "id": "38fdf369235566c29d44002885",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -517,7 +517,7 @@
       "end": "2026-10-07T16:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "38fdf369235566c29d44002885",
+      "id": "2eed72b8e85cbf104b0105b133",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -536,7 +536,7 @@
       "end": "2026-10-07T16:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "2eed72b8e85cbf104b0105b133",
+      "id": "4a883fdeba2d03259bf35c1d74",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -555,7 +555,7 @@
       "end": "2026-10-07T17:29:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "4a883fdeba2d03259bf35c1d74",
+      "id": "5a05a005a6b11b15196c3ed17f",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -574,7 +574,7 @@
       "end": "2026-10-07T17:59:00-04:00",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
-      "id": "5a05a005a6b11b15196c3ed17f",
+      "id": "151fa5d2d8e10a20956b555978",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -588,7 +588,7 @@
     "timeline": "06:00 ┌ Block 0 · new\n06:29 └ Block 0 ends\n06:30 ┌ Block 1 · new\n06:59 └ Block 1 ends\n07:00 ┌ Block 2 · new\n07:29 └ Block 2 ends\n07:30 ┌ Block 3 · new\n07:59 └ Block 3 ends\n08:00 ┌ Block 4 · new\n08:29 └ Block 4 ends\n08:30 ┌ Block 5 · new\n08:59 └ Block 5 ends\n09:00 ┌ Block 6 · new\n09:29 └ Block 6 ends\n09:30 ┌ Block 7 · new\n09:59 └ Block 7 ends\n10:00 ┌ Block 8 · new\n10:29 └ Block 8 ends\n10:30 ┌ Block 9 · new\n10:59 └ Block 9 ends\n11:00 ┌ Block 10 · new\n11:29 └ Block 10 ends\n11:30 ┌ Block 11 · new\n11:59 └ Block 11 ends\n12:00 ┌ Block 12 · new\n12:29 └ Block 12 ends\n12:30 ┌ Block 13 · new\n12:59 └ Block 13 ends\n13:00 ┌ Block 14 · new\n13:29 └ Block 14 ends\n13:30 ┌ Block 15 · new\n13:59 └ Block 15 ends\n14:00 ┌ Block 16 · new\n14:29 └ Block 16 ends\n14:30 ┌ Block 17 · new\n14:59 └ Block 17 ends\n15:00 ┌ Block 18 · new\n15:29 └ Block 18 ends\n15:30 ┌ Block 19 · new\n15:59 └ Block 19 ends\n16:00 ┌ Block 20 · new\n16:29 └ Block 20 ends\n16:30 ┌ Block 21 · new\n16:59 └ Block 21 ends\n17:00 ┌ Block 22 · new\n17:29 └ Block 22 ends\n17:30 ┌ Block 23 · new\n17:59 └ Block 23 ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"6525bebff685bedf57356640a8\",\n      \"summary\": \"Block 0\",\n      \"start\": \"2026-10-07T06:00:00-04:00\",\n      \"end\": \"2026-10-07T06:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Block 1\",\n      \"start\": \"2026-10-07T06:30:00-04:00\",\n      \"end\": \"2026-10-07T06:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Block 2\",\n      \"start\": \"2026-10-07T07:00:00-04:00\",\n      \"end\": \"2026-10-07T07:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Block 3\",\n      \"start\": \"2026-10-07T07:30:00-04:00\",\n      \"end\": \"2026-10-07T07:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"3521324c178091b5c4ed4ca4c3\",\n      \"summary\": \"Block 4\",\n      \"start\": \"2026-10-07T08:00:00-04:00\",\n      \"end\": \"2026-10-07T08:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"4ae9a7381c23235f0631d97fad\",\n      \"summary\": \"Block 5\",\n      \"start\": \"2026-10-07T08:30:00-04:00\",\n      \"end\": \"2026-10-07T08:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"f25a39bee62b88efbce3359cff\",\n      \"summary\": \"Block 6\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T09:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"ecd953174a9e540d04e29086a6\",\n      \"summary\": \"Block 7\",\n      \"start\": \"2026-10-07T09:30:00-04:00\",\n      \"end\": \"2026-10-07T09:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"ef75dc0bc0c128f2cdca7830dc\",\n      \"summary\": \"Block 8\",\n      \"start\": \"2026-10-07T10:00:00-04:00\",\n      \"end\": \"2026-10-07T10:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"253ff45db2ccd0691eff5c50c4\",\n      \"summary\": \"Block 9\",\n      \"start\": \"2026-10-07T10:30:00-04:00\",\n      \"end\": \"2026-10-07T10:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"b8d341a83248e6df0b12de9aab\",\n      \"summary\": \"Block 10\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T11:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"449a39431d90f573fef724f914\",\n      \"summary\": \"Block 11\",\n      \"start\": \"2026-10-07T11:30:00-04:00\",\n      \"end\": \"2026-10-07T11:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"0e873f5e6145a62c5f1548a1b0\",\n      \"summary\": \"Block 12\",\n      \"start\": \"2026-10-07T12:00:00-04:00\",\n      \"end\": \"2026-10-07T12:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"475f19314ee7fcc44f01ea6642\",\n      \"summary\": \"Block 13\",\n      \"start\": \"2026-10-07T12:30:00-04:00\",\n      \"end\": \"2026-10-07T12:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"1344a7bd454cb0e31306211480\",\n      \"summary\": \"Block 14\",\n      \"start\": \"2026-10-07T13:00:00-04:00\",\n      \"end\": \"2026-10-07T13:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"44ace686e89a0044cab2787ec8\",\n      \"summary\": \"Block 15\",\n      \"start\": \"2026-10-07T13:30:00-04:00\",\n      \"end\": \"2026-10-07T13:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"034f175dd99ad72d0b5985a67f\",\n      \"summary\": \"Block 16\",\n      \"start\": \"2026-10-07T14:00:00-04:00\",\n      \"end\": \"2026-10-07T14:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"f42a0aecbe0df7a492057896ac\",\n      \"summary\": \"Block 17\",\n      \"start\": \"2026-10-07T14:30:00-04:00\",\n      \"end\": \"2026-10-07T14:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"5aa9b62d45d0a3e988d67de839\",\n      \"summary\": \"Block 18\",\n      \"start\": \"2026-10-07T15:00:00-04:00\",\n      \"end\": \"2026-10-07T15:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"2f5fa290c3875a02dd0d202e52\",\n      \"summary\": \"Block 19\",\n      \"start\": \"2026-10-07T15:30:00-04:00\",\n      \"end\": \"2026-10-07T15:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"38fdf369235566c29d44002885\",\n      \"summary\": \"Block 20\",\n      \"start\": \"2026-10-07T16:00:00-04:00\",\n      \"end\": \"2026-10-07T16:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"2eed72b8e85cbf104b0105b133\",\n      \"summary\": \"Block 21\",\n      \"start\": \"2026-10-07T16:30:00-04:00\",\n      \"end\": \"2026-10-07T16:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"4a883fdeba2d03259bf35c1d74\",\n      \"summary\": \"Block 22\",\n      \"start\": \"2026-10-07T17:00:00-04:00\",\n      \"end\": \"2026-10-07T17:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"5a05a005a6b11b15196c3ed17f\",\n      \"summary\": \"Block 23\",\n      \"start\": \"2026-10-07T17:30:00-04:00\",\n      \"end\": \"2026-10-07T17:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"06:00 ┌ Block 0 · new\\n06:29 └ Block 0 ends\\n06:30 ┌ Block 1 · new\\n06:59 └ Block 1 ends\\n07:00 ┌ Block 2 · new\\n07:29 └ Block 2 ends\\n07:30 ┌ Block 3 · new\\n07:59 └ Block 3 ends\\n08:00 ┌ Block 4 · new\\n08:29 └ Block 4 ends\\n08:30 ┌ Block 5 · new\\n08:59 └ Block 5 ends\\n09:00 ┌ Block 6 · new\\n09:29 └ Block 6 ends\\n09:30 ┌ Block 7 · new\\n09:59 └ Block 7 ends\\n10:00 ┌ Block 8 · new\\n10:29 └ Block 8 ends\\n10:30 ┌ Block 9 · new\\n10:59 └ Block 9 ends\\n11:00 ┌ Block 10 · new\\n11:29 └ Block 10 ends\\n11:30 ┌ Block 11 · new\\n11:59 └ Block 11 ends\\n12:00 ┌ Block 12 · new\\n12:29 └ Block 12 ends\\n12:30 ┌ Block 13 · new\\n12:59 └ Block 13 ends\\n13:00 ┌ Block 14 · new\\n13:29 └ Block 14 ends\\n13:30 ┌ Block 15 · new\\n13:59 └ Block 15 ends\\n14:00 ┌ Block 16 · new\\n14:29 └ Block 16 ends\\n14:30 ┌ Block 17 · new\\n14:59 └ Block 17 ends\\n15:00 ┌ Block 18 · new\\n15:29 └ Block 18 ends\\n15:30 ┌ Block 19 · new\\n15:59 └ Block 19 ends\\n16:00 ┌ Block 20 · new\\n16:29 └ Block 20 ends\\n16:30 ┌ Block 21 · new\\n16:59 └ Block 21 ends\\n17:00 ┌ Block 22 · new\\n17:29 └ Block 22 ends\\n17:30 ┌ Block 23 · new\\n17:59 └ Block 23 ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Block 0\",\n      \"start\": \"2026-10-07T06:00:00-04:00\",\n      \"end\": \"2026-10-07T06:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Block 1\",\n      \"start\": \"2026-10-07T06:30:00-04:00\",\n      \"end\": \"2026-10-07T06:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"556e592a0b77b0b17318b41f08\",\n      \"summary\": \"Block 2\",\n      \"start\": \"2026-10-07T07:00:00-04:00\",\n      \"end\": \"2026-10-07T07:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"3521324c178091b5c4ed4ca4c3\",\n      \"summary\": \"Block 3\",\n      \"start\": \"2026-10-07T07:30:00-04:00\",\n      \"end\": \"2026-10-07T07:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"4ae9a7381c23235f0631d97fad\",\n      \"summary\": \"Block 4\",\n      \"start\": \"2026-10-07T08:00:00-04:00\",\n      \"end\": \"2026-10-07T08:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"f25a39bee62b88efbce3359cff\",\n      \"summary\": \"Block 5\",\n      \"start\": \"2026-10-07T08:30:00-04:00\",\n      \"end\": \"2026-10-07T08:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"ecd953174a9e540d04e29086a6\",\n      \"summary\": \"Block 6\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T09:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"ef75dc0bc0c128f2cdca7830dc\",\n      \"summary\": \"Block 7\",\n      \"start\": \"2026-10-07T09:30:00-04:00\",\n      \"end\": \"2026-10-07T09:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"253ff45db2ccd0691eff5c50c4\",\n      \"summary\": \"Block 8\",\n      \"start\": \"2026-10-07T10:00:00-04:00\",\n      \"end\": \"2026-10-07T10:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"b8d341a83248e6df0b12de9aab\",\n      \"summary\": \"Block 9\",\n      \"start\": \"2026-10-07T10:30:00-04:00\",\n      \"end\": \"2026-10-07T10:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"449a39431d90f573fef724f914\",\n      \"summary\": \"Block 10\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T11:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"0e873f5e6145a62c5f1548a1b0\",\n      \"summary\": \"Block 11\",\n      \"start\": \"2026-10-07T11:30:00-04:00\",\n      \"end\": \"2026-10-07T11:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"475f19314ee7fcc44f01ea6642\",\n      \"summary\": \"Block 12\",\n      \"start\": \"2026-10-07T12:00:00-04:00\",\n      \"end\": \"2026-10-07T12:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"1344a7bd454cb0e31306211480\",\n      \"summary\": \"Block 13\",\n      \"start\": \"2026-10-07T12:30:00-04:00\",\n      \"end\": \"2026-10-07T12:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"44ace686e89a0044cab2787ec8\",\n      \"summary\": \"Block 14\",\n      \"start\": \"2026-10-07T13:00:00-04:00\",\n      \"end\": \"2026-10-07T13:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"034f175dd99ad72d0b5985a67f\",\n      \"summary\": \"Block 15\",\n      \"start\": \"2026-10-07T13:30:00-04:00\",\n      \"end\": \"2026-10-07T13:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"f42a0aecbe0df7a492057896ac\",\n      \"summary\": \"Block 16\",\n      \"start\": \"2026-10-07T14:00:00-04:00\",\n      \"end\": \"2026-10-07T14:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"5aa9b62d45d0a3e988d67de839\",\n      \"summary\": \"Block 17\",\n      \"start\": \"2026-10-07T14:30:00-04:00\",\n      \"end\": \"2026-10-07T14:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"2f5fa290c3875a02dd0d202e52\",\n      \"summary\": \"Block 18\",\n      \"start\": \"2026-10-07T15:00:00-04:00\",\n      \"end\": \"2026-10-07T15:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"38fdf369235566c29d44002885\",\n      \"summary\": \"Block 19\",\n      \"start\": \"2026-10-07T15:30:00-04:00\",\n      \"end\": \"2026-10-07T15:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"2eed72b8e85cbf104b0105b133\",\n      \"summary\": \"Block 20\",\n      \"start\": \"2026-10-07T16:00:00-04:00\",\n      \"end\": \"2026-10-07T16:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"4a883fdeba2d03259bf35c1d74\",\n      \"summary\": \"Block 21\",\n      \"start\": \"2026-10-07T16:30:00-04:00\",\n      \"end\": \"2026-10-07T16:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"5a05a005a6b11b15196c3ed17f\",\n      \"summary\": \"Block 22\",\n      \"start\": \"2026-10-07T17:00:00-04:00\",\n      \"end\": \"2026-10-07T17:29:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    },\n    {\n      \"id\": \"151fa5d2d8e10a20956b555978\",\n      \"summary\": \"Block 23\",\n      \"start\": \"2026-10-07T17:30:00-04:00\",\n      \"end\": \"2026-10-07T17:59:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"06:00 ┌ Block 0 · new\\n06:29 └ Block 0 ends\\n06:30 ┌ Block 1 · new\\n06:59 └ Block 1 ends\\n07:00 ┌ Block 2 · new\\n07:29 └ Block 2 ends\\n07:30 ┌ Block 3 · new\\n07:59 └ Block 3 ends\\n08:00 ┌ Block 4 · new\\n08:29 └ Block 4 ends\\n08:30 ┌ Block 5 · new\\n08:59 └ Block 5 ends\\n09:00 ┌ Block 6 · new\\n09:29 └ Block 6 ends\\n09:30 ┌ Block 7 · new\\n09:59 └ Block 7 ends\\n10:00 ┌ Block 8 · new\\n10:29 └ Block 8 ends\\n10:30 ┌ Block 9 · new\\n10:59 └ Block 9 ends\\n11:00 ┌ Block 10 · new\\n11:29 └ Block 10 ends\\n11:30 ┌ Block 11 · new\\n11:59 └ Block 11 ends\\n12:00 ┌ Block 12 · new\\n12:29 └ Block 12 ends\\n12:30 ┌ Block 13 · new\\n12:59 └ Block 13 ends\\n13:00 ┌ Block 14 · new\\n13:29 └ Block 14 ends\\n13:30 ┌ Block 15 · new\\n13:59 └ Block 15 ends\\n14:00 ┌ Block 16 · new\\n14:29 └ Block 16 ends\\n14:30 ┌ Block 17 · new\\n14:59 └ Block 17 ends\\n15:00 ┌ Block 18 · new\\n15:29 └ Block 18 ends\\n15:30 ┌ Block 19 · new\\n15:59 └ Block 19 ends\\n16:00 ┌ Block 20 · new\\n16:29 └ Block 20 ends\\n16:30 ┌ Block 21 · new\\n16:59 └ Block 21 ends\\n17:00 ┌ Block 22 · new\\n17:29 └ Block 22 ends\\n17:30 ┌ Block 23 · new\\n17:59 └ Block 23 ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -606,7 +606,7 @@
      "end": "2026-10-07T06:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "6525bebff685bedf57356640a8",
+     "id": "35d98bd5ab3bf549dd770d737d",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -625,7 +625,7 @@
      "end": "2026-10-07T06:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "35d98bd5ab3bf549dd770d737d",
+     "id": "9c3c1046e8cb7fa96f6b8bd88d",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -644,7 +644,7 @@
      "end": "2026-10-07T07:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "9c3c1046e8cb7fa96f6b8bd88d",
+     "id": "556e592a0b77b0b17318b41f08",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -663,7 +663,7 @@
      "end": "2026-10-07T07:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "556e592a0b77b0b17318b41f08",
+     "id": "3521324c178091b5c4ed4ca4c3",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -682,7 +682,7 @@
      "end": "2026-10-07T08:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "3521324c178091b5c4ed4ca4c3",
+     "id": "4ae9a7381c23235f0631d97fad",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -701,7 +701,7 @@
      "end": "2026-10-07T08:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "4ae9a7381c23235f0631d97fad",
+     "id": "f25a39bee62b88efbce3359cff",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -720,7 +720,7 @@
      "end": "2026-10-07T09:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "f25a39bee62b88efbce3359cff",
+     "id": "ecd953174a9e540d04e29086a6",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -739,7 +739,7 @@
      "end": "2026-10-07T09:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "ecd953174a9e540d04e29086a6",
+     "id": "ef75dc0bc0c128f2cdca7830dc",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -758,7 +758,7 @@
      "end": "2026-10-07T10:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "ef75dc0bc0c128f2cdca7830dc",
+     "id": "253ff45db2ccd0691eff5c50c4",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -777,7 +777,7 @@
      "end": "2026-10-07T10:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "253ff45db2ccd0691eff5c50c4",
+     "id": "b8d341a83248e6df0b12de9aab",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -796,7 +796,7 @@
      "end": "2026-10-07T11:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "b8d341a83248e6df0b12de9aab",
+     "id": "449a39431d90f573fef724f914",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -815,7 +815,7 @@
      "end": "2026-10-07T11:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "449a39431d90f573fef724f914",
+     "id": "0e873f5e6145a62c5f1548a1b0",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -834,7 +834,7 @@
      "end": "2026-10-07T12:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "0e873f5e6145a62c5f1548a1b0",
+     "id": "475f19314ee7fcc44f01ea6642",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -853,7 +853,7 @@
      "end": "2026-10-07T12:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "475f19314ee7fcc44f01ea6642",
+     "id": "1344a7bd454cb0e31306211480",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -872,7 +872,7 @@
      "end": "2026-10-07T13:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "1344a7bd454cb0e31306211480",
+     "id": "44ace686e89a0044cab2787ec8",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -891,7 +891,7 @@
      "end": "2026-10-07T13:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "44ace686e89a0044cab2787ec8",
+     "id": "034f175dd99ad72d0b5985a67f",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -910,7 +910,7 @@
      "end": "2026-10-07T14:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "034f175dd99ad72d0b5985a67f",
+     "id": "f42a0aecbe0df7a492057896ac",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -929,7 +929,7 @@
      "end": "2026-10-07T14:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "f42a0aecbe0df7a492057896ac",
+     "id": "5aa9b62d45d0a3e988d67de839",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -948,7 +948,7 @@
      "end": "2026-10-07T15:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "5aa9b62d45d0a3e988d67de839",
+     "id": "2f5fa290c3875a02dd0d202e52",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -967,7 +967,7 @@
      "end": "2026-10-07T15:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "2f5fa290c3875a02dd0d202e52",
+     "id": "38fdf369235566c29d44002885",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -986,7 +986,7 @@
      "end": "2026-10-07T16:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "38fdf369235566c29d44002885",
+     "id": "2eed72b8e85cbf104b0105b133",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -1005,7 +1005,7 @@
      "end": "2026-10-07T16:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "2eed72b8e85cbf104b0105b133",
+     "id": "4a883fdeba2d03259bf35c1d74",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -1024,7 +1024,7 @@
      "end": "2026-10-07T17:29:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "4a883fdeba2d03259bf35c1d74",
+     "id": "5a05a005a6b11b15196c3ed17f",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -1043,7 +1043,7 @@
      "end": "2026-10-07T17:59:00-04:00",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
-     "id": "5a05a005a6b11b15196c3ed17f",
+     "id": "151fa5d2d8e10a20956b555978",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -1055,7 +1055,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"6525bebff685bedf57356640a8\",\n  \"summary\": \"Block 0\",\n  \"start\": \"2026-10-07T06:00:00-04:00\",\n  \"end\": \"2026-10-07T06:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"summary\": \"Block 1\",\n  \"start\": \"2026-10-07T06:30:00-04:00\",\n  \"end\": \"2026-10-07T06:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n  \"summary\": \"Block 2\",\n  \"start\": \"2026-10-07T07:00:00-04:00\",\n  \"end\": \"2026-10-07T07:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"556e592a0b77b0b17318b41f08\",\n  \"summary\": \"Block 3\",\n  \"start\": \"2026-10-07T07:30:00-04:00\",\n  \"end\": \"2026-10-07T07:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"3521324c178091b5c4ed4ca4c3\",\n  \"summary\": \"Block 4\",\n  \"start\": \"2026-10-07T08:00:00-04:00\",\n  \"end\": \"2026-10-07T08:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"4ae9a7381c23235f0631d97fad\",\n  \"summary\": \"Block 5\",\n  \"start\": \"2026-10-07T08:30:00-04:00\",\n  \"end\": \"2026-10-07T08:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"f25a39bee62b88efbce3359cff\",\n  \"summary\": \"Block 6\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"ecd953174a9e540d04e29086a6\",\n  \"summary\": \"Block 7\",\n  \"start\": \"2026-10-07T09:30:00-04:00\",\n  \"end\": \"2026-10-07T09:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"ef75dc0bc0c128f2cdca7830dc\",\n  \"summary\": \"Block 8\",\n  \"start\": \"2026-10-07T10:00:00-04:00\",\n  \"end\": \"2026-10-07T10:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"253ff45db2ccd0691eff5c50c4\",\n  \"summary\": \"Block 9\",\n  \"start\": \"2026-10-07T10:30:00-04:00\",\n  \"end\": \"2026-10-07T10:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"b8d341a83248e6df0b12de9aab\",\n  \"summary\": \"Block 10\",\n  \"start\": \"2026-10-07T11:00:00-04:00\",\n  \"end\": \"2026-10-07T11:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"449a39431d90f573fef724f914\",\n  \"summary\": \"Block 11\",\n  \"start\": \"2026-10-07T11:30:00-04:00\",\n  \"end\": \"2026-10-07T11:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"0e873f5e6145a62c5f1548a1b0\",\n  \"summary\": \"Block 12\",\n  \"start\": \"2026-10-07T12:00:00-04:00\",\n  \"end\": \"2026-10-07T12:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"475f19314ee7fcc44f01ea6642\",\n  \"summary\": \"Block 13\",\n  \"start\": \"2026-10-07T12:30:00-04:00\",\n  \"end\": \"2026-10-07T12:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"1344a7bd454cb0e31306211480\",\n  \"summary\": \"Block 14\",\n  \"start\": \"2026-10-07T13:00:00-04:00\",\n  \"end\": \"2026-10-07T13:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"44ace686e89a0044cab2787ec8\",\n  \"summary\": \"Block 15\",\n  \"start\": \"2026-10-07T13:30:00-04:00\",\n  \"end\": \"2026-10-07T13:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"034f175dd99ad72d0b5985a67f\",\n  \"summary\": \"Block 16\",\n  \"start\": \"2026-10-07T14:00:00-04:00\",\n  \"end\": \"2026-10-07T14:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"f42a0aecbe0df7a492057896ac\",\n  \"summary\": \"Block 17\",\n  \"start\": \"2026-10-07T14:30:00-04:00\",\n  \"end\": \"2026-10-07T14:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"5aa9b62d45d0a3e988d67de839\",\n  \"summary\": \"Block 18\",\n  \"start\": \"2026-10-07T15:00:00-04:00\",\n  \"end\": \"2026-10-07T15:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"2f5fa290c3875a02dd0d202e52\",\n  \"summary\": \"Block 19\",\n  \"start\": \"2026-10-07T15:30:00-04:00\",\n  \"end\": \"2026-10-07T15:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"38fdf369235566c29d44002885\",\n  \"summary\": \"Block 20\",\n  \"start\": \"2026-10-07T16:00:00-04:00\",\n  \"end\": \"2026-10-07T16:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"2eed72b8e85cbf104b0105b133\",\n  \"summary\": \"Block 21\",\n  \"start\": \"2026-10-07T16:30:00-04:00\",\n  \"end\": \"2026-10-07T16:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"4a883fdeba2d03259bf35c1d74\",\n  \"summary\": \"Block 22\",\n  \"start\": \"2026-10-07T17:00:00-04:00\",\n  \"end\": \"2026-10-07T17:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"5a05a005a6b11b15196c3ed17f\",\n  \"summary\": \"Block 23\",\n  \"start\": \"2026-10-07T17:30:00-04:00\",\n  \"end\": \"2026-10-07T17:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"summary\": \"Block 0\",\n  \"start\": \"2026-10-07T06:00:00-04:00\",\n  \"end\": \"2026-10-07T06:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n  \"summary\": \"Block 1\",\n  \"start\": \"2026-10-07T06:30:00-04:00\",\n  \"end\": \"2026-10-07T06:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"556e592a0b77b0b17318b41f08\",\n  \"summary\": \"Block 2\",\n  \"start\": \"2026-10-07T07:00:00-04:00\",\n  \"end\": \"2026-10-07T07:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"3521324c178091b5c4ed4ca4c3\",\n  \"summary\": \"Block 3\",\n  \"start\": \"2026-10-07T07:30:00-04:00\",\n  \"end\": \"2026-10-07T07:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"4ae9a7381c23235f0631d97fad\",\n  \"summary\": \"Block 4\",\n  \"start\": \"2026-10-07T08:00:00-04:00\",\n  \"end\": \"2026-10-07T08:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"f25a39bee62b88efbce3359cff\",\n  \"summary\": \"Block 5\",\n  \"start\": \"2026-10-07T08:30:00-04:00\",\n  \"end\": \"2026-10-07T08:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"ecd953174a9e540d04e29086a6\",\n  \"summary\": \"Block 6\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"ef75dc0bc0c128f2cdca7830dc\",\n  \"summary\": \"Block 7\",\n  \"start\": \"2026-10-07T09:30:00-04:00\",\n  \"end\": \"2026-10-07T09:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"253ff45db2ccd0691eff5c50c4\",\n  \"summary\": \"Block 8\",\n  \"start\": \"2026-10-07T10:00:00-04:00\",\n  \"end\": \"2026-10-07T10:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"b8d341a83248e6df0b12de9aab\",\n  \"summary\": \"Block 9\",\n  \"start\": \"2026-10-07T10:30:00-04:00\",\n  \"end\": \"2026-10-07T10:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"449a39431d90f573fef724f914\",\n  \"summary\": \"Block 10\",\n  \"start\": \"2026-10-07T11:00:00-04:00\",\n  \"end\": \"2026-10-07T11:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"0e873f5e6145a62c5f1548a1b0\",\n  \"summary\": \"Block 11\",\n  \"start\": \"2026-10-07T11:30:00-04:00\",\n  \"end\": \"2026-10-07T11:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"475f19314ee7fcc44f01ea6642\",\n  \"summary\": \"Block 12\",\n  \"start\": \"2026-10-07T12:00:00-04:00\",\n  \"end\": \"2026-10-07T12:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"1344a7bd454cb0e31306211480\",\n  \"summary\": \"Block 13\",\n  \"start\": \"2026-10-07T12:30:00-04:00\",\n  \"end\": \"2026-10-07T12:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"44ace686e89a0044cab2787ec8\",\n  \"summary\": \"Block 14\",\n  \"start\": \"2026-10-07T13:00:00-04:00\",\n  \"end\": \"2026-10-07T13:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"034f175dd99ad72d0b5985a67f\",\n  \"summary\": \"Block 15\",\n  \"start\": \"2026-10-07T13:30:00-04:00\",\n  \"end\": \"2026-10-07T13:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"f42a0aecbe0df7a492057896ac\",\n  \"summary\": \"Block 16\",\n  \"start\": \"2026-10-07T14:00:00-04:00\",\n  \"end\": \"2026-10-07T14:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"5aa9b62d45d0a3e988d67de839\",\n  \"summary\": \"Block 17\",\n  \"start\": \"2026-10-07T14:30:00-04:00\",\n  \"end\": \"2026-10-07T14:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"2f5fa290c3875a02dd0d202e52\",\n  \"summary\": \"Block 18\",\n  \"start\": \"2026-10-07T15:00:00-04:00\",\n  \"end\": \"2026-10-07T15:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"38fdf369235566c29d44002885\",\n  \"summary\": \"Block 19\",\n  \"start\": \"2026-10-07T15:30:00-04:00\",\n  \"end\": \"2026-10-07T15:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"2eed72b8e85cbf104b0105b133\",\n  \"summary\": \"Block 20\",\n  \"start\": \"2026-10-07T16:00:00-04:00\",\n  \"end\": \"2026-10-07T16:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"4a883fdeba2d03259bf35c1d74\",\n  \"summary\": \"Block 21\",\n  \"start\": \"2026-10-07T16:30:00-04:00\",\n  \"end\": \"2026-10-07T16:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"5a05a005a6b11b15196c3ed17f\",\n  \"summary\": \"Block 22\",\n  \"start\": \"2026-10-07T17:00:00-04:00\",\n  \"end\": \"2026-10-07T17:29:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"151fa5d2d8e10a20956b555978\",\n  \"summary\": \"Block 23\",\n  \"start\": \"2026-10-07T17:30:00-04:00\",\n  \"end\": \"2026-10-07T17:59:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
    "tool": "list_events"
   }
  ],
@@ -1670,6 +1670,99 @@
    "query": {}
   },
   {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "travel-times"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Travel Times"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000017,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000017
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "travel-times",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
    "body": null,
    "if_match": null,
    "method": "GET",
@@ -1722,7 +1815,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000017,
+        "sheetId": 1000019,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1755,7 +1848,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000017,
+        "sheetId": 1000019,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -1819,7 +1912,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000017
+         "sheetId": 1000019
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -1887,7 +1980,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000019,
+        "sheetId": 1000021,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1920,7 +2013,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000019
+         "sheetId": 1000021
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -1988,7 +2081,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2025,7 +2118,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000021
+         "sheetId": 1000023
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -2092,7 +2185,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000023
+         "sheetId": 1000025
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -2115,7 +2208,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000023,
+        "sheetId": 1000025,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2196,15 +2289,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000021,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000017,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2219,8 +2304,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000021,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2965,151 +3058,11 @@
     "events": {
      "034f175dd99ad72d0b5985a67f": {
       "end": {
-       "dateTime": "2026-10-07T14:29:00-04:00"
+       "dateTime": "2026-10-07T13:59:00-04:00"
       },
       "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "iCalUID": "034f175dd99ad72d0b5985a67f@google.com",
       "id": "034f175dd99ad72d0b5985a67f",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T14:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 16"
-     },
-     "0e873f5e6145a62c5f1548a1b0": {
-      "end": {
-       "dateTime": "2026-10-07T12:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "0e873f5e6145a62c5f1548a1b0@google.com",
-      "id": "0e873f5e6145a62c5f1548a1b0",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T12:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 12"
-     },
-     "1344a7bd454cb0e31306211480": {
-      "end": {
-       "dateTime": "2026-10-07T13:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "1344a7bd454cb0e31306211480@google.com",
-      "id": "1344a7bd454cb0e31306211480",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T13:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 14"
-     },
-     "253ff45db2ccd0691eff5c50c4": {
-      "end": {
-       "dateTime": "2026-10-07T10:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "253ff45db2ccd0691eff5c50c4@google.com",
-      "id": "253ff45db2ccd0691eff5c50c4",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T10:30:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 9"
-     },
-     "2eed72b8e85cbf104b0105b133": {
-      "end": {
-       "dateTime": "2026-10-07T16:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "2eed72b8e85cbf104b0105b133@google.com",
-      "id": "2eed72b8e85cbf104b0105b133",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T16:30:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 21"
-     },
-     "2f5fa290c3875a02dd0d202e52": {
-      "end": {
-       "dateTime": "2026-10-07T15:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "2f5fa290c3875a02dd0d202e52@google.com",
-      "id": "2f5fa290c3875a02dd0d202e52",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T15:30:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 19"
-     },
-     "3521324c178091b5c4ed4ca4c3": {
-      "end": {
-       "dateTime": "2026-10-07T08:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "3521324c178091b5c4ed4ca4c3@google.com",
-      "id": "3521324c178091b5c4ed4ca4c3",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T08:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 4"
-     },
-     "35d98bd5ab3bf549dd770d737d": {
-      "end": {
-       "dateTime": "2026-10-07T06:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "35d98bd5ab3bf549dd770d737d@google.com",
-      "id": "35d98bd5ab3bf549dd770d737d",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T06:30:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 1"
-     },
-     "38fdf369235566c29d44002885": {
-      "end": {
-       "dateTime": "2026-10-07T16:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "38fdf369235566c29d44002885@google.com",
-      "id": "38fdf369235566c29d44002885",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T16:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 20"
-     },
-     "449a39431d90f573fef724f914": {
-      "end": {
-       "dateTime": "2026-10-07T11:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "449a39431d90f573fef724f914@google.com",
-      "id": "449a39431d90f573fef724f914",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T11:30:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 11"
-     },
-     "44ace686e89a0044cab2787ec8": {
-      "end": {
-       "dateTime": "2026-10-07T13:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "44ace686e89a0044cab2787ec8@google.com",
-      "id": "44ace686e89a0044cab2787ec8",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-07T13:30:00-04:00"
@@ -3117,13 +3070,27 @@
       "status": "confirmed",
       "summary": "Block 15"
      },
-     "475f19314ee7fcc44f01ea6642": {
+     "0e873f5e6145a62c5f1548a1b0": {
+      "end": {
+       "dateTime": "2026-10-07T11:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "0e873f5e6145a62c5f1548a1b0@google.com",
+      "id": "0e873f5e6145a62c5f1548a1b0",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T11:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 11"
+     },
+     "1344a7bd454cb0e31306211480": {
       "end": {
        "dateTime": "2026-10-07T12:59:00-04:00"
       },
       "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "475f19314ee7fcc44f01ea6642@google.com",
-      "id": "475f19314ee7fcc44f01ea6642",
+      "iCalUID": "1344a7bd454cb0e31306211480@google.com",
+      "id": "1344a7bd454cb0e31306211480",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-07T12:30:00-04:00"
@@ -3131,55 +3098,13 @@
       "status": "confirmed",
       "summary": "Block 13"
      },
-     "4a883fdeba2d03259bf35c1d74": {
-      "end": {
-       "dateTime": "2026-10-07T17:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "4a883fdeba2d03259bf35c1d74@google.com",
-      "id": "4a883fdeba2d03259bf35c1d74",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T17:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 22"
-     },
-     "4ae9a7381c23235f0631d97fad": {
-      "end": {
-       "dateTime": "2026-10-07T08:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "4ae9a7381c23235f0631d97fad@google.com",
-      "id": "4ae9a7381c23235f0631d97fad",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T08:30:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 5"
-     },
-     "556e592a0b77b0b17318b41f08": {
-      "end": {
-       "dateTime": "2026-10-07T07:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "556e592a0b77b0b17318b41f08@google.com",
-      "id": "556e592a0b77b0b17318b41f08",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T07:30:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 3"
-     },
-     "5a05a005a6b11b15196c3ed17f": {
+     "151fa5d2d8e10a20956b555978": {
       "end": {
        "dateTime": "2026-10-07T17:59:00-04:00"
       },
       "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "5a05a005a6b11b15196c3ed17f@google.com",
-      "id": "5a05a005a6b11b15196c3ed17f",
+      "iCalUID": "151fa5d2d8e10a20956b555978@google.com",
+      "id": "151fa5d2d8e10a20956b555978",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-07T17:30:00-04:00"
@@ -3187,83 +3112,13 @@
       "status": "confirmed",
       "summary": "Block 23"
      },
-     "5aa9b62d45d0a3e988d67de839": {
-      "end": {
-       "dateTime": "2026-10-07T15:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "5aa9b62d45d0a3e988d67de839@google.com",
-      "id": "5aa9b62d45d0a3e988d67de839",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T15:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 18"
-     },
-     "6525bebff685bedf57356640a8": {
-      "end": {
-       "dateTime": "2026-10-07T06:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "6525bebff685bedf57356640a8@google.com",
-      "id": "6525bebff685bedf57356640a8",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T06:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 0"
-     },
-     "9c3c1046e8cb7fa96f6b8bd88d": {
-      "end": {
-       "dateTime": "2026-10-07T07:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "9c3c1046e8cb7fa96f6b8bd88d@google.com",
-      "id": "9c3c1046e8cb7fa96f6b8bd88d",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T07:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 2"
-     },
-     "b8d341a83248e6df0b12de9aab": {
-      "end": {
-       "dateTime": "2026-10-07T11:29:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "b8d341a83248e6df0b12de9aab@google.com",
-      "id": "b8d341a83248e6df0b12de9aab",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T11:00:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 10"
-     },
-     "ecd953174a9e540d04e29086a6": {
-      "end": {
-       "dateTime": "2026-10-07T09:59:00-04:00"
-      },
-      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "ecd953174a9e540d04e29086a6@google.com",
-      "id": "ecd953174a9e540d04e29086a6",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T09:30:00-04:00"
-      },
-      "status": "confirmed",
-      "summary": "Block 7"
-     },
-     "ef75dc0bc0c128f2cdca7830dc": {
+     "253ff45db2ccd0691eff5c50c4": {
       "end": {
        "dateTime": "2026-10-07T10:29:00-04:00"
       },
       "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "ef75dc0bc0c128f2cdca7830dc@google.com",
-      "id": "ef75dc0bc0c128f2cdca7830dc",
+      "iCalUID": "253ff45db2ccd0691eff5c50c4@google.com",
+      "id": "253ff45db2ccd0691eff5c50c4",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-07T10:00:00-04:00"
@@ -3271,13 +3126,223 @@
       "status": "confirmed",
       "summary": "Block 8"
      },
-     "f25a39bee62b88efbce3359cff": {
+     "2eed72b8e85cbf104b0105b133": {
+      "end": {
+       "dateTime": "2026-10-07T16:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "2eed72b8e85cbf104b0105b133@google.com",
+      "id": "2eed72b8e85cbf104b0105b133",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T16:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 20"
+     },
+     "2f5fa290c3875a02dd0d202e52": {
+      "end": {
+       "dateTime": "2026-10-07T15:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "2f5fa290c3875a02dd0d202e52@google.com",
+      "id": "2f5fa290c3875a02dd0d202e52",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T15:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 18"
+     },
+     "3521324c178091b5c4ed4ca4c3": {
+      "end": {
+       "dateTime": "2026-10-07T07:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "3521324c178091b5c4ed4ca4c3@google.com",
+      "id": "3521324c178091b5c4ed4ca4c3",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T07:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 3"
+     },
+     "35d98bd5ab3bf549dd770d737d": {
+      "end": {
+       "dateTime": "2026-10-07T06:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "35d98bd5ab3bf549dd770d737d@google.com",
+      "id": "35d98bd5ab3bf549dd770d737d",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T06:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 0"
+     },
+     "38fdf369235566c29d44002885": {
+      "end": {
+       "dateTime": "2026-10-07T15:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "38fdf369235566c29d44002885@google.com",
+      "id": "38fdf369235566c29d44002885",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T15:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 19"
+     },
+     "449a39431d90f573fef724f914": {
+      "end": {
+       "dateTime": "2026-10-07T11:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "449a39431d90f573fef724f914@google.com",
+      "id": "449a39431d90f573fef724f914",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T11:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 10"
+     },
+     "44ace686e89a0044cab2787ec8": {
+      "end": {
+       "dateTime": "2026-10-07T13:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "44ace686e89a0044cab2787ec8@google.com",
+      "id": "44ace686e89a0044cab2787ec8",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T13:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 14"
+     },
+     "475f19314ee7fcc44f01ea6642": {
+      "end": {
+       "dateTime": "2026-10-07T12:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "475f19314ee7fcc44f01ea6642@google.com",
+      "id": "475f19314ee7fcc44f01ea6642",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T12:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 12"
+     },
+     "4a883fdeba2d03259bf35c1d74": {
+      "end": {
+       "dateTime": "2026-10-07T16:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "4a883fdeba2d03259bf35c1d74@google.com",
+      "id": "4a883fdeba2d03259bf35c1d74",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T16:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 21"
+     },
+     "4ae9a7381c23235f0631d97fad": {
+      "end": {
+       "dateTime": "2026-10-07T08:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "4ae9a7381c23235f0631d97fad@google.com",
+      "id": "4ae9a7381c23235f0631d97fad",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T08:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 4"
+     },
+     "556e592a0b77b0b17318b41f08": {
+      "end": {
+       "dateTime": "2026-10-07T07:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "556e592a0b77b0b17318b41f08@google.com",
+      "id": "556e592a0b77b0b17318b41f08",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T07:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 2"
+     },
+     "5a05a005a6b11b15196c3ed17f": {
+      "end": {
+       "dateTime": "2026-10-07T17:29:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "5a05a005a6b11b15196c3ed17f@google.com",
+      "id": "5a05a005a6b11b15196c3ed17f",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T17:00:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 22"
+     },
+     "5aa9b62d45d0a3e988d67de839": {
+      "end": {
+       "dateTime": "2026-10-07T14:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "5aa9b62d45d0a3e988d67de839@google.com",
+      "id": "5aa9b62d45d0a3e988d67de839",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T14:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 17"
+     },
+     "9c3c1046e8cb7fa96f6b8bd88d": {
+      "end": {
+       "dateTime": "2026-10-07T06:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "9c3c1046e8cb7fa96f6b8bd88d@google.com",
+      "id": "9c3c1046e8cb7fa96f6b8bd88d",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T06:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 1"
+     },
+     "b8d341a83248e6df0b12de9aab": {
+      "end": {
+       "dateTime": "2026-10-07T10:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "b8d341a83248e6df0b12de9aab@google.com",
+      "id": "b8d341a83248e6df0b12de9aab",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T10:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 9"
+     },
+     "ecd953174a9e540d04e29086a6": {
       "end": {
        "dateTime": "2026-10-07T09:29:00-04:00"
       },
       "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
-      "iCalUID": "f25a39bee62b88efbce3359cff@google.com",
-      "id": "f25a39bee62b88efbce3359cff",
+      "iCalUID": "ecd953174a9e540d04e29086a6@google.com",
+      "id": "ecd953174a9e540d04e29086a6",
       "kind": "calendar#event",
       "start": {
        "dateTime": "2026-10-07T09:00:00-04:00"
@@ -3285,19 +3350,47 @@
       "status": "confirmed",
       "summary": "Block 6"
      },
+     "ef75dc0bc0c128f2cdca7830dc": {
+      "end": {
+       "dateTime": "2026-10-07T09:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "ef75dc0bc0c128f2cdca7830dc@google.com",
+      "id": "ef75dc0bc0c128f2cdca7830dc",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T09:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 7"
+     },
+     "f25a39bee62b88efbce3359cff": {
+      "end": {
+       "dateTime": "2026-10-07T08:59:00-04:00"
+      },
+      "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
+      "iCalUID": "f25a39bee62b88efbce3359cff@google.com",
+      "id": "f25a39bee62b88efbce3359cff",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T08:30:00-04:00"
+      },
+      "status": "confirmed",
+      "summary": "Block 5"
+     },
      "f42a0aecbe0df7a492057896ac": {
       "end": {
-       "dateTime": "2026-10-07T14:59:00-04:00"
+       "dateTime": "2026-10-07T14:29:00-04:00"
       },
       "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "iCalUID": "f42a0aecbe0df7a492057896ac@google.com",
       "id": "f42a0aecbe0df7a492057896ac",
       "kind": "calendar#event",
       "start": {
-       "dateTime": "2026-10-07T14:30:00-04:00"
+       "dateTime": "2026-10-07T14:00:00-04:00"
       },
       "status": "confirmed",
-      "summary": "Block 17"
+      "summary": "Block 16"
      }
     },
     "resource": {
@@ -3389,7 +3482,7 @@
        "sheetId": 1000017
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "travel-times",
       "visibility": "PROJECT"
      },
      {
@@ -3397,7 +3490,7 @@
        "sheetId": 1000019
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
@@ -3405,12 +3498,20 @@
        "sheetId": 1000021
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000023
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000025
       },
       "metadataKey": "sheet-role",
       "metadataValue": "compactions",
@@ -3487,7 +3588,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -3546,7 +3647,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -3576,7 +3677,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000019,
+       "sheetId": 1000021,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -3702,7 +3803,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000017,
+       "sheetId": 1000019,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -3754,6 +3855,34 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+       ]
+      ]
+     },
+     "Travel Times": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000017,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Travel Times"
+      },
+      "rows": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
        ]
       ]
      }

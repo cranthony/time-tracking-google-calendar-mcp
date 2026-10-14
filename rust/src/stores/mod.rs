@@ -7,6 +7,7 @@ pub mod groups;
 pub mod habits;
 pub mod journal;
 pub mod locations;
+pub mod travel_times;
 pub mod notes;
 pub mod people;
 pub mod recurrences;

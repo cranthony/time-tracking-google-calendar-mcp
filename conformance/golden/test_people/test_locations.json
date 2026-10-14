@@ -457,6 +457,99 @@
    "body": {
     "dataFilters": [
      {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "travel-times"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Travel Times"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000009
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "travel-times",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000005,
@@ -956,7 +1049,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -965,9 +1057,17 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
       }
      }
     ],
@@ -1050,7 +1150,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1059,9 +1158,17 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
       }
      }
     ],
@@ -1130,6 +1237,14 @@
       },
       "metadataKey": "sheet-role",
       "metadataValue": "location-groups",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000009
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "travel-times",
       "visibility": "PROJECT"
      }
     ],
@@ -1207,6 +1322,34 @@
        "title": "Sheet1"
       },
       "rows": []
+     },
+     "Travel Times": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000009,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Travel Times"
+      },
+      "rows": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
+       ]
+      ]
      }
     }
    }

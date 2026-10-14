@@ -85,6 +85,10 @@ fn every_tool_reads_the_spreadsheet_in_one_request() {
         ("get_location_group", "get_location_group", json!({"id_or_name": "brooklyn"})),
         ("create_location_group", "create_location_group", json!({"group": {"name": "New York"}})),
         ("update_location_group", "update_location_group", json!({"group": {"id": f.brooklyn, "note": "n"}})),
+        // Travel times: those, with the actions' tabs for their modes.
+        ("create_travel_time", "create_travel_time", json!({"travel_time": {"id": "x", "from_id": f.home, "to_id": f.brooklyn, "times": [{"mode_id": f.walk, "minutes": 10}]}})),
+        ("get_travel_times", "get_travel_times", json!({})),
+        ("estimate_travel_time", "estimate_travel_time", json!({"from_id": f.home, "to_id": f.brooklyn, "mode_id": f.walk})),
         // Habits, with the actions and traits they're checked against.
         ("get_habits", "get_habits", json!({})),
         ("get_habit", "get_habit", json!({"id_or_name": "outside"})),

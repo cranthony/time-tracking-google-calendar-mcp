@@ -1,12 +1,13 @@
 //! A calendar's locations: where its events happen, each a name, a hint
 //! for recognizing it and a map location, in the Locations tab -- and the
 //! location groups that gather them (a neighborhood, a city), in the
-//! Location Groups tab.
+//! Location Groups tab; and how long it takes to get between them, in
+//! the Travel Times tab (see travel_times.rs).
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
 use crate::sheet::rows::{self, RowSheet, RowType};
-use crate::sheet::{LOCATIONS, LOCATION_GROUPS};
+use crate::sheet::{LOCATIONS, LOCATION_GROUPS, TRAVEL_TIMES};
 use crate::contract::{RowItem, Schema};
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
@@ -112,6 +113,7 @@ pub const MAX_NAME_LENGTH: usize = 50;
 pub struct Locations {
     sheet: RowSheet,
     group_sheet: RowSheet,
+    pub(crate) travel_sheet: RowSheet,
 }
 
 impl Locations {
@@ -119,11 +121,25 @@ impl Locations {
         Ok(Locations {
             sheet: RowSheet::ensure(sheets, spreadsheet_id, LOCATIONS.0, LOCATIONS.1, ROW, &["id", "name"])?,
             group_sheet: RowSheet::ensure(sheets, spreadsheet_id, LOCATION_GROUPS.0, LOCATION_GROUPS.1, GROUP_ROW, &["id", "name"])?,
+            travel_sheet: RowSheet::ensure(
+                sheets,
+                spreadsheet_id,
+                TRAVEL_TIMES.0,
+                TRAVEL_TIMES.1,
+                crate::stores::travel_times::ROW,
+                &["id", "from_id", "to_id"],
+            )?,
         })
     }
 
+    /// The locations' and groups' tabs.
     pub fn whole_tabs(&self) -> Vec<TabRange> {
         vec![self.sheet.whole_tab(), self.group_sheet.whole_tab()]
+    }
+
+    /// Those, and the travel times'.
+    pub fn all_tabs(&self) -> Vec<TabRange> {
+        vec![self.sheet.whole_tab(), self.group_sheet.whole_tab(), self.travel_sheet.whole_tab()]
     }
 
     pub fn prefetch(&self, ranges: &[TabRange]) -> anyhow::Result<()> {
@@ -199,7 +215,9 @@ impl Locations {
         Ok(locations[index].clone())
     }
 
+    /// Deletes a location, and the travel times from or to it.
     pub fn delete_location(&self, location_id: &str) -> anyhow::Result<Location> {
+        self.prefetch(&self.all_tabs())?;
         let locations = self.all()?;
         let deleted = match locations.iter().find(|l| l.id.as_deref() == Some(location_id)) {
             Some(found) => found.clone(),
@@ -214,6 +232,7 @@ impl Locations {
         }
         let kept: Vec<Location> = locations.into_iter().filter(|l| l.id.as_deref() != Some(location_id)).collect();
         self.sheet.write_items(&kept)?;
+        self.forget_travel_times(location_id)?;
         Ok(deleted)
     }
 
@@ -242,10 +261,11 @@ impl Locations {
         Ok(listed_group(&groups[index], &groups))
     }
 
-    /// Deletes a group; what was inside it moves up into the group it was
-    /// inside, or to the top level.
+    /// Deletes a group, and the travel times from or to it; what was
+    /// inside it moves up into the group it was inside, or to the top
+    /// level.
     pub fn delete_location_group(&self, group_id: &str) -> anyhow::Result<DeletedLocationGroup> {
-        self.prefetch(&self.whole_tabs())?;
+        self.prefetch(&self.all_tabs())?;
         let groups = self.groups()?;
         let deleted = match groups.iter().find(|g| g.id.as_deref() == Some(group_id)) {
             Some(found) => found.clone(),
@@ -276,6 +296,7 @@ impl Locations {
         if locations.iter().any(|l| in_it(&l.group_id)) {
             self.sheet.write_items(&locations_after)?;
         }
+        self.forget_travel_times(group_id)?;
         Ok(DeletedLocationGroup {
             moved_groups: groups_after
                 .iter()

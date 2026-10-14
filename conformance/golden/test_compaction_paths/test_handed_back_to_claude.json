@@ -3285,6 +3285,99 @@
    "query": {}
   },
   {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "travel-times"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Travel Times"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000067,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000067
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "travel-times",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
    "body": null,
    "if_match": null,
    "method": "GET",
@@ -3336,7 +3429,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000067
+         "sheetId": 1000069
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -3359,7 +3452,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -3439,7 +3532,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000069,
+        "sheetId": 1000071,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -3472,7 +3565,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000069,
+        "sheetId": 1000071,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -3536,7 +3629,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000069
+         "sheetId": 1000071
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -3604,7 +3697,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000071,
+        "sheetId": 1000073,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -3637,7 +3730,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000071
+         "sheetId": 1000073
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -3705,7 +3798,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000073,
+        "sheetId": 1000075,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -3742,7 +3835,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000073
+         "sheetId": 1000075
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -3771,7 +3864,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3827,14 +3920,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3844,6 +3929,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3994,7 +4087,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4050,14 +4143,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4067,6 +4152,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4188,7 +4281,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 5,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -4299,15 +4392,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000069,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4322,8 +4407,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4366,7 +4459,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4422,14 +4515,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4439,6 +4524,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4534,7 +4627,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 6,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 0,
         "startRowIndex": 5
        }
@@ -4567,7 +4660,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -4594,7 +4687,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4650,14 +4743,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4667,6 +4752,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4768,7 +4861,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4824,14 +4917,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4841,6 +4926,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4965,7 +5058,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5021,14 +5114,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -5038,6 +5123,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5064,7 +5157,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5120,14 +5213,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -5137,6 +5222,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5163,7 +5256,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5219,14 +5312,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -5236,6 +5321,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5331,7 +5424,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 7,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 0,
         "startRowIndex": 6
        }
@@ -5366,7 +5459,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -5394,7 +5487,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 6,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 5,
         "startRowIndex": 5
        }
@@ -5429,7 +5522,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5485,14 +5578,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -5505,6 +5590,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -5528,7 +5621,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5555,7 +5648,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5611,14 +5704,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000071,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -5628,6 +5713,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -5723,7 +5816,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 7,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 6,
         "startRowIndex": 6
        }
@@ -5751,7 +5844,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 7,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 6,
         "startRowIndex": 6
        }
@@ -5807,7 +5900,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 7,
-        "sheetId": 1000067,
+        "sheetId": 1000069,
         "startColumnIndex": 6,
         "startRowIndex": 6
        }
@@ -6286,7 +6379,7 @@
        "sheetId": 1000067
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "compactions",
+      "metadataValue": "travel-times",
       "visibility": "PROJECT"
      },
      {
@@ -6294,7 +6387,7 @@
        "sheetId": 1000069
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "compactions",
       "visibility": "PROJECT"
      },
      {
@@ -6302,12 +6395,20 @@
        "sheetId": 1000071
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000073
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "habits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000075
       },
       "metadataKey": "sheet-role",
       "metadataValue": "cancellations",
@@ -6384,7 +6485,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000073,
+       "sheetId": 1000075,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -6443,7 +6544,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000067,
+       "sheetId": 1000069,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -6526,7 +6627,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -6682,7 +6783,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000069,
+       "sheetId": 1000071,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -6734,6 +6835,34 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+       ]
+      ]
+     },
+     "Travel Times": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000067,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Travel Times"
+      },
+      "rows": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
        ]
       ]
      }
