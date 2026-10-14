@@ -176,6 +176,8 @@ async def test_facts_and_judgments(session):
     await session.call_error("create_event", events=[{"summary": "Bad", "start": at(11), "end": at(12), "facts": {"with_ids": ["nobody"]}}])
     await session.call_error("create_event", events=[{"summary": "Bad", "start": at(11), "end": at(12), "facts": {"location_ids": ["nowhere"]}}])
     await session.call_error("create_event", events=[{"summary": "Bad", "start": at(11), "end": at(12), "facts": {"with_ids": ["self"]}}])
+    [commute] = (await session.call("create_event", events=[{"summary": "Drive", "start": at(10), "end": at(10, 30), "facts": {"commute": True}}]))["events"]
+    assert commute["facts"]["commute"] is True
     judged = await session.call(
         "update_event",
         updates=[{"event": {"id": event["id"], "judgments": {"self": {"kindness": {"novelty": {"rating": 2, "scale": 3, "reasoning": "new park"}}}}}}],

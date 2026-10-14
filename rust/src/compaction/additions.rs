@@ -318,6 +318,7 @@ pub fn resolve(event: &Event, ids: &[(String, String)]) -> Event {
                 }
                 other => other.clone(),
             }),
+            commute: facts.commute.clone(),
         });
     }
     out

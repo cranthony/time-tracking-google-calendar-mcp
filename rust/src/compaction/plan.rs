@@ -1180,6 +1180,9 @@ pub fn facts_lines(facts: Option<&Facts>, names: &[(String, String)]) -> Vec<Str
     let Some(facts) = facts.filter(|f| !f.is_empty()) else { return Vec::new() };
     let named = |ids: &[String]| ids.iter().map(|i| name_of(names, i)).collect::<Vec<_>>().join(", ");
     let mut parts: Vec<String> = Vec::new();
+    if facts.is_commute() {
+        parts.push("commute".into());
+    }
     let locations = facts.locations();
     if !locations.is_empty() {
         parts.push(format!("@ {}", locations.iter().map(|l| name_of(names, l)).collect::<Vec<_>>().join(", ")));
@@ -1223,7 +1226,8 @@ fn timeline_of(
             return Vec::new();
         }
         let mut gaps: Vec<String> = if final_.action_ids.as_ref().is_some_and(|a| !a.is_empty()) { Vec::new() } else { vec!["action".into()] };
-        if !final_.facts.as_ref().is_some_and(|f| !f.locations().is_empty()) {
+        // A commute is between places, not at one.
+        if !final_.facts.as_ref().is_some_and(|f| !f.locations().is_empty() || f.is_commute()) {
             gaps.push("location".into());
         }
         gaps
