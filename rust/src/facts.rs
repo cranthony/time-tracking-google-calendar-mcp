@@ -28,22 +28,6 @@ pub struct Facts {
 const FIELDS: [(&str, &str); 4] =
     [("location_ids", "locations"), ("with_ids", "with"), ("for_ids", "for"), ("notes", "notes")];
 
-/// The field a client gave a single location in, before an event could
-/// have several: read as a list of one.
-const LEGACY_LOCATION_ID: &str = "location_id";
-
-/// `value`, a location id given alone, as a list of one; `None` for none
-/// (null or blank).
-fn one_location(value: &Value) -> Option<Value> {
-    match value {
-        Value::Null => None,
-        Value::String(s) if s.trim().is_empty() => None,
-        Value::String(_) => Some(Value::Array(vec![value.clone()])),
-        // Not an id: kept, for fact_problems to report.
-        other => Some(other.clone()),
-    }
-}
-
 fn is_blank(value: &Option<Value>) -> bool {
     match value {
         None | Some(Value::Null) => true,
@@ -173,25 +157,19 @@ impl Facts {
     }
 
     /// The facts as a client sees them (PublicEvent's `facts`): every
-    /// field, null when unset -- and location_id, the first location, for
-    /// a client from before an event could have several, so it sends it
-    /// back rather than clearing it.
+    /// field, null when unset.
     pub fn to_public(&self) -> Value {
         let mut map = Map::new();
         for (name, _) in FIELDS {
             map.insert(name.to_string(), self.field(name).clone().unwrap_or(Value::Null));
         }
-        map.insert(LEGACY_LOCATION_ID.into(), self.locations().into_iter().next().map(Value::String).unwrap_or(Value::Null));
         Value::Object(map)
     }
 
-    /// Facts from a client's JSON (already checked against the schema). A
-    /// location_id given alone, as a client from before an event could
-    /// have several locations gives it, is read as a list of one.
+    /// Facts from a client's JSON (already checked against the schema).
     pub fn from_public(value: &Value) -> Facts {
         let get = |key: &str| value.get(key).filter(|v| !v.is_null()).cloned();
-        let location_ids = get("location_ids").or_else(|| value.get(LEGACY_LOCATION_ID).and_then(one_location));
-        Facts { location_ids, with_ids: get("with_ids"), for_ids: get("for_ids"), notes: get("notes") }
+        Facts { location_ids: get("location_ids"), with_ids: get("with_ids"), for_ids: get("for_ids"), notes: get("notes") }
     }
 }
 
@@ -282,14 +260,9 @@ mod tests {
     }
 
     #[test]
-    fn a_clients_single_location_id_is_read_as_a_list_of_one() {
-        let one = facts(json!({"location_ids": ["home"], "with_ids": ["sam"]}));
-        assert_eq!(facts(json!({"location_id": "home", "with_ids": ["sam"]})), one);
-        assert_eq!(facts(json!({"location_id": " ", "with_ids": ["sam"]})), facts(json!({"with_ids": ["sam"]})));
-        // Both given: the list wins.
-        assert_eq!(facts(json!({"location_ids": ["park"], "location_id": "home"})).locations(), vec!["park"]);
-        // And sent back, the first, so such a client keeps it.
-        assert_eq!(facts(json!({"location_ids": ["park", "home"]})).to_public()["location_id"], "park");
+    fn a_single_location_id_is_neither_read_nor_sent() {
+        assert_eq!(facts(json!({"location_id": "home", "with_ids": ["sam"]})), facts(json!({"with_ids": ["sam"]})));
+        assert!(facts(json!({"location_ids": ["park"]})).to_public().get("location_id").is_none());
     }
 
     #[test]
@@ -321,7 +294,6 @@ mod tests {
         let long = "x".repeat(MAX_NOTE_CHARS + 1);
         for (given, problem) in [
             (json!({"location_ids": "home"}), "\"location_ids\" must be a list of location ids"),
-            (json!({"location_id": 3}), "\"location_ids\" must be a list of location ids"),
             (json!({"with_ids": "sam"}), "\"with_ids\" must be a list of person ids"),
             (json!({"with_ids": ["self"]}), "\"with_ids\" never names \"self\""),
             (json!({"with_ids": ["sam"], "for_ids": ["sam"]}), "['sam'] can't be both \"with\" (there) and \"for\" (not there)"),
