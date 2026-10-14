@@ -8886,6 +8886,712 @@
     }
   },
   {
+    "description": "Every travel time: a rough estimate of how long it takes to get between\ntwo places (from_id and to_id, each a location or a location group),\neach way of getting there (times: a mode_id -- an action or action\ngroup, such as \"Drive\" or \"Transit\" -- and minutes, or minutes to\nmax_minutes), with a note. It counts both ways unless it's one_way.\nWith place_id, only those from or to it. Read-only.",
+    "inputSchema": {
+      "properties": {
+        "place_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "title": "get_travel_timesArguments"
+    },
+    "name": "get_travel_times",
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "$ref": "#/$defs/TravelTime"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "$defs": {
+        "TravelMode": {
+          "additionalProperties": false,
+          "description": "How long one way of getting there takes: `minutes`, or from `minutes`\nto `max_minutes`.",
+          "properties": {
+            "mode_id": {
+              "description": "The action or action group it's done by (\"Drive\", \"Transit\").",
+              "type": "string"
+            },
+            "minutes": {
+              "type": "integer"
+            },
+            "max_minutes": {
+              "description": "The most it takes, if it varies; at least minutes.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "mode_id",
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "TravelTime": {
+          "additionalProperties": false,
+          "description": "How long it takes to get between two places (see get_travel_times).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "from_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "one_way": {
+              "description": "Whether it's only from from_id to to_id; otherwise it's both ways.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "times": {
+              "items": {
+                "$ref": "#/$defs/TravelMode"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "get_travel_timesOutput"
+    }
+  },
+  {
+    "description": "Add a travel time between from_id and to_id (each a location or a\nlocation group): its times, each a mode_id (an action or action group)\nand minutes (more than 0), and max_minutes if it varies; one_way if it's\nonly from from_id to to_id (otherwise it counts both ways); and a note.\nOnly one travel time can say how long each way between two places\ntakes: a two-way one, and a one-way one for a way that's different. id\nis assigned. Returns it, and its id as created_id.",
+    "inputSchema": {
+      "properties": {
+        "travel_time": {
+          "$ref": "#/$defs/TravelTime"
+        }
+      },
+      "required": [
+        "travel_time"
+      ],
+      "type": "object",
+      "$defs": {
+        "TravelMode": {
+          "additionalProperties": false,
+          "description": "How long one way of getting there takes: `minutes`, or from `minutes`\nto `max_minutes`.",
+          "properties": {
+            "mode_id": {
+              "description": "The action or action group it's done by (\"Drive\", \"Transit\").",
+              "type": "string"
+            },
+            "minutes": {
+              "type": "integer"
+            },
+            "max_minutes": {
+              "description": "The most it takes, if it varies; at least minutes.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "mode_id",
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "TravelTime": {
+          "additionalProperties": false,
+          "description": "How long it takes to get between two places (see get_travel_times).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "from_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "one_way": {
+              "description": "Whether it's only from from_id to to_id; otherwise it's both ways.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "times": {
+              "items": {
+                "$ref": "#/$defs/TravelMode"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "create_travel_timeArguments"
+    },
+    "name": "create_travel_time",
+    "outputSchema": {
+      "properties": {
+        "travel_time": {
+          "$ref": "#/$defs/TravelTime"
+        },
+        "created_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "travel_time",
+        "created_id"
+      ],
+      "type": "object",
+      "$defs": {
+        "TravelMode": {
+          "additionalProperties": false,
+          "description": "How long one way of getting there takes: `minutes`, or from `minutes`\nto `max_minutes`.",
+          "properties": {
+            "mode_id": {
+              "description": "The action or action group it's done by (\"Drive\", \"Transit\").",
+              "type": "string"
+            },
+            "minutes": {
+              "type": "integer"
+            },
+            "max_minutes": {
+              "description": "The most it takes, if it varies; at least minutes.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "mode_id",
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "TravelTime": {
+          "additionalProperties": false,
+          "description": "How long it takes to get between two places (see get_travel_times).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "from_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "one_way": {
+              "description": "Whether it's only from from_id to to_id; otherwise it's both ways.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "times": {
+              "items": {
+                "$ref": "#/$defs/TravelMode"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "Update a travel time by id: its from_id, to_id, one_way, times\n(replaced whole) or note. Omitted properties keep their value; list\nnote in clear_fields to blank it. Returns it as updated.",
+    "inputSchema": {
+      "properties": {
+        "travel_time": {
+          "$ref": "#/$defs/TravelTime"
+        },
+        "clear_fields": {
+          "items": {
+            "const": "note",
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "travel_time"
+      ],
+      "type": "object",
+      "$defs": {
+        "TravelMode": {
+          "additionalProperties": false,
+          "description": "How long one way of getting there takes: `minutes`, or from `minutes`\nto `max_minutes`.",
+          "properties": {
+            "mode_id": {
+              "description": "The action or action group it's done by (\"Drive\", \"Transit\").",
+              "type": "string"
+            },
+            "minutes": {
+              "type": "integer"
+            },
+            "max_minutes": {
+              "description": "The most it takes, if it varies; at least minutes.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "mode_id",
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "TravelTime": {
+          "additionalProperties": false,
+          "description": "How long it takes to get between two places (see get_travel_times).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "from_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "one_way": {
+              "description": "Whether it's only from from_id to to_id; otherwise it's both ways.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "times": {
+              "items": {
+                "$ref": "#/$defs/TravelMode"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "update_travel_timeArguments"
+    },
+    "name": "update_travel_time",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from_id": {
+          "description": "A location or location group.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "to_id": {
+          "description": "A location or location group.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "one_way": {
+          "description": "Whether it's only from from_id to to_id; otherwise it's both ways.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "times": {
+          "items": {
+            "$ref": "#/$defs/TravelMode"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "$defs": {
+        "TravelMode": {
+          "additionalProperties": false,
+          "description": "How long one way of getting there takes: `minutes`, or from `minutes`\nto `max_minutes`.",
+          "properties": {
+            "mode_id": {
+              "description": "The action or action group it's done by (\"Drive\", \"Transit\").",
+              "type": "string"
+            },
+            "minutes": {
+              "type": "integer"
+            },
+            "max_minutes": {
+              "description": "The most it takes, if it varies; at least minutes.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "mode_id",
+            "minutes"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "Delete a travel time, by id. Returns it as it was. (Deleting a location\nor location group deletes the travel times from or to it.)",
+    "inputSchema": {
+      "properties": {
+        "travel_time_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "travel_time_id"
+      ],
+      "type": "object",
+      "title": "delete_travel_timeArguments"
+    },
+    "name": "delete_travel_time",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from_id": {
+          "description": "A location or location group.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "to_id": {
+          "description": "A location or location group.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "one_way": {
+          "description": "Whether it's only from from_id to to_id; otherwise it's both ways.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "times": {
+          "items": {
+            "$ref": "#/$defs/TravelMode"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "$defs": {
+        "TravelMode": {
+          "additionalProperties": false,
+          "description": "How long one way of getting there takes: `minutes`, or from `minutes`\nto `max_minutes`.",
+          "properties": {
+            "mode_id": {
+              "description": "The action or action group it's done by (\"Drive\", \"Transit\").",
+              "type": "string"
+            },
+            "minutes": {
+              "type": "integer"
+            },
+            "max_minutes": {
+              "description": "The most it takes, if it varies; at least minutes.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "mode_id",
+            "minutes"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "How long it takes to get from from_id to to_id (each a location or a\nlocation group), as best the travel times say: the one between them,\nor else between the groups they're in -- the fewest steps out first,\nand of those, the same steps out on each side, so it's the same either\nway round. A one-way travel time beats a two-way one\nbetween the same places. With mode_id (an action or action group),\nonly a travel time with a time for it, or else for its nearest group\nthat has one, and just that time. Returns the places it's between,\nthe travel time, and its times; null if no travel time says.\nRead-only.",
+    "inputSchema": {
+      "properties": {
+        "from_id": {
+          "type": "string"
+        },
+        "to_id": {
+          "type": "string"
+        },
+        "mode_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "from_id",
+        "to_id"
+      ],
+      "type": "object",
+      "title": "estimate_travel_timeArguments"
+    },
+    "name": "estimate_travel_time",
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TravelEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "$defs": {
+        "TravelEstimate": {
+          "description": "The travel time that best answers how long it takes to get from one\nplace to another (see estimate_travel_time).",
+          "properties": {
+            "from_id": {
+              "description": "The places it's between, as asked or the groups they're in -- from\nwhere to where, whichever way the travel time was given.",
+              "type": "string"
+            },
+            "to_id": {
+              "type": "string"
+            },
+            "travel_time": {
+              "$ref": "#/$defs/TravelTime"
+            },
+            "times": {
+              "description": "With a mode, the one time for it (its own, or its nearest group's);\nwithout, every time the travel time has.",
+              "items": {
+                "$ref": "#/$defs/TravelMode"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "from_id",
+            "to_id",
+            "travel_time",
+            "times"
+          ],
+          "type": "object"
+        },
+        "TravelMode": {
+          "additionalProperties": false,
+          "description": "How long one way of getting there takes: `minutes`, or from `minutes`\nto `max_minutes`.",
+          "properties": {
+            "mode_id": {
+              "description": "The action or action group it's done by (\"Drive\", \"Transit\").",
+              "type": "string"
+            },
+            "minutes": {
+              "type": "integer"
+            },
+            "max_minutes": {
+              "description": "The most it takes, if it varies; at least minutes.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "mode_id",
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "TravelTime": {
+          "additionalProperties": false,
+          "description": "How long it takes to get between two places (see get_travel_times).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "from_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to_id": {
+              "description": "A location or location group.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "one_way": {
+              "description": "Whether it's only from from_id to to_id; otherwise it's both ways.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "times": {
+              "items": {
+                "$ref": "#/$defs/TravelMode"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "estimate_travel_timeOutput"
+    }
+  },
+  {
     "description": "The user's habits: by default the active ones, not archived (set\naside) or deleted ones. Each is about the user's events with one\naction, or with any action under one action group (action_id, with\nits action_path), and is rated by traits as a person is: its traits\nsay which apply (by default every active one) and give it its own\nparts -- its own rubrics -- for any (see create_habit). Each has an\nid, name, status and note (what it's for, and what doing it well\nlooks like). Each also has cancelled_events: the events the user\ncancelled that count against its follow-through, newest first, as a\nperson's (see get_people). Its events' judgments are kept under\n\"habit:<id>\", as a person's are under their id. Each also has\nfoundations: the habits (each as \"habit:<id>\") and people (by id)\nit's built on, on the user's habit graph. Read-only.",
     "inputSchema": {
       "properties": {

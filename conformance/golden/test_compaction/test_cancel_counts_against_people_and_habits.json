@@ -1198,7 +1198,7 @@
         "co2yzn"
        ]
       },
-      "id": "782a83b9b82e868511f356501e",
+      "id": "1d8e056f7fcf63cf16773474f5",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -1212,7 +1212,7 @@
     "timeline": "20:00 ┌ Dinner again · new\n21:00 └ Dinner again ends\n22:30 ┌ Sleep\n06:30 └ Sleep ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"782a83b9b82e868511f356501e\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"location_id\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"20:00 ┌ Dinner again · new\\n21:00 └ Dinner again ends\\n22:30 ┌ Sleep\\n06:30 └ Sleep ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"1d8e056f7fcf63cf16773474f5\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"location_id\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"20:00 ┌ Dinner again · new\\n21:00 └ Dinner again ends\\n22:30 ┌ Sleep\\n06:30 └ Sleep ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -1261,7 +1261,7 @@
        "co2yzn"
       ]
      },
-     "id": "782a83b9b82e868511f356501e",
+     "id": "1d8e056f7fcf63cf16773474f5",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
      "judgments": null,
@@ -1273,7 +1273,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"33f4464c132b378df2ca546d70\",\n  \"summary\": \"Dinner\",\n  \"start\": \"2026-10-07T18:00:00-04:00\",\n  \"end\": \"2026-10-07T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"782a83b9b82e868511f356501e\",\n  \"summary\": \"Dinner again\",\n  \"start\": \"2026-10-07T20:00:00-04:00\",\n  \"end\": \"2026-10-07T21:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"eat a meal\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"location_id\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": null\n  },\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"33f4464c132b378df2ca546d70\",\n  \"summary\": \"Dinner\",\n  \"start\": \"2026-10-07T18:00:00-04:00\",\n  \"end\": \"2026-10-07T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"1d8e056f7fcf63cf16773474f5\",\n  \"summary\": \"Dinner again\",\n  \"start\": \"2026-10-07T20:00:00-04:00\",\n  \"end\": \"2026-10-07T21:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"eat a meal\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"location_id\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": null\n  },\n  \"judgments\": null\n}",
    "tool": "list_events"
   },
   {
@@ -1281,7 +1281,7 @@
     "cancels": [
      {
       "counts_against_follow_through": true,
-      "event_id": "782a83b9b82e868511f356501e"
+      "event_id": "1d8e056f7fcf63cf16773474f5"
      }
     ]
    },
@@ -1309,7 +1309,7 @@
         "co2yzn"
        ]
       },
-      "id": "782a83b9b82e868511f356501e",
+      "id": "1d8e056f7fcf63cf16773474f5",
       "is_cancelled": true,
       "is_end_of_day_sleep": null,
       "judgments": null,
@@ -1323,7 +1323,7 @@
     "timeline": "20:00 ✕ Dinner again · cancelled (was\n        20:00–21:00)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"782a83b9b82e868511f356501e\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"location_id\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"20:00 ✕ Dinner again · cancelled (was\\n        20:00–21:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"1d8e056f7fcf63cf16773474f5\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"location_id\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null\n      },\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"20:00 ✕ Dinner again · cancelled (was\\n        20:00–21:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "delete_event"
   },
   {
@@ -1339,7 +1339,7 @@
       "cancelled_at": "2026-10-07T15:30:00-04:00",
       "end": "2026-10-07T21:00:00-04:00",
       "engagement": "with",
-      "event_id": "782a83b9b82e868511f356501e",
+      "event_id": "1d8e056f7fcf63cf16773474f5",
       "parts": [
        "reliable/follow_through",
        "dependable/a0g0jc"
@@ -1376,7 +1376,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"782a83b9b82e868511f356501e\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"delete_event\"\n    },\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction c7797ab51193r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"1d8e056f7fcf63cf16773474f5\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"delete_event\"\n    },\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction c7797ab51193r1\"\n    }\n  ]\n}",
    "tool": "get_person"
   }
  ],
@@ -1994,6 +1994,99 @@
    "body": {
     "dataFilters": [
      {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "travel-times"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Travel Times"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000065,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000065
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "travel-times",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000053,
@@ -2302,7 +2395,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000071,
+        "sheetId": 1000073,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2335,7 +2428,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000071,
+        "sheetId": 1000073,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2399,7 +2492,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000071
+         "sheetId": 1000073
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -2421,7 +2514,7 @@
       "gridRange": {
        "endColumnIndex": 26,
        "endRowIndex": 1,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2429,7 +2522,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -2450,7 +2543,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 7,
-        "sheetId": 1000071,
+        "sheetId": 1000073,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2568,7 +2661,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000073,
+        "sheetId": 1000075,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2601,7 +2694,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000073
+         "sheetId": 1000075
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -2622,7 +2715,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000073,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2646,7 +2739,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2667,7 +2760,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 2,
-        "sheetId": 1000073,
+        "sheetId": 1000075,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2746,7 +2839,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2783,7 +2876,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000075
+         "sheetId": 1000077
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -2850,7 +2943,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000077
+         "sheetId": 1000079
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -2873,7 +2966,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000077,
+        "sheetId": 1000079,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2954,15 +3047,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2977,8 +3062,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3076,7 +3169,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000080
+         "sheetId": 1000082
         },
         "metadataKey": "sheet-role",
         "metadataValue": "uncompacted-time-notes",
@@ -3099,7 +3192,7 @@
        "gridRange": {
         "endColumnIndex": 3,
         "endRowIndex": 1,
-        "sheetId": 1000080,
+        "sheetId": 1000082,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -3128,7 +3221,7 @@
       "gridRange": {
        "endColumnIndex": 3,
        "endRowIndex": 1,
-       "sheetId": 1000080,
+       "sheetId": 1000082,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3136,7 +3229,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000080,
+       "sheetId": 1000082,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -3157,7 +3250,7 @@
        "gridRange": {
         "endColumnIndex": 3,
         "endRowIndex": 2,
-        "sheetId": 1000080,
+        "sheetId": 1000082,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -3185,7 +3278,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000080,
+       "sheetId": 1000082,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3193,7 +3286,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3249,14 +3342,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3266,6 +3351,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3382,7 +3475,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000080,
+       "sheetId": 1000082,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3390,7 +3483,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3446,14 +3539,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3463,6 +3548,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3532,7 +3625,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 5,
-        "sheetId": 1000077,
+        "sheetId": 1000079,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -3595,7 +3688,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000080,
+       "sheetId": 1000082,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3603,7 +3696,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3659,14 +3752,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3676,6 +3761,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3745,7 +3838,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000077,
+        "sheetId": 1000079,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -3782,7 +3875,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 5,
-        "sheetId": 1000077,
+        "sheetId": 1000079,
         "startColumnIndex": 6,
         "startRowIndex": 4
        }
@@ -3810,7 +3903,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 4,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -3874,7 +3967,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000077,
+        "sheetId": 1000079,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -3902,7 +3995,7 @@
        "gridRange": {
         "endColumnIndex": 3,
         "endRowIndex": 2,
-        "sheetId": 1000080,
+        "sheetId": 1000082,
         "startColumnIndex": 2,
         "startRowIndex": 1
        }
@@ -3930,7 +4023,7 @@
        "gridRange": {
         "endColumnIndex": 7,
         "endRowIndex": 2,
-        "sheetId": 1000077,
+        "sheetId": 1000079,
         "startColumnIndex": 6,
         "startRowIndex": 1
        }
@@ -4004,15 +4097,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4021,6 +4106,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4039,7 +4132,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000073,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4063,7 +4156,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4071,7 +4164,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4106,7 +4199,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000080,
+       "sheetId": 1000082,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4114,7 +4207,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4170,14 +4263,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4187,6 +4272,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4280,7 +4373,7 @@
      {
       "gridRange": {
        "endColumnIndex": 3,
-       "sheetId": 1000080,
+       "sheetId": 1000082,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4288,7 +4381,7 @@
      {
       "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4344,14 +4437,6 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
        "sheetId": 1000073,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4361,6 +4446,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4427,15 +4520,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4450,8 +4535,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4672,15 +4765,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4695,8 +4780,16 @@
      },
      {
       "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
        "endColumnIndex": 8,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4713,7 +4806,7 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/782a83b9b82e868511f356501e",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/1d8e056f7fcf63cf16773474f5",
    "query": {}
   },
   {
@@ -4722,7 +4815,7 @@
    },
    "if_match": null,
    "method": "PATCH",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/782a83b9b82e868511f356501e",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/1d8e056f7fcf63cf16773474f5",
    "query": {}
   },
   {
@@ -4733,7 +4826,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 7,
-        "sheetId": 1000075,
+        "sheetId": 1000077,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -4780,8 +4873,8 @@
         "compaction c7797ab51193r1"
        ],
        [
-        "782a83b9b82e868511f356501e/co2yzn/with",
-        "782a83b9b82e868511f356501e",
+        "1d8e056f7fcf63cf16773474f5/co2yzn/with",
+        "1d8e056f7fcf63cf16773474f5",
         "co2yzn",
         "with",
         "Dinner again",
@@ -4793,8 +4886,8 @@
         "delete_event"
        ],
        [
-        "782a83b9b82e868511f356501e/habit:rs21so/with",
-        "782a83b9b82e868511f356501e",
+        "1d8e056f7fcf63cf16773474f5/habit:rs21so/with",
+        "1d8e056f7fcf63cf16773474f5",
         "habit:rs21so",
         "with",
         "Dinner again",
@@ -4806,8 +4899,8 @@
         "delete_event"
        ],
        [
-        "782a83b9b82e868511f356501e/self/with",
-        "782a83b9b82e868511f356501e",
+        "1d8e056f7fcf63cf16773474f5/self/with",
+        "1d8e056f7fcf63cf16773474f5",
         "self",
         "with",
         "Dinner again",
@@ -4882,15 +4975,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4899,6 +4984,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4930,6 +5023,26 @@
       },
       "status": "confirmed",
       "summary": "Lunch"
+     },
+     "1d8e056f7fcf63cf16773474f5": {
+      "end": {
+       "dateTime": "2026-10-07T21:00:00-04:00"
+      },
+      "eventLabelId": "7a8759ac-8307-5cf3-937d-398ec33255fd",
+      "extendedProperties": {
+       "private": {
+        "cascading-time-tracker-action_ids": "3dnjav",
+        "cascading-time-tracker-facts": "{\"with\":[\"co2yzn\"]}"
+       }
+      },
+      "iCalUID": "1d8e056f7fcf63cf16773474f5@google.com",
+      "id": "1d8e056f7fcf63cf16773474f5",
+      "kind": "calendar#event",
+      "start": {
+       "dateTime": "2026-10-07T20:00:00-04:00"
+      },
+      "status": "cancelled",
+      "summary": "Dinner again"
      },
      "23a1388e7f1d12ac272a90633f": {
       "end": {
@@ -5005,26 +5118,6 @@
       },
       "status": "confirmed",
       "summary": "Work"
-     },
-     "782a83b9b82e868511f356501e": {
-      "end": {
-       "dateTime": "2026-10-07T21:00:00-04:00"
-      },
-      "eventLabelId": "7a8759ac-8307-5cf3-937d-398ec33255fd",
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-action_ids": "3dnjav",
-        "cascading-time-tracker-facts": "{\"with\":[\"co2yzn\"]}"
-       }
-      },
-      "iCalUID": "782a83b9b82e868511f356501e@google.com",
-      "id": "782a83b9b82e868511f356501e",
-      "kind": "calendar#event",
-      "start": {
-       "dateTime": "2026-10-07T20:00:00-04:00"
-      },
-      "status": "cancelled",
-      "summary": "Dinner again"
      },
      "80ef6e6b3e64378a65837bc042": {
       "end": {
@@ -5415,10 +5508,10 @@
      },
      {
       "location": {
-       "sheetId": 1000071
+       "sheetId": 1000065
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "travel-times",
       "visibility": "PROJECT"
      },
      {
@@ -5426,7 +5519,7 @@
        "sheetId": 1000073
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
@@ -5434,7 +5527,7 @@
        "sheetId": 1000075
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
@@ -5442,12 +5535,20 @@
        "sheetId": 1000077
       },
       "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000079
+      },
+      "metadataKey": "sheet-role",
       "metadataValue": "compactions",
       "visibility": "PROJECT"
      },
      {
       "location": {
-       "sheetId": 1000080
+       "sheetId": 1000082
       },
       "metadataKey": "sheet-role",
       "metadataValue": "uncompacted-time-notes",
@@ -5531,7 +5632,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000075,
+       "sheetId": 1000077,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5594,8 +5695,8 @@
         "compaction c7797ab51193r1"
        ],
        [
-        "782a83b9b82e868511f356501e/co2yzn/with",
-        "782a83b9b82e868511f356501e",
+        "1d8e056f7fcf63cf16773474f5/co2yzn/with",
+        "1d8e056f7fcf63cf16773474f5",
         "co2yzn",
         "with",
         "Dinner again",
@@ -5607,8 +5708,8 @@
         "delete_event"
        ],
        [
-        "782a83b9b82e868511f356501e/habit:rs21so/with",
-        "782a83b9b82e868511f356501e",
+        "1d8e056f7fcf63cf16773474f5/habit:rs21so/with",
+        "1d8e056f7fcf63cf16773474f5",
         "habit:rs21so",
         "with",
         "Dinner again",
@@ -5620,8 +5721,8 @@
         "delete_event"
        ],
        [
-        "782a83b9b82e868511f356501e/self/with",
-        "782a83b9b82e868511f356501e",
+        "1d8e056f7fcf63cf16773474f5/self/with",
+        "1d8e056f7fcf63cf16773474f5",
         "self",
         "with",
         "Dinner again",
@@ -5668,7 +5769,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000077,
+       "sheetId": 1000079,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5732,7 +5833,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000073,
+       "sheetId": 1000075,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5820,7 +5921,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000080,
+       "sheetId": 1000082,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5900,7 +6001,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000071,
+       "sheetId": 1000073,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -5959,6 +6060,34 @@
         "active",
         "Shows up.",
         "[{\"id\":\"a0g0jc\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90,\"action\":\"3dnjav\"}]"
+       ]
+      ]
+     },
+     "Travel Times": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000065,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Travel Times"
+      },
+      "rows": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
        ]
       ]
      }

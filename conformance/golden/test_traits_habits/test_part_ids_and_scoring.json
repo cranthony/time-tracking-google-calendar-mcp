@@ -1721,6 +1721,99 @@
    "body": {
     "dataFilters": [
      {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "travel-times"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Travel Times"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000019,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000019
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "travel-times",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000007,
@@ -1892,7 +1985,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000019,
+        "sheetId": 1000021,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1925,7 +2018,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000019
+         "sheetId": 1000021
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -1993,7 +2086,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2030,7 +2123,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000021
+         "sheetId": 1000023
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -2099,7 +2192,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2115,7 +2208,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000019,
+       "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2420,7 +2513,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000023,
+        "sheetId": 1000025,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2448,7 +2541,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000023
+         "sheetId": 1000025
         },
         "metadataKey": "sheet-role",
         "metadataValue": "scoring-defaults",
@@ -2470,7 +2563,7 @@
       "gridRange": {
        "endColumnIndex": 26,
        "endRowIndex": 1,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2478,7 +2571,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -2498,7 +2591,7 @@
       "gridRange": {
        "endColumnIndex": 26,
        "endRowIndex": 1,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2506,7 +2599,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -2527,7 +2620,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 3,
-        "sheetId": 1000023,
+        "sheetId": 1000025,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2559,7 +2652,7 @@
       "gridRange": {
        "endColumnIndex": 26,
        "endRowIndex": 1,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2567,7 +2660,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -2588,7 +2681,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 3,
-        "sheetId": 1000023,
+        "sheetId": 1000025,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2620,7 +2713,7 @@
       "gridRange": {
        "endColumnIndex": 26,
        "endRowIndex": 1,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2628,7 +2721,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "startColumnIndex": 0,
        "startRowIndex": 1
       }
@@ -2719,7 +2812,7 @@
        "sheetId": 1000019
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "travel-times",
       "visibility": "PROJECT"
      },
      {
@@ -2727,12 +2820,20 @@
        "sheetId": 1000021
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000023
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000025
       },
       "metadataKey": "sheet-role",
       "metadataValue": "scoring-defaults",
@@ -2809,7 +2910,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2872,7 +2973,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000019,
+       "sheetId": 1000021,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2993,7 +3094,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000023,
+       "sheetId": 1000025,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -3099,6 +3200,34 @@
         "d",
         "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
         "{\"weights\":{\"co2yzn\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}"
+       ]
+      ]
+     },
+     "Travel Times": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000019,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Travel Times"
+      },
+      "rows": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note"
        ]
       ]
      }

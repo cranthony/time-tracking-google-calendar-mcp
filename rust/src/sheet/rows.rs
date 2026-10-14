@@ -339,7 +339,13 @@ impl RowSheet {
             }
             let value = match kind {
                 Kind::Int => crate::event::python_int(text).map(Value::from).ok_or("isn't a whole number"),
-                Kind::Json => serde_json::from_str(text).map_err(|_| "isn't valid JSON"),
+                // A yes or no is written as Python prints it, and Sheets
+                // may give it back in capitals.
+                Kind::Json => match text.to_lowercase().as_str() {
+                    "true" => Ok(Value::Bool(true)),
+                    "false" => Ok(Value::Bool(false)),
+                    _ => serde_json::from_str(text).map_err(|_| "isn't valid JSON"),
+                },
                 Kind::Str => Ok(Value::String(text.into())),
             };
             match value {

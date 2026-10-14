@@ -1,8 +1,10 @@
-//! The location and location group tools.
+//! The location, location group and travel time tools.
 
 use super::{refused, texts, ToolError};
 use crate::app::App;
 use crate::contract::tool;
+use crate::stores::groups::Placed;
+use crate::stores::travel_times::{self, CreatedTravelTime, TravelEstimate, TravelTime};
 use crate::stores::locations::{
     ClearableField, CreatedLocation, CreatedLocationGroup, DeletedLocationGroup, GroupClearableField, ListedLocation,
     ListedLocationGroup, Location, LocationGroup,
@@ -104,4 +106,100 @@ pub fn update_location_group(
 #[tool(writes)]
 pub fn delete_location_group(app: &App, group_id: String) -> Result<DeletedLocationGroup, ToolError> {
     app.locations()?.delete_location_group(&group_id).map_err(refused)
+}
+
+/// Every action's and action group's id: what a travel time's mode_id can
+/// be.
+fn mode_ids(app: &App) -> anyhow::Result<Vec<String>> {
+    let tree = app.actions()?.tree()?;
+    let actions = tree.actions.iter().filter_map(|a| a.id.clone());
+    Ok(actions.chain(tree.groups.groups.iter().filter_map(|g| g.id.clone())).filter(|i| !i.is_empty()).collect())
+}
+
+/// `mode_id` and the action groups it's in, nearest first.
+fn mode_and_groups(app: &App, mode_id: &str) -> anyhow::Result<Vec<String>> {
+    let tree = app.actions()?.tree()?;
+    let item: &dyn Placed = match (tree.by_id(mode_id), tree.groups.by_id(mode_id)) {
+        (Some(action), _) => action,
+        (None, Some(group)) => group,
+        (None, None) => anyhow::bail!("{} isn't an action or an action group", crate::py::repr(mode_id)),
+    };
+    let mut ids = vec![mode_id.to_string()];
+    ids.extend(tree.groups.enclosing(item).iter().filter_map(|g| g.id.clone()));
+    Ok(ids)
+}
+
+/// Prefetch the locations', groups', travel times' and actions' tabs at
+/// once.
+fn prefetch_travel(app: &App) -> anyhow::Result<()> {
+    let mut ranges = app.locations()?.all_tabs();
+    ranges.extend(app.actions()?.whole_tabs());
+    app.locations()?.prefetch(&ranges)
+}
+
+/// Every travel time: a rough estimate of how long it takes to get between
+/// two places (from_id and to_id, each a location or a location group),
+/// each way of getting there (times: a mode_id -- an action or action
+/// group, such as "Drive" or "Transit" -- and minutes, or minutes to
+/// max_minutes), with a note. It counts both ways unless it's one_way.
+/// With place_id, only those from or to it. Read-only.
+#[tool]
+pub fn get_travel_times(app: &App, place_id: Option<String>) -> Result<Vec<TravelTime>, ToolError> {
+    app.locations()?.get_travel_times(place_id.as_deref()).map_err(refused)
+}
+
+/// Add a travel time between from_id and to_id (each a location or a
+/// location group): its times, each a mode_id (an action or action group)
+/// and minutes (more than 0), and max_minutes if it varies; one_way if it's
+/// only from from_id to to_id (otherwise it counts both ways); and a note.
+/// Only one travel time can say how long each way between two places
+/// takes: a two-way one, and a one-way one for a way that's different. id
+/// is assigned. Returns it, and its id as created_id.
+#[tool(writes)]
+pub fn create_travel_time(app: &App, travel_time: TravelTime) -> Result<CreatedTravelTime, ToolError> {
+    prefetch_travel(app).map_err(refused)?;
+    let modes = mode_ids(app).map_err(refused)?;
+    app.locations()?.create_travel_time(&travel_time, &modes).map_err(refused)
+}
+
+/// Update a travel time by id: its from_id, to_id, one_way, times
+/// (replaced whole) or note. Omitted properties keep their value; list
+/// note in clear_fields to blank it. Returns it as updated.
+#[tool(writes)]
+pub fn update_travel_time(
+    app: &App,
+    travel_time: TravelTime,
+    clear_fields: Option<Vec<travel_times::ClearableField>>,
+) -> Result<TravelTime, ToolError> {
+    prefetch_travel(app).map_err(refused)?;
+    let modes = mode_ids(app).map_err(refused)?;
+    let clear = texts(&clear_fields.unwrap_or_default());
+    app.locations()?.update_travel_time(&travel_time, &clear, &modes).map_err(refused)
+}
+
+/// Delete a travel time, by id. Returns it as it was. (Deleting a location
+/// or location group deletes the travel times from or to it.)
+#[tool(writes)]
+pub fn delete_travel_time(app: &App, travel_time_id: String) -> Result<TravelTime, ToolError> {
+    app.locations()?.delete_travel_time(&travel_time_id).map_err(refused)
+}
+
+/// How long it takes to get from from_id to to_id (each a location or a
+/// location group), as best the travel times say: the one between them,
+/// or else between the groups they're in -- the fewest steps out first,
+/// and of those, the same steps out on each side, so it's the same either
+/// way round. A one-way travel time beats a two-way one
+/// between the same places. With mode_id (an action or action group),
+/// only a travel time with a time for it, or else for its nearest group
+/// that has one, and just that time. Returns the places it's between,
+/// the travel time, and its times; null if no travel time says.
+/// Read-only.
+#[tool]
+pub fn estimate_travel_time(app: &App, from_id: String, to_id: String, mode_id: Option<String>) -> Result<Option<TravelEstimate>, ToolError> {
+    prefetch_travel(app).map_err(refused)?;
+    let modes = match mode_id {
+        Some(mode) => Some(mode_and_groups(app, &mode).map_err(refused)?),
+        None => None,
+    };
+    app.locations()?.estimate_travel_time(&from_id, &to_id, modes.as_deref()).map_err(refused)
 }
