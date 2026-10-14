@@ -270,9 +270,10 @@ fn the_next_days_compaction_window_starts_where_the_last_one_left_off() {
 fn the_requests_a_compaction_of_many_events_and_notes_makes() {
     // Six pieces of work, each moved to the notes that start and end it,
     // and every note annotated with its event. [Sheets reads, Sheets
-    // writes, Calendar reads, Calendar writes] for each step: committing
-    // writes the journal once per event changed, so Sheets' 60 writes a
-    // minute caps how many changes a compaction can make before it waits.
+    // writes, Calendar reads, Calendar writes] for each step, and the
+    // HTTP requests to Calendar: committing makes the changes in one batch
+    // and marks them done in the journal together, so neither grows with
+    // the number of events changed.
     let at = |minutes: usize| format!("{:02}:{:02}", 8 + minutes / 60, minutes % 60);
     let mut events: Vec<Event> = (0..6).map(|i| event_at(&format!("{}-{}", at(30 * i), at(30 * i + 30))).id(&format!("w{i}")).summary("Work").priority(2).build()).collect();
     events.push(event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build());
@@ -281,7 +282,7 @@ fn the_requests_a_compaction_of_many_events_and_notes_makes() {
     let setup = Setup::new(&notes, Some(events), &at(200));
     let mut made = Vec::new();
     let mut step = |label: &'static str| {
-        made.push((label, setup.t.fake.quota_counts()));
+        made.push((label, setup.t.fake.quota_counts(), setup.t.fake.calendar_round_trips()));
         setup.t.fake.clear_requests();
     };
 
@@ -298,5 +299,19 @@ fn the_requests_a_compaction_of_many_events_and_notes_makes() {
     assert_eq!(setup.commit(&id).status, "applied");
     step("commit");
 
-    assert_eq!(made, vec![("prepare", [1, 0, 2, 0]), ("dry_run", [1, 1, 1, 0]), ("commit", [1, 10, 1, 6])]);
+    assert_eq!(made, vec![("prepare", [1, 0, 2, 0], 2), ("dry_run", [1, 1, 1, 0], 1), ("commit", [1, 4, 1, 6], 2)]);
+}
+
+#[test]
+fn a_change_calendar_asks_to_slow_down_is_made_again_on_its_own() {
+    let setup = Setup::standard();
+    let id = planned(&setup, setup.email_then_report());
+    setup.fail_next("PATCH", "/events/e2", 429);
+
+    let result = setup.commit(&id);
+
+    assert_eq!(result.status, "applied");
+    let patched: Vec<String> = setup.patches().into_iter().map(|(id, _)| id).collect();
+    assert_eq!(patched, strings(&["e1", "e2", "e2"]));
+    assert_eq!(setup.event("e2").start, Some(time_at("10:20")));
 }

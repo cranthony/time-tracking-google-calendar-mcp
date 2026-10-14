@@ -281,18 +281,22 @@ fn set_status_updates_the_compaction_row_only() {
 }
 
 #[test]
-fn mark_step_done_updates_that_step_only() {
+fn writing_statuses_updates_those_rows_only() {
     let f = fixture();
     start(&f.journal, "abc123");
-    let mut loaded = f.journal.load("abc123").unwrap();
+    let loaded = f.journal.load("abc123").unwrap();
+    f.fake.clear_requests();
 
     {
         let _held = crate::write_lock::WRITE_LOCK.hold();
-        f.journal.mark_step_done(&mut loaded.steps[1]).unwrap();
+        f.journal.write_statuses(&[(loaded.steps[0].row, "done"), (loaded.steps[2].row, "done"), (loaded.row, "applied")]).unwrap();
     }
 
-    let statuses: Vec<String> = f.journal.load("abc123").unwrap().steps.into_iter().map(|s| s.status).collect();
-    assert_eq!(statuses, strings(&["pending", "done", "pending"]));
+    assert_eq!(f.fake.quota_counts()[1], 1);
+    let reloaded = f.journal.load("abc123").unwrap();
+    let statuses: Vec<String> = reloaded.steps.into_iter().map(|s| s.status).collect();
+    assert_eq!(statuses, strings(&["done", "pending", "done"]));
+    assert_eq!(reloaded.status, "applied");
 }
 
 #[test]

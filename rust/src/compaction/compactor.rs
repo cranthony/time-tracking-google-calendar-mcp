@@ -105,7 +105,8 @@ use super::proposals::{
 use crate::determinism;
 use crate::event::{Event, Moment};
 use crate::facts::{fact_problems, Facts, SELF_ID};
-use crate::google::GoogleError;
+use crate::google::calendar::BATCH_SIZE;
+use crate::google::{BatchRequest, GoogleError};
 use crate::py;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::actions::{ActionTree, Actions};
@@ -1907,14 +1908,22 @@ impl NoteCompactor {
                 refs = Some(create_additions(&additions, self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?);
             }
             let id = days[i].id.clone();
-            for s in 0..days[i].steps.len() {
-                if days[i].steps[s].status != "done" {
-                    self.apply_step(&id, &days[i].steps[s], refs.as_ref().unwrap())?;
-                    self.journal.mark_step_done(&mut days[i].steps[s])?;
-                }
+            // The steps made are marked done together, once they're made
+            // (or one fails): a step made but not marked, if this stops in
+            // between, is made again on resuming, which changes nothing.
+            let (done, failure) = self.apply_steps(&id, &days[i].steps, refs.as_ref().unwrap())?;
+            let mut statuses: Vec<(i64, &str)> = Vec::new();
+            for &s in &done {
+                days[i].steps[s].status = "done".into();
+                statuses.push((days[i].steps[s].row, "done"));
             }
-            self.record_cancellations(&days[i], false)?;
-            self.journal.set_status(&mut days[i], APPLIED)?;
+            if let Some(failure) = failure.or_else(|| self.record_cancellations(&days[i], false).err()) {
+                self.journal.write_statuses(&statuses)?;
+                return Err(failure);
+            }
+            statuses.push((days[i].row, APPLIED));
+            self.journal.write_statuses(&statuses)?;
+            days[i].status = APPLIED.into();
             self.notes.mark_compacted(&days[i].note_ids, &id)?;
             self.journal.set_status(&mut days[i], STAMPED)?;
         }
@@ -2548,18 +2557,56 @@ impl NoteCompactor {
         Ok(())
     }
 
-    fn apply_step(&self, compaction_id: &str, step: &JournalStep, refs: &[(String, String)]) -> anyhow::Result<()> {
-        if step.action == "create" {
-            let event = resolve(&step.after.as_ref().unwrap().to_event(Some(&new_event_id(compaction_id, step.step))), refs);
-            if let Err(e) = self.client.create_event(&event) {
-                if google_status(&e) != Some(409) {
-                    return Err(e);
+    /// Make the changes of `steps` not done yet. Their requests are made
+    /// first -- the events they update fetched beforehand in a batch,
+    /// unless a listing already has them -- and then sent in batches. Calendar makes a batch's
+    /// changes in any order, so steps to the same event (or to a series
+    /// and its instances) go in batches of their own, in step order.
+    /// Returns the steps made, by index, and the first failure, after which
+    /// no later batch is sent. A create Calendar already has (a 409) was
+    /// made.
+    fn apply_steps(&self, compaction_id: &str, steps: &[JournalStep], refs: &[(String, String)]) -> anyhow::Result<(Vec<usize>, Option<anyhow::Error>)> {
+        let target = |step: &JournalStep| match step.action.as_str() {
+            "create" => new_event_id(compaction_id, step.step),
+            _ => step.event_id.clone().unwrap_or_default(),
+        };
+        let pending: Vec<usize> = (0..steps.len()).filter(|s| steps[*s].status != "done").collect();
+        let updated: Vec<String> = pending.iter().filter(|s| steps[**s].action != "create").map(|s| target(&steps[*s])).collect();
+        self.client.client().prefetch_events(&updated)?;
+        let related = |a: &str, b: &str| a == b || a.starts_with(&format!("{b}_")) || b.starts_with(&format!("{a}_"));
+        let mut batches: Vec<Vec<(usize, BatchRequest)>> = Vec::new();
+        for s in pending {
+            let step = &steps[s];
+            let request = if step.action == "create" {
+                self.client.create_event_request(&resolve(&step.after.as_ref().unwrap().to_event(Some(&target(step))), refs))?
+            } else {
+                self.client.update_event_request(&resolve(&patch_for(step), refs))?
+            };
+            match batches.last_mut() {
+                Some(batch) if batch.len() < BATCH_SIZE && !batch.iter().any(|(o, _)| related(&target(&steps[*o]), &target(step))) => batch.push((s, request)),
+                _ => batches.push(vec![(s, request)]),
+            }
+        }
+        let mut done = Vec::new();
+        for batch in batches {
+            let requests: Vec<BatchRequest> = batch.iter().map(|(_, r)| r.clone()).collect();
+            let answers = match self.client.client().send_writes(&requests) {
+                Ok(answers) => answers,
+                Err(e) => return Ok((done, Some(e))),
+            };
+            let mut failure = None;
+            for ((s, _), answer) in batch.iter().zip(answers) {
+                match answer {
+                    Ok(_) => done.push(*s),
+                    Err(e) if steps[*s].action == "create" && google_status(&e) == Some(409) => done.push(*s),
+                    Err(e) => failure = failure.or(Some(e)),
                 }
             }
-        } else {
-            self.client.update_event(&resolve(&patch_for(step), refs))?;
+            if failure.is_some() {
+                return Ok((done, failure));
+            }
         }
-        Ok(())
+        Ok((done, None))
     }
 }
 

@@ -3,6 +3,7 @@
 
 use crate::event::{Event, Moment};
 use crate::google::calendar::{CalendarClient, EventLabel};
+use crate::google::BatchRequest;
 use crate::stores::actions::{ActionStatus, ActionTree, Actions};
 use crate::stores::groups::set;
 use crate::stores::groups::priority_label_id;
@@ -45,6 +46,16 @@ impl ActionCalendar {
     pub fn update_event(&self, event: &Event) -> anyhow::Result<Event> {
         let labelled = self.with_label(event, false)?;
         self.client.update_event(&labelled)
+    }
+
+    /// The request `create_event` sends, for `CalendarClient::send_writes`.
+    pub fn create_event_request(&self, event: &Event) -> anyhow::Result<BatchRequest> {
+        self.client.create_event_request(&self.with_label(event, true)?)
+    }
+
+    /// The request `update_event` sends, for `CalendarClient::send_writes`.
+    pub fn update_event_request(&self, event: &Event) -> anyhow::Result<BatchRequest> {
+        self.client.update_event_request(&self.with_label(event, false)?)
     }
 
     pub fn import_event(&self, event: &Event, ical_uid: &str) -> anyhow::Result<Event> {
