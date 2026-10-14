@@ -18,6 +18,6 @@ if [ ! -x "$CARGO_HOME/bin/cargo" ]; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --no-modify-path
 fi
 cargo --version
-cargo build --release --locked --manifest-path rust/Cargo.toml --bin ctt-server
+cargo build --release --locked --manifest-path rust/Cargo.toml --bin time-tracker-server
 mkdir -p bin
-cp "$CARGO_TARGET_DIR/release/ctt-server" bin/ctt-server
+cp "$CARGO_TARGET_DIR/release/time-tracker-server" bin/time-tracker-server

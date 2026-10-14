@@ -48,7 +48,7 @@ The server is written in Rust, in [`rust/`](rust/). Install Rust with [rustup](h
 cargo build --release --manifest-path rust/Cargo.toml
 ```
 
-That builds the server (`ctt-server`) and the command-line tools (`create_calendar`, `calendar_cli`, `probe`) into `rust/target/release/`. On Windows, use the GNU toolchain (`rustup default stable-x86_64-pc-windows-gnu`) with a MinGW-w64 toolchain on `PATH` (e.g. `winget install BrechtSanders.WinLibs.POSIX.UCRT`), or the MSVC one with Visual Studio's build tools.
+That builds the server (`time-tracker-server`) and the command-line tools (`create_calendar`, `calendar_cli`, `probe`) into `rust/target/release/`. On Windows, use the GNU toolchain (`rustup default stable-x86_64-pc-windows-gnu`) with a MinGW-w64 toolchain on `PATH` (e.g. `winget install BrechtSanders.WinLibs.POSIX.UCRT`), or the MSVC one with Visual Studio's build tools.
 
 The [conformance scenarios](#tests) are run by a Python harness; to run them, install its dependencies in a virtual environment:
 
@@ -116,10 +116,10 @@ If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) in
 ### Running the server
 
 ```bash
-cargo run --release --manifest-path rust/Cargo.toml --bin ctt-server
+cargo run --release --manifest-path rust/Cargo.toml --bin time-tracker-server
 ```
 
-With no `MCP_TRANSPORT` set it serves MCP over stdio, for a local MCP host to run as a subprocess: point the host's config at `rust/target/release/ctt-server` (with the [configuration](#configuration) in its `env`, or a `.env` in its working directory). See [MCP tools](#mcp-tools) below for what it exposes.
+With no `MCP_TRANSPORT` set it serves MCP over stdio, for a local MCP host to run as a subprocess: point the host's config at `rust/target/release/time-tracker-server` (with the [configuration](#configuration) in its `env`, or a `.env` in its working directory). See [MCP tools](#mcp-tools) below for what it exposes.
 
 ## Using it
 
@@ -535,7 +535,7 @@ A calendar belongs to the app that made it (`calendar.app.created`), and whether
 For a network where a proxy in front of the server already signs people in, the server can be built to skip WorkOS altogether:
 
 ```bash
-AUTH_DISABLED=true cargo build --release --manifest-path rust/Cargo.toml --bin ctt-server
+AUTH_DISABLED=true cargo build --release --manifest-path rust/Cargo.toml --bin time-tracker-server
 ```
 
 `AUTH_DISABLED` is read when the server is **built**, not when it runs ([`rust/src/auth_mode.rs`](rust/src/auth_mode.rs), [`rust/build.rs`](rust/build.rs)): `true`, `1` or `yes`, in any case, turn sign-in off, and anything else leaves it on. A binary built without it always requires WorkOS sign-in, whatever its environment says. Setting `AUTH_DISABLED` in the environment of a normal build just logs that it's ignored.

@@ -4,4 +4,4 @@
 # itself gets Render's shutdown signal.
 set -euo pipefail
 
-exec bin/ctt-server
+exec bin/time-tracker-server

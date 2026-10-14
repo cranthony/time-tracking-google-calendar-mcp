@@ -77,7 +77,7 @@ def server_command() -> list[str]:
     spec = os.environ.get("CTT_SERVER")
     if spec:
         return shlex.split(spec, posix=os.name != "nt")
-    name = "ctt-server.exe" if os.name == "nt" else "ctt-server"
+    name = "time-tracker-server.exe" if os.name == "nt" else "time-tracker-server"
     for profile in ("debug", "release"):
         built = ROOT / "rust" / "target" / profile / name
         if built.exists():

@@ -6,7 +6,7 @@ publish = false
 description = "The time-tracking Google Calendar MCP server, ported from Python (see ../README.md)."
 
 [[bin]]
-name = "ctt-server"
+name = "time-tracker-server"
 path = "src/main.rs"
 
 [dependencies]

@@ -48,7 +48,7 @@ struct Options {
     pause: bool,
     raw: bool,
     days: i64,
-    /// The server binary `server` runs (default: ctt-server beside this one).
+    /// The server binary `server` runs (default: time-tracker-server beside this one).
     server: Option<std::path::PathBuf>,
     /// The other OAuth client's secret file, for `other_client`.
     client: Option<std::path::PathBuf>,
@@ -119,7 +119,7 @@ fn run() -> anyhow::Result<()> {
         "series_deletes" => series_deletes(&raw, &options),
         "series_splits" => series_splits(&raw, &config),
         _ => {
-            let beside = std::env::current_exe()?.with_file_name(format!("ctt-server{}", std::env::consts::EXE_SUFFIX));
+            let beside = std::env::current_exe()?.with_file_name(format!("time-tracker-server{}", std::env::consts::EXE_SUFFIX));
             server(&raw, &config, options.server.as_deref().unwrap_or(&beside))
         }
     };
@@ -1385,7 +1385,7 @@ impl Drop for Mcp {
     }
 }
 
-/// Run the server (ctt-server) against Google for real, over MCP:
+/// Run the server (time-tracker-server) against Google for real, over MCP:
 /// conformance holds it to its recorded behavior against a fake Google;
 /// this checks the real one answers it the same way -- OAuth, Calendar and
 /// Sheets, labels, developer metadata -- before it's deployed. Seeds three

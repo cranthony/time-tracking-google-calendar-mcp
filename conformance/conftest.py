@@ -10,7 +10,7 @@ server, which the Rust one was ported from and held to; the scenarios'
 own assertions say what that behaviour is meant to be.
 
     python -m pytest -n auto                       # the Rust build in rust/target
-    CTT_SERVER=path/to/ctt-server python -m pytest -n auto
+    CTT_SERVER=path/to/time-tracker-server python -m pytest -n auto
     CTT_UPDATE_GOLDEN=1 python -m pytest           # rewrite the records
 
 Only rewrite the records for a deliberate change of behaviour, and read
