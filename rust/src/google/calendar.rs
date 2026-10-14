@@ -1,9 +1,10 @@
 //! Google Calendar, behind a thin client (CalendarClient):
 //! list/get/create/update/delete events, labels guarded by the calendar's
 //! etag, and this app's metadata in the calendar's description. Listings
-//! inside one tool call are cached (see `CachedListings`).
+//! inside one tool call are cached (see `CachedListings`), and so are
+//! events prefetched in a batch (`prefetch_events`).
 
-use super::{segment, status_of, Google};
+use super::{segment, status_of, BatchRequest, Google};
 use crate::event::{Event, Moment};
 use crate::py;
 use crate::write_lock;
@@ -15,6 +16,9 @@ use std::cell::RefCell;
 use std::sync::{Arc, LazyLock, Mutex};
 
 const LIST_PAGE_SIZE: usize = 2500;
+
+/// The most requests Calendar takes in one batch.
+pub const BATCH_SIZE: usize = 50;
 
 static METADATA_MARKER: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?m)^\[cascading-time-tracker:([\w-]+)=([^\]]*)\]$").unwrap());
@@ -83,15 +87,19 @@ struct Listing {
     time_min: Moment,
     time_max: Moment,
     events: Vec<Event>,
+    /// The events as Calendar sent them.
+    resources: Vec<Value>,
 }
 
 thread_local! {
     static LISTINGS: RefCell<Option<Vec<Listing>>> = const { RefCell::new(None) };
+    /// Events prefetched: (calendar id, event id, the event's resource).
+    static EVENTS: RefCell<Vec<(String, String, Value)>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Within this guard's life, a listing inside one made earlier (same
-/// calendar, range within it) is answered from memory; any write forgets
-/// every listing first.
+/// calendar, range within it) is answered from memory, and so is an event
+/// `prefetch_events` fetched; any write forgets them all first.
 pub struct CachedListings {
     outer: bool,
 }
@@ -115,6 +123,7 @@ impl Drop for CachedListings {
     fn drop(&mut self) {
         if self.outer {
             LISTINGS.with(|l| *l.borrow_mut() = None);
+            EVENTS.with(|e| e.borrow_mut().clear());
         }
     }
 }
@@ -146,7 +155,23 @@ fn remember_listing(listing: Listing) {
     });
 }
 
-/// `requires_write_lock`, and forget every cached listing before writing.
+fn caching() -> bool {
+    LISTINGS.with(|l| l.borrow().is_some())
+}
+
+/// Event `event_id`, prefetched or in a cached listing.
+fn cached_event(calendar_id: &str, event_id: &str) -> Option<Value> {
+    let prefetched = EVENTS.with(|e| e.borrow().iter().find(|(c, id, _)| c == calendar_id && id == event_id).map(|(_, _, event)| event.clone()));
+    prefetched.or_else(|| {
+        LISTINGS.with(|l| {
+            let listings = l.borrow();
+            listings.as_ref()?.iter().filter(|l| l.calendar_id == calendar_id).flat_map(|l| &l.resources).find(|r| r["id"] == json!(event_id)).cloned()
+        })
+    })
+}
+
+/// `requires_write_lock`, and forget every cached listing and event
+/// before writing.
 fn writing(what: &str) -> anyhow::Result<()> {
     write_lock::require(what)?;
     LISTINGS.with(|l| {
@@ -154,7 +179,16 @@ fn writing(what: &str) -> anyhow::Result<()> {
             listings.clear();
         }
     });
+    EVENTS.with(|e| e.borrow_mut().clear());
     Ok(())
+}
+
+/// Whether `error` is Calendar asking for requests to slow down.
+fn rate_limited(error: &anyhow::Error) -> bool {
+    match error.downcast_ref::<super::GoogleError>() {
+        Some(e) => e.status == 429 || (e.status == 403 && e.message.to_lowercase().contains("rate limit")),
+        None => false,
+    }
 }
 
 #[derive(Clone)]
@@ -300,6 +334,7 @@ impl CalendarClient {
             return Ok(cached);
         }
         let mut events = Vec::new();
+        let mut resources = Vec::new();
         let mut page_token: Option<String> = None;
         loop {
             let mut query = vec![
@@ -315,6 +350,7 @@ impl CalendarClient {
             let response = self.call("GET", &self.events_path(), &query, None)?;
             for item in response.get("items").and_then(Value::as_array).into_iter().flatten() {
                 events.push(Event::from_api(item)?);
+                resources.push(item.clone());
             }
             page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
             if page_token.is_none() {
@@ -323,6 +359,7 @@ impl CalendarClient {
                     time_min: *time_min,
                     time_max: *time_max,
                     events: events.clone(),
+                    resources,
                 });
                 return Ok(events);
             }
@@ -330,11 +367,68 @@ impl CalendarClient {
     }
 
     pub fn get_event(&self, event_id: &str) -> anyhow::Result<Event> {
-        Event::from_api(&self.call("GET", &self.event_path(event_id), &[], None)?)
+        Event::from_api(&self.get_event_resource(event_id)?)
     }
 
     pub fn get_event_resource(&self, event_id: &str) -> anyhow::Result<Value> {
+        if let Some(event) = cached_event(&self.calendar_id, event_id) {
+            return Ok(event);
+        }
         self.call("GET", &self.event_path(event_id), &[], None)
+    }
+
+    /// Inside a tool call, fetch each of `event_ids` not cached yet in
+    /// batches, so getting them later comes from memory. One that can't be
+    /// fetched is left for its own get to fail on.
+    pub fn prefetch_events(&self, event_ids: &[String]) -> anyhow::Result<()> {
+        if !caching() {
+            return Ok(());
+        }
+        let mut missing: Vec<&String> = Vec::new();
+        for id in event_ids {
+            if cached_event(&self.calendar_id, id).is_none() && !missing.contains(&id) {
+                missing.push(id);
+            }
+        }
+        if missing.len() < 2 {
+            return Ok(());
+        }
+        for chunk in missing.chunks(BATCH_SIZE) {
+            let requests: Vec<BatchRequest> =
+                chunk.iter().map(|id| BatchRequest { method: "GET", path: self.event_path(id), query: Vec::new(), body: None }).collect();
+            for (id, answer) in chunk.iter().zip(self.google.calendar_batch(&requests)?) {
+                if let Ok(event) = answer {
+                    EVENTS.with(|e| e.borrow_mut().push((self.calendar_id.clone(), (*id).clone(), event)));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Send `writes` (made by `create_event_request` and
+    /// `update_event_request`), in batches when there's more than one, and
+    /// answer each as it alone would be answered. Calendar may apply a
+    /// batch's writes in any order, so no two may be to the same event.
+    /// Any Calendar asks to slow down are sent again, one at a time.
+    pub fn send_writes(&self, writes: &[BatchRequest]) -> anyhow::Result<Vec<anyhow::Result<Value>>> {
+        writing("CalendarClient.send_writes")?;
+        if writes.len() == 1 {
+            return Ok(vec![self.send(&writes[0])]);
+        }
+        let mut answers = Vec::new();
+        for chunk in writes.chunks(BATCH_SIZE) {
+            answers.extend(self.google.calendar_batch(chunk)?);
+        }
+        for (write, answer) in writes.iter().zip(answers.iter_mut()) {
+            if answer.as_ref().is_err_and(rate_limited) {
+                *answer = self.send(write);
+            }
+        }
+        Ok(answers)
+    }
+
+    fn send(&self, request: &BatchRequest) -> anyhow::Result<Value> {
+        self.call(request.method, &request.path, &request.query, request.body.as_ref())
     }
 
     fn label_version(body: &Map<String, Value>) -> Vec<(&'static str, String)> {
@@ -349,12 +443,17 @@ impl CalendarClient {
     /// then fails with a 409 rather than making a second).
     pub fn create_event(&self, event: &Event) -> anyhow::Result<Event> {
         writing("CalendarClient.create_event")?;
+        Event::from_api(&self.send(&self.create_event_request(event)?)?)
+    }
+
+    /// The request `create_event` sends, for `send_writes`.
+    pub fn create_event_request(&self, event: &Event) -> anyhow::Result<BatchRequest> {
         let mut body = event.insert_body()?;
         if let Some(id) = &event.id {
             body.insert("id".into(), json!(id));
         }
         let query = Self::label_version(&body);
-        Event::from_api(&self.call("POST", &self.events_path(), &query, Some(&Value::Object(body)))?)
+        Ok(BatchRequest { method: "POST", path: self.events_path(), query, body: Some(Value::Object(body)) })
     }
 
     /// Import `event` with the iCalendar UID `ical_uid` (events.import),
@@ -394,6 +493,11 @@ impl CalendarClient {
     /// the series_edits probe.
     pub fn update_event(&self, event: &Event) -> anyhow::Result<Event> {
         writing("CalendarClient.update_event")?;
+        Event::from_api(&self.send(&self.update_event_request(event)?)?)
+    }
+
+    /// The request `update_event` sends, for `send_writes`.
+    pub fn update_event_request(&self, event: &Event) -> anyhow::Result<BatchRequest> {
         let id = event.id.as_deref().ok_or_else(|| anyhow!("event.id is required to update an event"))?;
         let mut body = event.to_api_body()?;
         let private_has_null = body
@@ -405,7 +509,7 @@ impl CalendarClient {
             // A null removes a property -- but Calendar refuses one an
             // instance doesn't have, and facts null every chunk they don't
             // use. Removing what isn't there is nothing, so drop those.
-            let current = self.call("GET", &self.event_path(id), &[], None)?;
+            let current = self.get_event_resource(id)?;
             let empty = Map::new();
             let current_private = current
                 .get("extendedProperties")
@@ -422,7 +526,7 @@ impl CalendarClient {
             }
         }
         let query = Self::label_version(&body);
-        Event::from_api(&self.call("PATCH", &self.event_path(id), &query, Some(&Value::Object(body)))?)
+        Ok(BatchRequest { method: "PATCH", path: self.event_path(id), query, body: Some(Value::Object(body)) })
     }
 
     /// The instances of series `event_id` starting before `time_max`,

@@ -9,6 +9,7 @@
 //!     probe <name> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]
 //!
 //! where <name> is one of:
+//!     batch             that Calendar's batch endpoint answers each request in it on its own
 //!     cancelled_events  whether events.list shows cancelled events, and what they keep
 //!     clear_fields      that clearing an event's fields (clear_fields) removes them
 //!     label_lifecycle   what an event does when its label is removed, then added back
@@ -29,7 +30,7 @@ use time_tracker::app::{App, Config};
 use time_tracker::event::{parse_iso, Event, CLEARABLE_EVENT_FIELDS, PREFIX};
 use time_tracker::facts::Facts;
 use time_tracker::google::calendar::CalendarClient;
-use time_tracker::google::{segment, status_of, Google};
+use time_tracker::google::{segment, status_of, BatchRequest, Google};
 use time_tracker::stores::action_calendar::ActionCalendar;
 use time_tracker::stores::locations::Location;
 use time_tracker::stores::recurrences::{split_series_id, Recurrences, Repeat};
@@ -64,7 +65,7 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: probe <cancelled_events|clear_fields|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|server> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
+    let usage = "usage: probe <batch|cancelled_events|clear_fields|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|server> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
     let Some(name) = args.first().cloned() else { anyhow::bail!("{usage}") };
     let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None, client: None };
     let mut i = 1;
@@ -99,6 +100,7 @@ fn run() -> anyhow::Result<()> {
         return cancelled_events(&google, config.calendar_id()?, &options);
     }
     let (title, zone) = match name.as_str() {
+        "batch" => ("Time tracker batch probe (safe to delete)", Some(TIME_ZONE)),
         "clear_fields" => ("Time tracker clear-fields probe (safe to delete)", Some(TIME_ZONE)),
         "label_lifecycle" => ("Time tracker label probe (safe to delete)", None),
         "metadata_tabs" => ("Time tracker tabs probe (safe to delete)", None),
@@ -112,6 +114,7 @@ fn run() -> anyhow::Result<()> {
     println!("Scratch calendar: {calendar_id}");
     let raw = Raw { google: google.clone(), calendar_id: calendar_id.clone() };
     let outcome = match name.as_str() {
+        "batch" => batch(&raw),
         "clear_fields" => clear_fields(&raw),
         "label_lifecycle" => label_lifecycle(&raw, &options),
         "metadata_tabs" => metadata_tabs(&raw, &config),
@@ -402,6 +405,67 @@ fn cancelled_events(google: &Arc<Google>, calendar_id: &str, options: &Options) 
     if all_cancelled.is_empty() {
         println!("No cancelled events in that range: try a longer --days, or cancel a test event first.");
     }
+    Ok(())
+}
+
+// -- batch ----------------------------------------------------------------------
+
+/// Check Calendar's batch endpoint as CalendarClient uses it: creates and
+/// patches sent together (send_writes), and events fetched together (as
+/// prefetch_events fetches them), each answered on its own -- a request
+/// that fails doesn't fail the others.
+///
+/// What it found (2026-10-14): every check passes -- creates, patches and
+/// gets are each answered in order, and a patch of an event that isn't
+/// there fails alone, with a 404.
+fn batch(raw: &Raw) -> anyhow::Result<()> {
+    let client = raw.client();
+    let nine = tomorrow_at(9);
+    let ids_of = |answers: &[anyhow::Result<Value>]| -> Vec<String> {
+        answers.iter().filter_map(|a| a.as_ref().ok().and_then(|e| e["id"].as_str()).map(str::to_string)).collect()
+    };
+    let shown = |answers: &[anyhow::Result<Value>]| -> Vec<String> {
+        answers.iter().map(|a| match a {
+            Ok(event) => format!("ok {} {}", event["id"], event["summary"]),
+            Err(e) => format!("error {e:#}"),
+        }).collect()
+    };
+
+    println!("\n1. Create three events in one batch");
+    let creates = (0..3)
+        .map(|i| {
+            client.create_event_request(&Event {
+                summary: Some(format!("Batch {i}")),
+                start: Some(nine + Duration::hours(i)),
+                end: Some(nine + Duration::hours(i + 1)),
+                time_zone: Some(TIME_ZONE.into()),
+                ..Default::default()
+            })
+        })
+        .collect::<anyhow::Result<Vec<BatchRequest>>>()?;
+    let answers = client.send_writes(&creates)?;
+    let ids = ids_of(&answers);
+    check("each create answered with its event", ids.len() == 3, shown(&answers));
+
+    println!("\n2. Patch them, and an event that isn't there, in one batch");
+    let mut patches = ids
+        .iter()
+        .map(|id| client.update_event_request(&Event { id: Some(id.clone()), summary: Some("Batch patched".into()), ..Default::default() }))
+        .collect::<anyhow::Result<Vec<BatchRequest>>>()?;
+    patches.push(client.update_event_request(&Event { id: Some("nosuchevent00".into()), summary: Some("Nothing".into()), ..Default::default() })?);
+    let answers = client.send_writes(&patches)?;
+    check("the three patched", answers[..3].iter().all(|a| a.as_ref().is_ok_and(|e| e["summary"] == "Batch patched")), shown(&answers));
+    check("the missing one failed on its own, with a 404", answers[3].as_ref().err().and_then(status_of) == Some(404), shown(&answers[3..]));
+    for id in &ids {
+        let event = raw.get(id)?;
+        check(&format!("{id} reads back patched"), event["summary"] == "Batch patched", &event["summary"]);
+    }
+
+    println!("\n3. Fetch them in one batch");
+    let gets: Vec<BatchRequest> =
+        ids.iter().map(|id| BatchRequest { method: "GET", path: format!("calendars/{}/events/{}", segment(&raw.calendar_id), segment(id)), query: Vec::new(), body: None }).collect();
+    let answers = raw.google.calendar_batch(&gets)?;
+    check("each fetched, in order", ids_of(&answers) == ids, shown(&answers));
     Ok(())
 }
 

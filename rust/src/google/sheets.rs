@@ -508,6 +508,46 @@ impl SheetsClient {
     }
 }
 
+impl SheetsClient {
+    /// Write each of `writes` -- (range, rows) of tab `sheet_id` -- in one
+    /// request, as `write_rows_in_sheet` writes one, falling back to
+    /// writing them one at a time if any would land past the tab's last
+    /// row.
+    pub fn write_ranges_in_sheet(&self, spreadsheet_id: &str, sheet_id: i64, writes: &[(String, Rows)]) -> anyhow::Result<()> {
+        write_lock::require("SheetsClient.write_ranges_in_sheet")?;
+        let writes: Vec<&(String, Rows)> = writes.iter().filter(|(_, rows)| !rows.is_empty()).collect();
+        if writes.len() > 1 {
+            forget(spreadsheet_id, Some(sheet_id));
+            let mut data = Vec::new();
+            for (range, rows) in &writes {
+                let mut grid = grid_range(sheet_id, range)?;
+                grid.end_row = Some(grid.start_row + rows.len() as i64);
+                data.push(json!({"dataFilter": {"gridRange": grid.to_json()}, "majorDimension": "ROWS", "values": rows}));
+            }
+            let result = self.execute(
+                "POST",
+                &format!("v4/spreadsheets/{spreadsheet_id}/values:batchUpdateByDataFilter"),
+                &[],
+                Some(&json!({"valueInputOption": "RAW", "data": data})),
+            );
+            match result {
+                Err(error) if status_of(&error) == Some(400) => {}
+                Err(error) => return Err(error),
+                Ok(response) => {
+                    let wanted: usize = writes.iter().flat_map(|(_, rows)| rows.iter().map(Vec::len)).sum();
+                    if response.get("totalUpdatedCells").and_then(Value::as_i64).unwrap_or(0) >= wanted as i64 {
+                        return Ok(());
+                    }
+                }
+            }
+        }
+        for (range, rows) in writes {
+            self.write_rows_in_sheet(spreadsheet_id, sheet_id, range, rows)?;
+        }
+        Ok(())
+    }
+}
+
 /// Each grid range's rows from a batchGetByDataFilter answer, matched by
 /// the filter each value range echoes, else by order.
 fn values_by_filter(response: &Value, grids: &[GridRange]) -> Vec<Rows> {

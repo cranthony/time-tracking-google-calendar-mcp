@@ -32,6 +32,8 @@ pub struct LoggedRequest {
     pub body: Value,
     /// The access token it was sent with.
     pub bearer: Option<String>,
+    /// Whether it came inside a batch, rather than as a request of its own.
+    pub batched: bool,
 }
 
 /// Which quota a request counts against: Sheets meters reads and writes
@@ -529,6 +531,28 @@ impl State {
     }
 
     // -- requests --
+
+    /// An authenticated API request: logged, failed if a test asked for
+    /// that, else answered.
+    #[allow(clippy::too_many_arguments)]
+    fn dispatch(&mut self, method: &str, path: &str, query: &[(String, String)], if_match: Option<&str>, body: Value, bearer: Option<String>, batched: bool) -> (u16, Option<Value>) {
+        self.requests.push(LoggedRequest { method: method.into(), path: decode(path), query: query.to_vec(), if_match: if_match.map(str::to_string), body: body.clone(), bearer, batched });
+        let failing = self.fail_next.iter().position(|(m, p, _, _)| m == method && decode(path).contains(p.as_str()));
+        if let Some(index) = failing {
+            let (_, _, code, message) = self.fail_next.remove(index);
+            if code == 404 && method != "GET" && path.contains("/events/") {
+                // Not found: deleted meanwhile, so gone from the calendar
+                // too.
+                let _ = self.handle("DELETE", path, &[], None, json!({}));
+            }
+            return (code, Some(error_body(code, &message)));
+        }
+        match self.handle(method, path, query, if_match, if body.is_null() { json!({}) } else { body }) {
+            Ok(Some(value)) => (200, Some(value)),
+            Ok(None) => (204, None),
+            Err(e) => (e.status, Some(error_body(e.status, &e.message))),
+        }
+    }
 
     fn handle(&mut self, method: &str, path: &str, query: &[(String, String)], if_match: Option<&str>, body: Value) -> Result<Option<Value>> {
         let one = |name: &str| query.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_str());
@@ -1241,6 +1265,11 @@ impl FakeGoogle {
         [Quota::SheetsRead, Quota::SheetsWrite, Quota::CalendarRead, Quota::CalendarWrite].map(|quota| made.iter().filter(|q| **q == Some(quota)).count())
     }
 
+    /// The HTTP requests made to Calendar so far: a batch is one.
+    pub fn calendar_round_trips(&self) -> usize {
+        self.requests().iter().filter(|r| (r.path.starts_with("/calendar/v3/") && !r.batched) || r.path == "/batch/calendar/v3").count()
+    }
+
     pub fn clear_requests(&self) {
         self.with(|s| s.requests.clear())
     }
@@ -1323,6 +1352,56 @@ impl FakeGoogle {
     }
 }
 
+fn reason(status: u16) -> &'static str {
+    match status {
+        200 => "OK",
+        204 => "No Content",
+        _ => "Error",
+    }
+}
+
+/// One request inside a batch.
+struct BatchedRequest {
+    method: String,
+    path: String,
+    query: Vec<(String, String)>,
+    if_match: Option<String>,
+    body: Value,
+}
+
+/// A multipart/mixed batch's requests, each with its Content-ID.
+fn batch_parts(text: &str, boundary: &str) -> Vec<(String, BatchedRequest)> {
+    let header = |lines: &str, name: &str| {
+        lines.lines().find_map(|l| l.split_once(':').filter(|(k, _)| k.trim().eq_ignore_ascii_case(name)).map(|(_, v)| v.trim().to_string()))
+    };
+    let mut parts = Vec::new();
+    for part in text.split(&format!("--{boundary}")).skip(1) {
+        if part.starts_with("--") {
+            break;
+        }
+        let Some((outer, http)) = part.trim_start_matches("\r\n").split_once("\r\n\r\n") else { continue };
+        let content_id = header(outer, "content-id").unwrap_or_default().trim_matches(['<', '>']).to_string();
+        let (head, body) = http.split_once("\r\n\r\n").unwrap_or((http, ""));
+        let (request_line, headers) = head.split_once("\r\n").unwrap_or((head, ""));
+        let mut request_line = request_line.split_whitespace();
+        let (method, target) = (request_line.next().unwrap_or_default().to_string(), request_line.next().unwrap_or_default().to_string());
+        let (path, query_text) = target.split_once('?').unwrap_or((&target, ""));
+        let mut query: Vec<(String, String)> = query_text
+            .split('&')
+            .filter(|p| !p.is_empty())
+            .map(|p| {
+                let (k, v) = p.split_once('=').unwrap_or((p, ""));
+                (decode(k), decode(v))
+            })
+            .collect();
+        query.sort_by(|a, b| a.0.cmp(&b.0));
+        let body = body.trim_end();
+        let body = if body.is_empty() { Value::Null } else { serde_json::from_str(body).unwrap_or(Value::Null) };
+        parts.push((content_id, BatchedRequest { method, path: path.to_string(), query, if_match: header(headers, "if-match"), body }));
+    }
+    parts
+}
+
 fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
     use std::io::{BufRead, BufReader, Read, Write};
     for stream in listener.incoming() {
@@ -1342,6 +1421,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                 let mut if_match: Option<String> = None;
                 let mut bearer: Option<String> = None;
                 let mut metadata_flavor: Option<String> = None;
+                let mut content_type = String::new();
                 loop {
                     let mut header = String::new();
                     if reader.read_line(&mut header).unwrap_or(0) == 0 {
@@ -1357,6 +1437,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                             "if-match" => if_match = Some(value.trim().to_string()),
                             "authorization" => bearer = value.trim().strip_prefix("Bearer ").map(str::to_string),
                             "metadata-flavor" => metadata_flavor = Some(value.trim().to_string()),
+                            "content-type" => content_type = value.trim().to_string(),
                             _ => {}
                         }
                     }
@@ -1386,7 +1467,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                         .collect();
                     body = Value::Object(form);
                     let mut s = state.lock().unwrap();
-                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: None, body: body.clone(), bearer: None });
+                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: None, body: body.clone(), bearer: None, batched: false });
                     s.ids += 1;
                     let mut answer = json!({"access_token": format!("fresh-{}", s.ids), "expires_in": 3600, "token_type": "Bearer"});
                     // An authorization code's exchange: a refresh token too.
@@ -1398,7 +1479,7 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                     // The metadata server: the service account's token, only
                     // for a request that says it's for the metadata server.
                     let mut s = state.lock().unwrap();
-                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: None, body: Value::Null, bearer: None });
+                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: None, body: Value::Null, bearer: None, batched: false });
                     if metadata_flavor.as_deref() == Some("Google") {
                         (200, Some(json!({"access_token": "metadata-token", "expires_in": 3599, "token_type": "Bearer"})))
                     } else {
@@ -1406,33 +1487,32 @@ fn serve(listener: std::net::TcpListener, state: Arc<Mutex<State>>) {
                     }
                 } else if bearer.is_none() {
                     (401, Some(error_body(401, "Request is missing required authentication credential.")))
-                } else {
+                } else if method == "POST" && path == "/batch/calendar/v3" {
+                    // A batch: logged itself, then each request in it is
+                    // logged and answered as if sent on its own.
                     let mut s = state.lock().unwrap();
-                    s.requests.push(LoggedRequest { method: method.clone(), path: decode(path), query: query.clone(), if_match: if_match.clone(), body: body.clone(), bearer: bearer.clone() });
-                    let failing = s.fail_next.iter().position(|(m, p, _, _)| *m == method && decode(path).contains(p.as_str()));
-                    if let Some(index) = failing {
-                        let (_, _, code, message) = s.fail_next.remove(index);
-                        if code == 404 && method != "GET" && path.contains("/events/") {
-                            // Not found: deleted meanwhile, so gone from
-                            // the calendar too.
-                            let _ = s.handle("DELETE", path, &[], None, json!({}));
-                        }
-                        (code, Some(error_body(code, &message)))
-                    } else {
-                        match s.handle(&method, path, &query, if_match.as_deref(), if body.is_null() { json!({}) } else { body }) {
-                            Ok(Some(value)) => (200, Some(value)),
-                            Ok(None) => (204, None),
-                            Err(e) => (e.status, Some(error_body(e.status, &e.message))),
-                        }
+                    s.requests.push(LoggedRequest { method: method.clone(), path: path.to_string(), query: query.clone(), if_match: None, body: Value::Null, bearer: bearer.clone(), batched: false });
+                    let boundary = content_type.split("boundary=").nth(1).unwrap_or_default().trim_matches('"').to_string();
+                    let mut answers = String::new();
+                    for (content_id, inner) in batch_parts(&String::from_utf8_lossy(&raw), &boundary) {
+                        let (status, answer) = s.dispatch(&inner.method, &inner.path, &inner.query, inner.if_match.as_deref(), inner.body, bearer.clone(), true);
+                        let text = answer.map(|a| a.to_string()).unwrap_or_default();
+                        answers.push_str(&format!(
+                            "--batch_fake\r\nContent-Type: application/http\r\nContent-ID: <response-{content_id}>\r\n\r\nHTTP/1.1 {status} {}\r\nContent-Type: application/json\r\n\r\n{text}\r\n",
+                            reason(status)
+                        ));
                     }
+                    answers.push_str("--batch_fake--\r\n");
+                    let response = format!("HTTP/1.1 200 OK\r\nContent-Type: multipart/mixed; boundary=batch_fake\r\nContent-Length: {}\r\n\r\n{answers}", answers.len());
+                    if stream.write_all(response.as_bytes()).is_err() {
+                        return;
+                    }
+                    continue;
+                } else {
+                    state.lock().unwrap().dispatch(&method, path, &query, if_match.as_deref(), body, bearer.clone(), false)
                 };
                 let text = answer.map(|a| a.to_string()).unwrap_or_default();
-                let reason = match status {
-                    200 => "OK",
-                    204 => "No Content",
-                    _ => "Error",
-                };
-                let response = format!("HTTP/1.1 {status} {reason}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{text}", text.len());
+                let response = format!("HTTP/1.1 {status} {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{text}", reason(status), text.len());
                 if stream.write_all(response.as_bytes()).is_err() {
                     return;
                 }

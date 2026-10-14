@@ -3868,34 +3868,6 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 7,
-        "endRowIndex": 5,
-        "sheetId": 1000079,
-        "startColumnIndex": 6,
-        "startRowIndex": 4
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "done"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 4,
         "sheetId": 1000077,
@@ -3957,6 +3929,23 @@
   {
    "body": {
     "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 7,
+        "endRowIndex": 5,
+        "sheetId": 1000079,
+        "startColumnIndex": 6,
+        "startRowIndex": 4
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "done"
+       ]
+      ]
+     },
      {
       "dataFilter": {
        "gridRange": {

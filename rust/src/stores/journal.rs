@@ -586,12 +586,6 @@ impl CompactionJournal {
         Ok(())
     }
 
-    pub fn mark_step_done(&self, step: &mut JournalStep) -> anyhow::Result<()> {
-        self.write_status(step.row, "done")?;
-        step.status = "done".into();
-        Ok(())
-    }
-
     /// Delete rows nothing needs any more, anywhere in the tab, bottom
     /// first:
     ///
@@ -723,6 +717,14 @@ impl CompactionJournal {
             )?;
         }
         Ok(())
+    }
+
+    /// Write each (row, status) of `statuses` -- steps' and compactions'
+    /// alike -- in one request.
+    pub fn write_statuses(&self, statuses: &[(i64, &str)]) -> anyhow::Result<()> {
+        let writes: Vec<(String, Rows)> =
+            statuses.iter().map(|(row, status)| (format!("{STATUS_COLUMN}{row}:{STATUS_COLUMN}{row}"), vec![vec![status.to_string()]])).collect();
+        self.sheets.write_ranges_in_sheet(&self.spreadsheet_id, self.sheet_id, &writes)
     }
 
     fn write_status(&self, row: i64, status: &str) -> anyhow::Result<()> {

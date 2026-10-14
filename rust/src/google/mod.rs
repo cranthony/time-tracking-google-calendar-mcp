@@ -45,6 +45,16 @@ impl std::fmt::Display for GoogleError {
 
 impl std::error::Error for GoogleError {}
 
+/// One request of a Calendar batch: `path` under the Calendar API's root,
+/// as `CalendarClient` names it.
+#[derive(Debug, Clone)]
+pub struct BatchRequest {
+    pub method: &'static str,
+    pub path: String,
+    pub query: Vec<(&'static str, String)>,
+    pub body: Option<Value>,
+}
+
 /// The status of `error` if it's a Google error.
 pub fn status_of(error: &anyhow::Error) -> Option<u16> {
     error.downcast_ref::<GoogleError>().map(|e| e.status)
@@ -268,16 +278,118 @@ impl Google {
                 }
                 Err(ureq::Error::Status(status, response)) => {
                     let text = response.into_string().unwrap_or_default();
-                    let message = serde_json::from_str::<Value>(&text)
-                        .ok()
-                        .and_then(|v| v.pointer("/error/message").and_then(Value::as_str).map(str::to_string))
-                        .unwrap_or(text);
-                    return Err(GoogleError { status, message, uri: full_uri }.into());
+                    return Err(GoogleError { status, message: error_message(&text), uri: full_uri }.into());
                 }
                 Err(error) => return Err(anyhow!(error).context(format!("requesting {full_uri}"))),
             }
         }
     }
+}
+
+impl Google {
+    /// Calendar's batch endpoint: `requests` sent in one HTTP request, each
+    /// answered on its own, as `request` would answer it. Each still counts
+    /// against Calendar's quota as a request of its own -- what's saved is
+    /// the round trips -- and Calendar may run them in any order, so they
+    /// mustn't depend on each other. Google takes at most 50 at a time.
+    pub fn calendar_batch(&self, requests: &[BatchRequest]) -> anyhow::Result<Vec<anyhow::Result<Value>>> {
+        let boundary = format!("batch_{}", uuid::Uuid::new_v4().simple());
+        let mut body = String::new();
+        let mut paths = Vec::new();
+        for (i, request) in requests.iter().enumerate() {
+            let url = self.calendar_url(&request.path);
+            let mut path = path_of(&url).to_string();
+            for (n, (key, value)) in request.query.iter().enumerate() {
+                path.push(if n == 0 { '?' } else { '&' });
+                path.push_str(&format!("{key}={}", segment(value)));
+            }
+            body.push_str(&format!("--{boundary}\r\nContent-Type: application/http\r\nContent-ID: <item-{i}>\r\n\r\n{} {path} HTTP/1.1\r\n", request.method));
+            match &request.body {
+                Some(json) => body.push_str(&format!("Content-Type: application/json\r\n\r\n{json}\r\n")),
+                None => body.push_str("\r\n"),
+            }
+            paths.push(path);
+        }
+        body.push_str(&format!("--{boundary}--\r\n"));
+        let url = format!("{}batch/calendar/v3", self.calendar_root.trim_end_matches("calendar/v3/"));
+        let mut retried = false;
+        let (content_type, text) = loop {
+            let result = self
+                .agent
+                .post(&url)
+                .set("Authorization", &self.bearer()?)
+                .set("Content-Type", &format!("multipart/mixed; boundary={boundary}"))
+                .send_string(&body);
+            match result {
+                Ok(response) => {
+                    let content_type = response.header("Content-Type").unwrap_or_default().to_string();
+                    break (content_type, response.into_string().context("reading Google's answer")?);
+                }
+                Err(ureq::Error::Status(401, _)) if !retried => {
+                    retried = true;
+                    self.force_refresh()?;
+                }
+                Err(ureq::Error::Status(status, response)) => {
+                    let text = response.into_string().unwrap_or_default();
+                    return Err(GoogleError { status, message: error_message(&text), uri: url }.into());
+                }
+                Err(error) => return Err(anyhow!(error).context(format!("requesting {url}"))),
+            }
+        };
+        let answers = batch_answers(&text, content_type.split("boundary=").nth(1).unwrap_or_default().trim_matches('"'));
+        Ok(paths
+            .into_iter()
+            .enumerate()
+            .map(|(i, path)| match answers.iter().find(|(id, _, _)| *id == i) {
+                Some((_, status, text)) if (200..300).contains(status) => {
+                    if text.trim().is_empty() {
+                        Ok(Value::Null)
+                    } else {
+                        serde_json::from_str(text).context("Google's answer isn't JSON")
+                    }
+                }
+                Some((_, status, text)) => Err(GoogleError { status: *status, message: error_message(text), uri: path }.into()),
+                None => Err(anyhow!("Calendar's batch answer has nothing for {path}")),
+            })
+            .collect())
+    }
+}
+
+/// Google's message in an error's body, else the body.
+fn error_message(text: &str) -> String {
+    serde_json::from_str::<Value>(text)
+        .ok()
+        .and_then(|v| v.pointer("/error/message").and_then(Value::as_str).map(str::to_string))
+        .unwrap_or_else(|| text.to_string())
+}
+
+/// `url` from its path on: "https://host/a/b?c" is "/a/b?c".
+fn path_of(url: &str) -> &str {
+    let after_scheme = url.find("://").map(|i| i + 3).unwrap_or(0);
+    url[after_scheme..].find('/').map(|i| &url[after_scheme + i..]).unwrap_or("/")
+}
+
+/// Each answer in a batch's multipart/mixed response: (the index its
+/// Content-ID names, its status, its body).
+fn batch_answers(text: &str, boundary: &str) -> Vec<(usize, u16, String)> {
+    let mut answers = Vec::new();
+    for part in text.split(&format!("--{boundary}")).skip(1) {
+        if part.starts_with("--") {
+            break;
+        }
+        let part = part.trim_start_matches(['\r', '\n']);
+        let Some((outer, http)) = part.split_once("\r\n\r\n") else { continue };
+        let index = outer
+            .lines()
+            .find_map(|l| l.split_once(':').filter(|(k, _)| k.trim().eq_ignore_ascii_case("content-id")).map(|(_, v)| v.trim().to_string()))
+            .and_then(|id| id.trim_matches(['<', '>']).rsplit('-').next().and_then(|n| n.parse().ok()));
+        let (head, body) = http.split_once("\r\n\r\n").unwrap_or((http, ""));
+        let status = head.split_whitespace().nth(1).and_then(|s| s.parse().ok());
+        if let (Some(index), Some(status)) = (index, status) {
+            answers.push((index, status, body.trim_end().to_string()));
+        }
+    }
+    answers
 }
 
 fn parse_expiry(text: &str) -> Option<NaiveDateTime> {

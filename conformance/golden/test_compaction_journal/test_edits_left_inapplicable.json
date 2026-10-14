@@ -9867,6 +9867,7 @@
    "query": {}
   },
   {
+   "batched": true,
    "body": {
     "end": {
      "dateTime": "2026-10-05T12:40:00-04:00"
@@ -9875,6 +9876,16 @@
    "if_match": null,
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
+   "query": {}
+  },
+  {
+   "batched": true,
+   "body": {
+    "summary": "Supper"
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
    "query": {}
   },
   {
@@ -9896,27 +9907,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "summary": "Supper"
-   },
-   "if_match": null,
-   "method": "PATCH",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {
@@ -9933,18 +9924,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {

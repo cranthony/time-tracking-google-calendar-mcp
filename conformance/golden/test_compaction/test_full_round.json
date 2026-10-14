@@ -12127,6 +12127,38 @@
    "query": {}
   },
   {
+   "batched": true,
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/d820ae0f22570a19812dcb76c2",
+   "query": {}
+  },
+  {
+   "batched": true,
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
+   "query": {}
+  },
+  {
+   "batched": true,
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
+   "query": {}
+  },
+  {
+   "batched": true,
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/ee7f6f96ac6a86131c31dc7199",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
      {
@@ -12146,6 +12178,7 @@
    "query": {}
   },
   {
+   "batched": true,
    "body": {
     "end": {
      "dateTime": "2026-10-05T07:45:00-04:00"
@@ -12167,41 +12200,7 @@
    }
   },
   {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 7,
-        "endRowIndex": 32,
-        "sheetId": 1000075,
-        "startColumnIndex": 6,
-        "startRowIndex": 31
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "done"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
+   "batched": true,
    "body": {
     "description": "Notes:\n- 12:30 lunch with Robin at the cafe",
     "eventLabelId": "7a8759ac-8307-5cf3-937d-398ec33255fd",
@@ -12222,41 +12221,7 @@
    }
   },
   {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 7,
-        "endRowIndex": 33,
-        "sheetId": 1000075,
-        "startColumnIndex": 6,
-        "startRowIndex": 32
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "done"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
-   "query": {}
-  },
-  {
+   "batched": true,
    "body": {
     "end": {
      "dateTime": "2026-10-05T19:30:00-04:00"
@@ -12274,34 +12239,7 @@
    "query": {}
   },
   {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 7,
-        "endRowIndex": 34,
-        "sheetId": 1000075,
-        "startColumnIndex": 6,
-        "startRowIndex": 33
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "done"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
+   "batched": true,
    "body": {
     "end": {
      "dateTime": "2026-10-06T15:00:00-04:00"
@@ -12313,34 +12251,7 @@
    "query": {}
   },
   {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 7,
-        "endRowIndex": 35,
-        "sheetId": 1000075,
-        "startColumnIndex": 6,
-        "startRowIndex": 34
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "done"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
+   "batched": true,
    "body": {
     "end": {
      "dateTime": "2026-10-06T16:00:00-04:00"
@@ -12373,6 +12284,74 @@
       "dataFilter": {
        "gridRange": {
         "endColumnIndex": 7,
+        "endRowIndex": 32,
+        "sheetId": 1000075,
+        "startColumnIndex": 6,
+        "startRowIndex": 31
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "done"
+       ]
+      ]
+     },
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 7,
+        "endRowIndex": 33,
+        "sheetId": 1000075,
+        "startColumnIndex": 6,
+        "startRowIndex": 32
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "done"
+       ]
+      ]
+     },
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 7,
+        "endRowIndex": 34,
+        "sheetId": 1000075,
+        "startColumnIndex": 6,
+        "startRowIndex": 33
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "done"
+       ]
+      ]
+     },
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 7,
+        "endRowIndex": 35,
+        "sheetId": 1000075,
+        "startColumnIndex": 6,
+        "startRowIndex": 34
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "done"
+       ]
+      ]
+     },
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 7,
         "endRowIndex": 36,
         "sheetId": 1000075,
         "startColumnIndex": 6,
@@ -12385,18 +12364,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {
@@ -13357,13 +13325,6 @@
    "query": {}
   },
   {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
    "body": {
     "extendedProperties": {
      "private": {
@@ -13868,13 +13829,6 @@
      "2026-07-07T12:00:00-04:00"
     ]
    }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
-   "query": {}
   },
   {
    "body": null,
