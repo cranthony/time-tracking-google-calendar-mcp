@@ -956,7 +956,7 @@ pub fn settle_refs(decision: &EventDecision, settled: &Dict<AdditionSettled>) ->
             }
             other => other.clone(),
         };
-        out.facts = Some(Facts { location_ids: named_value(&facts.location_ids), with_ids: named_value(&facts.with_ids), for_ids: named_value(&facts.for_ids), notes });
+        out.facts = Some(Facts { location_ids: named_value(&facts.location_ids), with_ids: named_value(&facts.with_ids), for_ids: named_value(&facts.for_ids), notes, commute: facts.commute.clone() });
     }
     out
 }

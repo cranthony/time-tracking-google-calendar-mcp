@@ -37,7 +37,8 @@ pub enum EventField {
 /// What compaction established about an event: where it was
 /// (location_ids, usually one place; several when it moved between
 /// them), who was there with the user (with_ids), who it was for
-/// (for_ids), and a note on how it was for each person there (notes).
+/// (for_ids), a note on how it was for each person there (notes), and
+/// whether it was a commute, getting from one place to another (commute).
 /// Every field is optional.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Facts {
@@ -45,6 +46,7 @@ pub struct Facts {
     pub with_ids: Option<Vec<String>>,
     pub for_ids: Option<Vec<String>>,
     pub notes: Option<IndexMap<String, String>>,
+    pub commute: Option<bool>,
 }
 
 /// A calendar event, as every event tool takes and returns it.
@@ -85,9 +87,10 @@ pub struct Facts {
 /// traits' judgments later: location_ids (see
 /// get_locations), with_ids (the people there with the user -- never
 /// "self", who's at every event), for_ids (people it was done for who
-/// weren't there) and notes ({person id: a subjective note on how it was
-/// for them}, "self" for the user). Compaction writes them; set them to
-/// replace them whole.
+/// weren't there), notes ({person id: a subjective note on how it was
+/// for them}, "self" for the user) and commute (true for getting from
+/// one place to another). Compaction writes them; set them to replace
+/// them whole.
 ///
 /// judgments are how the event went for each person, judged after
 /// compaction against each judgment part of the traits that apply to them
@@ -208,6 +211,7 @@ impl From<&Facts> for EventFacts {
             with_ids: facts.with_ids.as_ref().map(|ids| json!(ids)),
             for_ids: facts.for_ids.as_ref().map(|ids| json!(ids)),
             notes: facts.notes.as_ref().map(|notes| json!(notes)),
+            commute: facts.commute.map(Value::Bool),
         }
     }
 }

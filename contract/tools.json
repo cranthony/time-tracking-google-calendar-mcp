@@ -35,7 +35,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -70,6 +70,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -112,7 +118,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -522,7 +528,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -557,6 +563,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -854,7 +866,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -889,6 +901,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -931,7 +949,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -1224,7 +1242,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -1259,6 +1277,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -1301,7 +1325,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -1699,7 +1723,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -1734,6 +1758,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -1952,7 +1982,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -1987,6 +2017,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -2301,7 +2337,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -2336,6 +2372,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -2665,7 +2707,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -2700,6 +2742,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -3035,7 +3083,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -3070,6 +3118,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -3394,7 +3448,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -3429,6 +3483,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -3471,7 +3531,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -3764,7 +3824,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -3799,6 +3859,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -3841,7 +3907,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -4177,7 +4243,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -4212,6 +4278,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -4254,7 +4326,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -11196,7 +11268,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -11231,6 +11303,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -12016,7 +12094,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -12051,6 +12129,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -13228,7 +13312,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -13263,6 +13347,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -13985,7 +14075,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -14020,6 +14110,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -14257,7 +14353,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there) and notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user). Compaction writes them; set them to\nreplace them whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -14847,7 +14943,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -14882,6 +14978,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -15881,7 +15983,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -15916,6 +16018,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }
@@ -16864,7 +16972,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -16899,6 +17007,12 @@
               },
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "commute": {
+              "type": [
+                "boolean",
                 "null"
               ]
             }

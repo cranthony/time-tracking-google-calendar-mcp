@@ -1,5 +1,6 @@
 //! An event's facts: what compaction established about it -- where (one
-//! place or several), who with, who for, and a note on each person there.
+//! place or several), who with, who for, and a note on each person there
+//! -- and whether it's a commute, getting from one place to another.
 //!
 //! The fields hold JSON values rather than typed ones: facts read back
 //! from an event someone edited by hand can be any shape, and the checks
@@ -22,17 +23,21 @@ pub struct Facts {
     pub with_ids: Option<Value>,
     pub for_ids: Option<Value>,
     pub notes: Option<Value>,
+    /// True for a commute: getting from one place to another.
+    pub commute: Option<Value>,
 }
 
 /// The JSON key each field is stored under, in field order.
-const FIELDS: [(&str, &str); 4] =
-    [("location_ids", "locations"), ("with_ids", "with"), ("for_ids", "for"), ("notes", "notes")];
+const FIELDS: [(&str, &str); 5] =
+    [("location_ids", "locations"), ("with_ids", "with"), ("for_ids", "for"), ("notes", "notes"), ("commute", "commute")];
 
 fn is_blank(value: &Option<Value>) -> bool {
     match value {
         None | Some(Value::Null) => true,
         Some(Value::Array(a)) => a.is_empty(),
         Some(Value::Object(o)) => o.is_empty(),
+        // Not a commute is no fact.
+        Some(Value::Bool(b)) => !b,
         _ => false,
     }
 }
@@ -43,6 +48,7 @@ impl Facts {
             "location_ids" => &self.location_ids,
             "with_ids" => &self.with_ids,
             "for_ids" => &self.for_ids,
+            "commute" => &self.commute,
             _ => &self.notes,
         }
     }
@@ -84,7 +90,18 @@ impl Facts {
             }
             other => other.clone(),
         };
-        Facts { location_ids: ids(&self.location_ids), with_ids: ids(&self.with_ids), for_ids: ids(&self.for_ids), notes }
+        Facts {
+            location_ids: ids(&self.location_ids),
+            with_ids: ids(&self.with_ids),
+            for_ids: ids(&self.for_ids),
+            notes,
+            commute: self.commute.clone(),
+        }
+    }
+
+    /// Whether it's a commute.
+    pub fn is_commute(&self) -> bool {
+        self.commute == Some(Value::Bool(true))
     }
 
     fn strings(value: &Option<Value>) -> Vec<String> {
@@ -148,6 +165,7 @@ impl Facts {
                     "location_ids" => &mut facts.location_ids,
                     "with_ids" => &mut facts.with_ids,
                     "for_ids" => &mut facts.for_ids,
+                    "commute" => &mut facts.commute,
                     _ => &mut facts.notes,
                 };
                 *slot = Some(value.clone());
@@ -169,7 +187,7 @@ impl Facts {
     /// Facts from a client's JSON (already checked against the schema).
     pub fn from_public(value: &Value) -> Facts {
         let get = |key: &str| value.get(key).filter(|v| !v.is_null()).cloned();
-        Facts { location_ids: get("location_ids"), with_ids: get("with_ids"), for_ids: get("for_ids"), notes: get("notes") }
+        Facts { location_ids: get("location_ids"), with_ids: get("with_ids"), for_ids: get("for_ids"), notes: get("notes"), commute: get("commute") }
     }
 }
 
@@ -237,6 +255,9 @@ pub fn fact_problems(facts: &Facts) -> Vec<String> {
             }
         }
     }
+    if facts.commute.as_ref().is_some_and(|c| !c.is_null() && !c.is_boolean()) {
+        problems.push("\"commute\" must be true or false".to_string());
+    }
     if problems.is_empty() && facts.to_json().chars().count() > MAX_FACTS_CHARS {
         problems.push(format!("are longer than {MAX_FACTS_CHARS} characters as JSON"));
     }
@@ -257,6 +278,18 @@ mod tests {
         let given = facts(json!({"location_ids": ["home", "park"], "with_ids": ["sam"], "for_ids": ["mom"], "notes": {"self": "tired", "sam": "glad"}}));
         assert_eq!(given.to_json(), r#"{"locations":["home","park"],"with":["sam"],"for":["mom"],"notes":{"self":"tired","sam":"glad"}}"#);
         assert_eq!(Facts::from_json(&given.to_json()), Some(given));
+    }
+
+    #[test]
+    fn a_commute_is_kept_and_checked() {
+        let commute = facts(json!({"commute": true}));
+        assert!(commute.is_commute() && !commute.is_empty());
+        assert_eq!(commute.to_json(), r#"{"commute":true}"#);
+        assert_eq!(Facts::from_json(&commute.to_json()), Some(commute));
+        // Not a commute is no fact at all.
+        assert!(facts(json!({"commute": false})).is_empty());
+        assert_eq!(facts(json!({"commute": false, "with_ids": ["sam"]})).to_json(), r#"{"with":["sam"]}"#);
+        assert_eq!(fact_problems(&facts(json!({"commute": "yes"}))), vec!["\"commute\" must be true or false"]);
     }
 
     #[test]
