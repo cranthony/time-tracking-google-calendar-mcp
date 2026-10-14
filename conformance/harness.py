@@ -1,11 +1,11 @@
 """Run a server under test against conformance/fake_google.py, over MCP.
 
 The server is the Rust build in rust/target (debug, or else release --
-`cargo build` first), or whatever command line `CTT_SERVER` names. It's
+`cargo build` first), or whatever command line `TIME_TRACKER_SERVER` names. It's
 started as a subprocess over stdio, with its Google API root pointed at
-the fake, a fixed clock (`CTT_NOW`), deterministic ids
-(`CTT_DETERMINISTIC_IDS`) and no background health writer
-(`CTT_HEALTH_WRITER=off`) -- see rust/src/determinism.rs.
+the fake, a fixed clock (`TIME_TRACKER_NOW`), deterministic ids
+(`TIME_TRACKER_DETERMINISTIC_IDS`) and no background health writer
+(`TIME_TRACKER_HEALTH_WRITER=off`) -- see rust/src/determinism.rs.
 
 What each call returned, the requests the server sent Google, and the
 fake's state afterwards are all recorded on the `Session`, for a
@@ -74,15 +74,15 @@ class FakeGoogleServer:
 
 
 def server_command() -> list[str]:
-    spec = os.environ.get("CTT_SERVER")
+    spec = os.environ.get("TIME_TRACKER_SERVER")
     if spec:
         return shlex.split(spec, posix=os.name != "nt")
-    name = "ctt-server.exe" if os.name == "nt" else "ctt-server"
+    name = "time-tracker-server.exe" if os.name == "nt" else "time-tracker-server"
     for profile in ("debug", "release"):
         built = ROOT / "rust" / "target" / profile / name
         if built.exists():
             return [str(built)]
-    raise RuntimeError("No Rust server build: run `cargo build --manifest-path rust/Cargo.toml` first, or set CTT_SERVER")
+    raise RuntimeError("No Rust server build: run `cargo build --manifest-path rust/Cargo.toml` first, or set TIME_TRACKER_SERVER")
 
 
 @dataclass
@@ -258,16 +258,16 @@ async def running_server(google: FakeGoogle, calendar_id: str, *, now: str = DEF
             "GOOGLE_OAUTH_TOKEN_PATH": str(token_path),
             "GOOGLE_OAUTH_CREDENTIALS_PATH": str(credentials_path),
             "MCP_TRANSPORT": "stdio",
-            "CTT_NOW": now,
-            "CTT_DETERMINISTIC_IDS": "1",
-            "CTT_HEALTH_WRITER": "off",
+            "TIME_TRACKER_NOW": now,
+            "TIME_TRACKER_DETERMINISTIC_IDS": "1",
+            "TIME_TRACKER_HEALTH_WRITER": "off",
             "PYTHONIOENCODING": "utf-8",
             **(env or {}),
         }
         command = server_command()
         params = StdioServerParameters(command=command[0], args=command[1:], env=server_env, cwd=str(ROOT))
-        # CTT_SERVER_LOG keeps the server's stderr (its logs), for debugging.
-        with open(os.environ.get("CTT_SERVER_LOG") or Path(tmp) / "stderr.log", "w+", encoding="utf-8") as errlog:
+        # TIME_TRACKER_SERVER_LOG keeps the server's stderr (its logs), for debugging.
+        with open(os.environ.get("TIME_TRACKER_SERVER_LOG") or Path(tmp) / "stderr.log", "w+", encoding="utf-8") as errlog:
             try:
                 async with stdio_client(params, errlog=errlog) as (read, write):
                     async with ClientSession(read, write) as client:

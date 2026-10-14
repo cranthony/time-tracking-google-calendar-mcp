@@ -57,12 +57,12 @@ class HttpServer:
             "MCP_PUBLIC_URL": self.resource,
             "MCP_ALLOWED_USER_IDS": f"{ALLOWED}, user_01SECOND",
             "MCP_CORS_ALLOWED_ORIGINS": ORIGIN,
-            "CTT_NOW": DEFAULT_NOW,
-            "CTT_DETERMINISTIC_IDS": "1",
-            "CTT_HEALTH_WRITER": "off",
+            "TIME_TRACKER_NOW": DEFAULT_NOW,
+            "TIME_TRACKER_DETERMINISTIC_IDS": "1",
+            "TIME_TRACKER_HEALTH_WRITER": "off",
             "PYTHONIOENCODING": "utf-8",
         }
-        self._log = open(os.environ.get("CTT_SERVER_LOG") or tmp / "server.log", "w+", encoding="utf-8")
+        self._log = open(os.environ.get("TIME_TRACKER_SERVER_LOG") or tmp / "server.log", "w+", encoding="utf-8")
         self.process = subprocess.Popen(server_command(), env=env, cwd=str(ROOT), stdout=self._log, stderr=subprocess.STDOUT)
         self.exchanges: list[dict] = []
         self._session_id: str | None = None

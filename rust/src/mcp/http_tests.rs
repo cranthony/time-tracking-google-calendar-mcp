@@ -523,7 +523,7 @@ const INDEX: &str = "<!doctype html><title>app</title>";
 /// A built web app in a directory of its own, beside a file that isn't
 /// the site's.
 fn site_dir() -> std::path::PathBuf {
-    let parent = std::env::temp_dir().join(format!("ctt-site-{}", uuid::Uuid::new_v4().simple()));
+    let parent = std::env::temp_dir().join(format!("time-tracker-site-{}", uuid::Uuid::new_v4().simple()));
     let site = parent.join("web");
     std::fs::create_dir_all(site.join("assets")).unwrap();
     std::fs::write(site.join("index.html"), INDEX).unwrap();
@@ -765,10 +765,10 @@ fn setup_refuses_a_missing_link_and_a_server_already_set_up() {
 #[test]
 fn the_token_secret_is_a_secrets_resource_name() {
     assert_eq!(config(&[]).unwrap().token_secret, None);
-    let name = "projects/corp-project/secrets/ctt-google-token";
+    let name = "projects/corp-project/secrets/time-tracker-google-token";
     assert_eq!(config(&[("SETUP_TOKEN_SECRET", name)]).unwrap().token_secret.as_deref(), Some(name));
     assert_eq!(disabled(&[("SETUP_TOKEN_SECRET", name)]).unwrap().token_secret.as_deref(), Some(name));
-    for wrong in ["ctt-google-token", "projects/p/secrets/s/versions/latest", "projects//secrets/s"] {
+    for wrong in ["time-tracker-google-token", "projects/p/secrets/s/versions/latest", "projects//secrets/s"] {
         let refused = config(&[("SETUP_TOKEN_SECRET", wrong)]).err().unwrap().to_string();
         assert!(refused.contains("should name a Secret Manager secret"), "{wrong}: {refused}");
     }

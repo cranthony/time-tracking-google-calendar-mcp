@@ -1,8 +1,8 @@
 //! The tools' contract -- each tool's name, description, and input and
 //! output schemas, as tools/list sends them -- derived from the code:
 //! `#[derive(Schema)]` on argument and result types, `#[tool]` on each
-//! tool function (see the ctt-derive crate). contract/tools.json is a
-//! snapshot of it, which a test keeps current (CTT_UPDATE_CONTRACT=1
+//! tool function (see the time-tracker-derive crate). contract/tools.json is a
+//! snapshot of it, which a test keeps current (TIME_TRACKER_UPDATE_CONTRACT=1
 //! rewrites it), so a change to what clients see shows in a diff.
 //!
 //! The schemas' shape:
@@ -33,7 +33,7 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
 
-pub use ctt_derive::{tool, RowItem, Schema};
+pub use time_tracker_derive::{tool, RowItem, Schema};
 
 /// The models a schema refers to, by title.
 #[derive(Default)]

@@ -1,6 +1,6 @@
 //! The time-tracking Google Calendar MCP server. See ../README.md.
 
-use ctt::{app, dotenv, mcp};
+use time_tracker::{app, dotenv, mcp};
 use std::sync::Arc;
 
 fn main() -> anyhow::Result<()> {

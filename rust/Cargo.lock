@@ -204,44 +204,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctt"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "base64",
- "chrono",
- "chrono-tz",
- "ctt-derive",
- "flate2",
- "futures-core",
- "indexmap",
- "jsonwebtoken",
- "regex",
- "rrule",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "ureq",
- "uuid",
-]
-
-[[package]]
-name = "ctt-derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
-]
-
-[[package]]
 name = "deranged"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1278,6 +1240,44 @@ checksum = "7e689342a48d2ea927c87ea50cabf8594854bf940e9310208848d680d668ed85"
 dependencies = [
  "num-conv",
  "time-core",
+]
+
+[[package]]
+name = "time-tracker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64",
+ "chrono",
+ "chrono-tz",
+ "flate2",
+ "futures-core",
+ "indexmap",
+ "jsonwebtoken",
+ "regex",
+ "rrule",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "time-tracker-derive",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "ureq",
+ "uuid",
+]
+
+[[package]]
+name = "time-tracker-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]

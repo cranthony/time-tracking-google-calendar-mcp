@@ -1,5 +1,5 @@
-//! create_calendar: see ctt::cli::create_calendar.
+//! create_calendar: see time_tracker::cli::create_calendar.
 
 fn main() {
-    ctt::cli::create_calendar::main();
+    time_tracker::cli::create_calendar::main();
 }

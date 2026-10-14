@@ -291,10 +291,10 @@ impl App {
     }
 
     /// Start writing health metrics in the background -- not with
-    /// CTT_HEALTH_WRITER=off (conformance/ compares each tool's requests,
+    /// TIME_TRACKER_HEALTH_WRITER=off (conformance/ compares each tool's requests,
     /// which the writer's would interleave with).
     pub fn start_health_writer(self: &Arc<Self>) {
-        if std::env::var("CTT_HEALTH_WRITER").as_deref() == Ok("off") {
+        if std::env::var("TIME_TRACKER_HEALTH_WRITER").as_deref() == Ok("off") {
             return;
         }
         let _ = self.writer.set(HealthWriter::start(self.clone()));

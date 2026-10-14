@@ -1,6 +1,6 @@
 //! `#[derive(Schema)]` and `#[tool]`: a tool's argument and result types,
 //! and the tool itself, described as the JSON schemas tools/list sends.
-//! The schemas are built at run time by `ctt::contract` (see there for
+//! The schemas are built at run time by `time_tracker::contract` (see there for
 //! their shape); these only gather what the code says -- each type's
 //! fields, doc comments and `#[schema(...)]` options.
 
@@ -320,7 +320,7 @@ fn tool_impl(mut function: ItemFn, writes: bool) -> syn::Result<Tokens> {
     })
 }
 
-/// A row of a row tab (see `ctt::sheet::rows`): its fields are the tab's
+/// A row of a row tab (see `time_tracker::sheet::rows`): its fields are the tab's
 /// columns, in order, each kept as text (`String`), a whole number (`i64`)
 /// or JSON (anything else), `Option` or not -- or as text, with
 /// `#[row(text)]` (a literal kept as its name). `#[row(name = "...")]`

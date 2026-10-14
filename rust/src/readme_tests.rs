@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-const START: &str = "<!-- toc: written by `CTT_UPDATE_README=1 cargo test` from the headings below; don't edit by hand -->";
+const START: &str = "<!-- toc: written by `TIME_TRACKER_UPDATE_README=1 cargo test` from the headings below; don't edit by hand -->";
 const END: &str = "<!-- /toc -->";
 
 fn readme_path() -> PathBuf {
@@ -88,17 +88,17 @@ fn with_toc(text: &str) -> String {
 
 #[test]
 fn the_readmes_table_of_contents_follows_its_headings() {
-    // A heading added, renamed or removed: CTT_UPDATE_README=1 cargo test,
+    // A heading added, renamed or removed: TIME_TRACKER_UPDATE_README=1 cargo test,
     // and commit README.md.
     let text = readme();
     let updated = with_toc(&text);
-    if std::env::var_os("CTT_UPDATE_README").is_some() {
+    if std::env::var_os("TIME_TRACKER_UPDATE_README").is_some() {
         if updated != text {
             std::fs::write(readme_path(), &updated).unwrap();
         }
         return;
     }
-    assert!(updated == text, "README.md's table of contents doesn't follow its headings: rerun with CTT_UPDATE_README=1 to write it");
+    assert!(updated == text, "README.md's table of contents doesn't follow its headings: rerun with TIME_TRACKER_UPDATE_README=1 to write it");
 }
 
 #[test]

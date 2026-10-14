@@ -1,7 +1,7 @@
 # time-tracking-google-calendar-mcp
 A Model Context Protocol (MCP) for managing a Google calendar with a set of non-overlapping events representing one person's time
 
-<!-- toc: written by `CTT_UPDATE_README=1 cargo test` from the headings below; don't edit by hand -->
+<!-- toc: written by `TIME_TRACKER_UPDATE_README=1 cargo test` from the headings below; don't edit by hand -->
 
 **Contents**
 
@@ -48,7 +48,7 @@ The server is written in Rust, in [`rust/`](rust/). Install Rust with [rustup](h
 cargo build --release --manifest-path rust/Cargo.toml
 ```
 
-That builds the server (`ctt-server`) and the command-line tools (`create_calendar`, `calendar_cli`, `probe`) into `rust/target/release/`. On Windows, use the GNU toolchain (`rustup default stable-x86_64-pc-windows-gnu`) with a MinGW-w64 toolchain on `PATH` (e.g. `winget install BrechtSanders.WinLibs.POSIX.UCRT`), or the MSVC one with Visual Studio's build tools.
+That builds the server (`time-tracker-server`) and the command-line tools (`create_calendar`, `calendar_cli`, `probe`) into `rust/target/release/`. On Windows, use the GNU toolchain (`rustup default stable-x86_64-pc-windows-gnu`) with a MinGW-w64 toolchain on `PATH` (e.g. `winget install BrechtSanders.WinLibs.POSIX.UCRT`), or the MSVC one with Visual Studio's build tools.
 
 The [conformance scenarios](#tests) are run by a Python harness; to run them, install its dependencies in a virtual environment:
 
@@ -116,10 +116,10 @@ If this server is launched by an MCP host (Claude Desktop, Claude Code, etc.) in
 ### Running the server
 
 ```bash
-cargo run --release --manifest-path rust/Cargo.toml --bin ctt-server
+cargo run --release --manifest-path rust/Cargo.toml --bin time-tracker-server
 ```
 
-With no `MCP_TRANSPORT` set it serves MCP over stdio, for a local MCP host to run as a subprocess: point the host's config at `rust/target/release/ctt-server` (with the [configuration](#configuration) in its `env`, or a `.env` in its working directory). See [MCP tools](#mcp-tools) below for what it exposes.
+With no `MCP_TRANSPORT` set it serves MCP over stdio, for a local MCP host to run as a subprocess: point the host's config at `rust/target/release/time-tracker-server` (with the [configuration](#configuration) in its `env`, or a `.env` in its working directory). See [MCP tools](#mcp-tools) below for what it exposes.
 
 ## Using it
 
@@ -520,10 +520,10 @@ It signs in with the OAuth client in `GOOGLE_OAUTH_CREDENTIALS_PATH`, so the ser
 - **A web application's client** (Google Cloud Console → Credentials → OAuth client ID → "Web application") sends the browser straight back: register `<this server's URL>/setup/callback` (e.g. `https://your-service.onrender.com/setup/callback`) as one of its authorized redirect URIs.
 - **A desktop app's client** (the kind `create_calendar` uses) can only send the browser back to `localhost`, where nothing answers: the page tells you to copy the address the sign-in tab lands on, and paste it in to finish.
 
-**On Cloud Run, the server can keep the token in Secret Manager itself**, with nothing to copy: set `SETUP_TOKEN_SECRET` to the secret mounted at `GOOGLE_OAUTH_TOKEN_PATH` (its `latest` version, e.g. `--set-secrets=/secrets/token.json=ctt-google-token:latest`, `GOOGLE_OAUTH_TOKEN_PATH=/secrets/token.json`), and let the service's own account add versions to that one secret:
+**On Cloud Run, the server can keep the token in Secret Manager itself**, with nothing to copy: set `SETUP_TOKEN_SECRET` to the secret mounted at `GOOGLE_OAUTH_TOKEN_PATH` (its `latest` version, e.g. `--set-secrets=/secrets/token.json=time-tracker-google-token:latest`, `GOOGLE_OAUTH_TOKEN_PATH=/secrets/token.json`), and let the service's own account add versions to that one secret:
 
 ```bash
-gcloud secrets add-iam-policy-binding ctt-google-token --member=serviceAccount:<the service's account> --role=roles/secretmanager.secretVersionAdder
+gcloud secrets add-iam-policy-binding time-tracker-google-token --member=serviceAccount:<the service's account> --role=roles/secretmanager.secretVersionAdder
 ```
 
 A setup then adds the new token as the secret's next version, as that account (its token comes from the metadata server: no key is kept anywhere), and the page shows the version instead of the token. The running server uses the token at once; a new instance reads the `latest` version as it starts. Old versions stay until you destroy them (`gcloud secrets versions destroy`) — Secret Manager's free tier covers six. If the write fails (a missing role, say), the setup still finishes, and the page says why and shows the token to add by hand.
@@ -535,7 +535,7 @@ A calendar belongs to the app that made it (`calendar.app.created`), and whether
 For a network where a proxy in front of the server already signs people in, the server can be built to skip WorkOS altogether:
 
 ```bash
-AUTH_DISABLED=true cargo build --release --manifest-path rust/Cargo.toml --bin ctt-server
+AUTH_DISABLED=true cargo build --release --manifest-path rust/Cargo.toml --bin time-tracker-server
 ```
 
 `AUTH_DISABLED` is read when the server is **built**, not when it runs ([`rust/src/auth_mode.rs`](rust/src/auth_mode.rs), [`rust/build.rs`](rust/build.rs)): `true`, `1` or `yes`, in any case, turn sign-in off, and anything else leaves it on. A binary built without it always requires WorkOS sign-in, whatever its environment says. Setting `AUTH_DISABLED` in the environment of a normal build just logs that it's ignored.
@@ -569,7 +569,7 @@ Working on the server itself.
 All of it is in [`rust/src/`](rust/src/) (`lib.rs` lists the modules the server and the tools share):
 
 - [`main.rs`](rust/src/main.rs) — the server: loads `.env`, builds the [`App`](rust/src/app.rs) (configuration, the Google clients, and each store, built the first time a tool needs it), and serves MCP over stdio or streamable HTTP ([`mcp/`](rust/src/mcp/): the protocol, argument checks against each tool's input schema, and the HTTP transport with WorkOS bearer-token checks, CORS and the OAuth proxy for browser clients).
-- [`tools/`](rust/src/tools/) — the MCP tools, each taking its checked arguments and returning its result as JSON. Their names, descriptions and input/output schemas, which tools/list sends, are derived from the code ([`contract.rs`](rust/src/contract.rs): each tool's doc comment and its parameters' and result's types, via `#[tool]` and `#[derive(Schema)]` from [`derive/`](rust/derive/)). [`contract/tools.json`](contract/tools.json) is a snapshot of them that a test keeps current: after a deliberate change, `CTT_UPDATE_CONTRACT=1 cargo test` rewrites it, and its diff shows what clients will see change.
+- [`tools/`](rust/src/tools/) — the MCP tools, each taking its checked arguments and returning its result as JSON. Their names, descriptions and input/output schemas, which tools/list sends, are derived from the code ([`contract.rs`](rust/src/contract.rs): each tool's doc comment and its parameters' and result's types, via `#[tool]` and `#[derive(Schema)]` from [`derive/`](rust/derive/)). [`contract/tools.json`](contract/tools.json) is a snapshot of them that a test keeps current: after a deliberate change, `TIME_TRACKER_UPDATE_CONTRACT=1 cargo test` rewrites it, and its diff shows what clients will see change.
 - [`google/`](rust/src/google/) — Google API access: the OAuth token (refreshed as it expires, and the consent flow the command-line tools run for a first one), [`calendar.rs`](rust/src/google/calendar.rs) (`CalendarClient`: events, labels, the calendar's own metadata) and [`sheets.rs`](rust/src/google/sheets.rs) (`SheetsClient`). Inside a tool call, a `list_events` within a range already listed is answered from memory (`CachedListings`), and so is a tab read again (`CachedReads`); any write forgets what it touches, and nothing is kept between calls, so hand edits are always seen. Sheets requests retry with backoff on 429 (its read quota is 60 a minute).
 - [`event.rs`](rust/src/event.rs) and [`facts.rs`](rust/src/facts.rs) — an event as the server sees it, its facts, and how both are written to Calendar.
 - [`sheet/`](rust/src/sheet/) — the calendar's metadata spreadsheet and its tabs (see [Calendar metadata sheets](#calendar-metadata-sheets)), and tabs of one item per row, read and written by header name.
@@ -591,13 +591,13 @@ cargo build --manifest-path rust/Cargo.toml
 python -m pytest -n auto
 ```
 
-`cargo test` runs the Rust unit tests — among them, that this README's table of contents follows its headings, and that its links to its own headings reach one (after adding, renaming or removing a heading, `CTT_UPDATE_README=1 cargo test` rewrites the contents). The rest is the conformance scenarios: [`conformance/`](conformance/) holds scenarios that drive the server the way a client does, over MCP, against [`conformance/fake_google.py`](conformance/fake_google.py): an in-memory fake of the parts of Google Calendar and Sheets this server uses, served over HTTP and faithful to what the [probes](#command-line-utilities) found Google does. When a scenario ends, three things are compared with its golden record in `conformance/golden/`: every tool result, every request the server sent Google, and Google's state afterwards. The records were written by the original Python server, and the Rust one was ported to match them exactly; they're the spec of what the server does. If two servers send Google the same requests, Google does the same for both, so this holds even where the fake gets Google wrong. They need no credentials or configuration.
+`cargo test` runs the Rust unit tests — among them, that this README's table of contents follows its headings, and that its links to its own headings reach one (after adding, renaming or removing a heading, `TIME_TRACKER_UPDATE_README=1 cargo test` rewrites the contents). The rest is the conformance scenarios: [`conformance/`](conformance/) holds scenarios that drive the server the way a client does, over MCP, against [`conformance/fake_google.py`](conformance/fake_google.py): an in-memory fake of the parts of Google Calendar and Sheets this server uses, served over HTTP and faithful to what the [probes](#command-line-utilities) found Google does. When a scenario ends, three things are compared with its golden record in `conformance/golden/`: every tool result, every request the server sent Google, and Google's state afterwards. The records were written by the original Python server, and the Rust one was ported to match them exactly; they're the spec of what the server does. If two servers send Google the same requests, Google does the same for both, so this holds even where the fake gets Google wrong. They need no credentials or configuration.
 
-The scenarios run the debug build in `rust/target` (or else the release one); set `CTT_SERVER` to a command line to run another, and `CTT_SERVER_LOG` to a file to keep its logs. `CTT_ACTUAL_DIR` writes each scenario's record as this run made it, to compare whole. After a deliberate change of behaviour, rewrite the records with `CTT_UPDATE_GOLDEN=1`, and read the diff. The server under test runs with these variables set, and none of them is set outside the scenarios:
+The scenarios run the debug build in `rust/target` (or else the release one); set `TIME_TRACKER_SERVER` to a command line to run another, and `TIME_TRACKER_SERVER_LOG` to a file to keep its logs. `TIME_TRACKER_ACTUAL_DIR` writes each scenario's record as this run made it, to compare whole. After a deliberate change of behaviour, rewrite the records with `TIME_TRACKER_UPDATE_GOLDEN=1`, and read the diff. The server under test runs with these variables set, and none of them is set outside the scenarios:
 
 - `GOOGLE_API_ROOT`: where Google's APIs are (the fake's address).
-- `CTT_NOW`: a fixed time the server takes as now.
-- `CTT_DETERMINISTIC_IDS`: makes generated ids a fixed sequence (see [`rust/src/determinism.rs`](rust/src/determinism.rs)).
-- `CTT_HEALTH_WRITER=off`: no background writes to the Health tab, which would interleave with the tools' requests.
+- `TIME_TRACKER_NOW`: a fixed time the server takes as now.
+- `TIME_TRACKER_DETERMINISTIC_IDS`: makes generated ids a fixed sequence (see [`rust/src/determinism.rs`](rust/src/determinism.rs)).
+- `TIME_TRACKER_HEALTH_WRITER=off`: no background writes to the Health tab, which would interleave with the tools' requests.
 
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs all of it for every pull request into `main` and every push to it (`conformance (Rust server)`, the check `main`'s ruleset requires).
