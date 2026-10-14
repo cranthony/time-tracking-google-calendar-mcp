@@ -38,13 +38,10 @@ pub enum EventField {
 /// (location_ids, usually one place; several when it moved between
 /// them), who was there with the user (with_ids), who it was for
 /// (for_ids), and a note on how it was for each person there (notes).
-/// Every field is optional. location_id is deprecated: the first of
-/// location_ids, for clients from before an event could have several;
-/// given without location_ids, it's read as the only one.
+/// Every field is optional.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Facts {
     pub location_ids: Option<Vec<String>>,
-    pub location_id: Option<String>,
     pub with_ids: Option<Vec<String>>,
     pub for_ids: Option<Vec<String>>,
     pub notes: Option<IndexMap<String, String>>,
@@ -207,11 +204,7 @@ impl From<&Facts> for EventFacts {
     /// The facts a client gave, as an event keeps them.
     fn from(facts: &Facts) -> EventFacts {
         EventFacts {
-            location_ids: match (&facts.location_ids, &facts.location_id) {
-                (Some(ids), _) => Some(json!(ids)),
-                (None, Some(id)) if !id.trim().is_empty() => Some(json!([id])),
-                _ => None,
-            },
+            location_ids: facts.location_ids.as_ref().map(|ids| json!(ids)),
             with_ids: facts.with_ids.as_ref().map(|ids| json!(ids)),
             for_ids: facts.for_ids.as_ref().map(|ids| json!(ids)),
             notes: facts.notes.as_ref().map(|notes| json!(notes)),

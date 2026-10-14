@@ -35,7 +35,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -43,12 +43,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -528,7 +522,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -536,12 +530,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -866,7 +854,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -874,12 +862,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -1242,7 +1224,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -1250,12 +1232,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -1723,7 +1699,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -1731,12 +1707,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -1982,7 +1952,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -1990,12 +1960,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -2337,7 +2301,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -2345,12 +2309,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -2707,7 +2665,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -2715,12 +2673,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -3083,7 +3035,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -3091,12 +3043,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -3448,7 +3394,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -3456,12 +3402,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -3824,7 +3764,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -3832,12 +3772,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -4243,7 +4177,7 @@
       "type": "object",
       "$defs": {
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -4251,12 +4185,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -11268,7 +11196,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -11276,12 +11204,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -12094,7 +12016,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -12102,12 +12024,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -13312,7 +13228,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -13320,12 +13236,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -14075,7 +13985,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -14083,12 +13993,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -14943,7 +14847,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -14951,12 +14855,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -15983,7 +15881,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -15991,12 +15889,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -16972,7 +16864,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional. location_id is deprecated: the first of\nlocation_ids, for clients from before an event could have several;\ngiven without location_ids, it's read as the only one.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), and a note on how it was for each person there (notes).\nEvery field is optional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -16980,12 +16872,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
                 "null"
               ]
             },
