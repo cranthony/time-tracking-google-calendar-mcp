@@ -7,6 +7,7 @@ use crate::contract::{tool, Schema};
 use crate::stores::habits::subject_id;
 pub use crate::stores::habits::{CreatedHabit, Habit, ListedHabit};
 pub use crate::stores::people::{Circle, CreatedCircle, CreatedPerson, DeletedCircle, ListedCircle, ListedPerson, Person, Status};
+pub use crate::stores::scoring::ScoringDefaults;
 pub use crate::stores::traits::{ListedTrait, Trait, TraitStatus};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -43,6 +44,8 @@ fn parts_of(traits: &Option<Map<String, Value>>) -> Option<&Value> {
 pub enum TraitField {
     #[serde(rename = "definition")]
     Definition,
+    #[serde(rename = "scoring")]
+    Scoring,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -63,6 +66,18 @@ pub enum PersonField {
 pub enum CircleField {
     #[serde(rename = "note")]
     Note,
+    #[serde(rename = "scoring")]
+    Scoring,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub enum ScoringLevel {
+    #[serde(rename = "traits")]
+    Traits,
+    #[serde(rename = "circles")]
+    Circles,
+    #[serde(rename = "habit_layers")]
+    HabitLayers,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -82,12 +97,18 @@ pub enum HabitField {
 /// themselves), in order -- by default the active ones (rated) and those
 /// turned off (kept, but not rated for now), not archived ones
 /// (retired). Each has an id (fixed when it's created, and what a
-/// person's traits name), name, definition and parts. A trait's score is
-/// the weighted mean of its parts' scores (0-100), leaving out any with
-/// nothing to rate it by. Each part is {"kind": ..., "weight": 1,
-/// "engagement_type": "with", ...}: engagement_type "with" (the default)
-/// reads the events the person was at with the user, "for" those the
-/// user did for them while they weren't there. The kinds:
+/// person's traits name), name, definition, parts and scoring. Each part
+/// is {"id": ..., "kind": ..., "engagement_type": "with", ...}: id is the
+/// part's own, made when it's added and never changed -- its judgments and
+/// weight are kept under it, so keep it on a part you send back, and leave
+/// it out of a new one; engagement_type "with" (the default) reads the
+/// events the person was at with the user, "for" those the user did for
+/// them while they weren't there. A trait's score (0-100) combines its
+/// parts' scores as its scoring says, leaving out any with nothing to rate
+/// it by: without scoring, their plain mean. Scoring is an aggregation,
+/// as are a person's and a circle's (see get_scoring_defaults for its
+/// fields): a trait's weights are by part id, {"weights": {"<part id>":
+/// 2}} counting that part twice. The kinds:
 /// "judgment" -- each event judged by the assistant on its own, never by
 /// asking the user, for one person or a named group, against a "rubric"
 /// (the question: "Was this activity or place new?") on a scale of
@@ -103,7 +124,14 @@ pub enum HabitField {
 /// person, as their what_matters says), each a name or {"fact": "action_history",
 /// "lookback_days": 90} (history facts look back 30 days by default),
 /// and scored over the person's events in its last "window_days" (30
-/// by default);
+/// by default) as its "scoring" says: {"weight_by": "event" (each
+/// judgment counts once, the default) or "duration" (each by its event's
+/// length), "statistic": "mean" (the default) or "percentile" (with
+/// "percentile": 0-100 -- the lowest rating with at least that share of
+/// the judgments, or of their time, at or below it; 0 the lowest, 100 the
+/// highest), "limit" and "limit_by": only the judgments of the "best"
+/// (highest rated), "worst" or most "recent" limit events, or -- weighted
+/// by duration -- limit hours, the last event cut short to fit};
 /// "continuity" (the last event ended within "last_within_days" of the
 /// day's end and the next starts within "next_within_days" after it,
 /// both default 14: 100 for both, 50 for one, 0 for neither); "count"
@@ -120,8 +148,9 @@ pub enum HabitField {
 /// one, set to its reset_hours left (if given) -- each day scored as
 /// the share of its time outside exceptions that the clock hadn't run
 /// out. continuity, count, duration and follow_through can take an
-/// "action" (an action or action group id) to count only its events. A person's traits can select which traits
-/// apply to them and give them their own parts for any (see
+/// "action" (an action or action group id) to count only its events. A
+/// person's traits can select which traits apply to them, give them
+/// their own parts for any, and say how they combine (see
 /// create_person). problems lists anything wrong with a trait edited by
 /// hand; a bad part isn't rated. Read-only.
 #[tool]
@@ -145,8 +174,10 @@ pub fn create_trait(app: &App, r#trait: Trait) -> Result<Trait, ToolError> {
 }
 
 /// Change a trait, by id: rename it, reword its definition, change its
-/// status, or give it new parts. Fields left out keep their value; parts,
-/// if given, replace them whole, so send every part to keep. status is
+/// status or scoring, or give it new parts. Fields left out keep their
+/// value; parts, if given, replace them whole, so send every part to keep,
+/// each with its id (a part sent without one is new, and starts with no
+/// judgments); a part left out takes its weight with it. status is
 /// active (rated), off (kept, but not rated for now) or archived (retired:
 /// not rated, and get_traits leaves it out unless asked) -- archive a
 /// trait rather than delete it, so its history stays readable. Checked as
@@ -197,12 +228,18 @@ pub fn get_person(app: &App, id_or_name: String) -> Result<ListedPerson, ToolErr
 /// apart, e.g. "met at salsa" -- a name and context together must be
 /// unique, so give one when the name's taken), circles (circle ids, see
 /// get_circles), what_matters (what's important to them) and traits:
-/// {"select": "all" or [trait ids], "parts": {trait id: [parts]}}, both
+/// {"select": "all" or [trait ids], "parts": {trait id: [parts]},
+/// "part_scoring": {trait id: scoring}, "scoring": scoring}, all
 /// optional -- the traits that apply to them (by default every active
-/// one), and parts replacing a trait's for them alone, each checked as a
+/// one); parts replacing a trait's for them alone, each checked as a
 /// trait's own (see get_traits): a person's own cadence, say,
 /// {"parts": {"reliable": [{"kind": "count", "target": 1,
-/// "interval_days": 21, "noun": "visits"}]}}, and foundations (see
+/// "interval_days": 21, "noun": "visits"}]}}; how a trait's parts combine
+/// for them, in place of the trait's scoring (weights by part id: their
+/// own parts' ids, if they have them); and how their traits combine into
+/// their score, in place of the scoring defaults' traits (weights by
+/// trait id) -- each an aggregation (see get_scoring_defaults); and
+/// foundations (see
 /// get_people: habits as "habit:<id>", people by id; none of them
 /// deleted, and never making a cycle). Active unless given a status. id
 /// is assigned. Returns the person and their id as created_id.
@@ -235,7 +272,8 @@ pub fn update_person(app: &App, person: Person, clear_fields: Option<Vec<PersonF
 
 /// Every circle: a group people belong to ("Close friends",
 /// "Family"), a person belonging to any number of them. Each has an id,
-/// name, note and member_ids (the people in it). Read-only.
+/// name, note, scoring (how its people's scores combine into its own;
+/// see create_circle) and member_ids (the people in it). Read-only.
 #[tool]
 pub fn get_circles(app: &App) -> Result<Vec<ListedCircle>, ToolError> {
     prefetch_stores(app)?;
@@ -251,16 +289,20 @@ pub fn get_circle(app: &App, id_or_name: String) -> Result<ListedCircle, ToolErr
 }
 
 /// Add a circle: a name (unique among circles, though a person may
-/// share it) and optionally a note. id is assigned. Put people in it with
-/// update_person's circles. Returns the circle and its id as
-/// created_id.
+/// share it) and optionally a note and scoring: how its people's scores
+/// combine into its own, in place of the scoring defaults' circles -- an
+/// aggregation (see get_scoring_defaults), its weights by person id. id
+/// is assigned. Put people in it with update_person's circles. Returns
+/// the circle and its id as created_id.
 #[tool(writes)]
 pub fn create_circle(app: &App, circle: Circle) -> Result<CreatedCircle, ToolError> {
     prefetch_stores(app)?;
     app.people()?.create_circle(&circle).map_err(refused)
 }
 
-/// Rename a circle or change its note, by id. Returns it as updated.
+/// Rename a circle or change its note or scoring, by id. Fields left
+/// out keep their value; list one in clear_fields to blank it instead.
+/// Returns it as updated.
 #[tool(writes)]
 pub fn update_circle(app: &App, circle: Circle, clear_fields: Option<Vec<CircleField>>) -> Result<ListedCircle, ToolError> {
     prefetch_stores(app)?;
@@ -314,9 +356,10 @@ pub fn get_habit(app: &App, id_or_name: String) -> Result<ListedHabit, ToolError
 /// count toward it), and optionally a note (what it's for, and what
 /// doing it well looks like -- context for judging its events) and
 /// traits: {"select": "all" or [trait ids], "parts": {trait id:
-/// [parts]}}, both optional, as a person's (see create_person) -- the
-/// traits that apply to it (by default every active one), and parts
-/// replacing a trait's for it alone, a more specific rubric, say. It's
+/// [parts]}, "part_scoring": {trait id: scoring}, "scoring": scoring},
+/// all optional, as a person's (see create_person) -- the traits that
+/// apply to it (by default every active one), parts replacing a trait's
+/// for it alone (a more specific rubric, say), and how they combine. It's
 /// always "with": judgment parts for those an event was done "for"
 /// don't apply to it. Also optionally foundations: the habits (each as
 /// "habit:<id>") and people (by id) it's built on -- sleeping well under
@@ -346,4 +389,38 @@ pub fn update_habit(app: &App, habit: Habit, clear_fields: Option<Vec<HabitField
         app.people()?.drop_foundation(&subject_id(updated.id.as_deref().unwrap_or("None")))?;
     }
     Ok(updated)
+}
+
+/// How scores combine wherever nothing says otherwise -- the defaults the
+/// user's app scores by: traits (how a person's or habit's traits combine
+/// into their score, unless their traits' own scoring says), circles (how
+/// a circle's people combine into its score, unless its own scoring says)
+/// and habit_layers (how the habits and people in each layer of the habit
+/// graph combine into the layer's score). Each is an aggregation, or null
+/// for the plain mean. An aggregation -- this, a trait's scoring, a
+/// person's or habit's traits' scoring and part_scoring, and a circle's
+/// scoring -- is an object with any of: "statistic": "mean" (weighted;
+/// the default) or "percentile" (with "percentile": 0-100 -- the lowest
+/// score with at least that share of the weight at or below it, so 0 is
+/// the lowest score and 100 the highest); "weights": {id: weight, 0 or
+/// more} (each 1 unless given; ids as the level says -- part ids, trait
+/// ids, person ids, or "habit:<id>" for habits); "limit" (a whole number)
+/// and "limit_by": "best" or "worst" -- only the limit highest or lowest
+/// scores count; "cap_below": {"threshold": score, "cap": score} -- with
+/// any score under threshold, the result is at most cap; and "missing":
+/// "skip" (the default: what has nothing to rate it by is left out) or a
+/// score to count it as. Scores are 0-100. Read-only.
+#[tool]
+pub fn get_scoring_defaults(app: &App) -> Result<ScoringDefaults, ToolError> {
+    app.scoring_defaults()?.get().map_err(refused)
+}
+
+/// Set the scoring defaults (see get_scoring_defaults): traits, circles
+/// and habit_layers, each an aggregation. Levels left out keep their
+/// value; list one in clear_fields to go back to the plain mean. A level
+/// that isn't well formed is refused, saying what's wrong. Returns them
+/// as saved.
+#[tool(writes)]
+pub fn set_scoring_defaults(app: &App, defaults: ScoringDefaults, clear_fields: Option<Vec<ScoringLevel>>) -> Result<ScoringDefaults, ToolError> {
+    app.scoring_defaults()?.set(&defaults, &texts(&clear_fields.unwrap_or_default())).map_err(refused)
 }

@@ -8,6 +8,7 @@ use crate::py;
 use crate::sheet::rows::{self, Row, RowSheet, RowType};
 use crate::sheet::TRAITS;
 use crate::stores::groups::{python_repr, python_str, repr_or_none, str_or_none};
+use crate::stores::scoring::{aggregation_problems, judgment_scoring_problems};
 use anyhow::bail;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -19,7 +20,7 @@ pub const DEFAULT_TRAIT_STATUSES: [&str; 2] = ["active", "off"];
 pub const MAX_NAME_LENGTH: usize = 50;
 const MAX_ID_LENGTH: usize = 30;
 pub const ENGAGEMENT_TYPES: [&str; 2] = ["with", "for"];
-const COMMON: [&str; 2] = ["weight", "engagement_type"];
+const COMMON: [&str; 2] = ["id", "engagement_type"];
 pub const FACTS: [&str; 7] =
     ["action", "action_history", "location", "location_history", "general_notes", "person_notes", "what_matters"];
 pub const HISTORY_FACTS: [&str; 2] = ["action_history", "location_history"];
@@ -27,12 +28,14 @@ pub const DEFAULT_LOOKBACK_DAYS: i64 = 30;
 pub const DEFAULT_TARGET: i64 = 1;
 pub const DEFAULT_WITHIN_DAYS: i64 = 14;
 pub const DEFAULT_WINDOW_DAYS: i64 = 30;
-pub const CLEARABLE_TRAIT_FIELDS: [&str; 1] = ["definition"];
+pub const CLEARABLE_TRAIT_FIELDS: [&str; 2] = ["definition", "scoring"];
+const MAX_PART_ID_LENGTH: usize = 30;
+static PART_ID: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Za-z0-9_#-]+$").unwrap());
 
 /// Each part kind's (required, optional) fields.
 pub fn part_kind(kind: &str) -> Option<(&'static [&'static str], &'static [&'static str])> {
     match kind {
-        "judgment" => Some((&["rubric", "ratings", "facts"], &["window_days"])),
+        "judgment" => Some((&["rubric", "ratings", "facts"], &["window_days", "scoring"])),
         "continuity" => Some((&[], &["last_within_days", "next_within_days", "action"])),
         "count" => Some((&["target"], &["noun", "interval_days", "zero_at_days", "action"])),
         "duration" => Some((&["target_min"], &["interval_days", "zero_at_days", "action"])),
@@ -64,6 +67,9 @@ pub struct Trait {
     pub status: Option<TraitStatus>,
     pub definition: Option<String>,
     pub parts: Option<Vec<Map<String, Value>>>,
+    /// How its parts' scores combine into its own: an aggregation (see
+    /// get_traits), its weights by part id. Without it, the plain mean.
+    pub scoring: Option<Map<String, Value>>,
 }
 
 impl Trait {
@@ -82,6 +88,7 @@ pub struct ListedTrait {
     pub status: Option<TraitStatus>,
     pub definition: Option<String>,
     pub parts: Option<Vec<Map<String, Value>>>,
+    pub scoring: Option<Map<String, Value>>,
     pub problems: Option<Vec<String>>,
 }
 
@@ -104,6 +111,7 @@ pub fn seed_traits() -> Vec<Trait> {
         status: Some(TraitStatus::Active),
         definition: Some(definition.into()),
         parts: Some(parts.as_array().unwrap().iter().map(|p| p.as_object().unwrap().clone()).collect()),
+        scoring: None,
     };
     vec![
         t(
@@ -249,7 +257,22 @@ pub fn trait_problems(t: &Trait) -> Vec<String> {
             problems.push(format!("part {}{} {p}", number + 1, kind_of(part)));
         }
     }
+    problems.extend(repeated_part_ids(&parts));
+    if let Some(scoring) = &t.scoring {
+        for p in aggregation_problems(&Value::Object(scoring.clone()), Some(&part_keys(&parts))) {
+            problems.push(format!("its scoring: {p}"));
+        }
+    }
     problems
+}
+
+/// The part ids that more than one of `parts` has.
+fn repeated_part_ids(parts: &[Value]) -> Vec<String> {
+    let ids: Vec<&str> = parts.iter().filter_map(|p| p.get("id").and_then(Value::as_str)).collect();
+    let mut repeated: Vec<&str> = ids.iter().copied().filter(|i| ids.iter().filter(|j| *j == i).count() > 1).collect();
+    repeated.sort();
+    repeated.dedup();
+    repeated.iter().map(|id| format!("its parts' id {} is used more than once", py::repr(id))).collect()
 }
 
 pub fn part_problems(part: &Value) -> Vec<String> {
@@ -269,6 +292,10 @@ pub fn part_problems(part: &Value) -> Vec<String> {
         .collect();
     extra.sort();
     for name in extra {
+        if name == "weight" {
+            problems.push("has no field \"weight\": a part's weight is set in its trait's scoring, as \"weights\": {part id: weight}".into());
+            continue;
+        }
         let mut takes: Vec<&str> = required.iter().chain(optional.iter()).chain(COMMON.iter()).copied().collect();
         takes.sort();
         let takes: Vec<String> = takes.iter().map(|n| format!("\"{n}\"")).collect();
@@ -277,9 +304,11 @@ pub fn part_problems(part: &Value) -> Vec<String> {
     if !problems.is_empty() {
         return problems;
     }
-    if let Some(weight) = object.get("weight") {
-        if !(is_number(weight) && number(weight) >= 0.0) {
-            problems.push("\"weight\" must be a number, 0 or more".into());
+    if let Some(id) = object.get("id") {
+        if !id.as_str().is_some_and(|i| i.chars().count() <= MAX_PART_ID_LENGTH && PART_ID.is_match(i)) {
+            problems.push(format!(
+                "\"id\" must be text of at most {MAX_PART_ID_LENGTH} letters, digits, \"_\", \"-\" or \"#\" (leave it out of a new part, and one is made)"
+            ));
         }
     }
     if let Some(engagement) = object.get("engagement_type") {
@@ -319,6 +348,9 @@ pub fn part_problems(part: &Value) -> Vec<String> {
     }
     if kind == "judgment" {
         problems.extend(judgment_problems(object));
+        if let Some(scoring) = object.get("scoring") {
+            problems.extend(judgment_scoring_problems(scoring).into_iter().map(|p| format!("\"scoring\": {p}")));
+        }
     }
     if let Some(exceptions) = object.get("exceptions") {
         problems.extend(exception_problems(exceptions));
@@ -446,13 +478,21 @@ pub fn fact_lookbacks(part: &Value) -> Vec<(String, i64)> {
 
 /// What's wrong with a person's (or habit's) `traits`, as phrases
 /// following "its traits".
+const SPEC_FIELDS: [&str; 4] = ["select", "parts", "part_scoring", "scoring"];
+
 pub fn person_traits_problems(spec: &Value, trait_ids: Option<&[String]>) -> Vec<String> {
     let Value::Object(spec) = spec else {
-        return vec!["must be an object: {\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]}}".into()];
+        return vec!["must be an object: {\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring}".into()];
     };
-    let mut extra: Vec<&String> = spec.keys().filter(|k| k.as_str() != "select" && k.as_str() != "parts").collect();
+    let mut extra: Vec<&String> = spec.keys().filter(|k| !SPEC_FIELDS.contains(&k.as_str())).collect();
     extra.sort();
-    let mut problems: Vec<String> = extra.iter().map(|n| format!("has no field \"{n}\"; it takes \"select\" and \"parts\"")).collect();
+    let mut problems: Vec<String> =
+        extra.iter().map(|n| format!("has no field \"{n}\"; it takes \"select\", \"parts\", \"part_scoring\" and \"scoring\"")).collect();
+    if let Some(scoring) = spec.get("scoring") {
+        for p in aggregation_problems(scoring, None) {
+            problems.push(format!("scoring: {p}"));
+        }
+    }
     let mut select = spec.get("select").cloned().unwrap_or(json!("all"));
     let is_list = matches!(&select, Value::Array(items) if items.iter().all(Value::is_string));
     if select != json!("all") && !is_list {
@@ -489,10 +529,30 @@ pub fn person_traits_problems(spec: &Value, trait_ids: Option<&[String]>) -> Vec
                             problems.push(format!("\"parts\" for {}: part {}{} {p}", py::repr(trait_id), number + 1, kind_of(part)));
                         }
                     }
+                    for p in repeated_part_ids(list) {
+                        problems.push(format!("\"parts\" for {}: {p}", py::repr(trait_id)));
+                    }
                 }
                 _ => problems.push(format!("\"parts\" for {} must be a list of at least one part", py::repr(trait_id))),
             }
         }
+    }
+    match spec.get("part_scoring") {
+        None => {}
+        Some(Value::Object(by_trait)) => {
+            for (trait_id, scoring) in by_trait {
+                if trait_ids.is_some_and(|known| !known.iter().any(|k| k == trait_id)) {
+                    problems.push(format!("\"part_scoring\" names {}, which isn't a trait", py::repr(trait_id)));
+                    continue;
+                }
+                // Checked against their own parts for it, if they have them.
+                let own = overrides.get(trait_id).and_then(Value::as_array).map(|l| part_keys(l));
+                for p in aggregation_problems(scoring, own.as_deref()) {
+                    problems.push(format!("\"part_scoring\" for {}: {p}", py::repr(trait_id)));
+                }
+            }
+        }
+        Some(_) => problems.push("\"part_scoring\" must be {trait id: scoring}".into()),
     }
     problems
 }
@@ -501,12 +561,18 @@ pub fn activity_label(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()
 }
 
-/// A name for each part, unique within them: "kind", then "kind#2"...
+/// Each part's id, what its judgments and weight are kept under: its own
+/// "id", or for a part without one -- as every part was before parts had
+/// ids -- the name it had then: "kind" for the first of its kind, then
+/// "kind#2"..., passing over any another part has as its id.
 pub fn part_keys(parts: &[Value]) -> Vec<String> {
+    let given: Vec<Option<String>> = parts.iter().map(part_id).collect();
+    let mut taken: Vec<String> = given.iter().flatten().cloned().collect();
     let mut seen: Vec<(String, usize)> = Vec::new();
     parts
         .iter()
-        .map(|part| {
+        .zip(given)
+        .map(|(part, id)| {
             let kind = part.get("kind").and_then(Value::as_str).unwrap_or("part").to_string();
             let count = match seen.iter_mut().find(|(k, _)| *k == kind) {
                 Some(slot) => {
@@ -518,9 +584,158 @@ pub fn part_keys(parts: &[Value]) -> Vec<String> {
                     1
                 }
             };
-            if count == 1 { kind } else { format!("{kind}#{count}") }
+            if let Some(id) = id {
+                return id;
+            }
+            let mut n = count;
+            loop {
+                let key = if n == 1 { kind.clone() } else { format!("{kind}#{n}") };
+                if !taken.contains(&key) {
+                    taken.push(key.clone());
+                    return key;
+                }
+                n += 1;
+            }
         })
         .collect()
+}
+
+fn part_id(part: &Value) -> Option<String> {
+    part.get("id").and_then(Value::as_str).filter(|i| !i.is_empty()).map(str::to_string)
+}
+
+/// `parts` as kept since parts had ids: each with its id (see
+/// part_keys), and without the weight a part had before weights moved to
+/// its trait's scoring -- returned, by part id, for any but 1.
+pub fn settled_parts(parts: &[Map<String, Value>]) -> (Vec<Map<String, Value>>, Map<String, Value>) {
+    let values: Vec<Value> = parts.iter().map(|p| Value::Object(p.clone())).collect();
+    let mut weights = Map::new();
+    let settled = parts
+        .iter()
+        .zip(part_keys(&values))
+        .map(|(part, id)| {
+            let mut out = Map::new();
+            out.insert("id".into(), json!(id));
+            for (k, v) in part {
+                match k.as_str() {
+                    "id" => {}
+                    "weight" => {
+                        if v.as_f64() != Some(1.0) {
+                            weights.insert(id.clone(), v.clone());
+                        }
+                    }
+                    _ => {
+                        out.insert(k.clone(), v.clone());
+                    }
+                }
+            }
+            out
+        })
+        .collect();
+    (settled, weights)
+}
+
+/// `scoring` with `weights` (moved off parts) among its weights -- any it
+/// already has kept.
+pub fn with_weights(scoring: Option<Map<String, Value>>, weights: Map<String, Value>) -> Option<Map<String, Value>> {
+    if weights.is_empty() {
+        return scoring;
+    }
+    let mut scoring = scoring.unwrap_or_default();
+    let mut merged = weights;
+    if let Some(Value::Object(kept)) = scoring.get("weights") {
+        for (k, v) in kept {
+            merged.insert(k.clone(), v.clone());
+        }
+    }
+    scoring.insert("weights".into(), Value::Object(merged));
+    Some(scoring)
+}
+
+/// `parts` with an id for each new one (one without): short, random, and
+/// none another of them has.
+pub fn with_new_part_ids(parts: &[Map<String, Value>]) -> Vec<Map<String, Value>> {
+    let mut taken: Vec<String> = parts.iter().filter_map(|p| part_id(&Value::Object(p.clone()))).collect();
+    parts
+        .iter()
+        .map(|part| {
+            if part.contains_key("id") {
+                return part.clone();
+            }
+            let id = rows::new_id(taken.iter().map(|t| Some(t.as_str())));
+            taken.push(id.clone());
+            let mut out = Map::new();
+            out.insert("id".into(), json!(id));
+            out.extend(part.clone());
+            out
+        })
+        .collect()
+}
+
+/// `t` as kept since parts had ids (see settled_parts).
+pub fn settled(mut t: Trait) -> Trait {
+    if let Some(parts) = &t.parts {
+        let (parts, weights) = settled_parts(parts);
+        t.parts = Some(parts);
+        t.scoring = with_weights(t.scoring.take(), weights);
+    }
+    t
+}
+
+/// A person's or habit's own parts for each trait, as a list of objects,
+/// or None if they aren't one.
+fn own_parts(parts: &Value) -> Option<Vec<Map<String, Value>>> {
+    parts.as_array().filter(|l| l.iter().all(Value::is_object)).map(|l| l.iter().filter_map(|p| p.as_object().cloned()).collect())
+}
+
+/// A person's or habit's traits as kept since parts had ids: their own
+/// parts for each trait settled, and those parts' weights moved to their
+/// part_scoring for it.
+pub fn settled_spec(spec: Map<String, Value>) -> Map<String, Value> {
+    let Some(Value::Object(overrides)) = spec.get("parts") else {
+        return spec;
+    };
+    let mut part_scoring = match spec.get("part_scoring") {
+        Some(Value::Object(m)) => m.clone(),
+        _ => Map::new(),
+    };
+    let mut parts_out = Map::new();
+    for (trait_id, parts) in overrides {
+        let Some(maps) = own_parts(parts) else {
+            parts_out.insert(trait_id.clone(), parts.clone());
+            continue;
+        };
+        let (settled, weights) = settled_parts(&maps);
+        parts_out.insert(trait_id.clone(), Value::Array(settled.into_iter().map(Value::Object).collect()));
+        let existing = part_scoring.get(trait_id).and_then(Value::as_object).cloned();
+        if let Some(merged) = with_weights(existing, weights) {
+            part_scoring.insert(trait_id.clone(), Value::Object(merged));
+        }
+    }
+    let mut out = spec.clone();
+    out.insert("parts".into(), Value::Object(parts_out));
+    if !part_scoring.is_empty() {
+        out.insert("part_scoring".into(), Value::Object(part_scoring));
+    }
+    out
+}
+
+/// A person's or habit's traits with an id for each new part of their
+/// own (see with_new_part_ids).
+pub fn spec_with_new_part_ids(spec: &Map<String, Value>) -> Map<String, Value> {
+    let Some(Value::Object(overrides)) = spec.get("parts") else {
+        return spec.clone();
+    };
+    let parts: Map<String, Value> = overrides
+        .iter()
+        .map(|(trait_id, parts)| match own_parts(parts) {
+            Some(maps) => (trait_id.clone(), Value::Array(with_new_part_ids(&maps).into_iter().map(Value::Object).collect())),
+            None => (trait_id.clone(), parts.clone()),
+        })
+        .collect();
+    let mut out = spec.clone();
+    out.insert("parts".into(), Value::Object(parts));
+    out
 }
 
 fn kind_of(part: &Value) -> String {
@@ -558,8 +773,9 @@ impl Traits {
         self.sheet.prefetch(ranges)
     }
 
+    /// Every trait, settled (see settled).
     pub fn all(&self) -> anyhow::Result<Vec<Trait>> {
-        self.sheet.read_items()
+        Ok(self.sheet.read_items::<Trait>()?.into_iter().map(settled).collect())
     }
 
     pub fn ids(&self) -> anyhow::Result<Vec<String>> {
@@ -591,6 +807,7 @@ impl Traits {
                     status: t.status,
                     definition: t.definition,
                     parts: t.parts,
+                    scoring: t.scoring,
                     problems: if problems.is_empty() { None } else { Some(problems) },
                 }
             })
@@ -603,6 +820,7 @@ impl Traits {
         if new.status.is_none() {
             new.status = Some(TraitStatus::Active);
         }
+        new.parts = new.parts.as_deref().map(with_new_part_ids);
         let problems = trait_problems(&new);
         if !problems.is_empty() {
             bail!("{}", said(&new, &problems));
@@ -635,7 +853,15 @@ impl Traits {
                 traits.iter().map(|t| format!("{} ({})", str_or_none(t.id.as_deref()), str_or_none(t.name.as_deref()))).collect();
             bail!("{} isn't a trait; the traits are {}", py::repr(&id), known.join(", "));
         };
-        let updated = rows::updated_item(&traits[index], given, clear_fields, &["id"]);
+        let mut updated = rows::updated_item(&traits[index], given, clear_fields, &["id"]);
+        if let Some(parts) = &given.parts {
+            let parts = with_new_part_ids(parts);
+            // A part let go takes its weight with it.
+            if given.scoring.is_none() {
+                updated.scoring = without_weights_of_gone(updated.scoring.take(), &parts);
+            }
+            updated.parts = Some(parts);
+        }
         let problems = trait_problems(&updated);
         if !problems.is_empty() {
             bail!("{}", said(&updated, &problems));
@@ -645,6 +871,16 @@ impl Traits {
         self.sheet.write_items(&traits)?;
         Ok(updated)
     }
+}
+
+/// `scoring` with only the weights of `parts` that are still there.
+fn without_weights_of_gone(scoring: Option<Map<String, Value>>, parts: &[Map<String, Value>]) -> Option<Map<String, Value>> {
+    let mut scoring = scoring?;
+    let ids = part_keys(&parts.iter().map(|p| Value::Object(p.clone())).collect::<Vec<_>>());
+    if let Some(Value::Object(weights)) = scoring.get_mut("weights") {
+        weights.retain(|id, _| ids.contains(id));
+    }
+    Some(scoring)
 }
 
 fn check_unique_name(t: &Trait, traits: &[Trait]) -> anyhow::Result<()> {

@@ -64,6 +64,7 @@
         "lookback_days": 14
        }
       ],
+      "id": "bcyx3f",
       "kind": "judgment",
       "ratings": {
        "0": "apart",
@@ -72,10 +73,11 @@
       "rubric": "How connected?"
      }
     ],
+    "scoring": null,
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"close\",\n  \"name\": \"Close\",\n  \"status\": \"active\",\n  \"definition\": null,\n  \"parts\": [\n    {\n      \"kind\": \"judgment\",\n      \"rubric\": \"How connected?\",\n      \"ratings\": {\n        \"0\": \"apart\",\n        \"1\": \"close\"\n      },\n      \"facts\": [\n        \"general_notes\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 14\n        }\n      ],\n      \"engagement_type\": \"with\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"close\",\n  \"name\": \"Close\",\n  \"status\": \"active\",\n  \"definition\": null,\n  \"parts\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"How connected?\",\n      \"ratings\": {\n        \"0\": \"apart\",\n        \"1\": \"close\"\n      },\n      \"facts\": [\n        \"general_notes\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 14\n        }\n      ],\n      \"engagement_type\": \"with\"\n    }\n  ],\n  \"scoring\": null\n}",
    "tool": "create_trait"
   },
   {
@@ -805,10 +807,10 @@
       "reason": "happened as planned"
      }
     ],
-    "compaction_id": "30e1f77067fcr1",
+    "compaction_id": "f6fe60881a80r1",
     "judgments": null,
-    "message": "proposal 30e1f77067fc revision 1: 1 calendar change(s) for 1 note(s) over 3 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
-    "proposal_id": "30e1f77067fc",
+    "message": "proposal f6fe60881a80 revision 1: 1 calendar change(s) for 1 note(s) over 3 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
+    "proposal_id": "f6fe60881a80",
     "revision": 1,
     "status": "proposed",
     "timeline": {
@@ -1193,12 +1195,12 @@
     "warnings": []
    },
    "is_error": false,
-   "text": "{\n  \"status\": \"proposed\",\n  \"message\": \"proposal 30e1f77067fc revision 1: 1 calendar change(s) for 1 note(s) over 3 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\",\n  \"compaction_id\": \"30e1f77067fcr1\",\n  \"proposal_id\": \"30e1f77067fc\",\n  \"revision\": 1,\n  \"changes\": [\n    {\n      \"action\": \"update\",\n      \"reason\": \"happened as planned\",\n      \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"key\": null,\n      \"before\": {\n        \"summary\": \"Lunch\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T13:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      },\n      \"after\": {\n        \"summary\": \"Lunch\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T13:00:00-04:00\",\n        \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": {\n          \"with\": [\n            \"4709iy\"\n          ],\n          \"notes\": {\n            \"4709iy\": \"laughed a lot\"\n          }\n        }\n      }\n    }\n  ],\n  \"warnings\": [],\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"2026-10-05T12:30:00-04:00#2\",\n        \"time\": \"2026-10-05T12:30:00-04:00\",\n        \"text\": \"lunch with Robin\",\n        \"anchors\": [],\n        \"annotates\": \"Lunch\",\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"b0beb355f2460d88416e307a4a\",\n        \"start\": \"2026-10-04T22:30:00-04:00\",\n        \"end\": \"2026-10-05T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-04T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-05T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"d820ae0f22570a19812dcb76c2\",\n        \"start\": \"2026-10-05T07:00:00-04:00\",\n        \"end\": \"2026-10-05T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"3bc8a594c0be6dfabc4993e74e\",\n        \"start\": \"2026-10-05T08:00:00-04:00\",\n        \"end\": \"2026-10-05T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [\n          \"with Robin Example\",\n          \"Robin Example: laughed a lot\"\n        ],\n        \"new_facts\": true,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"2a2bbdacdbfc08240bd7b31473\",\n        \"start\": \"2026-10-05T13:00:00-04:00\",\n        \"end\": \"2026-10-05T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"start\": \"2026-10-05T18:00:00-04:00\",\n        \"end\": \"2026-10-05T19:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"983cc1ee90e3562d53bf2811fa\",\n        \"start\": \"2026-10-05T22:30:00-04:00\",\n        \"end\": \"2026-10-06T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-06T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"80ef6e6b3e64378a65837bc042\",\n        \"start\": \"2026-10-06T07:00:00-04:00\",\n        \"end\": \"2026-10-06T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"95245adbc9680701fe3defce4d\",\n        \"start\": \"2026-10-06T08:00:00-04:00\",\n        \"end\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ce6e21fbbbbbae2bda5a8a102b\",\n        \"start\": \"2026-10-06T12:00:00-04:00\",\n        \"end\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ee7f6f96ac6a86131c31dc7199\",\n        \"start\": \"2026-10-06T13:00:00-04:00\",\n        \"end\": \"2026-10-06T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n        \"start\": \"2026-10-06T18:00:00-04:00\",\n        \"end\": \"2026-10-06T19:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"afaf1b5f5b5363588c57736ee3\",\n        \"start\": \"2026-10-06T22:30:00-04:00\",\n        \"end\": \"2026-10-07T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-07T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a85f2d467494a9d0220c19d15f\",\n        \"start\": \"2026-10-07T07:00:00-04:00\",\n        \"end\": \"2026-10-07T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-07T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"f8bd16c38f3a1abffb065946d7\",\n        \"start\": \"2026-10-07T08:00:00-04:00\",\n        \"end\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"05fc5d4746a5de646b6c1f42ef\",\n        \"start\": \"2026-10-07T12:00:00-04:00\",\n        \"end\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"planned\",\n        \"event_id\": \"23a1388e7f1d12ac272a90633f\",\n        \"start\": \"2026-10-07T13:00:00-04:00\",\n        \"end\": \"2026-10-07T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      }\n    ],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": true,\n    \"text\": \"━━ Mon 05 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ▹ with Robin Example\\n          ▹ Robin Example: laughed a lot\\n          ⚠ no action, no location\\n12:30 ● lunch with Robin\\n        ↳ Lunch\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n          ⚠ no action, no location\\n19:00 └ Dinner ends\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Sleep: action, location\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Dinner: action, location\\n  ⚠ Sleep: action, location\\n\\n━━ Tue 06 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n          ⚠ no action, no location\\n19:00 └ Dinner ends\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Dinner: action, location\\n  ⚠ Sleep: action, location\\n\\n━━ Wed 07 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\\n17:00 └ Afternoon work ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n▸ facts   ▹ facts being set\\n⚠ missing action or location\\n+/− late/early   ⇢/⇠ moved\"\n  },\n  \"additions\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"status\": \"proposed\",\n  \"message\": \"proposal f6fe60881a80 revision 1: 1 calendar change(s) for 1 note(s) over 3 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\",\n  \"compaction_id\": \"f6fe60881a80r1\",\n  \"proposal_id\": \"f6fe60881a80\",\n  \"revision\": 1,\n  \"changes\": [\n    {\n      \"action\": \"update\",\n      \"reason\": \"happened as planned\",\n      \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"key\": null,\n      \"before\": {\n        \"summary\": \"Lunch\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T13:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": null\n      },\n      \"after\": {\n        \"summary\": \"Lunch\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T13:00:00-04:00\",\n        \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": null,\n        \"action_ids\": null,\n        \"facts\": {\n          \"with\": [\n            \"4709iy\"\n          ],\n          \"notes\": {\n            \"4709iy\": \"laughed a lot\"\n          }\n        }\n      }\n    }\n  ],\n  \"warnings\": [],\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"2026-10-05T12:30:00-04:00#2\",\n        \"time\": \"2026-10-05T12:30:00-04:00\",\n        \"text\": \"lunch with Robin\",\n        \"anchors\": [],\n        \"annotates\": \"Lunch\",\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"b0beb355f2460d88416e307a4a\",\n        \"start\": \"2026-10-04T22:30:00-04:00\",\n        \"end\": \"2026-10-05T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-04T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-05T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"d820ae0f22570a19812dcb76c2\",\n        \"start\": \"2026-10-05T07:00:00-04:00\",\n        \"end\": \"2026-10-05T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"3bc8a594c0be6dfabc4993e74e\",\n        \"start\": \"2026-10-05T08:00:00-04:00\",\n        \"end\": \"2026-10-05T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"start\": \"2026-10-05T12:00:00-04:00\",\n        \"end\": \"2026-10-05T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [\n          \"with Robin Example\",\n          \"Robin Example: laughed a lot\"\n        ],\n        \"new_facts\": true,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"2a2bbdacdbfc08240bd7b31473\",\n        \"start\": \"2026-10-05T13:00:00-04:00\",\n        \"end\": \"2026-10-05T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"start\": \"2026-10-05T18:00:00-04:00\",\n        \"end\": \"2026-10-05T19:00:00-04:00\",\n        \"planned_start\": \"2026-10-05T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-05T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"983cc1ee90e3562d53bf2811fa\",\n        \"start\": \"2026-10-05T22:30:00-04:00\",\n        \"end\": \"2026-10-06T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-06T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"80ef6e6b3e64378a65837bc042\",\n        \"start\": \"2026-10-06T07:00:00-04:00\",\n        \"end\": \"2026-10-06T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"95245adbc9680701fe3defce4d\",\n        \"start\": \"2026-10-06T08:00:00-04:00\",\n        \"end\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ce6e21fbbbbbae2bda5a8a102b\",\n        \"start\": \"2026-10-06T12:00:00-04:00\",\n        \"end\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ee7f6f96ac6a86131c31dc7199\",\n        \"start\": \"2026-10-06T13:00:00-04:00\",\n        \"end\": \"2026-10-06T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n        \"start\": \"2026-10-06T18:00:00-04:00\",\n        \"end\": \"2026-10-06T19:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"afaf1b5f5b5363588c57736ee3\",\n        \"start\": \"2026-10-06T22:30:00-04:00\",\n        \"end\": \"2026-10-07T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-07T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a85f2d467494a9d0220c19d15f\",\n        \"start\": \"2026-10-07T07:00:00-04:00\",\n        \"end\": \"2026-10-07T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-07T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"f8bd16c38f3a1abffb065946d7\",\n        \"start\": \"2026-10-07T08:00:00-04:00\",\n        \"end\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"05fc5d4746a5de646b6c1f42ef\",\n        \"start\": \"2026-10-07T12:00:00-04:00\",\n        \"end\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"planned\",\n        \"event_id\": \"23a1388e7f1d12ac272a90633f\",\n        \"start\": \"2026-10-07T13:00:00-04:00\",\n        \"end\": \"2026-10-07T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      }\n    ],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": true,\n    \"text\": \"━━ Mon 05 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ▹ with Robin Example\\n          ▹ Robin Example: laughed a lot\\n          ⚠ no action, no location\\n12:30 ● lunch with Robin\\n        ↳ Lunch\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n          ⚠ no action, no location\\n19:00 └ Dinner ends\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Sleep: action, location\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Dinner: action, location\\n  ⚠ Sleep: action, location\\n\\n━━ Tue 06 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n          ⚠ no action, no location\\n19:00 └ Dinner ends\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Dinner: action, location\\n  ⚠ Sleep: action, location\\n\\n━━ Wed 07 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\\n17:00 └ Afternoon work ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n▸ facts   ▹ facts being set\\n⚠ missing action or location\\n+/− late/early   ⇢/⇠ moved\"\n  },\n  \"additions\": null,\n  \"judgments\": null\n}",
    "tool": "compact_notes"
   },
   {
    "arguments": {
-    "proposal_id": "30e1f77067fc",
+    "proposal_id": "f6fe60881a80",
     "revision": 1
    },
    "content": {
@@ -1250,7 +1252,7 @@
      "created": "2026-10-07T15:30:00-04:00",
      "events": null,
      "feedback": [],
-     "id": "30e1f77067fc",
+     "id": "f6fe60881a80",
      "notes": [],
      "problem": null,
      "reason": "proposed",
@@ -1279,13 +1281,13 @@
     "status": "applied"
    },
    "is_error": false,
-   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"applied 1 change(s) and marked 1 note(s) compacted. Claude makes its judgments next (prepare_judgments).\",\n  \"proposal\": {\n    \"id\": \"30e1f77067fc\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"update\",\n        \"reason\": \"happened as planned\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": {\n            \"with\": [\n              \"4709iy\"\n            ],\n            \"notes\": {\n              \"4709iy\": \"laughed a lot\"\n            }\n          }\n        }\n      }\n    ],\n    \"warnings\": [],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"What the notes say.\",\n      \"did\": [\n        {\n          \"text\": \"Recorded the days.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
+   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"applied 1 change(s) and marked 1 note(s) compacted. Claude makes its judgments next (prepare_judgments).\",\n  \"proposal\": {\n    \"id\": \"f6fe60881a80\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"update\",\n        \"reason\": \"happened as planned\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": {\n            \"with\": [\n              \"4709iy\"\n            ],\n            \"notes\": {\n              \"4709iy\": \"laughed a lot\"\n            }\n          }\n        }\n      }\n    ],\n    \"warnings\": [],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"What the notes say.\",\n      \"did\": [\n        {\n          \"text\": \"Recorded the days.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
    "tool": "confirm_proposal"
   },
   {
    "arguments": {},
    "content": {
-    "compaction_id": "30e1f77067fcr1",
+    "compaction_id": "f6fe60881a80r1",
     "events": [
      {
       "current": null,
@@ -1297,14 +1299,14 @@
         "creative/judgment",
         "adventurous/judgment",
         "generous/judgment",
-        "close/judgment"
+        "close/bcyx3f"
        ],
        "self": [
         "thoughtful/judgment",
         "creative/judgment",
         "adventurous/judgment",
         "generous/judgment",
-        "close/judgment"
+        "close/bcyx3f"
        ]
       },
       "start": "2026-10-05T12:00:00-04:00",
@@ -1323,7 +1325,7 @@
       "locations": {}
      }
     },
-    "instructions": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part key>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part key>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part key>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
+    "instructions": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part id>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part id>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part id>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part id>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
     "parts": [
      {
       "definition": "Remember what matters to them, and prepare for it.",
@@ -1406,7 +1408,7 @@
        "general_notes",
        "location_history"
       ],
-      "key": "close/judgment",
+      "key": "close/bcyx3f",
       "ratings": {
        "0": "apart",
        "1": "close"
@@ -1417,12 +1419,12 @@
     ]
    },
    "is_error": false,
-   "text": "{\n  \"compaction_id\": \"30e1f77067fcr1\",\n  \"events\": [\n    {\n      \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"people\": {\n        \"self\": [\n          \"thoughtful/judgment\",\n          \"creative/judgment\",\n          \"adventurous/judgment\",\n          \"generous/judgment\",\n          \"close/judgment\"\n        ],\n        \"4709iy\": [\n          \"thoughtful/judgment\",\n          \"creative/judgment\",\n          \"adventurous/judgment\",\n          \"generous/judgment\",\n          \"close/judgment\"\n        ]\n      },\n      \"current\": null\n    }\n  ],\n  \"parts\": [\n    {\n      \"key\": \"thoughtful/judgment\",\n      \"trait_name\": \"Thoughtful\",\n      \"definition\": \"Remember what matters to them, and prepare for it.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"key\": \"creative/judgment\",\n      \"trait_name\": \"Creative\",\n      \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        \"action_history\",\n        \"general_notes\"\n      ]\n    },\n    {\n      \"key\": \"adventurous/judgment\",\n      \"trait_name\": \"Adventurous\",\n      \"definition\": \"Share new experiences with them: new activities, new places.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        \"action_history\",\n        \"location\",\n        \"location_history\"\n      ]\n    },\n    {\n      \"key\": \"generous/judgment\",\n      \"trait_name\": \"Generous\",\n      \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"key\": \"close/judgment\",\n      \"trait_name\": \"Close\",\n      \"definition\": null,\n      \"engagement\": \"with\",\n      \"rubric\": \"How connected?\",\n      \"ratings\": {\n        \"0\": \"apart\",\n        \"1\": \"close\"\n      },\n      \"facts\": [\n        \"general_notes\",\n        \"location_history\"\n      ]\n    }\n  ],\n  \"history\": {\n    \"self\": {\n      \"days\": 90,\n      \"actions\": {},\n      \"locations\": {}\n    },\n    \"4709iy\": {\n      \"days\": 90,\n      \"actions\": {},\n      \"locations\": {}\n    }\n  },\n  \"instructions\": \"JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\\\"<trait id>/<part key>\\\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \\\"<trait id>/<part key>@<person id>\\\" if there's one (that person's own), or else \\\"<trait id>/<part key>\\\": answer its rubric -- a \\\"with\\\" part for someone who was there, a \\\"for\\\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\\\"habit:<id>\\\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \\\"<event id>/<person id>/<trait id>/<part key>\\\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.\"\n}",
+   "text": "{\n  \"compaction_id\": \"f6fe60881a80r1\",\n  \"events\": [\n    {\n      \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"people\": {\n        \"self\": [\n          \"thoughtful/judgment\",\n          \"creative/judgment\",\n          \"adventurous/judgment\",\n          \"generous/judgment\",\n          \"close/bcyx3f\"\n        ],\n        \"4709iy\": [\n          \"thoughtful/judgment\",\n          \"creative/judgment\",\n          \"adventurous/judgment\",\n          \"generous/judgment\",\n          \"close/bcyx3f\"\n        ]\n      },\n      \"current\": null\n    }\n  ],\n  \"parts\": [\n    {\n      \"key\": \"thoughtful/judgment\",\n      \"trait_name\": \"Thoughtful\",\n      \"definition\": \"Remember what matters to them, and prepare for it.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"key\": \"creative/judgment\",\n      \"trait_name\": \"Creative\",\n      \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        \"action_history\",\n        \"general_notes\"\n      ]\n    },\n    {\n      \"key\": \"adventurous/judgment\",\n      \"trait_name\": \"Adventurous\",\n      \"definition\": \"Share new experiences with them: new activities, new places.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        \"action_history\",\n        \"location\",\n        \"location_history\"\n      ]\n    },\n    {\n      \"key\": \"generous/judgment\",\n      \"trait_name\": \"Generous\",\n      \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"key\": \"close/bcyx3f\",\n      \"trait_name\": \"Close\",\n      \"definition\": null,\n      \"engagement\": \"with\",\n      \"rubric\": \"How connected?\",\n      \"ratings\": {\n        \"0\": \"apart\",\n        \"1\": \"close\"\n      },\n      \"facts\": [\n        \"general_notes\",\n        \"location_history\"\n      ]\n    }\n  ],\n  \"history\": {\n    \"self\": {\n      \"days\": 90,\n      \"actions\": {},\n      \"locations\": {}\n    },\n    \"4709iy\": {\n      \"days\": 90,\n      \"actions\": {},\n      \"locations\": {}\n    }\n  },\n  \"instructions\": \"JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\\\"<trait id>/<part id>\\\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \\\"<trait id>/<part id>@<person id>\\\" if there's one (that person's own), or else \\\"<trait id>/<part id>\\\": answer its rubric -- a \\\"with\\\" part for someone who was there, a \\\"for\\\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\\\"habit:<id>\\\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \\\"<event id>/<person id>/<trait id>/<part id>\\\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.\"\n}",
    "tool": "prepare_judgments"
   },
   {
    "arguments": {
-    "compaction_id": "30e1f77067fcr1",
+    "compaction_id": "f6fe60881a80r1",
     "judgments": [
      {
       "rating": 1,
@@ -1447,7 +1449,7 @@
      {
       "rating": 1,
       "reasoning": "  close   \n  and warm ",
-      "request_id": "c5aefcb1a0e717b26c9d3d4839/self/close/judgment"
+      "request_id": "c5aefcb1a0e717b26c9d3d4839/self/close/bcyx3f"
      },
      {
       "rating": 1,
@@ -1472,28 +1474,28 @@
      {
       "rating": 1,
       "reasoning": "  close   \n  and warm ",
-      "request_id": "c5aefcb1a0e717b26c9d3d4839/4709iy/close/judgment"
+      "request_id": "c5aefcb1a0e717b26c9d3d4839/4709iy/close/bcyx3f"
      }
     ]
    },
    "content": {
-    "compaction_id": "30e1f77067fcr1",
+    "compaction_id": "f6fe60881a80r1",
     "complete": true,
-    "message": "recorded 10 judgment(s); compaction 30e1f77067fcr1 is complete",
+    "message": "recorded 10 judgment(s); compaction f6fe60881a80r1 is complete",
     "recorded": 10,
     "remaining": []
    },
    "is_error": false,
-   "text": "{\n  \"compaction_id\": \"30e1f77067fcr1\",\n  \"recorded\": 10,\n  \"remaining\": [],\n  \"complete\": true,\n  \"message\": \"recorded 10 judgment(s); compaction 30e1f77067fcr1 is complete\"\n}",
+   "text": "{\n  \"compaction_id\": \"f6fe60881a80r1\",\n  \"recorded\": 10,\n  \"remaining\": [],\n  \"complete\": true,\n  \"message\": \"recorded 10 judgment(s); compaction f6fe60881a80r1 is complete\"\n}",
    "tool": "record_judgments"
   },
   {
    "arguments": {
-    "compaction_id": "30e1f77067fcr1",
+    "compaction_id": "f6fe60881a80r1",
     "redo": true
    },
    "content": {
-    "compaction_id": "30e1f77067fcr1",
+    "compaction_id": "f6fe60881a80r1",
     "events": [
      {
       "current": {
@@ -1502,7 +1504,7 @@
          "rating": 1,
          "reasoning": "close and warm"
         },
-        "close/judgment": {
+        "close/bcyx3f": {
          "rating": 1,
          "reasoning": "close and warm"
         },
@@ -1524,7 +1526,7 @@
          "rating": 1,
          "reasoning": "close and warm"
         },
-        "close/judgment": {
+        "close/bcyx3f": {
          "rating": 1,
          "reasoning": "close and warm"
         },
@@ -1550,14 +1552,14 @@
         "creative/judgment",
         "adventurous/judgment",
         "generous/judgment",
-        "close/judgment"
+        "close/bcyx3f"
        ],
        "self": [
         "thoughtful/judgment",
         "creative/judgment",
         "adventurous/judgment",
         "generous/judgment",
-        "close/judgment"
+        "close/bcyx3f"
        ]
       },
       "start": "2026-10-05T12:00:00-04:00",
@@ -1576,7 +1578,7 @@
       "locations": {}
      }
     },
-    "instructions": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part key>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part key>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part key>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
+    "instructions": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part id>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part id>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part id>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part id>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
     "parts": [
      {
       "definition": "Remember what matters to them, and prepare for it.",
@@ -1659,7 +1661,7 @@
        "general_notes",
        "location_history"
       ],
-      "key": "close/judgment",
+      "key": "close/bcyx3f",
       "ratings": {
        "0": "apart",
        "1": "close"
@@ -1670,12 +1672,12 @@
     ]
    },
    "is_error": false,
-   "text": "{\n  \"compaction_id\": \"30e1f77067fcr1\",\n  \"events\": [\n    {\n      \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"people\": {\n        \"self\": [\n          \"thoughtful/judgment\",\n          \"creative/judgment\",\n          \"adventurous/judgment\",\n          \"generous/judgment\",\n          \"close/judgment\"\n        ],\n        \"4709iy\": [\n          \"thoughtful/judgment\",\n          \"creative/judgment\",\n          \"adventurous/judgment\",\n          \"generous/judgment\",\n          \"close/judgment\"\n        ]\n      },\n      \"current\": {\n        \"self\": {\n          \"thoughtful/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"creative/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"adventurous/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"generous/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"close/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          }\n        },\n        \"4709iy\": {\n          \"thoughtful/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"creative/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"adventurous/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"generous/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"close/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          }\n        }\n      }\n    }\n  ],\n  \"parts\": [\n    {\n      \"key\": \"thoughtful/judgment\",\n      \"trait_name\": \"Thoughtful\",\n      \"definition\": \"Remember what matters to them, and prepare for it.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"key\": \"creative/judgment\",\n      \"trait_name\": \"Creative\",\n      \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        \"action_history\",\n        \"general_notes\"\n      ]\n    },\n    {\n      \"key\": \"adventurous/judgment\",\n      \"trait_name\": \"Adventurous\",\n      \"definition\": \"Share new experiences with them: new activities, new places.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        \"action_history\",\n        \"location\",\n        \"location_history\"\n      ]\n    },\n    {\n      \"key\": \"generous/judgment\",\n      \"trait_name\": \"Generous\",\n      \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"key\": \"close/judgment\",\n      \"trait_name\": \"Close\",\n      \"definition\": null,\n      \"engagement\": \"with\",\n      \"rubric\": \"How connected?\",\n      \"ratings\": {\n        \"0\": \"apart\",\n        \"1\": \"close\"\n      },\n      \"facts\": [\n        \"general_notes\",\n        \"location_history\"\n      ]\n    }\n  ],\n  \"history\": {\n    \"self\": {\n      \"days\": 90,\n      \"actions\": {},\n      \"locations\": {}\n    },\n    \"4709iy\": {\n      \"days\": 90,\n      \"actions\": {},\n      \"locations\": {}\n    }\n  },\n  \"instructions\": \"JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\\\"<trait id>/<part key>\\\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \\\"<trait id>/<part key>@<person id>\\\" if there's one (that person's own), or else \\\"<trait id>/<part key>\\\": answer its rubric -- a \\\"with\\\" part for someone who was there, a \\\"for\\\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\\\"habit:<id>\\\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \\\"<event id>/<person id>/<trait id>/<part key>\\\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.\"\n}",
+   "text": "{\n  \"compaction_id\": \"f6fe60881a80r1\",\n  \"events\": [\n    {\n      \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"people\": {\n        \"self\": [\n          \"thoughtful/judgment\",\n          \"creative/judgment\",\n          \"adventurous/judgment\",\n          \"generous/judgment\",\n          \"close/bcyx3f\"\n        ],\n        \"4709iy\": [\n          \"thoughtful/judgment\",\n          \"creative/judgment\",\n          \"adventurous/judgment\",\n          \"generous/judgment\",\n          \"close/bcyx3f\"\n        ]\n      },\n      \"current\": {\n        \"self\": {\n          \"thoughtful/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"creative/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"adventurous/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"generous/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"close/bcyx3f\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          }\n        },\n        \"4709iy\": {\n          \"thoughtful/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"creative/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"adventurous/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"generous/judgment\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          },\n          \"close/bcyx3f\": {\n            \"rating\": 1,\n            \"reasoning\": \"close and warm\"\n          }\n        }\n      }\n    }\n  ],\n  \"parts\": [\n    {\n      \"key\": \"thoughtful/judgment\",\n      \"trait_name\": \"Thoughtful\",\n      \"definition\": \"Remember what matters to them, and prepare for it.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"key\": \"creative/judgment\",\n      \"trait_name\": \"Creative\",\n      \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        \"action_history\",\n        \"general_notes\"\n      ]\n    },\n    {\n      \"key\": \"adventurous/judgment\",\n      \"trait_name\": \"Adventurous\",\n      \"definition\": \"Share new experiences with them: new activities, new places.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        \"action_history\",\n        \"location\",\n        \"location_history\"\n      ]\n    },\n    {\n      \"key\": \"generous/judgment\",\n      \"trait_name\": \"Generous\",\n      \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n      \"engagement\": \"with\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"key\": \"close/bcyx3f\",\n      \"trait_name\": \"Close\",\n      \"definition\": null,\n      \"engagement\": \"with\",\n      \"rubric\": \"How connected?\",\n      \"ratings\": {\n        \"0\": \"apart\",\n        \"1\": \"close\"\n      },\n      \"facts\": [\n        \"general_notes\",\n        \"location_history\"\n      ]\n    }\n  ],\n  \"history\": {\n    \"self\": {\n      \"days\": 90,\n      \"actions\": {},\n      \"locations\": {}\n    },\n    \"4709iy\": {\n      \"days\": 90,\n      \"actions\": {},\n      \"locations\": {}\n    }\n  },\n  \"instructions\": \"JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\\\"<trait id>/<part id>\\\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \\\"<trait id>/<part id>@<person id>\\\" if there's one (that person's own), or else \\\"<trait id>/<part id>\\\": answer its rubric -- a \\\"with\\\" part for someone who was there, a \\\"for\\\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\\\"habit:<id>\\\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \\\"<event id>/<person id>/<trait id>/<part id>\\\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.\"\n}",
    "tool": "prepare_judgments"
   },
   {
    "arguments": {
-    "compaction_id": "30e1f77067fcr1",
+    "compaction_id": "f6fe60881a80r1",
     "judgments": [
      {
       "rating": 0,
@@ -1685,14 +1687,14 @@
     ]
    },
    "content": {
-    "compaction_id": "30e1f77067fcr1",
+    "compaction_id": "f6fe60881a80r1",
     "complete": true,
-    "message": "recorded 1 judgment(s); compaction 30e1f77067fcr1 is complete",
+    "message": "recorded 1 judgment(s); compaction f6fe60881a80r1 is complete",
     "recorded": 1,
     "remaining": []
    },
    "is_error": false,
-   "text": "{\n  \"compaction_id\": \"30e1f77067fcr1\",\n  \"recorded\": 1,\n  \"remaining\": [],\n  \"complete\": true,\n  \"message\": \"recorded 1 judgment(s); compaction 30e1f77067fcr1 is complete\"\n}",
+   "text": "{\n  \"compaction_id\": \"f6fe60881a80r1\",\n  \"recorded\": 1,\n  \"remaining\": [],\n  \"complete\": true,\n  \"message\": \"recorded 1 judgment(s); compaction f6fe60881a80r1 is complete\"\n}",
    "tool": "record_judgments"
   },
   {
@@ -1730,7 +1732,7 @@
        }
       },
       "close": {
-       "judgment": {
+       "bcyx3f": {
         "rating": 1,
         "reasoning": "close and warm",
         "scale": 1
@@ -1767,7 +1769,7 @@
        }
       },
       "close": {
-       "judgment": {
+       "bcyx3f": {
         "rating": 1,
         "reasoning": "close and warm",
         "scale": 1
@@ -1803,7 +1805,7 @@
     "summary": "Lunch"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-05T12:00:00-04:00\",\n  \"end\": \"2026-10-05T13:00:00-04:00\",\n  \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_id\": null,\n    \"with_ids\": [\n      \"4709iy\"\n    ],\n    \"for_ids\": null,\n    \"notes\": {\n      \"4709iy\": \"laughed a lot\"\n    }\n  },\n  \"judgments\": {\n    \"self\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 0,\n          \"scale\": 3,\n          \"reasoning\": \"on second thought\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    },\n    \"4709iy\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    }\n  }\n}",
+   "text": "{\n  \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-05T12:00:00-04:00\",\n  \"end\": \"2026-10-05T13:00:00-04:00\",\n  \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_id\": null,\n    \"with_ids\": [\n      \"4709iy\"\n    ],\n    \"for_ids\": null,\n    \"notes\": {\n      \"4709iy\": \"laughed a lot\"\n    }\n  },\n  \"judgments\": {\n    \"self\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 0,\n          \"scale\": 3,\n          \"reasoning\": \"on second thought\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"bcyx3f\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    },\n    \"4709iy\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"bcyx3f\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    }\n  }\n}",
    "tool": "get_event"
   }
  ],
@@ -2192,7 +2194,8 @@
        [
         "id",
         "name",
-        "note"
+        "note",
+        "scoring"
        ]
       ]
      }
@@ -2474,7 +2477,8 @@
         "name",
         "status",
         "definition",
-        "parts"
+        "parts",
+        "scoring"
        ]
       ]
      }
@@ -2506,35 +2510,40 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        ""
        ],
        [
         "reliable",
         "Reliable",
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
-        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        ""
        ],
        [
         "creative",
         "Creative",
         "active",
         "Make something together with them (making something alone is taking care of myself).",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        ""
        ],
        [
         "adventurous",
         "Adventurous",
         "active",
         "Share new experiences with them: new activities, new places.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        ""
        ],
        [
         "generous",
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        ""
        ]
       ]
      }
@@ -2616,42 +2625,48 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        ""
        ],
        [
         "reliable",
         "Reliable",
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
-        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+        "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        ""
        ],
        [
         "creative",
         "Creative",
         "active",
         "Make something together with them (making something alone is taking care of myself).",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        ""
        ],
        [
         "adventurous",
         "Adventurous",
         "active",
         "Share new experiences with them: new activities, new places.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        ""
        ],
        [
         "generous",
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        ""
        ],
        [
         "close",
         "Close",
         "active",
         "",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How connected?\",\"ratings\":{\"0\":\"apart\",\"1\":\"close\"},\"facts\":[\"general_notes\",{\"fact\":\"location_history\",\"lookback_days\":14}],\"engagement_type\":\"with\"}]"
+        "[{\"id\":\"bcyx3f\",\"kind\":\"judgment\",\"rubric\":\"How connected?\",\"ratings\":{\"0\":\"apart\",\"1\":\"close\"},\"facts\":[\"general_notes\",{\"fact\":\"location_history\",\"lookback_days\":14}],\"engagement_type\":\"with\"}]",
+        ""
        ]
       ]
      }
@@ -3549,17 +3564,17 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "30e1f77067fcr1",
+        "f6fe60881a80r1",
         "0",
         "compaction",
         "",
         "",
         "",
         "proposed",
-        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-05T12:30:00-04:00#2\"], \"warnings\": [], \"ignore_notes\": [], \"proposal\": \"30e1f77067fc\", \"revision\": 1, \"from\": \"2026-10-05T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"c5aefcb1a0e717b26c9d3d4839\": \"37da95c086\"}, \"key_seq\": 0, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"What the notes say.\", \"did\": [{\"text\": \"Recorded the days.\"}], \"unsure\": []}, \"recap_revision\": 1}"
+        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-05T12:30:00-04:00#2\"], \"warnings\": [], \"ignore_notes\": [], \"proposal\": \"f6fe60881a80\", \"revision\": 1, \"from\": \"2026-10-05T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"c5aefcb1a0e717b26c9d3d4839\": \"37da95c086\"}, \"key_seq\": 0, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"What the notes say.\", \"did\": [{\"text\": \"Recorded the days.\"}], \"unsure\": []}, \"recap_revision\": 1}"
        ],
        [
-        "30e1f77067fcr1",
+        "f6fe60881a80r1",
         "0",
         "claude_decision",
         "c5aefcb1a0e717b26c9d3d4839",
@@ -3569,7 +3584,7 @@
         ""
        ],
        [
-        "30e1f77067fcr1",
+        "f6fe60881a80r1",
         "0",
         "decision",
         "c5aefcb1a0e717b26c9d3d4839",
@@ -3579,7 +3594,7 @@
         ""
        ],
        [
-        "30e1f77067fcr1",
+        "f6fe60881a80r1",
         "1",
         "update",
         "c5aefcb1a0e717b26c9d3d4839",
@@ -3911,7 +3926,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "30e1f77067fcr1"
+        "f6fe60881a80r1"
        ]
       ]
      }
@@ -4298,7 +4313,7 @@
    "body": {
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"judgment\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}},\"4709iy\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"judgment\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}}}"
+      "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"bcyx3f\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}},\"4709iy\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"bcyx3f\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}}}"
      }
     }
    },
@@ -4654,7 +4669,7 @@
    "body": {
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":0,\"scale\":3,\"reasoning\":\"on second thought\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"judgment\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}},\"4709iy\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"judgment\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}}}"
+      "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":0,\"scale\":3,\"reasoning\":\"on second thought\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"bcyx3f\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}},\"4709iy\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"bcyx3f\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}}}"
      }
     }
    },
@@ -5044,7 +5059,7 @@
       "extendedProperties": {
        "private": {
         "cascading-time-tracker-facts": "{\"with\":[\"4709iy\"],\"notes\":{\"4709iy\":\"laughed a lot\"}}",
-        "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":0,\"scale\":3,\"reasoning\":\"on second thought\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"judgment\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}},\"4709iy\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"judgment\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}}}"
+        "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":0,\"scale\":3,\"reasoning\":\"on second thought\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"bcyx3f\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}},\"4709iy\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"bcyx3f\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}}}"
        }
       },
       "iCalUID": "c5aefcb1a0e717b26c9d3d4839@google.com",
@@ -5372,7 +5387,8 @@
        [
         "id",
         "name",
-        "note"
+        "note",
+        "scoring"
        ]
       ]
      },
@@ -5405,31 +5421,31 @@
         "detail"
        ],
        [
-        "30e1f77067fcr1",
+        "f6fe60881a80r1",
         "0",
         "compaction",
         "",
         "",
         "",
         "stamped",
-        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-05T12:30:00-04:00#2\"], \"warnings\": [], \"ignore_notes\": [], \"proposal\": \"30e1f77067fc\", \"revision\": 1, \"from\": \"2026-10-05T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"c5aefcb1a0e717b26c9d3d4839\": \"37da95c086\"}, \"key_seq\": 0, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"What the notes say.\", \"did\": [{\"text\": \"Recorded the days.\"}], \"unsure\": []}, \"recap_revision\": 1}"
+        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-05T12:30:00-04:00#2\"], \"warnings\": [], \"ignore_notes\": [], \"proposal\": \"f6fe60881a80\", \"revision\": 1, \"from\": \"2026-10-05T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"c5aefcb1a0e717b26c9d3d4839\": \"37da95c086\"}, \"key_seq\": 0, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"What the notes say.\", \"did\": [{\"text\": \"Recorded the days.\"}], \"unsure\": []}, \"recap_revision\": 1}"
        ],
        [
-        "30e1f77067fcr1",
+        "f6fe60881a80r1",
         "0",
         "claude_decision",
         "c5aefcb1a0e717b26c9d3d4839",
         "{\"action\": \"keep\", \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\", \"facts\": {\"with\": [\"4709iy\"], \"notes\": {\"4709iy\": \"laughed a lot\"}}}"
        ],
        [
-        "30e1f77067fcr1",
+        "f6fe60881a80r1",
         "0",
         "decision",
         "c5aefcb1a0e717b26c9d3d4839",
         "{\"action\": \"keep\", \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\", \"facts\": {\"with\": [\"4709iy\"], \"notes\": {\"4709iy\": \"laughed a lot\"}}}"
        ],
        [
-        "30e1f77067fcr1",
+        "f6fe60881a80r1",
         "1",
         "update",
         "c5aefcb1a0e717b26c9d3d4839",
@@ -5520,7 +5536,7 @@
        [
         "2026-10-05T12:30:00-04:00",
         "lunch with Robin",
-        "30e1f77067fcr1"
+        "f6fe60881a80r1"
        ]
       ]
      },
@@ -5599,49 +5615,50 @@
         "name",
         "status",
         "definition",
-        "parts"
+        "parts",
+        "scoring"
        ],
        [
         "thoughtful",
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
        ],
        [
         "reliable",
         "Reliable",
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
-        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+        "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
        ],
        [
         "creative",
         "Creative",
         "active",
         "Make something together with them (making something alone is taking care of myself).",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
        ],
        [
         "adventurous",
         "Adventurous",
         "active",
         "Share new experiences with them: new activities, new places.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
        ],
        [
         "generous",
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
        ],
        [
         "close",
         "Close",
         "active",
         "",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How connected?\",\"ratings\":{\"0\":\"apart\",\"1\":\"close\"},\"facts\":[\"general_notes\",{\"fact\":\"location_history\",\"lookback_days\":14}],\"engagement_type\":\"with\"}]"
+        "[{\"id\":\"bcyx3f\",\"kind\":\"judgment\",\"rubric\":\"How connected?\",\"ratings\":{\"0\":\"apart\",\"1\":\"close\"},\"facts\":[\"general_notes\",{\"fact\":\"location_history\",\"lookback_days\":14}],\"engagement_type\":\"with\"}]"
        ]
       ]
      }

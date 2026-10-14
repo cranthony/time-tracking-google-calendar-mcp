@@ -114,6 +114,8 @@ pub fn registry() -> &'static [crate::contract::ToolDef] {
             people::get_habit_tool(),
             people::create_habit_tool(),
             people::update_habit_tool(),
+            people::get_scoring_defaults_tool(),
+            people::set_scoring_defaults_tool(),
             compaction::get_compaction_status_tool(),
             events::note_tool(),
             events::get_notes_tool(),

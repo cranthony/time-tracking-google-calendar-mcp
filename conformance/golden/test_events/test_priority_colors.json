@@ -498,7 +498,8 @@
        [
         "id",
         "name",
-        "note"
+        "note",
+        "scoring"
        ]
       ]
      }
@@ -1109,7 +1110,8 @@
        [
         "id",
         "name",
-        "note"
+        "note",
+        "scoring"
        ]
       ]
      },

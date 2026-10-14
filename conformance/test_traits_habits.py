@@ -108,3 +108,32 @@ async def test_schedule_hints(session):
     await session.call_error("set_compaction_schedule_hints", hints=[{"time": "25:00"}])
     assert len((await session.call("get_compaction_schedule_hints"))["hints"]) == 3
     assert (await session.call("set_compaction_schedule_hints", hints=[]))["hints"] == []
+
+
+async def test_part_ids_and_scoring(session):
+    """Each part has an id its weight is kept under; scoring is checked and
+    kept, at each level, and the defaults are set in a tab of their own."""
+    judged = {**PARTS[0], "scoring": {"weight_by": "duration", "statistic": "percentile", "percentile": 25, "limit": 10, "limit_by": "best"}}
+    created = await session.call("create_trait", trait={"name": "Daring", "definition": "d", "parts": [judged, PARTS[1]]})
+    first, second = (p["id"] for p in created["parts"])
+    scoring = {"weights": {first: 2}, "limit": 1, "limit_by": "worst", "cap_below": {"threshold": 40, "cap": 50}, "missing": "skip"}
+    updated = await session.call("update_trait", trait={"id": created["id"], "scoring": scoring})
+    assert updated["scoring"] == scoring
+    # The second part let go, and a new one added: the first keeps its id.
+    kept = await session.call("update_trait", trait={"id": created["id"], "parts": [created["parts"][0], PARTS[2]]})
+    assert kept["parts"][0]["id"] == first and kept["parts"][1]["id"] not in (first, second)
+    await session.call_error("update_trait", trait={"id": created["id"], "scoring": {"weights": {"nosuch": 1}}})
+    await session.call_error("update_trait", trait={"id": created["id"], "parts": [{**PARTS[1], "weight": 2}]})
+    await session.call_error("update_trait", trait={"id": created["id"], "parts": [{**PARTS[0], "scoring": {"limit": 2}}]})
+
+    person = (await session.call("create_person", person={"name": "Sam", "traits": {"scoring": {"statistic": "percentile", "percentile": 0}, "part_scoring": {created["id"]: {"weights": {first: 3}}}}}))["created_id"]
+    assert (await session.call("get_person", id_or_name=person))["traits"]["scoring"] == {"statistic": "percentile", "percentile": 0}
+    circle = (await session.call("create_circle", circle={"name": "Friends", "scoring": {"weights": {person: 2}}}))["created_id"]
+    await session.call("update_circle", circle={"id": circle}, clear_fields=["scoring"])
+    await session.call_error("create_circle", circle={"name": "Bad", "scoring": {"statistic": "median"}})
+
+    assert await session.call("get_scoring_defaults") == {"traits": None, "circles": None, "habit_layers": None}
+    await session.call("set_scoring_defaults", defaults={"traits": {"statistic": "percentile", "percentile": 25}, "habit_layers": {"limit": 1, "limit_by": "worst"}})
+    saved = await session.call("set_scoring_defaults", defaults={"circles": {"missing": 0}}, clear_fields=["habit_layers"])
+    assert saved == {"traits": {"statistic": "percentile", "percentile": 25}, "circles": {"missing": 0}, "habit_layers": None}
+    await session.call_error("set_scoring_defaults", defaults={"traits": {"limit": 2}})

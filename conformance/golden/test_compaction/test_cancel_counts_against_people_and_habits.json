@@ -80,16 +80,18 @@
     "parts": [
      {
       "action": "bcyx3f",
+      "id": "7632uw",
       "kind": "follow_through",
       "look_back_days": 90,
       "penalty": 20,
       "recovery": 30
      }
     ],
+    "scoring": null,
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"dependable\",\n  \"name\": \"Dependable\",\n  \"status\": \"active\",\n  \"definition\": \"Shows up.\",\n  \"parts\": [\n    {\n      \"kind\": \"follow_through\",\n      \"penalty\": 20,\n      \"recovery\": 30,\n      \"look_back_days\": 90,\n      \"action\": \"bcyx3f\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"dependable\",\n  \"name\": \"Dependable\",\n  \"status\": \"active\",\n  \"definition\": \"Shows up.\",\n  \"parts\": [\n    {\n      \"id\": \"7632uw\",\n      \"kind\": \"follow_through\",\n      \"penalty\": 20,\n      \"recovery\": 30,\n      \"look_back_days\": 90,\n      \"action\": \"bcyx3f\"\n    }\n  ],\n  \"scoring\": null\n}",
    "tool": "create_trait"
   },
   {
@@ -100,13 +102,13 @@
     }
    },
    "content": {
-    "created_id": "7632uw",
+    "created_id": "9vxzfr",
     "habit": {
      "action_id": "bcyx3f",
      "action_path": "eat a meal",
      "cancelled_events": null,
      "foundations": null,
-     "id": "7632uw",
+     "id": "9vxzfr",
      "name": "Eat together",
      "note": null,
      "status": "active",
@@ -114,7 +116,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"7632uw\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"7632uw\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"9vxzfr\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"9vxzfr\"\n}",
    "tool": "create_habit"
   },
   {
@@ -710,10 +712,10 @@
       "reason": "cancelled -- it didn't happen"
      }
     ],
-    "compaction_id": "17173bed32e1r1",
+    "compaction_id": "285c64b31436r1",
     "judgments": null,
-    "message": "proposal 17173bed32e1 revision 1: 1 calendar change(s) for 1 note(s) over 2 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
-    "proposal_id": "17173bed32e1",
+    "message": "proposal 285c64b31436 revision 1: 1 calendar change(s) for 1 note(s) over 2 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
+    "proposal_id": "285c64b31436",
     "revision": 1,
     "status": "proposed",
     "timeline": {
@@ -972,12 +974,12 @@
     ]
    },
    "is_error": false,
-   "text": "{\n  \"status\": \"proposed\",\n  \"message\": \"proposal 17173bed32e1 revision 1: 1 calendar change(s) for 1 note(s) over 2 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\",\n  \"compaction_id\": \"17173bed32e1r1\",\n  \"proposal_id\": \"17173bed32e1\",\n  \"revision\": 1,\n  \"changes\": [\n    {\n      \"action\": \"cancel\",\n      \"reason\": \"cancelled -- it didn't happen\",\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"key\": null,\n      \"before\": {\n        \"summary\": \"Dinner\",\n        \"start\": \"2026-10-06T18:00:00-04:00\",\n        \"end\": \"2026-10-06T19:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n        \"action_ids\": [\n          \"bcyx3f\"\n        ],\n        \"facts\": {\n          \"with\": [\n            \"4709iy\"\n          ]\n        }\n      },\n      \"after\": null\n    }\n  ],\n  \"warnings\": [\n    \"note 2026-10-06T18:30:00-04:00#2 ('skipped dinner') doesn't fall within any event, so its text wasn't added anywhere\"\n  ],\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"2026-10-06T18:30:00-04:00#2\",\n        \"time\": \"2026-10-06T18:30:00-04:00\",\n        \"text\": \"skipped dinner\",\n        \"anchors\": [],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"983cc1ee90e3562d53bf2811fa\",\n        \"start\": \"2026-10-05T22:30:00-04:00\",\n        \"end\": \"2026-10-06T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-06T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"80ef6e6b3e64378a65837bc042\",\n        \"start\": \"2026-10-06T07:00:00-04:00\",\n        \"end\": \"2026-10-06T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"95245adbc9680701fe3defce4d\",\n        \"start\": \"2026-10-06T08:00:00-04:00\",\n        \"end\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ce6e21fbbbbbae2bda5a8a102b\",\n        \"start\": \"2026-10-06T12:00:00-04:00\",\n        \"end\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ee7f6f96ac6a86131c31dc7199\",\n        \"start\": \"2026-10-06T13:00:00-04:00\",\n        \"end\": \"2026-10-06T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"cancelled\",\n        \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n        \"start\": null,\n        \"end\": null,\n        \"planned_start\": \"2026-10-06T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [],\n        \"follow_through\": [\n          \"Me (Reliable, Dependable)\",\n          \"Robin Example (Reliable, Dependable)\",\n          \"the Eat together habit (Reliable, Dependable)\"\n        ]\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"afaf1b5f5b5363588c57736ee3\",\n        \"start\": \"2026-10-06T22:30:00-04:00\",\n        \"end\": \"2026-10-07T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-07T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a85f2d467494a9d0220c19d15f\",\n        \"start\": \"2026-10-07T07:00:00-04:00\",\n        \"end\": \"2026-10-07T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-07T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"f8bd16c38f3a1abffb065946d7\",\n        \"start\": \"2026-10-07T08:00:00-04:00\",\n        \"end\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"05fc5d4746a5de646b6c1f42ef\",\n        \"start\": \"2026-10-07T12:00:00-04:00\",\n        \"end\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"planned\",\n        \"event_id\": \"23a1388e7f1d12ac272a90633f\",\n        \"start\": \"2026-10-07T13:00:00-04:00\",\n        \"end\": \"2026-10-07T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      }\n    ],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": true,\n    \"text\": \"━━ Tue 06 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ✕ Dinner · cancelled (was\\n        18:00–19:00)\\n18:30 ○ skipped dinner\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Sleep: action, location\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Sleep: action, location\\n\\nFollow-through:\\n  ✗ Dinner: Me (Reliable, Dependable),\\n    Robin Example (Reliable,\\n    Dependable), the Eat together habit\\n    (Reliable, Dependable)\\n\\n━━ Wed 07 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\\n17:00 └ Afternoon work ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n⚠ missing action or location\\n✗ counts against follow-through\\n+/− late/early   ⇢/⇠ moved\"\n  },\n  \"additions\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"status\": \"proposed\",\n  \"message\": \"proposal 285c64b31436 revision 1: 1 calendar change(s) for 1 note(s) over 2 days, through 2026-10-07T15:30:00-04:00; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\",\n  \"compaction_id\": \"285c64b31436r1\",\n  \"proposal_id\": \"285c64b31436\",\n  \"revision\": 1,\n  \"changes\": [\n    {\n      \"action\": \"cancel\",\n      \"reason\": \"cancelled -- it didn't happen\",\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"key\": null,\n      \"before\": {\n        \"summary\": \"Dinner\",\n        \"start\": \"2026-10-06T18:00:00-04:00\",\n        \"end\": \"2026-10-06T19:00:00-04:00\",\n        \"description\": null,\n        \"location\": null,\n        \"status\": \"confirmed\",\n        \"priority\": null,\n        \"event_label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n        \"action_ids\": [\n          \"bcyx3f\"\n        ],\n        \"facts\": {\n          \"with\": [\n            \"4709iy\"\n          ]\n        }\n      },\n      \"after\": null\n    }\n  ],\n  \"warnings\": [\n    \"note 2026-10-06T18:30:00-04:00#2 ('skipped dinner') doesn't fall within any event, so its text wasn't added anywhere\"\n  ],\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"2026-10-06T18:30:00-04:00#2\",\n        \"time\": \"2026-10-06T18:30:00-04:00\",\n        \"text\": \"skipped dinner\",\n        \"anchors\": [],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"983cc1ee90e3562d53bf2811fa\",\n        \"start\": \"2026-10-05T22:30:00-04:00\",\n        \"end\": \"2026-10-06T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-05T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-06T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"80ef6e6b3e64378a65837bc042\",\n        \"start\": \"2026-10-06T07:00:00-04:00\",\n        \"end\": \"2026-10-06T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"95245adbc9680701fe3defce4d\",\n        \"start\": \"2026-10-06T08:00:00-04:00\",\n        \"end\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ce6e21fbbbbbae2bda5a8a102b\",\n        \"start\": \"2026-10-06T12:00:00-04:00\",\n        \"end\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"ee7f6f96ac6a86131c31dc7199\",\n        \"start\": \"2026-10-06T13:00:00-04:00\",\n        \"end\": \"2026-10-06T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-06T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Dinner\",\n        \"status\": \"cancelled\",\n        \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n        \"start\": null,\n        \"end\": null,\n        \"planned_start\": \"2026-10-06T18:00:00-04:00\",\n        \"planned_end\": \"2026-10-06T19:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [],\n        \"follow_through\": [\n          \"Me (Reliable, Dependable)\",\n          \"Robin Example (Reliable, Dependable)\",\n          \"the Eat together habit (Reliable, Dependable)\"\n        ]\n      },\n      {\n        \"summary\": \"Sleep\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"afaf1b5f5b5363588c57736ee3\",\n        \"start\": \"2026-10-06T22:30:00-04:00\",\n        \"end\": \"2026-10-07T06:30:00-04:00\",\n        \"planned_start\": \"2026-10-06T22:30:00-04:00\",\n        \"planned_end\": \"2026-10-07T06:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Breakfast\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"a85f2d467494a9d0220c19d15f\",\n        \"start\": \"2026-10-07T07:00:00-04:00\",\n        \"end\": \"2026-10-07T07:30:00-04:00\",\n        \"planned_start\": \"2026-10-07T07:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T07:30:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Work\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"f8bd16c38f3a1abffb065946d7\",\n        \"start\": \"2026-10-07T08:00:00-04:00\",\n        \"end\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T08:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T12:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Lunch\",\n        \"status\": \"on_schedule\",\n        \"event_id\": \"05fc5d4746a5de646b6c1f42ef\",\n        \"start\": \"2026-10-07T12:00:00-04:00\",\n        \"end\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T12:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T13:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      },\n      {\n        \"summary\": \"Afternoon work\",\n        \"status\": \"planned\",\n        \"event_id\": \"23a1388e7f1d12ac272a90633f\",\n        \"start\": \"2026-10-07T13:00:00-04:00\",\n        \"end\": \"2026-10-07T17:00:00-04:00\",\n        \"planned_start\": \"2026-10-07T13:00:00-04:00\",\n        \"planned_end\": \"2026-10-07T17:00:00-04:00\",\n        \"start_note\": null,\n        \"end_note\": null,\n        \"merged_into\": null,\n        \"actions\": [],\n        \"new_actions\": [],\n        \"facts\": [],\n        \"new_facts\": false,\n        \"missing\": [\n          \"action\",\n          \"location\"\n        ],\n        \"follow_through\": []\n      }\n    ],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": true,\n    \"text\": \"━━ Tue 06 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n17:00 └ Afternoon work ends\\n18:00 ✕ Dinner · cancelled (was\\n        18:00–19:00)\\n18:30 ○ skipped dinner\\n22:30 ┌ Sleep\\n          ⚠ no action, no location\\n06:30 └ Sleep ends\\n\\nMissing:\\n  ⚠ Sleep: action, location\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n  ⚠ Sleep: action, location\\n\\nFollow-through:\\n  ✗ Dinner: Me (Reliable, Dependable),\\n    Robin Example (Reliable,\\n    Dependable), the Eat together habit\\n    (Reliable, Dependable)\\n\\n━━ Wed 07 Oct ━━━━━━━━━━━━━━━━━━━━━━━━━━\\n07:00 ┌ Breakfast\\n          ⚠ no action, no location\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n          ⚠ no action, no location\\n12:00 ├ Lunch\\n          ⚠ no action, no location\\n13:00 ├ Afternoon work\\n          ⚠ no action, no location\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\\n17:00 └ Afternoon work ends\\n\\nMissing:\\n  ⚠ Breakfast: action, location\\n  ⚠ Work: action, location\\n  ⚠ Lunch: action, location\\n  ⚠ Afternoon work: action, location\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n⚠ missing action or location\\n✗ counts against follow-through\\n+/− late/early   ⇢/⇠ moved\"\n  },\n  \"additions\": null,\n  \"judgments\": null\n}",
    "tool": "compact_notes"
   },
   {
    "arguments": {
-    "proposal_id": "17173bed32e1",
+    "proposal_id": "285c64b31436",
     "revision": 1
    },
    "content": {
@@ -1017,7 +1019,7 @@
      "created": "2026-10-07T15:30:00-04:00",
      "events": null,
      "feedback": [],
-     "id": "17173bed32e1",
+     "id": "285c64b31436",
      "notes": [],
      "problem": null,
      "reason": "proposed",
@@ -1048,7 +1050,7 @@
     "status": "applied"
    },
    "is_error": false,
-   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"applied 1 change(s) and marked 1 note(s) compacted.\",\n  \"proposal\": {\n    \"id\": \"17173bed32e1\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-06T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"cancel\",\n        \"reason\": \"cancelled -- it didn't happen\",\n        \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-06T18:00:00-04:00\",\n          \"end\": \"2026-10-06T19:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n          \"action_ids\": [\n            \"bcyx3f\"\n          ],\n          \"facts\": {\n            \"with\": [\n              \"4709iy\"\n            ]\n          }\n        },\n        \"after\": null\n      }\n    ],\n    \"warnings\": [\n      \"note 2026-10-06T18:30:00-04:00#2 ('skipped dinner') doesn't fall within any event, so its text wasn't added anywhere\"\n    ],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"A normal few days.\",\n      \"did\": [\n        {\n          \"text\": \"Moved **breakfast** to when it ended.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
+   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"applied 1 change(s) and marked 1 note(s) compacted.\",\n  \"proposal\": {\n    \"id\": \"285c64b31436\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-06T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"cancel\",\n        \"reason\": \"cancelled -- it didn't happen\",\n        \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-06T18:00:00-04:00\",\n          \"end\": \"2026-10-06T19:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n          \"action_ids\": [\n            \"bcyx3f\"\n          ],\n          \"facts\": {\n            \"with\": [\n              \"4709iy\"\n            ]\n          }\n        },\n        \"after\": null\n      }\n    ],\n    \"warnings\": [\n      \"note 2026-10-06T18:30:00-04:00#2 ('skipped dinner') doesn't fall within any event, so its text wasn't added anywhere\"\n    ],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"A normal few days.\",\n      \"did\": [\n        {\n          \"text\": \"Moved **breakfast** to when it ended.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
    "tool": "confirm_proposal"
   },
   {
@@ -1067,9 +1069,9 @@
       "event_id": "a3ed657f83d6a4bc6c3589c096",
       "parts": [
        "reliable/follow_through",
-       "dependable/follow_through"
+       "dependable/7632uw"
       ],
-      "source": "compaction 17173bed32e1r1",
+      "source": "compaction 285c64b31436r1",
       "start": "2026-10-06T18:00:00-04:00",
       "summary": "Dinner"
      }
@@ -1085,7 +1087,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/7632uw\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 285c64b31436r1\"\n    }\n  ]\n}",
    "tool": "get_person"
   },
   {
@@ -1105,15 +1107,15 @@
        "event_id": "a3ed657f83d6a4bc6c3589c096",
        "parts": [
         "reliable/follow_through",
-        "dependable/follow_through"
+        "dependable/7632uw"
        ],
-       "source": "compaction 17173bed32e1r1",
+       "source": "compaction 285c64b31436r1",
        "start": "2026-10-06T18:00:00-04:00",
        "summary": "Dinner"
       }
      ],
      "foundations": null,
-     "id": "7632uw",
+     "id": "9vxzfr",
      "name": "Eat together",
      "note": null,
      "status": "active",
@@ -1121,26 +1123,26 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"9vxzfr\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/7632uw\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 285c64b31436r1\"\n    }\n  ]\n}",
    "tool": "get_habits"
   },
   {
    "arguments": {
-    "habit_id": "7632uw"
+    "habit_id": "9vxzfr"
    },
    "content": {
-    "backfill_id": "habit:7632uw@2026-08-31T15:30:00-04:00",
+    "backfill_id": "habit:9vxzfr@2026-08-31T15:30:00-04:00",
     "events": [],
-    "habit_id": "7632uw",
+    "habit_id": "9vxzfr",
     "habit_name": "Eat together",
     "history": {},
-    "instructions": "JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\"<trait id>/<part key>\"); `parts` gives each part's rubric and ratings once (\"...@habit:<id>\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in what_matters, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \"<event id>/habit:<id>/<trait id>/<part key>\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.",
+    "instructions": "JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\"<trait id>/<part id>\"); `parts` gives each part's rubric and ratings once (\"...@habit:<id>\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in what_matters, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \"<event id>/habit:<id>/<trait id>/<part id>\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.",
     "parts": [],
     "since": "2026-08-31T15:30:00-04:00",
     "until": "2026-10-07T15:30:00-04:00"
    },
    "is_error": false,
-   "text": "{\n  \"backfill_id\": \"habit:7632uw@2026-08-31T15:30:00-04:00\",\n  \"habit_id\": \"7632uw\",\n  \"habit_name\": \"Eat together\",\n  \"since\": \"2026-08-31T15:30:00-04:00\",\n  \"until\": \"2026-10-07T15:30:00-04:00\",\n  \"events\": [],\n  \"parts\": [],\n  \"history\": {},\n  \"instructions\": \"JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\\\"<trait id>/<part key>\\\"); `parts` gives each part's rubric and ratings once (\\\"...@habit:<id>\\\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in what_matters, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \\\"<event id>/habit:<id>/<trait id>/<part key>\\\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.\"\n}",
+   "text": "{\n  \"backfill_id\": \"habit:9vxzfr@2026-08-31T15:30:00-04:00\",\n  \"habit_id\": \"9vxzfr\",\n  \"habit_name\": \"Eat together\",\n  \"since\": \"2026-08-31T15:30:00-04:00\",\n  \"until\": \"2026-10-07T15:30:00-04:00\",\n  \"events\": [],\n  \"parts\": [],\n  \"history\": {},\n  \"instructions\": \"JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\\\"<trait id>/<part id>\\\"); `parts` gives each part's rubric and ratings once (\\\"...@habit:<id>\\\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in what_matters, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \\\"<event id>/habit:<id>/<trait id>/<part id>\\\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.\"\n}",
    "tool": "prepare_habit_judgments"
   },
   {
@@ -1335,7 +1337,7 @@
       "event_id": "aa5b8e80de82b0f901f784923b",
       "parts": [
        "reliable/follow_through",
-       "dependable/follow_through"
+       "dependable/7632uw"
       ],
       "source": "delete_event",
       "start": "2026-10-07T20:00:00-04:00",
@@ -1351,9 +1353,9 @@
       "event_id": "a3ed657f83d6a4bc6c3589c096",
       "parts": [
        "reliable/follow_through",
-       "dependable/follow_through"
+       "dependable/7632uw"
       ],
-      "source": "compaction 17173bed32e1r1",
+      "source": "compaction 285c64b31436r1",
       "start": "2026-10-06T18:00:00-04:00",
       "summary": "Dinner"
      }
@@ -1369,7 +1371,7 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"aa5b8e80de82b0f901f784923b\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"delete_event\"\n    },\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/follow_through\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 17173bed32e1r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"aa5b8e80de82b0f901f784923b\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/7632uw\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"delete_event\"\n    },\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"bcyx3f\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/7632uw\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 285c64b31436r1\"\n    }\n  ]\n}",
    "tool": "get_person"
   }
  ],
@@ -1758,7 +1760,8 @@
        [
         "id",
         "name",
-        "note"
+        "note",
+        "scoring"
        ]
       ]
      }
@@ -2197,7 +2200,8 @@
         "name",
         "status",
         "definition",
-        "parts"
+        "parts",
+        "scoring"
        ]
       ]
      }
@@ -2229,35 +2233,40 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        ""
        ],
        [
         "reliable",
         "Reliable",
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
-        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        ""
        ],
        [
         "creative",
         "Creative",
         "active",
         "Make something together with them (making something alone is taking care of myself).",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        ""
        ],
        [
         "adventurous",
         "Adventurous",
         "active",
         "Share new experiences with them: new activities, new places.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        ""
        ],
        [
         "generous",
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        ""
        ]
       ]
      }
@@ -2339,42 +2348,48 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        ""
        ],
        [
         "reliable",
         "Reliable",
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
-        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+        "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        ""
        ],
        [
         "creative",
         "Creative",
         "active",
         "Make something together with them (making something alone is taking care of myself).",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        ""
        ],
        [
         "adventurous",
         "Adventurous",
         "active",
         "Share new experiences with them: new activities, new places.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        ""
        ],
        [
         "generous",
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        ""
        ],
        [
         "dependable",
         "Dependable",
         "active",
         "Shows up.",
-        "[{\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90,\"action\":\"bcyx3f\"}]"
+        "[{\"id\":\"7632uw\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90,\"action\":\"bcyx3f\"}]",
+        ""
        ]
       ]
      }
@@ -2546,7 +2561,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "7632uw",
+        "9vxzfr",
         "Eat together",
         "bcyx3f",
         "active",
@@ -3387,17 +3402,17 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "17173bed32e1r1",
+        "285c64b31436r1",
         "0",
         "compaction",
         "",
         "",
         "",
         "proposed",
-        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-06T18:30:00-04:00#2\"], \"warnings\": [\"note 2026-10-06T18:30:00-04:00#2 ('skipped dinner') doesn't fall within any event, so its text wasn't added anywhere\"], \"ignore_notes\": [], \"proposal\": \"17173bed32e1\", \"revision\": 1, \"from\": \"2026-10-06T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"a3ed657f83d6a4bc6c3589c096\": \"2e30d72eb7\"}, \"key_seq\": 0, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"A normal few days.\", \"did\": [{\"text\": \"Moved **breakfast** to when it ended.\"}], \"unsure\": []}, \"recap_revision\": 1}"
+        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-06T18:30:00-04:00#2\"], \"warnings\": [\"note 2026-10-06T18:30:00-04:00#2 ('skipped dinner') doesn't fall within any event, so its text wasn't added anywhere\"], \"ignore_notes\": [], \"proposal\": \"285c64b31436\", \"revision\": 1, \"from\": \"2026-10-06T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"a3ed657f83d6a4bc6c3589c096\": \"2e30d72eb7\"}, \"key_seq\": 0, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"A normal few days.\", \"did\": [{\"text\": \"Moved **breakfast** to when it ended.\"}], \"unsure\": []}, \"recap_revision\": 1}"
        ],
        [
-        "17173bed32e1r1",
+        "285c64b31436r1",
         "0",
         "claude_decision",
         "a3ed657f83d6a4bc6c3589c096",
@@ -3407,7 +3422,7 @@
         ""
        ],
        [
-        "17173bed32e1r1",
+        "285c64b31436r1",
         "0",
         "decision",
         "a3ed657f83d6a4bc6c3589c096",
@@ -3417,7 +3432,7 @@
         ""
        ],
        [
-        "17173bed32e1r1",
+        "285c64b31436r1",
         "1",
         "cancel",
         "a3ed657f83d6a4bc6c3589c096",
@@ -3665,22 +3680,22 @@
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ],
        [
-        "a3ed657f83d6a4bc6c3589c096/habit:7632uw/with",
+        "a3ed657f83d6a4bc6c3589c096/habit:9vxzfr/with",
         "a3ed657f83d6a4bc6c3589c096",
-        "habit:7632uw",
+        "habit:9vxzfr",
         "with",
         "Dinner",
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ],
        [
         "a3ed657f83d6a4bc6c3589c096/self/with",
@@ -3691,9 +3706,9 @@
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ]
       ]
      }
@@ -3749,7 +3764,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "17173bed32e1r1"
+        "285c64b31436r1"
        ]
       ]
      }
@@ -4540,22 +4555,22 @@
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ],
        [
-        "a3ed657f83d6a4bc6c3589c096/habit:7632uw/with",
+        "a3ed657f83d6a4bc6c3589c096/habit:9vxzfr/with",
         "a3ed657f83d6a4bc6c3589c096",
-        "habit:7632uw",
+        "habit:9vxzfr",
         "with",
         "Dinner",
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ],
        [
         "a3ed657f83d6a4bc6c3589c096/self/with",
@@ -4566,9 +4581,9 @@
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ],
        [
         "aa5b8e80de82b0f901f784923b/4709iy/with",
@@ -4579,20 +4594,20 @@
         "2026-10-07T20:00:00-04:00",
         "2026-10-07T21:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
         "delete_event"
        ],
        [
-        "aa5b8e80de82b0f901f784923b/habit:7632uw/with",
+        "aa5b8e80de82b0f901f784923b/habit:9vxzfr/with",
         "aa5b8e80de82b0f901f784923b",
-        "habit:7632uw",
+        "habit:9vxzfr",
         "with",
         "Dinner again",
         "2026-10-07T20:00:00-04:00",
         "2026-10-07T21:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
         "delete_event"
        ],
@@ -4605,7 +4620,7 @@
         "2026-10-07T20:00:00-04:00",
         "2026-10-07T21:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
         "delete_event"
        ]
@@ -5338,22 +5353,22 @@
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ],
        [
-        "a3ed657f83d6a4bc6c3589c096/habit:7632uw/with",
+        "a3ed657f83d6a4bc6c3589c096/habit:9vxzfr/with",
         "a3ed657f83d6a4bc6c3589c096",
-        "habit:7632uw",
+        "habit:9vxzfr",
         "with",
         "Dinner",
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ],
        [
         "a3ed657f83d6a4bc6c3589c096/self/with",
@@ -5364,9 +5379,9 @@
         "2026-10-06T18:00:00-04:00",
         "2026-10-06T19:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
-        "compaction 17173bed32e1r1"
+        "compaction 285c64b31436r1"
        ],
        [
         "aa5b8e80de82b0f901f784923b/4709iy/with",
@@ -5377,20 +5392,20 @@
         "2026-10-07T20:00:00-04:00",
         "2026-10-07T21:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
         "delete_event"
        ],
        [
-        "aa5b8e80de82b0f901f784923b/habit:7632uw/with",
+        "aa5b8e80de82b0f901f784923b/habit:9vxzfr/with",
         "aa5b8e80de82b0f901f784923b",
-        "habit:7632uw",
+        "habit:9vxzfr",
         "with",
         "Dinner again",
         "2026-10-07T20:00:00-04:00",
         "2026-10-07T21:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
         "delete_event"
        ],
@@ -5403,7 +5418,7 @@
         "2026-10-07T20:00:00-04:00",
         "2026-10-07T21:00:00-04:00",
         "[\"bcyx3f\"]",
-        "[\"reliable/follow_through\",\"dependable/follow_through\"]",
+        "[\"reliable/follow_through\",\"dependable/7632uw\"]",
         "2026-10-07T15:30:00-04:00",
         "delete_event"
        ]
@@ -5430,7 +5445,8 @@
        [
         "id",
         "name",
-        "note"
+        "note",
+        "scoring"
        ]
       ]
      },
@@ -5463,31 +5479,31 @@
         "detail"
        ],
        [
-        "17173bed32e1r1",
+        "285c64b31436r1",
         "0",
         "compaction",
         "",
         "",
         "",
         "stamped",
-        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-06T18:30:00-04:00#2\"], \"warnings\": [\"note 2026-10-06T18:30:00-04:00#2 ('skipped dinner') doesn't fall within any event, so its text wasn't added anywhere\"], \"ignore_notes\": [], \"proposal\": \"17173bed32e1\", \"revision\": 1, \"from\": \"2026-10-06T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"a3ed657f83d6a4bc6c3589c096\": \"2e30d72eb7\"}, \"key_seq\": 0, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"A normal few days.\", \"did\": [{\"text\": \"Moved **breakfast** to when it ended.\"}], \"unsure\": []}, \"recap_revision\": 1}"
+        "{\"now\": \"2026-10-07T15:30:00-04:00\", \"note_ids\": [\"2026-10-06T18:30:00-04:00#2\"], \"warnings\": [\"note 2026-10-06T18:30:00-04:00#2 ('skipped dinner') doesn't fall within any event, so its text wasn't added anywhere\"], \"ignore_notes\": [], \"proposal\": \"285c64b31436\", \"revision\": 1, \"from\": \"2026-10-06T06:30:00-04:00\", \"created\": \"2026-10-07T15:30:00-04:00\", \"base\": null, \"user_seq\": 0, \"by\": \"claude\", \"reason\": \"proposed\", \"changed\": [], \"outcomes\": {\"a3ed657f83d6a4bc6c3589c096\": \"2e30d72eb7\"}, \"key_seq\": 0, \"claude_ignore_notes\": [], \"claude_additions\": {}, \"claude_through\": \"2026-10-07T15:30:00-04:00\", \"claude_recap\": {\"overview\": \"A normal few days.\", \"did\": [{\"text\": \"Moved **breakfast** to when it ended.\"}], \"unsure\": []}, \"recap_revision\": 1}"
        ],
        [
-        "17173bed32e1r1",
+        "285c64b31436r1",
         "0",
         "claude_decision",
         "a3ed657f83d6a4bc6c3589c096",
         "{\"action\": \"cancel\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"counts_against_follow_through\": true}"
        ],
        [
-        "17173bed32e1r1",
+        "285c64b31436r1",
         "0",
         "decision",
         "a3ed657f83d6a4bc6c3589c096",
         "{\"action\": \"cancel\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"counts_against_follow_through\": true}"
        ],
        [
-        "17173bed32e1r1",
+        "285c64b31436r1",
         "1",
         "cancel",
         "a3ed657f83d6a4bc6c3589c096",
@@ -5526,7 +5542,7 @@
         "foundations"
        ],
        [
-        "7632uw",
+        "9vxzfr",
         "Eat together",
         "bcyx3f",
         "active"
@@ -5584,7 +5600,7 @@
        [
         "2026-10-06T18:30:00-04:00",
         "skipped dinner",
-        "17173bed32e1r1"
+        "285c64b31436r1"
        ]
       ]
      },
@@ -5661,49 +5677,50 @@
         "name",
         "status",
         "definition",
-        "parts"
+        "parts",
+        "scoring"
        ],
        [
         "thoughtful",
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
        ],
        [
         "reliable",
         "Reliable",
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
-        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+        "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
        ],
        [
         "creative",
         "Creative",
         "active",
         "Make something together with them (making something alone is taking care of myself).",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
        ],
        [
         "adventurous",
         "Adventurous",
         "active",
         "Share new experiences with them: new activities, new places.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
        ],
        [
         "generous",
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
        ],
        [
         "dependable",
         "Dependable",
         "active",
         "Shows up.",
-        "[{\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90,\"action\":\"bcyx3f\"}]"
+        "[{\"id\":\"7632uw\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90,\"action\":\"bcyx3f\"}]"
        ]
       ]
      }

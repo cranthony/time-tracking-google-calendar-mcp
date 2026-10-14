@@ -10,7 +10,8 @@ use crate::stores::cancellations::CancelledEvent;
 use crate::stores::foundations::{self, foundation_problems, Node, NodesFn, OnGraph};
 use crate::stores::groups::{repr_or_none, set, str_or_none};
 use crate::stores::locations::dedup;
-use crate::stores::traits::person_traits_problems;
+use crate::stores::scoring::aggregation_problems;
+use crate::stores::traits::{person_traits_problems, settled_spec, spec_with_new_part_ids};
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -22,7 +23,7 @@ pub const PERSON_STATUSES: [&str; 3] = ["active", "archived", "deleted"];
 pub const DEFAULT_STATUSES: [&str; 1] = ["active"];
 pub const MAX_NAME_LENGTH: usize = 100;
 pub const PERSON_CLEARABLE_FIELDS: [&str; 5] = ["context", "circles", "what_matters", "traits", "foundations"];
-pub const CIRCLE_CLEARABLE_FIELDS: [&str; 1] = ["note"];
+pub const CIRCLE_CLEARABLE_FIELDS: [&str; 2] = ["note", "scoring"];
 
 // -- the types -------------------------------------------------------------------
 
@@ -79,6 +80,7 @@ pub struct ListedCircle {
     pub id: Option<String>,
     pub name: Option<String>,
     pub note: Option<String>,
+    pub scoring: Option<Map<String, Value>>,
     pub member_ids: Option<Vec<String>>,
 }
 
@@ -88,6 +90,10 @@ pub struct Circle {
     pub id: Option<String>,
     pub name: Option<String>,
     pub note: Option<String>,
+    /// How its people's scores combine into its own: an aggregation (see
+    /// get_scoring_defaults), its weights by person id. Without it, the
+    /// default's (scoring defaults' circles).
+    pub scoring: Option<Map<String, Value>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -170,11 +176,17 @@ impl People {
     /// Takes `subject` (a habit's or a person's, deleted) out of every
     /// person's foundations.
     pub fn drop_foundation(&self, subject: &str) -> anyhow::Result<()> {
-        let mut people: Vec<Person> = self.sheet.read_items()?;
+        let mut people = self.read_people()?;
         if foundations::without(&mut people, subject) {
             self.sheet.write_items(&people)?;
         }
         Ok(())
+    }
+
+    /// The People tab's people, their traits settled (see
+    /// traits::settled_spec).
+    fn read_people(&self) -> anyhow::Result<Vec<Person>> {
+        Ok(self.sheet.read_items::<Person>()?.into_iter().map(|p| Person { traits: p.traits.clone().map(settled_spec), ..p }).collect())
     }
 
     pub fn whole_tabs(&self) -> Vec<TabRange> {
@@ -188,7 +200,7 @@ impl People {
     /// Every person, self first, then in sheet order.
     pub fn all(&self) -> anyhow::Result<Vec<Person>> {
         self.prefetch(&self.whole_tabs())?;
-        let people: Vec<Person> = self.sheet.read_items()?;
+        let people = self.read_people()?;
         let mine = people.iter().find(|p| is_self(p));
         let mut out = vec![as_self(mine)];
         out.extend(people.iter().filter(|p| !is_self(p)).cloned());
@@ -222,9 +234,10 @@ impl People {
     }
 
     pub fn create_person(&self, person: &Person) -> anyhow::Result<CreatedPerson> {
-        let people: Vec<Person> = self.sheet.read_items()?;
+        let people = self.read_people()?;
         let id = rows::new_id(people.iter().map(|p| p.id.as_deref()).collect::<Vec<_>>());
-        let new = Person { id: Some(id.clone()), status: Some(person.status.unwrap_or(Status::Active)), ..person.clone() };
+        let traits = person.traits.as_ref().map(spec_with_new_part_ids);
+        let new = Person { id: Some(id.clone()), status: Some(person.status.unwrap_or(Status::Active)), traits, ..person.clone() };
         let mut everyone = vec![self_person()];
         everyone.extend(people.iter().cloned());
         check_context(&new, &everyone)?;
@@ -240,7 +253,7 @@ impl People {
             bail!("update_person needs the person's id");
         };
         rows::check_clear_item(person, clear_fields, &PERSON_CLEARABLE_FIELDS)?;
-        let mut people: Vec<Person> = self.sheet.read_items()?;
+        let mut people = self.read_people()?;
         let mut index = people.iter().position(|p| p.id.as_deref() == Some(id.as_str()));
         if index.is_none() && id == SELF_ID {
             people.push(self_person());
@@ -251,7 +264,8 @@ impl People {
             unreachable!()
         };
         let was_deleted = people[index].status == Some(Status::Deleted);
-        let changed = rows::updated_item(&people[index], person, clear_fields, &["id"]);
+        let given = Person { traits: person.traits.as_ref().map(spec_with_new_part_ids), ..person.clone() };
+        let changed = rows::updated_item(&people[index], &given, clear_fields, &["id"]);
         if person.name.is_some() || clear_fields.iter().any(|c| c == "context") {
             let mut everyone = vec![self_person()];
             everyone.extend(people.iter().cloned());
@@ -327,7 +341,7 @@ impl People {
         if deleted.id.as_deref() != Some(circle_id) {
             bail!("Delete a circle by its id: {} is {}", repr_or_none(deleted.name.as_deref()), str_or_none(deleted.id.as_deref()));
         }
-        let mut people: Vec<Person> = self.sheet.read_items()?;
+        let mut people = self.read_people()?;
         let in_it = |p: &Person| p.circles.iter().flatten().any(|c| c == circle_id);
         let left: Vec<String> = people.iter().filter(|p| in_it(p)).filter_map(|p| p.id.clone()).collect();
         if !left.is_empty() {
@@ -530,6 +544,11 @@ pub fn circle_problems(circles: &[Circle]) -> Vec<String> {
         }
         names.retain(|(k, _)| *k != key);
         names.push((key, circle));
+        if let Some(scoring) = &circle.scoring {
+            for p in aggregation_problems(&Value::Object(scoring.clone()), None) {
+                problems.push(format!("{label}'s scoring: {p}"));
+            }
+        }
     }
     problems
 }
@@ -562,7 +581,13 @@ pub fn listed_circle(circle: &Circle, people: &[Person]) -> ListedCircle {
         Some(id) => people.iter().filter(|p| p.circles.iter().flatten().any(|c| c == id)).filter_map(|p| p.id.clone()).collect(),
         None => Vec::new(),
     };
-    ListedCircle { id: circle.id.clone(), name: circle.name.clone(), note: circle.note.clone(), member_ids: Some(members) }
+    ListedCircle {
+        id: circle.id.clone(),
+        name: circle.name.clone(),
+        note: circle.note.clone(),
+        scoring: circle.scoring.clone(),
+        member_ids: Some(members),
+    }
 }
 
 fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {
