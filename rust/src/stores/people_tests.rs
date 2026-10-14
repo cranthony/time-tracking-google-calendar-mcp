@@ -232,7 +232,7 @@ fn circles_are_created_listed_and_found() {
 
     let listed = json_of(f.people.get_circles().unwrap());
 
-    assert_eq!(listed, json!([{"id": family, "name": "Family", "note": "by blood or choice", "member_ids": [sam]}]));
+    assert_eq!(listed, json!([{"id": family, "name": "Family", "note": "by blood or choice", "scoring": null, "member_ids": [sam]}]));
     assert_eq!(json_of(f.people.get_circle("family").unwrap())["id"], json!(family));
 }
 
@@ -290,7 +290,10 @@ fn a_person_can_select_traits_and_give_their_own_parts() {
 
     let sam = f.create(json!({"name": "Sam", "traits": traits}));
 
-    assert_eq!(f.get(&sam)["traits"], traits);
+    let kept = f.get(&sam)["traits"].clone();
+    let id = kept["parts"]["reliable"][0]["id"].as_str().unwrap().to_string();
+    assert_eq!(id.len(), 6);
+    assert_eq!(kept, json!({"select": ["reliable"], "parts": {"reliable": [{"id": id, "kind": "count", "target": 1, "interval_days": 21}]}}));
 }
 
 #[test]
@@ -345,4 +348,22 @@ fn a_person_deleted_leaves_the_others_foundations() {
 
     assert_eq!(f.get(&friend)["foundations"], json!([]));
     refused(f.update(json!({"id": friend, "foundations": [family]}), &[]), "aren't habits or people");
+}
+
+#[test]
+fn a_persons_own_parts_kept_before_parts_had_ids_are_settled_when_read() {
+    let t = crate::testing::app::test_app();
+    let traits = json!({"parts": {"reliable": [{"kind": "count", "target": 1, "weight": 3}, {"kind": "follow_through"}]}});
+    let people = t.app.people().unwrap();
+    t.seed(PEOPLE.1, &[json!({"id": "sam", "name": "Sam", "status": "active", "traits": traits})]);
+
+    let sam = people.all().unwrap().into_iter().find(|p| p.id.as_deref() == Some("sam")).unwrap();
+
+    assert_eq!(
+        json!(sam.traits),
+        json!({
+            "parts": {"reliable": [{"id": "count", "kind": "count", "target": 1}, {"id": "follow_through", "kind": "follow_through"}]},
+            "part_scoring": {"reliable": {"weights": {"count": 3}}},
+        })
+    );
 }

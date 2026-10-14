@@ -27,6 +27,7 @@ pub const HABITS: (&str, &str) = ("habits", "Habits");
 pub const COMPACTION_SCHEDULE: (&str, &str) = ("compaction-schedule", "Compaction Schedule");
 pub const CANCELLATIONS: (&str, &str) = ("cancellations", "Cancellations");
 pub const HEALTH: (&str, &str) = ("health", "Health");
+pub const SCORING_DEFAULTS: (&str, &str) = ("scoring-defaults", "Scoring Defaults");
 
 /// This calendar's metadata spreadsheet id, and whether it was just made.
 pub fn ensure_spreadsheet(calendar: &CalendarClient, sheets: &SheetsClient) -> anyhow::Result<(String, bool)> {

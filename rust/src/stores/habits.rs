@@ -12,7 +12,7 @@ use crate::stores::actions::{Action, ActionStatus};
 use crate::stores::groups::{repr_or_none, set, str_or_none, GroupTree};
 use crate::stores::locations::dedup;
 use crate::stores::people::{Status, TraitIds};
-use crate::stores::traits::person_traits_problems;
+use crate::stores::traits::{person_traits_problems, settled_spec, spec_with_new_part_ids};
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -150,8 +150,9 @@ impl Habits {
         self.sheet.prefetch(ranges)
     }
 
+    /// Every habit, its traits settled (see traits::settled_spec).
     pub fn all(&self) -> anyhow::Result<Vec<Habit>> {
-        self.sheet.read_items()
+        Ok(self.sheet.read_items::<Habit>()?.into_iter().map(|h| Habit { traits: h.traits.clone().map(settled_spec), ..h }).collect())
     }
 
     pub fn get_habits(&self, statuses: Option<&[String]>) -> anyhow::Result<Vec<ListedHabit>> {
@@ -168,7 +169,8 @@ impl Habits {
     pub fn create_habit(&self, habit: &Habit) -> anyhow::Result<CreatedHabit> {
         let habits = self.all()?;
         let id = rows::new_id(habits.iter().map(|h| h.id.as_deref()).collect::<Vec<_>>());
-        let new = Habit { id: Some(id.clone()), status: Some(habit.status.unwrap_or(Status::Active)), ..habit.clone() };
+        let traits = habit.traits.as_ref().map(spec_with_new_part_ids);
+        let new = Habit { id: Some(id.clone()), status: Some(habit.status.unwrap_or(Status::Active)), traits, ..habit.clone() };
         let mut all = habits.clone();
         all.push(new.clone());
         self.write(&all, &id)?;
@@ -186,7 +188,8 @@ impl Habits {
             unreachable!()
         };
         let was_deleted = habits[index].status == Some(Status::Deleted);
-        habits[index] = rows::updated_item(&habits[index], habit, clear_fields, &["id"]);
+        let given = Habit { traits: habit.traits.as_ref().map(spec_with_new_part_ids), ..habit.clone() };
+        habits[index] = rows::updated_item(&habits[index], &given, clear_fields, &["id"]);
         if !was_deleted && habits[index].status == Some(Status::Deleted) {
             foundations::without(&mut habits, &subject_id(&id));
         }

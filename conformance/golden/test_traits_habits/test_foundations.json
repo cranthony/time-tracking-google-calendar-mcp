@@ -139,6 +139,7 @@
            "reset_hours": 1
           }
          ],
+         "id": "m8t0mg",
          "kind": "spacing",
          "max_gap_hours": 6
         }
@@ -148,7 +149,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"9vxzfr\",\n    \"name\": \"Eat well\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"parts\": {\n        \"reliable\": [\n          {\n            \"kind\": \"spacing\",\n            \"action\": \"4709iy\",\n            \"max_gap_hours\": 6,\n            \"exceptions\": [\n              {\n                \"actions\": [\n                  \"bcyx3f\"\n                ],\n                \"reset_hours\": 1\n              }\n            ]\n          }\n        ]\n      }\n    },\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"9vxzfr\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"9vxzfr\",\n    \"name\": \"Eat well\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"parts\": {\n        \"reliable\": [\n          {\n            \"id\": \"m8t0mg\",\n            \"kind\": \"spacing\",\n            \"action\": \"4709iy\",\n            \"max_gap_hours\": 6,\n            \"exceptions\": [\n              {\n                \"actions\": [\n                  \"bcyx3f\"\n                ],\n                \"reset_hours\": 1\n              }\n            ]\n          }\n        ]\n      }\n    },\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"9vxzfr\"\n}",
    "tool": "create_habit"
   },
   {
@@ -177,9 +178,9 @@
      }
     }
    },
-   "content": "Error executing tool create_habit: habit m8t0mg's traits \"parts\" for 'reliable': part 1 (spacing) \"max_gap_hours\" must be a number above 0",
+   "content": "Error executing tool create_habit: habit mkgvva's traits \"parts\" for 'reliable': part 1 (spacing) \"max_gap_hours\" must be a number above 0",
    "is_error": true,
-   "text": "Error executing tool create_habit: habit m8t0mg's traits \"parts\" for 'reliable': part 1 (spacing) \"max_gap_hours\" must be a number above 0",
+   "text": "Error executing tool create_habit: habit mkgvva's traits \"parts\" for 'reliable': part 1 (spacing) \"max_gap_hours\" must be a number above 0",
    "tool": "create_habit"
   },
   {
@@ -194,7 +195,7 @@
     }
    },
    "content": {
-    "created_id": "mkgvva",
+    "created_id": "c133sb",
     "habit": {
      "action_id": "4709iy",
      "action_path": "eat a meal",
@@ -203,7 +204,7 @@
       "habit:7632uw",
       "habit:9vxzfr"
      ],
-     "id": "mkgvva",
+     "id": "c133sb",
      "name": "Exercise",
      "note": null,
      "status": "active",
@@ -211,29 +212,29 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"mkgvva\",\n    \"name\": \"Exercise\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:7632uw\",\n      \"habit:9vxzfr\"\n    ],\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"mkgvva\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"c133sb\",\n    \"name\": \"Exercise\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:7632uw\",\n      \"habit:9vxzfr\"\n    ],\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"c133sb\"\n}",
    "tool": "create_habit"
   },
   {
    "arguments": {
     "person": {
      "foundations": [
-      "habit:mkgvva"
+      "habit:c133sb"
      ],
      "name": "Family Example"
     }
    },
    "content": {
-    "created_id": "6gpeqq",
+    "created_id": "k57l9r",
     "person": {
      "cancelled_events": null,
      "circle_names": null,
      "circles": null,
      "context": null,
      "foundations": [
-      "habit:mkgvva"
+      "habit:c133sb"
      ],
-     "id": "6gpeqq",
+     "id": "k57l9r",
      "name": "Family Example",
      "status": "active",
      "traits": null,
@@ -241,7 +242,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"6gpeqq\",\n    \"name\": \"Family Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:mkgvva\"\n    ],\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"6gpeqq\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"k57l9r\",\n    \"name\": \"Family Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:c133sb\"\n    ],\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"k57l9r\"\n}",
    "tool": "create_person"
   },
   {
@@ -254,42 +255,42 @@
      "name": "Unknown"
     }
    },
-   "content": "Error executing tool create_habit: habit c133sb's foundations ['7632uw'] aren't habits or people (get_habits and get_people list them; a habit is named \"habit:<id>\")",
+   "content": "Error executing tool create_habit: habit rrdogc's foundations ['7632uw'] aren't habits or people (get_habits and get_people list them; a habit is named \"habit:<id>\")",
    "is_error": true,
-   "text": "Error executing tool create_habit: habit c133sb's foundations ['7632uw'] aren't habits or people (get_habits and get_people list them; a habit is named \"habit:<id>\")",
+   "text": "Error executing tool create_habit: habit rrdogc's foundations ['7632uw'] aren't habits or people (get_habits and get_people list them; a habit is named \"habit:<id>\")",
    "tool": "create_habit"
   },
   {
    "arguments": {
     "habit": {
      "foundations": [
-      "6gpeqq"
+      "k57l9r"
      ],
      "id": "7632uw"
     }
    },
-   "content": "Error executing tool update_habit: habit 7632uw's foundations would make a cycle: habit:7632uw → 6gpeqq → habit:mkgvva → habit:7632uw",
+   "content": "Error executing tool update_habit: habit 7632uw's foundations would make a cycle: habit:7632uw → k57l9r → habit:c133sb → habit:7632uw",
    "is_error": true,
-   "text": "Error executing tool update_habit: habit 7632uw's foundations would make a cycle: habit:7632uw → 6gpeqq → habit:mkgvva → habit:7632uw",
+   "text": "Error executing tool update_habit: habit 7632uw's foundations would make a cycle: habit:7632uw → k57l9r → habit:c133sb → habit:7632uw",
    "tool": "update_habit"
   },
   {
    "arguments": {
     "person": {
      "foundations": [
-      "6gpeqq"
+      "k57l9r"
      ],
-     "id": "6gpeqq"
+     "id": "k57l9r"
     }
    },
-   "content": "Error executing tool update_person: person 6gpeqq's foundations can't include itself",
+   "content": "Error executing tool update_person: person k57l9r's foundations can't include itself",
    "is_error": true,
-   "text": "Error executing tool update_person: person 6gpeqq's foundations can't include itself",
+   "text": "Error executing tool update_person: person k57l9r's foundations can't include itself",
    "tool": "update_person"
   },
   {
    "arguments": {
-    "id_or_name": "6gpeqq"
+    "id_or_name": "k57l9r"
    },
    "content": {
     "cancelled_events": [],
@@ -297,22 +298,22 @@
     "circles": null,
     "context": null,
     "foundations": [
-     "habit:mkgvva"
+     "habit:c133sb"
     ],
-    "id": "6gpeqq",
+    "id": "k57l9r",
     "name": "Family Example",
     "status": "active",
     "traits": null,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"6gpeqq\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:mkgvva\"\n  ],\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"k57l9r\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:c133sb\"\n  ],\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
    "arguments": {
     "habit": {
-     "id": "mkgvva",
+     "id": "c133sb",
      "status": "deleted"
     }
    },
@@ -324,19 +325,19 @@
      "habit:7632uw",
      "habit:9vxzfr"
     ],
-    "id": "mkgvva",
+    "id": "c133sb",
     "name": "Exercise",
     "note": null,
     "status": "deleted",
     "traits": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"mkgvva\",\n  \"name\": \"Exercise\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"deleted\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:7632uw\",\n    \"habit:9vxzfr\"\n  ],\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"c133sb\",\n  \"name\": \"Exercise\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"deleted\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:7632uw\",\n    \"habit:9vxzfr\"\n  ],\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
    "arguments": {
-    "id_or_name": "6gpeqq"
+    "id_or_name": "k57l9r"
    },
    "content": {
     "cancelled_events": [],
@@ -344,14 +345,14 @@
     "circles": null,
     "context": null,
     "foundations": [],
-    "id": "6gpeqq",
+    "id": "k57l9r",
     "name": "Family Example",
     "status": "active",
     "traits": null,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"6gpeqq\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": [],\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"k57l9r\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": [],\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
    "tool": "get_person"
   },
   {
@@ -360,7 +361,7 @@
      "foundations"
     ],
     "person": {
-     "id": "6gpeqq"
+     "id": "k57l9r"
     }
    },
    "content": {
@@ -369,14 +370,14 @@
     "circles": null,
     "context": null,
     "foundations": null,
-    "id": "6gpeqq",
+    "id": "k57l9r",
     "name": "Family Example",
     "status": "active",
     "traits": null,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"6gpeqq\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"k57l9r\",\n  \"name\": \"Family Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   }
  ],
@@ -765,7 +766,8 @@
        [
         "id",
         "name",
-        "note"
+        "note",
+        "scoring"
        ]
       ]
      }
@@ -1337,7 +1339,8 @@
         "name",
         "status",
         "definition",
-        "parts"
+        "parts",
+        "scoring"
        ]
       ]
      }
@@ -1369,35 +1372,40 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        ""
        ],
        [
         "reliable",
         "Reliable",
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
-        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        ""
        ],
        [
         "creative",
         "Creative",
         "active",
         "Make something together with them (making something alone is taking care of myself).",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        ""
        ],
        [
         "adventurous",
         "Adventurous",
         "active",
         "Share new experiences with them: new activities, new places.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        ""
        ],
        [
         "generous",
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        ""
        ]
       ]
      }
@@ -1581,7 +1589,7 @@
         "4709iy",
         "active",
         "",
-        "{\"parts\":{\"reliable\":[{\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
+        "{\"parts\":{\"reliable\":[{\"id\":\"m8t0mg\",\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
         ""
        ]
       ]
@@ -1737,11 +1745,11 @@
         "4709iy",
         "active",
         "",
-        "{\"parts\":{\"reliable\":[{\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
+        "{\"parts\":{\"reliable\":[{\"id\":\"m8t0mg\",\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
         ""
        ],
        [
-        "mkgvva",
+        "c133sb",
         "Exercise",
         "4709iy",
         "active",
@@ -1854,14 +1862,14 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "6gpeqq",
+        "k57l9r",
         "Family Example",
         "",
         "active",
         "",
         "",
         "",
-        "[\"habit:mkgvva\"]"
+        "[\"habit:c133sb\"]"
        ]
       ]
      }
@@ -2372,11 +2380,11 @@
         "4709iy",
         "active",
         "",
-        "{\"parts\":{\"reliable\":[{\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
+        "{\"parts\":{\"reliable\":[{\"id\":\"m8t0mg\",\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}",
         ""
        ],
        [
-        "mkgvva",
+        "c133sb",
         "Exercise",
         "4709iy",
         "deleted",
@@ -2410,7 +2418,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "6gpeqq",
+        "k57l9r",
         "Family Example",
         "",
         "active",
@@ -2571,7 +2579,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "6gpeqq",
+        "k57l9r",
         "Family Example",
         "",
         "active",
@@ -2836,7 +2844,8 @@
        [
         "id",
         "name",
-        "note"
+        "note",
+        "scoring"
        ]
       ]
      },
@@ -2879,10 +2888,10 @@
         "4709iy",
         "active",
         "",
-        "{\"parts\":{\"reliable\":[{\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}"
+        "{\"parts\":{\"reliable\":[{\"id\":\"m8t0mg\",\"kind\":\"spacing\",\"action\":\"4709iy\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"bcyx3f\"],\"reset_hours\":1}]}]}}"
        ],
        [
-        "mkgvva",
+        "c133sb",
         "Exercise",
         "4709iy",
         "deleted",
@@ -2946,7 +2955,7 @@
         "foundations"
        ],
        [
-        "6gpeqq",
+        "k57l9r",
         "Family Example",
         "",
         "active"
@@ -2990,7 +2999,8 @@
         "name",
         "status",
         "definition",
-        "parts"
+        "parts",
+        "scoring"
        ],
        [
         "thoughtful",

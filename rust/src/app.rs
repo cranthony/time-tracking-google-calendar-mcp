@@ -17,6 +17,7 @@ use crate::stores::traits::Traits;
 use crate::stores::journal::CompactionJournal;
 use crate::stores::notes::NotedTimeSheet;
 use crate::stores::schedule::CompactionSchedule;
+use crate::stores::scoring::ScoringDefaultsTab;
 use crate::stores::recurrences::Recurrences;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::write_lock::WRITE_LOCK;
@@ -72,6 +73,7 @@ pub struct App {
     journal: OnceLock<CompactionJournal>,
     notes: OnceLock<NotedTimeSheet>,
     schedule: OnceLock<CompactionSchedule>,
+    scoring_defaults: OnceLock<ScoringDefaultsTab>,
     recurrences: OnceLock<Recurrences>,
     writer: OnceLock<Arc<HealthWriter>>,
     me: OnceLock<std::sync::Weak<App>>,
@@ -110,6 +112,7 @@ impl App {
             journal: OnceLock::new(),
             notes: OnceLock::new(),
             schedule: OnceLock::new(),
+            scoring_defaults: OnceLock::new(),
             recurrences: OnceLock::new(),
             writer: OnceLock::new(),
             me: OnceLock::new(),
@@ -261,6 +264,13 @@ impl App {
         built(&self.schedule, || {
             let (_, sheets, id) = self.spreadsheet()?;
             CompactionSchedule::ensure(&sheets, &id)
+        })
+    }
+
+    pub fn scoring_defaults(&self) -> anyhow::Result<ScoringDefaultsTab> {
+        built(&self.scoring_defaults, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            ScoringDefaultsTab::ensure(&sheets, &id)
         })
     }
 
