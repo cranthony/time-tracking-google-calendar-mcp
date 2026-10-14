@@ -35,11 +35,15 @@ pub enum EventField {
 }
 
 /// What compaction established about an event: where it was
-/// (location_id), who was there with the user (with_ids), who it was for
+/// (location_ids, usually one place; several when it moved between
+/// them), who was there with the user (with_ids), who it was for
 /// (for_ids), and a note on how it was for each person there (notes).
-/// Every field is optional.
+/// Every field is optional. location_id is deprecated: the first of
+/// location_ids, for clients from before an event could have several;
+/// given without location_ids, it's read as the only one.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Facts {
+    pub location_ids: Option<Vec<String>>,
     pub location_id: Option<String>,
     pub with_ids: Option<Vec<String>>,
     pub for_ids: Option<Vec<String>>,
@@ -81,7 +85,7 @@ pub struct Facts {
 /// set at all.
 ///
 /// facts are what compaction established about a past event, for
-/// traits' judgments later: location_id (see
+/// traits' judgments later: location_ids (see
 /// get_locations), with_ids (the people there with the user -- never
 /// "self", who's at every event), for_ids (people it was done for who
 /// weren't there) and notes ({person id: a subjective note on how it was
@@ -203,7 +207,11 @@ impl From<&Facts> for EventFacts {
     /// The facts a client gave, as an event keeps them.
     fn from(facts: &Facts) -> EventFacts {
         EventFacts {
-            location_id: facts.location_id.clone().map(Value::String),
+            location_ids: match (&facts.location_ids, &facts.location_id) {
+                (Some(ids), _) => Some(json!(ids)),
+                (None, Some(id)) if !id.trim().is_empty() => Some(json!([id])),
+                _ => None,
+            },
             with_ids: facts.with_ids.as_ref().map(|ids| json!(ids)),
             for_ids: facts.for_ids.as_ref().map(|ids| json!(ids)),
             notes: facts.notes.as_ref().map(|notes| json!(notes)),
@@ -302,12 +310,13 @@ pub fn check_facts(app: &App, facts: Option<&Facts>) -> Result<(), ToolError> {
     if !unknown.is_empty() {
         return Err(ToolError::Message(format!("Its facts name {}, who aren't people (get_people lists them)", py::repr_list(&unknown))));
     }
-    if let Some(location) = facts.location() {
+    let locations = facts.locations();
+    if !locations.is_empty() {
         let known: Vec<Value> = app.locations()?.all()?.into_iter().map(|l| json!(l.id)).collect();
-        if !known.contains(&json!(location)) {
+        if let Some(location) = locations.iter().find(|l| !known.contains(&json!(l))) {
             return Err(ToolError::Message(format!(
                 "Its facts' location {} isn't a location (get_locations lists them)",
-                py::repr(&location)
+                py::repr(location)
             )));
         }
     }

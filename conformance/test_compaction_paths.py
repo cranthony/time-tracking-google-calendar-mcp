@@ -229,8 +229,8 @@ async def test_additions_settled_early(session, plan):
     proposed = await propose(
         session,
         updates=[
-            {"event_id": d5["Lunch"], "facts": {"with_ids": ["new:sam"], "location_id": "new:office", "notes": {"new:sam": "chatty", "self": "relaxed"}}, "action_ids": ["new:eat"]},
-            {"event_id": d5["Dinner"], "facts": {"with_ids": ["new:alex"], "location_id": "new:home"}},
+            {"event_id": d5["Lunch"], "facts": {"with_ids": ["new:sam"], "location_ids": ["new:office"], "notes": {"new:sam": "chatty", "self": "relaxed"}}, "action_ids": ["new:eat"]},
+            {"event_id": d5["Dinner"], "facts": {"with_ids": ["new:alex"], "location_ids": ["new:home"]}},
         ],
         new_people=[{"ref": "new:sam", "name": "Sam Example", "context": "from work"}, {"ref": "new:alex", "name": "Alex Example"}],
         new_locations=[{"ref": "new:office", "name": "Office", "hint": "the office"}, {"ref": "new:home", "name": "Home", "hint": "at home"}],
@@ -261,8 +261,8 @@ async def test_additions_settled_early(session, plan):
     revised = await propose(
         session, proposal_id=pid, revision=revision,
         updates=[
-            {"event_id": d5["Lunch"], "facts": {"with_ids": [friend], "location_id": "new:office"}, "action_ids": ["new:eat"]},
-            {"event_id": d5["Dinner"], "facts": {"with_ids": ["new:alex"], "location_id": "new:home"}},
+            {"event_id": d5["Lunch"], "facts": {"with_ids": [friend], "location_ids": ["new:office"]}, "action_ids": ["new:eat"]},
+            {"event_id": d5["Dinner"], "facts": {"with_ids": ["new:alex"], "location_ids": ["new:home"]}},
         ],
         new_people=[{"ref": "new:sam", "name": "Sam Example", "context": "from work"}, {"ref": "new:alex", "name": "Alex Example"}],
         new_locations=[{"ref": "new:office", "name": "Office", "hint": "the office"}, {"ref": "new:home", "name": "Home", "hint": "at home"}],
@@ -387,7 +387,7 @@ async def test_refusals(session, plan):
         {"creates": [{"summary": "Overlaps", "start": "2026-10-05T11:00:00-04:00", "end": "2026-10-05T12:30:00-04:00"}]},
         {"updates": [{"event_id": d5["Breakfast"], "end_note": breakfast}], "cancels": [{"event_id": d5["Breakfast"], "counts_against_follow_through": False}]},
         {"updates": [{"event_id": d5["Lunch"], "facts": {"with_ids": ["nobody"]}}]},
-        {"updates": [{"event_id": d5["Lunch"], "facts": {"location_id": "nowhere"}}]},
+        {"updates": [{"event_id": d5["Lunch"], "facts": {"location_ids": ["nowhere"]}}]},
         {"updates": [{"event_id": d5["Lunch"], "facts": {"with_ids": ["self"]}}]},
         {"updates": [{"event_id": d5["Lunch"], "action_ids": ["nosuch"]}]},
         {"updates": [{"event_id": d5["Lunch"], "annotate": "x" * 9000}]},

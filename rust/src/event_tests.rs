@@ -274,12 +274,12 @@ fn to_api_body_sends_cleared_fields_as_null() {
 
 #[test]
 fn facts_round_trip_as_compact_json_under_short_keys() {
-    let given = facts(json!({"location": "l1", "with": ["p1"], "for": ["p2"], "notes": {"self": "tired", "p1": "glad"}}));
+    let given = facts(json!({"locations": ["l1"], "with": ["p1"], "for": ["p2"], "notes": {"self": "tired", "p1": "glad"}}));
     let sent = body(Event { id: Some("abc123".into()), facts: Some(given.clone()), ..Default::default() });
 
     let stored = private(&sent);
     let parsed: Value = serde_json::from_str(stored["cascading-time-tracker-facts"].as_str().unwrap()).unwrap();
-    assert_eq!(parsed, json!({"location": "l1", "with": ["p1"], "for": ["p2"], "notes": {"self": "tired", "p1": "glad"}}));
+    assert_eq!(parsed, json!({"locations": ["l1"], "with": ["p1"], "for": ["p2"], "notes": {"self": "tired", "p1": "glad"}}));
     // Unused chunks are removed, so a shorter value leaves no tail.
     assert!((2..9).all(|i| stored[format!("cascading-time-tracker-facts-{i}")].is_null()));
     let mut data = Value::Object(sent);

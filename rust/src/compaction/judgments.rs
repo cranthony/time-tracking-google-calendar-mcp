@@ -232,8 +232,8 @@ fn engagement_of(part: &Value) -> String {
     part.get("engagement_type").map(|v| python_str(Some(v))).unwrap_or_else(|| "with".into())
 }
 
-fn facts_location(event: &Event) -> Option<String> {
-    event.facts.as_ref().and_then(|f| f.location_id.as_ref()).filter(|l| truthy(Some(l))).map(|l| python_str(Some(l)))
+fn facts_locations(event: &Event) -> Vec<String> {
+    event.facts.as_ref().map(|f| f.locations()).unwrap_or_default()
 }
 
 /// `_with`: whether `person_id` took part in `event` -- the user always
@@ -595,7 +595,7 @@ impl Judging {
                     .filter(|e| e.start() >= before - Duration::days(*days) && subjects.part_of(tree.as_ref(), e, person_id))
                     .collect();
                 let actions = most_common(past.iter().flat_map(|e| e.action_ids.iter().flatten().map(|a| lookup(&names, a))));
-                let locations = most_common(past.iter().filter_map(|e| facts_location(e).map(|l| lookup(&names, &l))));
+                let locations = most_common(past.iter().flat_map(|e| facts_locations(e).into_iter().map(|l| lookup(&names, &l))));
                 history.push((person_id.clone(), PersonHistory { days: *days, actions, locations }));
             }
         }

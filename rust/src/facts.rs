@@ -1,5 +1,5 @@
-//! An event's facts: what compaction established about it -- where, who
-//! with, who for, and a note on each person there.
+//! An event's facts: what compaction established about it -- where (one
+//! place or several), who with, who for, and a note on each person there.
 //!
 //! The fields hold JSON values rather than typed ones: facts read back
 //! from an event someone edited by hand can be any shape, and the checks
@@ -18,7 +18,7 @@ static SPACES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Facts {
-    pub location_id: Option<Value>,
+    pub location_ids: Option<Value>,
     pub with_ids: Option<Value>,
     pub for_ids: Option<Value>,
     pub notes: Option<Value>,
@@ -26,7 +26,23 @@ pub struct Facts {
 
 /// The JSON key each field is stored under, in field order.
 const FIELDS: [(&str, &str); 4] =
-    [("location_id", "location"), ("with_ids", "with"), ("for_ids", "for"), ("notes", "notes")];
+    [("location_ids", "locations"), ("with_ids", "with"), ("for_ids", "for"), ("notes", "notes")];
+
+/// The field a client gave a single location in, and the key it was
+/// stored under, before an event could have several: read as a list of one.
+const LEGACY_LOCATION: (&str, &str) = ("location_id", "location");
+
+/// `value`, a location id given alone, as a list of one; `None` for none
+/// (null or blank).
+fn one_location(value: &Value) -> Option<Value> {
+    match value {
+        Value::Null => None,
+        Value::String(s) if s.trim().is_empty() => None,
+        Value::String(_) => Some(Value::Array(vec![value.clone()])),
+        // Not an id: kept, for fact_problems to report.
+        other => Some(other.clone()),
+    }
+}
 
 fn is_blank(value: &Option<Value>) -> bool {
     match value {
@@ -40,7 +56,7 @@ fn is_blank(value: &Option<Value>) -> bool {
 impl Facts {
     fn field(&self, name: &str) -> &Option<Value> {
         match name {
-            "location_id" => &self.location_id,
+            "location_ids" => &self.location_ids,
             "with_ids" => &self.with_ids,
             "for_ids" => &self.for_ids,
             _ => &self.notes,
@@ -84,14 +100,7 @@ impl Facts {
             }
             other => other.clone(),
         };
-        let location = match &self.location_id {
-            Some(Value::String(s)) => {
-                let trimmed = s.trim();
-                if trimmed.is_empty() { None } else { Some(Value::String(trimmed.to_string())) }
-            }
-            other => other.clone(),
-        };
-        Facts { location_id: location, with_ids: ids(&self.with_ids), for_ids: ids(&self.for_ids), notes }
+        Facts { location_ids: ids(&self.location_ids), with_ids: ids(&self.with_ids), for_ids: ids(&self.for_ids), notes }
     }
 
     fn strings(value: &Option<Value>) -> Vec<String> {
@@ -127,8 +136,9 @@ impl Facts {
         all
     }
 
-    pub fn location(&self) -> Option<String> {
-        self.location_id.as_ref().and_then(Value::as_str).map(str::to_string)
+    /// Every place it was, in the order given.
+    pub fn locations(&self) -> Vec<String> {
+        Self::strings(&self.location_ids)
     }
 
     /// Compact JSON of what's set, under the stored keys.
@@ -151,7 +161,7 @@ impl Facts {
         for (name, key) in FIELDS {
             if let Some(value) = map.get(key) {
                 let slot = match name {
-                    "location_id" => &mut facts.location_id,
+                    "location_ids" => &mut facts.location_ids,
                     "with_ids" => &mut facts.with_ids,
                     "for_ids" => &mut facts.for_ids,
                     _ => &mut facts.notes,
@@ -159,23 +169,38 @@ impl Facts {
                 *slot = Some(value.clone());
             }
         }
+        if facts.location_ids.is_none() {
+            facts.location_ids = map.get(LEGACY_LOCATION.1).and_then(one_location);
+        }
         Some(facts)
     }
 
     /// The facts as a client sees them (PublicEvent's `facts`): every
-    /// field, null when unset.
+    /// field, null when unset -- and location_id, the first location, for
+    /// a client from before an event could have several, so it sends it
+    /// back rather than clearing it.
     pub fn to_public(&self) -> Value {
         let mut map = Map::new();
         for (name, _) in FIELDS {
             map.insert(name.to_string(), self.field(name).clone().unwrap_or(Value::Null));
         }
+        map.insert(LEGACY_LOCATION.0.into(), self.locations().into_iter().next().map(Value::String).unwrap_or(Value::Null));
         Value::Object(map)
     }
 
-    /// Facts from a client's JSON (already checked against the schema).
+    /// Facts from a client's JSON (already checked against the schema). A
+    /// location_id given alone, as a client from before an event could
+    /// have several locations gives it, is read as a list of one.
     pub fn from_public(value: &Value) -> Facts {
         let get = |key: &str| value.get(key).filter(|v| !v.is_null()).cloned();
-        Facts { location_id: get("location_id"), with_ids: get("with_ids"), for_ids: get("for_ids"), notes: get("notes") }
+        let location_ids = get("location_ids").or_else(|| value.get(LEGACY_LOCATION.0).and_then(one_location));
+        Facts { location_ids, with_ids: get("with_ids"), for_ids: get("for_ids"), notes: get("notes") }
+    }
+
+    /// Whether `raw`, facts as an event stores them, keeps a location
+    /// under the key from before an event could have several.
+    pub fn has_legacy_location(raw: &str) -> bool {
+        serde_json::from_str::<Value>(raw).ok().is_some_and(|v| v.get(LEGACY_LOCATION.1).is_some())
     }
 }
 
@@ -189,15 +214,12 @@ fn is_id_list(value: &Value) -> bool {
 /// Everything wrong with `facts`' shape, as phrases following "its facts".
 pub fn fact_problems(facts: &Facts) -> Vec<String> {
     let mut problems = Vec::new();
-    if let Some(location) = &facts.location_id {
-        if !location.is_null() && !location.is_string() {
-            problems.push("\"location_id\" must be a location id".to_string());
-        }
-    }
-    for (name, value) in [("with_ids", &facts.with_ids), ("for_ids", &facts.for_ids)] {
+    for (name, value, of) in
+        [("location_ids", &facts.location_ids, "location"), ("with_ids", &facts.with_ids, "person"), ("for_ids", &facts.for_ids, "person")]
+    {
         if let Some(v) = value {
             if !v.is_null() && !is_id_list(v) {
-                problems.push(format!("\"{name}\" must be a list of person ids"));
+                problems.push(format!("\"{name}\" must be a list of {of} ids"));
             }
         }
     }
@@ -263,9 +285,22 @@ mod tests {
 
     #[test]
     fn round_trip_as_compact_json_under_short_keys() {
-        let given = facts(json!({"location_id": "home", "with_ids": ["sam"], "for_ids": ["mom"], "notes": {"self": "tired", "sam": "glad"}}));
-        assert_eq!(given.to_json(), r#"{"location":"home","with":["sam"],"for":["mom"],"notes":{"self":"tired","sam":"glad"}}"#);
+        let given = facts(json!({"location_ids": ["home", "park"], "with_ids": ["sam"], "for_ids": ["mom"], "notes": {"self": "tired", "sam": "glad"}}));
+        assert_eq!(given.to_json(), r#"{"locations":["home","park"],"with":["sam"],"for":["mom"],"notes":{"self":"tired","sam":"glad"}}"#);
         assert_eq!(Facts::from_json(&given.to_json()), Some(given));
+    }
+
+    #[test]
+    fn a_single_location_from_before_is_read_as_a_list_of_one() {
+        let one = facts(json!({"location_ids": ["home"], "with_ids": ["sam"]}));
+        assert_eq!(Facts::from_json(r#"{"location":"home","with":["sam"]}"#), Some(one.clone()));
+        assert_eq!(facts(json!({"location_id": "home", "with_ids": ["sam"]})), one);
+        assert_eq!(Facts::from_json(r#"{"location":" ","with":["sam"]}"#), Some(facts(json!({"with_ids": ["sam"]}))));
+        // Both given: the list wins.
+        assert_eq!(facts(json!({"location_ids": ["park"], "location_id": "home"})).locations(), vec!["park"]);
+        assert_eq!(Facts::from_json(r#"{"locations":["park"],"location":"home"}"#).unwrap().locations(), vec!["park"]);
+        assert!(Facts::has_legacy_location(r#"{"location":"home"}"#));
+        assert!(!Facts::has_legacy_location(r#"{"locations":["home"]}"#));
     }
 
     #[test]
@@ -277,8 +312,8 @@ mod tests {
 
     #[test]
     fn normalized_trims_dedupes_and_drops_blank_notes() {
-        let given = facts(json!({"location_id": " home ", "with_ids": [" sam", "sam", ""], "notes": {"sam": "  so  glad ", "self": "  "}}));
-        assert_eq!(given.normalized(), facts(json!({"location_id": "home", "with_ids": ["sam"], "notes": {"sam": "so glad"}})));
+        let given = facts(json!({"location_ids": [" home ", "home", ""], "with_ids": [" sam", "sam", ""], "notes": {"sam": "  so  glad ", "self": "  "}}));
+        assert_eq!(given.normalized(), facts(json!({"location_ids": ["home"], "with_ids": ["sam"], "notes": {"sam": "so glad"}})));
     }
 
     #[test]
@@ -291,7 +326,8 @@ mod tests {
     fn problems() {
         let long = "x".repeat(MAX_NOTE_CHARS + 1);
         for (given, problem) in [
-            (json!({"location_id": 3}), "\"location_id\" must be a location id"),
+            (json!({"location_ids": "home"}), "\"location_ids\" must be a list of location ids"),
+            (json!({"location_id": 3}), "\"location_ids\" must be a list of location ids"),
             (json!({"with_ids": "sam"}), "\"with_ids\" must be a list of person ids"),
             (json!({"with_ids": ["self"]}), "\"with_ids\" never names \"self\""),
             (json!({"with_ids": ["sam"], "for_ids": ["sam"]}), "['sam'] can't be both \"with\" (there) and \"for\" (not there)"),
@@ -306,7 +342,8 @@ mod tests {
 
     #[test]
     fn well_formed_facts_have_no_problems() {
-        let given = facts(json!({"location_id": "home", "with_ids": ["sam"], "for_ids": ["mom"], "notes": {"self": "a", "sam": "b"}}));
+        let given = facts(json!({"location_ids": ["home", "park"], "with_ids": ["sam"], "for_ids": ["mom"], "notes": {"self": "a", "sam": "b"}}));
         assert!(fact_problems(&given).is_empty());
+
     }
 }

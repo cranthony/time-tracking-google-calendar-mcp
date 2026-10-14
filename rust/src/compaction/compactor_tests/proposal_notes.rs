@@ -283,7 +283,7 @@ fn settling() -> Settling {
     setup.append_note("09:30", None);
     let mut decisions = setup.coffee_instead_of_email();
     decisions[0].action_ids = Some(strings(&["new:coffee"]));
-    decisions[0].facts = Some(facts(json!({"location": "new:cafe", "with": ["sam", "new:alex"], "notes": {"sam": "tired", "new:alex": "new in town"}})));
+    decisions[0].facts = Some(facts(json!({"locations": ["new:cafe"], "with": ["sam", "new:alex"], "notes": {"sam": "tired", "new:alex": "new in town"}})));
     let result = setup.try_dry_run(decisions.clone(), DryRun { additions: new_additions(), ..Default::default() }).unwrap();
     let key = result.changes.iter().find(|c| c.action == "create").unwrap().key.clone().unwrap();
     Settling { setup, p: result.proposal_id.unwrap(), key, decisions }
@@ -350,7 +350,7 @@ fn a_dropped_one_is_left_out_of_the_events() {
 
     let proposal = s.settle(1, json!({"ref": "new:cafe", "use": "drop"})).unwrap();
 
-    assert!(s.coffee(&proposal).facts.as_ref().unwrap().location_id.as_ref().is_none_or(Value::is_null));
+    assert!(s.coffee(&proposal).facts.as_ref().unwrap().locations().is_empty());
     assert!(!has(&proposal.additions, "locations"));
     assert_eq!(settled(&proposal), vec![json!({"ref": "new:cafe", "use": "drop", "id": null})]);
 }
@@ -410,7 +410,7 @@ fn as_planned_on_a_ref_leaves_it_unsettled() {
     assert!(proposal.settled_additions.is_empty());
     let refs: Vec<&str> = proposal.additions.as_ref().unwrap()["locations"].as_array().unwrap().iter().map(|l| l["ref"].as_str().unwrap()).collect();
     assert_eq!(refs, vec!["new:cafe"]);
-    assert_eq!(s.coffee(&proposal).facts.as_ref().unwrap().location_id, Some(json!("new:cafe")));
+    assert_eq!(s.coffee(&proposal).facts.as_ref().unwrap().locations(), vec!["new:cafe"]);
 }
 
 #[test]

@@ -132,7 +132,7 @@ fn a_dry_run_passes_what_it_adds_through() {
             "new_actions": [{"ref": "new:juggle", "name": "Juggle"}],
             "new_people": [{"ref": "new:alex", "name": "Alex"}],
             "new_locations": [{"ref": "new:park", "name": "Park"}],
-            "updates": [{"event_id": "e1", "action_ids": ["new:juggle"], "facts": {"location_id": "new:park", "with_ids": ["new:alex"]}}],
+            "updates": [{"event_id": "e1", "action_ids": ["new:juggle"], "facts": {"location_ids": ["new:park"], "with_ids": ["new:alex"]}}],
         }),
     );
 

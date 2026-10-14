@@ -2099,12 +2099,14 @@ impl NoteCompactor {
                         ));
                     }
                 }
-                if let (Some(locations), Some(location)) = (&locations, facts.location().filter(|l| !l.is_empty())) {
-                    if !locations.contains(&location) && !new_locations.contains(&location) {
-                        problems.push(format!(
-                            "{label}: its facts' location {} isn't a location (add a new one with new_locations)",
-                            py::repr(&location)
-                        ));
+                if let Some(locations) = &locations {
+                    for location in facts.locations() {
+                        if !locations.contains(&location) && !new_locations.contains(&location) {
+                            problems.push(format!(
+                                "{label}: its facts' location {} isn't a location (add a new one with new_locations)",
+                                py::repr(&location)
+                            ));
+                        }
                     }
                 }
                 decision.facts = Some(facts);

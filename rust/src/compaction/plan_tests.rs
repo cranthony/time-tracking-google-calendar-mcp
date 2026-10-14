@@ -445,7 +445,7 @@ fn the_timeline_marks_actions_and_totals_their_time() {
 
 #[test]
 fn keep_records_facts_and_the_timeline_shows_them_compactly() {
-    let given = facts(json!({"location": "home", "with": ["sam"], "for": ["mom"], "notes": {"self": "tired", "sam": "loved it"}}));
+    let given = facts(json!({"locations": ["home"], "with": ["sam"], "for": ["mom"], "notes": {"self": "tired", "sam": "loved it"}}));
     let plan = plan_with(
         &[],
         &[EventDecision { facts: Some(given), ..keep("e2") }],
@@ -456,7 +456,7 @@ fn keep_records_facts_and_the_timeline_shows_them_compactly() {
     .unwrap();
     assert_eq!(
         changed(&plan, "e2").after.unwrap().facts,
-        Some(json!({"location": "home", "with": ["sam"], "for": ["mom"], "notes": {"self": "tired", "sam": "loved it"}}))
+        Some(json!({"locations": ["home"], "with": ["sam"], "for": ["mom"], "notes": {"self": "tired", "sam": "loved it"}}))
     );
     let text = timeline_text(&plan);
     assert!(text.contains("├ Report\n          ▹ @ Home · with Sam · for Mom\n          ▹ Me: tired\n          ▹ Sam: loved it\n"), "{text}");
@@ -1072,7 +1072,7 @@ fn renders_notes_and_events_in_one_narrow_column() {
 
 #[test]
 fn flags_what_each_past_event_is_missing() {
-    let home = facts(json!({"location": "home"}));
+    let home = facts(json!({"locations": ["home"]}));
     let plan = plan_with(
         &[],
         &[
@@ -1099,7 +1099,7 @@ fn flags_what_each_past_event_is_missing() {
 
 #[test]
 fn flags_nothing_once_every_past_event_is_settled() {
-    let home = facts(json!({"location": "home"}));
+    let home = facts(json!({"locations": ["home"]}));
     let decisions: Vec<EventDecision> =
         ["e1", "e2", "e3"].iter().map(|e| EventDecision { action_ids: Some(strings(&["g1"])), facts: Some(home.clone()), ..keep(e) }).collect();
     let plan = plan_with(&[], &decisions, &day(), "12:30", Extra::default()).unwrap();

@@ -76,11 +76,11 @@ fn facts_setup() -> Setup {
 #[test]
 fn a_keep_records_facts_and_shows_them_in_the_timeline() {
     let setup = facts_setup();
-    let given = facts(json!({"location": "home", "with": ["sam"], "for": ["mom"], "notes": {"self": "sleepy", "sam": " happy  "}}));
+    let given = facts(json!({"locations": ["home"], "with": ["sam"], "for": ["mom"], "notes": {"self": "sleepy", "sam": " happy  "}}));
 
     let planned = setup.dry_run(vec![EventDecision { facts: Some(given), ..keep("e1") }]);
 
-    let recorded = json!({"location": "home", "with": ["sam"], "for": ["mom"], "notes": {"self": "sleepy", "sam": "happy"}});
+    let recorded = json!({"locations": ["home"], "with": ["sam"], "for": ["mom"], "notes": {"self": "sleepy", "sam": "happy"}});
     assert_eq!(change(&planned, "e1").after.as_ref().unwrap().facts, Some(recorded.clone()));
     let text = &planned.timeline.as_ref().unwrap().text;
     assert!(text.contains("▹ @ Home · with Sam · for Mom"), "{text}");
@@ -97,7 +97,7 @@ fn facts_that_arent_well_formed_or_name_strangers_are_refused() {
 
     refused(setup.try_dry_run(with("keep", json!({"with": ["self"]})), DryRun::default()), r#"decision 1 \(keep e1\): its facts "with_ids" never names "self""#);
     refused(setup.try_dry_run(with("keep", json!({"for": ["nobody"]})), DryRun::default()), r"its facts name \['nobody'\], who aren't people");
-    refused(setup.try_dry_run(with("keep", json!({"location": "nowhere"})), DryRun::default()), "its facts' location 'nowhere' isn't a location");
+    refused(setup.try_dry_run(with("keep", json!({"locations": ["nowhere"]})), DryRun::default()), "its facts' location 'nowhere' isn't a location");
     refused(setup.try_dry_run(with("cancel", json!({"with": ["sam"]})), DryRun::default()), "facts only go with 'keep' or 'create'");
 }
 
@@ -139,7 +139,7 @@ fn new_ones_are_named_by_ref_shown_and_created_when_applied() {
     let setup = bare(Stores { people: vec![json!({"id": "sam", "name": "Sam", "status": "active"})], ..Default::default() });
     let mut decisions = setup.coffee_instead_of_email();
     decisions[0].action_ids = Some(strings(&["new:coffee"]));
-    decisions[0].facts = Some(facts(json!({"location": "new:cafe", "with": ["sam", "new:alex"], "notes": {"new:alex": "new in town"}})));
+    decisions[0].facts = Some(facts(json!({"locations": ["new:cafe"], "with": ["sam", "new:alex"], "notes": {"new:alex": "new in town"}})));
 
     let planned = setup
         .try_dry_run(
