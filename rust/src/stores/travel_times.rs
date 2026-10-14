@@ -4,6 +4,7 @@
 //! Travel Times tab. A pair counts both ways unless it's one_way.
 
 use crate::contract::{RowItem, Schema};
+use crate::google::sheets::TabWrite;
 use crate::py;
 use crate::sheet::rows::{self, RowType};
 use crate::stores::locations::{enclosing, Location, LocationGroup, Locations};
@@ -119,14 +120,16 @@ impl Locations {
 
     /// Takes out every travel time from or to `place_id`, a location or
     /// group being deleted.
-    pub(crate) fn forget_travel_times(&self, place_id: &str) -> anyhow::Result<()> {
+    /// The write that forgets the travel times to and from `place_id`, if
+    /// there are any.
+    pub(crate) fn forgetting_travel_times(&self, place_id: &str) -> anyhow::Result<Option<TabWrite>> {
         let all = self.travel_times()?;
         let names = |t: &TravelTime| t.from_id.as_deref() == Some(place_id) || t.to_id.as_deref() == Some(place_id);
-        if all.iter().any(names) {
-            let kept: Vec<TravelTime> = all.into_iter().filter(|t| !names(t)).collect();
-            self.travel_sheet.write_items(&kept)?;
+        if !all.iter().any(names) {
+            return Ok(None);
         }
-        Ok(())
+        let kept: Vec<TravelTime> = all.into_iter().filter(|t| !names(t)).collect();
+        Ok(Some(self.travel_sheet.prepared_items(&kept)?))
     }
 
     /// How long it takes from `from_id` to `to_id` (each a location or

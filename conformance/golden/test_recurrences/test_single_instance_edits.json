@@ -1909,29 +1909,6 @@
      "2026-10-08T10:15:00-04:00"
     ],
     "timeMin": [
-     "2026-10-07T10:15:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-08T10:15:00-04:00"
-    ],
-    "timeMin": [
      "2026-10-07T09:00:00-04:00"
     ]
    }
@@ -2342,13 +2319,6 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261010T130000Z",
    "query": {}
   },
   {

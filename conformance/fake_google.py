@@ -9,7 +9,8 @@ exceptions, what a patch to a series' master does to them, a series
 ended early by UNTIL, series split by importing
 "<id>_R<time>@google.com", extendedProperties.private merged by a patch
 with null removing a key, calendar etags checked by If-Match, deleted
-events answering 410, and Sheets' grid that values.update grows but
+events answering 410, inserting an event with a label the calendar hasn't
+got answering 400, and Sheets' grid that values.update grows but
 batchUpdateByDataFilter doesn't, and Calendar's batch endpoint answering
 each request in a batch as if it came on its own.
 
@@ -473,6 +474,11 @@ class FakeGoogle:
             raise GoogleError(400, "Invalid resource id value.")
         if event_id in calendar.events:
             raise GoogleError(409, "The requested identifier already exists.")
+        # Inserting refuses a label the calendar doesn't have (an update
+        # keeps one, as the label_lifecycle probe found).
+        label = body.get("eventLabelId")
+        if label is not None and not any(l.get("id") == label for l in calendar.resource.get("labelProperties", {}).get("eventLabels", [])):
+            raise GoogleError(400, f"Invalid event label id: {label}. An event label with the specified id does not exist.")
         event = self._new_event(calendar, body, event_id)
         calendar.events[event_id] = event
         return self._present(calendar, event)

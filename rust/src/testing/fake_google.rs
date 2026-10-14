@@ -9,7 +9,8 @@
 //! does to them, a series ended early by UNTIL, series split by importing
 //! "<id>_R<time>@google.com", extendedProperties.private merged by a patch
 //! with null removing a key, calendar etags checked by If-Match, deleted
-//! events answering 410, and Sheets' grid that values.update grows but
+//! events answering 410, inserting an event with a label the calendar
+//! hasn't got answering 400, and Sheets' grid that values.update grows but
 //! batchUpdateByDataFilter doesn't. Every request is logged.
 
 use crate::google::Google;
@@ -648,6 +649,14 @@ impl State {
                 }
                 if self.calendar(cid)?.events.contains_key(&event_id) {
                     return Err(err(409, "The requested identifier already exists."));
+                }
+                // Inserting refuses a label the calendar doesn't have (an
+                // update keeps one, as the label_lifecycle probe found).
+                if let Some(label) = body.get("eventLabelId").and_then(Value::as_str) {
+                    let labels = self.calendar(cid)?.resource.get("labelProperties").and_then(|p| p["eventLabels"].as_array()).cloned().unwrap_or_default();
+                    if !labels.iter().any(|l| l["id"] == json!(label)) {
+                        return Err(err(400, format!("Invalid event label id: {label}. An event label with the specified id does not exist.")));
+                    }
                 }
                 let event = self.new_event(cid, body, &event_id)?;
                 let cal = self.calendar(cid)?;

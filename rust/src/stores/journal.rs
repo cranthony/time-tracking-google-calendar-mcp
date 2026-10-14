@@ -12,7 +12,7 @@
 use crate::compaction::plan::{error, CompactionChange, CompactionPlan, EventDecision, EventState};
 use crate::compaction::proposals::{Feedback, UserEdit};
 use crate::event::{parse_iso, Moment};
-use crate::google::sheets::{Rows, SheetsClient, TabRange};
+use crate::google::sheets::{Rows, SheetsClient, TabRange, TabWrite};
 use crate::py;
 use crate::sheet::{ensure_tab, COMPACTIONS, MIN_TAB_ROWS};
 use serde_json::{json, Map, Value};
@@ -722,9 +722,11 @@ impl CompactionJournal {
     /// Write each (row, status) of `statuses` -- steps' and compactions'
     /// alike -- in one request.
     pub fn write_statuses(&self, statuses: &[(i64, &str)]) -> anyhow::Result<()> {
-        let writes: Vec<(String, Rows)> =
-            statuses.iter().map(|(row, status)| (format!("{STATUS_COLUMN}{row}:{STATUS_COLUMN}{row}"), vec![vec![status.to_string()]])).collect();
-        self.sheets.write_ranges_in_sheet(&self.spreadsheet_id, self.sheet_id, &writes)
+        let writes: Vec<TabWrite> = statuses
+            .iter()
+            .map(|(row, status)| TabWrite { sheet_id: self.sheet_id, range: format!("{STATUS_COLUMN}{row}:{STATUS_COLUMN}{row}"), rows: vec![vec![status.to_string()]] })
+            .collect();
+        self.sheets.write_tabs(&self.spreadsheet_id, &writes)
     }
 
     fn write_status(&self, row: i64, status: &str) -> anyhow::Result<()> {

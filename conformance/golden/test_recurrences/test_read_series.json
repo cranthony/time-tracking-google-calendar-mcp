@@ -1980,29 +1980,6 @@
      "2026-10-08T11:30:00-04:00"
     ],
     "timeMin": [
-     "2026-10-07T11:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-08T11:30:00-04:00"
-    ],
-    "timeMin": [
      "2026-10-07T11:00:00-04:00"
     ]
    }

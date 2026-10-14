@@ -94,9 +94,11 @@ fn the_requests_each_tool_makes() {
         // Events: the actions', people's and locations' tabs together.
         ("list_events", "list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"}), [1, 0, 1, 0]),
         ("get_event", "get_event", json!({"id": "walked"}), [1, 0, 1, 0]),
-        ("update_event (facts)", "update_event", json!({"updates": [{"event": {"id": "walked", "facts": {"location_ids": [f.home], "notes": {"self": "nice"}}}}]}), [1, 0, 2, 1]),
-        ("update_event", "update_event", json!({"updates": [{"event": {"id": "evening", "start": "2026-01-01T20:15:00Z"}}]}), [1, 0, 3, 1]),
-        ("create_event", "create_event", json!({"events": [{"summary": "Stroll", "start": "2026-01-04T10:00:00Z", "end": "2026-01-04T11:00:00Z"}]}), [1, 0, 3, 1]),
+        ("update_event (facts)", "update_event", json!({"updates": [{"event": {"id": "walked", "facts": {"location_ids": [f.home], "notes": {"self": "nice"}}}}]}), [1, 0, 1, 1]),
+        ("update_event", "update_event", json!({"updates": [{"event": {"id": "evening", "start": "2026-01-01T20:15:00Z"}}]}), [1, 0, 2, 1]),
+        ("create_event", "create_event", json!({"events": [{"summary": "Stroll", "start": "2026-01-04T10:00:00Z", "end": "2026-01-04T11:00:00Z"}]}), [1, 0, 2, 1]),
+        // The priority labels are made sure of once, not every call.
+        ("create_event (again)", "create_event", json!({"events": [{"summary": "Stroll", "start": "2026-01-05T10:00:00Z", "end": "2026-01-05T11:00:00Z"}]}), [1, 0, 1, 1]),
         ("delete_event", "delete_event", json!({"cancels": [{"event_id": "walked", "counts_against_follow_through": false}]}), [1, 0, 1, 1]),
         // Notes, and the journal (the last compaction; any open one).
         ("get_compaction_status", "get_compaction_status", json!({}), [1, 0, 0, 0]),
@@ -106,8 +108,8 @@ fn the_requests_each_tool_makes() {
         ("get_notes", "get_notes", json!({}), [1, 0, 0, 0]),
         ("note", "note", json!({"noted_time": {"timestamp": "2026-01-01T12:00:00+00:00", "description": "washed up"}}), [1, 1, 0, 0]),
         // Deleting tabs' rows: last, since they remove what others use.
-        ("delete_circle", "delete_circle", json!({"circle_id": f.family}), [1, 2, 0, 0]),
-        ("delete_location", "delete_location", json!({"location_id": f.home}), [1, 2, 0, 0]),
+        ("delete_circle", "delete_circle", json!({"circle_id": f.family}), [1, 1, 0, 0]),
+        ("delete_location", "delete_location", json!({"location_id": f.home}), [1, 1, 0, 0]),
         ("delete_location_group", "delete_location_group", json!({"group_id": f.brooklyn}), [1, 1, 0, 0]),
     ];
 
@@ -147,4 +149,5 @@ fn an_event_tool_reads_every_tab_it_needs_in_one_request() {
     read.sort();
     assert_eq!(read, strings(&["Action Groups", "Actions", "Circles", "Location Groups", "Locations", "People"]));
 }
+
 

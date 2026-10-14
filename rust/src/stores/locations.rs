@@ -231,8 +231,10 @@ impl Locations {
             );
         }
         let kept: Vec<Location> = locations.into_iter().filter(|l| l.id.as_deref() != Some(location_id)).collect();
-        self.sheet.write_items(&kept)?;
-        self.forget_travel_times(location_id)?;
+        // The location and its travel times, in one request.
+        let mut writes = vec![self.sheet.prepared_items(&kept)?];
+        writes.extend(self.forgetting_travel_times(location_id)?);
+        self.sheet.sheets().write_tabs(self.sheet.spreadsheet_id(), &writes)?;
         Ok(deleted)
     }
 
@@ -292,11 +294,13 @@ impl Locations {
         if !problems.is_empty() {
             bail!("{}", problems.join("; "));
         }
-        self.group_sheet.write_items(&groups_after)?;
+        // Every tab it changes, in one request.
+        let mut writes = vec![self.group_sheet.prepared_items(&groups_after)?];
         if locations.iter().any(|l| in_it(&l.group_id)) {
-            self.sheet.write_items(&locations_after)?;
+            writes.push(self.sheet.prepared_items(&locations_after)?);
         }
-        self.forget_travel_times(group_id)?;
+        writes.extend(self.forgetting_travel_times(group_id)?);
+        self.sheet.sheets().write_tabs(self.sheet.spreadsheet_id(), &writes)?;
         Ok(DeletedLocationGroup {
             moved_groups: groups_after
                 .iter()

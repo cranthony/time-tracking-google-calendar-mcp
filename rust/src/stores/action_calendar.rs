@@ -3,25 +3,20 @@
 
 use crate::event::{Event, Moment};
 use crate::google::calendar::{CalendarClient, EventLabel};
-use crate::google::BatchRequest;
+use crate::google::{BatchRequest, GoogleError};
 use crate::stores::actions::{ActionStatus, ActionTree, Actions};
 use crate::stores::groups::set;
-use crate::stores::groups::priority_label_id;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use crate::stores::groups::{priority_label_id, priority_of_label};
 
 #[derive(Clone)]
 pub struct ActionCalendar {
     client: CalendarClient,
     actions: Actions,
-    /// Whether this calendar's priority labels have been made sure of --
-    /// for as long as this ActionCalendar lives, as in Python.
-    priority_labels_ready: Arc<AtomicBool>,
 }
 
 impl ActionCalendar {
     pub fn new(client: CalendarClient, actions: Actions) -> ActionCalendar {
-        ActionCalendar { client, actions, priority_labels_ready: Arc::new(AtomicBool::new(false)) }
+        ActionCalendar { client, actions }
     }
 
     pub fn client(&self) -> &CalendarClient {
@@ -40,12 +35,31 @@ impl ActionCalendar {
 
     pub fn create_event(&self, event: &Event) -> anyhow::Result<Event> {
         let labelled = self.with_label(event, true)?;
-        self.client.create_event(&labelled)
+        match self.client.create_event(&labelled) {
+            Err(error) if self.label_restored(labelled.event_label_id.as_deref(), &error)? => self.client.create_event(&labelled),
+            written => written,
+        }
     }
 
     pub fn update_event(&self, event: &Event) -> anyhow::Result<Event> {
         let labelled = self.with_label(event, false)?;
-        self.client.update_event(&labelled)
+        match self.client.update_event(&labelled) {
+            Err(error) if self.label_restored(labelled.event_label_id.as_deref(), &error)? => self.client.update_event(&labelled),
+            written => written,
+        }
+    }
+
+    /// Whether `error`, writing an event with label `label_id`, was
+    /// Calendar refusing a priority label it no longer has -- they're made
+    /// sure of once, and then trusted -- and the labels were added back:
+    /// then writing it again can succeed. (Calendar refuses inserting an
+    /// event with a label it hasn't got: "Invalid event label id: ...".)
+    pub fn label_restored(&self, label_id: Option<&str>, error: &anyhow::Error) -> anyhow::Result<bool> {
+        let refused = error.downcast_ref::<GoogleError>().is_some_and(|e| e.status == 400 && e.message.contains("event label"));
+        if !refused || !label_id.is_some_and(|l| priority_of_label(l).is_some()) {
+            return Ok(false);
+        }
+        self.actions.ensure_priority_labels()
     }
 
     /// The request `create_event` sends, for `CalendarClient::send_writes`.
@@ -112,10 +126,7 @@ impl ActionCalendar {
     }
 
     fn priority_label(&self, event: &Event, current: Option<&Event>, action_ids: Option<&[String]>, tree: &ActionTree) -> anyhow::Result<String> {
-        if !self.priority_labels_ready.load(Ordering::SeqCst) {
-            self.actions.ensure_priority_labels()?;
-            self.priority_labels_ready.store(true, Ordering::SeqCst);
-        }
+        self.actions.ensure_priority_labels_once()?;
         let mut priority = event.priority;
         if priority.is_none() && !event.cleared.contains("priority") {
             if let Some(current) = current {

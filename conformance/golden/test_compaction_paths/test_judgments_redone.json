@@ -4512,13 +4512,6 @@
    }
   },
   {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
    "body": {
     "extendedProperties": {
      "private": {
@@ -4875,13 +4868,6 @@
      "2026-07-07T12:00:00-04:00"
     ]
    }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
   },
   {
    "body": {

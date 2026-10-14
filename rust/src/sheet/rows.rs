@@ -11,7 +11,7 @@
 //! tool shows as it is, so the user can fix the cell.
 
 use super::{create_tab, find_tab};
-use crate::google::sheets::{Rows, SheetsClient, TabRange};
+use crate::google::sheets::{Rows, SheetsClient, TabRange, TabWrite};
 use crate::py;
 use anyhow::bail;
 use serde_json::{Map, Value};
@@ -241,6 +241,12 @@ impl RowSheet {
         self.write(&items.iter().map(RowItem::to_row).collect::<Vec<_>>())
     }
 
+    /// The write `write_items` makes, to make with others in one request
+    /// (`SheetsClient::write_tabs`).
+    pub fn prepared_items<T: RowItem>(&self, items: &[T]) -> anyhow::Result<TabWrite> {
+        self.prepared(&items.iter().map(RowItem::to_row).collect::<Vec<_>>())
+    }
+
     fn read_checked(&self, check: impl Fn(&str, &Value) -> Result<(), String>) -> anyhow::Result<Vec<Row>> {
         let (header, rows) = self.read_raw()?;
         let mut items = Vec::new();
@@ -271,6 +277,12 @@ impl RowSheet {
     /// Overwrite the data rows with `items`, keeping unknown columns'
     /// cells, and blanking rows left over from a longer list.
     pub fn write(&self, items: &[Row]) -> anyhow::Result<()> {
+        let write = self.prepared(items)?;
+        self.sheets.write_rows_in_sheet(&self.spreadsheet_id, write.sheet_id, &write.range, &write.rows)
+    }
+
+    /// The write `write` makes.
+    pub fn prepared(&self, items: &[Row]) -> anyhow::Result<TabWrite> {
         let (original_header, previous) = self.read_raw()?;
         let mut header = original_header.clone();
         for (name, _) in self.row_type.fields {
@@ -307,11 +319,11 @@ impl RowSheet {
             rows.push(vec![String::new(); header.len()]);
         }
         if header == original_header {
-            self.sheets.write_rows_in_sheet(&self.spreadsheet_id, self.sheet_id, DATA_RANGE, &rows)
+            Ok(TabWrite { sheet_id: self.sheet_id, range: DATA_RANGE.into(), rows })
         } else {
             let mut all = vec![header];
             all.extend(rows);
-            self.sheets.write_rows_in_sheet(&self.spreadsheet_id, self.sheet_id, WHOLE_RANGE, &all)
+            Ok(TabWrite { sheet_id: self.sheet_id, range: WHOLE_RANGE.into(), rows: all })
         }
     }
 

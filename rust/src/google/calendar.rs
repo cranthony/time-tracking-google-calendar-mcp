@@ -99,7 +99,7 @@ thread_local! {
 
 /// Within this guard's life, a listing inside one made earlier (same
 /// calendar, range within it) is answered from memory, and so is an event
-/// `prefetch_events` fetched; any write forgets them all first.
+/// fetched earlier (or in a listing); any write forgets them all first.
 pub struct CachedListings {
     outer: bool,
 }
@@ -374,7 +374,11 @@ impl CalendarClient {
         if let Some(event) = cached_event(&self.calendar_id, event_id) {
             return Ok(event);
         }
-        self.call("GET", &self.event_path(event_id), &[], None)
+        let event = self.call("GET", &self.event_path(event_id), &[], None)?;
+        if caching() {
+            EVENTS.with(|e| e.borrow_mut().push((self.calendar_id.clone(), event_id.to_string(), event.clone())));
+        }
+        Ok(event)
     }
 
     /// Inside a tool call, fetch each of `event_ids` not cached yet in
@@ -492,8 +496,10 @@ impl CalendarClient {
     /// instance onto the series' times. Found with
     /// the series_edits probe.
     pub fn update_event(&self, event: &Event) -> anyhow::Result<Event> {
+        // Built first: building it may read the event, perhaps from memory.
+        let request = self.update_event_request(event)?;
         writing("CalendarClient.update_event")?;
-        Event::from_api(&self.send(&self.update_event_request(event)?)?)
+        Event::from_api(&self.send(&request)?)
     }
 
     /// The request `update_event` sends, for `send_writes`.
