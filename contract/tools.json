@@ -7912,7 +7912,7 @@
     }
   },
   {
-    "description": "Every location: a place the user's events happen (\"Home\", \"Salsa\nstudio\"), each with an id, a name and a hint for recognizing when an\nevent or note refers to it. Read-only.",
+    "description": "Every location: a place the user's events happen (\"Home\", \"Salsa\nstudio\"), each with an id, a name, a hint for recognizing when an\nevent or note refers to it, and a map location: where it is, as a maps\napp would find it, for its events with no location of their own.\nRead-only.",
     "inputSchema": {
       "properties": {},
       "type": "object",
@@ -7950,6 +7950,13 @@
               ]
             },
             "hint": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "map_location": {
+              "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
               "type": [
                 "string",
                 "null"
@@ -7996,13 +8003,20 @@
             "string",
             "null"
           ]
+        },
+        "map_location": {
+          "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "type": "object"
     }
   },
   {
-    "description": "Add a location: a name (unique among locations) and a hint for\nrecognizing when an event or note refers to it -- other names for it,\nan address, what happens there (\"the apartment; 'home', 'my place'\").\nid is assigned. Returns the location and its id as created_id.",
+    "description": "Add a location: a name (unique among locations) and a hint for\nrecognizing when an event or note refers to it -- other names for it,\nan address, what happens there (\"the apartment; 'home', 'my place'\")\n-- and, if it has one, a map_location: an address, a place's name or a\nlink, opened for its events with no location of their own. id is\nassigned. Returns the location and its id as created_id.",
     "inputSchema": {
       "properties": {
         "location": {
@@ -8031,6 +8045,13 @@
               ]
             },
             "hint": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "map_location": {
+              "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
               "type": [
                 "string",
                 "null"
@@ -8079,6 +8100,13 @@
                 "string",
                 "null"
               ]
+            },
+            "map_location": {
+              "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8087,7 +8115,7 @@
     }
   },
   {
-    "description": "Rename a location or change its hint, by id. Omitted properties keep\ntheir value; list hint in clear_fields to blank it. Returns it as\nupdated.",
+    "description": "Rename a location or change its hint or map_location, by id. Omitted\nproperties keep their value; list hint or map_location in clear_fields\nto blank it. Returns it as updated.",
     "inputSchema": {
       "properties": {
         "location": {
@@ -8095,7 +8123,10 @@
         },
         "clear_fields": {
           "items": {
-            "const": "hint",
+            "enum": [
+              "hint",
+              "map_location"
+            ],
             "type": "string"
           },
           "type": [
@@ -8130,6 +8161,13 @@
                 "string",
                 "null"
               ]
+            },
+            "map_location": {
+              "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8153,6 +8191,13 @@
           ]
         },
         "hint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "map_location": {
+          "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
           "type": [
             "string",
             "null"
@@ -8192,6 +8237,13 @@
           ]
         },
         "hint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "map_location": {
+          "description": "Where it is, as a maps app would find it -- an address, a place's\nname, or a link -- for an event there with no location of its own.",
           "type": [
             "string",
             "null"

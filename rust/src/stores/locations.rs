@@ -1,5 +1,5 @@
-//! A calendar's locations: where its events happen, each a name and a hint
-//! for recognizing it, in the Locations tab.
+//! A calendar's locations: where its events happen, each a name, a hint
+//! for recognizing it and a map location, in the Locations tab.
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
@@ -17,6 +17,9 @@ pub struct Location {
     pub id: Option<String>,
     pub name: Option<String>,
     pub hint: Option<String>,
+    /// Where it is, as a maps app would find it -- an address, a place's
+    /// name, or a link -- for an event there with no location of its own.
+    pub map_location: Option<String>,
 }
 
 /// A location's fields that clear_fields can blank.
@@ -24,6 +27,8 @@ pub struct Location {
 #[serde(rename_all = "lowercase")]
 pub enum ClearableField {
     Hint,
+    #[serde(rename = "map_location")]
+    MapLocation,
 }
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -33,7 +38,7 @@ pub struct CreatedLocation {
 }
 
 pub const ROW: RowType = <Location as rows::RowItem>::ROW_TYPE;
-pub const CLEARABLE_FIELDS: [&str; 1] = ["hint"];
+pub const CLEARABLE_FIELDS: [&str; 2] = ["hint", "map_location"];
 pub const MAX_NAME_LENGTH: usize = 50;
 
 #[derive(Clone)]

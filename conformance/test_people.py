@@ -76,6 +76,10 @@ async def test_locations(session):
     assert updated["name"] == "Dance studio"
     cleared = await session.call("update_location", location={"id": studio}, clear_fields=["hint"])
     assert not cleared.get("hint")
+    mapped = await session.call("update_location", location={"id": studio, "map_location": "12 Elm St"})
+    assert mapped["map_location"] == "12 Elm St"
+    unmapped = await session.call("update_location", location={"id": studio}, clear_fields=["map_location"])
+    assert not unmapped.get("map_location")
     assert (await session.call("delete_location", location_id=home))["name"] == "Home"
     assert [loc["name"] for loc in await session.call("get_locations")] == ["Dance studio"]
     await session.call_error("delete_location", location_id=home)
