@@ -34,6 +34,32 @@ pub struct LoggedRequest {
     pub bearer: Option<String>,
 }
 
+/// Which quota a request counts against: Sheets meters reads and writes
+/// separately (60 a minute per user each); Calendar meters all queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Quota {
+    SheetsRead,
+    SheetsWrite,
+    CalendarRead,
+    CalendarWrite,
+}
+
+impl LoggedRequest {
+    /// The quota this request counts against, if it's a Sheets or
+    /// Calendar request (not a token or Secret Manager one).
+    pub fn quota(&self) -> Option<Quota> {
+        let reading = self.method == "GET";
+        if self.path.starts_with("/v4/spreadsheets") {
+            let searching = self.path.ends_with("values:batchGetByDataFilter") || self.path.ends_with("developerMetadata:search");
+            Some(if reading || searching { Quota::SheetsRead } else { Quota::SheetsWrite })
+        } else if self.path.starts_with("/calendar/v3/") {
+            Some(if reading { Quota::CalendarRead } else { Quota::CalendarWrite })
+        } else {
+            None
+        }
+    }
+}
+
 struct GoogleError {
     status: u16,
     message: String,
@@ -1206,6 +1232,13 @@ impl FakeGoogle {
     /// Each version added to a Secret Manager secret: (secret, its data).
     pub fn secret_versions(&self) -> Vec<(String, String)> {
         self.with(|s| s.secret_versions.clone())
+    }
+
+    /// The requests logged so far against each quota: [Sheets reads,
+    /// Sheets writes, Calendar reads, Calendar writes].
+    pub fn quota_counts(&self) -> [usize; 4] {
+        let made: Vec<Option<Quota>> = self.requests().iter().map(LoggedRequest::quota).collect();
+        [Quota::SheetsRead, Quota::SheetsWrite, Quota::CalendarRead, Quota::CalendarWrite].map(|quota| made.iter().filter(|q| **q == Some(quota)).count())
     }
 
     pub fn clear_requests(&self) {

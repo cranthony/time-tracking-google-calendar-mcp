@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 
 mod compaction;
 mod events;
-mod reads;
+mod requests;
 mod stores;
 
 pub struct Server {
