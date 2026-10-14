@@ -127,11 +127,12 @@
     "location": {
      "hint": null,
      "id": "onvtja",
+     "map_location": null,
      "name": "Home"
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"onvtja\",\n    \"name\": \"Home\",\n    \"hint\": null\n  },\n  \"created_id\": \"onvtja\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"onvtja\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null\n  },\n  \"created_id\": \"onvtja\"\n}",
    "tool": "create_location"
   },
   {
@@ -196,11 +197,12 @@
     {
      "hint": null,
      "id": "onvtja",
+     "map_location": null,
      "name": "Home"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"onvtja\",\n  \"name\": \"Home\",\n  \"hint\": null\n}",
+   "text": "{\n  \"id\": \"onvtja\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null\n}",
    "tool": "get_locations"
   },
   {
@@ -736,7 +738,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ]
       ]
      }
@@ -1237,6 +1240,7 @@
        [
         "onvtja",
         "Home",
+        "",
         ""
        ]
       ]
@@ -2494,7 +2498,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ],
        [
         "onvtja",

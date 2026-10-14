@@ -12,11 +12,12 @@
     "location": {
      "hint": "at home",
      "id": "co2yzn",
+     "map_location": null,
      "name": "Home"
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": \"at home\"\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": \"at home\",\n    \"map_location\": null\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_location"
   },
   {
@@ -3465,7 +3466,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ]
       ]
      }
@@ -3545,7 +3547,8 @@
        [
         "co2yzn",
         "Home",
-        "at home"
+        "at home",
+        ""
        ]
       ]
      }
@@ -8117,7 +8120,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ],
        [
         "co2yzn",

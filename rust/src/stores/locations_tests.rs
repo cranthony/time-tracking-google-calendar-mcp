@@ -76,6 +76,17 @@ fn updates_and_clears() {
 }
 
 #[test]
+fn keeps_and_clears_a_map_location() {
+    let f = fixture();
+    let home = f.create(json!({"name": "Home", "map_location": "1 Main St"}));
+
+    assert_eq!(f.locations.get_location(&home).unwrap().map_location.as_deref(), Some("1 Main St"));
+    let moved = f.held(|l| l.update_location(&location(json!({"id": home, "map_location": "2 Main St"})), &[])).unwrap();
+    assert_eq!(moved.map_location.as_deref(), Some("2 Main St"));
+    assert!(f.held(|l| l.update_location(&location(json!({"id": home})), &["map_location".to_string()])).unwrap().map_location.is_none());
+}
+
+#[test]
 fn update_refuses_what_it_cant_do() {
     let f = fixture();
 

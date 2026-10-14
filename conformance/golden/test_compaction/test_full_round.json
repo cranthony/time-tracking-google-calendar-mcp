@@ -6732,11 +6732,12 @@
     {
      "hint": "the corner cafe",
      "id": "rs21so",
+     "map_location": null,
      "name": "Corner Cafe"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Corner Cafe\",\n  \"hint\": \"the corner cafe\"\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Corner Cafe\",\n  \"hint\": \"the corner cafe\",\n  \"map_location\": null\n}",
    "tool": "get_locations"
   },
   {
@@ -8177,7 +8178,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ]
       ]
      }
@@ -11108,7 +11110,8 @@
        [
         "rs21so",
         "Corner Cafe",
-        "the corner cafe"
+        "the corner cafe",
+        ""
        ]
       ]
      }
@@ -15587,7 +15590,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ],
        [
         "rs21so",

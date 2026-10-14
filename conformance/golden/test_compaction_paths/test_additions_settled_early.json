@@ -2353,11 +2353,12 @@
     {
      "hint": "the office",
      "id": "a0g0jc",
+     "map_location": null,
      "name": "The Office"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"The Office\",\n  \"hint\": \"the office\"\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"The Office\",\n  \"hint\": \"the office\",\n  \"map_location\": null\n}",
    "tool": "get_locations"
   },
   {
@@ -4967,16 +4968,18 @@
     {
      "hint": "the office",
      "id": "a0g0jc",
+     "map_location": null,
      "name": "The Office"
     },
     {
      "hint": "at home",
      "id": "lejxa2",
+     "map_location": null,
      "name": "Home"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"The Office\",\n  \"hint\": \"the office\"\n}\n{\n  \"id\": \"lejxa2\",\n  \"name\": \"Home\",\n  \"hint\": \"at home\"\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"The Office\",\n  \"hint\": \"the office\",\n  \"map_location\": null\n}\n{\n  \"id\": \"lejxa2\",\n  \"name\": \"Home\",\n  \"hint\": \"at home\",\n  \"map_location\": null\n}",
    "tool": "get_locations"
   }
  ],
@@ -5463,7 +5466,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ]
       ]
      }
@@ -7254,7 +7258,8 @@
        [
         "a0g0jc",
         "The Office",
-        "the office"
+        "the office",
+        ""
        ]
       ]
      }
@@ -8730,12 +8735,14 @@
        [
         "a0g0jc",
         "The Office",
-        "the office"
+        "the office",
+        ""
        ],
        [
         "lejxa2",
         "Home",
-        "at home"
+        "at home",
+        ""
        ]
       ]
      }
@@ -10158,7 +10165,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ],
        [
         "a0g0jc",

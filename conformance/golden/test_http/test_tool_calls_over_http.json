@@ -40,7 +40,7 @@
    "status": 202
   },
   {
-   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"content\":[{\"text\":\"{\\n  \\\"location\\\": {\\n    \\\"id\\\": \\\"co2yzn\\\",\\n    \\\"name\\\": \\\"Home\\\",\\n    \\\"hint\\\": null\\n  },\\n  \\\"created_id\\\": \\\"co2yzn\\\"\\n}\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"location\":{\"id\":\"co2yzn\",\"name\":\"Home\",\"hint\":null},\"created_id\":\"co2yzn\"}}}\r\n\r\n",
+   "body": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"content\":[{\"text\":\"{\\n  \\\"location\\\": {\\n    \\\"id\\\": \\\"co2yzn\\\",\\n    \\\"name\\\": \\\"Home\\\",\\n    \\\"hint\\\": null,\\n    \\\"map_location\\\": null\\n  },\\n  \\\"created_id\\\": \\\"co2yzn\\\"\\n}\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"location\":{\"id\":\"co2yzn\",\"name\":\"Home\",\"hint\":null,\"map_location\":null},\"created_id\":\"co2yzn\"}}}\r\n\r\n",
    "headers": {
     "cache-control": "no-cache, no-transform",
     "content-type": "text/event-stream"
@@ -215,7 +215,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ]
       ]
      }
@@ -295,6 +296,7 @@
        [
         "co2yzn",
         "Home",
+        "",
         ""
        ]
       ]

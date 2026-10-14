@@ -36,11 +36,12 @@
     "location": {
      "hint": null,
      "id": "3dnjav",
+     "map_location": null,
      "name": "The Park"
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"The Park\",\n    \"hint\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"The Park\",\n    \"hint\": null,\n    \"map_location\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_location"
   },
   {
@@ -757,7 +758,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ]
       ]
      }
@@ -923,6 +925,7 @@
        [
         "3dnjav",
         "The Park",
+        "",
         ""
        ]
       ]
@@ -2404,7 +2407,8 @@
        [
         "id",
         "name",
-        "hint"
+        "hint",
+        "map_location"
        ],
        [
         "3dnjav",
