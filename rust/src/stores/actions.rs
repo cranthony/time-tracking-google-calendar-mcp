@@ -56,6 +56,7 @@ pub struct ListedAction {
     pub background_color: Option<String>,
     pub priority: Option<i64>,
     pub note: Option<String>,
+    pub commute: Option<bool>,
     pub path: Option<String>,
     pub effective_color: Option<String>,
     pub effective_priority: Option<i64>,
@@ -83,6 +84,9 @@ pub struct Action {
     pub background_color: Option<String>,
     pub priority: Option<i64>,
     pub note: Option<String>,
+    /// Whether it's a way of getting from one place to another ("drive",
+    /// "walk"), which a travel time can be by.
+    pub commute: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -724,6 +728,7 @@ pub fn listed(action: &Action, tree: &GroupTree, holders: &[Option<String>]) -> 
         background_color: action.background_color.clone(),
         priority: action.priority,
         note: action.note.clone(),
+        commute: action.commute,
         path: Some(tree.path(action)),
         effective_color: Some(tree.color(action)),
         effective_priority: tree.priority(action),

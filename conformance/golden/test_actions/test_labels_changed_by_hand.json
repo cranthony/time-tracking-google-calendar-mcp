@@ -11,6 +11,7 @@
     "changed": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
       "group_id": null,
@@ -29,7 +30,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {
@@ -38,6 +39,7 @@
    },
    "content": {
     "background_color": null,
+    "commute": null,
     "effective_color": "#a4bdfc",
     "effective_priority": null,
     "group_id": null,
@@ -51,7 +53,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#a4bdfc\",\n  \"effective_priority\": null,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"commute\": null,\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#a4bdfc\",\n  \"effective_priority\": null,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   }
  ],
@@ -155,7 +157,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ]
       ]
      }
@@ -847,6 +850,7 @@
         "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "",
+        "",
         ""
        ]
       ]
@@ -1097,7 +1101,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ],
        [
         "co2yzn",

@@ -74,6 +74,7 @@
     "changed": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#112233",
       "effective_priority": 1,
       "group_id": "3dnjav",
@@ -92,7 +93,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#112233\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#112233\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_action"
   },
   {
@@ -101,6 +102,7 @@
    },
    "content": {
     "background_color": null,
+    "commute": null,
     "effective_color": "#112233",
     "effective_priority": 1,
     "group_id": "3dnjav",
@@ -114,7 +116,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"group_id\": \"3dnjav\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"Creative › Music › play guitar\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"group_id\": \"3dnjav\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"commute\": null,\n  \"path\": \"Creative › Music › play guitar\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
@@ -197,6 +199,7 @@
     "affected_actions": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#445566",
       "effective_priority": 1,
       "group_id": "3dnjav",
@@ -227,7 +230,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Creative\",\n      \"background_color\": \"#445566\",\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"Creative\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Creative\",\n      \"background_color\": \"#445566\",\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"Creative\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action_group"
   },
   {
@@ -243,6 +246,7 @@
     "affected_actions": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
       "group_id": "3dnjav",
@@ -273,7 +277,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Music\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Music\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action_group"
   },
   {
@@ -287,6 +291,7 @@
     "affected_actions": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#445566",
       "effective_priority": 1,
       "group_id": "3dnjav",
@@ -317,7 +322,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Creative › Music\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Creative › Music\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action_group"
   },
   {
@@ -340,6 +345,7 @@
     "affected_actions": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#445566",
       "effective_priority": 1,
       "group_id": "co2yzn",
@@ -366,7 +372,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"deleted\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": \"co2yzn\",\n    \"name\": \"Music\",\n    \"background_color\": null,\n    \"priority\": null,\n    \"note\": \"instruments\"\n  }\n}",
+   "text": "{\n  \"changed\": [],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Creative › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"deleted\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": \"co2yzn\",\n    \"name\": \"Music\",\n    \"background_color\": null,\n    \"priority\": null,\n    \"note\": \"instruments\"\n  }\n}",
    "tool": "delete_action_group"
   },
   {
@@ -375,6 +381,7 @@
    },
    "content": {
     "background_color": null,
+    "commute": null,
     "effective_color": "#445566",
     "effective_priority": 1,
     "group_id": "co2yzn",
@@ -388,7 +395,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"Creative › play guitar\",\n  \"effective_color\": \"#445566\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"commute\": null,\n  \"path\": \"Creative › play guitar\",\n  \"effective_color\": \"#445566\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
@@ -501,7 +508,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ]
       ]
      }
@@ -1429,6 +1437,7 @@
         "play guitar",
         "active",
         "ffde1615-6d47-5736-847f-9a518a5ead09",
+        "",
         "",
         "",
         ""
@@ -2424,6 +2433,7 @@
         "ffde1615-6d47-5736-847f-9a518a5ead09",
         "",
         "",
+        "",
         ""
        ]
       ]
@@ -2729,7 +2739,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ],
        [
         "a0g0jc",

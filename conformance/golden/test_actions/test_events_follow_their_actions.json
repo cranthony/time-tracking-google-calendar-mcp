@@ -42,6 +42,7 @@
     "changed": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": 2,
       "group_id": "co2yzn",
@@ -60,7 +61,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -120,6 +121,7 @@
     "affected_actions": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#e1e1e1",
       "effective_priority": 0,
       "group_id": "co2yzn",
@@ -150,7 +152,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Fitness\",\n      \"background_color\": null,\n      \"priority\": 0,\n      \"note\": null,\n      \"path\": \"Fitness\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Fitness\",\n      \"background_color\": null,\n      \"priority\": 0,\n      \"note\": null,\n      \"path\": \"Fitness\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action_group"
   },
   {
@@ -195,6 +197,7 @@
     "changed": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#e1e1e1",
       "effective_priority": 0,
       "group_id": "co2yzn",
@@ -212,7 +215,7 @@
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"archived\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"archived\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -257,6 +260,7 @@
     "changed": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#e1e1e1",
       "effective_priority": 0,
       "group_id": "co2yzn",
@@ -274,7 +278,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -319,6 +323,7 @@
     "changed": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#e1e1e1",
       "effective_priority": 0,
       "group_id": "co2yzn",
@@ -336,7 +341,7 @@
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"deleted\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"deleted\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -505,7 +510,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ]
       ]
      }
@@ -1326,6 +1332,7 @@
         "go running",
         "active",
         "7a8759ac-8307-5cf3-937d-398ec33255fd",
+        "",
         "",
         "",
         ""
@@ -2280,6 +2287,7 @@
         "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "",
         "",
+        "",
         ""
        ]
       ]
@@ -2477,6 +2485,7 @@
         "go running",
         "active",
         "7a8759ac-8307-5cf3-937d-398ec33255fd",
+        "",
         "",
         "",
         ""
@@ -2681,6 +2690,7 @@
         "go running",
         "deleted",
         "7a8759ac-8307-5cf3-937d-398ec33255fd",
+        "",
         "",
         "",
         ""
@@ -3157,7 +3167,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ],
        [
         "3dnjav",

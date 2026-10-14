@@ -2493,7 +2493,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ]
       ]
      }
@@ -5735,7 +5736,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ]
       ]
      },

@@ -12,6 +12,7 @@
     "changed": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#7ae7bf",
       "effective_priority": 3,
       "group_id": null,
@@ -30,7 +31,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"do chores\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 3,\n      \"note\": null,\n      \"path\": \"do chores\",\n      \"effective_color\": \"#7ae7bf\",\n      \"effective_priority\": 3,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"do chores\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 3,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"do chores\",\n      \"effective_color\": \"#7ae7bf\",\n      \"effective_priority\": 3,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {
@@ -46,6 +47,7 @@
     "changed": [
      {
       "background_color": "#abcdef",
+      "commute": null,
       "effective_color": "#abcdef",
       "effective_priority": 3,
       "group_id": null,
@@ -64,7 +66,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"paint\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": \"#abcdef\",\n      \"priority\": 3,\n      \"note\": null,\n      \"path\": \"paint\",\n      \"effective_color\": \"#abcdef\",\n      \"effective_priority\": 3,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"paint\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": \"#abcdef\",\n      \"priority\": 3,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"paint\",\n      \"effective_color\": \"#abcdef\",\n      \"effective_priority\": 3,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -76,6 +78,7 @@
     "affected_actions": [
      {
       "background_color": null,
+      "commute": null,
       "effective_color": "#0f0f0f",
       "effective_priority": 3,
       "group_id": null,
@@ -115,7 +118,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"colors\": [\n    {\n      \"priority\": 0,\n      \"color\": \"#e1e1e1\",\n      \"label_id\": \"495cdbf8-ca71-5284-8fe0-31ec6b15fbbe\"\n    },\n    {\n      \"priority\": 1,\n      \"color\": \"#fbd75b\",\n      \"label_id\": \"261822bd-b719-5bcf-864c-1efdfff66600\"\n    },\n    {\n      \"priority\": 2,\n      \"color\": \"#a4bdfc\",\n      \"label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\"\n    },\n    {\n      \"priority\": 3,\n      \"color\": \"#0f0f0f\",\n      \"label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\"\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"do chores\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 3,\n      \"note\": null,\n      \"path\": \"do chores\",\n      \"effective_color\": \"#0f0f0f\",\n      \"effective_priority\": 3,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"colors\": [\n    {\n      \"priority\": 0,\n      \"color\": \"#e1e1e1\",\n      \"label_id\": \"495cdbf8-ca71-5284-8fe0-31ec6b15fbbe\"\n    },\n    {\n      \"priority\": 1,\n      \"color\": \"#fbd75b\",\n      \"label_id\": \"261822bd-b719-5bcf-864c-1efdfff66600\"\n    },\n    {\n      \"priority\": 2,\n      \"color\": \"#a4bdfc\",\n      \"label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\"\n    },\n    {\n      \"priority\": 3,\n      \"color\": \"#0f0f0f\",\n      \"label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\"\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"do chores\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 3,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"do chores\",\n      \"effective_color\": \"#0f0f0f\",\n      \"effective_priority\": 3,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "update_priority_color"
   },
   {
@@ -124,6 +127,7 @@
    },
    "content": {
     "background_color": null,
+    "commute": null,
     "effective_color": "#0f0f0f",
     "effective_priority": 3,
     "group_id": null,
@@ -137,7 +141,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"do chores\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": 3,\n  \"note\": null,\n  \"path\": \"do chores\",\n  \"effective_color\": \"#0f0f0f\",\n  \"effective_priority\": 3,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"do chores\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": 3,\n  \"note\": null,\n  \"commute\": null,\n  \"path\": \"do chores\",\n  \"effective_color\": \"#0f0f0f\",\n  \"effective_priority\": 3,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
@@ -146,6 +150,7 @@
    },
    "content": {
     "background_color": "#abcdef",
+    "commute": null,
     "effective_color": "#abcdef",
     "effective_priority": 3,
     "group_id": null,
@@ -159,7 +164,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": null,\n  \"name\": \"paint\",\n  \"status\": \"active\",\n  \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"background_color\": \"#abcdef\",\n  \"priority\": 3,\n  \"note\": null,\n  \"path\": \"paint\",\n  \"effective_color\": \"#abcdef\",\n  \"effective_priority\": 3,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": null,\n  \"name\": \"paint\",\n  \"status\": \"active\",\n  \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"background_color\": \"#abcdef\",\n  \"priority\": 3,\n  \"note\": null,\n  \"commute\": null,\n  \"path\": \"paint\",\n  \"effective_color\": \"#abcdef\",\n  \"effective_priority\": 3,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   }
  ],
@@ -263,7 +268,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ]
       ]
      }
@@ -955,6 +961,7 @@
         "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "3",
+        "",
         ""
        ]
       ]
@@ -1093,6 +1100,7 @@
         "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "3",
+        "",
         ""
        ],
        [
@@ -1103,6 +1111,7 @@
         "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "#abcdef",
         "3",
+        "",
         ""
        ]
       ]
@@ -1570,7 +1579,8 @@
         "label_id",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "commute"
        ],
        [
         "co2yzn",
