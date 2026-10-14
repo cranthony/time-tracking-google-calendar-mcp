@@ -197,14 +197,14 @@
     }
    },
    "content": {
-    "created_id": "4709iy",
+    "created_id": "co2yzn",
     "person": {
      "cancelled_events": null,
      "circle_names": null,
      "circles": null,
      "context": null,
      "foundations": null,
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "Sam Example",
      "status": "active",
      "traits": {
@@ -216,7 +216,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"4709iy\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -230,15 +230,15 @@
      }
     }
    },
-   "content": "Error executing tool create_person: person bcyx3f's traits \"select\" names 'no-such-trait', which isn't a trait",
+   "content": "Error executing tool create_person: person 3dnjav's traits \"select\" names 'no-such-trait', which isn't a trait",
    "is_error": true,
-   "text": "Error executing tool create_person: person bcyx3f's traits \"select\" names 'no-such-trait', which isn't a trait",
+   "text": "Error executing tool create_person: person 3dnjav's traits \"select\" names 'no-such-trait', which isn't a trait",
    "tool": "create_person"
   },
   {
    "arguments": {
     "person": {
-     "id": "4709iy",
+     "id": "co2yzn",
      "traits": {
       "parts": {
        "thoughtful": [
@@ -259,14 +259,14 @@
     "circles": null,
     "context": null,
     "foundations": null,
-    "id": "4709iy",
+    "id": "co2yzn",
     "name": "Sam Example",
     "status": "active",
     "traits": {
      "parts": {
       "thoughtful": [
        {
-        "id": "7632uw",
+        "id": "a0g0jc",
         "interval_days": 21,
         "kind": "count",
         "noun": "visits",
@@ -278,13 +278,13 @@
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"7632uw\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"a0g0jc\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   },
   {
    "arguments": {
     "person": {
-     "id": "4709iy",
+     "id": "co2yzn",
      "traits": {
       "parts": {
        "thoughtful": [
@@ -297,9 +297,9 @@
      }
     }
    },
-   "content": "Error executing tool update_person: person 4709iy's traits \"parts\" for 'thoughtful': part 1 (count) \"target\" must be a number above 0",
+   "content": "Error executing tool update_person: person co2yzn's traits \"parts\" for 'thoughtful': part 1 (count) \"target\" must be a number above 0",
    "is_error": true,
-   "text": "Error executing tool update_person: person 4709iy's traits \"parts\" for 'thoughtful': part 1 (count) \"target\" must be a number above 0",
+   "text": "Error executing tool update_person: person co2yzn's traits \"parts\" for 'thoughtful': part 1 (count) \"target\" must be a number above 0",
    "tool": "update_person"
   },
   {
@@ -308,7 +308,7 @@
      "traits"
     ],
     "person": {
-     "id": "4709iy"
+     "id": "co2yzn"
     }
    },
    "content": {
@@ -317,14 +317,14 @@
     "circles": null,
     "context": null,
     "foundations": null,
-    "id": "4709iy",
+    "id": "co2yzn",
     "name": "Sam Example",
     "status": "active",
     "traits": null,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": null\n}",
    "tool": "update_person"
   }
  ],
@@ -1133,7 +1133,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Sam Example",
         "",
         "active",
@@ -1326,13 +1326,13 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Sam Example",
         "",
         "active",
         "",
         "",
-        "{\"parts\":{\"thoughtful\":[{\"id\":\"7632uw\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"noun\":\"visits\"}]}}",
+        "{\"parts\":{\"thoughtful\":[{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"noun\":\"visits\"}]}}",
         ""
        ]
       ]
@@ -1491,7 +1491,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "Sam Example",
         "",
         "active",
@@ -1718,7 +1718,7 @@
         "foundations"
        ],
        [
-        "4709iy",
+        "co2yzn",
         "Sam Example",
         "",
         "active"

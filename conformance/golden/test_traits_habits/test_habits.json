@@ -14,25 +14,25 @@
       "effective_color": "#a4bdfc",
       "effective_priority": null,
       "group_id": null,
-      "id": "4709iy",
+      "id": "co2yzn",
       "name": "Music",
       "note": null,
       "path": "Music",
       "priority": null
      }
     ],
-    "created_id": "4709iy",
+    "created_id": "co2yzn",
     "label_slots_total": 200,
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action_group"
   },
   {
    "arguments": {
     "action": {
-     "group_id": "4709iy",
+     "group_id": "co2yzn",
      "name": "play guitar",
      "status": "active"
     }
@@ -43,10 +43,10 @@
       "background_color": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
-      "group_id": "4709iy",
+      "group_id": "co2yzn",
       "holds_label": true,
-      "id": "bcyx3f",
-      "label_id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+      "id": "3dnjav",
+      "label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
       "name": "play guitar",
       "note": null,
       "path": "Music › play guitar",
@@ -54,12 +54,12 @@
       "status": "active"
      }
     ],
-    "created_id": "bcyx3f",
+    "created_id": "3dnjav",
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": \"4709iy\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -250,19 +250,19 @@
   {
    "arguments": {
     "habit": {
-     "action_id": "bcyx3f",
+     "action_id": "3dnjav",
      "name": "Daily practice",
      "note": "20 minutes a day"
     }
    },
    "content": {
-    "created_id": "7632uw",
+    "created_id": "a0g0jc",
     "habit": {
-     "action_id": "bcyx3f",
+     "action_id": "3dnjav",
      "action_path": "Music › play guitar",
      "cancelled_events": null,
      "foundations": null,
-     "id": "7632uw",
+     "id": "a0g0jc",
      "name": "Daily practice",
      "note": "20 minutes a day",
      "status": "active",
@@ -270,19 +270,19 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"7632uw\",\n    \"name\": \"Daily practice\",\n    \"action_id\": \"bcyx3f\",\n    \"status\": \"active\",\n    \"note\": \"20 minutes a day\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"Music › play guitar\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"7632uw\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Daily practice\",\n    \"action_id\": \"3dnjav\",\n    \"status\": \"active\",\n    \"note\": \"20 minutes a day\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"Music › play guitar\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_habit"
   },
   {
    "arguments": {
     "habit": {
-     "action_id": "bcyx3f",
+     "action_id": "3dnjav",
      "name": "daily practice"
     }
    },
-   "content": "Error executing tool create_habit: there's already a habit named 'Daily practice' (7632uw); habit names must be unique -- use that one, or pick another name",
+   "content": "Error executing tool create_habit: there's already a habit named 'Daily practice' (a0g0jc); habit names must be unique -- use that one, or pick another name",
    "is_error": true,
-   "text": "Error executing tool create_habit: there's already a habit named 'Daily practice' (7632uw); habit names must be unique -- use that one, or pick another name",
+   "text": "Error executing tool create_habit: there's already a habit named 'Daily practice' (a0g0jc); habit names must be unique -- use that one, or pick another name",
    "tool": "create_habit"
   },
   {
@@ -292,15 +292,15 @@
      "name": "Nothing"
     }
    },
-   "content": "Error executing tool create_habit: habit m8t0mg's action_id 'nosuch' isn't an action or an action group (get_actions and get_action_groups list them)",
+   "content": "Error executing tool create_habit: habit onvtja's action_id 'nosuch' isn't an action or an action group (get_actions and get_action_groups list them)",
    "is_error": true,
-   "text": "Error executing tool create_habit: habit m8t0mg's action_id 'nosuch' isn't an action or an action group (get_actions and get_action_groups list them)",
+   "text": "Error executing tool create_habit: habit onvtja's action_id 'nosuch' isn't an action or an action group (get_actions and get_action_groups list them)",
    "tool": "create_habit"
   },
   {
    "arguments": {
     "habit": {
-     "action_id": "4709iy",
+     "action_id": "co2yzn",
      "name": "Music overall",
      "traits": {
       "select": [
@@ -310,13 +310,13 @@
     }
    },
    "content": {
-    "created_id": "mkgvva",
+    "created_id": "lejxa2",
     "habit": {
-     "action_id": "4709iy",
+     "action_id": "co2yzn",
      "action_path": "Music",
      "cancelled_events": null,
      "foundations": null,
-     "id": "mkgvva",
+     "id": "lejxa2",
      "name": "Music overall",
      "note": null,
      "status": "active",
@@ -328,13 +328,13 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"mkgvva\",\n    \"name\": \"Music overall\",\n    \"action_id\": \"4709iy\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"action_path\": \"Music\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"mkgvva\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"lejxa2\",\n    \"name\": \"Music overall\",\n    \"action_id\": \"co2yzn\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"action_path\": \"Music\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"lejxa2\"\n}",
    "tool": "create_habit"
   },
   {
    "arguments": {
     "habit": {
-     "action_id": "4709iy",
+     "action_id": "co2yzn",
      "name": "Bad traits",
      "traits": {
       "select": [
@@ -343,31 +343,31 @@
      }
     }
    },
-   "content": "Error executing tool create_habit: habit 6gpeqq's traits \"select\" names 'nosuch', which isn't a trait",
+   "content": "Error executing tool create_habit: habit s3wod9's traits \"select\" names 'nosuch', which isn't a trait",
    "is_error": true,
-   "text": "Error executing tool create_habit: habit 6gpeqq's traits \"select\" names 'nosuch', which isn't a trait",
+   "text": "Error executing tool create_habit: habit s3wod9's traits \"select\" names 'nosuch', which isn't a trait",
    "tool": "create_habit"
   },
   {
    "arguments": {},
    "content": [
     {
-     "action_id": "bcyx3f",
+     "action_id": "3dnjav",
      "action_path": "Music › play guitar",
      "cancelled_events": [],
      "foundations": null,
-     "id": "7632uw",
+     "id": "a0g0jc",
      "name": "Daily practice",
      "note": "20 minutes a day",
      "status": "active",
      "traits": null
     },
     {
-     "action_id": "4709iy",
+     "action_id": "co2yzn",
      "action_path": "Music",
      "cancelled_events": [],
      "foundations": null,
-     "id": "mkgvva",
+     "id": "lejxa2",
      "name": "Music overall",
      "note": null,
      "status": "active",
@@ -379,7 +379,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"3dnjav\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -387,27 +387,27 @@
     "id_or_name": "daily PRACTICE"
    },
    "content": {
-    "action_id": "bcyx3f",
+    "action_id": "3dnjav",
     "action_path": "Music › play guitar",
     "cancelled_events": [],
     "foundations": null,
-    "id": "7632uw",
+    "id": "a0g0jc",
     "name": "Daily practice",
     "note": "20 minutes a day",
     "status": "active",
     "traits": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"bcyx3f\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"3dnjav\",\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habit"
   },
   {
    "arguments": {
     "id_or_name": "Daly practise"
    },
-   "content": "Error executing tool get_habit: There's no habit with the id or name 'Daly practise'; did you mean 7632uw (Daily practice)? (get_habits lists them)",
+   "content": "Error executing tool get_habit: There's no habit with the id or name 'Daly practise'; did you mean a0g0jc (Daily practice)? (get_habits lists them)",
    "is_error": true,
-   "text": "Error executing tool get_habit: There's no habit with the id or name 'Daly practise'; did you mean 7632uw (Daily practice)? (get_habits lists them)",
+   "text": "Error executing tool get_habit: There's no habit with the id or name 'Daly practise'; did you mean a0g0jc (Daily practice)? (get_habits lists them)",
    "tool": "get_habit"
   },
   {
@@ -416,30 +416,30 @@
      "note"
     ],
     "habit": {
-     "action_id": "4709iy",
-     "id": "7632uw",
+     "action_id": "co2yzn",
+     "id": "a0g0jc",
      "name": "Guitar practice"
     }
    },
    "content": {
-    "action_id": "4709iy",
+    "action_id": "co2yzn",
     "action_path": "Music",
     "cancelled_events": null,
     "foundations": null,
-    "id": "7632uw",
+    "id": "a0g0jc",
     "name": "Guitar practice",
     "note": null,
     "status": "active",
     "traits": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
    "arguments": {
     "habit": {
-     "id": "7632uw",
+     "id": "a0g0jc",
      "traits": {
       "parts": {
        "thoughtful": [
@@ -456,11 +456,11 @@
     }
    },
    "content": {
-    "action_id": "4709iy",
+    "action_id": "co2yzn",
     "action_path": "Music",
     "cancelled_events": null,
     "foundations": null,
-    "id": "7632uw",
+    "id": "a0g0jc",
     "name": "Guitar practice",
     "note": null,
     "status": "active",
@@ -468,7 +468,7 @@
      "parts": {
       "thoughtful": [
        {
-        "id": "c133sb",
+        "id": "htmn3w",
         "interval_days": 21,
         "kind": "count",
         "noun": "visits",
@@ -480,22 +480,22 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"c133sb\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
    "arguments": {
     "habit": {
-     "id": "7632uw",
+     "id": "a0g0jc",
      "status": "archived"
     }
    },
    "content": {
-    "action_id": "4709iy",
+    "action_id": "co2yzn",
     "action_path": "Music",
     "cancelled_events": null,
     "foundations": null,
-    "id": "7632uw",
+    "id": "a0g0jc",
     "name": "Guitar practice",
     "note": null,
     "status": "archived",
@@ -503,7 +503,7 @@
      "parts": {
       "thoughtful": [
        {
-        "id": "c133sb",
+        "id": "htmn3w",
         "interval_days": 21,
         "kind": "count",
         "noun": "visits",
@@ -515,18 +515,18 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"c133sb\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": null\n}",
    "tool": "update_habit"
   },
   {
    "arguments": {},
    "content": [
     {
-     "action_id": "4709iy",
+     "action_id": "co2yzn",
      "action_path": "Music",
      "cancelled_events": [],
      "foundations": null,
-     "id": "mkgvva",
+     "id": "lejxa2",
      "name": "Music overall",
      "note": null,
      "status": "active",
@@ -538,7 +538,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -551,11 +551,11 @@
    },
    "content": [
     {
-     "action_id": "4709iy",
+     "action_id": "co2yzn",
      "action_path": "Music",
      "cancelled_events": [],
      "foundations": null,
-     "id": "7632uw",
+     "id": "a0g0jc",
      "name": "Guitar practice",
      "note": null,
      "status": "archived",
@@ -563,7 +563,7 @@
       "parts": {
        "thoughtful": [
         {
-         "id": "c133sb",
+         "id": "htmn3w",
          "interval_days": 21,
          "kind": "count",
          "noun": "visits",
@@ -575,11 +575,11 @@
      }
     },
     {
-     "action_id": "4709iy",
+     "action_id": "co2yzn",
      "action_path": "Music",
      "cancelled_events": [],
      "foundations": null,
-     "id": "mkgvva",
+     "id": "lejxa2",
      "name": "Music overall",
      "note": null,
      "status": "active",
@@ -591,7 +591,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"c133sb\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"mkgvva\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"4709iy\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}\n{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"cancelled_events\": []\n}",
    "tool": "get_habits"
   },
   {
@@ -1198,7 +1198,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Music",
         "",
@@ -1321,11 +1321,11 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "bcyx3f",
-        "4709iy",
+        "3dnjav",
+        "co2yzn",
         "play guitar",
         "active",
-        "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "",
         "",
         ""
@@ -1366,7 +1366,7 @@
       },
       {
        "backgroundColor": "#a4bdfc",
-       "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+       "id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
        "name": "play guitar"
       }
      ]
@@ -1730,9 +1730,9 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "7632uw",
+        "a0g0jc",
         "Daily practice",
-        "bcyx3f",
+        "3dnjav",
         "active",
         "20 minutes a day",
         "",
@@ -1893,18 +1893,18 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "7632uw",
+        "a0g0jc",
         "Daily practice",
-        "bcyx3f",
+        "3dnjav",
         "active",
         "20 minutes a day",
         "",
         ""
        ],
        [
-        "mkgvva",
+        "lejxa2",
         "Music overall",
-        "4709iy",
+        "co2yzn",
         "active",
         "",
         "{\"select\":[\"thoughtful\"]}",
@@ -2328,18 +2328,18 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "7632uw",
+        "a0g0jc",
         "Guitar practice",
-        "4709iy",
+        "co2yzn",
         "active",
         "",
         "",
         ""
        ],
        [
-        "mkgvva",
+        "lejxa2",
         "Music overall",
-        "4709iy",
+        "co2yzn",
         "active",
         "",
         "{\"select\":[\"thoughtful\"]}",
@@ -2414,18 +2414,18 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "7632uw",
+        "a0g0jc",
         "Guitar practice",
-        "4709iy",
+        "co2yzn",
         "active",
         "",
-        "{\"parts\":{\"thoughtful\":[{\"id\":\"c133sb\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}",
+        "{\"parts\":{\"thoughtful\":[{\"id\":\"htmn3w\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}",
         ""
        ],
        [
-        "mkgvva",
+        "lejxa2",
         "Music overall",
-        "4709iy",
+        "co2yzn",
         "active",
         "",
         "{\"select\":[\"thoughtful\"]}",
@@ -2500,18 +2500,18 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "7632uw",
+        "a0g0jc",
         "Guitar practice",
-        "4709iy",
+        "co2yzn",
         "archived",
         "",
-        "{\"parts\":{\"thoughtful\":[{\"id\":\"c133sb\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}",
+        "{\"parts\":{\"thoughtful\":[{\"id\":\"htmn3w\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}",
         ""
        ],
        [
-        "mkgvva",
+        "lejxa2",
         "Music overall",
-        "4709iy",
+        "co2yzn",
         "active",
         "",
         "{\"select\":[\"thoughtful\"]}",
@@ -2737,7 +2737,7 @@
        },
        {
         "backgroundColor": "#a4bdfc",
-        "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "name": "play guitar"
        }
       ]
@@ -2846,7 +2846,7 @@
         "note"
        ],
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Music"
        ]
@@ -2881,11 +2881,11 @@
         "note"
        ],
        [
-        "bcyx3f",
-        "4709iy",
+        "3dnjav",
+        "co2yzn",
         "play guitar",
         "active",
-        "7e24e426-20ee-500e-8413-2a46dd1d1a62"
+        "7a8759ac-8307-5cf3-937d-398ec33255fd"
        ]
       ]
      },
@@ -2976,17 +2976,17 @@
         "foundations"
        ],
        [
-        "7632uw",
+        "a0g0jc",
         "Guitar practice",
-        "4709iy",
+        "co2yzn",
         "archived",
         "",
-        "{\"parts\":{\"thoughtful\":[{\"id\":\"c133sb\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}"
+        "{\"parts\":{\"thoughtful\":[{\"id\":\"htmn3w\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}"
        ],
        [
-        "mkgvva",
+        "lejxa2",
         "Music overall",
-        "4709iy",
+        "co2yzn",
         "active",
         "",
         "{\"select\":[\"thoughtful\"]}"

@@ -16,25 +16,25 @@
       "effective_color": "#112233",
       "effective_priority": 1,
       "group_id": null,
-      "id": "4709iy",
+      "id": "co2yzn",
       "name": "Creative",
       "note": null,
       "path": "Creative",
       "priority": 1
      }
     ],
-    "created_id": "4709iy",
+    "created_id": "co2yzn",
     "label_slots_total": 200,
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"Creative\",\n      \"background_color\": \"#112233\",\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"Creative\",\n      \"effective_color\": \"#112233\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Creative\",\n      \"background_color\": \"#112233\",\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"Creative\",\n      \"effective_color\": \"#112233\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action_group"
   },
   {
    "arguments": {
     "group": {
-     "group_id": "4709iy",
+     "group_id": "co2yzn",
      "name": "Music",
      "note": "instruments"
     }
@@ -46,26 +46,26 @@
       "background_color": null,
       "effective_color": "#112233",
       "effective_priority": 1,
-      "group_id": "4709iy",
-      "id": "bcyx3f",
+      "group_id": "co2yzn",
+      "id": "3dnjav",
       "name": "Music",
       "note": "instruments",
       "path": "Creative › Music",
       "priority": null
      }
     ],
-    "created_id": "bcyx3f",
+    "created_id": "3dnjav",
     "label_slots_total": 200,
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": \"4709iy\",\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Creative › Music\",\n      \"effective_color\": \"#112233\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Creative › Music\",\n      \"effective_color\": \"#112233\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action_group"
   },
   {
    "arguments": {
     "action": {
-     "group_id": "bcyx3f",
+     "group_id": "3dnjav",
      "name": "play guitar",
      "status": "active"
     }
@@ -76,10 +76,10 @@
       "background_color": null,
       "effective_color": "#112233",
       "effective_priority": 1,
-      "group_id": "bcyx3f",
+      "group_id": "3dnjav",
       "holds_label": true,
-      "id": "7632uw",
-      "label_id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+      "id": "a0g0jc",
+      "label_id": "ffde1615-6d47-5736-847f-9a518a5ead09",
       "name": "play guitar",
       "note": null,
       "path": "Creative › Music › play guitar",
@@ -87,26 +87,26 @@
       "status": "active"
      }
     ],
-    "created_id": "7632uw",
+    "created_id": "a0g0jc",
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"7632uw\",\n      \"group_id\": \"bcyx3f\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#112233\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"7632uw\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#112233\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_action"
   },
   {
    "arguments": {
-    "id_or_name": "7632uw"
+    "id_or_name": "a0g0jc"
    },
    "content": {
     "background_color": null,
     "effective_color": "#112233",
     "effective_priority": 1,
-    "group_id": "bcyx3f",
+    "group_id": "3dnjav",
     "holds_label": true,
-    "id": "7632uw",
-    "label_id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+    "id": "a0g0jc",
+    "label_id": "ffde1615-6d47-5736-847f-9a518a5ead09",
     "name": "play guitar",
     "note": null,
     "path": "Creative › Music › play guitar",
@@ -114,7 +114,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"group_id\": \"bcyx3f\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"Creative › Music › play guitar\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"group_id\": \"3dnjav\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"Creative › Music › play guitar\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
@@ -125,7 +125,7 @@
      "effective_color": "#112233",
      "effective_priority": 1,
      "group_id": null,
-     "id": "4709iy",
+     "id": "co2yzn",
      "name": "Creative",
      "note": null,
      "path": "Creative",
@@ -135,8 +135,8 @@
      "background_color": null,
      "effective_color": "#112233",
      "effective_priority": 1,
-     "group_id": "4709iy",
-     "id": "bcyx3f",
+     "group_id": "co2yzn",
+     "id": "3dnjav",
      "name": "Music",
      "note": "instruments",
      "path": "Creative › Music",
@@ -144,7 +144,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"group_id\": null,\n  \"name\": \"Creative\",\n  \"background_color\": \"#112233\",\n  \"priority\": 1,\n  \"note\": null,\n  \"path\": \"Creative\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1\n}\n{\n  \"id\": \"bcyx3f\",\n  \"group_id\": \"4709iy\",\n  \"name\": \"Music\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": \"instruments\",\n  \"path\": \"Creative › Music\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"Creative\",\n  \"background_color\": \"#112233\",\n  \"priority\": 1,\n  \"note\": null,\n  \"path\": \"Creative\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1\n}\n{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"Music\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": \"instruments\",\n  \"path\": \"Creative › Music\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1\n}",
    "tool": "get_action_groups"
   },
   {
@@ -155,24 +155,24 @@
     "background_color": null,
     "effective_color": "#112233",
     "effective_priority": 1,
-    "group_id": "4709iy",
-    "id": "bcyx3f",
+    "group_id": "co2yzn",
+    "id": "3dnjav",
     "name": "Music",
     "note": "instruments",
     "path": "Creative › Music",
     "priority": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"bcyx3f\",\n  \"group_id\": \"4709iy\",\n  \"name\": \"Music\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": \"instruments\",\n  \"path\": \"Creative › Music\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"Music\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": \"instruments\",\n  \"path\": \"Creative › Music\",\n  \"effective_color\": \"#112233\",\n  \"effective_priority\": 1\n}",
    "tool": "get_action_group"
   },
   {
    "arguments": {
     "id_or_name": "Musik"
    },
-   "content": "Error executing tool get_action_group: There's no action group with the id or name 'Musik'; did you mean bcyx3f (Music)? (get_action_groups lists them)",
+   "content": "Error executing tool get_action_group: There's no action group with the id or name 'Musik'; did you mean 3dnjav (Music)? (get_action_groups lists them)",
    "is_error": true,
-   "text": "Error executing tool get_action_group: There's no action group with the id or name 'Musik'; did you mean bcyx3f (Music)? (get_action_groups lists them)",
+   "text": "Error executing tool get_action_group: There's no action group with the id or name 'Musik'; did you mean 3dnjav (Music)? (get_action_groups lists them)",
    "tool": "get_action_group"
   },
   {
@@ -181,16 +181,16 @@
      "name": "creative"
     }
    },
-   "content": "Error executing tool create_action_group: there's already an action group named 'Creative' (4709iy); group names must be unique (an action may share one)",
+   "content": "Error executing tool create_action_group: there's already an action group named 'Creative' (co2yzn); group names must be unique (an action may share one)",
    "is_error": true,
-   "text": "Error executing tool create_action_group: there's already an action group named 'Creative' (4709iy); group names must be unique (an action may share one)",
+   "text": "Error executing tool create_action_group: there's already an action group named 'Creative' (co2yzn); group names must be unique (an action may share one)",
    "tool": "create_action_group"
   },
   {
    "arguments": {
     "group": {
      "background_color": "#445566",
-     "id": "4709iy"
+     "id": "co2yzn"
     }
    },
    "content": {
@@ -199,10 +199,10 @@
       "background_color": null,
       "effective_color": "#445566",
       "effective_priority": 1,
-      "group_id": "bcyx3f",
+      "group_id": "3dnjav",
       "holds_label": true,
-      "id": "7632uw",
-      "label_id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+      "id": "a0g0jc",
+      "label_id": "ffde1615-6d47-5736-847f-9a518a5ead09",
       "name": "play guitar",
       "note": null,
       "path": "Creative › Music › play guitar",
@@ -216,7 +216,7 @@
       "effective_color": "#445566",
       "effective_priority": 1,
       "group_id": null,
-      "id": "4709iy",
+      "id": "co2yzn",
       "name": "Creative",
       "note": null,
       "path": "Creative",
@@ -227,7 +227,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"Creative\",\n      \"background_color\": \"#445566\",\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"Creative\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"7632uw\",\n      \"group_id\": \"bcyx3f\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Creative\",\n      \"background_color\": \"#445566\",\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"Creative\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action_group"
   },
   {
@@ -236,7 +236,7 @@
      "group_id"
     ],
     "group": {
-     "id": "bcyx3f"
+     "id": "3dnjav"
     }
    },
    "content": {
@@ -245,10 +245,10 @@
       "background_color": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
-      "group_id": "bcyx3f",
+      "group_id": "3dnjav",
       "holds_label": true,
-      "id": "7632uw",
-      "label_id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+      "id": "a0g0jc",
+      "label_id": "ffde1615-6d47-5736-847f-9a518a5ead09",
       "name": "play guitar",
       "note": null,
       "path": "Music › play guitar",
@@ -262,7 +262,7 @@
       "effective_color": "#a4bdfc",
       "effective_priority": null,
       "group_id": null,
-      "id": "bcyx3f",
+      "id": "3dnjav",
       "name": "Music",
       "note": "instruments",
       "path": "Music",
@@ -273,14 +273,14 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Music\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"7632uw\",\n      \"group_id\": \"bcyx3f\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Music\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action_group"
   },
   {
    "arguments": {
     "group": {
-     "group_id": "4709iy",
-     "id": "bcyx3f"
+     "group_id": "co2yzn",
+     "id": "3dnjav"
     }
    },
    "content": {
@@ -289,10 +289,10 @@
       "background_color": null,
       "effective_color": "#445566",
       "effective_priority": 1,
-      "group_id": "bcyx3f",
+      "group_id": "3dnjav",
       "holds_label": true,
-      "id": "7632uw",
-      "label_id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+      "id": "a0g0jc",
+      "label_id": "ffde1615-6d47-5736-847f-9a518a5ead09",
       "name": "play guitar",
       "note": null,
       "path": "Creative › Music › play guitar",
@@ -305,8 +305,8 @@
       "background_color": null,
       "effective_color": "#445566",
       "effective_priority": 1,
-      "group_id": "4709iy",
-      "id": "bcyx3f",
+      "group_id": "co2yzn",
+      "id": "3dnjav",
       "name": "Music",
       "note": "instruments",
       "path": "Creative › Music",
@@ -317,24 +317,24 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": \"4709iy\",\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Creative › Music\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"7632uw\",\n      \"group_id\": \"bcyx3f\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": \"instruments\",\n      \"path\": \"Creative › Music\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"3dnjav\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › Music › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action_group"
   },
   {
    "arguments": {
     "group": {
-     "group_id": "bcyx3f",
-     "id": "4709iy"
+     "group_id": "3dnjav",
+     "id": "co2yzn"
     }
    },
-   "content": "Error executing tool update_action_group: action group 4709iy can't be inside itself, directly or through other groups; action group bcyx3f can't be inside itself, directly or through other groups",
+   "content": "Error executing tool update_action_group: action group co2yzn can't be inside itself, directly or through other groups; action group 3dnjav can't be inside itself, directly or through other groups",
    "is_error": true,
-   "text": "Error executing tool update_action_group: action group 4709iy can't be inside itself, directly or through other groups; action group bcyx3f can't be inside itself, directly or through other groups",
+   "text": "Error executing tool update_action_group: action group co2yzn can't be inside itself, directly or through other groups; action group 3dnjav can't be inside itself, directly or through other groups",
    "tool": "update_action_group"
   },
   {
    "arguments": {
-    "group_id": "bcyx3f"
+    "group_id": "3dnjav"
    },
    "content": {
     "affected_actions": [
@@ -342,10 +342,10 @@
       "background_color": null,
       "effective_color": "#445566",
       "effective_priority": 1,
-      "group_id": "4709iy",
+      "group_id": "co2yzn",
       "holds_label": true,
-      "id": "7632uw",
-      "label_id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+      "id": "a0g0jc",
+      "label_id": "ffde1615-6d47-5736-847f-9a518a5ead09",
       "name": "play guitar",
       "note": null,
       "path": "Creative › play guitar",
@@ -356,8 +356,8 @@
     "changed": [],
     "deleted": {
      "background_color": null,
-     "group_id": "4709iy",
-     "id": "bcyx3f",
+     "group_id": "co2yzn",
+     "id": "3dnjav",
      "name": "Music",
      "note": "instruments",
      "priority": null
@@ -366,21 +366,21 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [],\n  \"affected_actions\": [\n    {\n      \"id\": \"7632uw\",\n      \"group_id\": \"4709iy\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"deleted\": {\n    \"id\": \"bcyx3f\",\n    \"group_id\": \"4709iy\",\n    \"name\": \"Music\",\n    \"background_color\": null,\n    \"priority\": null,\n    \"note\": \"instruments\"\n  }\n}",
+   "text": "{\n  \"changed\": [],\n  \"affected_actions\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"Creative › play guitar\",\n      \"effective_color\": \"#445566\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"deleted\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": \"co2yzn\",\n    \"name\": \"Music\",\n    \"background_color\": null,\n    \"priority\": null,\n    \"note\": \"instruments\"\n  }\n}",
    "tool": "delete_action_group"
   },
   {
    "arguments": {
-    "id_or_name": "7632uw"
+    "id_or_name": "a0g0jc"
    },
    "content": {
     "background_color": null,
     "effective_color": "#445566",
     "effective_priority": 1,
-    "group_id": "4709iy",
+    "group_id": "co2yzn",
     "holds_label": true,
-    "id": "7632uw",
-    "label_id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+    "id": "a0g0jc",
+    "label_id": "ffde1615-6d47-5736-847f-9a518a5ead09",
     "name": "play guitar",
     "note": null,
     "path": "Creative › play guitar",
@@ -388,16 +388,16 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"7632uw\",\n  \"group_id\": \"4709iy\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"22f84d59-909c-554f-80e1-82f82cb1cd09\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"Creative › play guitar\",\n  \"effective_color\": \"#445566\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n  \"background_color\": null,\n  \"priority\": null,\n  \"note\": null,\n  \"path\": \"Creative › play guitar\",\n  \"effective_color\": \"#445566\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
    "arguments": {
-    "group_id": "bcyx3f"
+    "group_id": "3dnjav"
    },
-   "content": "Error executing tool delete_action_group: There's no action group with the id or name 'bcyx3f' (get_action_groups lists them)",
+   "content": "Error executing tool delete_action_group: There's no action group with the id or name '3dnjav' (get_action_groups lists them)",
    "is_error": true,
-   "text": "Error executing tool delete_action_group: There's no action group with the id or name 'bcyx3f' (get_action_groups lists them)",
+   "text": "Error executing tool delete_action_group: There's no action group with the id or name '3dnjav' (get_action_groups lists them)",
    "tool": "delete_action_group"
   }
  ],
@@ -992,7 +992,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Creative",
         "#112233",
@@ -1115,7 +1115,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Creative",
         "#112233",
@@ -1123,8 +1123,8 @@
         ""
        ],
        [
-        "bcyx3f",
-        "4709iy",
+        "3dnjav",
+        "co2yzn",
         "Music",
         "",
         "",
@@ -1214,11 +1214,11 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "7632uw",
-        "bcyx3f",
+        "a0g0jc",
+        "3dnjav",
         "play guitar",
         "active",
-        "22f84d59-909c-554f-80e1-82f82cb1cd09",
+        "ffde1615-6d47-5736-847f-9a518a5ead09",
         "",
         "",
         ""
@@ -1259,7 +1259,7 @@
       },
       {
        "backgroundColor": "#112233",
-       "id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+       "id": "ffde1615-6d47-5736-847f-9a518a5ead09",
        "name": "play guitar"
       }
      ]
@@ -1627,7 +1627,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Creative",
         "#445566",
@@ -1635,8 +1635,8 @@
         ""
        ],
        [
-        "bcyx3f",
-        "4709iy",
+        "3dnjav",
+        "co2yzn",
         "Music",
         "",
         "",
@@ -1678,7 +1678,7 @@
       },
       {
        "backgroundColor": "#445566",
-       "id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+       "id": "ffde1615-6d47-5736-847f-9a518a5ead09",
        "name": "play guitar"
       }
      ]
@@ -1763,7 +1763,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Creative",
         "#445566",
@@ -1771,7 +1771,7 @@
         ""
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "",
         "Music",
         "",
@@ -1814,7 +1814,7 @@
       },
       {
        "backgroundColor": "#a4bdfc",
-       "id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+       "id": "ffde1615-6d47-5736-847f-9a518a5ead09",
        "name": "play guitar"
       }
      ]
@@ -1899,7 +1899,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Creative",
         "#445566",
@@ -1907,8 +1907,8 @@
         ""
        ],
        [
-        "bcyx3f",
-        "4709iy",
+        "3dnjav",
+        "co2yzn",
         "Music",
         "",
         "",
@@ -1950,7 +1950,7 @@
       },
       {
        "backgroundColor": "#445566",
-       "id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+       "id": "ffde1615-6d47-5736-847f-9a518a5ead09",
        "name": "play guitar"
       }
      ]
@@ -2086,7 +2086,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Creative",
         "#445566",
@@ -2127,11 +2127,11 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "7632uw",
-        "4709iy",
+        "a0g0jc",
+        "co2yzn",
         "play guitar",
         "active",
-        "22f84d59-909c-554f-80e1-82f82cb1cd09",
+        "ffde1615-6d47-5736-847f-9a518a5ead09",
         "",
         "",
         ""
@@ -2288,7 +2288,7 @@
        },
        {
         "backgroundColor": "#445566",
-        "id": "22f84d59-909c-554f-80e1-82f82cb1cd09",
+        "id": "ffde1615-6d47-5736-847f-9a518a5ead09",
         "name": "play guitar"
        }
       ]
@@ -2373,7 +2373,7 @@
         "note"
        ],
        [
-        "4709iy",
+        "co2yzn",
         "",
         "Creative",
         "#445566",
@@ -2410,11 +2410,11 @@
         "note"
        ],
        [
-        "7632uw",
-        "4709iy",
+        "a0g0jc",
+        "co2yzn",
         "play guitar",
         "active",
-        "22f84d59-909c-554f-80e1-82f82cb1cd09"
+        "ffde1615-6d47-5736-847f-9a518a5ead09"
        ]
       ]
      },

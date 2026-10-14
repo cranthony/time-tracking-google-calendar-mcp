@@ -64,7 +64,7 @@
        },
        "location"
       ],
-      "id": "4709iy",
+      "id": "co2yzn",
       "kind": "judgment",
       "ratings": {
        "0": "routine",
@@ -76,13 +76,13 @@
       "window_days": 30
      },
      {
-      "id": "bcyx3f",
+      "id": "3dnjav",
       "kind": "continuity",
       "last_within_days": 14,
       "next_within_days": 14
      },
      {
-      "id": "7632uw",
+      "id": "a0g0jc",
       "interval_days": 21,
       "kind": "count",
       "noun": "visits",
@@ -90,12 +90,12 @@
       "zero_at_days": 42
      },
      {
-      "id": "9vxzfr",
+      "id": "rs21so",
       "kind": "duration",
       "target_min": 120
      },
      {
-      "id": "m8t0mg",
+      "id": "onvtja",
       "kind": "follow_through",
       "look_back_days": 90,
       "penalty": 20,
@@ -106,7 +106,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"Trying new things together.\",\n  \"parts\": [\n    {\n      \"id\": \"4709iy\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30\n    },\n    {\n      \"id\": \"bcyx3f\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"7632uw\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    },\n    {\n      \"id\": \"9vxzfr\",\n      \"kind\": \"duration\",\n      \"target_min\": 120\n    },\n    {\n      \"id\": \"m8t0mg\",\n      \"kind\": \"follow_through\",\n      \"penalty\": 20,\n      \"recovery\": 30,\n      \"look_back_days\": 90\n    }\n  ],\n  \"scoring\": null\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"Trying new things together.\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    },\n    {\n      \"id\": \"rs21so\",\n      \"kind\": \"duration\",\n      \"target_min\": 120\n    },\n    {\n      \"id\": \"onvtja\",\n      \"kind\": \"follow_through\",\n      \"penalty\": 20,\n      \"recovery\": 30,\n      \"look_back_days\": 90\n    }\n  ],\n  \"scoring\": null\n}",
    "tool": "create_trait"
   },
   {
@@ -243,7 +243,7 @@
        },
        "location"
       ],
-      "id": "4709iy",
+      "id": "co2yzn",
       "kind": "judgment",
       "ratings": {
        "0": "routine",
@@ -255,13 +255,13 @@
       "window_days": 30
      },
      {
-      "id": "bcyx3f",
+      "id": "3dnjav",
       "kind": "continuity",
       "last_within_days": 14,
       "next_within_days": 14
      },
      {
-      "id": "7632uw",
+      "id": "a0g0jc",
       "interval_days": 21,
       "kind": "count",
       "noun": "visits",
@@ -269,12 +269,12 @@
       "zero_at_days": 42
      },
      {
-      "id": "9vxzfr",
+      "id": "rs21so",
       "kind": "duration",
       "target_min": 120
      },
      {
-      "id": "m8t0mg",
+      "id": "onvtja",
       "kind": "follow_through",
       "look_back_days": 90,
       "penalty": 20,
@@ -285,7 +285,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Bold\",\n  \"status\": \"active\",\n  \"definition\": \"Trying new things together.\",\n  \"parts\": [\n    {\n      \"id\": \"4709iy\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30\n    },\n    {\n      \"id\": \"bcyx3f\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"7632uw\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    },\n    {\n      \"id\": \"9vxzfr\",\n      \"kind\": \"duration\",\n      \"target_min\": 120\n    },\n    {\n      \"id\": \"m8t0mg\",\n      \"kind\": \"follow_through\",\n      \"penalty\": 20,\n      \"recovery\": 30,\n      \"look_back_days\": 90\n    }\n  ],\n  \"scoring\": null\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Bold\",\n  \"status\": \"active\",\n  \"definition\": \"Trying new things together.\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    },\n    {\n      \"id\": \"rs21so\",\n      \"kind\": \"duration\",\n      \"target_min\": 120\n    },\n    {\n      \"id\": \"onvtja\",\n      \"kind\": \"follow_through\",\n      \"penalty\": 20,\n      \"recovery\": 30,\n      \"look_back_days\": 90\n    }\n  ],\n  \"scoring\": null\n}",
    "tool": "update_trait"
   },
   {
@@ -315,13 +315,13 @@
     "name": "Bold",
     "parts": [
      {
-      "id": "rrdogc",
+      "id": "syc56c",
       "kind": "continuity",
       "last_within_days": 14,
       "next_within_days": 14
      },
      {
-      "id": "n7hcgo",
+      "id": "kfj3g0",
       "interval_days": 21,
       "kind": "count",
       "noun": "visits",
@@ -333,7 +333,7 @@
     "status": "off"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Bold\",\n  \"status\": \"off\",\n  \"definition\": \"Trying new things together.\",\n  \"parts\": [\n    {\n      \"id\": \"rrdogc\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"n7hcgo\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": null\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Bold\",\n  \"status\": \"off\",\n  \"definition\": \"Trying new things together.\",\n  \"parts\": [\n    {\n      \"id\": \"syc56c\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"kfj3g0\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": null\n}",
    "tool": "update_trait"
   },
   {
@@ -351,13 +351,13 @@
     "name": "Bold",
     "parts": [
      {
-      "id": "rrdogc",
+      "id": "syc56c",
       "kind": "continuity",
       "last_within_days": 14,
       "next_within_days": 14
      },
      {
-      "id": "n7hcgo",
+      "id": "kfj3g0",
       "interval_days": 21,
       "kind": "count",
       "noun": "visits",
@@ -369,7 +369,7 @@
     "status": "off"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Bold\",\n  \"status\": \"off\",\n  \"definition\": null,\n  \"parts\": [\n    {\n      \"id\": \"rrdogc\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"n7hcgo\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": null\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Bold\",\n  \"status\": \"off\",\n  \"definition\": null,\n  \"parts\": [\n    {\n      \"id\": \"syc56c\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"kfj3g0\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": null\n}",
    "tool": "update_trait"
   },
   {
@@ -385,13 +385,13 @@
     "name": "Bold",
     "parts": [
      {
-      "id": "rrdogc",
+      "id": "syc56c",
       "kind": "continuity",
       "last_within_days": 14,
       "next_within_days": 14
      },
      {
-      "id": "n7hcgo",
+      "id": "kfj3g0",
       "interval_days": 21,
       "kind": "count",
       "noun": "visits",
@@ -403,7 +403,7 @@
     "status": "archived"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Bold\",\n  \"status\": \"archived\",\n  \"definition\": null,\n  \"parts\": [\n    {\n      \"id\": \"rrdogc\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"n7hcgo\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": null\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Bold\",\n  \"status\": \"archived\",\n  \"definition\": null,\n  \"parts\": [\n    {\n      \"id\": \"syc56c\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"kfj3g0\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": null\n}",
    "tool": "update_trait"
   },
   {
@@ -889,7 +889,7 @@
         "Daring",
         "active",
         "Trying new things together.",
-        "[{\"id\":\"4709iy\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30},{\"id\":\"bcyx3f\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"7632uw\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"},{\"id\":\"9vxzfr\",\"kind\":\"duration\",\"target_min\":120},{\"id\":\"m8t0mg\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90}]",
+        "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30},{\"id\":\"3dnjav\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"},{\"id\":\"rs21so\",\"kind\":\"duration\",\"target_min\":120},{\"id\":\"onvtja\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90}]",
         ""
        ]
       ]
@@ -1130,7 +1130,7 @@
         "Bold",
         "active",
         "Trying new things together.",
-        "[{\"id\":\"4709iy\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30},{\"id\":\"bcyx3f\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"7632uw\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"},{\"id\":\"9vxzfr\",\"kind\":\"duration\",\"target_min\":120},{\"id\":\"m8t0mg\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90}]",
+        "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30},{\"id\":\"3dnjav\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"},{\"id\":\"rs21so\",\"kind\":\"duration\",\"target_min\":120},{\"id\":\"onvtja\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90}]",
         ""
        ]
       ]
@@ -1231,7 +1231,7 @@
         "Bold",
         "off",
         "Trying new things together.",
-        "[{\"id\":\"rrdogc\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"n7hcgo\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
+        "[{\"id\":\"syc56c\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"kfj3g0\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
         ""
        ]
       ]
@@ -1332,7 +1332,7 @@
         "Bold",
         "off",
         "",
-        "[{\"id\":\"rrdogc\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"n7hcgo\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
+        "[{\"id\":\"syc56c\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"kfj3g0\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
         ""
        ]
       ]
@@ -1433,7 +1433,7 @@
         "Bold",
         "archived",
         "",
-        "[{\"id\":\"rrdogc\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"n7hcgo\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
+        "[{\"id\":\"syc56c\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"kfj3g0\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
         ""
        ]
       ]
@@ -1612,7 +1612,7 @@
         "Bold",
         "archived",
         "",
-        "[{\"id\":\"rrdogc\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"n7hcgo\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]"
+        "[{\"id\":\"syc56c\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"kfj3g0\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]"
        ]
       ]
      }

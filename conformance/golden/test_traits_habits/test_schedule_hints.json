@@ -29,17 +29,17 @@
    "content": {
     "hints": [
      {
-      "id": "bcyx3f",
+      "id": "3dnjav",
       "label": "Morning compaction",
       "time": "07:30"
      },
      {
-      "id": "7632uw",
+      "id": "a0g0jc",
       "label": null,
       "time": "12:00"
      },
      {
-      "id": "4709iy",
+      "id": "co2yzn",
       "label": "Evening",
       "time": "21:00"
      }
@@ -47,7 +47,7 @@
     "time_zone": "America/New_York"
    },
    "is_error": false,
-   "text": "{\n  \"hints\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"time\": \"07:30\",\n      \"label\": \"Morning compaction\"\n    },\n    {\n      \"id\": \"7632uw\",\n      \"time\": \"12:00\",\n      \"label\": null\n    },\n    {\n      \"id\": \"4709iy\",\n      \"time\": \"21:00\",\n      \"label\": \"Evening\"\n    }\n  ],\n  \"time_zone\": \"America/New_York\"\n}",
+   "text": "{\n  \"hints\": [\n    {\n      \"id\": \"3dnjav\",\n      \"time\": \"07:30\",\n      \"label\": \"Morning compaction\"\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"time\": \"12:00\",\n      \"label\": null\n    },\n    {\n      \"id\": \"co2yzn\",\n      \"time\": \"21:00\",\n      \"label\": \"Evening\"\n    }\n  ],\n  \"time_zone\": \"America/New_York\"\n}",
    "tool": "set_compaction_schedule_hints"
   },
   {
@@ -97,17 +97,17 @@
    "content": {
     "hints": [
      {
-      "id": "bcyx3f",
+      "id": "3dnjav",
       "label": "Morning compaction",
       "time": "07:30"
      },
      {
-      "id": "7632uw",
+      "id": "a0g0jc",
       "label": null,
       "time": "12:00"
      },
      {
-      "id": "4709iy",
+      "id": "co2yzn",
       "label": "Evening",
       "time": "21:00"
      }
@@ -115,7 +115,7 @@
     "time_zone": "America/New_York"
    },
    "is_error": false,
-   "text": "{\n  \"hints\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"time\": \"07:30\",\n      \"label\": \"Morning compaction\"\n    },\n    {\n      \"id\": \"7632uw\",\n      \"time\": \"12:00\",\n      \"label\": null\n    },\n    {\n      \"id\": \"4709iy\",\n      \"time\": \"21:00\",\n      \"label\": \"Evening\"\n    }\n  ],\n  \"time_zone\": \"America/New_York\"\n}",
+   "text": "{\n  \"hints\": [\n    {\n      \"id\": \"3dnjav\",\n      \"time\": \"07:30\",\n      \"label\": \"Morning compaction\"\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"time\": \"12:00\",\n      \"label\": null\n    },\n    {\n      \"id\": \"co2yzn\",\n      \"time\": \"21:00\",\n      \"label\": \"Evening\"\n    }\n  ],\n  \"time_zone\": \"America/New_York\"\n}",
    "tool": "get_compaction_schedule_hints"
   },
   {
@@ -339,17 +339,17 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "bcyx3f",
+        "3dnjav",
         "07:30",
         "Morning compaction"
        ],
        [
-        "7632uw",
+        "a0g0jc",
         "12:00",
         ""
        ],
        [
-        "4709iy",
+        "co2yzn",
         "21:00",
         "Evening"
        ]

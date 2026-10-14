@@ -17,8 +17,8 @@
       "effective_priority": 1,
       "group_id": null,
       "holds_label": true,
-      "id": "4709iy",
-      "label_id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+      "id": "co2yzn",
+      "label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
       "name": "play guitar",
       "note": "every day",
       "path": "play guitar",
@@ -26,12 +26,12 @@
       "status": "active"
      }
     ],
-    "created_id": "4709iy",
+    "created_id": "co2yzn",
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"4709iy\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {
@@ -48,8 +48,8 @@
       "effective_priority": null,
       "group_id": null,
       "holds_label": true,
-      "id": "bcyx3f",
-      "label_id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+      "id": "3dnjav",
+      "label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
       "name": "read a book",
       "note": null,
       "path": "read a book",
@@ -57,12 +57,12 @@
       "status": "proposed"
      }
     ],
-    "created_id": "bcyx3f",
+    "created_id": "3dnjav",
     "label_slots_total": 200,
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"bcyx3f\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -75,8 +75,8 @@
       "effective_priority": 1,
       "group_id": null,
       "holds_label": true,
-      "id": "4709iy",
-      "label_id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+      "id": "co2yzn",
+      "label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
       "name": "play guitar",
       "note": "every day",
       "path": "play guitar",
@@ -89,8 +89,8 @@
       "effective_priority": null,
       "group_id": null,
       "holds_label": true,
-      "id": "bcyx3f",
-      "label_id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+      "id": "3dnjav",
+      "label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
       "name": "read a book",
       "note": null,
       "path": "read a book",
@@ -102,12 +102,12 @@
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"4709iy\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"bcyx3f\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7e24e426-20ee-500e-8413-2a46dd1d1a62\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
    "arguments": {
-    "id_or_name": "4709iy"
+    "id_or_name": "co2yzn"
    },
    "content": {
     "background_color": null,
@@ -115,8 +115,8 @@
     "effective_priority": 1,
     "group_id": null,
     "holds_label": true,
-    "id": "4709iy",
-    "label_id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+    "id": "co2yzn",
+    "label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
     "name": "play guitar",
     "note": "every day",
     "path": "play guitar",
@@ -124,7 +124,7 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
@@ -137,8 +137,8 @@
     "effective_priority": 1,
     "group_id": null,
     "holds_label": true,
-    "id": "4709iy",
-    "label_id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+    "id": "co2yzn",
+    "label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
     "name": "play guitar",
     "note": "every day",
     "path": "play guitar",
@@ -146,16 +146,16 @@
     "status": "active"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4709iy\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"474cdec8-2ed4-5287-bbb5-72d59a7d97d7\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
    "tool": "get_action"
   },
   {
    "arguments": {
     "id_or_name": "play gutar"
    },
-   "content": "Error executing tool get_action: There's no action with the id or name 'play gutar'; did you mean 4709iy (play guitar)? (get_actions lists them)",
+   "content": "Error executing tool get_action: There's no action with the id or name 'play gutar'; did you mean co2yzn (play guitar)? (get_actions lists them)",
    "is_error": true,
-   "text": "Error executing tool get_action: There's no action with the id or name 'play gutar'; did you mean 4709iy (play guitar)? (get_actions lists them)",
+   "text": "Error executing tool get_action: There's no action with the id or name 'play gutar'; did you mean co2yzn (play guitar)? (get_actions lists them)",
    "tool": "get_action"
   },
   {
@@ -164,9 +164,9 @@
      "name": "Play Guitar"
     }
    },
-   "content": "Error executing tool create_action: there's already an action named 'play guitar' (4709iy, active); action names must be unique -- use that one, or pick another name",
+   "content": "Error executing tool create_action: there's already an action named 'play guitar' (co2yzn, active); action names must be unique -- use that one, or pick another name",
    "is_error": true,
-   "text": "Error executing tool create_action: there's already an action named 'play guitar' (4709iy, active); action names must be unique -- use that one, or pick another name",
+   "text": "Error executing tool create_action: there's already an action named 'play guitar' (co2yzn, active); action names must be unique -- use that one, or pick another name",
    "tool": "create_action"
   },
   {
@@ -175,9 +175,9 @@
      "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     }
    },
-   "content": "Error executing tool create_action: action 9vxzfr's name 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is longer than 50 characters",
+   "content": "Error executing tool create_action: action rs21so's name 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is longer than 50 characters",
    "is_error": true,
-   "text": "Error executing tool create_action: action 9vxzfr's name 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is longer than 50 characters",
+   "text": "Error executing tool create_action: action rs21so's name 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is longer than 50 characters",
    "tool": "create_action"
   },
   {
@@ -784,11 +784,11 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "play guitar",
         "active",
-        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "1",
         "every day"
@@ -829,7 +829,7 @@
       },
       {
        "backgroundColor": "#fbd75b",
-       "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+       "id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
        "name": "play guitar"
       }
      ]
@@ -914,21 +914,21 @@
       "majorDimension": "ROWS",
       "values": [
        [
-        "4709iy",
+        "co2yzn",
         "",
         "play guitar",
         "active",
-        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "1",
         "every day"
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "",
         "read a book",
         "proposed",
-        "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "",
         "",
         ""
@@ -969,12 +969,12 @@
       },
       {
        "backgroundColor": "#fbd75b",
-       "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+       "id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
        "name": "play guitar"
       },
       {
        "backgroundColor": "#a4bdfc",
-       "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+       "id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
        "name": "read a book"
       }
      ]
@@ -1396,12 +1396,12 @@
        },
        {
         "backgroundColor": "#fbd75b",
-        "id": "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "name": "play guitar"
        },
        {
         "backgroundColor": "#a4bdfc",
-        "id": "7e24e426-20ee-500e-8413-2a46dd1d1a62",
+        "id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "name": "read a book"
        }
       ]
@@ -1516,21 +1516,21 @@
         "note"
        ],
        [
-        "4709iy",
+        "co2yzn",
         "",
         "play guitar",
         "active",
-        "474cdec8-2ed4-5287-bbb5-72d59a7d97d7",
+        "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "1",
         "every day"
        ],
        [
-        "bcyx3f",
+        "3dnjav",
         "",
         "read a book",
         "proposed",
-        "7e24e426-20ee-500e-8413-2a46dd1d1a62"
+        "7a8759ac-8307-5cf3-937d-398ec33255fd"
        ]
       ]
      },
