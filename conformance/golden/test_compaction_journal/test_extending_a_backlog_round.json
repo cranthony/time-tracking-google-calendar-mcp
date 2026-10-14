@@ -6718,18 +6718,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e6bd14989f44d5de4f9b6e838fxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {

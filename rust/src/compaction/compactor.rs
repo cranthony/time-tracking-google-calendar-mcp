@@ -1805,7 +1805,7 @@ impl NoteCompactor {
         walked[0].plan.warnings.insert(
             0,
             format!(
-                "{stopped}. What it wrote before then stays; this is what's left of it{}.",
+                "{stopped}. What it wrote stays; this is what's left of it{}.",
                 if left_out.is_empty() { String::new() } else { format!(" -- leaving out what was about {}, which is gone", left_out.join(", ")) }
             ),
         );

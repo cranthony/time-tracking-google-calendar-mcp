@@ -10,7 +10,8 @@ ended early by UNTIL, series split by importing
 "<id>_R<time>@google.com", extendedProperties.private merged by a patch
 with null removing a key, calendar etags checked by If-Match, deleted
 events answering 410, and Sheets' grid that values.update grows but
-batchUpdateByDataFilter doesn't.
+batchUpdateByDataFilter doesn't, and Calendar's batch endpoint answering
+each request in a batch as if it came on its own.
 
 Every request is logged (`FakeGoogle.requests`), so a scenario can check
 that the server sent Google the requests its golden record has: then
@@ -28,8 +29,9 @@ import re
 import threading
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
+from types import SimpleNamespace
 from typing import Any
-from urllib.parse import unquote
+from urllib.parse import parse_qsl, unquote
 from zoneinfo import ZoneInfo
 
 from dateutil import rrule
@@ -59,11 +61,11 @@ class GoogleError(Exception):
         self.message = message
         self.reason = reason or {400: "badRequest", 404: "notFound", 409: "duplicate", 410: "deleted", 412: "conditionNotMet", 429: "rateLimitExceeded"}.get(status, "")
 
+    def payload(self) -> dict:
+        return {"error": {"code": self.status, "message": self.message, "errors": [{"message": self.message, "reason": self.reason}]}}
+
     def response(self) -> JSONResponse:
-        return JSONResponse(
-            {"error": {"code": self.status, "message": self.message, "errors": [{"message": self.message, "reason": self.reason}]}},
-            status_code=self.status,
-        )
+        return JSONResponse(self.payload(), status_code=self.status)
 
 
 @dataclass
@@ -73,9 +75,14 @@ class LoggedRequest:
     query: dict[str, list[str]]
     if_match: str | None
     body: Any
+    batched: bool = False
+    """Whether it came inside a batch, rather than as a request of its own."""
 
     def as_dict(self) -> dict:
-        return {"method": self.method, "path": self.path, "query": self.query, "if_match": self.if_match, "body": self.body}
+        logged = {"method": self.method, "path": self.path, "query": self.query, "if_match": self.if_match, "body": self.body}
+        if self.batched:
+            logged["batched"] = True
+        return logged
 
 
 # --- times -----------------------------------------------------------------
@@ -853,6 +860,7 @@ class FakeGoogle:
             Route("/oauth2/jwks", self._jwks, methods=["GET"]),
             Route("/oauth2/register", self._authkit_echo, methods=["POST"]),
             Route("/oauth2/token", self._authkit_echo, methods=["POST"]),
+            Route("/batch/calendar/v3", self._batch, methods=["POST"]),
             Route("/calendar/v3/calendars", self._handler(lambda r, b: self.insert_calendar(b)), methods=["POST"]),
             Route("/calendar/v3/calendars/{cid}", self._calendar_route, methods=["GET", "PATCH"]),
             Route("/calendar/v3/users/me/calendarList/{cid}", self._handler(lambda r, b: {"id": unquote(r.path_params["cid"]), "hidden": True}), methods=["PATCH"]),
@@ -889,34 +897,84 @@ class FakeGoogle:
         self.token_requests += 1
         return JSONResponse({"access_token": f"fake-access-{self.token_requests}", "expires_in": 3600, "token_type": "Bearer", "scope": "https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/drive.file"})
 
+    def _serve(self, request, method: str, path: str, query: dict, if_match: str | None, body: Any, fn, batched: bool = False) -> tuple[int, Any]:
+        """Log a request, fail it if a scenario asked for that, else answer
+        it with `fn`: (status, the JSON answer, or None for none)."""
+        with self._lock:
+            self.requests.append(LoggedRequest(method, path, query, if_match, body, batched))
+            failing = next((f for f in self.fail_next if f[0] == method and f[1] in path), None)
+            if failing is not None and len(failing) > 4 and failing[4] > 0:
+                self.fail_next[self.fail_next.index(failing)] = (*failing[:4], failing[4] - 1)
+            elif failing is not None:
+                self.fail_next.remove(failing)
+                return failing[2], GoogleError(failing[2], failing[3]).payload()
+            try:
+                result = fn(request, body or {})
+            except _SeriesDeleted:
+                calendar = self.calendar(request.path_params["cid"])
+                result = self.delete_series_as_split(calendar, unquote(request.path_params["eid"]))
+            except GoogleError as error:
+                return error.status, error.payload()
+        return (204, None) if result is None else (200, result)
+
     def _handler(self, fn):
         async def handle(request: Request) -> Response:
             raw = await request.body()
             body = json.loads(raw) if raw else None
             if not request.headers.get("authorization", "").startswith("Bearer "):
                 return GoogleError(401, "Request is missing required authentication credential.").response()
-            with self._lock:
-                self.requests.append(LoggedRequest(request.method, unquote(request.url.path), _query(request), request.headers.get("if-match"), body))
-                failing = next(
-                    (f for f in self.fail_next if f[0] == request.method and f[1] in unquote(request.url.path)), None
-                )
-                if failing is not None and len(failing) > 4 and failing[4] > 0:
-                    self.fail_next[self.fail_next.index(failing)] = (*failing[:4], failing[4] - 1)
-                elif failing is not None:
-                    self.fail_next.remove(failing)
-                    return GoogleError(failing[2], failing[3]).response()
-                try:
-                    result = fn(request, body or {})
-                except _SeriesDeleted:
-                    calendar = self.calendar(request.path_params["cid"])
-                    result = self.delete_series_as_split(calendar, unquote(request.path_params["eid"]))
-                except GoogleError as error:
-                    return error.response()
-            if result is None:
-                return Response(status_code=204)
-            return JSONResponse(result)
+            status, answer = self._serve(request, request.method, unquote(request.url.path), _query(request), request.headers.get("if-match"), body, fn)
+            return Response(status_code=204) if answer is None else JSONResponse(answer, status_code=status)
 
         return handle
+
+    def _batch_route(self, method: str, path: str):
+        """The handler for a request inside a Calendar batch, and its path
+        parameters -- of the event requests the server batches."""
+        events = re.fullmatch(r"/calendar/v3/calendars/([^/]+)/events", path)
+        if events and method == "POST":
+            cid = events.group(1)
+            return (lambda r, b: self.insert_event(cid, b)), {"cid": cid}
+        event = re.fullmatch(r"/calendar/v3/calendars/([^/]+)/events/([^/]+)", path)
+        if event:
+            cid, eid = event.groups()
+            handlers = {
+                "GET": lambda r, b: self.get_event(cid, eid),
+                "PUT": lambda r, b: self.update_event(cid, eid, b),
+                "PATCH": lambda r, b: self.patch_event(cid, eid, b),
+                "DELETE": lambda r, b: self.delete_event(cid, eid),
+            }
+            if method in handlers:
+                return handlers[method], {"cid": cid, "eid": eid}
+        return None, {}
+
+    async def _batch(self, request: Request) -> Response:
+        """Calendar's batch endpoint: a multipart/mixed body of requests,
+        each answered (and logged) as if it came on its own."""
+        if not request.headers.get("authorization", "").startswith("Bearer "):
+            return GoogleError(401, "Request is missing required authentication credential.").response()
+        raw = (await request.body()).decode()
+        boundary = request.headers.get("content-type", "").split("boundary=")[-1].strip('"')
+        answers = []
+        for content_id, method, target, if_match, body in _batch_parts(raw, boundary):
+            path, _, query_text = target.partition("?")
+            query: dict[str, list[str]] = {}
+            for key, value in parse_qsl(query_text, keep_blank_values=True):
+                if key not in _DROPPED_QUERY:
+                    query.setdefault(key, []).append(value)
+            fn, params = self._batch_route(method, path)
+            if fn is None:
+                status, answer = 404, GoogleError(404, f"fake: no batch route for {method} {path}").payload()
+            else:
+                part = SimpleNamespace(path_params=params, headers={"if-match": if_match})
+                status, answer = self._serve(part, method, unquote(path), dict(sorted(query.items())), if_match, body, fn, batched=True)
+            text = "" if answer is None else json.dumps(answer)
+            answers.append(
+                f"--batch_fake\r\nContent-Type: application/http\r\nContent-ID: <response-{content_id}>\r\n\r\n"
+                f"HTTP/1.1 {status} {'OK' if status < 400 else 'Error'}\r\nContent-Type: application/json\r\n\r\n{text}\r\n"
+            )
+        answers.append("--batch_fake--\r\n")
+        return Response("".join(answers), media_type="multipart/mixed; boundary=batch_fake")
 
     async def _calendar_route(self, request: Request) -> Response:
         if request.method == "GET":
@@ -947,6 +1005,23 @@ class FakeGoogle:
 
 class _SeriesDeleted(Exception):
     """A rule change to an "_R" series: Google deletes it instead."""
+
+
+def _batch_parts(text: str, boundary: str) -> list[tuple[str, str, str, str | None, Any]]:
+    """A batch's requests: (Content-ID, method, target, If-Match, JSON body)."""
+    parts = []
+    for part in text.split(f"--{boundary}")[1:]:
+        if part.startswith("--"):
+            break
+        outer, _, http = part.lstrip("\r\n").partition("\r\n\r\n")
+        headers_of = lambda lines: {k.strip().lower(): v.strip() for k, _, v in (line.partition(":") for line in lines.splitlines()) if v}
+        content_id = headers_of(outer).get("content-id", "").strip("<>")
+        head, _, body = http.partition("\r\n\r\n")
+        request_line, _, headers = head.partition("\r\n")
+        method, target = (request_line.split() + ["", ""])[:2]
+        body = body.strip()
+        parts.append((content_id, method, target, headers_of(headers).get("if-match"), json.loads(body) if body else None))
+    return parts
 
 
 def _query(request: Request) -> dict[str, list[str]]:

@@ -8035,18 +8035,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e6bd14989f44d5de4f9b6e838fxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {
@@ -10227,12 +10216,25 @@
    "query": {}
   },
   {
+   "batched": true,
    "body": {
     "status": "cancelled"
    },
    "if_match": null,
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/ba8bdd397520cfe2ee80468597",
+   "query": {}
+  },
+  {
+   "batched": true,
+   "body": {
+    "end": {
+     "dateTime": "2026-10-06T19:30:00-04:00"
+    }
+   },
+   "if_match": null,
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/bca19665a987a2530bbee091f7",
    "query": {}
   },
   {
@@ -10254,29 +10256,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e6bd14989f44d5de4f9b6e838fxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "end": {
-     "dateTime": "2026-10-06T19:30:00-04:00"
-    }
-   },
-   "if_match": null,
-   "method": "PATCH",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/bca19665a987a2530bbee091f7",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {
@@ -10293,18 +10273,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e6bd14989f44d5de4f9b6e838fxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {

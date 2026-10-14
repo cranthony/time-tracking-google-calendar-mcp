@@ -4338,6 +4338,7 @@
    "query": {}
   },
   {
+   "batched": true,
    "body": {
     "end": {
      "dateTime": "2026-10-05T07:45:00-04:00"
@@ -4360,41 +4361,7 @@
    }
   },
   {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 7,
-        "endRowIndex": 5,
-        "sheetId": 1000091,
-        "startColumnIndex": 6,
-        "startRowIndex": 4
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "done"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/3bc8a594c0be6dfabc4993e74e",
-   "query": {}
-  },
-  {
+   "batched": true,
    "body": {
     "extendedProperties": {
      "private": {
@@ -4414,6 +4381,23 @@
       "dataFilter": {
        "gridRange": {
         "endColumnIndex": 7,
+        "endRowIndex": 5,
+        "sheetId": 1000091,
+        "startColumnIndex": 6,
+        "startRowIndex": 4
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "done"
+       ]
+      ]
+     },
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 7,
         "endRowIndex": 6,
         "sheetId": 1000091,
         "startColumnIndex": 6,
@@ -4426,18 +4410,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {

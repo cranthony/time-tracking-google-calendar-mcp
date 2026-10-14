@@ -9072,6 +9072,22 @@
    "query": {}
   },
   {
+   "batched": true,
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
+   "query": {}
+  },
+  {
+   "batched": true,
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
      {
@@ -9091,13 +9107,7 @@
    "query": {}
   },
   {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
+   "batched": true,
    "body": {
     "description": "Notes:\n- 12:30 lunch with Sam at the office",
     "eventLabelId": "951c537a-5b46-5d47-86de-35529f4a063b",
@@ -9118,41 +9128,7 @@
    }
   },
   {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 7,
-        "endRowIndex": 32,
-        "sheetId": 1000069,
-        "startColumnIndex": 6,
-        "startRowIndex": 31
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "done"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
-   "query": {}
-  },
-  {
+   "batched": true,
    "body": {
     "description": "Notes:\n- 19:00 dinner with Alex",
     "extendedProperties": {
@@ -9173,6 +9149,23 @@
       "dataFilter": {
        "gridRange": {
         "endColumnIndex": 7,
+        "endRowIndex": 32,
+        "sheetId": 1000069,
+        "startColumnIndex": 6,
+        "startRowIndex": 31
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "done"
+       ]
+      ]
+     },
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 7,
         "endRowIndex": 33,
         "sheetId": 1000069,
         "startColumnIndex": 6,
@@ -9185,18 +9178,7 @@
         "done"
        ]
       ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
+     },
      {
       "dataFilter": {
        "gridRange": {
