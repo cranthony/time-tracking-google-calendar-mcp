@@ -303,6 +303,25 @@ fn the_requests_a_compaction_of_many_events_and_notes_makes() {
 }
 
 #[test]
+fn a_create_refused_a_priority_label_removed_since_is_made_once_its_back() {
+    let setup = bare_notes();
+    let id = planned(&setup, setup.coffee_instead_of_email());
+    // The labels were made sure of, then removed behind the app's back.
+    {
+        let _held = WRITE_LOCK.hold();
+        setup.t.app.actions().unwrap().ensure_priority_labels().unwrap();
+        setup.t.app.calendar_client().unwrap().replace_event_labels(&[], None).unwrap();
+    }
+
+    let result = setup.commit(&id);
+
+    assert_eq!(result.status, "applied");
+    let creates: Vec<Value> = setup.t.fake.requests().into_iter().filter(|r| r.method == "POST" && r.path.ends_with("/events")).map(|r| r.body).collect();
+    assert_eq!(creates.len(), 2);
+    assert_eq!(creates[1]["summary"], "Coffee");
+}
+
+#[test]
 fn a_change_calendar_asks_to_slow_down_is_made_again_on_its_own() {
     let setup = Setup::standard();
     let id = planned(&setup, setup.email_then_report());

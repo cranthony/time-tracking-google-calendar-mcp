@@ -163,7 +163,8 @@ impl Fixture {
 
 #[test]
 fn reads_fill_in_and_writes_derive_the_label() {
-    let f = fixture(&[], Some(doing(&["cook"])));
+    // The action's label is on the calendar, as an active action's is.
+    let f = fixture(&[json!({"id": "l-cook", "name": "Cook", "backgroundColor": "#123456"})], Some(doing(&["cook"])));
 
     assert_eq!(f.calendar.list_events(&start(), &(start() + chrono::Duration::hours(1))).unwrap()[0].action_priority, Some(1));
     assert_eq!(f.create(doing(&["cook"]))["eventLabelId"], "l-cook");
@@ -181,6 +182,25 @@ fn a_proposed_actions_label_is_checked_against_the_calendar() {
 
 // -- priority labels --------------------------------------------------------------------------------
 // An event with no action's label takes its priority's.
+
+#[test]
+fn a_priority_label_removed_since_it_was_made_sure_of_is_added_back() {
+    let f = fixture(&[], None);
+    f.create(Event { priority: Some(1), ..event() });
+    // Removed behind the app's back, after it made sure of them.
+    let client = f.t.app.calendar_client().unwrap();
+    {
+        let _held = WRITE_LOCK.hold();
+        client.replace_event_labels(&[], None).unwrap();
+    }
+
+    let _held = WRITE_LOCK.hold();
+    let created = f.calendar.create_event(&Event { id: Some("event2".into()), priority: Some(1), ..event() }).unwrap();
+
+    assert_eq!(created.event_label_id, Some(priority_label_id(Some(1))));
+    let labels = client.list_event_labels().unwrap().0;
+    assert!(labels.iter().any(|l| l.id.as_deref() == Some(priority_label_id(Some(1)).as_str())));
+}
 
 #[test]
 fn an_event_without_actions_takes_its_priority_label() {

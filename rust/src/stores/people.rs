@@ -344,15 +344,18 @@ impl People {
         let mut people = self.read_people()?;
         let in_it = |p: &Person| p.circles.iter().flatten().any(|c| c == circle_id);
         let left: Vec<String> = people.iter().filter(|p| in_it(p)).filter_map(|p| p.id.clone()).collect();
+        // Both tabs in one request.
+        let mut writes = Vec::new();
         if !left.is_empty() {
             for person in people.iter_mut().filter(|p| in_it(p)) {
                 let kept: Vec<String> = person.circles.iter().flatten().filter(|c| *c != circle_id).cloned().collect();
                 person.circles = if kept.is_empty() { None } else { Some(kept) };
             }
-            self.sheet.write_items(&people)?;
+            writes.push(self.sheet.prepared_items(&people)?);
         }
         let kept: Vec<Circle> = circles.into_iter().filter(|c| c.id.as_deref() != Some(circle_id)).collect();
-        self.circle_sheet.write_items(&kept)?;
+        writes.push(self.circle_sheet.prepared_items(&kept)?);
+        self.sheet.sheets().write_tabs(self.sheet.spreadsheet_id(), &writes)?;
         Ok(DeletedCircle { deleted, left })
     }
 

@@ -2590,10 +2590,28 @@ impl NoteCompactor {
         let mut done = Vec::new();
         for batch in batches {
             let requests: Vec<BatchRequest> = batch.iter().map(|(_, r)| r.clone()).collect();
-            let answers = match self.client.client().send_writes(&requests) {
+            let mut answers = match self.client.client().send_writes(&requests) {
                 Ok(answers) => answers,
                 Err(e) => return Ok((done, Some(e))),
             };
+            // A priority label refused may have been removed since the
+            // labels were made sure of: if it was, it's back, so those are
+            // sent again.
+            let label = |i: usize| requests[i].body.as_ref().and_then(|b| b["eventLabelId"].as_str());
+            let refused: Vec<usize> = (0..answers.len()).filter(|&i| answers[i].is_err() && label(i).is_some()).collect();
+            if let Some(&first) = refused.first() {
+                let error = answers[first].as_ref().err().unwrap();
+                if self.client.label_restored(label(first), error)? {
+                    let again: Vec<BatchRequest> = refused.iter().map(|&i| requests[i].clone()).collect();
+                    let resent = match self.client.client().send_writes(&again) {
+                        Ok(resent) => resent,
+                        Err(e) => return Ok((done, Some(e))),
+                    };
+                    for (i, answer) in refused.into_iter().zip(resent) {
+                        answers[i] = answer;
+                    }
+                }
+            }
             let mut failure = None;
             for ((s, _), answer) in batch.iter().zip(answers) {
                 match answer {

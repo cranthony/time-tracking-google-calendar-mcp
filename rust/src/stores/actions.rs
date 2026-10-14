@@ -14,6 +14,8 @@ use crate::stores::groups::{
 };
 use crate::stores::locations::dedup;
 use anyhow::bail;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 // -- the types -------------------------------------------------------------------
@@ -266,6 +268,9 @@ pub struct Actions {
     calendar: CalendarClient,
     sheet: RowSheet,
     group_sheet: RowSheet,
+    /// Whether this calendar's priority labels have been made sure of --
+    /// for as long as this Actions (the app's) lives.
+    priority_labels_ready: Arc<AtomicBool>,
 }
 
 /// What `_commit` reports: the groups changed, the actions affected.
@@ -279,7 +284,7 @@ impl Actions {
     pub fn ensure(calendar: &CalendarClient, sheets: &SheetsClient, spreadsheet_id: &str) -> anyhow::Result<Actions> {
         let sheet = RowSheet::ensure(sheets, spreadsheet_id, ACTIONS.0, ACTIONS.1, ACTION_ROW, &["id", "name"])?;
         let group_sheet = RowSheet::ensure(sheets, spreadsheet_id, ACTION_GROUPS.0, ACTION_GROUPS.1, GROUP_ROW, &["id", "name"])?;
-        Ok(Actions { calendar: calendar.clone(), sheet, group_sheet })
+        Ok(Actions { calendar: calendar.clone(), sheet, group_sheet, priority_labels_ready: Arc::new(AtomicBool::new(false)) })
     }
 
     pub fn spreadsheet_id(&self) -> &str {
@@ -371,11 +376,23 @@ impl Actions {
     }
 
     /// Add any priority label the calendar doesn't have yet.
-    pub fn ensure_priority_labels(&self) -> anyhow::Result<()> {
+    /// Make sure the calendar has every priority's label; whether any had
+    /// to be added back.
+    pub fn ensure_priority_labels(&self) -> anyhow::Result<bool> {
         let (raw_labels, etag) = self.calendar.list_event_labels()?;
         let held: Vec<&str> = raw_labels.iter().filter_map(|l| l.id.as_deref()).collect();
-        if !PRIORITIES.iter().all(|p| held.contains(&priority_label_id(Some(*p)).as_str())) {
+        let missing = !PRIORITIES.iter().all(|p| held.contains(&priority_label_id(Some(*p)).as_str()));
+        if missing {
             self.calendar.replace_event_labels(&with_priority_labels(&raw_labels, None), etag.as_deref())?;
+        }
+        self.priority_labels_ready.store(true, Ordering::SeqCst);
+        Ok(missing)
+    }
+
+    /// `ensure_priority_labels`, unless that's been done already.
+    pub fn ensure_priority_labels_once(&self) -> anyhow::Result<()> {
+        if !self.priority_labels_ready.load(Ordering::SeqCst) {
+            self.ensure_priority_labels()?;
         }
         Ok(())
     }

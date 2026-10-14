@@ -392,7 +392,7 @@ How the user wants to be with people (and with themselves): Thoughtful, Reliable
 
 ### Event colors
 
-An event's color is its label's. An event doing actions gets its first action's label (see [Actions](#actions) above); one without an action's label gets its priority's: four labels, "Priority 0" to "Priority 3", reserved for that ([`rust/src/stores/groups.rs`](rust/src/stores/groups.rs)) -- its own priority's, or else its actions', or else priority 2's. They have fixed ids, are made the first time they're needed, and count against the calendar's 200 labels. They start out as:
+An event's color is its label's. An event doing actions gets its first action's label (see [Actions](#actions) above); one without an action's label gets its priority's: four labels, "Priority 0" to "Priority 3", reserved for that ([`rust/src/stores/groups.rs`](rust/src/stores/groups.rs)) -- its own priority's, or else its actions', or else priority 2's. They have fixed ids, are made the first time they're needed, and count against the calendar's 200 labels. The server checks they're there once per run, not on every write; if one has been removed since, and Calendar refuses an event for it, they're added back and the event sent again. They start out as:
 
 | Priority | Color |
 | --- | --- |
