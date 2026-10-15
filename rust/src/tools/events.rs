@@ -451,6 +451,18 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// them. Set action_ids to change an event's actions ([] for none), and
 /// facts to replace its facts whole (see list_events). An update can't
 /// cancel an event (is_cancelled): put it in `cancels`.
+/// WHERE an event is (facts.location_ids), when you set it: keep a
+/// location it already has unless the events and notes around it
+/// clearly show the user was somewhere else. Otherwise the user stays
+/// put: it's where the previous event was, unless there's evidence they
+/// moved in between -- the previous event, or one between, is a commute
+/// (an action with commute true, see get_actions, or the commute fact);
+/// the user said they were somewhere other than planned; or the event
+/// clearly matches another location's hint (see get_locations). After a
+/// commute they're somewhere other than before it: tell where from the
+/// location of the event after it (that one event only), or else from
+/// the locations' hints. A commute itself gets the commute fact and no
+/// location_ids.
 ///
 /// Set repeat, on a create or on an update of an event that isn't in a
 /// series, to make it the first event of a recurring series (see
@@ -514,6 +526,18 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
 /// makes room for them. An event given a repeat is the first of a new
 /// recurring series (see PublicEvent); only it is checked for overlaps,
 /// not the series' later events.
+/// WHERE an event is (facts.location_ids), when you set it: keep a
+/// location it already has unless the events and notes around it
+/// clearly show the user was somewhere else. Otherwise the user stays
+/// put: it's where the previous event was, unless there's evidence they
+/// moved in between -- the previous event, or one between, is a commute
+/// (an action with commute true, see get_actions, or the commute fact);
+/// the user said they were somewhere other than planned; or the event
+/// clearly matches another location's hint (see get_locations). After a
+/// commute they're somewhere other than before it: tell where from the
+/// location of the event after it (that one event only), or else from
+/// the locations' hints. A commute itself gets the commute fact and no
+/// location_ids.
 ///
 /// BATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every
 /// event the call creates or updates must end after it starts and must

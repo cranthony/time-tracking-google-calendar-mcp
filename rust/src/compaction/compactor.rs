@@ -493,7 +493,14 @@ impl NoteCompactor {
                 t.actions
                     .iter()
                     .filter(|a| matches!(a.status, Some(crate::stores::actions::ActionStatus::Active | crate::stores::actions::ActionStatus::Proposed)))
-                    .map(|a| json!({"id": a.id, "name": a.name, "note": a.note}))
+                    .map(|a| {
+                        let mut listed = json!({"id": a.id, "name": a.name, "note": a.note});
+                        // Only a commute says so: the rest are taken not to be.
+                        if a.commute == Some(true) {
+                            listed["commute"] = json!(true);
+                        }
+                        listed
+                    })
                     .collect()
             }),
             people: match &self.people {
