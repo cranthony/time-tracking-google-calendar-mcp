@@ -301,6 +301,20 @@ fn prepare_lists_actions_and_suggests_them_from_earlier_events_with_the_same_tit
 }
 
 #[test]
+fn prepare_marks_only_the_commute_actions() {
+    let mut drive = action("drive", "Drive", "active");
+    drive["commute"] = json!(true);
+    let setup = Setup::with(&[("09:05", "x")], Some(day()), "11:30", Stores { actions: vec![action("work", "Time Tracker", "active"), drive], ..Default::default() });
+
+    let context = setup.prepare();
+
+    let listed = context.actions.as_ref().unwrap();
+    assert_eq!(listed[0].get("commute"), None);
+    assert_eq!(listed[1]["commute"], json!(true));
+    assert!(DECISION_GUIDE.contains("WHERE: keep the location an event already has"));
+}
+
+#[test]
 fn prepare_gives_the_people_and_locations_to_settle_facts_from() {
     let setup = Setup::with(
         &[("09:05", "x")],
