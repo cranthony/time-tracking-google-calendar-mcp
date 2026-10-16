@@ -232,7 +232,10 @@ fn circles_are_created_listed_and_found() {
 
     let listed = json_of(f.people.get_circles().unwrap());
 
-    assert_eq!(listed, json!([{"id": family, "name": "Family", "note": "by blood or choice", "scoring": null, "member_ids": [sam]}]));
+    assert_eq!(
+        listed,
+        json!([{"id": family, "name": "Family", "note": "by blood or choice", "scoring": null, "member_ids": [sam], "version": 1}])
+    );
     assert_eq!(json_of(f.people.get_circle("family").unwrap())["id"], json!(family));
 }
 
@@ -263,7 +266,7 @@ fn deleting_a_circle_takes_its_people_out_of_it() {
     let sam = f.create(json!({"name": "Sam", "circles": [family, friends]}));
     let alex = f.create(json!({"name": "Alex", "circles": [family]}));
 
-    let deleted = f.held(|p| p.delete_circle(&family)).unwrap();
+    let deleted = f.held(|p| p.delete_circle(&family, None)).unwrap();
 
     assert_eq!((deleted["deleted"]["name"].clone(), deleted["left"].clone()), (json!("Family"), json!([sam, alex])));
     assert_eq!(f.get(&sam)["circles"], json!([friends]));
@@ -277,8 +280,8 @@ fn deleting_a_circle_needs_its_id() {
     let f = fixture();
     let family = f.circle(json!({"name": "Family"}));
 
-    refused(f.held(|p| p.delete_circle("family")), &format!("by its id: 'Family' is {family}"));
-    refused(f.held(|p| p.delete_circle("nothing")), "no circle");
+    refused(f.held(|p| p.delete_circle("family", None)), &format!("by its id: 'Family' is {family}"));
+    refused(f.held(|p| p.delete_circle("nothing", None)), "no circle");
 }
 
 // -- a person's traits -----------------------------------------------------------------------------

@@ -11,6 +11,7 @@ mod compaction;
 mod events;
 mod requests;
 mod stores;
+mod writes;
 
 pub struct Server {
     pub t: TestApp,

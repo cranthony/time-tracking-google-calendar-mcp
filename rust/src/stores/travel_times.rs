@@ -36,6 +36,9 @@ pub struct TravelTime {
     pub one_way: Option<bool>,
     pub times: Option<Vec<TravelMode>>,
     pub note: Option<String>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 /// A travel time's fields that clear_fields can blank.
@@ -86,8 +89,8 @@ impl Locations {
     pub fn create_travel_time(&self, travel: &TravelTime, modes: &[String]) -> anyhow::Result<CreatedTravelTime> {
         self.prefetch(&self.all_tabs())?;
         let mut all = self.travel_times()?;
-        let id = rows::new_id(all.iter().map(|t| t.id.as_deref()).collect::<Vec<_>>());
-        let new = TravelTime { id: Some(id.clone()), ..travel.clone() };
+        let id = rows::chosen_id(travel.id.as_deref(), all.iter().map(|t| t.id.as_deref()).collect::<Vec<_>>())?;
+        let new = TravelTime { id: Some(id.clone()), version: None, ..travel.clone() };
         all.push(new.clone());
         self.write_travel_times(&all, modes)?;
         Ok(CreatedTravelTime { travel_time: new, created_id: id })
@@ -101,6 +104,7 @@ impl Locations {
         self.prefetch(&self.all_tabs())?;
         let mut all = self.travel_times()?;
         let Some(index) = all.iter().position(|t| t.id.as_deref() == Some(id.as_str())) else {
+            rows::expect_item_version::<TravelTime>(&id, None, travel.version)?;
             bail!("There's no travel time with the id {} (get_travel_times lists them)", py::repr(&id));
         };
         all[index] = rows::updated_item(&all[index], travel, clear_fields, &["id"]);
@@ -108,9 +112,13 @@ impl Locations {
         Ok(all[index].clone())
     }
 
-    pub fn delete_travel_time(&self, travel_time_id: &str) -> anyhow::Result<TravelTime> {
+    /// Deletes a travel time -- unless it's changed since version
+    /// `if_version`, if given.
+    pub fn delete_travel_time(&self, travel_time_id: &str, if_version: Option<i64>) -> anyhow::Result<TravelTime> {
         let all = self.travel_times()?;
-        let Some(deleted) = all.iter().find(|t| t.id.as_deref() == Some(travel_time_id)).cloned() else {
+        let found = all.iter().find(|t| t.id.as_deref() == Some(travel_time_id)).cloned();
+        rows::expect_item_version(travel_time_id, found.as_ref(), if_version)?;
+        let Some(deleted) = found else {
             bail!("There's no travel time with the id {} (get_travel_times lists them)", py::repr(travel_time_id));
         };
         let kept: Vec<TravelTime> = all.into_iter().filter(|t| t.id.as_deref() != Some(travel_time_id)).collect();

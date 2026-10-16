@@ -77,12 +77,13 @@
      "member_ids": [],
      "name": "Family",
      "note": null,
-     "scoring": null
+     "scoring": null,
+     "version": 1
     },
     "created_id": "a0g0jc"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"member_ids\": []\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_circle"
   },
   {
@@ -110,11 +111,12 @@
      "name": "Sam Example",
      "status": "active",
      "traits": null,
+     "version": 1,
      "what_matters": null
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"a0g0jc\"\n    ],\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Family\"\n    ],\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"a0g0jc\"\n    ],\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Family\"\n    ],\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_person"
   },
   {
@@ -130,11 +132,12 @@
      "hint": null,
      "id": "onvtja",
      "map_location": null,
-     "name": "Home"
+     "name": "Home",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"onvtja\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null\n  },\n  \"created_id\": \"onvtja\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"onvtja\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"onvtja\"\n}",
    "tool": "create_location"
   },
   {
@@ -202,11 +205,12 @@
      "id": "onvtja",
      "map_location": null,
      "name": "Home",
-     "path": "Home"
+     "path": "Home",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"onvtja\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Home\"\n}",
+   "text": "{\n  \"id\": \"onvtja\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Home\",\n  \"version\": 1\n}",
    "tool": "get_locations"
   },
   {
@@ -556,7 +560,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -647,7 +652,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -746,7 +752,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -837,7 +844,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -930,7 +938,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1312,7 +1321,8 @@
         "a0g0jc",
         "Family",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1406,7 +1416,8 @@
         "[\"a0g0jc\"]",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1465,7 +1476,8 @@
         "Home",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1895,7 +1907,8 @@
         "status",
         "definition",
         "parts",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -1928,6 +1941,7 @@
         "active",
         "Remember what matters to them, and prepare for it.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        "",
         ""
        ],
        [
@@ -1936,6 +1950,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         ""
        ],
        [
@@ -1944,6 +1959,7 @@
         "active",
         "Make something together with them (making something alone is taking care of myself).",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        "",
         ""
        ],
        [
@@ -1952,6 +1968,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         ""
        ],
        [
@@ -1960,6 +1977,7 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         ""
        ]
       ]
@@ -2061,7 +2079,8 @@
         "status",
         "note",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -2752,11 +2771,15 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ],
        [
         "a0g0jc",
-        "Family"
+        "Family",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -2785,7 +2808,8 @@
         "status",
         "note",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      },
@@ -2811,7 +2835,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -2838,11 +2863,16 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ],
        [
         "onvtja",
-        "Home"
+        "Home",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -2872,14 +2902,19 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ],
        [
         "rs21so",
         "Sam Example",
         "",
         "active",
-        "family"
+        "family",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -2921,7 +2956,8 @@
         "status",
         "definition",
         "parts",
-        "scoring"
+        "scoring",
+        "version"
        ],
        [
         "thoughtful",
@@ -2984,7 +3020,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }

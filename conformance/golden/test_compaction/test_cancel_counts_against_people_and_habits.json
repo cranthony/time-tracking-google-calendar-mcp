@@ -18,11 +18,12 @@
      "name": "Robin Example",
      "status": "active",
      "traits": null,
+     "version": 1,
      "what_matters": null
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Robin Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Robin Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -89,10 +90,11 @@
      }
     ],
     "scoring": null,
-    "status": "active"
+    "status": "active",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"dependable\",\n  \"name\": \"Dependable\",\n  \"status\": \"active\",\n  \"definition\": \"Shows up.\",\n  \"parts\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"kind\": \"follow_through\",\n      \"penalty\": 20,\n      \"recovery\": 30,\n      \"look_back_days\": 90,\n      \"action\": \"3dnjav\"\n    }\n  ],\n  \"scoring\": null\n}",
+   "text": "{\n  \"id\": \"dependable\",\n  \"name\": \"Dependable\",\n  \"status\": \"active\",\n  \"definition\": \"Shows up.\",\n  \"parts\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"kind\": \"follow_through\",\n      \"penalty\": 20,\n      \"recovery\": 30,\n      \"look_back_days\": 90,\n      \"action\": \"3dnjav\"\n    }\n  ],\n  \"scoring\": null,\n  \"version\": 1\n}",
    "tool": "create_trait"
   },
   {
@@ -113,11 +115,12 @@
      "name": "Eat together",
      "note": null,
      "status": "active",
-     "traits": null
+     "traits": null,
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"3dnjav\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"3dnjav\",\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_habit"
   },
   {
@@ -1087,10 +1090,11 @@
     "name": "Robin Example",
     "status": "active",
     "traits": null,
+    "version": 1,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction c7797ab51193r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction c7797ab51193r1\"\n    }\n  ],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
@@ -1122,11 +1126,12 @@
      "name": "Eat together",
      "note": null,
      "status": "active",
-     "traits": null
+     "traits": null,
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"3dnjav\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction c7797ab51193r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"3dnjav\",\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction c7797ab51193r1\"\n    }\n  ],\n  \"version\": 1\n}",
    "tool": "get_habits"
   },
   {
@@ -1374,10 +1379,11 @@
     "name": "Robin Example",
     "status": "active",
     "traits": null,
+    "version": 1,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"1d8e056f7fcf63cf16773474f5\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"delete_event\"\n    },\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction c7797ab51193r1\"\n    }\n  ]\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"1d8e056f7fcf63cf16773474f5\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"delete_event\"\n    },\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction c7797ab51193r1\"\n    }\n  ],\n  \"version\": 1\n}",
    "tool": "get_person"
   }
  ],
@@ -1677,7 +1683,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -1768,7 +1775,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -1867,7 +1875,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -1958,7 +1967,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -2051,7 +2061,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -2167,7 +2178,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -2411,7 +2423,8 @@
         "status",
         "definition",
         "parts",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -2444,6 +2457,7 @@
         "active",
         "Remember what matters to them, and prepare for it.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        "",
         ""
        ],
        [
@@ -2452,6 +2466,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         ""
        ],
        [
@@ -2460,6 +2475,7 @@
         "active",
         "Make something together with them (making something alone is taking care of myself).",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        "",
         ""
        ],
        [
@@ -2468,6 +2484,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         ""
        ],
        [
@@ -2476,6 +2493,7 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         ""
        ]
       ]
@@ -2559,7 +2577,8 @@
         "active",
         "Remember what matters to them, and prepare for it.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
-        ""
+        "",
+        "1"
        ],
        [
         "reliable",
@@ -2567,7 +2586,8 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
-        ""
+        "",
+        "1"
        ],
        [
         "creative",
@@ -2575,7 +2595,8 @@
         "active",
         "Make something together with them (making something alone is taking care of myself).",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
-        ""
+        "",
+        "1"
        ],
        [
         "adventurous",
@@ -2583,7 +2604,8 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
-        ""
+        "",
+        "1"
        ],
        [
         "generous",
@@ -2591,7 +2613,8 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
-        ""
+        "",
+        "1"
        ],
        [
         "dependable",
@@ -2599,7 +2622,8 @@
         "active",
         "Shows up.",
         "[{\"id\":\"a0g0jc\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90,\"action\":\"3dnjav\"}]",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -2678,7 +2702,8 @@
         "status",
         "note",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -2777,7 +2802,8 @@
         "active",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -5720,7 +5746,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      },
@@ -5813,13 +5840,18 @@
         "status",
         "note",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ],
        [
         "rs21so",
         "Eat together",
         "3dnjav",
-        "active"
+        "active",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -5845,7 +5877,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -5872,7 +5905,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      },
@@ -5932,13 +5966,19 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ],
        [
         "co2yzn",
         "Robin Example",
         "",
-        "active"
+        "active",
+        "",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -5980,49 +6020,62 @@
         "status",
         "definition",
         "parts",
-        "scoring"
+        "scoring",
+        "version"
        ],
        [
         "thoughtful",
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        "",
+        "1"
        ],
        [
         "reliable",
         "Reliable",
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
-        "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+        "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
+        "1"
        ],
        [
         "creative",
         "Creative",
         "active",
         "Make something together with them (making something alone is taking care of myself).",
-        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        "",
+        "1"
        ],
        [
         "adventurous",
         "Adventurous",
         "active",
         "Share new experiences with them: new activities, new places.",
-        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
+        "1"
        ],
        [
         "generous",
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
+        "1"
        ],
        [
         "dependable",
         "Dependable",
         "active",
         "Shows up.",
-        "[{\"id\":\"a0g0jc\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90,\"action\":\"3dnjav\"}]"
+        "[{\"id\":\"a0g0jc\",\"kind\":\"follow_through\",\"penalty\":20,\"recovery\":30,\"look_back_days\":90,\"action\":\"3dnjav\"}]",
+        "",
+        "1"
        ]
       ]
      },
@@ -6050,7 +6103,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }

@@ -13,11 +13,12 @@
      "id": "co2yzn",
      "name": "New York",
      "note": null,
-     "path": "New York"
+     "path": "New York",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"group\": {\n    \"id\": \"co2yzn\",\n    \"group_id\": null,\n    \"name\": \"New York\",\n    \"note\": null,\n    \"path\": \"New York\"\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"group\": {\n    \"id\": \"co2yzn\",\n    \"group_id\": null,\n    \"name\": \"New York\",\n    \"note\": null,\n    \"path\": \"New York\",\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_location_group"
   },
   {
@@ -34,11 +35,12 @@
      "id": "3dnjav",
      "name": "Brooklyn",
      "note": null,
-     "path": "New York › Brooklyn"
+     "path": "New York › Brooklyn",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"group\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": \"co2yzn\",\n    \"name\": \"Brooklyn\",\n    \"note\": null,\n    \"path\": \"New York › Brooklyn\"\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"group\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": \"co2yzn\",\n    \"name\": \"Brooklyn\",\n    \"note\": null,\n    \"path\": \"New York › Brooklyn\",\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_location_group"
   },
   {
@@ -66,11 +68,12 @@
      "hint": null,
      "id": "rs21so",
      "map_location": null,
-     "name": "Home"
+     "name": "Home",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": \"3dnjav\"\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": \"3dnjav\",\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_location"
   },
   {
@@ -83,10 +86,11 @@
     "id": "rs21so",
     "map_location": null,
     "name": "Home",
-    "path": "New York › Brooklyn › Home"
+    "path": "New York › Brooklyn › Home",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": \"3dnjav\",\n  \"path\": \"New York › Brooklyn › Home\"\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": \"3dnjav\",\n  \"path\": \"New York › Brooklyn › Home\",\n  \"version\": 1\n}",
    "tool": "get_location"
   },
   {
@@ -97,18 +101,20 @@
      "id": "co2yzn",
      "name": "New York",
      "note": null,
-     "path": "New York"
+     "path": "New York",
+     "version": 1
     },
     {
      "group_id": "co2yzn",
      "id": "3dnjav",
      "name": "Brooklyn",
      "note": null,
-     "path": "New York › Brooklyn"
+     "path": "New York › Brooklyn",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"New York\",\n  \"note\": null,\n  \"path\": \"New York\"\n}\n{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"Brooklyn\",\n  \"note\": null,\n  \"path\": \"New York › Brooklyn\"\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"New York\",\n  \"note\": null,\n  \"path\": \"New York\",\n  \"version\": 1\n}\n{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"Brooklyn\",\n  \"note\": null,\n  \"path\": \"New York › Brooklyn\",\n  \"version\": 1\n}",
    "tool": "get_location_groups"
   },
   {
@@ -120,10 +126,11 @@
     "id": "3dnjav",
     "name": "Brooklyn",
     "note": null,
-    "path": "New York › Brooklyn"
+    "path": "New York › Brooklyn",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"Brooklyn\",\n  \"note\": null,\n  \"path\": \"New York › Brooklyn\"\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"Brooklyn\",\n  \"note\": null,\n  \"path\": \"New York › Brooklyn\",\n  \"version\": 1\n}",
    "tool": "get_location_group"
   },
   {
@@ -150,10 +157,11 @@
     "id": "3dnjav",
     "name": "Brooklyn",
     "note": "across the bridge",
-    "path": "New York › Brooklyn"
+    "path": "New York › Brooklyn",
+    "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"Brooklyn\",\n  \"note\": \"across the bridge\",\n  \"path\": \"New York › Brooklyn\"\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"Brooklyn\",\n  \"note\": \"across the bridge\",\n  \"path\": \"New York › Brooklyn\",\n  \"version\": 2\n}",
    "tool": "update_location_group"
   },
   {
@@ -177,7 +185,8 @@
      "group_id": "co2yzn",
      "id": "3dnjav",
      "name": "Brooklyn",
-     "note": "across the bridge"
+     "note": "across the bridge",
+     "version": 2
     },
     "moved_groups": [],
     "moved_locations": [
@@ -187,12 +196,13 @@
       "id": "rs21so",
       "map_location": null,
       "name": "Home",
-      "path": "New York › Home"
+      "path": "New York › Home",
+      "version": 2
      }
     ]
    },
    "is_error": false,
-   "text": "{\n  \"deleted\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": \"co2yzn\",\n    \"name\": \"Brooklyn\",\n    \"note\": \"across the bridge\"\n  },\n  \"moved_groups\": [],\n  \"moved_locations\": [\n    {\n      \"id\": \"rs21so\",\n      \"name\": \"Home\",\n      \"hint\": null,\n      \"map_location\": null,\n      \"group_id\": \"co2yzn\",\n      \"path\": \"New York › Home\"\n    }\n  ]\n}",
+   "text": "{\n  \"deleted\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": \"co2yzn\",\n    \"name\": \"Brooklyn\",\n    \"note\": \"across the bridge\",\n    \"version\": 2\n  },\n  \"moved_groups\": [],\n  \"moved_locations\": [\n    {\n      \"id\": \"rs21so\",\n      \"name\": \"Home\",\n      \"hint\": null,\n      \"map_location\": null,\n      \"group_id\": \"co2yzn\",\n      \"path\": \"New York › Home\",\n      \"version\": 2\n    }\n  ]\n}",
    "tool": "delete_location_group"
   },
   {
@@ -209,10 +219,11 @@
     "hint": null,
     "id": "rs21so",
     "map_location": null,
-    "name": "Home"
+    "name": "Home",
+    "version": 3
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"version\": 3\n}",
    "tool": "update_location"
   }
  ],
@@ -313,7 +324,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -404,7 +416,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -497,7 +510,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -577,7 +591,8 @@
         "co2yzn",
         "",
         "New York",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -635,13 +650,15 @@
         "co2yzn",
         "",
         "New York",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "co2yzn",
         "Brooklyn",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -727,7 +744,8 @@
         "Home",
         "",
         "",
-        "3dnjav"
+        "3dnjav",
+        "1"
        ]
       ]
      }
@@ -897,13 +915,15 @@
         "co2yzn",
         "",
         "New York",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "co2yzn",
         "Brooklyn",
-        "across the bridge"
+        "across the bridge",
+        "2"
        ]
       ]
      }
@@ -996,9 +1016,11 @@
         "co2yzn",
         "",
         "New York",
-        ""
+        "",
+        "1"
        ],
        [
+        "",
         "",
         "",
         "",
@@ -1023,7 +1045,8 @@
         "Home",
         "",
         "",
-        "co2yzn"
+        "co2yzn",
+        "2"
        ]
       ]
      }
@@ -1082,7 +1105,8 @@
         "Home",
         "",
         "",
-        ""
+        "",
+        "3"
        ]
       ]
      }
@@ -1162,12 +1186,15 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ],
        [
         "co2yzn",
         "",
-        "New York"
+        "New York",
+        "",
+        "1"
        ]
       ]
      },
@@ -1194,11 +1221,16 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ],
        [
         "rs21so",
-        "Home"
+        "Home",
+        "",
+        "",
+        "",
+        "3"
        ]
       ]
      },
@@ -1240,7 +1272,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
