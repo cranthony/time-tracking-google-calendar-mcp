@@ -46,11 +46,12 @@
      "id": "3dnjav",
      "name": "Brooklyn",
      "note": null,
-     "path": "Brooklyn"
+     "path": "Brooklyn",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"group\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": null,\n    \"name\": \"Brooklyn\",\n    \"note\": null,\n    \"path\": \"Brooklyn\"\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"group\": {\n    \"id\": \"3dnjav\",\n    \"group_id\": null,\n    \"name\": \"Brooklyn\",\n    \"note\": null,\n    \"path\": \"Brooklyn\",\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_location_group"
   },
   {
@@ -67,11 +68,12 @@
      "hint": null,
      "id": "a0g0jc",
      "map_location": null,
-     "name": "Home"
+     "name": "Home",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": \"3dnjav\"\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": \"3dnjav\",\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_location"
   },
   {
@@ -87,11 +89,12 @@
      "hint": null,
      "id": "rs21so",
      "map_location": null,
-     "name": "Work"
+     "name": "Work",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Work\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Work\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_location"
   },
   {
@@ -123,11 +126,12 @@
        "mode_id": "co2yzn"
       }
      ],
-     "to_id": "rs21so"
+     "to_id": "rs21so",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"travel_time\": {\n    \"id\": \"onvtja\",\n    \"from_id\": \"3dnjav\",\n    \"to_id\": \"rs21so\",\n    \"one_way\": null,\n    \"times\": [\n      {\n        \"mode_id\": \"co2yzn\",\n        \"minutes\": 25,\n        \"max_minutes\": 40\n      }\n    ],\n    \"note\": \"the bridge\"\n  },\n  \"created_id\": \"onvtja\"\n}",
+   "text": "{\n  \"travel_time\": {\n    \"id\": \"onvtja\",\n    \"from_id\": \"3dnjav\",\n    \"to_id\": \"rs21so\",\n    \"one_way\": null,\n    \"times\": [\n      {\n        \"mode_id\": \"co2yzn\",\n        \"minutes\": 25,\n        \"max_minutes\": 40\n      }\n    ],\n    \"note\": \"the bridge\",\n    \"version\": 1\n  },\n  \"created_id\": \"onvtja\"\n}",
    "tool": "create_travel_time"
   },
   {
@@ -188,11 +192,12 @@
        "mode_id": "co2yzn"
       }
      ],
-     "to_id": "a0g0jc"
+     "to_id": "a0g0jc",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"travel_time\": {\n    \"id\": \"htmn3w\",\n    \"from_id\": \"rs21so\",\n    \"to_id\": \"a0g0jc\",\n    \"one_way\": true,\n    \"times\": [\n      {\n        \"mode_id\": \"co2yzn\",\n        \"minutes\": 50,\n        \"max_minutes\": null\n      }\n    ],\n    \"note\": null\n  },\n  \"created_id\": \"htmn3w\"\n}",
+   "text": "{\n  \"travel_time\": {\n    \"id\": \"htmn3w\",\n    \"from_id\": \"rs21so\",\n    \"to_id\": \"a0g0jc\",\n    \"one_way\": true,\n    \"times\": [\n      {\n        \"mode_id\": \"co2yzn\",\n        \"minutes\": 50,\n        \"max_minutes\": null\n      }\n    ],\n    \"note\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"htmn3w\"\n}",
    "tool": "create_travel_time"
   },
   {
@@ -223,11 +228,12 @@
        "mode_id": "co2yzn"
       }
      ],
-     "to_id": "rs21so"
+     "to_id": "rs21so",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"from_id\": \"3dnjav\",\n  \"to_id\": \"rs21so\",\n  \"travel_time\": {\n    \"id\": \"onvtja\",\n    \"from_id\": \"3dnjav\",\n    \"to_id\": \"rs21so\",\n    \"one_way\": null,\n    \"times\": [\n      {\n        \"mode_id\": \"co2yzn\",\n        \"minutes\": 25,\n        \"max_minutes\": 40\n      }\n    ],\n    \"note\": \"the bridge\"\n  },\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 25,\n      \"max_minutes\": 40\n    }\n  ]\n}",
+   "text": "{\n  \"from_id\": \"3dnjav\",\n  \"to_id\": \"rs21so\",\n  \"travel_time\": {\n    \"id\": \"onvtja\",\n    \"from_id\": \"3dnjav\",\n    \"to_id\": \"rs21so\",\n    \"one_way\": null,\n    \"times\": [\n      {\n        \"mode_id\": \"co2yzn\",\n        \"minutes\": 25,\n        \"max_minutes\": 40\n      }\n    ],\n    \"note\": \"the bridge\",\n    \"version\": 1\n  },\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 25,\n      \"max_minutes\": 40\n    }\n  ]\n}",
    "tool": "estimate_travel_time"
   },
   {
@@ -257,11 +263,12 @@
        "mode_id": "co2yzn"
       }
      ],
-     "to_id": "a0g0jc"
+     "to_id": "a0g0jc",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"from_id\": \"rs21so\",\n  \"to_id\": \"a0g0jc\",\n  \"travel_time\": {\n    \"id\": \"htmn3w\",\n    \"from_id\": \"rs21so\",\n    \"to_id\": \"a0g0jc\",\n    \"one_way\": true,\n    \"times\": [\n      {\n        \"mode_id\": \"co2yzn\",\n        \"minutes\": 50,\n        \"max_minutes\": null\n      }\n    ],\n    \"note\": null\n  },\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 50,\n      \"max_minutes\": null\n    }\n  ]\n}",
+   "text": "{\n  \"from_id\": \"rs21so\",\n  \"to_id\": \"a0g0jc\",\n  \"travel_time\": {\n    \"id\": \"htmn3w\",\n    \"from_id\": \"rs21so\",\n    \"to_id\": \"a0g0jc\",\n    \"one_way\": true,\n    \"times\": [\n      {\n        \"mode_id\": \"co2yzn\",\n        \"minutes\": 50,\n        \"max_minutes\": null\n      }\n    ],\n    \"note\": null,\n    \"version\": 1\n  },\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 50,\n      \"max_minutes\": null\n    }\n  ]\n}",
    "tool": "estimate_travel_time"
   },
   {
@@ -291,11 +298,12 @@
        "mode_id": "co2yzn"
       }
      ],
-     "to_id": "a0g0jc"
+     "to_id": "a0g0jc",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"htmn3w\",\n  \"from_id\": \"rs21so\",\n  \"to_id\": \"a0g0jc\",\n  \"one_way\": true,\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 50,\n      \"max_minutes\": null\n    }\n  ],\n  \"note\": null\n}",
+   "text": "{\n  \"id\": \"htmn3w\",\n  \"from_id\": \"rs21so\",\n  \"to_id\": \"a0g0jc\",\n  \"one_way\": true,\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 50,\n      \"max_minutes\": null\n    }\n  ],\n  \"note\": null,\n  \"version\": 1\n}",
    "tool": "get_travel_times"
   },
   {
@@ -319,10 +327,11 @@
       "mode_id": "co2yzn"
      }
     ],
-    "to_id": "rs21so"
+    "to_id": "rs21so",
+    "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"onvtja\",\n  \"from_id\": \"3dnjav\",\n  \"to_id\": \"rs21so\",\n  \"one_way\": null,\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 25,\n      \"max_minutes\": 40\n    }\n  ],\n  \"note\": null\n}",
+   "text": "{\n  \"id\": \"onvtja\",\n  \"from_id\": \"3dnjav\",\n  \"to_id\": \"rs21so\",\n  \"one_way\": null,\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 25,\n      \"max_minutes\": 40\n    }\n  ],\n  \"note\": null,\n  \"version\": 2\n}",
    "tool": "update_travel_time"
   },
   {
@@ -341,10 +350,11 @@
       "mode_id": "co2yzn"
      }
     ],
-    "to_id": "rs21so"
+    "to_id": "rs21so",
+    "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"onvtja\",\n  \"from_id\": \"3dnjav\",\n  \"to_id\": \"rs21so\",\n  \"one_way\": null,\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 25,\n      \"max_minutes\": 40\n    }\n  ],\n  \"note\": null\n}",
+   "text": "{\n  \"id\": \"onvtja\",\n  \"from_id\": \"3dnjav\",\n  \"to_id\": \"rs21so\",\n  \"one_way\": null,\n  \"times\": [\n    {\n      \"mode_id\": \"co2yzn\",\n      \"minutes\": 25,\n      \"max_minutes\": 40\n    }\n  ],\n  \"note\": null,\n  \"version\": 2\n}",
    "tool": "delete_travel_time"
   },
   {
@@ -356,10 +366,11 @@
     "hint": null,
     "id": "a0g0jc",
     "map_location": null,
-    "name": "Home"
+    "name": "Home",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Home\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": \"3dnjav\",\n  \"version\": 1\n}",
    "tool": "delete_location"
   },
   {
@@ -666,7 +677,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -757,7 +769,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -856,7 +869,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -947,7 +961,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1040,7 +1055,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1259,7 +1275,8 @@
         "3dnjav",
         "",
         "Brooklyn",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1318,7 +1335,8 @@
         "Home",
         "",
         "",
-        "3dnjav"
+        "3dnjav",
+        "1"
        ]
       ]
      }
@@ -1377,14 +1395,16 @@
         "Home",
         "",
         "",
-        "3dnjav"
+        "3dnjav",
+        "1"
        ],
        [
         "rs21so",
         "Work",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1468,7 +1488,8 @@
         "rs21so",
         "",
         "[{\"mode_id\":\"co2yzn\",\"minutes\":25,\"max_minutes\":40}]",
-        "the bridge"
+        "the bridge",
+        "1"
        ]
       ]
      }
@@ -1654,7 +1675,8 @@
         "rs21so",
         "",
         "[{\"mode_id\":\"co2yzn\",\"minutes\":25,\"max_minutes\":40}]",
-        "the bridge"
+        "the bridge",
+        "1"
        ],
        [
         "htmn3w",
@@ -1662,7 +1684,8 @@
         "a0g0jc",
         "True",
         "[{\"mode_id\":\"co2yzn\",\"minutes\":50,\"max_minutes\":null}]",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1927,7 +1950,8 @@
         "rs21so",
         "",
         "[{\"mode_id\":\"co2yzn\",\"minutes\":25,\"max_minutes\":40}]",
-        ""
+        "",
+        "2"
        ],
        [
         "htmn3w",
@@ -1935,7 +1959,8 @@
         "a0g0jc",
         "True",
         "[{\"mode_id\":\"co2yzn\",\"minutes\":50,\"max_minutes\":null}]",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1996,9 +2021,11 @@
         "a0g0jc",
         "True",
         "[{\"mode_id\":\"co2yzn\",\"minutes\":50,\"max_minutes\":null}]",
-        ""
+        "",
+        "1"
        ],
        [
+        "",
         "",
         "",
         "",
@@ -2071,9 +2098,11 @@
         "Work",
         "",
         "",
-        ""
+        "",
+        "1"
        ],
        [
+        "",
         "",
         "",
         "",
@@ -2095,6 +2124,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
+        "",
         "",
         "",
         "",
@@ -2335,7 +2365,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      },
@@ -2361,12 +2392,15 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ],
        [
         "3dnjav",
         "",
-        "Brooklyn"
+        "Brooklyn",
+        "",
+        "1"
        ]
       ]
      },
@@ -2393,11 +2427,16 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ],
        [
         "rs21so",
-        "Work"
+        "Work",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -2427,7 +2466,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      },
@@ -2469,7 +2509,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }

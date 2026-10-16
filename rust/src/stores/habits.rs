@@ -39,6 +39,7 @@ pub struct ListedHabit {
     pub foundations: Option<Vec<String>>,
     pub action_path: Option<String>,
     pub cancelled_events: Option<Vec<CancelledEvent>>,
+    pub version: Option<i64>,
 }
 
 /// One habit: what the user wants to do well, tied to an action or
@@ -53,6 +54,9 @@ pub struct Habit {
     pub note: Option<String>,
     pub traits: Option<Map<String, Value>>,
     pub foundations: Option<Vec<String>>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -168,9 +172,10 @@ impl Habits {
 
     pub fn create_habit(&self, habit: &Habit) -> anyhow::Result<CreatedHabit> {
         let habits = self.all()?;
-        let id = rows::new_id(habits.iter().map(|h| h.id.as_deref()).collect::<Vec<_>>());
+        let id = rows::chosen_id(habit.id.as_deref(), habits.iter().map(|h| h.id.as_deref()).collect::<Vec<_>>())?;
         let traits = habit.traits.as_ref().map(spec_with_new_part_ids);
-        let new = Habit { id: Some(id.clone()), status: Some(habit.status.unwrap_or(Status::Active)), traits, ..habit.clone() };
+        let new =
+            Habit { id: Some(id.clone()), status: Some(habit.status.unwrap_or(Status::Active)), traits, version: None, ..habit.clone() };
         let mut all = habits.clone();
         all.push(new.clone());
         self.write(&all, &id)?;
@@ -184,6 +189,7 @@ impl Habits {
         rows::check_clear_item(habit, clear_fields, &CLEARABLE_FIELDS)?;
         let mut habits = self.all()?;
         let Some(index) = habits.iter().position(|h| h.id.as_deref() == Some(id.as_str())) else {
+            rows::expect_item_version::<Habit>(&id, None, habit.version)?;
             find(&habits, &id)?;
             unreachable!()
         };
@@ -347,6 +353,7 @@ pub fn listed(habit: &Habit, paths: &Scopes) -> ListedHabit {
         foundations: habit.foundations.clone(),
         action_path,
         cancelled_events: None,
+        version: habit.version,
     }
 }
 

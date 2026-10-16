@@ -52,6 +52,7 @@ pub struct ListedPerson {
     pub foundations: Option<Vec<String>>,
     pub circle_names: Option<Vec<String>>,
     pub cancelled_events: Option<Vec<CancelledEvent>>,
+    pub version: Option<i64>,
 }
 
 /// One person the user spends time with (see get_people).
@@ -66,6 +67,9 @@ pub struct Person {
     pub what_matters: Option<String>,
     pub traits: Option<Map<String, Value>>,
     pub foundations: Option<Vec<String>>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -82,6 +86,7 @@ pub struct ListedCircle {
     pub note: Option<String>,
     pub scoring: Option<Map<String, Value>>,
     pub member_ids: Option<Vec<String>>,
+    pub version: Option<i64>,
 }
 
 /// One circle: a group of people, such as family (see get_circles).
@@ -94,6 +99,9 @@ pub struct Circle {
     /// get_scoring_defaults), its weights by person id. Without it, the
     /// default's (scoring defaults' circles).
     pub scoring: Option<Map<String, Value>>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -235,9 +243,11 @@ impl People {
 
     pub fn create_person(&self, person: &Person) -> anyhow::Result<CreatedPerson> {
         let people = self.read_people()?;
-        let id = rows::new_id(people.iter().map(|p| p.id.as_deref()).collect::<Vec<_>>());
+        let taken = std::iter::once(Some(SELF_ID)).chain(people.iter().map(|p| p.id.as_deref())).collect::<Vec<_>>();
+        let id = rows::chosen_id(person.id.as_deref(), taken)?;
         let traits = person.traits.as_ref().map(spec_with_new_part_ids);
-        let new = Person { id: Some(id.clone()), status: Some(person.status.unwrap_or(Status::Active)), traits, ..person.clone() };
+        let new =
+            Person { id: Some(id.clone()), status: Some(person.status.unwrap_or(Status::Active)), traits, version: None, ..person.clone() };
         let mut everyone = vec![self_person()];
         everyone.extend(people.iter().cloned());
         check_context(&new, &everyone)?;
@@ -260,6 +270,7 @@ impl People {
             index = Some(people.len() - 1);
         }
         let Some(index) = index else {
+            rows::expect_item_version::<Person>(&id, None, person.version)?;
             find_person(&self.all()?, &id)?;
             unreachable!()
         };
@@ -308,8 +319,8 @@ impl People {
 
     pub fn create_circle(&self, circle: &Circle) -> anyhow::Result<CreatedCircle> {
         let circles = self.circles()?;
-        let id = rows::new_id(circles.iter().map(|c| c.id.as_deref()).collect::<Vec<_>>());
-        let new = Circle { id: Some(id.clone()), ..circle.clone() };
+        let id = rows::chosen_id(circle.id.as_deref(), circles.iter().map(|c| c.id.as_deref()).collect::<Vec<_>>())?;
+        let new = Circle { id: Some(id.clone()), version: None, ..circle.clone() };
         let mut all = circles.clone();
         all.push(new.clone());
         self.write_circles(&all)?;
@@ -323,6 +334,7 @@ impl People {
         rows::check_clear_item(circle, clear_fields, &CIRCLE_CLEARABLE_FIELDS)?;
         let mut circles = self.circles()?;
         let Some(index) = circles.iter().position(|c| c.id.as_deref() == Some(id.as_str())) else {
+            rows::expect_item_version::<Circle>(&id, None, circle.version)?;
             find_circle(&circles, &id)?;
             unreachable!()
         };
@@ -332,12 +344,18 @@ impl People {
         Ok(listed_circle(&circles[index], &people))
     }
 
-    pub fn delete_circle(&self, circle_id: &str) -> anyhow::Result<DeletedCircle> {
+    /// Deletes a circle -- unless it's changed since version
+    /// `if_version`, if given.
+    pub fn delete_circle(&self, circle_id: &str, if_version: Option<i64>) -> anyhow::Result<DeletedCircle> {
         let circles = self.circles()?;
         let deleted = match circles.iter().find(|c| c.id.as_deref() == Some(circle_id)) {
             Some(found) => found.clone(),
-            None => find_circle(&circles, circle_id)?,
+            None => {
+                rows::expect_item_version::<Circle>(circle_id, None, if_version)?;
+                find_circle(&circles, circle_id)?
+            }
         };
+        rows::expect_item_version(circle_id, Some(&deleted), if_version)?;
         if deleted.id.as_deref() != Some(circle_id) {
             bail!("Delete a circle by its id: {} is {}", repr_or_none(deleted.name.as_deref()), str_or_none(deleted.id.as_deref()));
         }
@@ -576,6 +594,7 @@ pub fn listed(person: &Person, circles: &[Circle]) -> ListedPerson {
         foundations: person.foundations.clone(),
         circle_names: if names.is_empty() { None } else { Some(names) },
         cancelled_events: None,
+        version: person.version,
     }
 }
 
@@ -590,6 +609,7 @@ pub fn listed_circle(circle: &Circle, people: &[Person]) -> ListedCircle {
         note: circle.note.clone(),
         scoring: circle.scoring.clone(),
         member_ids: Some(members),
+        version: circle.version,
     }
 }
 

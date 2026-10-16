@@ -794,7 +794,7 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
         Ok(_) => step("a duplicate name and context is refused", false, ())?,
         Err(e) => step("a duplicate name and context is refused", e.to_string().contains("already a person"), e.to_string())?,
     }
-    people.delete_circle(&family)?;
+    people.delete_circle(&family, None)?;
     step("deleting a circle takes its people out", people.get_person(&sam)?.circles.is_none(), ())?;
 
     println!("\nLocations");
@@ -802,7 +802,7 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
     let home = locations.create_location(&Location { name: Some("Home".into()), hint: Some("the apartment".into()), ..Default::default() })?.created_id;
     locations.update_location(&Location { id: Some(home.clone()), hint: Some("the apartment; 'my place'".into()), ..Default::default() }, &[])?;
     step("a location reads back by name", locations.get_location("home")?.hint.as_deref() == Some("the apartment; 'my place'"), ())?;
-    locations.delete_location(&home)?;
+    locations.delete_location(&home, None)?;
     step("deleting removes it", locations.all()?.is_empty(), ())?;
 
     println!("\nFacts on an event");

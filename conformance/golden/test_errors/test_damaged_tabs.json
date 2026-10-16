@@ -45,12 +45,13 @@
      "member_ids": [],
      "name": "Family",
      "note": null,
-     "scoring": null
+     "scoring": null,
+     "version": 1
     },
     "created_id": "3dnjav"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"member_ids\": []\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_circle"
   },
   {
@@ -134,11 +135,12 @@
      "member_ids": [],
      "name": "Family",
      "note": null,
-     "scoring": null
+     "scoring": null,
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav (edited)\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": []\n}",
+   "text": "{\n  \"id\": \"3dnjav (edited)\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [],\n  \"version\": 1\n}",
    "tool": "get_circles"
   },
   {
@@ -154,11 +156,12 @@
      "name": "Me",
      "status": "active",
      "traits": null,
+     "version": null,
      "what_matters": null
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": null\n}",
    "tool": "get_people"
   },
   {
@@ -221,7 +224,8 @@
      ],
      "problems": null,
      "scoring": null,
-     "status": "active"
+     "status": "active",
+     "version": null
     },
     {
      "definition": "Do what I said I would, and keep contact going -- reliable to myself too.",
@@ -249,7 +253,8 @@
      ],
      "problems": null,
      "scoring": null,
-     "status": "active"
+     "status": "active",
+     "version": null
     },
     {
      "definition": "Make something together with them (making something alone is taking care of myself).",
@@ -278,7 +283,8 @@
      ],
      "problems": null,
      "scoring": null,
-     "status": "active"
+     "status": "active",
+     "version": null
     },
     {
      "definition": "Share new experiences with them: new activities, new places.",
@@ -311,7 +317,8 @@
      ],
      "problems": null,
      "scoring": null,
-     "status": "active"
+     "status": "active",
+     "version": null
     },
     {
      "definition": "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
@@ -353,11 +360,12 @@
      ],
      "problems": null,
      "scoring": null,
-     "status": "active"
+     "status": "active",
+     "version": null
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"thoughtful\",\n  \"name\": \"Thoughtful\",\n  \"status\": \"active\",\n  \"definition\": \"Remember what matters to them, and prepare for it.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"id\": \"judgment#2\",\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"Was this preparation for them, built on what matters to them?\",\n      \"ratings\": {\n        \"0\": \"It wasn't really for them\",\n        \"1\": \"It was for them, but generic\",\n        \"2\": \"It was for them, and fit what matters to them\",\n        \"3\": \"It was carefully made around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null\n}\n{\n  \"id\": \"reliable\",\n  \"name\": \"Reliable\",\n  \"status\": \"active\",\n  \"definition\": \"Do what I said I would, and keep contact going -- reliable to myself too.\",\n  \"parts\": [\n    {\n      \"id\": \"continuity\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"follow_through\",\n      \"kind\": \"follow_through\"\n    },\n    {\n      \"id\": \"count\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 14,\n      \"zero_at_days\": 30,\n      \"noun\": \"meetings\"\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null\n}\n{\n  \"id\": \"creative\",\n  \"name\": \"Creative\",\n  \"status\": \"active\",\n  \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 30\n        },\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null\n}\n{\n  \"id\": \"adventurous\",\n  \"name\": \"Adventurous\",\n  \"status\": \"active\",\n  \"definition\": \"Share new experiences with them: new activities, new places.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 90\n        }\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null\n}\n{\n  \"id\": \"generous\",\n  \"name\": \"Generous\",\n  \"status\": \"active\",\n  \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"id\": \"judgment#2\",\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"How much effort did I put into doing this for them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null\n}",
+   "text": "{\n  \"id\": \"thoughtful\",\n  \"name\": \"Thoughtful\",\n  \"status\": \"active\",\n  \"definition\": \"Remember what matters to them, and prepare for it.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"id\": \"judgment#2\",\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"Was this preparation for them, built on what matters to them?\",\n      \"ratings\": {\n        \"0\": \"It wasn't really for them\",\n        \"1\": \"It was for them, but generic\",\n        \"2\": \"It was for them, and fit what matters to them\",\n        \"3\": \"It was carefully made around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": null\n}\n{\n  \"id\": \"reliable\",\n  \"name\": \"Reliable\",\n  \"status\": \"active\",\n  \"definition\": \"Do what I said I would, and keep contact going -- reliable to myself too.\",\n  \"parts\": [\n    {\n      \"id\": \"continuity\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"follow_through\",\n      \"kind\": \"follow_through\"\n    },\n    {\n      \"id\": \"count\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 14,\n      \"zero_at_days\": 30,\n      \"noun\": \"meetings\"\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": null\n}\n{\n  \"id\": \"creative\",\n  \"name\": \"Creative\",\n  \"status\": \"active\",\n  \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 30\n        },\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": null\n}\n{\n  \"id\": \"adventurous\",\n  \"name\": \"Adventurous\",\n  \"status\": \"active\",\n  \"definition\": \"Share new experiences with them: new activities, new places.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 90\n        }\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": null\n}\n{\n  \"id\": \"generous\",\n  \"name\": \"Generous\",\n  \"status\": \"active\",\n  \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"id\": \"judgment#2\",\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"How much effort did I put into doing this for them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": null\n}",
    "tool": "get_traits"
   },
   {
@@ -732,7 +740,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -823,7 +832,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -922,7 +932,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -1013,7 +1024,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1106,7 +1118,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1357,7 +1370,8 @@
         "3dnjav",
         "Family",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1943,7 +1957,8 @@
         "status",
         "definition",
         "parts",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -1976,6 +1991,7 @@
         "active",
         "Remember what matters to them, and prepare for it.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        "",
         ""
        ],
        [
@@ -1984,6 +2000,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         ""
        ],
        [
@@ -1992,6 +2009,7 @@
         "active",
         "Make something together with them (making something alone is taking care of myself).",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        "",
         ""
        ],
        [
@@ -2000,6 +2018,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         ""
        ],
        [
@@ -2008,6 +2027,7 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         ""
        ]
       ]
@@ -2109,7 +2129,8 @@
         "status",
         "note",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -3233,11 +3254,15 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ],
        [
         "3dnjav (edited)",
-        "Family"
+        "Family",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -3325,7 +3350,8 @@
         "status",
         "note",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      },
@@ -3351,7 +3377,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -3378,7 +3405,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      },
@@ -3437,7 +3465,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      },
@@ -3479,7 +3508,8 @@
         "status",
         "definition",
         "parts",
-        "scoring"
+        "scoring",
+        "version"
        ],
        [
         "thoughtful",
@@ -3542,7 +3572,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }

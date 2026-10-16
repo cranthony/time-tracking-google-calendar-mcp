@@ -14,11 +14,12 @@
      "hint": "the apartment; 'my place'",
      "id": "co2yzn",
      "map_location": null,
-     "name": "Home"
+     "name": "Home",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": \"the apartment; 'my place'\",\n    \"map_location\": null,\n    \"group_id\": null\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": \"the apartment; 'my place'\",\n    \"map_location\": null,\n    \"group_id\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_location"
   },
   {
@@ -34,11 +35,12 @@
      "hint": null,
      "id": "3dnjav",
      "map_location": null,
-     "name": "Salsa studio"
+     "name": "Salsa studio",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Salsa studio\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Salsa studio\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_location"
   },
   {
@@ -61,7 +63,8 @@
      "id": "co2yzn",
      "map_location": null,
      "name": "Home",
-     "path": "Home"
+     "path": "Home",
+     "version": 1
     },
     {
      "group_id": null,
@@ -69,11 +72,12 @@
      "id": "3dnjav",
      "map_location": null,
      "name": "Salsa studio",
-     "path": "Salsa studio"
+     "path": "Salsa studio",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Home\"\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Salsa studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Salsa studio\"\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Home\",\n  \"version\": 1\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Salsa studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Salsa studio\",\n  \"version\": 1\n}",
    "tool": "get_locations"
   },
   {
@@ -86,10 +90,11 @@
     "id": "co2yzn",
     "map_location": null,
     "name": "Home",
-    "path": "Home"
+    "path": "Home",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Home\"\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Home\",\n  \"version\": 1\n}",
    "tool": "get_location"
   },
   {
@@ -114,10 +119,11 @@
     "hint": "downtown",
     "id": "3dnjav",
     "map_location": null,
-    "name": "Dance studio"
+    "name": "Dance studio",
+    "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": \"downtown\",\n  \"map_location\": null,\n  \"group_id\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": \"downtown\",\n  \"map_location\": null,\n  \"group_id\": null,\n  \"version\": 2\n}",
    "tool": "update_location"
   },
   {
@@ -134,10 +140,11 @@
     "hint": null,
     "id": "3dnjav",
     "map_location": null,
-    "name": "Dance studio"
+    "name": "Dance studio",
+    "version": 3
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"version\": 3\n}",
    "tool": "update_location"
   },
   {
@@ -152,10 +159,11 @@
     "hint": null,
     "id": "3dnjav",
     "map_location": "12 Elm St",
-    "name": "Dance studio"
+    "name": "Dance studio",
+    "version": 4
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": \"12 Elm St\",\n  \"group_id\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": \"12 Elm St\",\n  \"group_id\": null,\n  \"version\": 4\n}",
    "tool": "update_location"
   },
   {
@@ -172,10 +180,11 @@
     "hint": null,
     "id": "3dnjav",
     "map_location": null,
-    "name": "Dance studio"
+    "name": "Dance studio",
+    "version": 5
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"version\": 5\n}",
    "tool": "update_location"
   },
   {
@@ -187,10 +196,11 @@
     "hint": "the apartment; 'my place'",
     "id": "co2yzn",
     "map_location": null,
-    "name": "Home"
+    "name": "Home",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Home\",\n  \"hint\": \"the apartment; 'my place'\",\n  \"map_location\": null,\n  \"group_id\": null,\n  \"version\": 1\n}",
    "tool": "delete_location"
   },
   {
@@ -202,11 +212,12 @@
      "id": "3dnjav",
      "map_location": null,
      "name": "Dance studio",
-     "path": "Dance studio"
+     "path": "Dance studio",
+     "version": 5
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Dance studio\"\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Dance studio\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Dance studio\",\n  \"version\": 5\n}",
    "tool": "get_locations"
   },
   {
@@ -328,7 +339,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -419,7 +431,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -512,7 +525,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -593,7 +607,8 @@
         "Home",
         "the apartment; 'my place'",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -652,14 +667,16 @@
         "Home",
         "the apartment; 'my place'",
         "",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "Salsa studio",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -826,14 +843,16 @@
         "Home",
         "the apartment; 'my place'",
         "",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "Dance studio",
         "downtown",
         "",
-        ""
+        "",
+        "2"
        ]
       ]
      }
@@ -892,14 +911,16 @@
         "Home",
         "the apartment; 'my place'",
         "",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "Dance studio",
         "",
         "",
-        ""
+        "",
+        "3"
        ]
       ]
      }
@@ -958,14 +979,16 @@
         "Home",
         "the apartment; 'my place'",
         "",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "Dance studio",
         "",
         "12 Elm St",
-        ""
+        "",
+        "4"
        ]
       ]
      }
@@ -1024,14 +1047,16 @@
         "Home",
         "the apartment; 'my place'",
         "",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "Dance studio",
         "",
         "",
-        ""
+        "",
+        "5"
        ]
       ]
      }
@@ -1098,9 +1123,11 @@
         "Dance studio",
         "",
         "",
-        ""
+        "",
+        "5"
        ],
        [
+        "",
         "",
         "",
         "",
@@ -1274,7 +1301,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -1301,11 +1329,16 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ],
        [
         "3dnjav",
-        "Dance studio"
+        "Dance studio",
+        "",
+        "",
+        "",
+        "5"
        ]
       ]
      },
@@ -1347,7 +1380,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }

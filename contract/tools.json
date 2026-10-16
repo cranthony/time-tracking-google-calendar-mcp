@@ -4691,6 +4691,12 @@
                 "array",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -4765,6 +4771,13 @@
                 "object",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -4823,6 +4836,13 @@
           "description": "How its parts' scores combine into its own: an aggregation (see\nget_traits), its weights by part id. Without it, the plain mean.",
           "type": [
             "object",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -4909,6 +4929,13 @@
                 "object",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -4967,6 +4994,13 @@
           "description": "How its parts' scores combine into its own: an aggregation (see\nget_traits), its weights by part id. Without it, the plain mean.",
           "type": [
             "object",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -6977,6 +7011,12 @@
                 "array",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -7081,6 +7121,12 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -7236,6 +7282,13 @@
               },
               "type": [
                 "array",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -7414,6 +7467,12 @@
                 "array",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -7516,6 +7575,13 @@
                 "array",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -7605,6 +7671,12 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -7741,6 +7813,12 @@
                 "array",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -7799,6 +7877,12 @@
             "array",
             "null"
           ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "type": "object"
@@ -7843,6 +7927,13 @@
               "description": "How its people's scores combine into its own: an aggregation (see\nget_scoring_defaults), its weights by person id. Without it, the\ndefault's (scoring defaults' circles).",
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -7902,6 +7993,12 @@
               },
               "type": [
                 "array",
+                "null"
+              ]
+            },
+            "version": {
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -7965,6 +8062,13 @@
                 "object",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8008,17 +8112,29 @@
             "array",
             "null"
           ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "type": "object"
     }
   },
   {
-    "description": "Delete a circle, by id. Its people aren't deleted: they just leave\nit. Returns the circle as it was, and the ids of the people who\nleft.",
+    "description": "Delete a circle, by id. Its people aren't deleted: they just leave\nit. Given if_version -- the version last seen -- it's refused if it's\nchanged since. Returns the circle as it was, and the ids of the people\nwho left.",
     "inputSchema": {
       "properties": {
         "circle_id": {
           "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -8072,6 +8188,13 @@
               "description": "How its people's scores combine into its own: an aggregation (see\nget_scoring_defaults), its weights by person id. Without it, the\ndefault's (scoring defaults' circles).",
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -8138,6 +8261,12 @@
             },
             "path": {
               "type": "string"
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -8198,6 +8327,12 @@
         },
         "path": {
           "type": "string"
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -8252,6 +8387,13 @@
               "description": "The location group it's in, if any (see get_location_groups).",
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -8312,6 +8454,13 @@
                 "string",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8320,7 +8469,7 @@
     }
   },
   {
-    "description": "Rename a location or change its hint, map_location or group_id, by\nid. Omitted properties keep their value; list hint, map_location or\ngroup_id in clear_fields to blank it. Returns it as updated.",
+    "description": "Rename a location or change its hint, map_location or group_id, by\nid. Omitted properties keep their value; list hint, map_location or\ngroup_id in clear_fields to blank it. Given version -- the version\nlast seen -- it's refused if it's changed since. Returns it as\nupdated.",
     "inputSchema": {
       "properties": {
         "location": {
@@ -8381,6 +8530,13 @@
                 "string",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8422,17 +8578,30 @@
             "string",
             "null"
           ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "type": "object"
     }
   },
   {
-    "description": "Delete a location, by id. Returns it as it was.",
+    "description": "Delete a location, by id. Given if_version -- the version last seen -- it's refused if it's changed since. Returns it as\nit was.",
     "inputSchema": {
       "properties": {
         "location_id": {
           "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -8473,6 +8642,13 @@
           "description": "The location group it's in, if any (see get_location_groups).",
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -8531,6 +8707,12 @@
             },
             "path": {
               "type": "string"
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -8585,6 +8767,12 @@
         },
         "path": {
           "type": "string"
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -8632,6 +8820,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -8686,6 +8881,12 @@
             },
             "path": {
               "type": "string"
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -8697,7 +8898,7 @@
     }
   },
   {
-    "description": "Update a location group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups) or note. Omitted properties keep their value; list group_id or\nnote in clear_fields to blank it. A group can't end up inside itself.\nReturns it as updated.",
+    "description": "Update a location group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups) or note. Omitted properties keep their value; list group_id or\nnote in clear_fields to blank it. A group can't end up inside itself.\nGiven version -- the version last seen -- it's refused if it's changed\nsince. Returns it as updated.",
     "inputSchema": {
       "properties": {
         "group": {
@@ -8750,6 +8951,13 @@
                 "string",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -8786,6 +8994,12 @@
         },
         "path": {
           "type": "string"
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -8795,11 +9009,17 @@
     }
   },
   {
-    "description": "Delete a location group, by id. Its locations and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), and the groups and locations moved up out of it.",
+    "description": "Delete a location group, by id. Its locations and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), and the groups and locations moved up out of it. Given\nif_version -- the version last seen -- it's refused if it's changed\nsince.",
     "inputSchema": {
       "properties": {
         "group_id": {
           "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -8869,6 +9089,12 @@
             },
             "path": {
               "type": "string"
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -8905,6 +9131,12 @@
             },
             "path": {
               "type": "string"
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -8938,6 +9170,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -9046,6 +9285,13 @@
                 "string",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -9135,6 +9381,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -9228,6 +9481,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -9330,6 +9590,13 @@
                 "string",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -9381,6 +9648,13 @@
             "string",
             "null"
           ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "type": "object",
@@ -9414,11 +9688,17 @@
     }
   },
   {
-    "description": "Delete a travel time, by id. Returns it as it was. (Deleting a location\nor location group deletes the travel times from or to it.)",
+    "description": "Delete a travel time, by id. Given if_version -- the version last seen\n-- it's refused if it's changed since. Returns it as it was. (Deleting a\nlocation or location group deletes the travel times from or to it.)",
     "inputSchema": {
       "properties": {
         "travel_time_id": {
           "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -9469,6 +9749,13 @@
         "note": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -9643,6 +9930,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -9831,6 +10125,12 @@
                 "array",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -9923,6 +10223,12 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -10069,6 +10375,13 @@
               },
               "type": [
                 "array",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -10235,6 +10548,12 @@
                 "array",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -10326,6 +10645,13 @@
                 "array",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -10403,6 +10729,12 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "integer",
             "null"
           ]
         }

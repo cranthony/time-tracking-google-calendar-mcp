@@ -156,6 +156,18 @@ fn error_result(text: String) -> Value {
     Value::Object(result)
 }
 
+/// `error_result`, with `meta` for the client that sent it to act on.
+fn error_result_with(text: String, meta: Value) -> Value {
+    let mut result = error_result(text);
+    result["_meta"] = meta;
+    result
+}
+
+/// What the client gave this call to make it once: `_meta.write_id`.
+fn write_id(params: &Value) -> Option<&str> {
+    params.pointer("/_meta/write_id").and_then(Value::as_str)
+}
+
 /// A tool's result as text, as the Python SDK renders it: a list one item
 /// each, a string as it is, anything else as indented JSON.
 fn content_of(value: &Value) -> Vec<Value> {
@@ -182,21 +194,40 @@ pub fn call_tool(app: &Arc<crate::app::App>, params: &Value, timings: &mut Vec<T
         }
     };
     let started = std::time::Instant::now();
-    let outcome = tools::run(app, &name, arguments);
+    let outcome = tools::run_once(app, &name, arguments, write_id(params));
     let work_ms = started.elapsed().as_millis() as i64;
     timings.push((name.clone(), work_ms, outcome.is_ok()));
     match outcome {
-        Ok(Outcome(value)) => {
+        Ok((Outcome(value), replayed)) => {
             let structured = if wrapped(contract) { json!({ "result": value }) } else { value.clone() };
             let mut result = Map::new();
             result.insert("content".into(), Value::Array(content_of(&value)));
             result.insert("isError".into(), json!(false));
             result.insert("structuredContent".into(), structured);
+            // Made when it was first sent: this is what it gave then.
+            if replayed {
+                result.insert("_meta".into(), json!({"replayed": true}));
+            }
             Value::Object(result)
         }
         Err(ToolError::Message(text)) => {
             tracing::info!("Tool {} failed: {}", py::repr(&name), py::repr(&text));
             error_result(format!("Error executing tool {name}: {text}"))
+        }
+        Err(ToolError::Conflict(conflict)) => {
+            tracing::info!("Tool {} found a conflict: {conflict}", py::repr(&name));
+            error_result_with(
+                format!("Error executing tool {name}: {conflict}"),
+                json!({"conflict": {
+                    "kind": conflict.kind,
+                    "id": conflict.id,
+                    "expected": conflict.expected,
+                    "current": conflict.current,
+                }}),
+            )
+        }
+        Err(ToolError::MadeAlready(text)) => {
+            error_result_with(format!("Error executing tool {name}: {text}"), json!({"replayed": true}))
         }
         Err(ToolError::Unexpected(error)) => {
             tracing::error!("Tool {} raised an unexpected exception: {error:?}", py::repr(&name));

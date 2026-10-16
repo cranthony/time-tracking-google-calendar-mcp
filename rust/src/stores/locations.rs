@@ -25,6 +25,9 @@ pub struct Location {
     pub map_location: Option<String>,
     /// The location group it's in, if any (see get_location_groups).
     pub group_id: Option<String>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 /// A location as get_locations lists it: with its path through its groups
@@ -37,6 +40,7 @@ pub struct ListedLocation {
     pub map_location: Option<String>,
     pub group_id: Option<String>,
     pub path: String,
+    pub version: Option<i64>,
 }
 
 /// A location's fields that clear_fields can blank.
@@ -67,6 +71,9 @@ pub struct LocationGroup {
     pub group_id: Option<String>,
     pub name: Option<String>,
     pub note: Option<String>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 /// A location group as get_location_groups lists it: with its path
@@ -78,6 +85,7 @@ pub struct ListedLocationGroup {
     pub name: Option<String>,
     pub note: Option<String>,
     pub path: String,
+    pub version: Option<i64>,
 }
 
 /// A location group's fields that clear_fields can blank.
@@ -183,17 +191,21 @@ impl Locations {
     }
 
     /// An id that's neither a location's nor a group's, so either can be
-    /// named by it where both are taken.
-    fn new_id(locations: &[Location], groups: &[LocationGroup]) -> String {
-        rows::new_id(locations.iter().map(|l| l.id.as_deref()).chain(groups.iter().map(|g| g.id.as_deref())).collect::<Vec<_>>())
+    /// named by it where both are taken: `given`, the client's choice, if
+    /// it can be (see rows::chosen_id), or else a new one.
+    fn new_id(given: Option<&str>, locations: &[Location], groups: &[LocationGroup]) -> anyhow::Result<String> {
+        rows::chosen_id(
+            given,
+            locations.iter().map(|l| l.id.as_deref()).chain(groups.iter().map(|g| g.id.as_deref())).collect::<Vec<_>>(),
+        )
     }
 
     pub fn create_location(&self, location: &Location) -> anyhow::Result<CreatedLocation> {
         self.prefetch(&self.whole_tabs())?;
         let mut locations = self.all()?;
         let groups = self.groups()?;
-        let id = Self::new_id(&locations, &groups);
-        let new = Location { id: Some(id.clone()), ..location.clone() };
+        let id = Self::new_id(location.id.as_deref(), &locations, &groups)?;
+        let new = Location { id: Some(id.clone()), version: None, ..location.clone() };
         locations.push(new.clone());
         self.write(&locations, &groups)?;
         Ok(CreatedLocation { location: new, created_id: id })
@@ -207,6 +219,7 @@ impl Locations {
         self.prefetch(&self.whole_tabs())?;
         let mut locations = self.all()?;
         let Some(index) = locations.iter().position(|l| l.id.as_deref() == Some(id.as_str())) else {
+            rows::expect_item_version::<Location>(&id, None, location.version)?;
             find(&locations, &id)?;
             unreachable!("find raises for an id that isn't there")
         };
@@ -215,14 +228,19 @@ impl Locations {
         Ok(locations[index].clone())
     }
 
-    /// Deletes a location, and the travel times from or to it.
-    pub fn delete_location(&self, location_id: &str) -> anyhow::Result<Location> {
+    /// Deletes a location, and the travel times from or to it -- unless
+    /// it's changed since version `if_version`, if given.
+    pub fn delete_location(&self, location_id: &str, if_version: Option<i64>) -> anyhow::Result<Location> {
         self.prefetch(&self.all_tabs())?;
         let locations = self.all()?;
         let deleted = match locations.iter().find(|l| l.id.as_deref() == Some(location_id)) {
             Some(found) => found.clone(),
-            None => find(&locations, location_id)?,
+            None => {
+                rows::expect_item_version::<Location>(location_id, None, if_version)?;
+                find(&locations, location_id)?
+            }
         };
+        rows::expect_item_version(location_id, Some(&deleted), if_version)?;
         if deleted.id.as_deref() != Some(location_id) {
             bail!(
                 "Delete a location by its id: {} is {}",
@@ -241,8 +259,8 @@ impl Locations {
     pub fn create_location_group(&self, group: &LocationGroup) -> anyhow::Result<CreatedLocationGroup> {
         self.prefetch(&self.whole_tabs())?;
         let mut groups = self.groups()?;
-        let id = Self::new_id(&self.all()?, &groups);
-        let new = LocationGroup { id: Some(id.clone()), ..group.clone() };
+        let id = Self::new_id(group.id.as_deref(), &self.all()?, &groups)?;
+        let new = LocationGroup { id: Some(id.clone()), version: None, ..group.clone() };
         groups.push(new.clone());
         self.write_groups(&groups)?;
         Ok(CreatedLocationGroup { group: listed_group(&new, &groups), created_id: id })
@@ -255,6 +273,7 @@ impl Locations {
         rows::check_clear_item(group, clear_fields, &GROUP_CLEARABLE_FIELDS)?;
         let mut groups = self.groups()?;
         let Some(index) = groups.iter().position(|g| g.id.as_deref() == Some(id.as_str())) else {
+            rows::expect_item_version::<LocationGroup>(&id, None, group.version)?;
             find_group(&groups, &id)?;
             unreachable!("find_group raises for an id that isn't there")
         };
@@ -266,13 +285,17 @@ impl Locations {
     /// Deletes a group, and the travel times from or to it; what was
     /// inside it moves up into the group it was inside, or to the top
     /// level.
-    pub fn delete_location_group(&self, group_id: &str) -> anyhow::Result<DeletedLocationGroup> {
+    pub fn delete_location_group(&self, group_id: &str, if_version: Option<i64>) -> anyhow::Result<DeletedLocationGroup> {
         self.prefetch(&self.all_tabs())?;
         let groups = self.groups()?;
         let deleted = match groups.iter().find(|g| g.id.as_deref() == Some(group_id)) {
             Some(found) => found.clone(),
-            None => find_group(&groups, group_id)?,
+            None => {
+                rows::expect_item_version::<LocationGroup>(group_id, None, if_version)?;
+                find_group(&groups, group_id)?
+            }
         };
+        rows::expect_item_version(group_id, Some(&deleted), if_version)?;
         if deleted.id.as_deref() != Some(group_id) {
             bail!(
                 "Delete a location group by its id: {} is {}",
@@ -381,6 +404,7 @@ pub fn listed(location: &Location, groups: &[LocationGroup]) -> ListedLocation {
         map_location: location.map_location.clone(),
         group_id: location.group_id.clone(),
         path: path(groups, location.name.as_deref(), location.group_id.as_deref(), None),
+        version: location.version,
     }
 }
 
@@ -391,6 +415,7 @@ pub fn listed_group(group: &LocationGroup, groups: &[LocationGroup]) -> ListedLo
         name: group.name.clone(),
         note: group.note.clone(),
         path: path(groups, group.name.as_deref(), group.group_id.as_deref(), group.id.as_deref()),
+        version: group.version,
     }
 }
 

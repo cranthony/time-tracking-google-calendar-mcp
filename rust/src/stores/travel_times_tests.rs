@@ -98,8 +98,8 @@ fn keeps_travel_times_between_locations_and_groups() {
     let updated = update(json!({"id": id, "one_way": true}), &[]).unwrap();
     assert_eq!((updated.one_way, updated.note.as_deref()), (Some(true), Some("the F")));
     assert!(update(json!({"id": id}), &["note".to_string()]).unwrap().note.is_none());
-    assert_eq!(p.f.held(|l| l.delete_travel_time(&id)).unwrap().id, Some(id.clone()));
-    refused(p.f.held(|l| l.delete_travel_time(&id)), "no travel time with the id");
+    assert_eq!(p.f.held(|l| l.delete_travel_time(&id, None)).unwrap().id, Some(id.clone()));
+    refused(p.f.held(|l| l.delete_travel_time(&id, None)), "no travel time with the id");
 }
 
 #[test]
@@ -179,8 +179,8 @@ fn deleting_a_place_deletes_its_travel_times() {
     p.f.travel(json!({"from_id": p.cafe, "to_id": p.manhattan})).unwrap();
     p.f.travel(json!({"from_id": p.cafe, "to_id": p.brooklyn})).unwrap();
 
-    p.f.held(|l| l.delete_location(&p.home)).unwrap();
-    p.f.held(|l| l.delete_location_group(&p.manhattan)).unwrap();
+    p.f.held(|l| l.delete_location(&p.home, None)).unwrap();
+    p.f.held(|l| l.delete_location_group(&p.manhattan, None)).unwrap();
 
     let left = p.f.locations.get_travel_times(None).unwrap();
     assert_eq!(left.iter().map(|t| t.to_id.clone().unwrap()).collect::<Vec<_>>(), [p.brooklyn.clone()]);

@@ -1010,7 +1010,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -1101,7 +1102,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -1200,7 +1202,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -1291,7 +1294,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1384,7 +1388,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -2202,7 +2207,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      },
@@ -2228,7 +2234,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -2255,7 +2262,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      },
@@ -2285,7 +2293,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      },
@@ -2327,7 +2336,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }

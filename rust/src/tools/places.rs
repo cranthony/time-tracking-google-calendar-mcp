@@ -43,17 +43,20 @@ pub fn create_location(app: &App, location: Location) -> Result<CreatedLocation,
 
 /// Rename a location or change its hint, map_location or group_id, by
 /// id. Omitted properties keep their value; list hint, map_location or
-/// group_id in clear_fields to blank it. Returns it as updated.
+/// group_id in clear_fields to blank it. Given version -- the version
+/// last seen -- it's refused if it's changed since. Returns it as
+/// updated.
 #[tool(writes)]
 pub fn update_location(app: &App, location: Location, clear_fields: Option<Vec<ClearableField>>) -> Result<Location, ToolError> {
     let clear = texts(&clear_fields.unwrap_or_default());
     app.locations()?.update_location(&location, &clear).map_err(refused)
 }
 
-/// Delete a location, by id. Returns it as it was.
+/// Delete a location, by id. Given if_version -- the version last seen -- it's refused if it's changed since. Returns it as
+/// it was.
 #[tool(writes)]
-pub fn delete_location(app: &App, location_id: String) -> Result<Location, ToolError> {
-    app.locations()?.delete_location(&location_id).map_err(refused)
+pub fn delete_location(app: &App, location_id: String, if_version: Option<i64>) -> Result<Location, ToolError> {
+    app.locations()?.delete_location(&location_id, if_version).map_err(refused)
 }
 
 /// Every location group: a name that gathers locations ("Brooklyn", "New
@@ -88,7 +91,8 @@ pub fn create_location_group(app: &App, group: LocationGroup) -> Result<CreatedL
 /// group; clear it to make it top-level), name (still unique among
 /// groups) or note. Omitted properties keep their value; list group_id or
 /// note in clear_fields to blank it. A group can't end up inside itself.
-/// Returns it as updated.
+/// Given version -- the version last seen -- it's refused if it's changed
+/// since. Returns it as updated.
 #[tool(writes)]
 pub fn update_location_group(
     app: &App,
@@ -102,10 +106,12 @@ pub fn update_location_group(
 /// Delete a location group, by id. Its locations and the groups inside it
 /// aren't deleted: they move up into the group it was inside (or to the
 /// top level, if it was top-level). Returns the group as it was
-/// (deleted), and the groups and locations moved up out of it.
+/// (deleted), and the groups and locations moved up out of it. Given
+/// if_version -- the version last seen -- it's refused if it's changed
+/// since.
 #[tool(writes)]
-pub fn delete_location_group(app: &App, group_id: String) -> Result<DeletedLocationGroup, ToolError> {
-    app.locations()?.delete_location_group(&group_id).map_err(refused)
+pub fn delete_location_group(app: &App, group_id: String, if_version: Option<i64>) -> Result<DeletedLocationGroup, ToolError> {
+    app.locations()?.delete_location_group(&group_id, if_version).map_err(refused)
 }
 
 /// Every action's and action group's id: what a travel time's mode_id can
@@ -177,11 +183,12 @@ pub fn update_travel_time(
     app.locations()?.update_travel_time(&travel_time, &clear, &modes).map_err(refused)
 }
 
-/// Delete a travel time, by id. Returns it as it was. (Deleting a location
-/// or location group deletes the travel times from or to it.)
+/// Delete a travel time, by id. Given if_version -- the version last seen
+/// -- it's refused if it's changed since. Returns it as it was. (Deleting a
+/// location or location group deletes the travel times from or to it.)
 #[tool(writes)]
-pub fn delete_travel_time(app: &App, travel_time_id: String) -> Result<TravelTime, ToolError> {
-    app.locations()?.delete_travel_time(&travel_time_id).map_err(refused)
+pub fn delete_travel_time(app: &App, travel_time_id: String, if_version: Option<i64>) -> Result<TravelTime, ToolError> {
+    app.locations()?.delete_travel_time(&travel_time_id, if_version).map_err(refused)
 }
 
 /// How long it takes to get from from_id to to_id (each a location or a

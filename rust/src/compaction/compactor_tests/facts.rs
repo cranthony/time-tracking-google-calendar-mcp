@@ -23,6 +23,7 @@ fn a_typical_round_of_compaction_makes_no_more_read_requests_than_this() {
             Ok(outcome) => outcome,
             Err(crate::tools::ToolError::Message(message)) => panic!("{name}: {message}"),
             Err(crate::tools::ToolError::Unexpected(error)) => panic!("{name}: {error:#}"),
+            Err(_) => panic!("{name}: refused"),
         };
         let after = t.fake.requests().iter().filter(|r| r.path.ends_with("values:batchGetByDataFilter")).count();
         (outcome.0, after - before)

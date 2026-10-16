@@ -159,7 +159,12 @@ fn gets_an_id_from_its_name_and_is_active() {
     let created = f.held(|t| t.create_trait(&given(json!({"name": "Playful Spirit", "parts": [judgment()]})))).unwrap();
 
     assert_eq!((created["id"].clone(), created["status"].clone()), (json!("playful-spirit"), json!("active")));
-    assert_eq!(json_of(&f.traits.all().unwrap()).last(), Some(&created));
+    // Kept at version 1: a tool gives that (see rows::Written), the store
+    // what it was given.
+    let mut kept = json_of(&f.traits.all().unwrap()).last().cloned().unwrap();
+    assert_eq!(kept["version"], json!(1));
+    kept["version"] = Value::Null;
+    assert_eq!(kept, created);
 }
 
 #[test]
@@ -198,7 +203,10 @@ fn renames_and_rewords_keeping_its_id_and_parts() {
 
     assert_eq!((updated["id"].clone(), updated["name"].clone(), updated["definition"].clone()), (json!("generous"), json!("Giving"), json!("Give.")));
     assert_eq!(updated["parts"], json!(settled(seed_traits().remove(4)).parts));
-    assert_eq!(f.by_id("generous"), updated);
+    let mut kept = f.by_id("generous");
+    assert_eq!(kept["version"], json!(1));
+    kept["version"] = updated["version"].clone();
+    assert_eq!(kept, updated);
 }
 
 #[test]

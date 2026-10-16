@@ -311,12 +311,13 @@ pub fn update_circle(app: &App, circle: Circle, clear_fields: Option<Vec<CircleF
 }
 
 /// Delete a circle, by id. Its people aren't deleted: they just leave
-/// it. Returns the circle as it was, and the ids of the people who
-/// left.
+/// it. Given if_version -- the version last seen -- it's refused if it's
+/// changed since. Returns the circle as it was, and the ids of the people
+/// who left.
 #[tool(writes)]
-pub fn delete_circle(app: &App, circle_id: String) -> Result<DeletedCircle, ToolError> {
+pub fn delete_circle(app: &App, circle_id: String, if_version: Option<i64>) -> Result<DeletedCircle, ToolError> {
     prefetch_stores(app)?;
-    app.people()?.delete_circle(&circle_id).map_err(refused)
+    app.people()?.delete_circle(&circle_id, if_version).map_err(refused)
 }
 
 /// The user's habits: by default the active ones, not archived (set

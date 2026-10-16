@@ -70,6 +70,9 @@ pub struct Trait {
     /// How its parts' scores combine into its own: an aggregation (see
     /// get_traits), its weights by part id. Without it, the plain mean.
     pub scoring: Option<Map<String, Value>>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 impl Trait {
@@ -90,6 +93,7 @@ pub struct ListedTrait {
     pub parts: Option<Vec<Map<String, Value>>>,
     pub scoring: Option<Map<String, Value>>,
     pub problems: Option<Vec<String>>,
+    pub version: Option<i64>,
 }
 
 pub const TRAIT_ROW: RowType = <Trait as rows::RowItem>::ROW_TYPE;
@@ -112,6 +116,7 @@ pub fn seed_traits() -> Vec<Trait> {
         definition: Some(definition.into()),
         parts: Some(parts.as_array().unwrap().iter().map(|p| p.as_object().unwrap().clone()).collect()),
         scoring: None,
+        version: None,
     };
     vec![
         t(
@@ -809,6 +814,7 @@ impl Traits {
                     parts: t.parts,
                     scoring: t.scoring,
                     problems: if problems.is_empty() { None } else { Some(problems) },
+                    version: t.version,
                 }
             })
             .collect())
@@ -826,15 +832,23 @@ impl Traits {
             bail!("{}", said(&new, &problems));
         }
         let taken: Vec<Option<&str>> = traits.iter().map(|t| t.id.as_deref()).collect();
-        let base = slug(new.name.as_deref().unwrap_or_default());
-        let mut id = base.clone();
-        let mut n = 2;
-        while taken.contains(&Some(id.as_str())) {
-            let keep = MAX_ID_LENGTH.saturating_sub(n.to_string().len() + 1);
-            id = format!("{}-{n}", base.chars().take(keep).collect::<String>());
-            n += 1;
-        }
+        let id = match given.id.as_deref().map(str::trim).filter(|i| !i.is_empty()) {
+            // The client's own, if it may choose it.
+            Some(chosen) if rows::client_ids_allowed() => rows::chosen_id(Some(chosen), taken.clone())?,
+            _ => {
+                let base = slug(new.name.as_deref().unwrap_or_default());
+                let mut id = base.clone();
+                let mut n = 2;
+                while taken.contains(&Some(id.as_str())) {
+                    let keep = MAX_ID_LENGTH.saturating_sub(n.to_string().len() + 1);
+                    id = format!("{}-{n}", base.chars().take(keep).collect::<String>());
+                    n += 1;
+                }
+                id
+            }
+        };
         new.id = Some(id);
+        new.version = None;
         check_unique_name(&new, &traits)?;
         let mut all = traits;
         all.push(new.clone());
@@ -849,6 +863,7 @@ impl Traits {
         rows::check_clear_item(given, clear_fields, &CLEARABLE_TRAIT_FIELDS)?;
         let mut traits = self.all()?;
         let Some(index) = traits.iter().position(|t| t.id.as_deref() == Some(id.as_str())) else {
+            rows::expect_item_version::<Trait>(&id, None, given.version)?;
             let known: Vec<String> =
                 traits.iter().map(|t| format!("{} ({})", str_or_none(t.id.as_deref()), str_or_none(t.name.as_deref()))).collect();
             bail!("{} isn't a trait; the traits are {}", py::repr(&id), known.join(", "));

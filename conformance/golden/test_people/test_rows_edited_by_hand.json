@@ -13,11 +13,12 @@
      "hint": null,
      "id": "co2yzn",
      "map_location": null,
-     "name": "Home"
+     "name": "Home",
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"location\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Home\",\n    \"hint\": null,\n    \"map_location\": null,\n    \"group_id\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_location"
   },
   {
@@ -29,11 +30,12 @@
      "id": "co2yzn",
      "map_location": null,
      "name": "Cabin",
-     "path": "Cabin"
+     "path": "Cabin",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Cabin\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Cabin\"\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Cabin\",\n  \"hint\": null,\n  \"map_location\": null,\n  \"group_id\": null,\n  \"path\": \"Cabin\",\n  \"version\": 1\n}",
    "tool": "get_locations"
   }
  ],
@@ -134,7 +136,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -225,7 +228,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -318,7 +322,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -399,7 +404,8 @@
         "Home",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -506,7 +512,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -533,11 +540,16 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ],
        [
         "co2yzn",
-        "Cabin"
+        "Cabin",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -579,7 +591,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }

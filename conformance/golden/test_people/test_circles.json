@@ -13,12 +13,13 @@
      "member_ids": [],
      "name": "Close friends",
      "note": "the inner ring",
-     "scoring": null
+     "scoring": null,
+     "version": 1
     },
     "created_id": "co2yzn"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": \"the inner ring\",\n    \"scoring\": null,\n    \"member_ids\": []\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": \"the inner ring\",\n    \"scoring\": null,\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_circle"
   },
   {
@@ -33,12 +34,13 @@
      "member_ids": [],
      "name": "Family",
      "note": null,
-     "scoring": null
+     "scoring": null,
+     "version": 1
     },
     "created_id": "3dnjav"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"member_ids\": []\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_circle"
   },
   {
@@ -80,11 +82,12 @@
      "name": "Sam Example",
      "status": "active",
      "traits": null,
+     "version": 1,
      "what_matters": null
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"co2yzn\",\n      \"3dnjav\"\n    ],\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Close friends\",\n      \"Family\"\n    ],\n    \"cancelled_events\": null\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"co2yzn\",\n      \"3dnjav\"\n    ],\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Close friends\",\n      \"Family\"\n    ],\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_person"
   },
   {
@@ -111,7 +114,8 @@
      ],
      "name": "Close friends",
      "note": "the inner ring",
-     "scoring": null
+     "scoring": null,
+     "version": 1
     },
     {
      "id": "3dnjav",
@@ -120,11 +124,12 @@
      ],
      "name": "Family",
      "note": null,
-     "scoring": null
+     "scoring": null,
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": \"the inner ring\",\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ]\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ]\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": \"the inner ring\",\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
    "tool": "get_circles"
   },
   {
@@ -147,10 +152,11 @@
     "name": "Sam Example",
     "status": "active",
     "traits": null,
+    "version": 1,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"co2yzn\",\n    \"3dnjav\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Close friends\",\n    \"Family\"\n  ],\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"co2yzn\",\n    \"3dnjav\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Close friends\",\n    \"Family\"\n  ],\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
@@ -164,10 +170,11 @@
     ],
     "name": "Family",
     "note": null,
-    "scoring": null
+    "scoring": null,
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ]\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
    "tool": "get_circle"
   },
   {
@@ -194,10 +201,11 @@
     ],
     "name": "Relatives",
     "note": null,
-    "scoring": null
+    "scoring": null,
+    "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Relatives\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ]\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Relatives\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 2\n}",
    "tool": "update_circle"
   },
   {
@@ -216,10 +224,11 @@
     ],
     "name": "Close friends",
     "note": null,
-    "scoring": null
+    "scoring": null,
+    "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ]\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 2\n}",
    "tool": "update_circle"
   },
   {
@@ -231,14 +240,15 @@
      "id": "co2yzn",
      "name": "Close friends",
      "note": null,
-     "scoring": null
+     "scoring": null,
+     "version": 2
     },
     "left": [
      "rs21so"
     ]
    },
    "is_error": false,
-   "text": "{\n  \"deleted\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": null,\n    \"scoring\": null\n  },\n  \"left\": [\n    \"rs21so\"\n  ]\n}",
+   "text": "{\n  \"deleted\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": null,\n    \"scoring\": null,\n    \"version\": 2\n  },\n  \"left\": [\n    \"rs21so\"\n  ]\n}",
    "tool": "delete_circle"
   },
   {
@@ -259,10 +269,11 @@
     "name": "Sam Example",
     "status": "active",
     "traits": null,
+    "version": 2,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"3dnjav\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Relatives\"\n  ],\n  \"cancelled_events\": []\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"3dnjav\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Relatives\"\n  ],\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
    "tool": "get_person"
   },
   {
@@ -571,7 +582,8 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -662,7 +674,8 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -761,7 +774,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      }
@@ -852,7 +866,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -945,7 +960,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1057,7 +1073,8 @@
         "co2yzn",
         "Close friends",
         "the inner ring",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1147,13 +1164,15 @@
         "co2yzn",
         "Close friends",
         "the inner ring",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "Family",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1306,7 +1325,8 @@
         "[\"co2yzn\",\"3dnjav\"]",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1502,7 +1522,8 @@
         "status",
         "definition",
         "parts",
-        "scoring"
+        "scoring",
+        "version"
        ]
       ]
      }
@@ -1535,6 +1556,7 @@
         "active",
         "Remember what matters to them, and prepare for it.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        "",
         ""
        ],
        [
@@ -1543,6 +1565,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         ""
        ],
        [
@@ -1551,6 +1574,7 @@
         "active",
         "Make something together with them (making something alone is taking care of myself).",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        "",
         ""
        ],
        [
@@ -1559,6 +1583,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         ""
        ],
        [
@@ -1567,6 +1592,7 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         ""
        ]
       ]
@@ -1668,7 +1694,8 @@
         "status",
         "note",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      }
@@ -2086,13 +2113,15 @@
         "co2yzn",
         "Close friends",
         "the inner ring",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "Relatives",
         "",
-        ""
+        "",
+        "2"
        ]
       ]
      }
@@ -2182,13 +2211,15 @@
         "co2yzn",
         "Close friends",
         "",
-        ""
+        "",
+        "2"
        ],
        [
         "3dnjav",
         "Relatives",
         "",
-        ""
+        "",
+        "2"
        ]
       ]
      }
@@ -2282,7 +2313,8 @@
         "[\"3dnjav\"]",
         "",
         "",
-        ""
+        "",
+        "2"
        ]
       ]
      },
@@ -2302,9 +2334,11 @@
         "3dnjav",
         "Relatives",
         "",
-        ""
+        "",
+        "2"
        ],
        [
+        "",
         "",
         "",
         "",
@@ -2678,11 +2712,15 @@
         "id",
         "name",
         "note",
-        "scoring"
+        "scoring",
+        "version"
        ],
        [
         "3dnjav",
-        "Relatives"
+        "Relatives",
+        "",
+        "",
+        "2"
        ]
       ]
      },
@@ -2711,7 +2749,8 @@
         "status",
         "note",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ]
       ]
      },
@@ -2737,7 +2776,8 @@
         "id",
         "group_id",
         "name",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -2764,7 +2804,8 @@
         "name",
         "hint",
         "map_location",
-        "group_id"
+        "group_id",
+        "version"
        ]
       ]
      },
@@ -2794,14 +2835,19 @@
         "circles",
         "what_matters",
         "traits",
-        "foundations"
+        "foundations",
+        "version"
        ],
        [
         "rs21so",
         "Sam Example",
         "",
         "active",
-        "[\"3dnjav\"]"
+        "[\"3dnjav\"]",
+        "",
+        "",
+        "",
+        "2"
        ]
       ]
      },
@@ -2843,7 +2889,8 @@
         "status",
         "definition",
         "parts",
-        "scoring"
+        "scoring",
+        "version"
        ],
        [
         "thoughtful",
@@ -2906,7 +2953,8 @@
         "to_id",
         "one_way",
         "times",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }

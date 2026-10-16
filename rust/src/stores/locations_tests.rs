@@ -101,10 +101,10 @@ fn deletes_by_id() {
     let home = f.create(json!({"name": "Home"}));
     let studio = f.create(json!({"name": "Studio"}));
 
-    assert_eq!(f.held(|l| l.delete_location(&home)).unwrap().name.as_deref(), Some("Home"));
+    assert_eq!(f.held(|l| l.delete_location(&home, None)).unwrap().name.as_deref(), Some("Home"));
     let ids: Vec<Option<String>> = f.locations.all().unwrap().into_iter().map(|l| l.id).collect();
     assert_eq!(ids, vec![Some(studio.clone())]);
-    refused(f.held(|l| l.delete_location("studio")), &format!("by its id: 'Studio' is {studio}"));
+    refused(f.held(|l| l.delete_location("studio", None)), &format!("by its id: 'Studio' is {studio}"));
 }
 
 #[test]
@@ -178,12 +178,12 @@ fn deleting_a_group_moves_what_was_in_it_up() {
     let home = f.create(json!({"name": "Home", "group_id": borough}));
     f.create(json!({"name": "Cafe", "group_id": slope}));
 
-    let deleted = f.held(|l| l.delete_location_group(&borough)).unwrap();
+    let deleted = f.held(|l| l.delete_location_group(&borough, None)).unwrap();
 
     assert_eq!(deleted.deleted.name.as_deref(), Some("Brooklyn"));
     assert_eq!(deleted.moved_groups.iter().map(|g| g.path.as_str()).collect::<Vec<_>>(), ["New York › Park Slope"]);
     assert_eq!(deleted.moved_locations.iter().map(|l| l.path.as_str()).collect::<Vec<_>>(), ["New York › Home"]);
     assert_eq!(f.locations.get_location(&home).unwrap().group_id.as_deref(), Some(city.as_str()));
-    refused(f.held(|l| l.delete_location_group("Park Slope")), "Delete a location group by its id");
-    refused(f.held(|l| l.delete_location_group("Brooklyn")), "no location group with the id or name 'Brooklyn'");
+    refused(f.held(|l| l.delete_location_group("Park Slope", None)), "Delete a location group by its id");
+    refused(f.held(|l| l.delete_location_group("Brooklyn", None)), "no location group with the id or name 'Brooklyn'");
 }
