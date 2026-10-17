@@ -53,7 +53,7 @@ fn a_public_event_shows_just_its_public_fields() {
         fields,
         vec![
             "id", "summary", "start", "end", "description", "location", "priority", "action_ids", "action_names", "actions_from_label",
-            "event_label_id", "is_cancelled", "effective_priority", "is_end_of_day_sleep", "recurring_event_id", "facts", "judgments", "etag",
+            "goals", "event_label_id", "is_cancelled", "effective_priority", "is_end_of_day_sleep", "recurring_event_id", "facts", "judgments", "etag",
         ]
     );
 }
@@ -508,4 +508,63 @@ fn notes_are_listed_uncompacted_sorted_by_timestamp_or_with_the_compacted_ones()
     assert_eq!(ids(json!({})), vec![nine, half]);
     assert_eq!(ids(json!({"include_compacted": true})).len(), 3);
     assert_eq!(server.ok("get_notes", json!({}))[0]["description"], "Started work");
+}
+
+// -- goals -----------------------------------------------------------------------------
+
+fn with_goal(server: &Server, id: &str) {
+    server.ok("create_goal", json!({"goal": {"id": id, "title": format!("Goal {id}"), "deadline": "2026-12-01"}}));
+}
+
+#[test]
+fn an_events_goals_are_written_and_read_back() {
+    let server = two();
+    with_goal(&server, "goal01");
+    with_goal(&server, "goal02");
+
+    let shares = json!([{"goal_id": "goal01", "minutes": 20}, {"goal_id": "goal02", "percent": 50}]);
+    server.ok("update_event", json!({"updates": [{"event": {"id": "abc123", "goals": shares}}]}));
+
+    let stored = server.event("abc123").goals.unwrap();
+    assert_eq!(crate::stores::goals::shares_text(&stored), "goal01=20m goal02=50%");
+    let got = server.ok("get_event", json!({"id": "abc123"}));
+    assert_eq!(got["goals"], json!([{"goal_id": "goal01", "minutes": 20, "percent": null}, {"goal_id": "goal02", "minutes": null, "percent": 50}]));
+
+    server.ok("update_event", json!({"updates": [{"event": {"id": "abc123", "goals": []}}]}));
+    assert_eq!(server.ok("get_event", json!({"id": "abc123"}))["goals"], Value::Null);
+}
+
+#[test]
+fn an_events_goals_must_be_goals_and_fit_in_it() {
+    let server = two();
+    with_goal(&server, "goal01");
+
+    server.refused("update_event", json!({"updates": [{"event": {"id": "abc123", "goals": [{"goal_id": "nosuch"}]}}]}), r"Its goals name \['nosuch'\], which aren't goals");
+    server.refused(
+        "update_event",
+        json!({"updates": [{"event": {"id": "abc123", "goals": [{"goal_id": "goal01", "minutes": 61}]}}]}),
+        "its goals' minutes add up to 61, more than the event's 60",
+    );
+    server.refused(
+        "create_event",
+        json!({"events": [{"summary": "Late", "start": when(at(12, 0)), "end": when(at(12, 30)), "goals": [{"goal_id": "goal01", "percent": 101}]}]}),
+        "percent must be 1 to 100",
+    );
+}
+
+#[test]
+fn an_events_goals_are_cut_to_fit_it_once_shortened_and_deleted_goals_left_out() {
+    let server = two();
+    with_goal(&server, "goal01");
+    with_goal(&server, "goal02");
+    server.ok("update_event", json!({"updates": [{"event": {"id": "abc123", "goals": [{"goal_id": "goal01", "minutes": 50}, {"goal_id": "goal02"}]}}]}));
+
+    // Shortened to half an hour, without touching its goals: not refused.
+    server.ok("update_event", json!({"updates": [{"event": {"id": "abc123", "end": when(at(9, 30))}}]}));
+    server.ok("update_goals", json!({"deletes": [{"goal_id": "goal02"}]}));
+
+    let got = server.ok("get_event", json!({"id": "abc123"}));
+    assert_eq!(got["goals"], json!([{"goal_id": "goal01", "minutes": 30, "percent": null}]));
+    // Kept as written until the event's goals are next set.
+    assert_eq!(server.event("abc123").goals.unwrap().len(), 2);
 }

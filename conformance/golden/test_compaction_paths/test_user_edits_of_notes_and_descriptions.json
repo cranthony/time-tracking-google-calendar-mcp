@@ -7603,6 +7603,7 @@
     "etag": "\"0000000000000077\"",
     "event_label_id": null,
     "facts": null,
+    "goals": null,
     "id": "3bc8a594c0be6dfabc4993e74e",
     "is_cancelled": false,
     "is_end_of_day_sleep": null,
@@ -7614,7 +7615,7 @@
     "summary": "Work"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3bc8a594c0be6dfabc4993e74e\",\n  \"summary\": \"Work\",\n  \"start\": \"2026-10-05T08:00:00-04:00\",\n  \"end\": \"2026-10-05T12:00:00-04:00\",\n  \"description\": \"Morning block.\\n\\nNotes:\\n- 09:00 call with the team\\n- 10:30 focus time\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000077\\\"\"\n}",
+   "text": "{\n  \"id\": \"3bc8a594c0be6dfabc4993e74e\",\n  \"summary\": \"Work\",\n  \"start\": \"2026-10-05T08:00:00-04:00\",\n  \"end\": \"2026-10-05T12:00:00-04:00\",\n  \"description\": \"Morning block.\\n\\nNotes:\\n- 09:00 call with the team\\n- 10:30 focus time\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000077\\\"\"\n}",
    "tool": "get_event"
   }
  ],

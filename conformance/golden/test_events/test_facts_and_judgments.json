@@ -95,6 +95,7 @@
         "co2yzn"
        ]
       },
+      "goals": null,
       "id": "35d98bd5ab3bf549dd770d737d",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
@@ -109,7 +110,7 @@
     "timeline": "09:00 ┌ Walk · new\n10:00 └ Walk ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -204,6 +205,7 @@
        "notes": null,
        "with_ids": null
       },
+      "goals": null,
       "id": "9c3c1046e8cb7fa96f6b8bd88d",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
@@ -218,7 +220,7 @@
     "timeline": "10:00 ┌ Drive · new\n10:30 └ Drive ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Drive\",\n      \"start\": \"2026-10-07T10:00:00-04:00\",\n      \"end\": \"2026-10-07T10:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": null,\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": true\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"10:00 ┌ Drive · new\\n10:30 └ Drive ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Drive\",\n      \"start\": \"2026-10-07T10:00:00-04:00\",\n      \"end\": \"2026-10-07T10:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": null,\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": true\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"10:00 ┌ Drive · new\\n10:30 └ Drive ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -268,6 +270,7 @@
         "co2yzn"
        ]
       },
+      "goals": null,
       "id": "35d98bd5ab3bf549dd770d737d",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
@@ -292,7 +295,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      },\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      },\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -322,6 +325,7 @@
       "etag": "\"0000000000000037\"",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
+      "goals": null,
       "id": "35d98bd5ab3bf549dd770d737d",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
@@ -336,7 +340,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000037\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000037\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   }
  ],

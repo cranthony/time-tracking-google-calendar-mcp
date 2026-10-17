@@ -6,6 +6,7 @@
 mod actions;
 mod compaction;
 mod events;
+mod goals;
 mod health;
 mod people;
 mod places;
@@ -132,6 +133,10 @@ pub fn registry() -> &'static [crate::contract::ToolDef] {
             people::get_habit_tool(),
             people::create_habit_tool(),
             people::update_habit_tool(),
+            goals::get_goals_tool(),
+            goals::get_goal_tool(),
+            goals::create_goal_tool(),
+            goals::update_goals_tool(),
             people::get_scoring_defaults_tool(),
             people::set_scoring_defaults_tool(),
             compaction::get_compaction_status_tool(),

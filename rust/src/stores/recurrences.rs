@@ -554,7 +554,7 @@ pub struct Recurrences {
     calendar: ActionCalendar,
 }
 
-const EDITABLE: [&str; 8] = ["summary", "start", "end", "description", "location", "priority", "action_ids", "facts"];
+const EDITABLE: [&str; 9] = ["summary", "start", "end", "description", "location", "priority", "action_ids", "goals", "facts"];
 
 impl Recurrences {
     pub fn new(calendar: ActionCalendar) -> Recurrences {
@@ -611,6 +611,7 @@ impl Recurrences {
                 "location" => patch.location = changes.location.clone(),
                 "priority" => patch.priority = changes.priority,
                 "action_ids" => patch.action_ids = changes.action_ids.clone(),
+                "goals" => patch.goals = changes.goals.clone(),
                 _ => patch.facts = changes.facts.clone(),
             }
         }

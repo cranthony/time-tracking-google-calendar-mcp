@@ -21,6 +21,7 @@
      "end": "2026-10-05T09:30:00-04:00",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775",
      "location": null,
      "priority": null,
@@ -44,7 +45,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"day\",\n    \"interval\": 2,\n    \"weekdays\": null,\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": null,\n    \"until\": \"2026-10-20T23:59:59-04:00\",\n    \"week_starts_on\": null,\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every 2 days, until Oct 20, 2026\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"day\",\n    \"interval\": 2,\n    \"weekdays\": null,\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": null,\n    \"until\": \"2026-10-20T23:59:59-04:00\",\n    \"week_starts_on\": null,\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every 2 days, until Oct 20, 2026\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "update_recurrence"
   },
   {
@@ -63,6 +64,7 @@
      "etag": "\"0000000000000021\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -83,6 +85,7 @@
      "etag": "\"0000000000000021\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -103,6 +106,7 @@
      "etag": "\"0000000000000021\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261009T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -123,6 +127,7 @@
      "etag": "\"0000000000000021\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261011T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -143,6 +148,7 @@
      "etag": "\"0000000000000021\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261013T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -163,6 +169,7 @@
      "etag": "\"0000000000000021\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261015T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -183,6 +190,7 @@
      "etag": "\"0000000000000021\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261017T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -203,6 +211,7 @@
      "etag": "\"0000000000000021\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261019T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -215,7 +224,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261007T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261011T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261015T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-15T09:00:00-04:00\",\n  \"end\": \"2026-10-15T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261017T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-17T09:00:00-04:00\",\n  \"end\": \"2026-10-17T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261019T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-19T09:00:00-04:00\",\n  \"end\": \"2026-10-19T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261007T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261011T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261015T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-15T09:00:00-04:00\",\n  \"end\": \"2026-10-15T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261017T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-17T09:00:00-04:00\",\n  \"end\": \"2026-10-17T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261019T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-19T09:00:00-04:00\",\n  \"end\": \"2026-10-19T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000021\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -242,6 +251,7 @@
      "end": "2026-10-05T09:30:00-04:00",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775",
      "location": null,
      "priority": null,
@@ -267,7 +277,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"week\",\n    \"interval\": 1,\n    \"weekdays\": [\n      \"tue\"\n    ],\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": null,\n    \"until\": \"2026-11-15T23:59:00-05:00\",\n    \"week_starts_on\": \"sun\",\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every week on Tue, until Nov 15, 2026\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"week\",\n    \"interval\": 1,\n    \"weekdays\": [\n      \"tue\"\n    ],\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": null,\n    \"until\": \"2026-11-15T23:59:00-05:00\",\n    \"week_starts_on\": \"sun\",\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every week on Tue, until Nov 15, 2026\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "update_recurrence"
   },
   {
@@ -286,6 +296,7 @@
      "etag": "\"0000000000000022\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -306,6 +317,7 @@
      "etag": "\"0000000000000022\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261013T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -326,6 +338,7 @@
      "etag": "\"0000000000000022\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261020T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -346,6 +359,7 @@
      "etag": "\"0000000000000022\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261027T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -366,6 +380,7 @@
      "etag": "\"0000000000000022\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261103T140000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -386,6 +401,7 @@
      "etag": "\"0000000000000022\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261110T140000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -398,7 +414,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261006T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261020T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-20T09:00:00-04:00\",\n  \"end\": \"2026-10-20T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261027T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-27T09:00:00-04:00\",\n  \"end\": \"2026-10-27T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261103T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-03T09:00:00-05:00\",\n  \"end\": \"2026-11-03T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261110T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-10T09:00:00-05:00\",\n  \"end\": \"2026-11-10T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261006T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261020T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-20T09:00:00-04:00\",\n  \"end\": \"2026-10-20T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261027T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-27T09:00:00-04:00\",\n  \"end\": \"2026-10-27T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261103T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-03T09:00:00-05:00\",\n  \"end\": \"2026-11-03T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261110T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-10T09:00:00-05:00\",\n  \"end\": \"2026-11-10T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000022\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -425,6 +441,7 @@
      "end": "2026-10-05T09:30:00-04:00",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775",
      "location": null,
      "priority": null,
@@ -451,7 +468,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"month\",\n    \"interval\": 1,\n    \"weekdays\": null,\n    \"nth_weekdays\": null,\n    \"month_days\": [\n      5,\n      20\n    ],\n    \"months\": null,\n    \"count\": 4,\n    \"until\": null,\n    \"week_starts_on\": null,\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every month on day 5, 20, 4 times\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"month\",\n    \"interval\": 1,\n    \"weekdays\": null,\n    \"nth_weekdays\": null,\n    \"month_days\": [\n      5,\n      20\n    ],\n    \"months\": null,\n    \"count\": 4,\n    \"until\": null,\n    \"week_starts_on\": null,\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every month on day 5, 20, 4 times\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "update_recurrence"
   },
   {
@@ -470,6 +487,7 @@
      "etag": "\"0000000000000023\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -490,6 +508,7 @@
      "etag": "\"0000000000000023\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261020T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -510,6 +529,7 @@
      "etag": "\"0000000000000023\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261105T140000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -530,6 +550,7 @@
      "etag": "\"0000000000000023\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261120T140000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -542,7 +563,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000023\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261020T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-20T09:00:00-04:00\",\n  \"end\": \"2026-10-20T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000023\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261105T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-05T09:00:00-05:00\",\n  \"end\": \"2026-11-05T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000023\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261120T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-20T09:00:00-05:00\",\n  \"end\": \"2026-11-20T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000023\\\"\"\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000023\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261020T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-20T09:00:00-04:00\",\n  \"end\": \"2026-10-20T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000023\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261105T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-05T09:00:00-05:00\",\n  \"end\": \"2026-11-05T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000023\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261120T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-20T09:00:00-05:00\",\n  \"end\": \"2026-11-20T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000023\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -571,6 +592,7 @@
      "end": "2026-10-05T09:30:00-04:00",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775",
      "location": null,
      "priority": null,
@@ -599,7 +621,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"month\",\n    \"interval\": 1,\n    \"weekdays\": null,\n    \"nth_weekdays\": [\n      {\n        \"nth\": -1,\n        \"weekday\": \"fri\"\n      }\n    ],\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": 3,\n    \"until\": null,\n    \"week_starts_on\": null,\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every month on the last Fri, 3 times\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"month\",\n    \"interval\": 1,\n    \"weekdays\": null,\n    \"nth_weekdays\": [\n      {\n        \"nth\": -1,\n        \"weekday\": \"fri\"\n      }\n    ],\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": 3,\n    \"until\": null,\n    \"week_starts_on\": null,\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every month on the last Fri, 3 times\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "update_recurrence"
   },
   {
@@ -618,6 +640,7 @@
      "etag": "\"0000000000000024\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261030T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -638,6 +661,7 @@
      "etag": "\"0000000000000024\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261127T140000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -658,6 +682,7 @@
      "etag": "\"0000000000000024\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261225T140000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -670,7 +695,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261030T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-30T09:00:00-04:00\",\n  \"end\": \"2026-10-30T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000024\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261127T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-27T09:00:00-05:00\",\n  \"end\": \"2026-11-27T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000024\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261225T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-12-25T09:00:00-05:00\",\n  \"end\": \"2026-12-25T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000024\\\"\"\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261030T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-30T09:00:00-04:00\",\n  \"end\": \"2026-10-30T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000024\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261127T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-11-27T09:00:00-05:00\",\n  \"end\": \"2026-11-27T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000024\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261225T140000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-12-25T09:00:00-05:00\",\n  \"end\": \"2026-12-25T09:30:00-05:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000024\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -699,6 +724,7 @@
      "end": "2026-10-05T09:30:00-04:00",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775",
      "location": null,
      "priority": null,
@@ -726,7 +752,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"year\",\n    \"interval\": 1,\n    \"weekdays\": null,\n    \"nth_weekdays\": null,\n    \"month_days\": [\n      5\n    ],\n    \"months\": [\n      10\n    ],\n    \"count\": 2,\n    \"until\": null,\n    \"week_starts_on\": null,\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every year on day 5 in Oct, 2 times\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"year\",\n    \"interval\": 1,\n    \"weekdays\": null,\n    \"nth_weekdays\": null,\n    \"month_days\": [\n      5\n    ],\n    \"months\": [\n      10\n    ],\n    \"count\": 2,\n    \"until\": null,\n    \"week_starts_on\": null,\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every year on day 5 in Oct, 2 times\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "update_recurrence"
   },
   {
@@ -745,6 +771,7 @@
      "etag": "\"0000000000000025\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -765,6 +792,7 @@
      "etag": "\"0000000000000025\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20271005T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -777,7 +805,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000025\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20271005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2027-10-05T09:00:00-04:00\",\n  \"end\": \"2027-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000025\\\"\"\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000025\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20271005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2027-10-05T09:00:00-04:00\",\n  \"end\": \"2027-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000025\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -806,6 +834,7 @@
      "end": "2026-10-05T09:30:00-04:00",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775",
      "location": null,
      "priority": null,
@@ -833,7 +862,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"day\",\n    \"interval\": 1,\n    \"weekdays\": null,\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": 5,\n    \"until\": null,\n    \"week_starts_on\": null,\n    \"skipped\": [\n      \"2026-10-07T09:00:00-04:00\"\n    ],\n    \"added\": [\n      \"2026-10-11T09:00:00-04:00\"\n    ]\n  },\n  \"schedule\": \"Every day, 5 times, with exceptions, plus 1 added date\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"day\",\n    \"interval\": 1,\n    \"weekdays\": null,\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": 5,\n    \"until\": null,\n    \"week_starts_on\": null,\n    \"skipped\": [\n      \"2026-10-07T09:00:00-04:00\"\n    ],\n    \"added\": [\n      \"2026-10-11T09:00:00-04:00\"\n    ]\n  },\n  \"schedule\": \"Every day, 5 times, with exceptions, plus 1 added date\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "update_recurrence"
   },
   {
@@ -852,6 +881,7 @@
      "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -872,6 +902,7 @@
      "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -892,6 +923,7 @@
      "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -912,6 +944,7 @@
      "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775_20261009T130000Z",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -924,7 +957,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261006T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261008T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-08T09:00:00-04:00\",\n  \"end\": \"2026-10-08T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261006T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261008T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-08T09:00:00-04:00\",\n  \"end\": \"2026-10-08T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}",
    "tool": "list_events"
   }
  ],

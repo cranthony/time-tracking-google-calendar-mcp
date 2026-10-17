@@ -327,6 +327,12 @@ impl EventChanges {
                 patch.end = patch.end.or(before.end);
             }
             let after = patched(&before, &patch);
+            if patch.goals.is_some() {
+                if let Some(problem) = goal_share_problem(&after, &format!("event {event_id} ({})", summary_repr(&before))) {
+                    problems.push(problem);
+                    continue;
+                }
+            }
             if let Some(guard) = guarded {
                 if before.start() < guard && !only_runs_on(&before, &after, &guard) {
                     problems.push(history_problem(&before, "changed", &guard));
@@ -394,6 +400,10 @@ impl EventChanges {
                     }
                     continue;
                 }
+            }
+            if let Some(problem) = goal_share_problem(&event, &format!("new event {} ({})", number + 1, summary_repr(&event))) {
+                problems.push(problem);
+                continue;
             }
             if let Some(guard) = guarded {
                 if start < guard {
@@ -563,6 +573,18 @@ pub fn timeline(batch: &Batch) -> Option<Timeline> {
     if shown.is_empty() { None } else { Some(build_timeline(Vec::new(), shown, None, true, None)) }
 }
 
+/// What's wrong with `event`'s goal shares, for its whole length, named
+/// as `name` -- or None.
+fn goal_share_problem(event: &Event, name: &str) -> Option<Problem> {
+    let shares = event.goals.as_deref().unwrap_or_default();
+    let (Some(start), Some(end)) = (event.start, event.end) else { return None };
+    let problems = crate::stores::goals::share_problems(shares, (end - start).num_minutes());
+    if problems.is_empty() {
+        return None;
+    }
+    Some(Problem::new("malformed_change", format!("{name}: {}", problems.join("; "))))
+}
+
 /// `before` with `patch`'s set fields, and those it clears removed.
 pub fn patched(before: &Event, patch: &Event) -> Event {
     let mut after = before.clone();
@@ -570,7 +592,7 @@ pub fn patched(before: &Event, patch: &Event) -> Event {
         ($($field:ident),*) => { $( if patch.$field.is_some() { after.$field = patch.$field.clone(); } )* };
     }
     take!(summary, start, end, description, location, status, recurring_event_id, recurrence, time_zone, original_start,
-          priority, is_end_of_day_sleep, event_label_id, action_ids, facts, judgments, action_priority);
+          priority, is_end_of_day_sleep, event_label_id, action_ids, goals, facts, judgments, action_priority);
     if patch.actions_from_label {
         after.actions_from_label = true;
     }

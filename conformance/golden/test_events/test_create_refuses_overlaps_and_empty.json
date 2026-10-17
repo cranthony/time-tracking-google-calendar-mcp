@@ -23,6 +23,7 @@
       "etag": "\"0000000000000033\"",
       "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
       "facts": null,
+      "goals": null,
       "id": "35d98bd5ab3bf549dd770d737d",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
@@ -37,7 +38,7 @@
     "timeline": "09:00 ┌ Meeting · new\n10:00 └ Meeting ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Meeting\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Meeting · new\\n10:00 └ Meeting ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Meeting\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Meeting · new\\n10:00 └ Meeting ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -85,9 +86,9 @@
      }
     ]
    },
-   "content": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Backwards' (15:00–14:00, as asked) would end no later than it starts: give it some time, or cancel it.\n\nThe calendar from Wed 07 Oct 15:00 to Thu 08 Oct 14:00, as this batch would leave it (* = in this batch):\n  15:00–14:00  Backwards *  new 1",
+   "content": "Error executing tool create_event: new event 1 ('Backwards'): its goals' minutes add up to 0, more than the event's -60",
    "is_error": true,
-   "text": "Error executing tool create_event: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Backwards' (15:00–14:00, as asked) would end no later than it starts: give it some time, or cancel it.\n\nThe calendar from Wed 07 Oct 15:00 to Thu 08 Oct 14:00, as this batch would leave it (* = in this batch):\n  15:00–14:00  Backwards *  new 1",
+   "text": "Error executing tool create_event: new event 1 ('Backwards'): its goals' minutes add up to 0, more than the event's -60",
    "tool": "create_event"
   },
   {
@@ -121,6 +122,7 @@
      "etag": "\"0000000000000033\"",
      "event_label_id": "d47efd31-3b45-5318-88a5-73959ba725fa",
      "facts": null,
+     "goals": null,
      "id": "35d98bd5ab3bf549dd770d737d",
      "is_cancelled": false,
      "is_end_of_day_sleep": null,
@@ -133,7 +135,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"summary\": \"Meeting\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}",
+   "text": "{\n  \"id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"summary\": \"Meeting\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}",
    "tool": "list_events"
   }
  ],
@@ -1819,29 +1821,6 @@
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-08T14:00:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-07T15:00:00-04:00"
-    ]
-   }
   },
   {
    "body": {

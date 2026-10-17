@@ -2,6 +2,7 @@
 //! it's read from and written to the API.
 
 use crate::facts::Facts;
+use crate::stores::goals::{parse_shares, shares_text, GoalShare};
 use crate::py;
 use anyhow::{anyhow, bail};
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
@@ -43,6 +44,9 @@ pub struct Event {
     pub is_end_of_day_sleep: Option<bool>,
     pub event_label_id: Option<String>,
     pub action_ids: Option<Vec<String>>,
+    /// The goals it's tagged with, and how much of it each takes ([] for
+    /// none, given to a patch, to remove them).
+    pub goals: Option<Vec<GoalShare>>,
     pub facts: Option<Facts>,
     pub judgments: Option<Map<String, Value>>,
     pub action_priority: Option<i64>,
@@ -124,6 +128,9 @@ impl Event {
         }
         if let Some(raw) = prop("action_ids") {
             event.action_ids = Some(raw.split_whitespace().map(str::to_string).collect());
+        }
+        if let Some(raw) = prop("goal_shares") {
+            event.goals = Some(parse_shares(raw));
         }
         if let Some(text) = read_chunks(private, "facts") {
             event.facts = Facts::from_json(&text);
@@ -208,6 +215,10 @@ impl Event {
         }
         if let Some(ids) = &self.action_ids {
             set(&mut private, format!("{PREFIX}action_ids"), Some(ids.join(" ")));
+        }
+        if let Some(shares) = &self.goals {
+            let text = if shares.is_empty() { None } else { Some(shares_text(shares)) };
+            set(&mut private, format!("{PREFIX}goal_shares"), text);
         }
         if let Some(facts) = &self.facts {
             let text = if facts.is_empty() { None } else { Some(facts.to_json()) };
