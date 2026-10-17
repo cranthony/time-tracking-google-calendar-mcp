@@ -122,3 +122,24 @@ pub fn update_goals(app: &App, updates: Option<Vec<GoalUpdate>>, creates: Option
         deletes.unwrap_or_default().into_iter().map(|d| GoalRemoval { goal_id: d.goal_id, if_version: d.if_version }).collect();
     app.goals()?.change_goals(&creates.unwrap_or_default(), &edits, &removals, &zone).map_err(refused)
 }
+
+/// Update one goal by id: the fields given are set, those left out kept,
+/// and those in clear_fields removed -- update_goals for one goal (see
+/// there for status and history). Given a version, it's refused if the
+/// goal's changed since. Returns the goal as updated.
+#[tool(writes)]
+pub fn update_goal(app: &App, goal: Goal, clear_fields: Option<Vec<GoalField>>) -> Result<ListedGoal, ToolError> {
+    let id = goal.id.clone().unwrap_or_default();
+    let changed = update_goals(app, Some(vec![GoalUpdate { goal, clear_fields }]), None, None)?;
+    changed.goals.into_iter().find(|g| g.id.as_deref() == Some(id.trim())).ok_or_else(|| ToolError::Message(format!("goal {id} wasn't updated")))
+}
+
+/// Delete one goal by id -- update_goals for one goal: refused while it
+/// has sub-goals (delete or move them first). Can't be undone; events
+/// tagged with it stop showing it. Given if_version -- the version last
+/// seen -- it's refused if it's changed since; gone already, it's done.
+/// Returns the ids deleted.
+#[tool(writes)]
+pub fn delete_goal(app: &App, goal_id: String, if_version: Option<i64>) -> Result<ChangedGoals, ToolError> {
+    update_goals(app, None, None, Some(vec![GoalDelete { goal_id, if_version }]))
+}
