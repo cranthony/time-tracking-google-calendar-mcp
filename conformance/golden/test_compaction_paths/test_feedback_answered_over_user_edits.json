@@ -4182,6 +4182,7 @@
     "etag": "\"0000000000000077\"",
     "event_label_id": null,
     "facts": null,
+    "goals": null,
     "id": "f43e48437258cfca35d17613c4",
     "is_cancelled": false,
     "is_end_of_day_sleep": null,
@@ -4193,7 +4194,7 @@
     "summary": "Family dinner"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"f43e48437258cfca35d17613c4\",\n  \"summary\": \"Family dinner\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:15:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000077\\\"\"\n}",
+   "text": "{\n  \"id\": \"f43e48437258cfca35d17613c4\",\n  \"summary\": \"Family dinner\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:15:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000077\\\"\"\n}",
    "tool": "get_event"
   }
  ],

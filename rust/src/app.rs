@@ -10,6 +10,7 @@ use crate::health::{HealthRecorder, HealthTab, HealthWriter};
 use crate::sheet::ensure_spreadsheet;
 use crate::stores::actions::Actions;
 use crate::stores::cancellations::Cancellations;
+use crate::stores::goals::Goals;
 use crate::stores::habits::{action_scopes, Habits};
 use crate::stores::locations::Locations;
 use crate::stores::people::People;
@@ -69,6 +70,7 @@ pub struct App {
     people: OnceLock<People>,
     traits: OnceLock<Traits>,
     habits: OnceLock<Habits>,
+    goals: OnceLock<Goals>,
     cancellations: OnceLock<Cancellations>,
     journal: OnceLock<CompactionJournal>,
     notes: OnceLock<NotedTimeSheet>,
@@ -108,6 +110,7 @@ impl App {
             people: OnceLock::new(),
             traits: OnceLock::new(),
             habits: OnceLock::new(),
+            goals: OnceLock::new(),
             cancellations: OnceLock::new(),
             journal: OnceLock::new(),
             notes: OnceLock::new(),
@@ -235,6 +238,13 @@ impl App {
             let me = self.me();
             let people: crate::stores::foundations::NodesFn = Arc::new(move || me.people()?.nodes());
             Ok(Habits::ensure(&sheets, &id, Some(scopes), Some(self.trait_ids_fn()))?.with_people(people))
+        })
+    }
+
+    pub fn goals(&self) -> anyhow::Result<Goals> {
+        built(&self.goals, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            Goals::ensure(&sheets, &id)
         })
     }
 

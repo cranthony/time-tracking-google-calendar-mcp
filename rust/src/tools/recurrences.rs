@@ -1,7 +1,7 @@
 //! The recurring-series tools (get_recurrence, update_recurrence,
 //! split_recurrence, delete_recurrence).
 
-use super::events::{check_action_ids, check_facts, when_given, EventField, Facts};
+use super::events::{check_action_ids, check_facts, check_goal_ids, goal_ids_for, shown_shares, when_given, EventField, Facts};
 use super::stores::prefetch_stores;
 use super::{from_store, texts, ToolError};
 use crate::contract::wire_text;
@@ -164,13 +164,14 @@ pub struct PublicRecurrence {
     pub action_names: Option<Vec<String>>,
     #[schema(default = "false")]
     pub actions_from_label: bool,
+    pub goals: Option<Vec<crate::stores::goals::GoalShare>>,
     pub event_label_id: Option<String>,
     pub effective_priority: Option<i64>,
     pub facts: Option<Facts>,
 }
 
 /// A series as the recurrence tools return it (PublicRecurrence).
-fn public_recurrence(event: &Event, tree: &ActionTree) -> Value {
+fn public_recurrence(event: &Event, tree: &ActionTree, goal_ids: Option<&[String]>) -> Value {
     let zone: Option<Tz> = event.time_zone.as_deref().filter(|z| !z.is_empty()).and_then(|z| z.parse().ok());
     let names = event.action_ids.as_ref().map(|ids| ids.iter().map(|i| tree.name(i)).collect::<Vec<_>>());
     let shown = |m: Option<crate::event::Moment>| m.map(|m| match &zone {
@@ -192,6 +193,7 @@ fn public_recurrence(event: &Event, tree: &ActionTree) -> Value {
     out.insert("action_ids".into(), json!(event.action_ids));
     out.insert("action_names".into(), json!(names));
     out.insert("actions_from_label".into(), json!(event.actions_from_label));
+    out.insert("goals".into(), json!(shown_shares(event, goal_ids)));
     out.insert("event_label_id".into(), json!(event.event_label_id));
     out.insert("effective_priority".into(), json!(event.effective_priority()));
     out.insert("facts".into(), event.facts.as_ref().map(EventFacts::to_public).unwrap_or(Value::Null));
@@ -200,7 +202,8 @@ fn public_recurrence(event: &Event, tree: &ActionTree) -> Value {
 
 fn public_recurrences(app: &App, events: &[Event]) -> anyhow::Result<Value> {
     let tree = app.actions()?.tree()?;
-    Ok(Value::Array(fill_in_from_actions(events, &tree).iter().map(|e| public_recurrence(e, &tree)).collect()))
+    let goal_ids = goal_ids_for(app, events)?;
+    Ok(Value::Array(fill_in_from_actions(events, &tree).iter().map(|e| public_recurrence(e, &tree, goal_ids.as_deref())).collect()))
 }
 
 fn shown_refusal(error: anyhow::Error) -> ToolError {
@@ -222,6 +225,7 @@ fn to_event(series: &PublicRecurrence, clear_fields: &[EventField]) -> Result<Ev
         location: series.location.clone(),
         priority: series.priority,
         action_ids: if series.actions_from_label { None } else { series.action_ids.clone() },
+        goals: series.goals.clone(),
         facts: series.facts.as_ref().map(|f| EventFacts::from(f).normalized()),
         cleared: texts(clear_fields).into_iter().collect(),
         ..Default::default()
@@ -295,6 +299,7 @@ pub fn get_recurrence(app: &App, id: String) -> Result<PublicRecurrence, ToolErr
 pub fn update_recurrence(app: &App, recurrence: PublicRecurrence, starting_at_event_id: Option<String>, clear_fields: Option<Vec<EventField>>) -> Result<Vec<PublicRecurrence>, ToolError> {
     prefetch_stores(app)?;
     check_action_ids(app, recurrence.id.as_deref(), recurrence.action_ids.as_deref(), recurrence.actions_from_label, true)?;
+    check_goal_ids(app, recurrence.goals.as_deref())?;
     check_facts(app, recurrence.facts.as_ref())?;
     let changes = to_event(&recurrence, &clear_fields.unwrap_or_default())?;
     let repeat = recurrence.repeat.as_ref().map(stored_repeat).transpose()?;

@@ -82,6 +82,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -118,7 +142,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when the user\nasks.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -185,6 +209,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -476,6 +509,15 @@
           "default": false,
           "type": "boolean"
         },
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/GoalShare"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
         "event_label_id": {
           "type": [
             "string",
@@ -587,6 +629,30 @@
               ]
             }
           },
+          "type": "object"
+        },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
           "type": "object"
         },
         "NthWeekday": {
@@ -905,6 +971,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -941,7 +1031,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when the user\nasks.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -1008,6 +1098,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -1288,6 +1387,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -1324,7 +1447,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when the user\nasks.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -1391,6 +1514,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -1703,6 +1835,15 @@
           "default": false,
           "type": "boolean"
         },
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/GoalShare"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
         "event_label_id": {
           "type": [
             "string",
@@ -1774,6 +1915,30 @@
               ]
             }
           },
+          "type": "object"
+        },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
           "type": "object"
         },
         "NthWeekday": {
@@ -2035,6 +2200,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -2160,6 +2349,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -2390,6 +2588,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -2515,6 +2737,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -2760,6 +2991,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -2885,6 +3140,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -3136,6 +3400,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -3261,6 +3549,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -3501,6 +3798,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -3537,7 +3858,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when the user\nasks.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -3604,6 +3925,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -3884,6 +4214,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -3920,7 +4274,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when the user\nasks.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -3987,6 +4341,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -4316,6 +4679,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -4352,7 +4739,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when the user\nasks.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -4419,6 +4806,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [
@@ -10966,6 +11362,1004 @@
     }
   },
   {
+    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline (\"2026-11-01\", due at the end of that day, or\n\"2026-11-01T17:00\", in the calendar's time zone; needed while\nactive), a status (inactive, active, done or obsolete) and its\nhistory (each change of status and when, oldest first; started_at is\nwhen it first became active, closed_at when it was done or made\nobsolete), a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals). Read-only.",
+    "inputSchema": {
+      "properties": {
+        "statuses": {
+          "items": {
+            "enum": [
+              "inactive",
+              "active",
+              "done",
+              "obsolete"
+            ],
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "title": "get_goalsArguments"
+    },
+    "name": "get_goals",
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "$ref": "#/$defs/ListedGoal"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "$defs": {
+        "ListedGoal": {
+          "description": "A goal as the goal tools return it: plus its parents' titles (path,\noutermost first), when it first became active (started_at) and, done\nor obsolete, when it became so (closed_at).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "history": {
+              "items": {
+                "$ref": "#/$defs/StatusChange"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "started_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "closed_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      },
+      "title": "get_goalsOutput"
+    }
+  },
+  {
+    "description": "One goal, by id or else by title (ignoring case), as get_goals lists\nit, whatever its status. If there's none, the error suggests close\nmatches. Read-only.",
+    "inputSchema": {
+      "properties": {
+        "id_or_title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id_or_title"
+      ],
+      "type": "object",
+      "title": "get_goalArguments"
+    },
+    "name": "get_goal",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "expected_minutes": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "deadline": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "history": {
+          "items": {
+            "$ref": "#/$defs/StatusChange"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "definition_of_done": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attribution_hints": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "closed_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object",
+      "$defs": {
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "Add a goal (see get_goals): a title, and optionally parent_id (the\ngoal it's a piece of), required, expected_minutes, deadline,\ndescription, definition_of_done and attribution_hints. Active unless\ngiven a status; an active goal needs a deadline. Its history starts\nwith its status, now, unless given one (to backdate it, say). A\nsub-goal can't be due after its parent, or be expected to take\nlonger; it can't be active under an inactive parent, or open\n(inactive or active) under a done or obsolete one. id is assigned\nunless given (a client's own, so it can name the goal before it's\nmade; the same create sent again gives the goal as it was made).\nReturns the goal and its id as created_id.",
+    "inputSchema": {
+      "properties": {
+        "goal": {
+          "$ref": "#/$defs/Goal"
+        }
+      },
+      "required": [
+        "goal"
+      ],
+      "type": "object",
+      "$defs": {
+        "Goal": {
+          "description": "One goal: an outcome the user means to reach (see get_goals).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parent_id": {
+              "description": "The goal it's a piece of; none for a top-level goal.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "description": "Whether its parent needs it done to be done.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "description": "How long it's expected to take, in minutes of the user's time: a\nguide to compare the time spent with, never enforced.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "deadline": {
+              "description": "When it's due: a date (\"2026-11-01\", due at the end of that day)\nor a date and time (\"2026-11-01T17:00\"), in the calendar's time\nzone. Needed while it's active.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "history": {
+              "description": "Every change of its status, oldest first, the last its status now.",
+              "items": {
+                "$ref": "#/$defs/StatusChange"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": {
+              "description": "What it is, as HTML.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done": {
+              "description": "What being done looks like, as HTML.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attribution_hints": {
+              "description": "A guide for telling which events are for it.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      },
+      "title": "create_goalArguments"
+    },
+    "name": "create_goal",
+    "outputSchema": {
+      "properties": {
+        "goal": {
+          "$ref": "#/$defs/ListedGoal"
+        },
+        "created_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "goal",
+        "created_id"
+      ],
+      "type": "object",
+      "$defs": {
+        "ListedGoal": {
+          "description": "A goal as the goal tools return it: plus its parents' titles (path,\noutermost first), when it first became active (started_at) and, done\nor obsolete, when it became so (closed_at).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "history": {
+              "items": {
+                "$ref": "#/$defs/StatusChange"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "started_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "closed_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "Change goals, all at once, checked whole: `updates` (each a goal's id\nand the fields to set -- left out, a field keeps its value; list it in\nthat update's clear_fields to remove it instead), `creates` (new goals,\nas create_goal takes them; an update can name one by an id given\nhere) and `deletes`. A status set without a history adds the change,\nnow, to the goal's history; a history given replaces it whole (to\nbackdate a change, or remove a mistaken one), and must end with the\ngoal's status.\n\nThe rules (see get_goals and create_goal) hold for the result, not\nfor each step: to mark a goal done or obsolete, close or move its\nopen sub-goals in the same call; to delete one, delete or move its\nsub-goals too; to make an earlier deadline fit, change its sub-goals'\nin the same call. Nothing is moved or changed to make things fit: a\ncall that breaks a rule changes nothing, and the error names the goals\nin the way. Deleting a goal can't be undone; events tagged with it\nstop showing it. Given a version (or if_version), each change is\nrefused if the goal's changed since. Returns each goal made or\nchanged, as it is now, and the ids deleted.",
+    "inputSchema": {
+      "properties": {
+        "updates": {
+          "items": {
+            "$ref": "#/$defs/GoalUpdate"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "creates": {
+          "items": {
+            "$ref": "#/$defs/Goal"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "deletes": {
+          "items": {
+            "$ref": "#/$defs/GoalDelete"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "$defs": {
+        "Goal": {
+          "description": "One goal: an outcome the user means to reach (see get_goals).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parent_id": {
+              "description": "The goal it's a piece of; none for a top-level goal.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "description": "Whether its parent needs it done to be done.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "description": "How long it's expected to take, in minutes of the user's time: a\nguide to compare the time spent with, never enforced.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "deadline": {
+              "description": "When it's due: a date (\"2026-11-01\", due at the end of that day)\nor a date and time (\"2026-11-01T17:00\"), in the calendar's time\nzone. Needed while it's active.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "history": {
+              "description": "Every change of its status, oldest first, the last its status now.",
+              "items": {
+                "$ref": "#/$defs/StatusChange"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": {
+              "description": "What it is, as HTML.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done": {
+              "description": "What being done looks like, as HTML.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attribution_hints": {
+              "description": "A guide for telling which events are for it.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "GoalDelete": {
+          "description": "A goal to delete. Given if_version -- the version last seen -- it's\nrefused if the goal's changed since.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "if_version": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
+        "GoalUpdate": {
+          "description": "One goal's update: `goal` (its id and the fields to set) and the\nfields to remove (`clear_fields`).",
+          "properties": {
+            "goal": {
+              "$ref": "#/$defs/Goal"
+            },
+            "clear_fields": {
+              "items": {
+                "enum": [
+                  "parent_id",
+                  "required",
+                  "expected_minutes",
+                  "deadline",
+                  "description",
+                  "definition_of_done",
+                  "attribution_hints"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal"
+          ],
+          "type": "object"
+        },
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      },
+      "title": "update_goalsArguments"
+    },
+    "name": "update_goals",
+    "outputSchema": {
+      "properties": {
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/ListedGoal"
+          },
+          "type": "array"
+        },
+        "deleted_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "goals",
+        "deleted_ids"
+      ],
+      "type": "object",
+      "$defs": {
+        "ListedGoal": {
+          "description": "A goal as the goal tools return it: plus its parents' titles (path,\noutermost first), when it first became active (started_at) and, done\nor obsolete, when it became so (closed_at).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "history": {
+              "items": {
+                "$ref": "#/$defs/StatusChange"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "started_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "closed_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
     "description": "How scores combine wherever nothing says otherwise -- the defaults the\nuser's app scores by: traits (how a person's or habit's traits combine\ninto their score, unless their traits' own scoring says), circles (how\na circle's people combine into its score, unless its own scoring says)\nand habit_layers (how the habits and people in each layer of the habit\ngraph combine into the layer's score). Each is an aggregation, or null\nfor the plain mean -- for habit_layers, the lowest score. An aggregation -- this, a trait's scoring, a\nperson's or habit's traits' scoring and part_scoring, and a circle's\nscoring -- is an object with any of: \"statistic\": \"mean\" (weighted;\nthe default) or \"percentile\" (with \"percentile\": 0-100 -- the lowest\nscore with at least that share of the weight at or below it, so 0 is\nthe lowest score and 100 the highest); \"weights\": {id: weight, 0 or\nmore} (each 1 unless given; ids as the level says -- part ids, trait\nids, person ids, or \"habit:<id>\" for habits); \"limit\" (a whole number)\nand \"limit_by\": \"best\" or \"worst\" -- only the limit highest or lowest\nscores count; \"cap_below\": {\"threshold\": score, \"cap\": score} -- with\nany score under threshold, the result is at most cap; and \"missing\":\n\"skip\" (the default: what has nothing to rate it by is left out) or a\nscore to count it as. Scores are 0-100. Read-only.",
     "inputSchema": {
       "properties": {},
@@ -14733,6 +16127,30 @@
           },
           "type": "object"
         },
+        "GoalShare": {
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id"
+          ],
+          "type": "object"
+        },
         "NoteEdit": {
           "description": "The user's say on what a note is for: `annotate` -- add it to the\nevent it falls within, or to `event_id` (an event's id, or a created\none's key) -- or `ignore` it.",
           "properties": {
@@ -14964,7 +16382,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when the user\nasks.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -15031,6 +16449,15 @@
             "actions_from_label": {
               "default": false,
               "type": "boolean"
+            },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             },
             "event_label_id": {
               "type": [

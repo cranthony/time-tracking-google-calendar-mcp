@@ -177,6 +177,7 @@
        },
        "with_ids": null
       },
+      "goals": null,
       "id": "c5aefcb1a0e717b26c9d3d4839",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
@@ -209,6 +210,7 @@
        },
        "with_ids": null
       },
+      "goals": null,
       "id": "a3ed657f83d6a4bc6c3589c096",
       "is_cancelled": false,
       "is_end_of_day_sleep": null,
@@ -223,7 +225,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": null,\n        \"for_ids\": null,\n        \"notes\": {\n          \"self\": \"slow lunch\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000081\\\"\"\n    },\n    {\n      \"id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": null,\n        \"for_ids\": null,\n        \"notes\": {\n          \"self\": \"rushed\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000082\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": null,\n        \"for_ids\": null,\n        \"notes\": {\n          \"self\": \"slow lunch\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000081\\\"\"\n    },\n    {\n      \"id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": null,\n        \"for_ids\": null,\n        \"notes\": {\n          \"self\": \"rushed\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000082\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {

@@ -13,6 +13,7 @@
     "end": "2026-10-05T09:30:00-04:00",
     "event_label_id": null,
     "facts": null,
+    "goals": null,
     "id": "b9e1e9b068c94af0129d20f775",
     "location": null,
     "priority": null,
@@ -23,7 +24,7 @@
     "time_zone": "America/New_York"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": null,\n  \"schedule\": \"RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1;COUNT=4\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": null,\n  \"schedule\": \"RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1;COUNT=4\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "get_recurrence"
   },
   {
@@ -43,6 +44,7 @@
      "end": "2026-10-05T09:30:00-04:00",
      "event_label_id": null,
      "facts": null,
+     "goals": null,
      "id": "b9e1e9b068c94af0129d20f775",
      "location": null,
      "priority": null,
@@ -54,7 +56,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Month-end review\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": null,\n  \"schedule\": \"RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1;COUNT=4\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775\",\n  \"summary\": \"Month-end review\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": null,\n  \"schedule\": \"RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1;COUNT=4\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "update_recurrence"
   }
  ],

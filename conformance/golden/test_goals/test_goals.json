@@ -1,0 +1,1460 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "goal": {
+     "deadline": "2026-12-01",
+     "expected_minutes": 3000,
+     "title": "Ship the app"
+    }
+   },
+   "content": {
+    "created_id": "co2yzn",
+    "goal": {
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": "2026-12-01",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": 3000,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      }
+     ],
+     "id": "co2yzn",
+     "parent_id": null,
+     "path": [],
+     "required": null,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "active",
+     "title": "Ship the app",
+     "version": 1
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Ship the app\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"expected_minutes\": 3000,\n    \"deadline\": \"2026-12-01\",\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "title": "No deadline"
+    }
+   },
+   "content": "Error executing tool create_goal: goal 3dnjav ('No deadline') is active, so it needs a deadline",
+   "is_error": true,
+   "text": "Error executing tool create_goal: goal 3dnjav ('No deadline') is active, so it needs a deadline",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "deadline": "2026-11-15",
+     "parent_id": "co2yzn",
+     "required": true,
+     "title": "Write the pane"
+    }
+   },
+   "content": {
+    "created_id": "a0g0jc",
+    "goal": {
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": "2026-11-15",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      }
+     ],
+     "id": "a0g0jc",
+     "parent_id": "co2yzn",
+     "path": [
+      "Ship the app"
+     ],
+     "required": true,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "active",
+     "title": "Write the pane",
+     "version": 1
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"goal\": {\n    \"id\": \"a0g0jc\",\n    \"title\": \"Write the pane\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": true,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-11-15\",\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [\n      \"Ship the app\"\n    ],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "parent_id": "co2yzn",
+     "status": "inactive",
+     "title": "Polish"
+    }
+   },
+   "content": {
+    "created_id": "rs21so",
+    "goal": {
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": null,
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "inactive"
+      }
+     ],
+     "id": "rs21so",
+     "parent_id": "co2yzn",
+     "path": [
+      "Ship the app"
+     ],
+     "required": null,
+     "started_at": null,
+     "status": "inactive",
+     "title": "Polish",
+     "version": 1
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"goal\": {\n    \"id\": \"rs21so\",\n    \"title\": \"Polish\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": null,\n    \"expected_minutes\": null,\n    \"deadline\": null,\n    \"status\": \"inactive\",\n    \"history\": [\n      {\n        \"status\": \"inactive\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [\n      \"Ship the app\"\n    ],\n    \"started_at\": null,\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "deadline": "2026-12-02",
+     "parent_id": "co2yzn",
+     "title": "Too late"
+    }
+   },
+   "content": "Error executing tool create_goal: goal onvtja ('Too late')'s deadline (2026-12-02) is after its parent goal co2yzn ('Ship the app')'s (2026-12-01)",
+   "is_error": true,
+   "text": "Error executing tool create_goal: goal onvtja ('Too late')'s deadline (2026-12-02) is after its parent goal co2yzn ('Ship the app')'s (2026-12-01)",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "deadline": "2026-11-01",
+     "expected_minutes": 3001,
+     "parent_id": "co2yzn",
+     "title": "Too long"
+    }
+   },
+   "content": "Error executing tool create_goal: goal lejxa2 ('Too long') is expected to take longer (3001 minutes) than its parent goal co2yzn ('Ship the app') (3000 minutes)",
+   "is_error": true,
+   "text": "Error executing tool create_goal: goal lejxa2 ('Too long') is expected to take longer (3001 minutes) than its parent goal co2yzn ('Ship the app') (3000 minutes)",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {},
+   "content": [
+    {
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": "2026-12-01",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": 3000,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      }
+     ],
+     "id": "co2yzn",
+     "parent_id": null,
+     "path": [],
+     "required": null,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "active",
+     "title": "Ship the app",
+     "version": 1
+    },
+    {
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": "2026-11-15",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      }
+     ],
+     "id": "a0g0jc",
+     "parent_id": "co2yzn",
+     "path": [
+      "Ship the app"
+     ],
+     "required": true,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "active",
+     "title": "Write the pane",
+     "version": 1
+    },
+    {
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": null,
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "inactive"
+      }
+     ],
+     "id": "rs21so",
+     "parent_id": "co2yzn",
+     "path": [
+      "Ship the app"
+     ],
+     "required": null,
+     "started_at": null,
+     "status": "inactive",
+     "title": "Polish",
+     "version": 1
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"title\": \"Ship the app\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"expected_minutes\": 3000,\n  \"deadline\": \"2026-12-01\",\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"expected_minutes\": null,\n  \"deadline\": \"2026-11-15\",\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"rs21so\",\n  \"title\": \"Polish\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": null,\n  \"expected_minutes\": null,\n  \"deadline\": null,\n  \"status\": \"inactive\",\n  \"history\": [\n    {\n      \"status\": \"inactive\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"started_at\": null,\n  \"closed_at\": null,\n  \"version\": 1\n}",
+   "tool": "get_goals"
+  },
+  {
+   "arguments": {
+    "id_or_title": "write THE pane"
+   },
+   "content": {
+    "attribution_hints": null,
+    "closed_at": null,
+    "deadline": "2026-11-15",
+    "definition_of_done": null,
+    "description": null,
+    "expected_minutes": null,
+    "history": [
+     {
+      "at": "2026-10-07T15:30:00-04:00",
+      "status": "active"
+     }
+    ],
+    "id": "a0g0jc",
+    "parent_id": "co2yzn",
+    "path": [
+     "Ship the app"
+    ],
+    "required": true,
+    "started_at": "2026-10-07T15:30:00-04:00",
+    "status": "active",
+    "title": "Write the pane",
+    "version": 1
+   },
+   "is_error": false,
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"expected_minutes\": null,\n  \"deadline\": \"2026-11-15\",\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}",
+   "tool": "get_goal"
+  },
+  {
+   "arguments": {
+    "id_or_title": "nosuch"
+   },
+   "content": "Error executing tool get_goal: There's no goal with the id or title 'nosuch' (get_goals lists them)",
+   "is_error": true,
+   "text": "Error executing tool get_goal: There's no goal with the id or title 'nosuch' (get_goals lists them)",
+   "tool": "get_goal"
+  },
+  {
+   "arguments": {
+    "updates": [
+     {
+      "goal": {
+       "id": "co2yzn",
+       "status": "done"
+      }
+     }
+    ]
+   },
+   "content": "Error executing tool update_goals: goal a0g0jc ('Write the pane') is active, but its parent goal co2yzn ('Ship the app') is done: mark it done or obsolete, move it under another goal, or reopen its parent; goal rs21so ('Polish') is inactive, but its parent goal co2yzn ('Ship the app') is done: mark it done or obsolete, move it under another goal, or reopen its parent",
+   "is_error": true,
+   "text": "Error executing tool update_goals: goal a0g0jc ('Write the pane') is active, but its parent goal co2yzn ('Ship the app') is done: mark it done or obsolete, move it under another goal, or reopen its parent; goal rs21so ('Polish') is inactive, but its parent goal co2yzn ('Ship the app') is done: mark it done or obsolete, move it under another goal, or reopen its parent",
+   "tool": "update_goals"
+  },
+  {
+   "arguments": {
+    "creates": [
+     {
+      "id": "inbox1",
+      "status": "inactive",
+      "title": "Prioritize unstructured goals"
+     }
+    ],
+    "updates": [
+     {
+      "goal": {
+       "id": "co2yzn",
+       "status": "done"
+      }
+     },
+     {
+      "goal": {
+       "id": "a0g0jc",
+       "status": "done"
+      }
+     },
+     {
+      "goal": {
+       "id": "rs21so",
+       "parent_id": "inbox1"
+      }
+     }
+    ]
+   },
+   "content": {
+    "deleted_ids": [],
+    "goals": [
+     {
+      "attribution_hints": null,
+      "closed_at": "2026-10-07T15:30:00-04:00",
+      "deadline": "2026-12-01",
+      "definition_of_done": null,
+      "description": null,
+      "expected_minutes": 3000,
+      "history": [
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "active"
+       },
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "done"
+       }
+      ],
+      "id": "co2yzn",
+      "parent_id": null,
+      "path": [],
+      "required": null,
+      "started_at": "2026-10-07T15:30:00-04:00",
+      "status": "done",
+      "title": "Ship the app",
+      "version": 2
+     },
+     {
+      "attribution_hints": null,
+      "closed_at": "2026-10-07T15:30:00-04:00",
+      "deadline": "2026-11-15",
+      "definition_of_done": null,
+      "description": null,
+      "expected_minutes": null,
+      "history": [
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "active"
+       },
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "done"
+       }
+      ],
+      "id": "a0g0jc",
+      "parent_id": "co2yzn",
+      "path": [
+       "Ship the app"
+      ],
+      "required": true,
+      "started_at": "2026-10-07T15:30:00-04:00",
+      "status": "done",
+      "title": "Write the pane",
+      "version": 2
+     },
+     {
+      "attribution_hints": null,
+      "closed_at": null,
+      "deadline": null,
+      "definition_of_done": null,
+      "description": null,
+      "expected_minutes": null,
+      "history": [
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "inactive"
+       }
+      ],
+      "id": "rs21so",
+      "parent_id": "inbox1",
+      "path": [
+       "Prioritize unstructured goals"
+      ],
+      "required": null,
+      "started_at": null,
+      "status": "inactive",
+      "title": "Polish",
+      "version": 2
+     },
+     {
+      "attribution_hints": null,
+      "closed_at": null,
+      "deadline": null,
+      "definition_of_done": null,
+      "description": null,
+      "expected_minutes": null,
+      "history": [
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "inactive"
+       }
+      ],
+      "id": "inbox1",
+      "parent_id": null,
+      "path": [],
+      "required": null,
+      "started_at": null,
+      "status": "inactive",
+      "title": "Prioritize unstructured goals",
+      "version": 1
+     }
+    ]
+   },
+   "is_error": false,
+   "text": "{\n  \"goals\": [\n    {\n      \"id\": \"co2yzn\",\n      \"title\": \"Ship the app\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"expected_minutes\": 3000,\n      \"deadline\": \"2026-12-01\",\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"title\": \"Write the pane\",\n      \"parent_id\": \"co2yzn\",\n      \"required\": true,\n      \"expected_minutes\": null,\n      \"deadline\": \"2026-11-15\",\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [\n        \"Ship the app\"\n      ],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"rs21so\",\n      \"title\": \"Polish\",\n      \"parent_id\": \"inbox1\",\n      \"required\": null,\n      \"expected_minutes\": null,\n      \"deadline\": null,\n      \"status\": \"inactive\",\n      \"history\": [\n        {\n          \"status\": \"inactive\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [\n        \"Prioritize unstructured goals\"\n      ],\n      \"started_at\": null,\n      \"closed_at\": null,\n      \"version\": 2\n    },\n    {\n      \"id\": \"inbox1\",\n      \"title\": \"Prioritize unstructured goals\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"expected_minutes\": null,\n      \"deadline\": null,\n      \"status\": \"inactive\",\n      \"history\": [\n        {\n          \"status\": \"inactive\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [],\n      \"started_at\": null,\n      \"closed_at\": null,\n      \"version\": 1\n    }\n  ],\n  \"deleted_ids\": []\n}",
+   "tool": "update_goals"
+  },
+  {
+   "arguments": {
+    "statuses": [
+     "done"
+    ]
+   },
+   "content": [
+    {
+     "attribution_hints": null,
+     "closed_at": "2026-10-07T15:30:00-04:00",
+     "deadline": "2026-12-01",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": 3000,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      },
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "done"
+      }
+     ],
+     "id": "co2yzn",
+     "parent_id": null,
+     "path": [],
+     "required": null,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "done",
+     "title": "Ship the app",
+     "version": 2
+    },
+    {
+     "attribution_hints": null,
+     "closed_at": "2026-10-07T15:30:00-04:00",
+     "deadline": "2026-11-15",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      },
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "done"
+      }
+     ],
+     "id": "a0g0jc",
+     "parent_id": "co2yzn",
+     "path": [
+      "Ship the app"
+     ],
+     "required": true,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "done",
+     "title": "Write the pane",
+     "version": 2
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"title\": \"Ship the app\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"expected_minutes\": 3000,\n  \"deadline\": \"2026-12-01\",\n  \"status\": \"done\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    },\n    {\n      \"status\": \"done\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}\n{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"expected_minutes\": null,\n  \"deadline\": \"2026-11-15\",\n  \"status\": \"done\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    },\n    {\n      \"status\": \"done\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}",
+   "tool": "get_goals"
+  },
+  {
+   "arguments": {
+    "deletes": [
+     {
+      "goal_id": "inbox1"
+     },
+     {
+      "goal_id": "rs21so"
+     }
+    ]
+   },
+   "content": {
+    "deleted_ids": [
+     "inbox1",
+     "rs21so"
+    ],
+    "goals": []
+   },
+   "is_error": false,
+   "text": "{\n  \"goals\": [],\n  \"deleted_ids\": [\n    \"inbox1\",\n    \"rs21so\"\n  ]\n}",
+   "tool": "update_goals"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "outcome-goals"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Outcome Goals"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "expected_minutes",
+        "deadline",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "outcome-goals",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Ship the app",
+        "",
+        "",
+        "3000",
+        "2026-12-01",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 3,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Ship the app",
+        "",
+        "",
+        "3000",
+        "2026-12-01",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ],
+       [
+        "a0g0jc",
+        "Write the pane",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-15",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 4,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Ship the app",
+        "",
+        "",
+        "3000",
+        "2026-12-01",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ],
+       [
+        "a0g0jc",
+        "Write the pane",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-15",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ],
+       [
+        "rs21so",
+        "Polish",
+        "co2yzn",
+        "",
+        "",
+        "",
+        "inactive",
+        "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 5,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Ship the app",
+        "",
+        "",
+        "3000",
+        "2026-12-01",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "a0g0jc",
+        "Write the pane",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-15",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "rs21so",
+        "Polish",
+        "inbox1",
+        "",
+        "",
+        "",
+        "inactive",
+        "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "inbox1",
+        "Prioritize unstructured goals",
+        "",
+        "",
+        "",
+        "",
+        "inactive",
+        "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 5,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Ship the app",
+        "",
+        "",
+        "3000",
+        "2026-12-01",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "a0g0jc",
+        "Write the pane",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-15",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+       ],
+       [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {},
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000005
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "outcome-goals",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Outcome Goals": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Outcome Goals"
+      },
+      "rows": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "expected_minutes",
+        "deadline",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "version"
+       ],
+       [
+        "co2yzn",
+        "Ship the app",
+        "",
+        "",
+        "3000",
+        "2026-12-01",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "a0g0jc",
+        "Write the pane",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-15",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}

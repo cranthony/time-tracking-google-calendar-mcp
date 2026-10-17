@@ -26,6 +26,8 @@ pub const LOCATIONS: (&str, &str) = ("locations", "Locations");
 pub const LOCATION_GROUPS: (&str, &str) = ("location-groups", "Location Groups");
 pub const TRAVEL_TIMES: (&str, &str) = ("travel-times", "Travel Times");
 pub const HABITS: (&str, &str) = ("habits", "Habits");
+// Not "goals": the old goals' tab (replaced by actions) may still be there.
+pub const GOALS: (&str, &str) = ("outcome-goals", "Outcome Goals");
 pub const COMPACTION_SCHEDULE: (&str, &str) = ("compaction-schedule", "Compaction Schedule");
 pub const CANCELLATIONS: (&str, &str) = ("cancellations", "Cancellations");
 pub const HEALTH: (&str, &str) = ("health", "Health");

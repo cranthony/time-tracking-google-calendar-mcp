@@ -11,6 +11,7 @@ use crate::py;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::ActionTree;
 use crate::stores::event_changes::{self, Cancel, EventChanges, StaleEvent};
+use crate::stores::goals::{settled_shares, GoalShare};
 use crate::stores::notes::NotedTime as StoredNote;
 use crate::stores::schedule::ScheduleHint;
 use super::recurrences::{stored_repeat, Repeat};
@@ -83,6 +84,15 @@ pub struct Facts {
 /// calendar_cli. recurring_event_id is assigned by Google and can't be
 /// set at all.
 ///
+/// goals are the goals the event is for (see get_goals): each a goal_id,
+/// with minutes (a fixed share of the event), percent (of what the
+/// minutes leave), or neither (the whole event). The minutes must fit in
+/// the event, and the percents add up to no more than 100; read back,
+/// minutes are cut to fit an event shortened since, and goals deleted
+/// since are left out. Set them to replace them whole ([] for none).
+/// Most events have none: tag an event with a goal only when the user
+/// asks.
+///
 /// facts are what compaction established about a past event, for
 /// traits' judgments later: location_ids (see
 /// get_locations), with_ids (the people there with the user -- never
@@ -122,6 +132,7 @@ pub struct PublicEvent {
     #[schema(default = "false")]
     #[serde(default)]
     pub actions_from_label: bool,
+    pub goals: Option<Vec<GoalShare>>,
     pub event_label_id: Option<String>,
     #[schema(default = "false")]
     #[serde(default)]
@@ -225,8 +236,16 @@ impl From<&Facts> for EventFacts {
 
 // -- PublicEvent -----------------------------------------------------------------
 
-/// An event as every tool returns it (PublicEvent), fields in order.
+/// An event as every tool returns it (PublicEvent), fields in order: its
+/// goal shares settled (see `settled_shares`) against the goals there are
+/// (`goal_ids`; all of them, if None).
+#[cfg(test)]
 pub fn public_event(event: &Event, tree: Option<&ActionTree>) -> Value {
+    public_event_among(event, tree, None)
+}
+
+/// `public_event`, with only `goal_ids`' goals (all, if None) shown.
+pub fn public_event_among(event: &Event, tree: Option<&ActionTree>, goal_ids: Option<&[String]>) -> Value {
     let names = match (tree, &event.action_ids) {
         (Some(tree), Some(ids)) => Some(ids.iter().map(|i| tree.name(i)).collect::<Vec<_>>()),
         _ => None,
@@ -242,6 +261,7 @@ pub fn public_event(event: &Event, tree: Option<&ActionTree>) -> Value {
     out.insert("action_ids".into(), json!(event.action_ids));
     out.insert("action_names".into(), json!(names));
     out.insert("actions_from_label".into(), json!(event.actions_from_label));
+    out.insert("goals".into(), json!(shown_shares(event, goal_ids)));
     out.insert("event_label_id".into(), json!(event.event_label_id));
     out.insert("is_cancelled".into(), json!(event.is_cancelled()));
     out.insert("effective_priority".into(), json!(event.effective_priority()));
@@ -253,10 +273,29 @@ pub fn public_event(event: &Event, tree: Option<&ActionTree>) -> Value {
     Value::Object(out)
 }
 
+/// `event`'s goal shares, settled (see `public_event`).
+pub fn shown_shares(event: &Event, goal_ids: Option<&[String]>) -> Option<Vec<GoalShare>> {
+    let shares = event.goals.as_ref()?;
+    let minutes = match (event.start, event.end) {
+        (Some(start), Some(end)) => (end - start).num_minutes(),
+        _ => i64::MAX,
+    };
+    Some(settled_shares(shares, minutes, &|id| goal_ids.is_none_or(|ids| ids.iter().any(|i| i == id))))
+}
+
+/// The ids of the goals there are, read only if any of `events` has goals.
+pub fn goal_ids_for(app: &App, events: &[Event]) -> anyhow::Result<Option<Vec<String>>> {
+    if events.iter().all(|e| e.goals.as_ref().is_none_or(Vec::is_empty)) {
+        return Ok(None);
+    }
+    Ok(Some(app.goals()?.ids()?))
+}
+
 /// `_public_events`: with action names and priorities filled in.
 pub fn public_events(app: &App, events: &[Event]) -> anyhow::Result<Value> {
     let tree = app.actions()?.tree()?;
-    Ok(Value::Array(fill_in_from_actions(events, &tree).iter().map(|e| public_event(e, Some(&tree))).collect()))
+    let goal_ids = goal_ids_for(app, events)?;
+    Ok(Value::Array(fill_in_from_actions(events, &tree).iter().map(|e| public_event_among(e, Some(&tree), goal_ids.as_deref())).collect()))
 }
 
 /// `PublicEvent.to_event(clear_fields)`.
@@ -269,6 +308,7 @@ pub fn to_event(event: &PublicEvent, clear_fields: &[EventField]) -> Result<Even
         description: event.description.clone(),
         location: event.location.clone(),
         action_ids: if event.actions_from_label { None } else { event.action_ids.clone() },
+        goals: event.goals.clone(),
         priority: event.priority,
         status: if event.is_cancelled { Some("cancelled".into()) } else { None },
         facts: event.facts.as_ref().map(|f| EventFacts::from(f).normalized()),
@@ -301,6 +341,17 @@ pub fn check_action_ids(app: &App, id: Option<&str>, action_ids: Option<&[String
         }
     }
     tree.check_action_ids(ids, &already).map_err(|e| ToolError::Message(e.to_string()))
+}
+
+/// An event's (or series') goal shares must name goals there are.
+pub fn check_goal_ids(app: &App, goals: Option<&[GoalShare]>) -> Result<(), ToolError> {
+    let Some(goals) = goals.filter(|g| !g.is_empty()) else { return Ok(()) };
+    let known = app.goals()?.ids()?;
+    let unknown: Vec<String> = goals.iter().map(|g| g.goal_id.trim().to_string()).filter(|id| !known.contains(id)).collect();
+    if !unknown.is_empty() {
+        return Err(ToolError::Message(format!("Its goals name {}, which aren't goals (get_goals lists them)", py::repr_list(&unknown))));
+    }
+    Ok(())
 }
 
 /// `_check_facts`: well formed, naming people and a location that exist.
@@ -538,10 +589,12 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
         }
         let event = &update.event;
         check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, true)?;
+        check_goal_ids(app, event.goals.as_deref())?;
         check_facts(app, event.facts.as_ref())?;
     }
     for event in &creates {
         check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, false)?;
+        check_goal_ids(app, event.goals.as_deref())?;
         check_facts(app, event.facts.as_ref())?;
     }
     let mut patches = Vec::new();
@@ -593,6 +646,7 @@ pub fn create_event(app: &App, events: Vec<PublicEvent>, #[schema(default = "fal
     prefetch_for_changes(app)?;
     for event in &events {
         check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, false)?;
+        check_goal_ids(app, event.goals.as_deref())?;
         check_facts(app, event.facts.as_ref())?;
     }
     let creates: Vec<Event> =

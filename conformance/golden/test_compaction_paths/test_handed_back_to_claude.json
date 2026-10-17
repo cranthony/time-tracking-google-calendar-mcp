@@ -1120,6 +1120,7 @@
       "etag": "\"0000000000000077\"",
       "event_label_id": null,
       "facts": null,
+      "goals": null,
       "id": "c5aefcb1a0e717b26c9d3d4839",
       "is_cancelled": true,
       "is_end_of_day_sleep": null,
@@ -1134,7 +1135,7 @@
     "timeline": "12:00 ✕ Lunch · cancelled (was\n        12:00–13:00)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": null,\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000077\\\"\"\n    }\n  ],\n  \"timeline\": \"12:00 ✕ Lunch · cancelled (was\\n        12:00–13:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000077\\\"\"\n    }\n  ],\n  \"timeline\": \"12:00 ✕ Lunch · cancelled (was\\n        12:00–13:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "delete_event"
   },
   {
