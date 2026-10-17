@@ -197,9 +197,9 @@ fn a_note_made_once_is_named_by_its_own_id_and_versioned() {
     // Sent again: the one it made.
     assert_eq!(s.ok("note", note), made["structuredContent"]);
     assert_eq!(s.ok("get_notes", json!({})).as_array().unwrap().len(), 1);
-    // Without an id of its own, named by when it is and its row.
+    // Without one given, one is made for it.
     let plain = s.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T10:00:00+00:00"}}));
-    assert!(plain["id"].as_str().unwrap().contains('#'), "{plain}");
+    assert!(!plain["id"].as_str().unwrap().contains('#'), "{plain}");
 
     // Its id stays when its time changes.
     let moved = s.ok("edit_note", json!({"note_id": "note-1", "timestamp": "2026-01-01T09:05:00+00:00", "version": 1}));

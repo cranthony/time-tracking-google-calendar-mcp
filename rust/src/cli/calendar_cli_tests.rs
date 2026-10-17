@@ -348,22 +348,26 @@ fn lists_notes_by_time() {
 
     let lines: Vec<String> = ok(&t, &["get_notes"]).lines().map(str::to_string).collect();
 
-    assert_eq!(lines, vec!["2026-01-01T09:00:00+00:00#3\t2026-01-01T09:00:00+00:00\tStarted work", "2026-01-01T10:00:00+00:00#2\t2026-01-01T10:00:00+00:00\t"]);
+    // Each with its id, then when, then what.
+    let shown: Vec<Vec<&str>> = lines.iter().map(|l| l.split('\t').collect()).collect();
+    assert_eq!(shown.iter().map(|l| (l[1], l[2])).collect::<Vec<_>>(), vec![("2026-01-01T09:00:00+00:00", "Started work"), ("2026-01-01T10:00:00+00:00", "")]);
+    assert!(shown.iter().all(|l| !l[0].is_empty() && !l[0].contains('#')), "{lines:?}");
 }
 
 #[test]
 fn edits_a_notes_description_or_time() {
     let t = test_app();
-    ok(&t, &["note", "3h", "Started work"]);
-    let id = "2026-01-01T09:00:00+00:00#2";
+    let made = ok(&t, &["note", "3h", "Started work"]);
+    let id = made.lines().find_map(|l| l.strip_prefix("id: ")).unwrap().to_string();
 
-    let out = ok(&t, &["edit_note", id, "--description", "Standup"]);
+    let out = ok(&t, &["edit_note", &id, "--description", "Standup"]);
     assert!(out.contains(&format!("id: {id}")) && out.contains("Standup"), "{out}");
-    let moved = ok(&t, &["edit_note", id, "--ago", "30m"]);
-    assert!(moved.contains("id: 2026-01-01T11:30:00+00:00#2"), "{moved}");
-    let set = ok(&t, &["edit_note", "2026-01-01T11:30:00+00:00#2", "--at", "2026-01-01T09:30:00+00:00"]);
-    assert!(set.contains("id: 2026-01-01T09:30:00+00:00#2"), "{set}");
-    ok(&t, &["edit_note", "2026-01-01T09:30:00+00:00#2", "--description", ""]);
+    // Its own id: the same, wherever it moves.
+    let moved = ok(&t, &["edit_note", &id, "--ago", "30m"]);
+    assert!(moved.contains(&format!("id: {id}")) && moved.contains("11:30"), "{moved}");
+    let set = ok(&t, &["edit_note", &id, "--at", "2026-01-01T09:30:00+00:00"]);
+    assert!(set.contains(&format!("id: {id}")), "{set}");
+    ok(&t, &["edit_note", &id, "--description", ""]);
     assert_eq!(t.app.noted_time_sheet().unwrap().read(false).unwrap()[0].description, None);
 }
 

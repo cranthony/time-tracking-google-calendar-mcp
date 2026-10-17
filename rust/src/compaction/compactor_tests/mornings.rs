@@ -143,9 +143,9 @@ fn edits_and_deletes_uncompacted_notes() {
 fn a_stale_id_is_a_compaction_error() {
     let setup = Setup::standard();
     let stale = setup.note_id(2);
-    setup.call(|c| c.edit_note(&stale, Some(time_at("09:10")), None, None)).unwrap();
+    setup.call(|c| c.delete_note(&stale, None)).unwrap();
 
-    refused(setup.call(|c| c.delete_note(&stale, None)), "no longer holds the note");
+    refused(setup.call(|c| c.edit_note(&stale, Some(time_at("09:10")), None, None)), "there's no note");
 }
 
 #[test]

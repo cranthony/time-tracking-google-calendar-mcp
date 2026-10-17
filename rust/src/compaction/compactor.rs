@@ -1246,9 +1246,15 @@ impl NoteCompactor {
             }
             add(&mut new_edits, &mut seq, Some(choice.ref_.clone()), edit);
         }
+        // Which of them are notes, said in the edit: a note's own id looks
+        // like any other.
+        let notes_named = if as_planned.is_empty() { Vec::new() } else { self.uncompacted_notes(now)? };
         for name in &as_planned {
             let mut edit = Map::new();
             edit.insert("action".into(), json!("as_planned"));
+            if notes_named.contains(name) {
+                edit.insert("note".into(), json!(true));
+            }
             add(&mut new_edits, &mut seq, Some(name.clone()), edit);
         }
         // The revision after the one it was made from is this amend's own,
