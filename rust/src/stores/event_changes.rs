@@ -6,6 +6,7 @@
 use crate::event::{Etag, Event, Moment};
 use crate::google::status_of;
 use crate::py;
+use crate::sheet::rows;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::cancellations::Cancellations;
 use crate::timeline::{build_timeline, Timeline, TimelineEvent};
@@ -85,6 +86,25 @@ impl std::fmt::Display for StaleEvent {
 }
 
 impl std::error::Error for StaleEvent {}
+
+/// A batch refused because some of the events it changes aren't as the
+/// client last saw them -- every one, so they're set right in one go --
+/// and, if it stopped partway (Calendar found one changed after the batch
+/// was checked), what it had written by then.
+#[derive(Debug, Clone)]
+pub struct StaleEvents {
+    pub items: Vec<StaleEvent>,
+    pub partly: Option<rows::Partly>,
+}
+
+impl std::fmt::Display for StaleEvents {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let said: Vec<String> = self.items.iter().map(StaleEvent::to_string).collect();
+        f.write_str(&said.join("; "))
+    }
+}
+
+impl std::error::Error for StaleEvents {}
 
 #[derive(Debug, Clone)]
 pub struct Placed {
@@ -289,14 +309,38 @@ impl EventChanges {
             }
         };
 
+        // Each stale event, and each changed without saying which version
+        // was read -- all of them, not just the first.
+        let mut stale: Vec<StaleEvent> = Vec::new();
+        let mut unversioned: Vec<String> = Vec::new();
+        let found = |result: anyhow::Result<Option<Event>>, again: &mut Vec<Event>, stale: &mut Vec<StaleEvent>| -> anyhow::Result<bool> {
+            match result {
+                Ok(Some(now)) => {
+                    again.push(now);
+                    Ok(true)
+                }
+                Ok(None) => Ok(false),
+                Err(error) => match error.downcast::<StaleEvent>() {
+                    Ok(one) => {
+                        stale.push(one);
+                        Ok(true)
+                    }
+                    Err(error) => Err(error),
+                },
+            }
+        };
+
         let mut changes: Vec<Change> = Vec::new();
         for mut patch in updates {
             if !claim(&mut problems, &mut named, patch.id.as_deref(), "an update") {
                 continue;
             }
+            if rows::versions_required() && patch.etag.0.is_none() {
+                unversioned.push(patch.id.clone().unwrap_or_default());
+                continue;
+            }
             let as_patched = |now: &Event| !now.is_cancelled() && patched(now, &patch) == *now;
-            if let Some(now) = fresh(patch.id.as_deref().unwrap(), patch.etag.0.as_deref(), &as_patched)? {
-                again.push(now);
+            if found(fresh(patch.id.as_deref().unwrap(), patch.etag.0.as_deref(), &as_patched), &mut again, &mut stale)? {
                 continue;
             }
             let Some(before) = load(&mut problems, &mut current, patch.id.as_deref().unwrap()) else { continue };
@@ -350,8 +394,11 @@ impl EventChanges {
             if !claim(&mut problems, &mut named, Some(&cancel.event_id), "a cancel") {
                 continue;
             }
-            if let Some(now) = fresh(&cancel.event_id, cancel.etag.as_deref(), &Event::is_cancelled)? {
-                again.push(now);
+            if rows::versions_required() && cancel.etag.is_none() {
+                unversioned.push(cancel.event_id.clone());
+                continue;
+            }
+            if found(fresh(&cancel.event_id, cancel.etag.as_deref(), &Event::is_cancelled), &mut again, &mut stale)? {
                 continue;
             }
             let Some(before) = load(&mut problems, &mut current, &cancel.event_id) else { continue };
@@ -419,6 +466,18 @@ impl EventChanges {
                 counts_against_follow_through: false,
                 moved: false,
             });
+        }
+        if !unversioned.is_empty() {
+            return Ok(Err(ChangeError::new(
+                format!(
+                    "Say which version of each event you change you last read: give the etag (list_events and get_event give it) for {}, so a change made since isn't overwritten. Read them again if you don't have it, then retry",
+                    unversioned.iter().map(|i| py::repr(i)).collect::<Vec<_>>().join(", ")
+                ),
+                "unversioned",
+            )));
+        }
+        if !stale.is_empty() {
+            return Err(StaleEvents { items: stale, partly: None }.into());
         }
         if !problems.is_empty() {
             let mut error = ChangeError::of(&problems, None);
@@ -498,13 +557,41 @@ impl EventChanges {
             })
         };
         let mut written = batch.again.clone();
+        // What's been written, as said if it stops partway.
+        let mut done: Vec<String> = Vec::new();
+        let mut made_unnamed: Vec<String> = Vec::new();
+        let stopped = |error: anyhow::Error, done: &[String], made_unnamed: &[String]| -> anyhow::Error {
+            match error.downcast::<StaleEvent>() {
+                Ok(one) => StaleEvents {
+                    items: vec![one],
+                    partly: Some(rows::Partly { written: done.to_vec(), of: batch.changes.len(), made_unnamed: made_unnamed.to_vec() }),
+                }
+                .into(),
+                Err(error) => error,
+            }
+        };
         for change in &batch.changes {
             match change.action.as_str() {
-                "update" => written.push(patch(change.patch.as_ref().unwrap())?),
-                "create" => written.push(self.client.create_event(change.after.as_ref().unwrap())?),
+                "update" => {
+                    let event = patch(change.patch.as_ref().unwrap()).map_err(|e| stopped(e, &done, &made_unnamed))?;
+                    done.push(format!("updated {}", event.id.clone().unwrap_or_default()));
+                    written.push(event);
+                }
+                "create" => {
+                    let asked = change.after.as_ref().unwrap();
+                    let event = self.client.create_event(asked).map_err(|e| stopped(e, &done, &made_unnamed))?;
+                    let id = event.id.clone().unwrap_or_default();
+                    if asked.id.is_none() {
+                        made_unnamed.push(id.clone());
+                    }
+                    done.push(format!("created {id}"));
+                    written.push(event);
+                }
                 _ => {
                     let before = change.before.as_ref().unwrap();
-                    written.push(patch(change.patch.as_ref().unwrap())?);
+                    let event = patch(change.patch.as_ref().unwrap()).map_err(|e| stopped(e, &done, &made_unnamed))?;
+                    done.push(format!("cancelled {}", event.id.clone().unwrap_or_default()));
+                    written.push(event);
                     if change.counts_against_follow_through {
                         if let Some(cancellations) = &self.cancellations {
                             cancellations.record(before, source, None)?;

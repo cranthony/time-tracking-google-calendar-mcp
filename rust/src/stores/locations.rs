@@ -25,8 +25,7 @@ pub struct Location {
     pub map_location: Option<String>,
     /// The location group it's in, if any (see get_location_groups).
     pub group_id: Option<String>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -71,8 +70,7 @@ pub struct LocationGroup {
     pub group_id: Option<String>,
     pub name: Option<String>,
     pub note: Option<String>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -219,7 +217,7 @@ impl Locations {
             find(&locations, &id)?;
             unreachable!("find raises for an id that isn't there")
         };
-        locations[index] = rows::updated_item(&locations[index], location, clear_fields, &["id"]);
+        locations[index] = rows::updated_item(&locations[index], location, clear_fields, &["id"])?;
         self.write(&locations, &self.groups()?)?;
         Ok(locations[index].clone())
     }
@@ -282,7 +280,7 @@ impl Locations {
             find_group(&groups, &id)?;
             unreachable!("find_group raises for an id that isn't there")
         };
-        groups[index] = rows::updated_item(&groups[index], group, clear_fields, &["id"]);
+        groups[index] = rows::updated_item(&groups[index], group, clear_fields, &["id"])?;
         self.write_groups(&groups)?;
         Ok(listed_group(&groups[index], &groups))
     }

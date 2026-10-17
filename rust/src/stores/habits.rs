@@ -54,8 +54,7 @@ pub struct Habit {
     pub note: Option<String>,
     pub traits: Option<Map<String, Value>>,
     pub foundations: Option<Vec<String>>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -200,7 +199,7 @@ impl Habits {
         };
         let was_deleted = habits[index].status == Some(Status::Deleted);
         let given = Habit { traits: habit.traits.as_ref().map(spec_with_new_part_ids), ..habit.clone() };
-        habits[index] = rows::updated_item(&habits[index], &given, clear_fields, &["id"]);
+        habits[index] = rows::updated_item(&habits[index], &given, clear_fields, &["id"])?;
         if !was_deleted && habits[index].status == Some(Status::Deleted) {
             foundations::without(&mut habits, &subject_id(&id));
         }

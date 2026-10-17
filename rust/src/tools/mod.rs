@@ -28,9 +28,10 @@ pub enum ToolError {
     /// A refusal the client should read: its message is shown.
     Message(String),
     /// A write refused because what it changes isn't the version the
-    /// client last saw: its message is shown, and the row as it is now is
-    /// given (in the result's `_meta`), for the client to resolve.
-    Conflict(crate::sheet::rows::Conflict),
+    /// client last saw: its message is shown, and each item that's
+    /// changed, as it is now, is given (in the result's `_meta`), for the
+    /// client to resolve.
+    Conflict(crate::sheet::rows::Conflicts),
     /// Anything else: the client sees only that the tool failed.
     Unexpected(anyhow::Error),
 }
@@ -48,8 +49,8 @@ impl From<anyhow::Error> for ToolError {
 /// ToolError(str(exc))` does. Errors from Google stay unexpected; a
 /// write to a version that isn't the one kept is a conflict.
 pub fn refused(error: anyhow::Error) -> ToolError {
-    if error.downcast_ref::<crate::sheet::rows::Conflict>().is_some() {
-        return ToolError::Conflict(error.downcast::<crate::sheet::rows::Conflict>().expect("checked above"));
+    if let Some(conflicts) = crate::sheet::rows::conflicts_of(&error) {
+        return ToolError::Conflict(conflicts);
     }
     if error.downcast_ref::<crate::google::GoogleError>().is_some() {
         ToolError::Unexpected(error)
@@ -190,6 +191,8 @@ pub fn run(app: &Arc<App>, name: &str, arguments: Value) -> Result<Outcome, Tool
     let _reads = CachedReads::start();
     let _listings = CachedListings::start();
     let written = crate::sheet::rows::Written::start();
+    // A write says which version of each item it changes it last saw.
+    let _versions = tool.writes.then(crate::sheet::rows::VersionsRequired::start);
     let outcome = (tool.run)(app, Value::Object(arguments));
     let outcome = outcome.map(|mut value| {
         written.stamp(&mut value);
@@ -197,8 +200,8 @@ pub fn run(app: &Arc<App>, name: &str, arguments: Value) -> Result<Outcome, Tool
     });
     match outcome {
         Ok(value) => Ok(Outcome(value)),
-        Err(ToolError::Unexpected(error)) if error.downcast_ref::<crate::sheet::rows::Conflict>().is_some() => {
-            Err(ToolError::Conflict(error.downcast::<crate::sheet::rows::Conflict>().expect("checked above")))
+        Err(ToolError::Unexpected(error)) if crate::sheet::rows::conflicts_of(&error).is_some() => {
+            Err(ToolError::Conflict(crate::sheet::rows::conflicts_of(&error).expect("checked above")))
         }
         Err(ToolError::Unexpected(error)) if error.downcast_ref::<crate::sheet::rows::CellError>().is_some() => {
             Err(ToolError::Message(error.to_string()))

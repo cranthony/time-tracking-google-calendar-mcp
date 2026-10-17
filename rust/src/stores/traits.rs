@@ -70,8 +70,7 @@ pub struct Trait {
     /// How its parts' scores combine into its own: an aggregation (see
     /// get_traits), its weights by part id. Without it, the plain mean.
     pub scoring: Option<Map<String, Value>>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -873,7 +872,7 @@ impl Traits {
                 traits.iter().map(|t| format!("{} ({})", str_or_none(t.id.as_deref()), str_or_none(t.name.as_deref()))).collect();
             bail!("{} isn't a trait; the traits are {}", py::repr(&id), known.join(", "));
         };
-        let mut updated = rows::updated_item(&traits[index], given, clear_fields, &["id"]);
+        let mut updated = rows::updated_item(&traits[index], given, clear_fields, &["id"])?;
         if let Some(parts) = &given.parts {
             let parts = with_new_part_ids(parts);
             // A part let go takes its weight with it.

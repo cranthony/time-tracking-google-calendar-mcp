@@ -93,8 +93,7 @@ pub struct Goal {
     pub definition_of_done: Option<String>,
     /// A guide for telling which events are for it.
     pub attribution_hints: Option<String>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -235,10 +234,25 @@ impl Goals {
         let now = DateTimeText(py::pydantic_datetime(&crate::determinism::now()));
         let mut touched: Vec<String> = Vec::new();
         let mut deleted: Vec<String> = Vec::new();
+        // Every goal changed since it was read, not just the first.
+        let mut stale: Vec<rows::Conflict> = Vec::new();
+        let gather = |result: anyhow::Result<bool>, stale: &mut Vec<rows::Conflict>| -> anyhow::Result<Option<bool>> {
+            match result {
+                Ok(go) => Ok(Some(go)),
+                Err(error) => match error.downcast::<rows::Conflict>() {
+                    Ok(one) => {
+                        stale.push(one);
+                        Ok(None)
+                    }
+                    Err(error) => Err(error),
+                },
+            }
+        };
         for removal in removals {
             let id = removal.goal_id.trim();
             let current = goals.iter().find(|g| g.id.as_deref() == Some(id));
-            if rows::deleting(id, current, removal.if_version)? {
+            let Some(go) = gather(rows::deleting(id, current, removal.if_version), &mut stale)? else { continue };
+            if go {
                 if current.is_none() {
                     find(&goals, id)?;
                 }
@@ -255,12 +269,15 @@ impl Goals {
             }
             rows::check_clear_item(&edit.goal, &edit.clear_fields, &CLEARABLE_FIELDS)?;
             let Some(index) = goals.iter().position(|g| g.id.as_deref() == Some(id.as_str())) else {
-                rows::expect_item_version::<Goal>(&id, None, edit.goal.version)?;
+                let gone = rows::expect_item_version::<Goal>(&id, None, edit.goal.version).map(|_| true);
+                if gather(gone, &mut stale)?.is_none() {
+                    continue;
+                }
                 find(&goals, &id)?;
                 unreachable!()
             };
             let before = goals[index].clone();
-            let mut after = rows::updated_item(&before, &edit.goal, &edit.clear_fields, &["id"]);
+            let mut after = rows::updated_item(&before, &edit.goal, &edit.clear_fields, &["id"])?;
             if edit.goal.history.is_none() && after.status != before.status {
                 if let Some(status) = after.status {
                     after.history.get_or_insert_with(Vec::new).push(StatusChange { status, at: now.clone() });
@@ -286,6 +303,17 @@ impl Goals {
         involved.extend(deleted.iter().cloned());
         let problems: Vec<String> =
             goal_problems(&goals, zone).into_iter().filter(|(ids, _)| ids.iter().any(|i| involved.contains(i))).map(|(_, p)| p).collect();
+        if !stale.is_empty() {
+            // With those of the goals that are there, as the write finds
+            // them.
+            if let Err(error) = self.sheet.prepared_items(&goals) {
+                match rows::conflicts_of(&error) {
+                    Some(found) => stale.extend(found.items),
+                    None => return Err(error),
+                }
+            }
+            return Err(rows::Conflicts::of(stale).into());
+        }
         if !problems.is_empty() {
             bail!("{}", dedup(problems).join("; "));
         }

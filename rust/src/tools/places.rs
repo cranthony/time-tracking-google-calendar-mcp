@@ -43,8 +43,7 @@ pub fn create_location(app: &App, location: Location) -> Result<CreatedLocation,
 
 /// Rename a location or change its hint, map_location or group_id, by
 /// id. Omitted properties keep their value; list hint, map_location or
-/// group_id in clear_fields to blank it. Given version -- the version
-/// last seen -- it's refused if it's changed since. Returns it as
+/// group_id in clear_fields to blank it. Give version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns it as
 /// updated.
 #[tool(writes)]
 pub fn update_location(app: &App, location: Location, clear_fields: Option<Vec<ClearableField>>) -> Result<Location, ToolError> {
@@ -52,7 +51,7 @@ pub fn update_location(app: &App, location: Location, clear_fields: Option<Vec<C
     app.locations()?.update_location(&location, &clear).map_err(refused)
 }
 
-/// Delete a location, by id. Given if_version -- the version last seen -- it's refused if it's changed since. Returns it as
+/// Delete a location, by id. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done. Returns it as
 /// it was.
 #[tool(writes)]
 pub fn delete_location(app: &App, location_id: String, if_version: Option<i64>) -> Result<Location, ToolError> {
@@ -91,8 +90,7 @@ pub fn create_location_group(app: &App, group: LocationGroup) -> Result<CreatedL
 /// group; clear it to make it top-level), name (still unique among
 /// groups) or note. Omitted properties keep their value; list group_id or
 /// note in clear_fields to blank it. A group can't end up inside itself.
-/// Given version -- the version last seen -- it's refused if it's changed
-/// since. Returns it as updated.
+/// Give version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns it as updated.
 #[tool(writes)]
 pub fn update_location_group(
     app: &App,
@@ -106,9 +104,7 @@ pub fn update_location_group(
 /// Delete a location group, by id. Its locations and the groups inside it
 /// aren't deleted: they move up into the group it was inside (or to the
 /// top level, if it was top-level). Returns the group as it was
-/// (deleted), and the groups and locations moved up out of it. Given
-/// if_version -- the version last seen -- it's refused if it's changed
-/// since.
+/// (deleted), and the groups and locations moved up out of it. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done.
 #[tool(writes)]
 pub fn delete_location_group(app: &App, group_id: String, if_version: Option<i64>) -> Result<DeletedLocationGroup, ToolError> {
     app.locations()?.delete_location_group(&group_id, if_version).map_err(refused)
@@ -183,8 +179,7 @@ pub fn update_travel_time(
     app.locations()?.update_travel_time(&travel_time, &clear, &modes).map_err(refused)
 }
 
-/// Delete a travel time, by id. Given if_version -- the version last seen
-/// -- it's refused if it's changed since. Returns it as it was. (Deleting a
+/// Delete a travel time, by id. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done. Returns it as it was. (Deleting a
 /// location or location group deletes the travel times from or to it.)
 #[tool(writes)]
 pub fn delete_travel_time(app: &App, travel_time_id: String, if_version: Option<i64>) -> Result<TravelTime, ToolError> {

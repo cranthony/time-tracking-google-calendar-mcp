@@ -120,6 +120,128 @@ impl std::fmt::Display for Conflict {
 
 impl std::error::Error for Conflict {}
 
+/// A write refused because what it changes isn't as the client last saw
+/// it: every item of it that's changed since, or gone -- so a batch is
+/// set right in one go, not one stale item at a time. When a batch stopped
+/// partway (Calendar, which writes each event on its own, found one
+/// changed after the batch was checked), [partly] says what was written.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Conflicts {
+    pub items: Vec<Conflict>,
+    pub partly: Option<Partly>,
+}
+
+/// How far a batch got before it stopped: the changes written, of how
+/// many.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Partly {
+    /// The changes written, each as "updated <event id>", "cancelled ..."
+    /// or "created ...".
+    pub written: Vec<String>,
+    /// The batch's changes.
+    pub of: usize,
+    /// The events it created with no id of their own: sent again, they'd
+    /// be made again.
+    pub made_unnamed: Vec<String>,
+}
+
+impl Conflicts {
+    pub fn of(items: Vec<Conflict>) -> Conflicts {
+        Conflicts { items, partly: None }
+    }
+}
+
+impl std::fmt::Display for Conflicts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(partly) = &self.partly {
+            let n = partly.written.len();
+            write!(
+                f,
+                "{n} of the batch's {} changes were written ({}) before ",
+                partly.of,
+                if n == 0 { "none".into() } else { partly.written.join(", ") }
+            )?;
+        }
+        let said: Vec<String> = self.items.iter().map(Conflict::to_string).collect();
+        match said.len() {
+            0 => f.write_str("nothing it changes is as it was read")?,
+            1 => f.write_str(&said[0])?,
+            n => write!(f, "{n} of the things it changes aren't as they were read: {}", said.join("; "))?,
+        }
+        if let Some(partly) = &self.partly {
+            write!(
+                f,
+                ". Sending the batch again, from what's there now, is safe: what was written is given as it is"
+            )?;
+            if !partly.made_unnamed.is_empty() {
+                write!(
+                    f,
+                    " -- except the events created without an id of their own ({}), which would be made again: leave them out",
+                    partly.made_unnamed.join(", ")
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for Conflicts {}
+
+/// [error]'s conflicts, if it's one: a `Conflict`, or `Conflicts`.
+pub fn conflicts_of(error: &anyhow::Error) -> Option<Conflicts> {
+    if let Some(all) = error.downcast_ref::<Conflicts>() {
+        return Some(all.clone());
+    }
+    error.downcast_ref::<Conflict>().map(|one| Conflicts::of(vec![one.clone()]))
+}
+
+thread_local! {
+    /// Whether the tool call running on this thread must say which version
+    /// of each item it changes it last saw (see `VersionsRequired`).
+    static VERSIONS_REQUIRED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Within this guard's life -- a write tool's call -- an update or delete
+/// of an item that has a version must give the version last seen: one
+/// that doesn't is refused, so no change is made to an item the caller
+/// hasn't seen as it is. The command line and the probes, which change
+/// items as they are, don't hold it.
+pub struct VersionsRequired {
+    was: bool,
+}
+
+impl VersionsRequired {
+    pub fn start() -> VersionsRequired {
+        VersionsRequired { was: VERSIONS_REQUIRED.replace(true) }
+    }
+}
+
+impl Drop for VersionsRequired {
+    fn drop(&mut self) {
+        VERSIONS_REQUIRED.set(self.was);
+    }
+}
+
+/// Whether the call running on this thread must give versions.
+pub fn versions_required() -> bool {
+    VERSIONS_REQUIRED.get()
+}
+
+/// Refuse a change to the `kind` `id`, which is version `now` on record,
+/// given no version (`given`), while versions are required. One saved
+/// before versions existed (none on record) takes one with this write.
+pub fn require_version(kind: &str, id: &str, given: Option<i64>, now: Option<i64>) -> anyhow::Result<()> {
+    if versions_required() && given.is_none() {
+        if let Some(now) = now {
+            bail!(
+                "{kind} {} is version {now}: say which version you last read (its `version`; `if_version` to delete it), so a change made since isn't overwritten. Read it again if you don't have it, then retry",
+                py::repr(id)
+            );
+        }
+    }
+    Ok(())
+}
+
 thread_local! {
     /// The versions written in the tool call running on this thread, by
     /// id; None outside one. An id two kinds share is noted as `None`:
@@ -205,8 +327,9 @@ impl Drop for Written {
 /// now (`current`, None if it's gone), if the client said it last saw
 /// version `expected` and it's not that version now.
 pub fn expect_version(kind: &'static str, id: &str, current: Option<&Row>, expected: Option<i64>) -> anyhow::Result<()> {
-    let Some(expected) = expected else { return Ok(()) };
     let now = current.and_then(|r| r.get("version")).and_then(Value::as_i64);
+    // None given: refused while versions are required, for one on record.
+    let Some(expected) = expected else { return require_version(kind, id, None, now) };
     if current.is_some() && now == Some(expected) {
         return Ok(());
     }
@@ -303,9 +426,10 @@ fn covers(given: &Value, current: &Value) -> bool {
 /// one, the kind's own refusal is the caller's to give; changed since,
 /// it's a `Conflict` (see `Versioned`).
 pub fn deleting<T: Versioned>(id: &str, current: Option<&T>, if_version: Option<i64>) -> anyhow::Result<bool> {
-    if current.is_none() {
+    let Some(found) = current else {
         return Ok(if_version.is_none());
-    }
+    };
+    require_version(T::ROW_TYPE.name, id, if_version, found.version())?;
     expect_item_version(id, current, if_version)?;
     Ok(true)
 }
@@ -446,8 +570,15 @@ pub fn check_clear_item<T: RowItem>(item: &T, clear_fields: &[String], clearable
 }
 
 /// `updated` for typed items.
-pub fn updated_item<T: RowItem>(current: &T, given: &T, clear_fields: &[String], read_only: &[&str]) -> T {
-    item_of(updated(&current.to_row(), &given.to_row(), clear_fields, read_only))
+/// `current` with `given`'s fields set, and those in `clear_fields`
+/// cleared -- refused, while versions are required, if `current` has a
+/// version and `given` doesn't say which it was made to.
+pub fn updated_item<T: RowItem>(current: &T, given: &T, clear_fields: &[String], read_only: &[&str]) -> anyhow::Result<T> {
+    let (was, change) = (current.to_row(), given.to_row());
+    let version = |row: &Row| row.get("version").and_then(Value::as_i64);
+    let id = was.get("id").and_then(Value::as_str).unwrap_or_default();
+    require_version(T::ROW_TYPE.name, id, version(&change), version(&was))?;
+    Ok(item_of(updated(&was, &change, clear_fields, read_only)))
 }
 
 #[derive(Clone)]
@@ -641,6 +772,8 @@ impl RowSheet {
             previous.iter().rev().find(|row| id_column.and_then(|i| row.get(i)).is_some_and(|c| c.trim() == id))
         };
         let mut out = Vec::with_capacity(items.len());
+        // Every one stale, not just the first.
+        let mut stale: Vec<Conflict> = Vec::new();
         for item in items {
             let mut item = item.clone();
             let original = text(&item, "id").and_then(kept);
@@ -663,13 +796,13 @@ impl RowSheet {
                     let again = |given: i64| !changed && was == Some(given + 1);
                     if let Some(given) = given.filter(|g| Some(*g) != was && !again(*g)) {
                         let current = self.from_row(header, original, 0, &mut Vec::new());
-                        return Err(Conflict {
+                        stale.push(Conflict {
                             kind: self.row_type.name,
                             id: text(&item, "id").unwrap_or_default().into(),
                             expected: given.into(),
                             current: Some(current),
-                        }
-                        .into());
+                        });
+                        continue;
                     }
                     match (was, changed) {
                         (Some(was), false) => was,
@@ -683,7 +816,11 @@ impl RowSheet {
             }
             out.push(item);
         }
-        Ok(out)
+        match stale.len() {
+            0 => Ok(out),
+            1 => Err(stale.remove(0).into()),
+            _ => Err(Conflicts::of(stale).into()),
+        }
     }
 
     fn read_raw(&self) -> anyhow::Result<(Vec<String>, Rows)> {

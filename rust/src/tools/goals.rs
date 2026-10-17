@@ -33,8 +33,7 @@ pub struct GoalUpdate {
     pub clear_fields: Option<Vec<GoalField>>,
 }
 
-/// A goal to delete. Given if_version -- the version last seen -- it's
-/// refused if the goal's changed since.
+/// A goal to delete. Give if_version -- the version you last read: without it, a goal that has a version is refused; changed since, it's refused -- read it again and retry.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct GoalDelete {
     pub goal_id: String,
@@ -107,8 +106,7 @@ pub fn create_goal(app: &App, goal: Goal) -> Result<CreatedGoal, ToolError> {
 /// in the same call. Nothing is moved or changed to make things fit: a
 /// call that breaks a rule changes nothing, and the error names the goals
 /// in the way. Deleting a goal can't be undone; events tagged with it
-/// stop showing it. Given a version (or if_version), each change is
-/// refused if the goal's changed since. Returns each goal made or
+/// stop showing it. Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, a goal that has a version is refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- read it again and retry. Returns each goal made or
 /// changed, as it is now, and the ids deleted.
 #[tool(writes)]
 pub fn update_goals(app: &App, updates: Option<Vec<GoalUpdate>>, creates: Option<Vec<Goal>>, deletes: Option<Vec<GoalDelete>>) -> Result<ChangedGoals, ToolError> {
@@ -125,8 +123,7 @@ pub fn update_goals(app: &App, updates: Option<Vec<GoalUpdate>>, creates: Option
 
 /// Update one goal by id: the fields given are set, those left out kept,
 /// and those in clear_fields removed -- update_goals for one goal (see
-/// there for status and history). Given a version, it's refused if the
-/// goal's changed since. Returns the goal as updated.
+/// there for status and history). Give version -- the version you last read: without it, a goal that has a version is refused; changed since, it's refused -- read it again and retry. Returns the goal as updated.
 #[tool(writes)]
 pub fn update_goal(app: &App, goal: Goal, clear_fields: Option<Vec<GoalField>>) -> Result<ListedGoal, ToolError> {
     let id = goal.id.clone().unwrap_or_default();

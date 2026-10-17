@@ -67,8 +67,7 @@ pub struct Person {
     pub what_matters: Option<String>,
     pub traits: Option<Map<String, Value>>,
     pub foundations: Option<Vec<String>>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -99,8 +98,7 @@ pub struct Circle {
     /// get_scoring_defaults), its weights by person id. Without it, the
     /// default's (scoring defaults' circles).
     pub scoring: Option<Map<String, Value>>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -278,7 +276,7 @@ impl People {
         };
         let was_deleted = people[index].status == Some(Status::Deleted);
         let given = Person { traits: person.traits.as_ref().map(spec_with_new_part_ids), ..person.clone() };
-        let changed = rows::updated_item(&people[index], &given, clear_fields, &["id"]);
+        let changed = rows::updated_item(&people[index], &given, clear_fields, &["id"])?;
         if person.name.is_some() || clear_fields.iter().any(|c| c == "context") {
             let mut everyone = vec![self_person()];
             everyone.extend(people.iter().cloned());
@@ -345,7 +343,7 @@ impl People {
             find_circle(&circles, &id)?;
             unreachable!()
         };
-        circles[index] = rows::updated_item(&circles[index], circle, clear_fields, &["id"]);
+        circles[index] = rows::updated_item(&circles[index], circle, clear_fields, &["id"])?;
         let people = self.all()?;
         self.write_circles(&circles)?;
         Ok(listed_circle(&circles[index], &people))

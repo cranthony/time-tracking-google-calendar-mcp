@@ -178,3 +178,14 @@ fn json_that_doesnt_fit_its_field_is_named() {
     let cells = error.downcast_ref::<CellError>().expect("a CellError");
     assert_eq!(cells.cells, vec!["row 2, column tags: '[1]' doesn't fit (invalid type: integer `1`, expected a string)".to_string()]);
 }
+
+#[test]
+fn a_version_is_required_only_where_one_is_on_record_and_only_while_required() {
+    // Outside a write tool's call (the command line): not required.
+    assert!(require_version("Location", "home", None, Some(2)).is_ok());
+    let _required = VersionsRequired::start();
+    assert!(require_version("Location", "home", None, Some(2)).unwrap_err().to_string().contains("is version 2"));
+    assert!(require_version("Location", "home", Some(2), Some(2)).is_ok());
+    // Saved before versions existed: none on record, so none asked for.
+    assert!(require_version("Location", "home", None, None).is_ok());
+}

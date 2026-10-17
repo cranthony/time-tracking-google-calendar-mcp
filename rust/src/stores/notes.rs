@@ -279,6 +279,7 @@ impl NotedTimeSheet {
         let Some((found, header, original)) = self.uncompacted_row(note_id, if_version.is_some())? else {
             return Err(Conflict { kind: "note", id: note_id.into(), expected: if_version.unwrap_or_default().into(), current: None }.into());
         };
+        rows::require_version("note", note_id, if_version, found.version)?;
         let note = &found.note;
         let edited = NotedTime {
             timestamp: timestamp.unwrap_or(note.timestamp),
@@ -308,6 +309,7 @@ impl NotedTimeSheet {
     /// version, it was gone already.
     pub fn delete(&self, note_id: &str, if_version: Option<i64>) -> anyhow::Result<Option<SheetNote>> {
         let Some((found, header, _)) = self.uncompacted_row(note_id, if_version.is_some())? else { return Ok(None) };
+        rows::require_version("note", note_id, if_version, found.version)?;
         if let Some(expected) = if_version.filter(|v| found.version != Some(*v)) {
             return Err(Conflict { kind: "note", id: note_id.into(), expected: expected.into(), current: Some(found.as_row()) }.into());
         }
