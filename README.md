@@ -177,6 +177,8 @@ The server exposes the calendar as MCP tools ([`rust/src/tools/`](rust/src/tools
 | `get_goals` | `(statuses: list[GoalStatus] \| None) -> list[ListedGoal]` |
 | `get_goal` | `(id_or_title: str) -> ListedGoal` |
 | `create_goal` | `(goal: Goal) -> CreatedGoal` |
+| `update_goal` | `(goal: Goal, clear_fields: list[GoalField] \| None) -> ListedGoal` |
+| `delete_goal` | `(goal_id: str, if_version: int \| None) -> ChangedGoals` |
 | `update_goals` | `(updates: list[GoalUpdate] \| None, creates: list[Goal] \| None, deletes: list[GoalDelete] \| None) -> ChangedGoals` |
 | `get_traits` | `(statuses: list[TraitStatus] \| None) -> list[ListedTrait]` |
 | `create_trait` | `(trait: Trait) -> Trait` |

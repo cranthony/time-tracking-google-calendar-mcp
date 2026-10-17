@@ -136,6 +136,8 @@ pub fn registry() -> &'static [crate::contract::ToolDef] {
             goals::get_goals_tool(),
             goals::get_goal_tool(),
             goals::create_goal_tool(),
+            goals::update_goal_tool(),
+            goals::delete_goal_tool(),
             goals::update_goals_tool(),
             people::get_scoring_defaults_tool(),
             people::set_scoring_defaults_tool(),
