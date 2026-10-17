@@ -11990,6 +11990,485 @@
     }
   },
   {
+    "description": "Update one goal by id: the fields given are set, those left out kept,\nand those in clear_fields removed -- update_goals for one goal (see\nthere for status and history). Given a version, it's refused if the\ngoal's changed since. Returns the goal as updated.",
+    "inputSchema": {
+      "properties": {
+        "goal": {
+          "$ref": "#/$defs/Goal"
+        },
+        "clear_fields": {
+          "items": {
+            "enum": [
+              "parent_id",
+              "required",
+              "expected_minutes",
+              "deadline",
+              "description",
+              "definition_of_done",
+              "attribution_hints"
+            ],
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "goal"
+      ],
+      "type": "object",
+      "$defs": {
+        "Goal": {
+          "description": "One goal: an outcome the user means to reach (see get_goals).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parent_id": {
+              "description": "The goal it's a piece of; none for a top-level goal.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "description": "Whether its parent needs it done to be done.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "description": "How long it's expected to take, in minutes of the user's time: a\nguide to compare the time spent with, never enforced.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "deadline": {
+              "description": "When it's due: a date (\"2026-11-01\", due at the end of that day)\nor a date and time (\"2026-11-01T17:00\"), in the calendar's time\nzone. Needed while it's active.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "history": {
+              "description": "Every change of its status, oldest first, the last its status now.",
+              "items": {
+                "$ref": "#/$defs/StatusChange"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": {
+              "description": "What it is, as HTML.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done": {
+              "description": "What being done looks like, as HTML.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attribution_hints": {
+              "description": "A guide for telling which events are for it.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      },
+      "title": "update_goalArguments"
+    },
+    "name": "update_goal",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "expected_minutes": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "deadline": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "history": {
+          "items": {
+            "$ref": "#/$defs/StatusChange"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "definition_of_done": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attribution_hints": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "closed_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object",
+      "$defs": {
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "Delete one goal by id -- update_goals for one goal: refused while it\nhas sub-goals (delete or move them first). Can't be undone; events\ntagged with it stop showing it. Given if_version -- the version last\nseen -- it's refused if it's changed since; gone already, it's done.\nReturns the ids deleted.",
+    "inputSchema": {
+      "properties": {
+        "goal_id": {
+          "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "goal_id"
+      ],
+      "type": "object",
+      "title": "delete_goalArguments"
+    },
+    "name": "delete_goal",
+    "outputSchema": {
+      "properties": {
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/ListedGoal"
+          },
+          "type": "array"
+        },
+        "deleted_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "goals",
+        "deleted_ids"
+      ],
+      "type": "object",
+      "$defs": {
+        "ListedGoal": {
+          "description": "A goal as the goal tools return it: plus its parents' titles (path,\noutermost first), when it first became active (started_at) and, done\nor obsolete, when it became so (closed_at).",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "history": {
+              "items": {
+                "$ref": "#/$defs/StatusChange"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "started_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "closed_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "StatusChange": {
+          "description": "One change of a goal's status: what it became, and when.",
+          "properties": {
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "at"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
     "description": "Change goals, all at once, checked whole: `updates` (each a goal's id\nand the fields to set -- left out, a field keeps its value; list it in\nthat update's clear_fields to remove it instead), `creates` (new goals,\nas create_goal takes them; an update can name one by an id given\nhere) and `deletes`. A status set without a history adds the change,\nnow, to the goal's history; a history given replaces it whole (to\nbackdate a change, or remove a mistaken one), and must end with the\ngoal's status.\n\nThe rules (see get_goals and create_goal) hold for the result, not\nfor each step: to mark a goal done or obsolete, close or move its\nopen sub-goals in the same call; to delete one, delete or move its\nsub-goals too; to make an earlier deadline fit, change its sub-goals'\nin the same call. Nothing is moved or changed to make things fit: a\ncall that breaks a rule changes nothing, and the error names the goals\nin the way. Deleting a goal can't be undone; events tagged with it\nstop showing it. Given a version (or if_version), each change is\nrefused if the goal's changed since. Returns each goal made or\nchanged, as it is now, and the ids deleted.",
     "inputSchema": {
       "properties": {

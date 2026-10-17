@@ -496,10 +496,66 @@
   },
   {
    "arguments": {
-    "deletes": [
+    "goal_id": "inbox1"
+   },
+   "content": "Error executing tool delete_goal: goal rs21so ('Polish')'s parent_id 'inbox1' isn't a goal (get_goals lists them)",
+   "is_error": true,
+   "text": "Error executing tool delete_goal: goal rs21so ('Polish')'s parent_id 'inbox1' isn't a goal (get_goals lists them)",
+   "tool": "delete_goal"
+  },
+  {
+   "arguments": {
+    "clear_fields": [
+     "parent_id"
+    ],
+    "goal": {
+     "id": "rs21so",
+     "title": "Polish it"
+    }
+   },
+   "content": {
+    "attribution_hints": null,
+    "closed_at": null,
+    "deadline": null,
+    "definition_of_done": null,
+    "description": null,
+    "expected_minutes": null,
+    "history": [
      {
-      "goal_id": "inbox1"
-     },
+      "at": "2026-10-07T15:30:00-04:00",
+      "status": "inactive"
+     }
+    ],
+    "id": "rs21so",
+    "parent_id": null,
+    "path": [],
+    "required": null,
+    "started_at": null,
+    "status": "inactive",
+    "title": "Polish it",
+    "version": 3
+   },
+   "is_error": false,
+   "text": "{\n  \"id\": \"rs21so\",\n  \"title\": \"Polish it\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"expected_minutes\": null,\n  \"deadline\": null,\n  \"status\": \"inactive\",\n  \"history\": [\n    {\n      \"status\": \"inactive\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [],\n  \"started_at\": null,\n  \"closed_at\": null,\n  \"version\": 3\n}",
+   "tool": "update_goal"
+  },
+  {
+   "arguments": {
+    "goal_id": "inbox1"
+   },
+   "content": {
+    "deleted_ids": [
+     "inbox1"
+    ],
+    "goals": []
+   },
+   "is_error": false,
+   "text": "{\n  \"goals\": [],\n  \"deleted_ids\": [\n    \"inbox1\"\n  ]\n}",
+   "tool": "delete_goal"
+  },
+  {
+   "arguments": {
+    "deletes": [
      {
       "goal_id": "rs21so"
      }
@@ -507,13 +563,12 @@
    },
    "content": {
     "deleted_ids": [
-     "inbox1",
      "rs21so"
     ],
     "goals": []
    },
    "is_error": false,
-   "text": "{\n  \"goals\": [],\n  \"deleted_ids\": [\n    \"inbox1\",\n    \"rs21so\"\n  ]\n}",
+   "text": "{\n  \"goals\": [],\n  \"deleted_ids\": [\n    \"rs21so\"\n  ]\n}",
    "tool": "update_goals"
   }
  ],
@@ -1268,6 +1323,34 @@
   },
   {
    "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
     "data": [
      {
       "dataFilter": {
@@ -1310,6 +1393,129 @@
         "2"
        ],
        [
+        "rs21so",
+        "Polish it",
+        "",
+        "",
+        "",
+        "",
+        "inactive",
+        "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "3"
+       ],
+       [
+        "inbox1",
+        "Prioritize unstructured goals",
+        "",
+        "",
+        "",
+        "",
+        "inactive",
+        "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 5,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Ship the app",
+        "",
+        "",
+        "3000",
+        "2026-12-01",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "a0g0jc",
+        "Write the pane",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-15",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "rs21so",
+        "Polish it",
+        "",
+        "",
+        "",
+        "",
+        "inactive",
+        "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "3"
+       ],
+       [
         "",
         "",
         "",
@@ -1322,6 +1528,87 @@
         "",
         "",
         ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 4,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Ship the app",
+        "",
+        "",
+        "3000",
+        "2026-12-01",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "a0g0jc",
+        "Write the pane",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-15",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
        ],
        [
         "",
