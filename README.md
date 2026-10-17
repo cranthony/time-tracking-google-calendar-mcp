@@ -30,6 +30,7 @@ A Model Context Protocol (MCP) for managing a Google calendar with a set of non-
   - [Serving the web app](#serving-the-web-app)
   - [Setting up Google access from a browser](#setting-up-google-access-from-a-browser)
   - [Without sign-in, behind a corporate proxy](#without-sign-in-behind-a-corporate-proxy)
+  - [Linux release packages](#linux-release-packages)
   - [Behind an IAP proxy](#behind-an-iap-proxy)
 - [Development](#development)
   - [Project layout](#project-layout)
@@ -575,6 +576,16 @@ Such a build trusts every request as the server's single user, token or not, and
 - **It offers nothing to sign in with.** There's no protected-resource metadata, no `WWW-Authenticate` challenge, and no OAuth proxy.
 
 The proxy's own header isn't read: the server can't tell who's behind it, and doesn't need to, since it serves one user. CI builds and tests this variant on every PR (`cargo test (AUTH_DISABLED)`), but never deploys it.
+
+### Linux release packages
+
+Every push to `main` that changes the server builds it for Linux with **`AUTH_DISABLED`** ([without sign-in](#without-sign-in-behind-a-corporate-proxy)) and publishes it ([`.github/workflows/linux-release.yml`](.github/workflows/linux-release.yml)): `time-tracker-server-AUTH_DISABLED-<date>-<commit>-linux-x86_64.tar.gz`, with its SHA-256. It holds the `time-tracker-server` binary, the LICENSE and `AUTH_DISABLED.txt`, which says what the build means. The binary is x86_64 and statically linked (musl), so it runs on any Linux distribution. Pair it with the client repository's web app package (`time-tracker-web-<version>-for-AUTH_DISABLED-server.tar.gz`): unpack that and point `STATIC_SITE_DIR` at it ([Serving the web app](#serving-the-web-app)).
+
+Each package is published twice:
+- **As a GitHub Release**, tagged `server-AUTH_DISABLED-<date>-<commit>`, never marked latest.
+- **In a Google Drive folder** (`TimeTracker` at the top of the Drive, or the repository variable `DRIVE_FOLDER`, an rclone path), holding only the latest package: each run copies the new one in and removes the older server packages, leaving the web app's alone ([`scripts/publish_to_drive.sh`](scripts/publish_to_drive.sh)). It needs the `DRIVE_RCLONE_CONF` secret, an rclone config with a Google Drive remote called `gdrive`; the client repository's README says how to make it ("Linux release packages"). Without it this step is skipped, with a warning.
+
+A pull request that changes the workflow or the script builds and packages the server too, but publishes nothing.
 
 ### Behind an IAP proxy
 
