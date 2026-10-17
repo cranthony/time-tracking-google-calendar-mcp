@@ -36,8 +36,7 @@ pub struct TravelTime {
     pub one_way: Option<bool>,
     pub times: Option<Vec<TravelMode>>,
     pub note: Option<String>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -110,7 +109,7 @@ impl Locations {
             rows::expect_item_version::<TravelTime>(&id, None, travel.version)?;
             bail!("There's no travel time with the id {} (get_travel_times lists them)", py::repr(&id));
         };
-        all[index] = rows::updated_item(&all[index], travel, clear_fields, &["id"]);
+        all[index] = rows::updated_item(&all[index], travel, clear_fields, &["id"])?;
         self.write_travel_times(&all, modes)?;
         Ok(all[index].clone())
     }

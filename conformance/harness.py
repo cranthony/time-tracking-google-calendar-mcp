@@ -135,7 +135,103 @@ class Session:
         assert call.is_error, f"{tool} succeeded: {call.content!r}"
         return call.content
 
+    async def _read(self, tool: str, arguments: dict) -> Any:
+        """What `tool`, a read, gives -- not recorded as a call."""
+        result = await self._call_tool(tool, arguments)
+        if result.is_error or result.structured_content is None:
+            return None
+        content = result.structured_content
+        return content["result"] if set(content) == {"result"} else content
+
+    async def _version(self, kind: str, item_id: str) -> Any:
+        """The version the `kind` `item_id` is now, as a client reads it
+        before changing it; None if there's none."""
+        single = {
+            "action": ("get_action", "id_or_name"),
+            "action_group": ("get_action_group", "id_or_name"),
+            "person": ("get_person", "id_or_name"),
+            "circle": ("get_circle", "id_or_name"),
+            "location": ("get_location", "id_or_name"),
+            "location_group": ("get_location_group", "id_or_name"),
+            "habit": ("get_habit", "id_or_name"),
+            "goal": ("get_goal", "id_or_title"),
+            "event": ("get_event", "id"),
+        }
+        listed = {
+            "trait": ("get_traits", {"statuses": ["active", "off", "archived"]}),
+            "travel_time": ("get_travel_times", {}),
+            "note": ("get_notes", {"include_compacted": True}),
+        }
+        key = "etag" if kind == "event" else "version"
+        if kind in single:
+            tool, name = single[kind]
+            found = await self._read(tool, {name: item_id})
+            return found.get(key) if isinstance(found, dict) else None
+        if kind in listed:
+            tool, args = listed[kind]
+            for item in await self._read(tool, args) or []:
+                if isinstance(item, dict) and item.get("id") == item_id:
+                    return item.get(key)
+        return None
+
+    async def _seen(self, tool: str, arguments: dict) -> dict:
+        """[arguments], with the version last read of each item [tool]
+        changes filled in where they give none -- as a client sends a
+        change, having read what it changes."""
+        arguments = json.loads(json.dumps(arguments))
+
+        async def fill(at: Any, kind: str, id_key: str, key: str) -> None:
+            if not isinstance(at, dict) or not isinstance(at.get(id_key), str) or at.get(key) is not None:
+                return
+            version = await self._version(kind, at[id_key])
+            if version is not None:
+                at[key] = version
+
+        if tool in ("update_event", "delete_event"):
+            for update in arguments.get("updates") or []:
+                await fill(update.get("event"), "event", "id", "etag")
+            for cancel in arguments.get("cancels") or []:
+                await fill(cancel, "event", "event_id", "etag")
+        elif tool == "update_goals":
+            for update in arguments.get("updates") or []:
+                await fill(update.get("goal"), "goal", "id", "version")
+            for delete in arguments.get("deletes") or []:
+                await fill(delete, "goal", "goal_id", "if_version")
+        elif tool == "edit_note":
+            await fill(arguments, "note", "note_id", "version")
+        elif tool == "delete_note":
+            await fill(arguments, "note", "note_id", "if_version")
+        else:
+            rows = {
+                "update_action": ("action", "action"),
+                "update_action_group": ("group", "action_group"),
+                "update_person": ("person", "person"),
+                "update_circle": ("circle", "circle"),
+                "update_location": ("location", "location"),
+                "update_location_group": ("group", "location_group"),
+                "update_habit": ("habit", "habit"),
+                "update_trait": ("trait", "trait"),
+                "update_travel_time": ("travel_time", "travel_time"),
+                "update_goal": ("goal", "goal"),
+            }
+            deletes = {
+                "delete_action_group": ("group_id", "action_group"),
+                "delete_circle": ("circle_id", "circle"),
+                "delete_location": ("location_id", "location"),
+                "delete_location_group": ("group_id", "location_group"),
+                "delete_travel_time": ("travel_time_id", "travel_time"),
+                "delete_goal": ("goal_id", "goal"),
+            }
+            if tool in rows:
+                argument, kind = rows[tool]
+                await fill(arguments.get(argument), kind, "id", "version")
+            if tool in deletes:
+                id_key, kind = deletes[tool]
+                await fill(arguments, kind, id_key, "if_version")
+        return arguments
+
     async def _call(self, tool: str, arguments: dict) -> Call:
+        arguments = await self._seen(tool, arguments)
         result = await self._call_tool(tool, arguments)
         texts = [c.text for c in result.content if getattr(c, "type", None) == "text"]
         if result.is_error:

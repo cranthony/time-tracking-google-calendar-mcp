@@ -1175,7 +1175,8 @@
   {
    "arguments": {
     "description": "deep work, then a call",
-    "note_id": "3dnjav"
+    "note_id": "3dnjav",
+    "version": 1
    },
    "content": {
     "compaction_id": null,
@@ -2942,7 +2943,8 @@
   {
    "arguments": {
     "note_id": "3dnjav",
-    "timestamp": "2026-10-05T09:20:00-04:00"
+    "timestamp": "2026-10-05T09:20:00-04:00",
+    "version": 2
    },
    "content": {
     "compaction_id": null,
@@ -5911,6 +5913,34 @@
      {
       "gridRange": {
        "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -6485,6 +6515,34 @@
      "2026-10-04T07:30:00-04:00"
     ]
    }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
   },
   {
    "body": {

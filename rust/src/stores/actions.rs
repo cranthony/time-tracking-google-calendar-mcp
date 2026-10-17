@@ -88,8 +88,7 @@ pub struct Action {
     /// Whether it's a way of getting from one place to another ("drive",
     /// "walk"), which a travel time can be by.
     pub commute: Option<bool>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -136,8 +135,7 @@ pub struct ActionGroup {
     pub background_color: Option<String>,
     pub priority: Option<i64>,
     pub note: Option<String>,
-    /// Goes up by one each time it changes. Given to an update, it's the
-    /// version last seen: the update is refused if it's changed since.
+    /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -461,7 +459,7 @@ impl Actions {
             bail!("{}", unknown_message(&actions, &id));
         };
         let mut after = actions.clone();
-        after[index] = rows::updated_item(&actions[index], action, clear_fields, &READ_ONLY_FIELDS);
+        after[index] = rows::updated_item(&actions[index], action, clear_fields, &READ_ONLY_FIELDS)?;
         let groups = self.groups()?.groups;
         let changes = self.commit(
             &actions,
@@ -519,7 +517,7 @@ impl Actions {
             unreachable!()
         };
         let mut after = groups.clone();
-        after[index] = rows::updated_item(&groups[index], group, clear_fields, &["id"]);
+        after[index] = rows::updated_item(&groups[index], group, clear_fields, &["id"])?;
         let actions = self.all()?;
         let changes = self.commit(&actions, &actions, &groups, &after, CommitOptions { write_actions: false, changed_groups: vec![id], ..Default::default() })?;
         Ok(ActionGroupChanges {

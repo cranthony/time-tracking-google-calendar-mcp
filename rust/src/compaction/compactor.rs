@@ -2694,7 +2694,7 @@ pub fn edit_note(
     require_not_being_applied(journal, note_id)?;
     match notes.edit(note_id, timestamp, description, if_version) {
         Ok(note) => Ok(note),
-        Err(e) if google_status(&e).is_some() || e.downcast_ref::<crate::sheet::rows::Conflict>().is_some() => Err(e),
+        Err(e) if google_status(&e).is_some() || crate::sheet::rows::conflicts_of(&e).is_some() => Err(e),
         Err(e) => Err(ce(e.to_string(), "note_edit")),
     }
 }
@@ -2704,7 +2704,7 @@ pub fn delete_note(notes: &NotedTimeSheet, journal: &CompactionJournal, note_id:
     require_not_being_applied(journal, note_id)?;
     match notes.delete(note_id, if_version) {
         Ok(note) => Ok(note),
-        Err(e) if google_status(&e).is_some() || e.downcast_ref::<crate::sheet::rows::Conflict>().is_some() => Err(e),
+        Err(e) if google_status(&e).is_some() || crate::sheet::rows::conflicts_of(&e).is_some() => Err(e),
         Err(e) => Err(ce(e.to_string(), "note_edit")),
     }
 }

@@ -1292,7 +1292,8 @@
   {
    "arguments": {
     "description": "x",
-    "note_id": "co2yzn"
+    "note_id": "co2yzn",
+    "version": 1
    },
    "content": "Error executing tool edit_note: note 'co2yzn' is part of compaction acc838f92e55r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
    "is_error": true,
@@ -1301,6 +1302,7 @@
   },
   {
    "arguments": {
+    "if_version": 1,
     "note_id": "3dnjav"
    },
    "content": "Error executing tool delete_note: note '3dnjav' is part of compaction acc838f92e55r1, which is applying -- finish it with finish_proposal, or abandon it with abandon_compaction, first",
@@ -4221,6 +4223,34 @@
      {
       "gridRange": {
        "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4232,6 +4262,34 @@
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
       }
      }
     ],

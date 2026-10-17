@@ -10,7 +10,7 @@ use crate::facts::{fact_problems, Facts as EventFacts};
 use crate::py;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::ActionTree;
-use crate::stores::event_changes::{self, Cancel, EventChanges, StaleEvent};
+use crate::stores::event_changes::{self, Cancel, EventChanges, StaleEvent, StaleEvents};
 use crate::stores::goals::{settled_shares, GoalShare};
 use crate::stores::notes::NotedTime as StoredNote;
 use crate::stores::schedule::ScheduleHint;
@@ -145,16 +145,13 @@ pub struct PublicEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repeat: Option<Repeat>,
     /// Which version of the event this is, as Calendar gives it; it
-    /// changes whenever the event does. Given to update_event, it's the
-    /// version last seen: the update is refused if the event's changed
-    /// since.
+    /// changes whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.
     pub etag: Option<String>,
 }
 
 /// An event to cancel, and whether that counts against follow-through:
 /// a commitment dropped (true) rather than just a change of plan (false).
-/// Given etag -- the event's last seen -- it's refused if the event's
-/// changed since.
+/// Give etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- read it again and retry.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct EventCancel {
     pub event_id: String,
@@ -198,9 +195,7 @@ pub struct NoteWithId {
     pub timestamp: DateTimeText,
     pub description: Option<String>,
     pub compaction_id: Option<String>,
-    /// Goes up by one each time it's edited. Given to edit_note (version)
-    /// or delete_note (if_version), it's the version last seen: the change
-    /// is refused if the note's changed since.
+    /// Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, a note that has one is refused; changed since, it's refused -- read it again and retry.
     pub version: Option<i64>,
 }
 
@@ -472,24 +467,33 @@ fn to_cancels(cancels: Vec<EventCancel>) -> Vec<Cancel> {
         .collect()
 }
 
-/// `error`, as a conflict if it's a change to an event that's changed
-/// since the client read it, with the event as it is now.
+/// `error`, as a conflict if it's a change to events that have changed
+/// since the client read them -- each, as it is now -- saying how far the
+/// batch got if it stopped partway.
 fn stale(app: &App, error: anyhow::Error) -> ToolError {
-    let Some(stale) = error.downcast_ref::<StaleEvent>() else { return error.into() };
-    let current = match &stale.event {
-        Some(event) => match public_events(app, std::slice::from_ref(event)) {
-            Ok(Value::Array(mut shown)) => shown.pop().and_then(|e| e.as_object().cloned()),
-            Ok(_) => None,
-            Err(error) => return error.into(),
-        },
-        None => None,
+    let all = match (error.downcast_ref::<StaleEvents>(), error.downcast_ref::<StaleEvent>()) {
+        (Some(all), _) => all.clone(),
+        (None, Some(one)) => StaleEvents { items: vec![one.clone()], partly: None },
+        _ => return error.into(),
     };
-    ToolError::Conflict(crate::sheet::rows::Conflict {
-        kind: "event",
-        id: stale.event_id.clone(),
-        expected: crate::sheet::rows::Seen::Etag(stale.expected.clone()),
-        current,
-    })
+    let mut items = Vec::new();
+    for stale in &all.items {
+        let current = match &stale.event {
+            Some(event) => match public_events(app, std::slice::from_ref(event)) {
+                Ok(Value::Array(mut shown)) => shown.pop().and_then(|e| e.as_object().cloned()),
+                Ok(_) => None,
+                Err(error) => return error.into(),
+            },
+            None => None,
+        };
+        items.push(crate::sheet::rows::Conflict {
+            kind: "event",
+            id: stale.event_id.clone(),
+            expected: crate::sheet::rows::Seen::Etag(stale.expected.clone()),
+            current,
+        });
+    }
+    ToolError::Conflict(crate::sheet::rows::Conflicts { items, partly: all.partly })
 }
 
 // -- the tools ------------------------------------------------------------------
@@ -565,6 +569,17 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// call. A call that breaks this changes nothing, and the error lists
 /// every problem and the events around them, to send a valid call at
 /// once.
+///
+/// VERSIONS: each update and cancel gives the event's etag as you last
+/// read it (list_events and get_event give it). One without is refused;
+/// one changed since is refused, with every such event as it is now
+/// (_meta.conflicts) -- read them again and send the call again. Calendar
+/// writes each event on its own, so one changed after the batch is
+/// checked stops it partway: the error says which changes were written
+/// (_meta.partly) before it stopped. Sending the batch again, from what's
+/// there now, is safe -- what was written is given as it is -- except a
+/// create made without an id of its own, which would be made again:
+/// leave those out.
 ///
 /// Everything before the last compaction (get_compaction_status's
 /// last_compaction) is history: an event that started before it can't be

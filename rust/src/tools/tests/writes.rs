@@ -271,3 +271,89 @@ fn an_event_change_sent_again_is_given_as_it_is() {
     );
     assert!(taken["content"][0]["text"].as_str().unwrap().contains("already used"), "{taken}");
 }
+
+// -- versions required ------------------------------------------------------------------
+
+/// [result]'s error text.
+fn said(result: &Value) -> String {
+    result["content"][0]["text"].as_str().unwrap_or_default().to_string()
+}
+
+#[test]
+fn a_change_that_doesnt_say_which_version_it_read_is_refused() {
+    let s = Server::new();
+    let home = s.ok("create_location", json!({"location": {"name": "Home"}}))["created_id"].clone();
+    let note = s.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:00:00+00:00"}}))["id"].clone();
+    s.seed(&[crate::testing::event_at("09:00-10:00").id("walk1").summary("Walk").build()]);
+
+    for (tool, arguments) in [
+        ("update_location", json!({"location": {"id": home, "hint": "upstairs"}})),
+        ("delete_location", json!({"location_id": home})),
+        ("edit_note", json!({"note_id": note, "description": "up"})),
+        ("delete_note", json!({"note_id": note})),
+        ("update_event", json!({"updates": [{"event": {"id": "walk1", "summary": "Stroll"}}]})),
+        ("delete_event", json!({"cancels": [{"event_id": "walk1", "counts_against_follow_through": false}]})),
+    ] {
+        let refused = s.raw(tool, arguments, json!({}));
+        assert_eq!(refused["isError"], json!(true), "{tool}");
+        assert!(said(&refused).contains("Read it again") || said(&refused).contains("Read them again"), "{tool}: {}", said(&refused));
+    }
+    // Nothing changed.
+    assert_eq!(s.ok("get_location", json!({"id_or_name": home}))["hint"], Value::Null);
+    assert_eq!(s.event("walk1").summary.as_deref(), Some("Walk"));
+}
+
+#[test]
+fn every_stale_item_of_a_batch_is_said_not_just_the_first() {
+    let s = Server::new();
+    let made = s.ok(
+        "update_goals",
+        json!({"creates": [
+            {"id": "read-more", "title": "Read more", "deadline": "2026-12-01"},
+            {"id": "run-more", "title": "Run more", "deadline": "2026-12-01"},
+        ]}),
+    );
+    assert_eq!(made["goals"].as_array().unwrap().len(), 2);
+    // Each changed elsewhere since version 1 was read.
+    s.ok("update_goal", json!({"goal": {"id": "read-more", "description": "<p>books</p>", "version": 1}}));
+    s.ok("update_goal", json!({"goal": {"id": "run-more", "description": "<p>miles</p>", "version": 1}}));
+
+    let stale = s.raw(
+        "update_goals",
+        json!({"updates": [
+            {"goal": {"id": "read-more", "title": "Read", "version": 1}},
+            {"goal": {"id": "run-more", "title": "Run", "version": 1}},
+        ]}),
+        json!({}),
+    );
+
+    let ids: Vec<Value> = stale["_meta"]["conflicts"].as_array().unwrap().iter().map(|c| c["id"].clone()).collect();
+    assert_eq!(ids, vec![json!("read-more"), json!("run-more")]);
+    // The first, as an older client reads it, too.
+    assert_eq!(stale["_meta"]["conflict"]["id"], json!("read-more"));
+    assert!(said(&stale).contains("2 of the things it changes"), "{}", said(&stale));
+}
+
+#[test]
+fn every_stale_event_of_a_batch_is_said() {
+    let s = Server::new();
+    s.seed(&[
+        crate::testing::event_at("09:00-10:00").id("walk1").summary("Walk").build(),
+        crate::testing::event_at("11:00-12:00").id("read1").summary("Read").build(),
+    ]);
+    let etags: Vec<Value> = ["walk1", "read1"].iter().map(|id| json!(s.event(id).etag.0.unwrap())).collect();
+    s.ok("update_event", json!({"updates": [{"event": {"id": "walk1", "summary": "Stroll"}}, {"event": {"id": "read1", "summary": "Study"}}]}));
+
+    let stale = s.raw(
+        "update_event",
+        json!({"updates": [
+            {"event": {"id": "walk1", "summary": "Hike", "etag": etags[0]}},
+            {"event": {"id": "read1", "summary": "Write", "etag": etags[1]}},
+        ]}),
+        json!({}),
+    );
+
+    let ids: Vec<Value> = stale["_meta"]["conflicts"].as_array().unwrap().iter().map(|c| c["id"].clone()).collect();
+    assert_eq!(ids, vec![json!("walk1"), json!("read1")]);
+    assert_eq!(stale["_meta"]["conflicts"][1]["current"]["summary"], json!("Study"));
+}

@@ -324,11 +324,11 @@ fn a_change_from_an_older_etag_is_stale_with_the_event_as_it_is_now() {
 
     let renamed = Event { id: Some("email".into()), summary: Some("Mail".into()), etag: Etag(Some(etag.clone())), ..Default::default() };
     let error = f.changes.check(vec![renamed], vec![], vec![], None, false).unwrap_err();
-    let stale = error.downcast_ref::<StaleEvent>().unwrap();
+    let stale = &error.downcast_ref::<StaleEvents>().unwrap().items[0];
     assert_eq!(stale.event.as_ref().unwrap().summary.as_deref(), Some("Inbox"));
 
     let cancel = Cancel { etag: Some(etag), ..cancel("email", false) };
-    assert!(f.changes.check(vec![], vec![], vec![cancel], None, false).unwrap_err().downcast_ref::<StaleEvent>().is_some());
+    assert!(f.changes.check(vec![], vec![], vec![cancel], None, false).unwrap_err().downcast_ref::<StaleEvents>().is_some());
     assert_eq!(f.event("email").summary.as_deref(), Some("Inbox"));
 }
 
@@ -343,6 +343,47 @@ fn a_change_made_elsewhere_after_the_check_is_stale_when_its_written() {
 
     let _held = WRITE_LOCK.hold();
     let error = f.changes.apply(&batch, "update_event").unwrap_err();
-    let stale = error.downcast_ref::<StaleEvent>().unwrap();
-    assert_eq!(stale.event.as_ref().unwrap().summary.as_deref(), Some("Inbox"));
+    let stopped = error.downcast_ref::<StaleEvents>().unwrap();
+    assert_eq!(stopped.items[0].event.as_ref().unwrap().summary.as_deref(), Some("Inbox"));
+    // It said how far it got: nothing written before it.
+    assert_eq!(stopped.partly.as_ref().map(|p| (p.written.len(), p.of)), Some((0, 1)));
+}
+
+#[test]
+fn a_batch_stopped_partway_says_what_it_wrote() {
+    let f = fixture(day(), false);
+    let etag = |id: &str| Etag(f.event(id).etag.0);
+    let batch = f
+        .check(Asked {
+            updates: vec![
+                Event { id: Some("email".into()), summary: Some("Inbox".into()), etag: etag("email"), ..Default::default() },
+                Event { id: Some("report".into()), summary: Some("Draft".into()), etag: etag("report"), ..Default::default() },
+            ],
+            creates: vec![event_at("15:00-16:00").summary("Walk").build()],
+            ..Default::default()
+        })
+        .unwrap();
+    // The report changed elsewhere between the check and the write.
+    f.apply(&f.check(Asked { updates: vec![Event { id: Some("report".into()), summary: Some("Report v2".into()), ..Default::default() }], ..Default::default() }).unwrap(), "update_event");
+
+    let _held = WRITE_LOCK.hold();
+    let error = f.changes.apply(&batch, "update_event").unwrap_err();
+
+    let stopped = error.downcast_ref::<StaleEvents>().unwrap();
+    let partly = stopped.partly.as_ref().unwrap();
+    assert_eq!((partly.written.clone(), partly.of), (vec!["updated email".to_string()], 3));
+    assert_eq!(stopped.items[0].event_id, "report");
+    // As the client's told it.
+    let told = crate::sheet::rows::Conflicts {
+        items: vec![crate::sheet::rows::Conflict {
+            kind: "event",
+            id: "report".into(),
+            expected: crate::sheet::rows::Seen::Etag("e".into()),
+            current: None,
+        }],
+        partly: stopped.partly.clone(),
+    }
+    .to_string();
+    assert!(told.starts_with("1 of the batch's 3 changes were written (updated email) before"), "{told}");
+    assert!(told.contains("Sending the batch again"), "{told}");
 }

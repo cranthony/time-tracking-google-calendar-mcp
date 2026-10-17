@@ -116,8 +116,10 @@ fn the_requests_each_tool_makes() {
     let mut made = Vec::new();
     let mut expected = Vec::new();
     for (label, tool, arguments, requests) in calls {
+        // The versions it changes, read first, as a client does.
+        let arguments = f.s.seen(tool, arguments);
         let before = f.s.t.fake.quota_counts();
-        f.s.ok(tool, arguments);
+        f.s.as_is(tool, arguments).unwrap_or_else(|e| panic!("{tool}: {e}"));
         let after = f.s.t.fake.quota_counts();
         made.push((label, [0, 1, 2, 3].map(|i| after[i] - before[i])));
         expected.push((label, requests));

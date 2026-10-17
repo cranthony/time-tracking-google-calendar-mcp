@@ -93,7 +93,8 @@
   {
    "arguments": {
     "description": "started work late",
-    "note_id": "co2yzn"
+    "note_id": "co2yzn",
+    "version": 1
    },
    "content": {
     "compaction_id": null,
@@ -109,7 +110,8 @@
   {
    "arguments": {
     "note_id": "co2yzn",
-    "timestamp": "2026-10-07T09:15:00-04:00"
+    "timestamp": "2026-10-07T09:15:00-04:00",
+    "version": 2
    },
    "content": {
     "compaction_id": null,
@@ -125,7 +127,8 @@
   {
    "arguments": {
     "description": "",
-    "note_id": "co2yzn"
+    "note_id": "co2yzn",
+    "version": 3
    },
    "content": {
     "compaction_id": null,
@@ -140,6 +143,7 @@
   },
   {
    "arguments": {
+    "if_version": 1,
     "note_id": "3dnjav"
    },
    "content": {
@@ -585,6 +589,34 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
   },
   {
@@ -1839,6 +1871,34 @@
      {
       "gridRange": {
        "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1898,6 +1958,34 @@
      {
       "gridRange": {
        "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1949,6 +2037,34 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
   },
   {
@@ -2044,6 +2160,34 @@
      {
       "gridRange": {
        "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -2055,6 +2199,34 @@
        "sheetId": 1000021,
        "startColumnIndex": 0,
        "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
       }
      }
     ],

@@ -205,17 +205,24 @@ pub fn call_tool(app: &Arc<crate::app::App>, params: &Value, timings: &mut Vec<T
             tracing::info!("Tool {} failed: {}", py::repr(&name), py::repr(&text));
             error_result(format!("Error executing tool {name}: {text}"))
         }
-        Err(ToolError::Conflict(conflict)) => {
-            tracing::info!("Tool {} found a conflict: {conflict}", py::repr(&name));
-            error_result_with(
-                format!("Error executing tool {name}: {conflict}"),
-                json!({"conflict": {
-                    "kind": conflict.kind,
-                    "id": conflict.id,
-                    "expected": conflict.expected,
-                    "current": conflict.current,
-                }}),
-            )
+        Err(ToolError::Conflict(conflicts)) => {
+            tracing::info!("Tool {} found a conflict: {conflicts}", py::repr(&name));
+            let each: Vec<Value> = conflicts
+                .items
+                .iter()
+                .map(|c| json!({"kind": c.kind, "id": c.id, "expected": c.expected, "current": c.current}))
+                .collect();
+            let mut meta = Map::new();
+            // The first, as older clients read it; then every one.
+            meta.insert("conflict".into(), each.first().cloned().unwrap_or(Value::Null));
+            meta.insert("conflicts".into(), Value::Array(each));
+            if let Some(partly) = &conflicts.partly {
+                meta.insert(
+                    "partly".into(),
+                    json!({"written": partly.written, "of": partly.of, "made_unnamed": partly.made_unnamed}),
+                );
+            }
+            error_result_with(format!("Error executing tool {name}: {conflicts}"), Value::Object(meta))
         }
         Err(ToolError::Unexpected(error)) => {
             tracing::error!("Tool {} raised an unexpected exception: {error:?}", py::repr(&name));

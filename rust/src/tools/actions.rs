@@ -63,8 +63,7 @@ pub fn create_action(app: &App, action: Action) -> Result<CreatedAction, ToolErr
 /// holds a label while there's room), active (holds a label), archived
 /// (not done any more) or deleted (shouldn't have existed); archiving or
 /// deleting frees its label, and making it active again restores it.
-/// Given version -- the version last seen -- it's refused if it's changed
-/// since. Returns, as changed, the action as updated, plus any proposed
+/// Give version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns, as changed, the action as updated, plus any proposed
 /// action that gained or lost its label as a result, with label_slots_used
 /// of label_slots_total.
 #[tool(writes)]
@@ -138,8 +137,7 @@ pub fn update_priority_color(app: &App, priority: i64, color: String) -> Result<
 /// groups), background_color, priority or note. Omitted properties keep
 /// their value; list one in clear_fields to blank it instead. Its actions
 /// that don't set their own color follow its new one on the calendar.
-/// Given version -- the version last seen -- it's refused if it's changed
-/// since. Returns, as changed, the group as updated, and as affected_actions,
+/// Give version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns, as changed, the group as updated, and as affected_actions,
 /// every action whose path, effective_color or effective_priority
 /// changed as a result.
 #[tool(writes)]
@@ -153,9 +151,7 @@ pub fn update_action_group(app: &App, group: ActionGroup, clear_fields: Option<V
 /// aren't deleted: they move up into the group it was inside (or to the
 /// top level, if it was top-level). Returns the group as it was
 /// (deleted), as changed, the groups moved up out of it, and as
-/// affected_actions, every action moved or recolored as a result. Given
-/// if_version -- the version last seen -- it's refused if it's changed
-/// since.
+/// affected_actions, every action moved or recolored as a result. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done.
 #[tool(writes)]
 pub fn delete_action_group(app: &App, group_id: String, if_version: Option<i64>) -> Result<DeletedActionGroup, ToolError> {
     prefetch_stores(app)?;
