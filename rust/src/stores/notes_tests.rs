@@ -264,19 +264,19 @@ fn appends_only_the_new_row_after_the_existing_ones() {
     // compaction stamp on one of them).
     let f = fixture(vec![row(&["2025-01-01T00:00:00+00:00", "Old"]), row(&[T2, "Older"])]);
 
-    let appended = f.held(|s| s.append(&noted(T1, Some("New")), None)).unwrap();
+    let appended = f.held(|s| s.append(&noted(T1, Some("New")), Some("new"))).unwrap();
 
-    assert_eq!(f.writes(), vec![("A1:D1".to_string(), json!([["timestamp", "description", "compaction_id", "version"]])), ("A4:D4".to_string(), json!([[T1, "New", "", "1"]]))]);
-    assert_eq!(appended.id(), id(T1, 4));
+    assert_eq!(f.writes(), vec![("A1:E1".to_string(), json!([["timestamp", "description", "compaction_id", "id", "version"]])), ("A4:E4".to_string(), json!([[T1, "New", "", "new", "1"]]))]);
+    assert_eq!((appended.id(), appended.row), ("new".to_string(), 4));
 }
 
 #[test]
 fn appends_to_an_empty_tab() {
     let f = fixture(vec![]);
 
-    f.held(|s| s.append(&noted(T1, None), None)).unwrap();
+    f.held(|s| s.append(&noted(T1, None), Some("n1"))).unwrap();
 
-    assert_eq!(f.writes(), vec![("A1:D1".to_string(), json!([["timestamp", "description", "compaction_id", "version"]])), ("A2:D2".to_string(), json!([[T1, "", "", "1"]]))]);
+    assert_eq!(f.writes(), vec![("A1:E1".to_string(), json!([["timestamp", "description", "compaction_id", "id", "version"]])), ("A2:E2".to_string(), json!([[T1, "", "", "n1", "1"]]))]);
 }
 
 #[test]
@@ -296,8 +296,9 @@ fn the_appended_note_is_read_back_by_its_id() {
 
     let appended = f.held(|s| s.append(&noted(T2, Some("b")), None)).unwrap();
 
-    assert_eq!(appended.id(), id(T2, 3));
-    assert_eq!(f.ids(false), vec![id(T1, 2), id(T2, 3)]);
+    // One of its own, made for it; an older note keeps its timestamp#row.
+    assert!(!appended.id().contains('#'), "{}", appended.id());
+    assert_eq!(f.ids(false), vec![id(T1, 2), appended.id()]);
 }
 
 // -- garbage collection --------------------------------------------------------------------
@@ -407,11 +408,11 @@ fn blank_rows_count_and_are_deleted_with_the_prefix() {
 fn append_garbage_collects_first_from_the_same_read() {
     let f = fixture(compacted(55, T1, "a"));
 
-    let appended = f.held(|s| s.append(&noted(T1, None), None)).unwrap();
+    let appended = f.held(|s| s.append(&noted(T1, None), Some("last"))).unwrap();
 
     let remaining = f.rows();
     assert_eq!(remaining.len(), 26); // trimmed from 55 to 25, + 1 appended
-    assert_eq!(remaining.last().unwrap(), &row(&[T1, "", "", "1"]));
+    assert_eq!(remaining.last().unwrap(), &row(&[T1, "", "", "last", "1"]));
     assert_eq!(appended.row, 27);
     assert_eq!(f.reads().len(), 1);
 }
@@ -574,5 +575,5 @@ fn the_next_note_still_appends_after_the_last_one() {
 
     let appended = f.held(|s| s.append(&noted(T2, Some("c")), None)).unwrap();
 
-    assert_eq!(appended.id(), id(T2, 4));
+    assert_eq!(appended.row, 4);
 }

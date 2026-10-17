@@ -1116,7 +1116,9 @@ pub fn get_compaction_status(app: &App) -> Result<CompactionStatus, ToolError> {
 /// Correct an uncompacted note (by its id, from get_notes or
 /// prepare_compaction): a new timestamp and/or description. Whichever is
 /// left out keeps its current value; an empty description clears it.
-/// Returns the edited note -- if the timestamp changed, so did its id.
+/// Returns the edited note, with its id -- the same, unless it's one made
+/// before notes had ids of their own (timestamp#row), whose id changes
+/// with its timestamp.
 /// Compacted notes can't be changed (edit the calendar event they became
 /// instead). A proposal that included this note is planned again when
 /// it's confirmed.

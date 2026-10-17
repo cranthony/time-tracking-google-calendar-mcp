@@ -17,12 +17,12 @@
    "content": {
     "compaction_id": null,
     "description": "started work",
-    "id": "2026-10-07T09:05:00-04:00#2",
+    "id": "co2yzn",
     "timestamp": "2026-10-07T09:05:00-04:00",
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -34,12 +34,12 @@
    "content": {
     "compaction_id": null,
     "description": null,
-    "id": "2026-10-07T08:00:00-04:00#3",
+    "id": "3dnjav",
     "timestamp": "2026-10-07T08:00:00-04:00",
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -53,12 +53,12 @@
    "content": {
     "compaction_id": null,
     "description": "lunch",
-    "id": "2026-10-07T12:00:00-04:00#4",
+    "id": "a0g0jc",
     "timestamp": "2026-10-07T12:00:00-04:00",
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -67,89 +67,89 @@
     {
      "compaction_id": null,
      "description": null,
-     "id": "2026-10-07T08:00:00-04:00#3",
+     "id": "3dnjav",
      "timestamp": "2026-10-07T08:00:00-04:00",
      "version": 1
     },
     {
      "compaction_id": null,
      "description": "started work",
-     "id": "2026-10-07T09:05:00-04:00#2",
+     "id": "co2yzn",
      "timestamp": "2026-10-07T09:05:00-04:00",
      "version": 1
     },
     {
      "compaction_id": null,
      "description": "lunch",
-     "id": "2026-10-07T12:00:00-04:00#4",
+     "id": "a0g0jc",
      "timestamp": "2026-10-07T12:00:00-04:00",
      "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"co2yzn\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"a0g0jc\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   },
   {
    "arguments": {
     "description": "started work late",
-    "note_id": "2026-10-07T09:05:00-04:00#2"
+    "note_id": "co2yzn"
    },
    "content": {
     "compaction_id": null,
     "description": "started work late",
-    "id": "2026-10-07T09:05:00-04:00#2",
+    "id": "co2yzn",
     "timestamp": "2026-10-07T09:05:00-04:00",
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null,\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null,\n  \"version\": 2\n}",
    "tool": "edit_note"
   },
   {
    "arguments": {
-    "note_id": "2026-10-07T09:05:00-04:00#2",
+    "note_id": "co2yzn",
     "timestamp": "2026-10-07T09:15:00-04:00"
    },
    "content": {
     "compaction_id": null,
     "description": "started work late",
-    "id": "2026-10-07T09:15:00-04:00#2",
+    "id": "co2yzn",
     "timestamp": "2026-10-07T09:15:00-04:00",
     "version": 3
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null,\n  \"version\": 3\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null,\n  \"version\": 3\n}",
    "tool": "edit_note"
   },
   {
    "arguments": {
     "description": "",
-    "note_id": "2026-10-07T09:15:00-04:00#2"
+    "note_id": "co2yzn"
    },
    "content": {
     "compaction_id": null,
     "description": null,
-    "id": "2026-10-07T09:15:00-04:00#2",
+    "id": "co2yzn",
     "timestamp": "2026-10-07T09:15:00-04:00",
     "version": 4
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}",
    "tool": "edit_note"
   },
   {
    "arguments": {
-    "note_id": "2026-10-07T08:00:00-04:00#3"
+    "note_id": "3dnjav"
    },
    "content": {
     "compaction_id": null,
     "description": null,
-    "id": "2026-10-07T08:00:00-04:00#3",
+    "id": "3dnjav",
     "timestamp": "2026-10-07T08:00:00-04:00"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
    "tool": "delete_note"
   },
   {
@@ -158,29 +158,29 @@
     {
      "compaction_id": null,
      "description": null,
-     "id": "2026-10-07T09:15:00-04:00#2",
+     "id": "co2yzn",
      "timestamp": "2026-10-07T09:15:00-04:00",
      "version": 4
     },
     {
      "compaction_id": null,
      "description": "lunch",
-     "id": "2026-10-07T12:00:00-04:00#4",
+     "id": "a0g0jc",
      "timestamp": "2026-10-07T12:00:00-04:00",
      "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}\n{\n  \"id\": \"a0g0jc\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   },
   {
    "arguments": {
-    "note_id": "2026-10-07T08:00:00-04:00#3"
+    "note_id": "3dnjav"
    },
-   "content": "Error executing tool delete_note: row 3 no longer holds the note '2026-10-07T08:00:00-04:00#3' -- it was edited or removed since it was read; list the notes again for current ids",
+   "content": "Error executing tool delete_note: there's no note '3dnjav' -- it was deleted since it was read; list the notes again for current ids",
    "is_error": true,
-   "text": "Error executing tool delete_note: row 3 no longer holds the note '2026-10-07T08:00:00-04:00#3' -- it was edited or removed since it was read; list the notes again for current ids",
+   "text": "Error executing tool delete_note: there's no note '3dnjav' -- it was deleted since it was read; list the notes again for current ids",
    "tool": "delete_note"
   },
   {
@@ -201,20 +201,20 @@
     {
      "compaction_id": null,
      "description": null,
-     "id": "2026-10-07T09:15:00-04:00#2",
+     "id": "co2yzn",
      "timestamp": "2026-10-07T09:15:00-04:00",
      "version": 4
     },
     {
      "compaction_id": null,
      "description": "lunch",
-     "id": "2026-10-07T12:00:00-04:00#4",
+     "id": "a0g0jc",
      "timestamp": "2026-10-07T12:00:00-04:00",
      "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}\n{\n  \"id\": \"a0g0jc\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   }
  ],
@@ -409,7 +409,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -422,6 +422,7 @@
         "timestamp",
         "description",
         "compaction_id",
+        "id",
         "version"
        ]
       ]
@@ -440,7 +441,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -453,6 +454,7 @@
         "2026-10-07T09:05:00-04:00",
         "started work",
         "",
+        "co2yzn",
         "1"
        ]
       ]
@@ -499,7 +501,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 3,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -512,6 +514,7 @@
         "2026-10-07T08:00:00-04:00",
         "",
         "",
+        "3dnjav",
         "1"
        ]
       ]
@@ -558,7 +561,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 4,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -571,6 +574,7 @@
         "2026-10-07T12:00:00-04:00",
         "lunch",
         "",
+        "a0g0jc",
         "1"
        ]
       ]
@@ -1803,7 +1807,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1816,6 +1820,7 @@
         "2026-10-07T09:05:00-04:00",
         "started work late",
         "",
+        "co2yzn",
         "2"
        ]
       ]
@@ -1861,7 +1866,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1874,6 +1879,7 @@
         "2026-10-07T09:15:00-04:00",
         "started work late",
         "",
+        "co2yzn",
         "3"
        ]
       ]
@@ -1919,7 +1925,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1932,6 +1938,7 @@
         "2026-10-07T09:15:00-04:00",
         "",
         "",
+        "co2yzn",
         "4"
        ]
       ]
@@ -1977,7 +1984,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 3,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1987,6 +1994,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
+        "",
         "",
         "",
         "",
@@ -2488,12 +2496,14 @@
         "timestamp",
         "description",
         "compaction_id",
+        "id",
         "version"
        ],
        [
         "2026-10-07T09:15:00-04:00",
         "",
         "",
+        "co2yzn",
         "4"
        ],
        [],
@@ -2501,6 +2511,7 @@
         "2026-10-07T12:00:00-04:00",
         "lunch",
         "",
+        "a0g0jc",
         "1"
        ]
       ]

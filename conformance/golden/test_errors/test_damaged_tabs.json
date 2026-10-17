@@ -87,12 +87,12 @@
    "content": {
     "compaction_id": null,
     "description": "x",
-    "id": "2026-10-07T09:00:00-04:00#2",
+    "id": "rs21so",
     "timestamp": "2026-10-07T09:00:00-04:00",
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n  \"description\": \"x\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n  \"description\": \"x\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -1682,7 +1682,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000027,
         "startColumnIndex": 0,
@@ -1695,6 +1695,7 @@
         "timestamp",
         "description",
         "compaction_id",
+        "id",
         "version"
        ]
       ]
@@ -1713,7 +1714,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 4,
+        "endColumnIndex": 5,
         "endRowIndex": 2,
         "sheetId": 1000027,
         "startColumnIndex": 0,
@@ -1726,6 +1727,7 @@
         "2026-10-07T09:00:00-04:00",
         "x",
         "",
+        "rs21so",
         "1"
        ]
       ]
@@ -3477,12 +3479,14 @@
         "timestamp",
         "description",
         "compaction_id",
+        "id",
         "version"
        ],
        [
         "2026-10-07T09:00:00-04:00 (edited)",
         "x",
         "",
+        "rs21so",
         "1"
        ]
       ]

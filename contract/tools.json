@@ -11369,7 +11369,7 @@
     }
   },
   {
-    "description": "Correct an uncompacted note (by its id, from get_notes or\nprepare_compaction): a new timestamp and/or description. Whichever is\nleft out keeps its current value; an empty description clears it.\nReturns the edited note -- if the timestamp changed, so did its id.\nCompacted notes can't be changed (edit the calendar event they became\ninstead). A proposal that included this note is planned again when\nit's confirmed.",
+    "description": "Correct an uncompacted note (by its id, from get_notes or\nprepare_compaction): a new timestamp and/or description. Whichever is\nleft out keeps its current value; an empty description clears it.\nReturns the edited note, with its id -- the same, unless it's one made\nbefore notes had ids of their own (timestamp#row), whose id changes\nwith its timestamp.\nCompacted notes can't be changed (edit the calendar event they became\ninstead). A proposal that included this note is planned again when\nit's confirmed.",
     "inputSchema": {
       "properties": {
         "note_id": {

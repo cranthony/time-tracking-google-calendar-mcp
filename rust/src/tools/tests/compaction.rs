@@ -41,12 +41,12 @@ fn decisions(server: &Server, compaction_id: &Value) -> Vec<Value> {
 // -- notes --------------------------------------------------------------------------------
 
 #[test]
-fn edit_note_returns_the_new_id() {
+fn edit_note_keeps_its_id() {
     let (server, n1, _) = day();
 
     let edited = server.ok("edit_note", json!({"note_id": n1, "timestamp": "2026-01-01T09:30:00+00:00"}));
 
-    assert_eq!(edited["id"], "2026-01-01T09:30:00+00:00#2");
+    assert_eq!(edited["id"], json!(n1));
     assert_eq!(edited["description"], "email");
 }
 

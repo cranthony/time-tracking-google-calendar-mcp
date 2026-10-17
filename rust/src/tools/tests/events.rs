@@ -475,7 +475,8 @@ fn a_note_is_appended_and_returned_with_its_id() {
 
     let result = server.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:00:00+00:00", "description": "Started work"}}));
 
-    assert_eq!(result["id"], "2026-01-01T09:00:00+00:00#2");
+    // One of its own: it keeps it however it changes.
+    assert!(result["id"].as_str().is_some_and(|i| !i.is_empty() && !i.contains('#')), "{result}");
     assert_eq!((result["timestamp"].clone(), result["description"].clone(), result["compaction_id"].clone()), (when(at(9, 0)), json!("Started work"), Value::Null));
 }
 
@@ -495,16 +496,16 @@ fn a_caller_never_sets_a_notes_compaction_id() {
 #[test]
 fn notes_are_listed_uncompacted_sorted_by_timestamp_or_with_the_compacted_ones() {
     let server = Server::new();
-    server.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T10:00:00+00:00"}}));
-    server.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:00:00+00:00", "description": "Started work"}}));
+    let ten = server.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T10:00:00+00:00"}}))["id"].clone();
+    let nine = server.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:00:00+00:00", "description": "Started work"}}))["id"].clone();
     {
         let _held = crate::write_lock::WRITE_LOCK.hold();
-        server.t.app.noted_time_sheet().unwrap().mark_compacted(&["2026-01-01T10:00:00+00:00#2".to_string()], "cmp1").unwrap();
+        server.t.app.noted_time_sheet().unwrap().mark_compacted(&[ten.as_str().unwrap().to_string()], "cmp1").unwrap();
     }
-    server.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:30:00+00:00"}}));
+    let half = server.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:30:00+00:00"}}))["id"].clone();
 
     let ids = |args: Value| -> Vec<Value> { server.ok("get_notes", args).as_array().unwrap().iter().map(|n| n["id"].clone()).collect() };
-    assert_eq!(ids(json!({})), vec![json!("2026-01-01T09:00:00+00:00#3"), json!("2026-01-01T09:30:00+00:00#4")]);
+    assert_eq!(ids(json!({})), vec![nine, half]);
     assert_eq!(ids(json!({"include_compacted": true})).len(), 3);
     assert_eq!(server.ok("get_notes", json!({}))[0]["description"], "Started work");
 }

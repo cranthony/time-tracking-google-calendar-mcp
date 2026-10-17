@@ -37,6 +37,9 @@ pub fn feedback_id(proposal: &str, seq: i64) -> String {
     format!("{proposal}f{seq}")
 }
 
+/// Whether `name` is a note's id of the form notes had before they had ids
+/// of their own (timestamp#row). One of their own looks like any other id:
+/// an edit naming a note says so.
 pub fn is_note_id(name: Option<&str>) -> bool {
     name.is_some_and(|n| n.contains('#'))
 }
@@ -691,7 +694,8 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
     active.sort_by_key(|e| e.seq);
     for edit in active {
         let action = edit.action().unwrap_or_default();
-        if action == "note" || (action == "as_planned" && is_note_id(edit.event_id.as_deref())) {
+        let of_a_note = edit.edit.get("note") == Some(&Value::Bool(true)) || is_note_id(edit.event_id.as_deref());
+        if action == "note" || (action == "as_planned" && of_a_note) {
             note_edits.push(edit.clone());
             continue;
         }

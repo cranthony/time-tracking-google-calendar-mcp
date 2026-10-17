@@ -1,7 +1,8 @@
 //! The time notes tab: moments worth recording, each a timestamp and an
 //! optional description, stamped with the compaction that consumed it. A
-//! note's id is its own, if a client chose one when it made it, or else
-//! its timestamp and row. Each note has a version, which goes up by one
+//! note's id is its own -- the client's, if it chose one when it made it,
+//! or else one made for it -- or, for one made before notes had their
+//! own, its timestamp and row. Each note has a version, which goes up by one
 //! whenever it's edited. A write sent again is made once by the rules
 //! every kind the app writes keeps (see rows::Versioned): a note made
 //! again under its id is given as it is; an edit or deletion given the
@@ -251,8 +252,8 @@ impl NotedTimeSheet {
     }
 
     /// Add `note` as a new row at the end, garbage-collecting first, at
-    /// version 1 -- with `own_id`, the id the client chose for it, if it
-    /// gave one. One there already with that id and as `note` is, is the
+    /// version 1 -- with `own_id`, the id the client chose for it, or else
+    /// a new one. One there already with that id and as `note` is, is the
     /// same note made again: it's given as it is.
     pub fn append(&self, note: &NotedTime, own_id: Option<&str>) -> anyhow::Result<SheetNote> {
         let read = self.read_all()?;
@@ -262,9 +263,11 @@ impl NotedTimeSheet {
                 return Ok(made.clone());
             }
         }
-        let own_id = own_id.map(|given| rows::chosen_id(Some(given), read.own_ids())).transpose()?;
+        // The client's, or else a new one: a note keeps its id however its
+        // time or row changes.
+        let own_id = Some(rows::chosen_id(own_id, read.own_ids())?);
         let next_row = FIRST_DATA_ROW + read.row_count - self.garbage_collect_from(&read)?;
-        let header = self.with_columns(&read.header, own_id.is_some())?;
+        let header = self.with_columns(&read.header, true)?;
         let new = SheetNote { row: next_row, note: note.clone(), own_id, version: Some(1) };
         self.write_note(&header, &new, None)?;
         Ok(new)
