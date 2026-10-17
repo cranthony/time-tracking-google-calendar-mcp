@@ -90,8 +90,11 @@ pub struct Facts {
 /// the event, and the percents add up to no more than 100; read back,
 /// minutes are cut to fit an event shortened since, and goals deleted
 /// since are left out. Set them to replace them whole ([] for none).
-/// Most events have none: tag an event with a goal only when the user
-/// asks.
+/// Most events have none: tag an event with a goal only when that goal
+/// is open (inactive or active), has attribution_hints, and the event
+/// clearly matches them -- never guess for a goal without hints. Tag the
+/// most specific goal that fits (a sub-goal rather than its parent), and
+/// give minutes or percent when only part of the event was for it.
 ///
 /// facts are what compaction established about a past event, for
 /// traits' judgments later: location_ids (see
@@ -555,6 +558,14 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// the locations' hints. A commute itself gets the commute fact and no
 /// location_ids.
 ///
+/// GOALS an event is for (goals), when you set them: only goals that
+/// are open (inactive or active) and have attribution_hints (see
+/// get_goals), and only when the event clearly matches a goal's hints --
+/// never guess for a goal without hints, and leave an event untagged
+/// when it's unclear (or when the user asks, tag it as they say). Tag
+/// the most specific goal that fits, a sub-goal rather than its parent,
+/// and when only part of the event was for it, give minutes or percent.
+///
 /// Set repeat, on a create or on an update of an event that isn't in a
 /// series, to make it the first event of a recurring series (see
 /// PublicEvent); only that first event is checked for overlaps, as for
@@ -646,6 +657,14 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
 /// location of the event after it (that one event only), or else from
 /// the locations' hints. A commute itself gets the commute fact and no
 /// location_ids.
+///
+/// GOALS an event is for (goals), when you set them: only goals that
+/// are open (inactive or active) and have attribution_hints (see
+/// get_goals), and only when the event clearly matches a goal's hints --
+/// never guess for a goal without hints, and leave an event untagged
+/// when it's unclear (or when the user asks, tag it as they say). Tag
+/// the most specific goal that fits, a sub-goal rather than its parent,
+/// and when only part of the event was for it, give minutes or percent.
 ///
 /// BATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every
 /// event the call creates or updates must end after it starts and must

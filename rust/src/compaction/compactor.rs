@@ -112,6 +112,7 @@ use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::actions::{ActionTree, Actions};
 use crate::stores::cancellations::Cancellations;
 use crate::stores::event_changes::{ChangeError, Problem};
+use crate::stores::goals::{self, share_problems, Goals};
 use crate::stores::groups::{python_repr, python_str, truthy};
 use crate::stores::habits::{subject_id, SUBJECT_PREFIX};
 use crate::stores::journal::{
@@ -220,6 +221,7 @@ pub struct CompactionContext {
     pub actions: Option<Vec<Value>>,
     pub people: Option<Vec<Value>>,
     pub locations: Option<Vec<Value>>,
+    pub goals: Option<Vec<Value>>,
     pub previous_note: Option<NotedTime>,
     pub proposal: Option<ProposalContext>,
 }
@@ -294,6 +296,7 @@ impl CompactionContext {
         out.insert("actions".into(), json!(self.actions));
         out.insert("people".into(), json!(self.people));
         out.insert("locations".into(), json!(self.locations));
+        out.insert("goals".into(), json!(self.goals));
         out.insert(
             "previous_note".into(),
             self.previous_note
@@ -380,6 +383,7 @@ pub struct NoteCompactor {
     pub actions: Option<Actions>,
     pub people: Option<People>,
     pub locations: Option<Locations>,
+    pub goals: Option<Goals>,
     pub judging: Option<Judging>,
     pub cancellations: Option<Cancellations>,
 }
@@ -531,6 +535,10 @@ impl NoteCompactor {
                 }
                 None => None,
             },
+            goals: match &self.goals {
+                Some(g) => Some(hinted_goals(&g.all()?)),
+                None => None,
+            },
             previous_note,
             judgments_pending: pending,
             proposal,
@@ -552,6 +560,9 @@ impl NoteCompactor {
             }
             if let Some(l) = &self.locations {
                 tabs.extend(l.whole_tabs());
+            }
+            if let Some(g) = &self.goals {
+                tabs.push(g.whole_tab());
             }
             if let Some(j) = &self.judging {
                 tabs.extend(j.whole_tabs());
@@ -2500,6 +2511,7 @@ impl NoteCompactor {
             },
         )
         .map_err(anyhow::Error::from)?;
+        self.check_goals(&plan)?;
         self.check_before_window(day, &plan)?;
         self.show_follow_through(day, decisions, &mut plan)?;
         if let Some(tree) = &tree {
@@ -2520,6 +2532,48 @@ impl NoteCompactor {
             }
         }
         Ok(plan)
+    }
+
+    /// The goal shares `plan` gives events must name goals there are
+    /// (read only if it gives any), and fit in their events.
+    fn check_goals(&self, plan: &CompactionPlan) -> anyhow::Result<()> {
+        let tagged: Vec<&CompactionChange> = plan
+            .changes
+            .iter()
+            .filter(|c| {
+                let goals = c.after.as_ref().and_then(|a| a.goals.as_ref()).filter(|g| !g.is_empty());
+                goals.is_some() && goals != c.before.as_ref().and_then(|b| b.goals.as_ref())
+            })
+            .collect();
+        if tagged.is_empty() {
+            return Ok(());
+        }
+        let known = match &self.goals {
+            Some(g) => Some(g.ids()?),
+            None => None,
+        };
+        let mut problems: Vec<String> = Vec::new();
+        for change in tagged {
+            let after = change.after.as_ref().unwrap();
+            let shares = after.goals.as_deref().unwrap_or_default();
+            let who = format!("{} {}", change.action, repr_opt(change.event_id.as_deref().or(after.summary.as_deref())));
+            let minutes = match (after.start, after.end) {
+                (Some(start), Some(end)) => (end - start).num_minutes(),
+                _ => i64::MAX,
+            };
+            problems.extend(share_problems(shares, minutes).into_iter().map(|p| format!("{who}: {p}")));
+            if let Some(known) = &known {
+                let unknown: Vec<String> =
+                    shares.iter().map(|s| s.goal_id.trim().to_string()).filter(|id| !id.is_empty() && !known.contains(id)).collect();
+                if !unknown.is_empty() {
+                    problems.push(format!("{who}: its goals name {}, which aren't goals (`goals` lists those to tag events with)", py::repr_list(&unknown)));
+                }
+            }
+        }
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "goals"));
+        }
+        Ok(())
     }
 
     fn show_follow_through(&self, day: &Day, decisions: &[EventDecision], plan: &mut CompactionPlan) -> anyhow::Result<()> {
@@ -3053,6 +3107,7 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
                 location: state.location.clone(),
                 priority: state.priority,
                 action_ids: state.action_ids.clone(),
+                goals: state.goals.clone(),
                 facts: state.facts.as_ref().map(|f| facts_from_dict(Some(f))),
                 decided_by: decided_by.get(&id).cloned(),
                 history_until: day.history_until.filter(|h| event.start() < *h).map(|h| event.end().min(h)),
@@ -3076,6 +3131,7 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
                 location: after.location.clone(),
                 priority: after.priority,
                 action_ids: after.action_ids.clone(),
+                goals: after.goals.clone(),
                 facts: after.facts.as_ref().map(|f| facts_from_dict(Some(f))),
                 decided_by: change.key.as_ref().and_then(|k| decided_by.get(k).cloned()),
                 ..Default::default()
@@ -3270,6 +3326,19 @@ pub fn new_event_id(compaction_id: &str, step: i64) -> String {
     format!("cmp{compaction_id}s{step:03}")
 }
 
+/// The open goals (inactive or active) with attribution hints -- the
+/// ones compaction may tag events with -- as `prepare` lists them.
+pub fn hinted_goals(all: &[goals::Goal]) -> Vec<Value> {
+    all.iter()
+        .filter(|g| g.status.is_some_and(|s| !s.is_closed()))
+        .filter(|g| g.id.as_deref().is_some_and(|i| !i.is_empty()))
+        .filter_map(|g| {
+            let hints = g.attribution_hints.as_deref().map(str::trim).filter(|h| !h.is_empty())?;
+            Some(json!({"id": g.id, "title": g.title, "path": goals::path(g, all), "attribution_hints": hints}))
+        })
+        .collect()
+}
+
 fn patch_for(step: &JournalStep) -> Event {
     if step.action == "cancel" {
         return Event { id: step.event_id.clone(), status: Some("cancelled".into()), ..Default::default() };
@@ -3300,6 +3369,9 @@ fn patch_for(step: &JournalStep) -> Event {
     }
     if after.action_ids.is_some() && after.action_ids != before.action_ids {
         patch.action_ids = after.action_ids.clone();
+    }
+    if after.goals.is_some() && after.goals != before.goals {
+        patch.goals = after.goals.clone();
     }
     if after.facts != before.facts {
         patch.facts = Some(facts_from_dict(after.facts.as_ref()));

@@ -58,7 +58,11 @@ pub struct GoalDelete {
 /// obsolete), a description and definition_of_done (HTML), and
 /// attribution_hints (a guide for telling which events are for it).
 /// Events are tagged with goals, apart from their actions (see
-/// list_events' goals). Read-only.
+/// list_events' goals): tag an event with a goal only when the goal is
+/// open (inactive or active), has attribution_hints, and the event
+/// clearly matches them -- never guess for a goal without hints -- and
+/// with the most specific goal that fits (a sub-goal rather than its
+/// parent). Read-only.
 #[tool]
 pub fn get_goals(app: &App, statuses: Option<Vec<GoalStatus>>) -> Result<Vec<ListedGoal>, ToolError> {
     let statuses = statuses.map(|s| texts(&s));

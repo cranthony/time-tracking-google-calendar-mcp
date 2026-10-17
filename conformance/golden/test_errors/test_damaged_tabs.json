@@ -2673,6 +2673,112 @@
    "query": {}
   },
   {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "outcome-goals"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Outcome Goals"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000037,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "expected_minutes",
+        "deadline",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000037
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "outcome-goals",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
      {
@@ -2735,6 +2841,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2834,6 +2948,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3167,6 +3289,14 @@
       "metadataKey": "sheet-role",
       "metadataValue": "compactions",
       "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000037
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "outcome-goals",
+      "visibility": "PROJECT"
      }
     ],
     "properties": {
@@ -3488,6 +3618,40 @@
         "",
         "rs21so",
         "1"
+       ]
+      ]
+     },
+     "Outcome Goals": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000037,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Outcome Goals"
+      },
+      "rows": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "expected_minutes",
+        "deadline",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "version"
        ]
       ]
      },
