@@ -6,6 +6,7 @@ use crate::event::{parse_iso, Event, Moment, MAX_DESCRIPTION_BYTES};
 use crate::facts::Facts;
 use crate::google::calendar::python_splitlines;
 use crate::py;
+use crate::stores::goals::GoalShare;
 use crate::stores::event_changes::{overlap_problems, rejection, ChangeError, Placed, Problem};
 use crate::timeline::{build_timeline, Timeline, TimelineEvent, TimelineNote};
 use serde_json::{json, Map, Value};
@@ -63,6 +64,7 @@ pub struct EventDecision {
     pub location: Option<String>,
     pub priority: Option<i64>,
     pub action_ids: Option<Vec<String>>,
+    pub goals: Option<Vec<GoalShare>>,
     pub facts: Option<Facts>,
     pub counts_against_follow_through: Option<bool>,
     pub key: Option<String>,
@@ -96,6 +98,7 @@ impl EventDecision {
         put("location", self.location.clone().map(Value::String));
         put("priority", self.priority.map(|p| json!(p)));
         put("action_ids", self.action_ids.clone().map(|a| json!(a)));
+        put("goals", self.goals.as_ref().map(|g| json!(g)));
         // `facts_dict(value)`: None (kept, though: the key is set) for empty ones.
         put("facts", self.facts.as_ref().map(|f| facts_dict(Some(f)).unwrap_or(Value::Null)));
         put("counts_against_follow_through", self.counts_against_follow_through.map(|c| json!(c)));
@@ -127,12 +130,18 @@ impl EventDecision {
             location: text("location"),
             priority: data.get("priority").and_then(Value::as_i64),
             action_ids: data.get("action_ids").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()),
+            goals: shares_from(data.get("goals")),
             facts: data.get("facts").map(|f| facts_from_dict(Some(f))),
             counts_against_follow_through: data.get("counts_against_follow_through").and_then(Value::as_bool),
             key: text("key"),
             allow_history: data.get("allow_history").and_then(Value::as_bool),
         })
     }
+}
+
+/// Goal shares as a decision or state keeps them; None if not given.
+fn shares_from(data: Option<&Value>) -> Option<Vec<GoalShare>> {
+    data.filter(|g| !g.is_null()).and_then(|g| serde_json::from_value(g.clone()).ok())
 }
 
 /// `facts_dict`: as the JSON object they're stored as; None for none or
@@ -171,6 +180,7 @@ pub struct EventState {
     pub priority: Option<i64>,
     pub event_label_id: Option<String>,
     pub action_ids: Option<Vec<String>>,
+    pub goals: Option<Vec<GoalShare>>,
     pub facts: Option<Value>,
 }
 
@@ -186,6 +196,7 @@ impl EventState {
             priority: event.priority,
             event_label_id: event.event_label_id.clone(),
             action_ids: event.action_ids.clone(),
+            goals: event.goals.clone(),
             facts: facts_dict(event.facts.as_ref()),
         }
     }
@@ -202,6 +213,7 @@ impl EventState {
             priority: self.priority,
             event_label_id: self.event_label_id.clone(),
             action_ids: self.action_ids.clone(),
+            goals: self.goals.clone(),
             facts: self.facts.as_ref().map(|f| facts_from_dict(Some(f))),
             ..Default::default()
         }
@@ -223,6 +235,7 @@ impl EventState {
         put("priority", self.priority.map(|p| json!(p)));
         put("event_label_id", self.event_label_id.clone().map(Value::String));
         put("action_ids", self.action_ids.clone().map(|a| json!(a)));
+        put("goals", self.goals.as_ref().map(|g| json!(g)));
         put("facts", self.facts.clone());
         Value::Object(out)
     }
@@ -245,6 +258,7 @@ impl EventState {
             priority: data.get("priority").and_then(Value::as_i64),
             event_label_id: text("event_label_id"),
             action_ids: data.get("action_ids").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()),
+            goals: shares_from(data.get("goals")),
             facts: data.get("facts").filter(|f| !f.is_null()).cloned(),
         })
     }
@@ -813,6 +827,7 @@ fn resolve(
                 start: Some(start),
                 end: Some(end),
                 action_ids: decision.action_ids.clone(),
+                goals: decision.goals.clone(),
                 facts: decision.facts.clone(),
                 description: decision.description.clone().filter(|d| !d.is_empty()),
                 location: decision.location.clone().filter(|l| !l.is_empty()),
@@ -842,6 +857,9 @@ fn set_fields(event: &mut Event, decision: &EventDecision) {
     }
     if let Some(priority) = decision.priority {
         event.priority = Some(priority);
+    }
+    if let Some(goals) = &decision.goals {
+        event.goals = Some(goals.clone());
     }
 }
 
@@ -1131,6 +1149,7 @@ fn changes_of(facts: &[Fact], events_by_id: &[(String, Event)], copies: &[(Strin
             let only_facts = EventState {
                 description: before.description.clone(),
                 action_ids: before.action_ids.clone(),
+                goals: before.goals.clone(),
                 facts: before.facts.clone(),
                 ..after.clone()
             } == before;

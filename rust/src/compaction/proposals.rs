@@ -7,11 +7,12 @@ use super::plan::{CompactionChange, EventDecision};
 use crate::event::Moment;
 use crate::facts::Facts;
 use crate::py;
+use crate::stores::goals::GoalShare;
 use crate::timeline::Timeline;
 use serde_json::{json, Map, Value};
 
-pub const EDIT_FIELDS: [&str; 11] =
-    ["summary", "start", "end", "start_note", "end_note", "annotate", "action_ids", "facts", "description", "location", "priority"];
+pub const EDIT_FIELDS: [&str; 12] =
+    ["summary", "start", "end", "start_note", "end_note", "annotate", "action_ids", "goals", "facts", "description", "location", "priority"];
 
 fn when(moment: &Option<Moment>) -> Value {
     moment.map(|m| json!(py::pydantic_datetime(&m))).unwrap_or(Value::Null)
@@ -335,6 +336,7 @@ pub struct ProposalEvent {
     pub location: Option<String>,
     pub priority: Option<i64>,
     pub action_ids: Option<Vec<String>>,
+    pub goals: Option<Vec<GoalShare>>,
     pub facts: Option<Facts>,
     pub decided_by: Option<String>,
     pub history_until: Option<Moment>,
@@ -357,6 +359,7 @@ impl ProposalEvent {
         out.insert("location".into(), json!(self.location));
         out.insert("priority".into(), json!(self.priority));
         out.insert("action_ids".into(), json!(self.action_ids));
+        out.insert("goals".into(), json!(self.goals));
         out.insert("facts".into(), self.facts.as_ref().map(Facts::to_public).unwrap_or(Value::Null));
         out.insert("decided_by".into(), json!(self.decided_by));
         out.insert("history_until".into(), when(&self.history_until));
@@ -408,6 +411,7 @@ pub fn change_json(change: &CompactionChange) -> Value {
                 out.insert("priority".into(), json!(s.priority));
                 out.insert("event_label_id".into(), json!(s.event_label_id));
                 out.insert("action_ids".into(), json!(s.action_ids));
+                out.insert("goals".into(), json!(s.goals));
                 out.insert("facts".into(), s.facts.clone().unwrap_or(Value::Null));
                 Value::Object(out)
             }
@@ -851,6 +855,9 @@ pub fn overlay(under: &EventDecision, over: &EventDecision) -> EventDecision {
     }
     if over.action_ids.is_some() {
         out.action_ids = over.action_ids.clone();
+    }
+    if over.goals.is_some() {
+        out.goals = over.goals.clone();
     }
     if over.facts.is_some() {
         out.facts = over.facts.clone();

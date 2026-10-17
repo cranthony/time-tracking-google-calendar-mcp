@@ -8,7 +8,7 @@ use crate::compaction::plan::EventDecision;
 use crate::compaction::proposals::{AdditionChoice, NoteEdit, Proposal, ProposalEvent};
 use crate::google::sheets::CachedReads;
 use crate::google::calendar::CachedListings;
-use crate::sheet::{ACTIONS, LOCATIONS, PEOPLE, TRAITS};
+use crate::sheet::{ACTIONS, GOALS, LOCATIONS, PEOPLE, TRAITS};
 use crate::stores::journal::{PlannedDay, ABANDONED, APPLYING, PLANNED, PROPOSED, STAMPED, SUPERSEDED};
 use crate::testing::app::{test_app, TestApp};
 use crate::testing::event_at;
@@ -18,6 +18,7 @@ use crate::write_lock::WRITE_LOCK;
 mod commit;
 mod dry_run;
 mod facts;
+mod goals;
 mod judging;
 mod mornings;
 mod prepare;
@@ -50,6 +51,7 @@ pub struct Stores {
     pub actions: Vec<Value>,
     pub people: Vec<Value>,
     pub locations: Vec<Value>,
+    pub goals: Vec<Value>,
     /// Traits turn judging and cancellations on, as in Python.
     pub traits: Option<Vec<Value>>,
 }
@@ -101,7 +103,8 @@ impl Setup {
         let locations = app.locations().unwrap();
         let notes_sheet = app.noted_time_sheet().unwrap();
         let journal = app.journal().unwrap();
-        for (title, rows) in [(ACTIONS.1, &stores.actions), (PEOPLE.1, &stores.people), (LOCATIONS.1, &stores.locations)] {
+        let goals = app.goals().unwrap();
+        for (title, rows) in [(ACTIONS.1, &stores.actions), (PEOPLE.1, &stores.people), (LOCATIONS.1, &stores.locations), (GOALS.1, &stores.goals)] {
             if !rows.is_empty() {
                 t.seed(title, rows);
             }
@@ -130,6 +133,7 @@ impl Setup {
             actions: Some(actions),
             people: Some(people),
             locations: Some(locations),
+            goals: Some(goals),
             judging,
             cancellations,
         };

@@ -1307,6 +1307,112 @@
    "query": {}
   },
   {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "outcome-goals"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Outcome Goals"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000077,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "expected_minutes",
+        "deadline",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000077
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "outcome-goals",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
      {
@@ -1369,6 +1475,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1468,6 +1582,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000077,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1997,6 +2119,14 @@
       "metadataKey": "sheet-role",
       "metadataValue": "cancellations",
       "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000077
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "outcome-goals",
+      "visibility": "PROJECT"
      }
     ],
     "properties": {
@@ -2261,6 +2391,40 @@
         "timestamp",
         "description",
         "compaction_id"
+       ]
+      ]
+     },
+     "Outcome Goals": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000077,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Outcome Goals"
+      },
+      "rows": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "expected_minutes",
+        "deadline",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "version"
        ]
       ]
      },
