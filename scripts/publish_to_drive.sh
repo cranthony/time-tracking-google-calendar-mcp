@@ -7,16 +7,13 @@
 #
 # The first argument is the package's file-name prefix: only files with it
 # are removed, so the web app's packages, which the client repository copies
-# to the same folder, are left alone. Needs DRIVE_RCLONE_CONF (the
-# contents of an rclone.conf) and DRIVE_FOLDER (an rclone path, e.g.
-# gdrive:TimeTracker) in the environment.
+# to the same folder, are left alone. Needs rclone set up, and DRIVE_FOLDER
+# (an rclone path, e.g. gdrive:TimeTracker) in the environment. rclone
+# moves what it removes to Drive's trash, where it stays for 30 days.
 set -euo pipefail
 
 package=$1
 shift
-
-mkdir -p ~/.config/rclone
-printf '%s\n' "$DRIVE_RCLONE_CONF" > ~/.config/rclone/rclone.conf
 
 keep=()
 for file in "$@"; do
