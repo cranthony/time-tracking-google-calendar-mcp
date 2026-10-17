@@ -43,7 +43,7 @@ pub fn create_location(app: &App, location: Location) -> Result<CreatedLocation,
 
 /// Rename a location or change its hint, map_location or group_id, by
 /// id. Omitted properties keep their value; list hint, map_location or
-/// group_id in clear_fields to blank it. Give version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns it as
+/// group_id in clear_fields to blank it. Give version -- the version you last read (the get tools give it): without it, it's refused; changed since, it's refused, with it as it is now in _meta.conflicts -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns it as
 /// updated.
 #[tool(writes)]
 pub fn update_location(app: &App, location: Location, clear_fields: Option<Vec<ClearableField>>) -> Result<Location, ToolError> {
@@ -51,7 +51,7 @@ pub fn update_location(app: &App, location: Location, clear_fields: Option<Vec<C
     app.locations()?.update_location(&location, &clear).map_err(refused)
 }
 
-/// Delete a location, by id. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done. Returns it as
+/// Delete a location, by id. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done. Returns it as
 /// it was.
 #[tool(writes)]
 pub fn delete_location(app: &App, location_id: String, if_version: Option<i64>) -> Result<Location, ToolError> {
@@ -90,7 +90,7 @@ pub fn create_location_group(app: &App, group: LocationGroup) -> Result<CreatedL
 /// group; clear it to make it top-level), name (still unique among
 /// groups) or note. Omitted properties keep their value; list group_id or
 /// note in clear_fields to blank it. A group can't end up inside itself.
-/// Give version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns it as updated.
+/// Give version -- the version you last read (the get tools give it): without it, it's refused; changed since, it's refused, with it as it is now in _meta.conflicts -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns it as updated.
 #[tool(writes)]
 pub fn update_location_group(
     app: &App,
@@ -104,7 +104,7 @@ pub fn update_location_group(
 /// Delete a location group, by id. Its locations and the groups inside it
 /// aren't deleted: they move up into the group it was inside (or to the
 /// top level, if it was top-level). Returns the group as it was
-/// (deleted), and the groups and locations moved up out of it. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done.
+/// (deleted), and the groups and locations moved up out of it. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done.
 #[tool(writes)]
 pub fn delete_location_group(app: &App, group_id: String, if_version: Option<i64>) -> Result<DeletedLocationGroup, ToolError> {
     app.locations()?.delete_location_group(&group_id, if_version).map_err(refused)
@@ -179,7 +179,7 @@ pub fn update_travel_time(
     app.locations()?.update_travel_time(&travel_time, &clear, &modes).map_err(refused)
 }
 
-/// Delete a travel time, by id. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done. Returns it as it was. (Deleting a
+/// Delete a travel time, by id. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done. Returns it as it was. (Deleting a
 /// location or location group deletes the travel times from or to it.)
 #[tool(writes)]
 pub fn delete_travel_time(app: &App, travel_time_id: String, if_version: Option<i64>) -> Result<TravelTime, ToolError> {

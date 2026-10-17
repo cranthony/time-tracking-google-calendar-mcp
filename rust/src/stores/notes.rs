@@ -184,7 +184,8 @@ fn parse(header: Vec<String>, rows: Rows) -> anyhow::Result<Read> {
                 row: FIRST_DATA_ROW + offset as i64,
                 note: NotedTime::from_row(&header, row)?,
                 own_id: cell(&header, row, ID).map(str::to_string),
-                version: cell(&header, row, VERSION).and_then(crate::event::python_int),
+                // Saved before notes had versions: version 0.
+                version: Some(cell(&header, row, VERSION).and_then(crate::event::python_int).unwrap_or(0)),
             });
         }
     }

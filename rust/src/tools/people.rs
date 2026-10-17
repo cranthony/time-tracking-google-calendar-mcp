@@ -311,7 +311,7 @@ pub fn update_circle(app: &App, circle: Circle, clear_fields: Option<Vec<CircleF
 }
 
 /// Delete a circle, by id. Its people aren't deleted: they just leave
-/// it. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done. Returns the circle as it was, and the ids of the people
+/// it. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done. Returns the circle as it was, and the ids of the people
 /// who left.
 #[tool(writes)]
 pub fn delete_circle(app: &App, circle_id: String, if_version: Option<i64>) -> Result<DeletedCircle, ToolError> {

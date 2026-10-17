@@ -157,6 +157,9 @@ fn error_result(text: String) -> Value {
 }
 
 /// `error_result`, with `meta` for the client that sent it to act on.
+/// What a client -- Claude -- is to do with a write refused as a conflict.
+const ON_A_CONFLICT: &str = "Read what changed again: if it changed elsewhere in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK";
+
 fn error_result_with(text: String, meta: Value) -> Value {
     let mut result = error_result(text);
     result["_meta"] = meta;
@@ -222,7 +225,7 @@ pub fn call_tool(app: &Arc<crate::app::App>, params: &Value, timings: &mut Vec<T
                     json!({"written": partly.written, "of": partly.of, "made_unnamed": partly.made_unnamed}),
                 );
             }
-            error_result_with(format!("Error executing tool {name}: {conflicts}"), Value::Object(meta))
+            error_result_with(format!("Error executing tool {name}: {conflicts}. {ON_A_CONFLICT}"), Value::Object(meta))
         }
         Err(ToolError::Unexpected(error)) => {
             tracing::error!("Tool {} raised an unexpected exception: {error:?}", py::repr(&name));

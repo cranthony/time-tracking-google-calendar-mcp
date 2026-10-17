@@ -145,13 +145,13 @@ pub struct PublicEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repeat: Option<Repeat>,
     /// Which version of the event this is, as Calendar gives it; it
-    /// changes whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.
+    /// changes whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub etag: Option<String>,
 }
 
 /// An event to cancel, and whether that counts against follow-through:
 /// a commitment dropped (true) rather than just a change of plan (false).
-/// Give etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- read it again and retry.
+/// Give etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct EventCancel {
     pub event_id: String,
@@ -195,7 +195,7 @@ pub struct NoteWithId {
     pub timestamp: DateTimeText,
     pub description: Option<String>,
     pub compaction_id: Option<String>,
-    /// Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, a note that has one is refused; changed since, it's refused -- read it again and retry.
+    /// Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
 
@@ -573,7 +573,12 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// VERSIONS: each update and cancel gives the event's etag as you last
 /// read it (list_events and get_event give it). One without is refused;
 /// one changed since is refused, with every such event as it is now
-/// (_meta.conflicts) -- read them again and send the call again. Calendar
+/// (_meta.conflicts). Then read each again: if what changed elsewhere is
+/// in fields you aren't changing, make your change again on it as it is
+/// now; if it's in fields you're changing, or it was deleted or cancelled
+/// (or, cancelling it, it was changed since), stop and ask the user --
+/// showing what changed and what you meant to do -- and never overwrite
+/// their change, or put back what was deleted, without their OK. Calendar
 /// writes each event on its own, so one changed after the batch is
 /// checked stops it partway: the error says which changes were written
 /// (_meta.partly) before it stopped. Sending the batch again, from what's
