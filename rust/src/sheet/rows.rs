@@ -227,9 +227,10 @@ pub fn versions_required() -> bool {
     VERSIONS_REQUIRED.get()
 }
 
-/// Refuse a change to the `kind` `id`, which is version `now` on record,
-/// given no version (`given`), while versions are required. One saved
-/// before versions existed (none on record) takes one with this write.
+/// Refuse a change to the `kind` `id`, which is version `now` -- one saved
+/// before versions existed is version 0 -- given no version (`given`),
+/// while versions are required. `now` is None only for what isn't there,
+/// whose own refusal is the caller's.
 pub fn require_version(kind: &str, id: &str, given: Option<i64>, now: Option<i64>) -> anyhow::Result<()> {
     if versions_required() && given.is_none() {
         if let Some(now) = now {
@@ -327,13 +328,19 @@ impl Drop for Written {
 /// now (`current`, None if it's gone), if the client said it last saw
 /// version `expected` and it's not that version now.
 pub fn expect_version(kind: &'static str, id: &str, current: Option<&Row>, expected: Option<i64>) -> anyhow::Result<()> {
-    let now = current.and_then(|r| r.get("version")).and_then(Value::as_i64);
-    // None given: refused while versions are required, for one on record.
+    let now = current.map(stored_version);
+    // None given: refused while versions are required.
     let Some(expected) = expected else { return require_version(kind, id, None, now) };
     if current.is_some() && now == Some(expected) {
         return Ok(());
     }
     Err(Conflict { kind, id: id.into(), expected: expected.into(), current: current.cloned() }.into())
+}
+
+/// The version `row` is: its own, or 0 for one saved before versions
+/// existed.
+pub fn stored_version(row: &Row) -> i64 {
+    row.get("version").and_then(Value::as_i64).unwrap_or(0)
 }
 
 /// `expect_version` for a typed item.
@@ -429,7 +436,7 @@ pub fn deleting<T: Versioned>(id: &str, current: Option<&T>, if_version: Option<
     let Some(found) = current else {
         return Ok(if_version.is_none());
     };
-    require_version(T::ROW_TYPE.name, id, if_version, found.version())?;
+    require_version(T::ROW_TYPE.name, id, if_version, Some(found.version().unwrap_or(0)))?;
     expect_item_version(id, current, if_version)?;
     Ok(true)
 }
@@ -577,7 +584,9 @@ pub fn updated_item<T: RowItem>(current: &T, given: &T, clear_fields: &[String],
     let (was, change) = (current.to_row(), given.to_row());
     let version = |row: &Row| row.get("version").and_then(Value::as_i64);
     let id = was.get("id").and_then(Value::as_str).unwrap_or_default();
-    require_version(T::ROW_TYPE.name, id, version(&change), version(&was))?;
+    if was.contains_key("version") {
+        require_version(T::ROW_TYPE.name, id, version(&change), Some(stored_version(&was)))?;
+    }
     Ok(item_of(updated(&was, &change, clear_fields, read_only)))
 }
 
@@ -781,9 +790,12 @@ impl RowSheet {
             let version = match original {
                 None => 1,
                 Some(original) => {
-                    let was = version_column
-                        .and_then(|i| original.get(i))
-                        .and_then(|c| crate::event::python_int(c.trim()));
+                    let was = Some(
+                        version_column
+                            .and_then(|i| original.get(i))
+                            .and_then(|c| crate::event::python_int(c.trim()))
+                            .unwrap_or(0),
+                    );
                     let cells = cells(self.row_type, header, &item, Some(original));
                     let changed = header.iter().enumerate().any(|(i, name)| {
                         name != "version"
@@ -862,6 +874,11 @@ impl RowSheet {
                 }
                 Err(why) => bad.push(format!("row {number}, column {name}: {} {why}", py::repr(text))),
             }
+        }
+        // Saved before versions existed: version 0, which a change gives
+        // as the version it read, like any other.
+        if self.row_type.kind("version").is_some() && row.get("version").is_none_or(Value::is_null) {
+            row.insert("version".into(), Value::from(0));
         }
         row
     }

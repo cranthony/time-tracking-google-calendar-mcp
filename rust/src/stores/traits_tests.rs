@@ -87,7 +87,8 @@ fn a_new_tab_is_seeded_with_the_five_starting_traits() {
     let ids: Vec<Value> = json_of(&all).iter().map(|t| t["id"].clone()).collect();
     assert_eq!(ids, vec![json!("thoughtful"), json!("reliable"), json!("creative"), json!("adventurous"), json!("generous")]);
     // Their parts' ids are as they were named before parts had ids.
-    let settled: Vec<Trait> = seed_traits().into_iter().map(settled).collect();
+    // Seeded before any write: version 0, as anything saved before versions.
+    let settled: Vec<Trait> = seed_traits().into_iter().map(settled).map(|t| Trait { version: Some(0), ..t }).collect();
     assert_eq!(json_of(&all), json_of(&settled));
     let ids: Vec<&Value> = all[0].parts.iter().flatten().map(|p| &p["id"]).collect();
     assert_eq!(ids, [&json!("judgment"), &json!("judgment#2")]);

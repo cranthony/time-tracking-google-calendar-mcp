@@ -13,12 +13,12 @@
      "name": "Me",
      "status": "active",
      "traits": null,
-     "version": null,
+     "version": 0,
      "what_matters": null
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": null\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
    "tool": "get_people"
   },
   {
@@ -143,11 +143,11 @@
     "name": "Me",
     "status": "active",
     "traits": null,
-    "version": null,
+    "version": 0,
     "what_matters": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": null\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
    "tool": "get_person"
   },
   {
@@ -225,7 +225,7 @@
      "name": "Me",
      "status": "active",
      "traits": null,
-     "version": null,
+     "version": 0,
      "what_matters": null
     },
     {
@@ -243,7 +243,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": null\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
    "tool": "get_people"
   },
   {
@@ -264,7 +264,7 @@
      "name": "Me",
      "status": "active",
      "traits": null,
-     "version": null,
+     "version": 0,
      "what_matters": null
     },
     {
@@ -295,14 +295,15 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": null\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 2\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 2\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
    "tool": "get_people"
   },
   {
    "arguments": {
     "person": {
      "id": "self",
-     "status": "archived"
+     "status": "archived",
+     "version": 0
     }
    },
    "content": "Error executing tool update_person: self is always active",
@@ -326,6 +327,7 @@
    "arguments": {
     "person": {
      "id": "self",
+     "version": 0,
      "what_matters": "time well spent"
     }
    },

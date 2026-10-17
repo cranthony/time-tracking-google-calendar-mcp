@@ -180,12 +180,14 @@ fn json_that_doesnt_fit_its_field_is_named() {
 }
 
 #[test]
-fn a_version_is_required_only_where_one_is_on_record_and_only_while_required() {
+fn a_version_is_required_of_whatever_is_there_and_only_while_required() {
     // Outside a write tool's call (the command line): not required.
     assert!(require_version("Location", "home", None, Some(2)).is_ok());
     let _required = VersionsRequired::start();
     assert!(require_version("Location", "home", None, Some(2)).unwrap_err().to_string().contains("is version 2"));
     assert!(require_version("Location", "home", Some(2), Some(2)).is_ok());
-    // Saved before versions existed: none on record, so none asked for.
+    // Saved before versions existed: version 0, and asked for all the same.
+    assert!(require_version("Location", "home", None, Some(0)).unwrap_err().to_string().contains("is version 0"));
+    // Not there at all: its own refusal is the caller's.
     assert!(require_version("Location", "home", None, None).is_ok());
 }

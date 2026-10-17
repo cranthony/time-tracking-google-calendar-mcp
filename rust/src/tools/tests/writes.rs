@@ -357,3 +357,18 @@ fn every_stale_event_of_a_batch_is_said() {
     assert_eq!(ids, vec![json!("walk1"), json!("read1")]);
     assert_eq!(stale["_meta"]["conflicts"][1]["current"]["summary"], json!("Study"));
 }
+
+#[test]
+fn one_saved_before_versions_is_version_0_and_needs_it_too() {
+    let s = Server::new();
+    s.ok("create_location", json!({"location": {"id": "loc-old", "name": "Home"}}));
+    // As it was kept before versions: no version at all.
+    s.t.seed(crate::sheet::LOCATIONS.1, &[json!({"id": "loc-old", "name": "Home"})]);
+
+    assert_eq!(s.ok("get_location", json!({"id_or_name": "loc-old"}))["version"], json!(0));
+    let refused = s.raw("update_location", json!({"location": {"id": "loc-old", "hint": "upstairs"}}), json!({}));
+    assert!(said(&refused).contains("is version 0"), "{}", said(&refused));
+
+    let made = s.raw("update_location", json!({"location": {"id": "loc-old", "hint": "upstairs", "version": 0}}), json!({}));
+    assert_eq!(made["structuredContent"]["version"], json!(1));
+}

@@ -1312,7 +1312,13 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// to.
 /// `revision` is the one the user was looking at. They're laid over the current revision as a new one,
 /// which is returned, with `replaced`: the events whose newer change by
-/// Claude they overrode. Refused, changing nothing, if one names an
+/// Claude they overrode. If you amend it, give the revision you last read;
+/// when `replaced` names events changed since that revision, or the
+/// proposal moved on so it's refused, read it again: if what changed is
+/// in events you aren't changing, make your edit again on it as it is
+/// now; if it's in events you're changing, stop and ask the user --
+/// showing what changed and what you meant to do -- and never overwrite
+/// their edit without their OK. Refused, changing nothing, if one names an
 /// event or a note that isn't in the proposal, adds a note to an event
 /// of another day, or the result overlaps, or changes history -- moves
 /// the start of, ends earlier, or cancels an event an earlier compaction

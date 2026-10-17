@@ -33,7 +33,7 @@ pub struct GoalUpdate {
     pub clear_fields: Option<Vec<GoalField>>,
 }
 
-/// A goal to delete. Give if_version -- the version you last read: without it, a goal that has a version is refused; changed since, it's refused -- read it again and retry.
+/// A goal to delete. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct GoalDelete {
     pub goal_id: String,
@@ -106,7 +106,7 @@ pub fn create_goal(app: &App, goal: Goal) -> Result<CreatedGoal, ToolError> {
 /// in the same call. Nothing is moved or changed to make things fit: a
 /// call that breaks a rule changes nothing, and the error names the goals
 /// in the way. Deleting a goal can't be undone; events tagged with it
-/// stop showing it. Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, a goal that has a version is refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- read it again and retry. Returns each goal made or
+/// stop showing it. Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, it's refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns each goal made or
 /// changed, as it is now, and the ids deleted.
 #[tool(writes)]
 pub fn update_goals(app: &App, updates: Option<Vec<GoalUpdate>>, creates: Option<Vec<Goal>>, deletes: Option<Vec<GoalDelete>>) -> Result<ChangedGoals, ToolError> {
@@ -123,7 +123,7 @@ pub fn update_goals(app: &App, updates: Option<Vec<GoalUpdate>>, creates: Option
 
 /// Update one goal by id: the fields given are set, those left out kept,
 /// and those in clear_fields removed -- update_goals for one goal (see
-/// there for status and history). Give version -- the version you last read: without it, a goal that has a version is refused; changed since, it's refused -- read it again and retry. Returns the goal as updated.
+/// there for status and history). Give version -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns the goal as updated.
 #[tool(writes)]
 pub fn update_goal(app: &App, goal: Goal, clear_fields: Option<Vec<GoalField>>) -> Result<ListedGoal, ToolError> {
     let id = goal.id.clone().unwrap_or_default();

@@ -275,7 +275,7 @@
               ]
             },
             "etag": {
-              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.",
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "string",
                 "null"
@@ -574,7 +574,7 @@
           ]
         },
         "etag": {
-          "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.",
+          "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "string",
             "null"
@@ -832,7 +832,7 @@
     }
   },
   {
-    "description": "Change several events at once, as one batch: `updates` (each an\nevent's id and the fields to set -- left out, a field keeps its value;\nlist it in that update's clear_fields to remove it instead -- clearing\npriority makes it follow its actions' priority again), `creates` (new\nevents, optionally with actions: action_ids, the first setting its\ncolor), `cancels` (each saying whether it counts against\nfollow-through: a commitment dropped, rather than a change of plan --\nsee delete_event). An event can be in only one of them; to move\nevents, update each with its new times. Set action_ids to change an event's actions ([] for none), and\nfacts to replace its facts whole (see list_events). An update can't\ncancel an event (is_cancelled): put it in `cancels`.\nWHERE an event is (facts.location_ids), when you set it: keep a\nlocation it already has unless the events and notes around it\nclearly show the user was somewhere else. Otherwise the user stays\nput: it's where the previous event was, unless there's evidence they\nmoved in between -- the previous event, or one between, is a commute\n(an action with commute true, see get_actions, or the commute fact);\nthe user said they were somewhere other than planned; or the event\nclearly matches another location's hint (see get_locations). After a\ncommute they're somewhere other than before it: tell where from the\nlocation of the event after it (that one event only), or else from\nthe locations' hints. A commute itself gets the commute fact and no\nlocation_ids.\n\nSet repeat, on a create or on an update of an event that isn't in a\nseries, to make it the first event of a recurring series (see\nPublicEvent); only that first event is checked for overlaps, as for\nupdate_recurrence. An update can't be of a series itself (the id a\nseries' events give as recurring_event_id) -- edit it with\nupdate_recurrence -- nor give repeat to an event already in one.\n\nBATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every\nevent the call creates or updates must end after it starts and must\nnot overlap any other event -- one on the calendar or another in the\ncall -- so move, shorten or cancel whatever's in the way in the same\ncall. A call that breaks this changes nothing, and the error lists\nevery problem and the events around them, to send a valid call at\nonce.\n\nVERSIONS: each update and cancel gives the event's etag as you last\nread it (list_events and get_event give it). One without is refused;\none changed since is refused, with every such event as it is now\n(_meta.conflicts) -- read them again and send the call again. Calendar\nwrites each event on its own, so one changed after the batch is\nchecked stops it partway: the error says which changes were written\n(_meta.partly) before it stopped. Sending the batch again, from what's\nthere now, is safe -- what was written is given as it is -- except a\ncreate made without an id of its own, which would be made again:\nleave those out.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: an event that started before it can't be\nchanged or cancelled, and no event can be created, or moved, to start\nbefore it, unless allow_compacted_changes is set -- ONLY set it when\nthe user has explicitly approved changing history -- except that an\nevent still going on then may run on (an update moving only its end,\nto no earlier than the last compaction). dry_run checks the batch\nand returns what it would do without changing anything. Returns the\nevents changed, and a timeline of them beside the events around\nthem.",
+    "description": "Change several events at once, as one batch: `updates` (each an\nevent's id and the fields to set -- left out, a field keeps its value;\nlist it in that update's clear_fields to remove it instead -- clearing\npriority makes it follow its actions' priority again), `creates` (new\nevents, optionally with actions: action_ids, the first setting its\ncolor), `cancels` (each saying whether it counts against\nfollow-through: a commitment dropped, rather than a change of plan --\nsee delete_event). An event can be in only one of them; to move\nevents, update each with its new times. Set action_ids to change an event's actions ([] for none), and\nfacts to replace its facts whole (see list_events). An update can't\ncancel an event (is_cancelled): put it in `cancels`.\nWHERE an event is (facts.location_ids), when you set it: keep a\nlocation it already has unless the events and notes around it\nclearly show the user was somewhere else. Otherwise the user stays\nput: it's where the previous event was, unless there's evidence they\nmoved in between -- the previous event, or one between, is a commute\n(an action with commute true, see get_actions, or the commute fact);\nthe user said they were somewhere other than planned; or the event\nclearly matches another location's hint (see get_locations). After a\ncommute they're somewhere other than before it: tell where from the\nlocation of the event after it (that one event only), or else from\nthe locations' hints. A commute itself gets the commute fact and no\nlocation_ids.\n\nSet repeat, on a create or on an update of an event that isn't in a\nseries, to make it the first event of a recurring series (see\nPublicEvent); only that first event is checked for overlaps, as for\nupdate_recurrence. An update can't be of a series itself (the id a\nseries' events give as recurring_event_id) -- edit it with\nupdate_recurrence -- nor give repeat to an event already in one.\n\nBATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every\nevent the call creates or updates must end after it starts and must\nnot overlap any other event -- one on the calendar or another in the\ncall -- so move, shorten or cancel whatever's in the way in the same\ncall. A call that breaks this changes nothing, and the error lists\nevery problem and the events around them, to send a valid call at\nonce.\n\nVERSIONS: each update and cancel gives the event's etag as you last\nread it (list_events and get_event give it). One without is refused;\none changed since is refused, with every such event as it is now\n(_meta.conflicts). Then read each again: if what changed elsewhere is\nin fields you aren't changing, make your change again on it as it is\nnow; if it's in fields you're changing, or it was deleted or cancelled\n(or, cancelling it, it was changed since), stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir change, or put back what was deleted, without their OK. Calendar\nwrites each event on its own, so one changed after the batch is\nchecked stops it partway: the error says which changes were written\n(_meta.partly) before it stopped. Sending the batch again, from what's\nthere now, is safe -- what was written is given as it is -- except a\ncreate made without an id of its own, which would be made again:\nleave those out.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: an event that started before it can't be\nchanged or cancelled, and no event can be created, or moved, to start\nbefore it, unless allow_compacted_changes is set -- ONLY set it when\nthe user has explicitly approved changing history -- except that an\nevent still going on then may run on (an update moving only its end,\nto no earlier than the last compaction). dry_run checks the batch\nand returns what it would do without changing anything. Returns the\nevents changed, and a timeline of them beside the events around\nthem.",
     "inputSchema": {
       "properties": {
         "updates": {
@@ -874,7 +874,7 @@
       "type": "object",
       "$defs": {
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- read it again and retry.",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "properties": {
             "event_id": {
               "type": "string"
@@ -1164,7 +1164,7 @@
               ]
             },
             "etag": {
-              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.",
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "string",
                 "null"
@@ -1580,7 +1580,7 @@
               ]
             },
             "etag": {
-              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.",
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "string",
                 "null"
@@ -3991,7 +3991,7 @@
               ]
             },
             "etag": {
-              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.",
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "string",
                 "null"
@@ -4407,7 +4407,7 @@
               ]
             },
             "etag": {
-              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.",
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "string",
                 "null"
@@ -4582,7 +4582,7 @@
       "type": "object",
       "$defs": {
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- read it again and retry.",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "properties": {
             "event_id": {
               "type": "string"
@@ -4872,7 +4872,7 @@
               ]
             },
             "etag": {
-              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.",
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "string",
                 "null"
@@ -5202,7 +5202,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -5269,7 +5269,7 @@
           ]
         },
         "version": {
-          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "integer",
             "null"
@@ -5360,7 +5360,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -5427,7 +5427,7 @@
           ]
         },
         "version": {
-          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "integer",
             "null"
@@ -5783,7 +5783,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -5926,7 +5926,7 @@
     }
   },
   {
-    "description": "Update an action by id: its group_id, name (still unique),\nstatus, background_color, priority, note or commute. Omitted\nproperties keep their value; list one in clear_fields to blank it instead. label_id\ncan't be changed. status is proposed (not yet reviewed by the user;\nholds a label while there's room), active (holds a label), archived\n(not done any more) or deleted (shouldn't have existed); archiving or\ndeleting frees its label, and making it active again restores it.\nGive version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns, as changed, the action as updated, plus any proposed\naction that gained or lost its label as a result, with label_slots_used\nof label_slots_total.",
+    "description": "Update an action by id: its group_id, name (still unique),\nstatus, background_color, priority, note or commute. Omitted\nproperties keep their value; list one in clear_fields to blank it instead. label_id\ncan't be changed. status is proposed (not yet reviewed by the user;\nholds a label while there's room), active (holds a label), archived\n(not done any more) or deleted (shouldn't have existed); archiving or\ndeleting frees its label, and making it active again restores it.\nGive version -- the version you last read (the get tools give it): without it, it's refused; changed since, it's refused, with it as it is now in _meta.conflicts -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns, as changed, the action as updated, plus any proposed\naction that gained or lost its label as a result, with label_slots_used\nof label_slots_total.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -6022,7 +6022,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -6386,7 +6386,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -6819,7 +6819,7 @@
     }
   },
   {
-    "description": "Update an action group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups), background_color, priority or note. Omitted properties keep\ntheir value; list one in clear_fields to blank it instead. Its actions\nthat don't set their own color follow its new one on the calendar.\nGive version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns, as changed, the group as updated, and as affected_actions,\nevery action whose path, effective_color or effective_priority\nchanged as a result.",
+    "description": "Update an action group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups), background_color, priority or note. Omitted properties keep\ntheir value; list one in clear_fields to blank it instead. Its actions\nthat don't set their own color follow its new one on the calendar.\nGive version -- the version you last read (the get tools give it): without it, it's refused; changed since, it's refused, with it as it is now in _meta.conflicts -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns, as changed, the group as updated, and as affected_actions,\nevery action whose path, effective_color or effective_priority\nchanged as a result.",
     "inputSchema": {
       "properties": {
         "group": {
@@ -6886,7 +6886,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -7098,7 +7098,7 @@
     }
   },
   {
-    "description": "Delete an action group, by id. Its actions and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), as changed, the groups moved up out of it, and as\naffected_actions, every action moved or recolored as a result. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done.",
+    "description": "Delete an action group, by id. Its actions and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), as changed, the groups moved up out of it, and as\naffected_actions, every action moved or recolored as a result. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done.",
     "inputSchema": {
       "properties": {
         "group_id": {
@@ -7191,7 +7191,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -7834,7 +7834,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -8125,7 +8125,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -8479,7 +8479,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -8612,7 +8612,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -8672,7 +8672,7 @@
     }
   },
   {
-    "description": "Delete a circle, by id. Its people aren't deleted: they just leave\nit. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done. Returns the circle as it was, and the ids of the people\nwho left.",
+    "description": "Delete a circle, by id. Its people aren't deleted: they just leave\nit. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done. Returns the circle as it was, and the ids of the people\nwho left.",
     "inputSchema": {
       "properties": {
         "circle_id": {
@@ -8740,7 +8740,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -8939,7 +8939,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -9004,7 +9004,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -9017,7 +9017,7 @@
     }
   },
   {
-    "description": "Rename a location or change its hint, map_location or group_id, by\nid. Omitted properties keep their value; list hint, map_location or\ngroup_id in clear_fields to blank it. Give version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns it as\nupdated.",
+    "description": "Rename a location or change its hint, map_location or group_id, by\nid. Omitted properties keep their value; list hint, map_location or\ngroup_id in clear_fields to blank it. Give version -- the version you last read (the get tools give it): without it, it's refused; changed since, it's refused, with it as it is now in _meta.conflicts -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns it as\nupdated.",
     "inputSchema": {
       "properties": {
         "location": {
@@ -9080,7 +9080,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -9128,7 +9128,7 @@
           ]
         },
         "version": {
-          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "integer",
             "null"
@@ -9139,7 +9139,7 @@
     }
   },
   {
-    "description": "Delete a location, by id. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done. Returns it as\nit was.",
+    "description": "Delete a location, by id. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done. Returns it as\nit was.",
     "inputSchema": {
       "properties": {
         "location_id": {
@@ -9194,7 +9194,7 @@
           ]
         },
         "version": {
-          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "integer",
             "null"
@@ -9372,7 +9372,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -9446,7 +9446,7 @@
     }
   },
   {
-    "description": "Update a location group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups) or note. Omitted properties keep their value; list group_id or\nnote in clear_fields to blank it. A group can't end up inside itself.\nGive version -- the version you last read (the get tools give it): without it, one that has a version is refused; changed since, it's refused, with it as it is now in _meta.conflicts -- read it again and retry. Returns it as updated.",
+    "description": "Update a location group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups) or note. Omitted properties keep their value; list group_id or\nnote in clear_fields to blank it. A group can't end up inside itself.\nGive version -- the version you last read (the get tools give it): without it, it's refused; changed since, it's refused, with it as it is now in _meta.conflicts -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns it as updated.",
     "inputSchema": {
       "properties": {
         "group": {
@@ -9501,7 +9501,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -9557,7 +9557,7 @@
     }
   },
   {
-    "description": "Delete a location group, by id. Its locations and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), and the groups and locations moved up out of it. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done.",
+    "description": "Delete a location group, by id. Its locations and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), and the groups and locations moved up out of it. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done.",
     "inputSchema": {
       "properties": {
         "group_id": {
@@ -9722,7 +9722,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -9835,7 +9835,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -9933,7 +9933,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -10033,7 +10033,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -10140,7 +10140,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -10198,7 +10198,7 @@
           ]
         },
         "version": {
-          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "integer",
             "null"
@@ -10236,7 +10236,7 @@
     }
   },
   {
-    "description": "Delete a travel time, by id. Give if_version -- the version you last read: without it, one that has a version is refused; changed since, it's refused, with it as it is now -- read it again and retry; gone already, it's done. Returns it as it was. (Deleting a\nlocation or location group deletes the travel times from or to it.)",
+    "description": "Delete a travel time, by id. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done. Returns it as it was. (Deleting a\nlocation or location group deletes the travel times from or to it.)",
     "inputSchema": {
       "properties": {
         "travel_time_id": {
@@ -10301,7 +10301,7 @@
           ]
         },
         "version": {
-          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "integer",
             "null"
@@ -10482,7 +10482,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -10927,7 +10927,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -11195,7 +11195,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -11798,7 +11798,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -11990,7 +11990,7 @@
     }
   },
   {
-    "description": "Update one goal by id: the fields given are set, those left out kept,\nand those in clear_fields removed -- update_goals for one goal (see\nthere for status and history). Give version -- the version you last read: without it, a goal that has a version is refused; changed since, it's refused -- read it again and retry. Returns the goal as updated.",
+    "description": "Update one goal by id: the fields given are set, those left out kept,\nand those in clear_fields removed -- update_goals for one goal (see\nthere for status and history). Give version -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns the goal as updated.",
     "inputSchema": {
       "properties": {
         "goal": {
@@ -12111,7 +12111,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -12469,7 +12469,7 @@
     }
   },
   {
-    "description": "Change goals, all at once, checked whole: `updates` (each a goal's id\nand the fields to set -- left out, a field keeps its value; list it in\nthat update's clear_fields to remove it instead), `creates` (new goals,\nas create_goal takes them; an update can name one by an id given\nhere) and `deletes`. A status set without a history adds the change,\nnow, to the goal's history; a history given replaces it whole (to\nbackdate a change, or remove a mistaken one), and must end with the\ngoal's status.\n\nThe rules (see get_goals and create_goal) hold for the result, not\nfor each step: to mark a goal done or obsolete, close or move its\nopen sub-goals in the same call; to delete one, delete or move its\nsub-goals too; to make an earlier deadline fit, change its sub-goals'\nin the same call. Nothing is moved or changed to make things fit: a\ncall that breaks a rule changes nothing, and the error names the goals\nin the way. Deleting a goal can't be undone; events tagged with it\nstop showing it. Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, a goal that has a version is refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- read it again and retry. Returns each goal made or\nchanged, as it is now, and the ids deleted.",
+    "description": "Change goals, all at once, checked whole: `updates` (each a goal's id\nand the fields to set -- left out, a field keeps its value; list it in\nthat update's clear_fields to remove it instead), `creates` (new goals,\nas create_goal takes them; an update can name one by an id given\nhere) and `deletes`. A status set without a history adds the change,\nnow, to the goal's history; a history given replaces it whole (to\nbackdate a change, or remove a mistaken one), and must end with the\ngoal's status.\n\nThe rules (see get_goals and create_goal) hold for the result, not\nfor each step: to mark a goal done or obsolete, close or move its\nopen sub-goals in the same call; to delete one, delete or move its\nsub-goals too; to make an earlier deadline fit, change its sub-goals'\nin the same call. Nothing is moved or changed to make things fit: a\ncall that breaks a rule changes nothing, and the error names the goals\nin the way. Deleting a goal can't be undone; events tagged with it\nstop showing it. Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, it's refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns each goal made or\nchanged, as it is now, and the ids deleted.",
     "inputSchema": {
       "properties": {
         "updates": {
@@ -12593,7 +12593,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required for one that has a version -- changed since, the change is refused; read it again and retry.",
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -12603,7 +12603,7 @@
           "type": "object"
         },
         "GoalDelete": {
-          "description": "A goal to delete. Give if_version -- the version you last read: without it, a goal that has a version is refused; changed since, it's refused -- read it again and retry.",
+          "description": "A goal to delete. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -13160,7 +13160,7 @@
           ]
         },
         "version": {
-          "description": "Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, a note that has one is refused; changed since, it's refused -- read it again and retry.",
+          "description": "Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "integer",
             "null"
@@ -13224,7 +13224,7 @@
               ]
             },
             "version": {
-              "description": "Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, a note that has one is refused; changed since, it's refused -- read it again and retry.",
+              "description": "Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "integer",
                 "null"
@@ -13297,7 +13297,7 @@
           ]
         },
         "version": {
-          "description": "Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, a note that has one is refused; changed since, it's refused -- read it again and retry.",
+          "description": "Goes up by one each time it's edited. Give it to edit_note (version) and delete_note (if_version) -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
             "integer",
             "null"
@@ -14550,7 +14550,7 @@
           "type": "object"
         },
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- read it again and retry.",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "properties": {
             "event_id": {
               "type": "string"
@@ -16410,7 +16410,7 @@
     }
   },
   {
-    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person or\nlocation the proposal adds (by its ref) now, without confirming the\nrest -- `create` it (with its name, a person's context or a\nlocation's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; and `as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.",
+    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person or\nlocation the proposal adds (by its ref) now, without confirming the\nrest -- `create` it (with its name, a person's context or a\nlocation's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; and `as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -16537,7 +16537,7 @@
           "type": "object"
         },
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- read it again and retry.",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "properties": {
             "event_id": {
               "type": "string"
@@ -16994,7 +16994,7 @@
               ]
             },
             "etag": {
-              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- read it again and retry.",
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Give it to update_event and delete_event -- the etag you last read: without it, the change is refused; changed since, the call is refused with every event that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
                 "string",
                 "null"
