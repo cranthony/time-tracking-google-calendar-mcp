@@ -1,0 +1,118 @@
+# Builds the server for Linux (x86_64, statically linked, so it runs on
+# any distribution) with AUTH_DISABLED -- no sign-in -- on every push to
+# main that changes it, and publishes it as a GitHub Release and, with the
+# DRIVE_RCLONE_CONF secret set, in a Google Drive folder. See "Linux
+# release packages" in README.md.
+name: Linux release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - rust/**
+      - .github/workflows/linux-release.yml
+      - scripts/publish_to_drive.sh
+  # Builds and packages (to check it still does) but doesn't publish.
+  pull_request:
+    paths:
+      - .github/workflows/linux-release.yml
+      - scripts/publish_to_drive.sh
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Each run publishes the commit it built; one at a time, in order.
+concurrency:
+  group: linux-release-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET: x86_64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: linux-release
+      - name: Build
+        # musl-gcc compiles ring's C for the musl target.
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq musl-tools
+          AUTH_DISABLED=true cargo build --locked --release \
+            --target "$TARGET" --bin time-tracker-server
+        working-directory: rust
+      - name: Check the binary
+        # Static, so there's no glibc version to match.
+        run: |
+          binary=rust/target/$TARGET/release/time-tracker-server
+          file "$binary"
+          file "$binary" | grep -q 'static'
+      - name: Package
+        id: package
+        run: |
+          version="$(git log -1 --format=%cd --date=format:%Y%m%d)-$(git rev-parse --short=7 HEAD)"
+          name="time-tracker-server-AUTH_DISABLED-$version-linux-x86_64"
+          mkdir -p "dist/$name"
+          cp "rust/target/$TARGET/release/time-tracker-server" LICENSE "dist/$name/"
+          cat > "dist/$name/AUTH_DISABLED.txt" <<'TEXT'
+          This server was built with AUTH_DISABLED: it has no sign-in, and
+          trusts every request as its single user. Anyone who can reach it
+          can read and change your calendar. Run it only behind a proxy that
+          signs people in, or on a network you trust.
+
+          See "Without sign-in, behind a corporate proxy" and "Serving the
+          web app" in the README:
+          https://github.com/cranthony/time-tracking-google-calendar-mcp#without-sign-in-behind-a-corporate-proxy
+          TEXT
+          tar -czf "dist/$name.tar.gz" -C dist "$name"
+          rm -r "dist/$name"
+          (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
+          ls -l dist
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Publish release
+        if: github.event_name != 'pull_request'
+        # Not marked latest: every build here is AUTH_DISABLED, which no
+        # one should pick up by accident.
+        run: |
+          version=${{ steps.package.outputs.version }}
+          notes="> [!WARNING]
+          > **Built with AUTH_DISABLED: no sign-in.** This server trusts every
+          > request as its single user, so anyone who can reach it can read and
+          > change your calendar. Run it only behind a proxy that signs people
+          > in, or on a network you trust. See [Without sign-in, behind a
+          > corporate proxy](https://github.com/${{ github.repository }}#without-sign-in-behind-a-corporate-proxy).
+
+          Linux, x86_64, statically linked (any distribution). Serve the web
+          app with it from the client repository's matching web-<version>
+          release (STATIC_SITE_DIR).
+
+          ## Commit
+          $(git log -1 --format='%h %s')"
+          tag="server-AUTH_DISABLED-$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* --target "$GITHUB_SHA" --latest=false \
+              --title "Server $version (AUTH_DISABLED: no sign-in), Linux x86_64" \
+              --notes "$notes"
+          fi
+      - name: Copy to Google Drive
+        if: github.event_name != 'pull_request'
+        env:
+          DRIVE_RCLONE_CONF: ${{ secrets.DRIVE_RCLONE_CONF }}
+          DRIVE_FOLDER: ${{ vars.DRIVE_FOLDER || 'gdrive:TimeTracker' }}
+        run: |
+          if [ -z "$DRIVE_RCLONE_CONF" ]; then
+            echo "::warning::No DRIVE_RCLONE_CONF secret, so nothing was copied to Google Drive (see Linux release packages in README.md)."
+            exit 0
+          fi
+          sudo apt-get update -qq && sudo apt-get install -y -qq rclone
+          scripts/publish_to_drive.sh time-tracker-server-AUTH_DISABLED- dist/*
