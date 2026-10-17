@@ -261,6 +261,7 @@ impl GroupTree {
             path: Some(self.path(group)),
             effective_color: Some(self.color(group)),
             effective_priority: self.priority(group),
+            version: group.version,
         }
     }
 

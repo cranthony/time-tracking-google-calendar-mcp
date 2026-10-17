@@ -74,7 +74,7 @@ impl Fixture {
 fn creates_and_finds_a_habit_by_id_or_name_with_its_actions_path() {
     let f = fixture(None);
 
-    let created = f.held(|h| h.create_habit(&habit(json!({"id": "mine", "name": "Guitar", "action_id": "guitar", "note": "Daily, mostly scales"})))).unwrap();
+    let created = f.held(|h| h.create_habit(&habit(json!({"name": "Guitar", "action_id": "guitar", "note": "Daily, mostly scales"})))).unwrap();
 
     let id = created["created_id"].as_str().unwrap();
     assert_ne!(id, "mine");

@@ -407,14 +407,14 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
                 if !given.iter().any(|g| g == "start" || g == "end") {
                     return Err(usage("update requires at least one of: end, start"));
                 }
-                changes.check(vec![event], Vec::new(), Vec::new(), Vec::new(), None, false)?
+                changes.check(vec![event], Vec::new(), Vec::new(), None, false)?
             } else {
                 let mut missing: Vec<&str> = ["end", "start", "summary"].into_iter().filter(|r| !given.iter().any(|g| g == r)).collect();
                 missing.sort();
                 if !missing.is_empty() {
                     return Err(usage(format!("create requires: {}", missing.join(", "))));
                 }
-                changes.check(Vec::new(), vec![event], Vec::new(), Vec::new(), None, false)?
+                changes.check(Vec::new(), vec![event], Vec::new(), None, false)?
             };
             let batch = checked.map_err(|refusal| Failure::Exit(refusal.message))?;
             for written in changes.apply(&batch, "calendar_cli")? {
@@ -534,7 +534,7 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
             let ago = duration(positional(rest, 0, "ago")?)?;
             let timestamp = now - chrono::Duration::milliseconds((ago * 1000.0).round() as i64);
             let noted = NotedTime { timestamp, description: rest.get(1).cloned(), compaction_id: None };
-            let appended = app.noted_time_sheet()?.append(&noted)?;
+            let appended = app.noted_time_sheet()?.append(&noted, None)?;
             wln!(out, "id: {}", appended.id());
             wln!(out, "{}", note_details(&noted));
         }
@@ -574,15 +574,16 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
             if timestamp.is_none() && description.is_none() {
                 return Err(usage("edit_note needs at least one of --ago, --at or --description"));
             }
-            let edited = edit_note(&app.noted_time_sheet()?, &app.journal()?, note_id, timestamp, description.as_deref())
+            let edited = edit_note(&app.noted_time_sheet()?, &app.journal()?, note_id, timestamp, description.as_deref(), None)
                 .map_err(|e| refused(e))?;
             wln!(out, "id: {}", edited.id());
             wln!(out, "{}", note_details(&edited.note));
         }
         "delete_note" => {
-            let deleted = delete_note(&app.noted_time_sheet()?, &app.journal()?, positional(rest, 0, "note_id")?).map_err(refused)?;
+            let deleted = delete_note(&app.noted_time_sheet()?, &app.journal()?, positional(rest, 0, "note_id")?, None).map_err(refused)?;
             wln!(out, "Deleted:");
-            wln!(out, "{}", note_details(&deleted));
+            // Without a version, a note that isn't there is refused.
+            wln!(out, "{}", note_details(&deleted.expect("refused if it isn't there").note));
         }
         other => return Err(usage(format!("argument command: invalid choice: {}", py::repr(other)))),
     }

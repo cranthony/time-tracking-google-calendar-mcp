@@ -48,6 +48,20 @@ pub struct Event {
     pub action_priority: Option<i64>,
     pub actions_from_label: bool,
     pub cleared: BTreeSet<String>,
+    /// As read: the etag Calendar gave it. Given to a patch: the etag it
+    /// must still have, or the patch is refused (a 412).
+    pub etag: Etag,
+}
+
+/// An event's etag: which version of it was read. It isn't part of what
+/// the event is, so two events alike but for it are equal.
+#[derive(Debug, Clone, Default)]
+pub struct Etag(pub Option<String>);
+
+impl PartialEq for Etag {
+    fn eq(&self, _: &Etag) -> bool {
+        true
+    }
 }
 
 impl Event {
@@ -146,6 +160,7 @@ impl Event {
             None => None,
         };
         event.event_label_id = text("eventLabelId");
+        event.etag = Etag(text("etag"));
         Ok(event)
     }
 

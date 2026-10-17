@@ -178,10 +178,10 @@ fn refuses_a_color_that_isnt_hex_on_update_and_on_groups() {
 }
 
 #[test]
-fn ignores_an_id_or_label_id_given() {
+fn ignores_a_label_id_given() {
     let f = fixture();
 
-    let created = f.create(json!({"id": "mine", "label_id": "theirs", "name": "Walk"}));
+    let created = f.create(json!({"label_id": "theirs", "name": "Walk"}));
 
     assert_ne!(created, "mine");
     assert_ne!(f.label_of(&created), "theirs");
@@ -565,7 +565,7 @@ fn deleting_a_group_moves_its_actions_and_groups_up_to_its_parent() {
     let play = f.create(json!({"name": "Play guitar", "group_id": guitar, "status": "active"}));
     let sing = f.create(json!({"name": "Sing", "group_id": creative}));
 
-    let deleted = f.held(|a| a.delete_action_group(&guitar)).unwrap();
+    let deleted = f.held(|a| a.delete_action_group(&guitar, None)).unwrap();
 
     assert_eq!(deleted["deleted"]["name"], "Guitar");
     assert_eq!(ids(&deleted["changed"]), vec![lessons]);
@@ -585,7 +585,7 @@ fn a_top_level_groups_contents_move_to_the_top() {
     let top = f.group(json!({"name": "Top"}));
     let play = f.create(json!({"name": "Play", "group_id": top}));
 
-    f.held(|a| a.delete_action_group(&top)).unwrap();
+    f.held(|a| a.delete_action_group(&top, None)).unwrap();
 
     assert!(f.get(&play)["group_id"].is_null());
     assert!(groups(&f).is_empty());
@@ -596,8 +596,8 @@ fn deleting_a_group_needs_its_id() {
     let f = fixture();
     let top = f.group(json!({"name": "Top"}));
 
-    refused(f.held(|a| a.delete_action_group("top")), &format!("by its id: 'Top' is {top}"));
-    refused(f.held(|a| a.delete_action_group("nothing")), "no action group");
+    refused(f.held(|a| a.delete_action_group("top", None)), &format!("by its id: 'Top' is {top}"));
+    refused(f.held(|a| a.delete_action_group("nothing", None)), "no action group");
 }
 
 // -- the tree --------------------------------------------------------------------------------------

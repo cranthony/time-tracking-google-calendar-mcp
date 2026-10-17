@@ -11,10 +11,11 @@
     "compaction_id": null,
     "description": "lunch done",
     "id": "2026-10-05T12:40:00-04:00#2",
-    "timestamp": "2026-10-05T12:40:00-04:00"
+    "timestamp": "2026-10-05T12:40:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T12:40:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T12:40:00-04:00\",\n  \"description\": \"lunch done\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T12:40:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T12:40:00-04:00\",\n  \"description\": \"lunch done\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -28,10 +29,11 @@
     "compaction_id": null,
     "description": "dinner done",
     "id": "2026-10-05T19:20:00-04:00#3",
-    "timestamp": "2026-10-05T19:20:00-04:00"
+    "timestamp": "2026-10-05T19:20:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T19:20:00-04:00#3\",\n  \"timestamp\": \"2026-10-05T19:20:00-04:00\",\n  \"description\": \"dinner done\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T19:20:00-04:00#3\",\n  \"timestamp\": \"2026-10-05T19:20:00-04:00\",\n  \"description\": \"dinner done\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -1202,15 +1204,6 @@
     "proposal_id": "0c2ebf677741",
     "revision": 1
    },
-   "content": "Error executing tool confirm_proposal: proposal 0c2ebf677741 is already being applied: finish it with finish_proposal",
-   "is_error": true,
-   "text": "Error executing tool confirm_proposal: proposal 0c2ebf677741 is already being applied: finish it with finish_proposal",
-   "tool": "confirm_proposal"
-  },
-  {
-   "arguments": {
-    "proposal_id": "0c2ebf677741"
-   },
    "content": {
     "message": "applied 2 change(s) and marked 2 note(s) compacted.",
     "proposal": {
@@ -1313,6 +1306,114 @@
    },
    "is_error": false,
    "text": "{\n  \"status\": \"applied\",\n  \"message\": \"applied 2 change(s) and marked 2 note(s) compacted.\",\n  \"proposal\": {\n    \"id\": \"0c2ebf677741\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T12:40:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:20:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      }\n    ],\n    \"warnings\": [],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"What the notes say.\",\n      \"did\": [\n        {\n          \"text\": \"Recorded the days.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
+   "tool": "confirm_proposal"
+  },
+  {
+   "arguments": {
+    "proposal_id": "0c2ebf677741"
+   },
+   "content": {
+    "message": "proposal 0c2ebf677741 was already applied",
+    "proposal": {
+     "additions": null,
+     "by": "claude",
+     "changed_since": null,
+     "changes": [
+      {
+       "action": "update",
+       "after": {
+        "action_ids": null,
+        "description": null,
+        "end": "2026-10-05T12:40:00-04:00",
+        "event_label_id": null,
+        "facts": null,
+        "location": null,
+        "priority": null,
+        "start": "2026-10-05T12:00:00-04:00",
+        "status": "confirmed",
+        "summary": "Lunch"
+       },
+       "before": {
+        "action_ids": null,
+        "description": null,
+        "end": "2026-10-05T13:00:00-04:00",
+        "event_label_id": null,
+        "facts": null,
+        "location": null,
+        "priority": null,
+        "start": "2026-10-05T12:00:00-04:00",
+        "status": "confirmed",
+        "summary": "Lunch"
+       },
+       "event_id": "c5aefcb1a0e717b26c9d3d4839",
+       "key": null,
+       "reason": "realigned to match the notes"
+      },
+      {
+       "action": "update",
+       "after": {
+        "action_ids": null,
+        "description": null,
+        "end": "2026-10-05T19:20:00-04:00",
+        "event_label_id": null,
+        "facts": null,
+        "location": null,
+        "priority": null,
+        "start": "2026-10-05T18:00:00-04:00",
+        "status": "confirmed",
+        "summary": "Dinner"
+       },
+       "before": {
+        "action_ids": null,
+        "description": null,
+        "end": "2026-10-05T19:00:00-04:00",
+        "event_label_id": null,
+        "facts": null,
+        "location": null,
+        "priority": null,
+        "start": "2026-10-05T18:00:00-04:00",
+        "status": "confirmed",
+        "summary": "Dinner"
+       },
+       "event_id": "f43e48437258cfca35d17613c4",
+       "key": null,
+       "reason": "realigned to match the notes"
+      }
+     ],
+     "claude_through": "2026-10-07T15:30:00-04:00",
+     "created": "2026-10-07T15:30:00-04:00",
+     "events": null,
+     "feedback": [],
+     "id": "0c2ebf677741",
+     "notes": [],
+     "problem": null,
+     "reason": "proposed",
+     "recap": {
+      "did": [
+       {
+        "event_ids": [],
+        "note_ids": [],
+        "text": "Recorded the days."
+       }
+      ],
+      "overview": "What the notes say.",
+      "unsure": []
+     },
+     "recap_revision": 1,
+     "replaced": null,
+     "revision": 1,
+     "settled_additions": [],
+     "state": "applied",
+     "through": "2026-10-07T15:30:00-04:00",
+     "timeline": null,
+     "user_edits": [],
+     "warnings": [],
+     "window_start": "2026-10-05T06:30:00-04:00"
+    },
+    "status": "applied"
+   },
+   "is_error": false,
+   "text": "{\n  \"status\": \"applied\",\n  \"message\": \"proposal 0c2ebf677741 was already applied\",\n  \"proposal\": {\n    \"id\": \"0c2ebf677741\",\n    \"revision\": 1,\n    \"state\": \"applied\",\n    \"window_start\": \"2026-10-05T06:30:00-04:00\",\n    \"through\": \"2026-10-07T15:30:00-04:00\",\n    \"by\": \"claude\",\n    \"reason\": \"proposed\",\n    \"created\": \"2026-10-07T15:30:00-04:00\",\n    \"claude_through\": \"2026-10-07T15:30:00-04:00\",\n    \"events\": null,\n    \"problem\": null,\n    \"notes\": [],\n    \"changes\": [\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"c5aefcb1a0e717b26c9d3d4839\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T13:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Lunch\",\n          \"start\": \"2026-10-05T12:00:00-04:00\",\n          \"end\": \"2026-10-05T12:40:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      },\n      {\n        \"action\": \"update\",\n        \"reason\": \"realigned to match the notes\",\n        \"event_id\": \"f43e48437258cfca35d17613c4\",\n        \"key\": null,\n        \"before\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:00:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        },\n        \"after\": {\n          \"summary\": \"Dinner\",\n          \"start\": \"2026-10-05T18:00:00-04:00\",\n          \"end\": \"2026-10-05T19:20:00-04:00\",\n          \"description\": null,\n          \"location\": null,\n          \"status\": \"confirmed\",\n          \"priority\": null,\n          \"event_label_id\": null,\n          \"action_ids\": null,\n          \"facts\": null\n        }\n      }\n    ],\n    \"warnings\": [],\n    \"timeline\": null,\n    \"additions\": null,\n    \"settled_additions\": [],\n    \"user_edits\": [],\n    \"feedback\": [],\n    \"recap\": {\n      \"overview\": \"What the notes say.\",\n      \"did\": [\n        {\n          \"text\": \"Recorded the days.\",\n          \"event_ids\": [],\n          \"note_ids\": []\n        }\n      ],\n      \"unsure\": []\n    },\n    \"recap_revision\": 1,\n    \"changed_since\": null,\n    \"replaced\": null\n  }\n}",
    "tool": "finish_proposal"
   }
  ],
@@ -1421,7 +1522,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000053,
         "startColumnIndex": 0,
@@ -1450,7 +1551,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000053,
        "startColumnIndex": 0,
@@ -1459,7 +1560,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -1479,7 +1580,38 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
+        "endRowIndex": 1,
+        "sheetId": 1000053,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "timestamp",
+        "description",
+        "compaction_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000053,
         "startColumnIndex": 0,
@@ -1491,7 +1623,8 @@
        [
         "2026-10-05T12:40:00-04:00",
         "lunch done",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1508,7 +1641,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000053,
        "startColumnIndex": 0,
@@ -1517,7 +1650,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -1537,7 +1670,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 3,
         "sheetId": 1000053,
         "startColumnIndex": 0,
@@ -1549,7 +1682,8 @@
        [
         "2026-10-05T19:20:00-04:00",
         "dinner done",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1630,7 +1764,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -1723,7 +1858,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -2723,7 +2859,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -2946,7 +3082,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3241,7 +3377,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3521,7 +3657,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3548,106 +3684,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3854,6 +3891,105 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
   }
  ],
@@ -4377,7 +4513,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -4408,7 +4545,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      },
@@ -4666,17 +4804,20 @@
        [
         "timestamp",
         "description",
-        "compaction_id"
+        "compaction_id",
+        "version"
        ],
        [
         "2026-10-05T12:40:00-04:00",
         "lunch done",
-        "0c2ebf677741r1"
+        "0c2ebf677741r1",
+        "1"
        ],
        [
         "2026-10-05T19:20:00-04:00",
         "dinner done",
-        "0c2ebf677741r1"
+        "0c2ebf677741r1",
+        "1"
        ]
       ]
      },

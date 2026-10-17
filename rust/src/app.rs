@@ -75,7 +75,6 @@ pub struct App {
     schedule: OnceLock<CompactionSchedule>,
     scoring_defaults: OnceLock<ScoringDefaultsTab>,
     recurrences: OnceLock<Recurrences>,
-    writes: OnceLock<crate::stores::writes::Writes>,
     writer: OnceLock<Arc<HealthWriter>>,
     me: OnceLock<std::sync::Weak<App>>,
 }
@@ -115,7 +114,6 @@ impl App {
             schedule: OnceLock::new(),
             scoring_defaults: OnceLock::new(),
             recurrences: OnceLock::new(),
-            writes: OnceLock::new(),
             writer: OnceLock::new(),
             me: OnceLock::new(),
         }
@@ -304,14 +302,6 @@ impl App {
 
     pub fn health_writer(&self) -> Option<&Arc<HealthWriter>> {
         self.writer.get()
-    }
-
-    /// The writes made with a write_id (see stores::writes).
-    pub fn writes(&self) -> anyhow::Result<crate::stores::writes::Writes> {
-        built(&self.writes, || {
-            let (_, sheets, id) = self.spreadsheet()?;
-            crate::stores::writes::Writes::ensure(&sheets, &id)
-        })
     }
 
     pub fn locations(&self) -> anyhow::Result<Locations> {

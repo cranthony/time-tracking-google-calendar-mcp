@@ -1,10 +1,18 @@
 //! The time notes tab: moments worth recording, each a timestamp and an
 //! optional description, stamped with the compaction that consumed it. A
-//! note's id is its timestamp and row.
+//! note's id is its own, if a client chose one when it made it, or else
+//! its timestamp and row. Each note has a version, which goes up by one
+//! whenever it's edited. A write sent again is made once by the rules
+//! every kind the app writes keeps (see rows::Versioned): a note made
+//! again under its id is given as it is; an edit or deletion given the
+//! version last seen is refused with a `Conflict` if it's changed since
+//! -- unless it's an edit one version on and already as it'd leave it, or
+//! a deletion of one gone already.
 
 use crate::event::{parse_iso, Moment};
 use crate::google::sheets::{Rows, SheetsClient, TabRange};
 use crate::py;
+use crate::sheet::rows::{self, Conflict, Row};
 use crate::sheet::{ensure_tab, MIN_TAB_ROWS, TIME_NOTES};
 use anyhow::{anyhow, bail};
 use serde_json::{json, Value};
@@ -13,9 +21,13 @@ const FIRST_DATA_ROW: i64 = 2;
 const MAX_ROWS: i64 = 50;
 const TRIM_TO_ROWS: i64 = 25;
 pub const FIELDS: [&str; 3] = ["timestamp", "description", "compaction_id"];
-const LAST_COLUMN: &str = "C";
-const HEADER_RANGE: &str = "A1:C1";
-const DATA_RANGE: &str = "A2:C";
+/// The columns added once they're needed: a note's own id and its
+/// version.
+const ID: &str = "id";
+const VERSION: &str = "version";
+const LAST_COLUMN: &str = "E";
+const HEADER_RANGE: &str = "A1:E1";
+const DATA_RANGE: &str = "A2:E";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NotedTime {
@@ -67,22 +79,53 @@ impl NotedTime {
 pub struct SheetNote {
     pub row: i64,
     pub note: NotedTime,
+    /// The id a client chose for it, if any.
+    pub own_id: Option<String>,
+    pub version: Option<i64>,
 }
 
 impl SheetNote {
     pub fn id(&self) -> String {
-        format!("{}#{}", py::isoformat(&self.note.timestamp), self.row)
+        match &self.own_id {
+            Some(own) => own.clone(),
+            None => format!("{}#{}", py::isoformat(&self.note.timestamp), self.row),
+        }
     }
 
-    /// NoteWithId's JSON: its id, then the note's fields.
+    /// NoteWithId's JSON: its id, then the note's fields and its version.
     pub fn with_id(&self) -> Value {
         json!({
             "id": self.id(),
             "timestamp": py::pydantic_datetime(&self.note.timestamp),
             "description": self.note.description,
             "compaction_id": self.note.compaction_id,
+            "version": self.version,
         })
     }
+
+    fn as_row(&self) -> Row {
+        match self.with_id() {
+            Value::Object(row) => row,
+            _ => unreachable!("with_id is an object"),
+        }
+    }
+}
+
+/// A cell of `data`, by its column's name in `header`, trimmed.
+fn cell<'a>(header: &[String], data: &'a [String], name: &str) -> Option<&'a str> {
+    header.iter().position(|h| h == name).and_then(|i| data.get(i)).map(|c| c.trim()).filter(|c| !c.is_empty())
+}
+
+/// `cells` (a row under `header`), with the `name` cell set to `value`.
+fn set_cell(header: &[String], cells: &mut [String], name: &str, value: String) {
+    if let Some(i) = header.iter().position(|h| h == name) {
+        cells[i] = value;
+    }
+}
+
+/// The column letter of the `index`th column.
+fn column(index: usize) -> char {
+    (b'A' + index as u8) as char
 }
 
 /// The (timestamp, row) a note id encodes.
@@ -102,13 +145,46 @@ pub struct Read {
     pub latest_compacted: Option<SheetNote>,
     pub header: Vec<String>,
     pub row_count: i64,
+    rows: Rows,
+}
+
+impl Read {
+    /// The note `note_id` names, if it's still there: the one with that
+    /// id of its own, or else the one at the timestamp and row its id
+    /// gives -- or why there's none.
+    fn find(&self, note_id: &str) -> Result<&SheetNote, anyhow::Error> {
+        if let Some(found) = self.notes.iter().find(|n| n.own_id.as_deref() == Some(note_id)) {
+            return Ok(found);
+        }
+        if !note_id.contains('#') && rows::chosen_id_shape(note_id) {
+            bail!("there's no note {} -- it was deleted since it was read; list the notes again for current ids", py::repr(note_id));
+        }
+        let (timestamp, row) = parse_note_id(note_id)?;
+        match self.notes.iter().rev().find(|n| n.row == row).filter(|n| n.note.timestamp == timestamp) {
+            Some(found) => Ok(found),
+            None => bail!(
+                "row {row} no longer holds the note {} -- it was edited or removed since it was read; list the notes again for current ids",
+                py::repr(note_id)
+            ),
+        }
+    }
+
+    /// The ids of the notes that have their own.
+    fn own_ids(&self) -> Vec<Option<&str>> {
+        self.notes.iter().map(|n| n.own_id.as_deref()).collect()
+    }
 }
 
 fn parse(header: Vec<String>, rows: Rows) -> anyhow::Result<Read> {
     let mut notes = Vec::new();
     for (offset, row) in rows.iter().enumerate() {
         if row.iter().any(|c| !c.trim().is_empty()) {
-            notes.push(SheetNote { row: FIRST_DATA_ROW + offset as i64, note: NotedTime::from_row(&header, row)? });
+            notes.push(SheetNote {
+                row: FIRST_DATA_ROW + offset as i64,
+                note: NotedTime::from_row(&header, row)?,
+                own_id: cell(&header, row, ID).map(str::to_string),
+                version: cell(&header, row, VERSION).and_then(crate::event::python_int),
+            });
         }
     }
     let latest = notes
@@ -119,7 +195,7 @@ fn parse(header: Vec<String>, rows: Rows) -> anyhow::Result<Read> {
             _ => Some(n),
         })
         .cloned();
-    Ok(Read { notes, latest_compacted: latest, header, row_count: rows.len() as i64 })
+    Ok(Read { notes, latest_compacted: latest, header, row_count: rows.len() as i64, rows })
 }
 
 #[derive(Clone)]
@@ -174,21 +250,33 @@ impl NotedTimeSheet {
         Ok(notes)
     }
 
-    /// Add `note` as a new row at the end, garbage-collecting first.
-    pub fn append(&self, note: &NotedTime) -> anyhow::Result<SheetNote> {
+    /// Add `note` as a new row at the end, garbage-collecting first, at
+    /// version 1 -- with `own_id`, the id the client chose for it, if it
+    /// gave one. One there already with that id and as `note` is, is the
+    /// same note made again: it's given as it is.
+    pub fn append(&self, note: &NotedTime, own_id: Option<&str>) -> anyhow::Result<SheetNote> {
         let read = self.read_all()?;
+        let own_id = own_id.map(str::trim).filter(|given| !given.is_empty());
+        if let Some(made) = own_id.and_then(|id| read.notes.iter().find(|n| n.own_id.as_deref() == Some(id))) {
+            if made.note.timestamp == note.timestamp && made.note.description == note.description {
+                return Ok(made.clone());
+            }
+        }
+        let own_id = own_id.map(|given| rows::chosen_id(Some(given), read.own_ids())).transpose()?;
         let next_row = FIRST_DATA_ROW + read.row_count - self.garbage_collect_from(&read)?;
-        self.sheets.write_rows_in_sheet(
-            &self.spreadsheet_id,
-            self.sheet_id,
-            &format!("A{next_row}:{LAST_COLUMN}"),
-            &vec![note.to_row(&read.header, None)],
-        )?;
-        Ok(SheetNote { row: next_row, note: note.clone() })
+        let header = self.with_columns(&read.header, own_id.is_some())?;
+        let new = SheetNote { row: next_row, note: note.clone(), own_id, version: Some(1) };
+        self.write_note(&header, &new, None)?;
+        Ok(new)
     }
 
-    pub fn edit(&self, note_id: &str, timestamp: Option<Moment>, description: Option<&str>) -> anyhow::Result<SheetNote> {
-        let (row, note, header, original) = self.uncompacted_row(note_id)?;
+    /// Edit the note `note_id` -- unless it's changed since `if_version`,
+    /// if given (see the module's doc).
+    pub fn edit(&self, note_id: &str, timestamp: Option<Moment>, description: Option<&str>, if_version: Option<i64>) -> anyhow::Result<SheetNote> {
+        let Some((found, header, original)) = self.uncompacted_row(note_id, if_version.is_some())? else {
+            return Err(Conflict { kind: "note", id: note_id.into(), expected: if_version.unwrap_or_default().into(), current: None }.into());
+        };
+        let note = &found.note;
         let edited = NotedTime {
             timestamp: timestamp.unwrap_or(note.timestamp),
             description: match description {
@@ -198,46 +286,96 @@ impl NotedTimeSheet {
             },
             compaction_id: note.compaction_id.clone(),
         };
-        self.sheets.write_rows_in_sheet(
-            &self.spreadsheet_id,
-            self.sheet_id,
-            &format!("A{row}:{LAST_COLUMN}{row}"),
-            &vec![edited.to_row(&header, Some(&original))],
-        )?;
-        Ok(SheetNote { row, note: edited })
+        if let Some(expected) = if_version.filter(|v| found.version != Some(*v)) {
+            // One on, and already so: this edit, sent again.
+            if found.version == Some(expected + 1) && edited == *note {
+                return Ok(found);
+            }
+            return Err(Conflict { kind: "note", id: note_id.into(), expected: expected.into(), current: Some(found.as_row()) }.into());
+        }
+        let version = if edited != *note { Some(found.version.unwrap_or(0) + 1) } else { found.version };
+        let header = self.with_columns(&header, false)?;
+        let edited = SheetNote { note: edited, version, ..found };
+        self.write_note(&header, &edited, Some(&original))?;
+        Ok(edited)
     }
 
-    pub fn delete(&self, note_id: &str) -> anyhow::Result<NotedTime> {
-        let (row, note, header, _) = self.uncompacted_row(note_id)?;
+    /// Delete the note `note_id` -- unless it's changed since
+    /// `if_version`, if given. Returns it as it was; None if, given a
+    /// version, it was gone already.
+    pub fn delete(&self, note_id: &str, if_version: Option<i64>) -> anyhow::Result<Option<SheetNote>> {
+        let Some((found, header, _)) = self.uncompacted_row(note_id, if_version.is_some())? else { return Ok(None) };
+        if let Some(expected) = if_version.filter(|v| found.version != Some(*v)) {
+            return Err(Conflict { kind: "note", id: note_id.into(), expected: expected.into(), current: Some(found.as_row()) }.into());
+        }
+        let row = found.row;
         self.sheets.write_rows_in_sheet(
             &self.spreadsheet_id,
             self.sheet_id,
-            &format!("A{row}:{LAST_COLUMN}{row}"),
+            &format!("A{row}:{}{row}", column(header.len().max(1) - 1)),
             &vec![vec![String::new(); header.len()]],
         )?;
-        Ok(note)
+        Ok(Some(found))
     }
 
-    fn uncompacted_row(&self, note_id: &str) -> anyhow::Result<(i64, NotedTime, Vec<String>, Vec<String>)> {
-        let (timestamp, row) = parse_note_id(note_id)?;
-        let (header, rows) = self.read_header_and(DATA_RANGE)?;
-        let offset = row - FIRST_DATA_ROW;
-        let cells: Vec<String> = if offset >= 0 && (offset as usize) < rows.len() { rows[offset as usize].clone() } else { Vec::new() };
-        let note = if cells.iter().any(|c| !c.trim().is_empty()) { Some(NotedTime::from_row(&header, &cells)?) } else { None };
-        let Some(note) = note.filter(|n| n.timestamp == timestamp) else {
-            bail!(
-                "row {row} no longer holds the note {} -- it was edited or removed since it was read; list the notes again for current ids",
-                py::repr(note_id)
-            );
+    /// The uncompacted note `note_id`, the header, and its row's cells --
+    /// refused if it's not there, or compacted; but None if it's not there
+    /// and the client gave the version it saw (`versioned`), so it's
+    /// changed -- or gone -- since.
+    fn uncompacted_row(&self, note_id: &str, versioned: bool) -> anyhow::Result<Option<(SheetNote, Vec<String>, Vec<String>)>> {
+        let read = self.read_all()?;
+        let found = match read.find(note_id) {
+            Ok(found) => found.clone(),
+            Err(_) if versioned && (note_id.contains('#') || rows::chosen_id_shape(note_id)) => return Ok(None),
+            Err(why) => return Err(why),
         };
-        if let Some(compaction) = &note.compaction_id {
+        if let Some(compaction) = &found.note.compaction_id {
             bail!(
                 "note {} was already compacted (by {}), so it can't be changed -- change the calendar event it became instead",
                 py::repr(note_id),
                 py::repr(compaction)
             );
         }
-        Ok((row, note, header, cells))
+        let offset = (found.row - FIRST_DATA_ROW) as usize;
+        let cells = read.rows.get(offset).cloned().unwrap_or_default();
+        Ok(Some((found, read.header, cells)))
+    }
+
+    /// `header`, with a version column -- and an id column, if `own_id`
+    /// -- added at the end if it hasn't one yet.
+    fn with_columns(&self, header: &[String], own_id: bool) -> anyhow::Result<Vec<String>> {
+        let mut wanted = vec![VERSION];
+        if own_id {
+            wanted.insert(0, ID);
+        }
+        let mut grown = header.to_vec();
+        for name in wanted {
+            if !grown.iter().any(|h| h == name) {
+                grown.push(name.into());
+            }
+        }
+        if grown.len() > header.len() {
+            let last = column(grown.len() - 1);
+            self.sheets.write_rows_in_sheet(&self.spreadsheet_id, self.sheet_id, &format!("A1:{last}1"), &vec![grown.clone()])?;
+        }
+        Ok(grown)
+    }
+
+    /// Write `note` to its row, under `header`, keeping the cells of
+    /// columns it doesn't have from `original`.
+    fn write_note(&self, header: &[String], note: &SheetNote, original: Option<&Vec<String>>) -> anyhow::Result<()> {
+        let mut cells = note.note.to_row(header, original);
+        if let Some(own) = &note.own_id {
+            set_cell(header, &mut cells, ID, own.clone());
+        }
+        set_cell(header, &mut cells, VERSION, note.version.map(|v| v.to_string()).unwrap_or_default());
+        let row = note.row;
+        self.sheets.write_rows_in_sheet(
+            &self.spreadsheet_id,
+            self.sheet_id,
+            &format!("A{row}:{}{row}", column(header.len().max(1) - 1)),
+            &vec![cells],
+        )
     }
 
     pub fn garbage_collect(&self) -> anyhow::Result<()> {
@@ -273,20 +411,18 @@ impl NotedTimeSheet {
         if note_ids.is_empty() {
             return Ok(());
         }
-        let wanted: Vec<(Moment, i64)> = note_ids.iter().map(|i| parse_note_id(i)).collect::<anyhow::Result<_>>()?;
         let read = self.read_all()?;
-        for ((timestamp, row), note_id) in wanted.iter().zip(note_ids) {
-            let note = read.notes.iter().rev().find(|n| n.row == *row).map(|n| &n.note);
-            let Some(note) = note.filter(|n| n.timestamp == *timestamp) else {
-                bail!("row {row} no longer holds the note {} -- it was edited or removed since it was read", py::repr(note_id));
-            };
-            if let Some(other) = note.compaction_id.as_deref().filter(|c| *c != compaction_id) {
+        let mut wanted: Vec<i64> = Vec::new();
+        for note_id in note_ids {
+            let found = read.find(note_id)?;
+            if let Some(other) = found.note.compaction_id.as_deref().filter(|c| *c != compaction_id) {
                 bail!("note {} was already compacted by {}", py::repr(note_id), py::repr(other));
             }
+            wanted.push(found.row);
         }
         let index = read.header.iter().position(|h| h == "compaction_id").ok_or_else(|| anyhow!("'compaction_id' is not in list"))?;
-        let column = (b'A' + index as u8) as char;
-        let mut rows: Vec<i64> = wanted.iter().map(|(_, r)| *r).collect();
+        let column = column(index);
+        let mut rows: Vec<i64> = wanted;
         rows.sort();
         rows.dedup();
         for (first, last) in contiguous_runs(&rows) {

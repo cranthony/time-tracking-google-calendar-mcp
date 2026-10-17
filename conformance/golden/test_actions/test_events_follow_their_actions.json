@@ -19,7 +19,8 @@
       "name": "Fitness",
       "note": null,
       "path": "Fitness",
-      "priority": 2
+      "priority": 2,
+      "version": 1
      }
     ],
     "created_id": "co2yzn",
@@ -27,7 +28,7 @@
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Fitness\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"path\": \"Fitness\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Fitness\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"path\": \"Fitness\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"version\": 1\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action_group"
   },
   {
@@ -53,7 +54,8 @@
       "note": null,
       "path": "Fitness › go running",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "created_id": "3dnjav",
@@ -61,7 +63,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -91,6 +93,7 @@
       "description": null,
       "effective_priority": 2,
       "end": "2026-10-07T08:00:00-04:00",
+      "etag": "\"0000000000000039\"",
       "event_label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
       "facts": null,
       "id": "3521324c178091b5c4ed4ca4c3",
@@ -107,7 +110,7 @@
     "timeline": "07:00 ┌ Run · new\n08:00 └ Run ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"3521324c178091b5c4ed4ca4c3\",\n      \"summary\": \"Run\",\n      \"start\": \"2026-10-07T07:00:00-04:00\",\n      \"end\": \"2026-10-07T08:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"go running\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 2,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"07:00 ┌ Run · new\\n08:00 └ Run ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"3521324c178091b5c4ed4ca4c3\",\n      \"summary\": \"Run\",\n      \"start\": \"2026-10-07T07:00:00-04:00\",\n      \"end\": \"2026-10-07T08:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"go running\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 2,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000039\\\"\"\n    }\n  ],\n  \"timeline\": \"07:00 ┌ Run · new\\n08:00 └ Run ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -132,7 +135,8 @@
       "note": null,
       "path": "Fitness › go running",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "changed": [
@@ -145,14 +149,15 @@
       "name": "Fitness",
       "note": null,
       "path": "Fitness",
-      "priority": 0
+      "priority": 0,
+      "version": 2
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Fitness\",\n      \"background_color\": null,\n      \"priority\": 0,\n      \"note\": null,\n      \"path\": \"Fitness\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Fitness\",\n      \"background_color\": null,\n      \"priority\": 0,\n      \"note\": null,\n      \"path\": \"Fitness\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"version\": 2\n    }\n  ],\n  \"affected_actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action_group"
   },
   {
@@ -170,6 +175,7 @@
     "description": null,
     "effective_priority": 0,
     "end": "2026-10-07T08:00:00-04:00",
+    "etag": "\"0000000000000039\"",
     "event_label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
     "facts": null,
     "id": "3521324c178091b5c4ed4ca4c3",
@@ -183,7 +189,7 @@
     "summary": "Run"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3521324c178091b5c4ed4ca4c3\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-07T07:00:00-04:00\",\n  \"end\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"go running\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 0,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"3521324c178091b5c4ed4ca4c3\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-07T07:00:00-04:00\",\n  \"end\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"go running\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 0,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000039\\\"\"\n}",
    "tool": "get_event"
   },
   {
@@ -208,14 +214,15 @@
       "note": null,
       "path": "Fitness › go running",
       "priority": null,
-      "status": "archived"
+      "status": "archived",
+      "version": 2
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"archived\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"archived\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": false,\n      \"version\": 2\n    }\n  ],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -233,6 +240,7 @@
     "description": null,
     "effective_priority": 0,
     "end": "2026-10-07T08:00:00-04:00",
+    "etag": "\"0000000000000039\"",
     "event_label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
     "facts": null,
     "id": "3521324c178091b5c4ed4ca4c3",
@@ -246,7 +254,7 @@
     "summary": "Run"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3521324c178091b5c4ed4ca4c3\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-07T07:00:00-04:00\",\n  \"end\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"go running\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 0,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"3521324c178091b5c4ed4ca4c3\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-07T07:00:00-04:00\",\n  \"end\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"go running\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 0,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000039\\\"\"\n}",
    "tool": "get_event"
   },
   {
@@ -271,14 +279,15 @@
       "note": null,
       "path": "Fitness › go running",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 3
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": true,\n      \"version\": 3\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -296,6 +305,7 @@
     "description": null,
     "effective_priority": 0,
     "end": "2026-10-07T08:00:00-04:00",
+    "etag": "\"0000000000000039\"",
     "event_label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
     "facts": null,
     "id": "3521324c178091b5c4ed4ca4c3",
@@ -309,7 +319,7 @@
     "summary": "Run"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3521324c178091b5c4ed4ca4c3\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-07T07:00:00-04:00\",\n  \"end\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"go running\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 0,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"3521324c178091b5c4ed4ca4c3\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-07T07:00:00-04:00\",\n  \"end\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"go running\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 0,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000039\\\"\"\n}",
    "tool": "get_event"
   },
   {
@@ -334,14 +344,15 @@
       "note": null,
       "path": "Fitness › go running",
       "priority": null,
-      "status": "deleted"
+      "status": "deleted",
+      "version": 4
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"deleted\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"go running\",\n      \"status\": \"deleted\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Fitness › go running\",\n      \"effective_color\": \"#e1e1e1\",\n      \"effective_priority\": 0,\n      \"holds_label\": false,\n      \"version\": 4\n    }\n  ],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -390,6 +401,7 @@
       "description": null,
       "effective_priority": 0,
       "end": "2026-10-07T08:00:00-04:00",
+      "etag": "\"0000000000000062\"",
       "event_label_id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
       "facts": null,
       "id": "3521324c178091b5c4ed4ca4c3",
@@ -406,7 +418,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"3521324c178091b5c4ed4ca4c3\",\n      \"summary\": \"Morning run\",\n      \"start\": \"2026-10-07T07:00:00-04:00\",\n      \"end\": \"2026-10-07T08:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"go running\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"495cdbf8-ca71-5284-8fe0-31ec6b15fbbe\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 0,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"3521324c178091b5c4ed4ca4c3\",\n      \"summary\": \"Morning run\",\n      \"start\": \"2026-10-07T07:00:00-04:00\",\n      \"end\": \"2026-10-07T08:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"go running\"\n      ],\n      \"actions_from_label\": false,\n      \"event_label_id\": \"495cdbf8-ca71-5284-8fe0-31ec6b15fbbe\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 0,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000062\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   }
  ],
@@ -511,7 +523,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -604,7 +617,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1206,7 +1220,8 @@
         "Fitness",
         "",
         "2",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1340,7 +1355,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -2095,7 +2111,8 @@
         "Fitness",
         "",
         "0",
-        ""
+        "",
+        "2"
        ]
       ]
      }
@@ -2300,7 +2317,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "2"
        ]
       ]
      }
@@ -2500,7 +2518,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "3"
        ]
       ]
      }
@@ -2705,7 +2724,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "4"
        ]
       ]
      }
@@ -3142,14 +3162,17 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ],
        [
         "co2yzn",
         "",
         "Fitness",
         "",
-        "0"
+        "0",
+        "",
+        "2"
        ]
       ]
      },
@@ -3180,14 +3203,20 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ],
        [
         "3dnjav",
         "co2yzn",
         "go running",
         "deleted",
-        "7a8759ac-8307-5cf3-937d-398ec33255fd"
+        "7a8759ac-8307-5cf3-937d-398ec33255fd",
+        "",
+        "",
+        "",
+        "",
+        "4"
        ]
       ]
      },

@@ -1121,10 +1121,16 @@ pub fn get_compaction_status(app: &App) -> Result<CompactionStatus, ToolError> {
 /// instead). A proposal that included this note is planned again when
 /// it's confirmed.
 #[tool(writes)]
-pub fn edit_note(app: &App, note_id: String, timestamp: Option<DateTimeText>, description: Option<String>) -> Result<NoteWithId, ToolError> {
+pub fn edit_note(
+    app: &App,
+    note_id: String,
+    timestamp: Option<DateTimeText>,
+    description: Option<String>,
+    version: Option<i64>,
+) -> Result<NoteWithId, ToolError> {
     let compactor = compactor(app)?;
     let timestamp = when_given(timestamp.as_ref())?;
-    shown("edit_note", compactor.edit_note(&note_id, timestamp, description.as_deref()).map(|n| n.with_id()))
+    shown("edit_note", compactor.edit_note(&note_id, timestamp, description.as_deref(), version).map(|n| n.with_id()))
 }
 
 /// Delete an uncompacted note (by its id, from get_notes or
@@ -1132,9 +1138,30 @@ pub fn edit_note(app: &App, note_id: String, timestamp: Option<DateTimeText>, de
 /// unaffected. Compacted notes can't be deleted. A proposal that included
 /// this note is planned again when it's confirmed.
 #[tool(writes)]
-pub fn delete_note(app: &App, note_id: String) -> Result<NotedTime, ToolError> {
+pub fn delete_note(app: &App, note_id: String, if_version: Option<i64>) -> Result<DeletedNote, ToolError> {
     let compactor = compactor(app)?;
-    shown("delete_note", compactor.delete_note(&note_id).map(|n| n.to_json()))
+    shown(
+        "delete_note",
+        compactor.delete_note(&note_id, if_version).map(|n| match n {
+            Some(n) => {
+                let mut shown = n.note.to_json();
+                shown["id"] = json!(n.id());
+                shown
+            }
+            None => json!({"id": note_id, "timestamp": null, "description": null, "compaction_id": null}),
+        }),
+    )
+}
+
+/// A note deleted, as it was: its id, then its fields -- none but its id
+/// if, given its version, it was gone already (deleted by this deletion
+/// sent before, say).
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct DeletedNote {
+    pub id: String,
+    pub timestamp: Option<DateTimeText>,
+    pub description: Option<String>,
+    pub compaction_id: Option<String>,
 }
 
 /// Step 1 of compacting notes into the calendar: proposing what

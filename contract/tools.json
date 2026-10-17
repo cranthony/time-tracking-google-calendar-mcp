@@ -240,6 +240,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -523,6 +530,13 @@
               "type": "null"
             }
           ]
+        },
+        "etag": {
+          "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "type": "object",
@@ -752,7 +766,7 @@
     }
   },
   {
-    "description": "Change several events at once, as one batch: `updates` (each an\nevent's id and the fields to set -- left out, a field keeps its value;\nlist it in that update's clear_fields to remove it instead -- clearing\npriority makes it follow its actions' priority again), `creates` (new\nevents, optionally with actions: action_ids, the first setting its\ncolor), `cancels` (each saying whether it counts against\nfollow-through: a commitment dropped, rather than a change of plan --\nsee delete_event) and `shifts` (events moved together by the same\nnumber of minutes, each as an update). An event can be in only one of\nthem. Set action_ids to change an event's actions ([] for none), and\nfacts to replace its facts whole (see list_events). An update can't\ncancel an event (is_cancelled): put it in `cancels`.\nWHERE an event is (facts.location_ids), when you set it: keep a\nlocation it already has unless the events and notes around it\nclearly show the user was somewhere else. Otherwise the user stays\nput: it's where the previous event was, unless there's evidence they\nmoved in between -- the previous event, or one between, is a commute\n(an action with commute true, see get_actions, or the commute fact);\nthe user said they were somewhere other than planned; or the event\nclearly matches another location's hint (see get_locations). After a\ncommute they're somewhere other than before it: tell where from the\nlocation of the event after it (that one event only), or else from\nthe locations' hints. A commute itself gets the commute fact and no\nlocation_ids.\n\nSet repeat, on a create or on an update of an event that isn't in a\nseries, to make it the first event of a recurring series (see\nPublicEvent); only that first event is checked for overlaps, as for\nupdate_recurrence. An update can't be of a series itself (the id a\nseries' events give as recurring_event_id) -- edit it with\nupdate_recurrence -- nor give repeat to an event already in one.\n\nBATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every\nevent the call creates or updates must end after it starts and must\nnot overlap any other event -- one on the calendar or another in the\ncall -- so move, shorten or cancel whatever's in the way in the same\ncall. A call that breaks this changes nothing, and the error lists\nevery problem and the events around them, to send a valid call at\nonce.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: an event that started before it can't be\nchanged or cancelled, and no event can be created, or moved, to start\nbefore it, unless allow_compacted_changes is set -- ONLY set it when\nthe user has explicitly approved changing history -- except that an\nevent still going on then may run on (an update moving only its end,\nto no earlier than the last compaction). dry_run checks the batch\nand returns what it would do without changing anything. Returns the\nevents changed, and a timeline of them beside the events around\nthem.",
+    "description": "Change several events at once, as one batch: `updates` (each an\nevent's id and the fields to set -- left out, a field keeps its value;\nlist it in that update's clear_fields to remove it instead -- clearing\npriority makes it follow its actions' priority again), `creates` (new\nevents, optionally with actions: action_ids, the first setting its\ncolor), `cancels` (each saying whether it counts against\nfollow-through: a commitment dropped, rather than a change of plan --\nsee delete_event). An event can be in only one of them; to move\nevents, update each with its new times. Set action_ids to change an event's actions ([] for none), and\nfacts to replace its facts whole (see list_events). An update can't\ncancel an event (is_cancelled): put it in `cancels`.\nWHERE an event is (facts.location_ids), when you set it: keep a\nlocation it already has unless the events and notes around it\nclearly show the user was somewhere else. Otherwise the user stays\nput: it's where the previous event was, unless there's evidence they\nmoved in between -- the previous event, or one between, is a commute\n(an action with commute true, see get_actions, or the commute fact);\nthe user said they were somewhere other than planned; or the event\nclearly matches another location's hint (see get_locations). After a\ncommute they're somewhere other than before it: tell where from the\nlocation of the event after it (that one event only), or else from\nthe locations' hints. A commute itself gets the commute fact and no\nlocation_ids.\n\nSet repeat, on a create or on an update of an event that isn't in a\nseries, to make it the first event of a recurring series (see\nPublicEvent); only that first event is checked for overlaps, as for\nupdate_recurrence. An update can't be of a series itself (the id a\nseries' events give as recurring_event_id) -- edit it with\nupdate_recurrence -- nor give repeat to an event already in one.\n\nBATCHES ARE CHECKED WHOLE, AND NOTHING IS MOVED TO MAKE ROOM: every\nevent the call creates or updates must end after it starts and must\nnot overlap any other event -- one on the calendar or another in the\ncall -- so move, shorten or cancel whatever's in the way in the same\ncall. A call that breaks this changes nothing, and the error lists\nevery problem and the events around them, to send a valid call at\nonce.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: an event that started before it can't be\nchanged or cancelled, and no event can be created, or moved, to start\nbefore it, unless allow_compacted_changes is set -- ONLY set it when\nthe user has explicitly approved changing history -- except that an\nevent still going on then may run on (an update moving only its end,\nto no earlier than the last compaction). dry_run checks the batch\nand returns what it would do without changing anything. Returns the\nevents changed, and a timeline of them beside the events around\nthem.",
     "inputSchema": {
       "properties": {
         "updates": {
@@ -782,15 +796,6 @@
             "null"
           ]
         },
-        "shifts": {
-          "items": {
-            "$ref": "#/$defs/EventShift"
-          },
-          "type": [
-            "array",
-            "null"
-          ]
-        },
         "allow_compacted_changes": {
           "default": false,
           "type": "boolean"
@@ -803,37 +808,24 @@
       "type": "object",
       "$defs": {
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGiven etag -- the event's last seen -- it's refused if the event's\nchanged since.",
           "properties": {
             "event_id": {
               "type": "string"
             },
             "counts_against_follow_through": {
               "type": "boolean"
+            },
+            "etag": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
             "event_id",
             "counts_against_follow_through"
-          ],
-          "type": "object"
-        },
-        "EventShift": {
-          "description": "Events to move together by `minutes` (later if positive, earlier if\nnegative), keeping their lengths.",
-          "properties": {
-            "event_ids": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "minutes": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "event_ids",
-            "minutes"
           ],
           "type": "object"
         },
@@ -1070,6 +1062,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -1446,6 +1445,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -3653,6 +3659,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -4029,6 +4042,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -4199,13 +4219,19 @@
       "type": "object",
       "$defs": {
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGiven etag -- the event's last seen -- it's refused if the event's\nchanged since.",
           "properties": {
             "event_id": {
               "type": "string"
             },
             "counts_against_follow_through": {
               "type": "boolean"
+            },
+            "etag": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -4447,6 +4473,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -5144,6 +5177,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -5255,6 +5294,12 @@
             "boolean",
             "null"
           ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "type": "object"
@@ -5338,6 +5383,13 @@
               "description": "Whether it's a way of getting from one place to another (\"drive\",\n\"walk\"), which a travel time can be by.",
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -5464,6 +5516,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -5472,7 +5530,7 @@
     }
   },
   {
-    "description": "Update an action by id: its group_id, name (still unique),\nstatus, background_color, priority, note or commute. Omitted\nproperties keep their value; list one in clear_fields to blank it instead. label_id\ncan't be changed. status is proposed (not yet reviewed by the user;\nholds a label while there's room), active (holds a label), archived\n(not done any more) or deleted (shouldn't have existed); archiving or\ndeleting frees its label, and making it active again restores it.\nReturns, as changed, the action as updated, plus any proposed action\nthat gained or lost its label as a result, with label_slots_used of\nlabel_slots_total.",
+    "description": "Update an action by id: its group_id, name (still unique),\nstatus, background_color, priority, note or commute. Omitted\nproperties keep their value; list one in clear_fields to blank it instead. label_id\ncan't be changed. status is proposed (not yet reviewed by the user;\nholds a label while there's room), active (holds a label), archived\n(not done any more) or deleted (shouldn't have existed); archiving or\ndeleting frees its label, and making it active again restores it.\nGiven version -- the version last seen -- it's refused if it's changed\nsince. Returns, as changed, the action as updated, plus any proposed\naction that gained or lost its label as a result, with label_slots_used\nof label_slots_total.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -5564,6 +5622,13 @@
               "description": "Whether it's a way of getting from one place to another (\"drive\",\n\"walk\"), which a travel time can be by.",
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -5686,6 +5751,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -5771,6 +5842,12 @@
                 "integer",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -5849,6 +5926,12 @@
             "integer",
             "null"
           ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "type": "object"
@@ -5903,6 +5986,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -6036,6 +6126,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6092,6 +6188,12 @@
               ]
             },
             "effective_priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "version": {
               "type": [
                 "integer",
                 "null"
@@ -6287,6 +6389,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6315,7 +6423,7 @@
     }
   },
   {
-    "description": "Update an action group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups), background_color, priority or note. Omitted properties keep\ntheir value; list one in clear_fields to blank it instead. Its actions\nthat don't set their own color follow its new one on the calendar.\nReturns, as changed, the group as updated, and as affected_actions,\nevery action whose path, effective_color or effective_priority\nchanged as a result.",
+    "description": "Update an action group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups), background_color, priority or note. Omitted properties keep\ntheir value; list one in clear_fields to blank it instead. Its actions\nthat don't set their own color follow its new one on the calendar.\nGiven version -- the version last seen -- it's refused if it's changed\nsince. Returns, as changed, the group as updated, and as affected_actions,\nevery action whose path, effective_color or effective_priority\nchanged as a result.",
     "inputSchema": {
       "properties": {
         "group": {
@@ -6378,6 +6486,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -6507,6 +6622,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6567,6 +6688,12 @@
                 "integer",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6575,11 +6702,17 @@
     }
   },
   {
-    "description": "Delete an action group, by id. Its actions and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), as changed, the groups moved up out of it, and as\naffected_actions, every action moved or recolored as a result.",
+    "description": "Delete an action group, by id. Its actions and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), as changed, the groups moved up out of it, and as\naffected_actions, every action moved or recolored as a result. Given\nif_version -- the version last seen -- it's refused if it's changed\nsince.",
     "inputSchema": {
       "properties": {
         "group_id": {
           "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -6658,6 +6791,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -6754,6 +6894,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6810,6 +6956,12 @@
               ]
             },
             "effective_priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "version": {
               "type": [
                 "integer",
                 "null"
@@ -11006,6 +11158,13 @@
                 "string",
                 "null"
               ]
+            },
+            "id": {
+              "description": "The note's own id, if a client chose it: given to note, the note is\nnamed by it, and the same note sent again is given as it was made.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -11088,6 +11247,13 @@
                 "string",
                 "null"
               ]
+            },
+            "id": {
+              "description": "The note's own id, if a client chose it: given to note, the note is\nnamed by it, and the same note sent again is given as it was made.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -11117,6 +11283,13 @@
         "compaction_id": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it's edited. Given to edit_note (version)\nor delete_note (if_version), it's the version last seen: the change\nis refused if the note's changed since.",
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -11176,6 +11349,13 @@
                 "string",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it's edited. Given to edit_note (version)\nor delete_note (if_version), it's the version last seen: the change\nis refused if the note's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -11207,6 +11387,12 @@
             "string",
             "null"
           ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -11236,6 +11422,13 @@
             "string",
             "null"
           ]
+        },
+        "version": {
+          "description": "Goes up by one each time it's edited. Given to edit_note (version)\nor delete_note (if_version), it's the version last seen: the change\nis refused if the note's changed since.",
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -11251,6 +11444,12 @@
       "properties": {
         "note_id": {
           "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -11262,9 +11461,15 @@
     "name": "delete_note",
     "outputSchema": {
       "properties": {
+        "id": {
+          "type": "string"
+        },
         "timestamp": {
           "format": "date-time",
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "description": {
           "type": [
@@ -11280,7 +11485,7 @@
         }
       },
       "required": [
-        "timestamp"
+        "id"
       ],
       "type": "object"
     }
@@ -12472,13 +12677,19 @@
           "type": "object"
         },
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGiven etag -- the event's last seen -- it's refused if the event's\nchanged since.",
           "properties": {
             "event_id": {
               "type": "string"
             },
             "counts_against_follow_through": {
               "type": "boolean"
+            },
+            "etag": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -14453,13 +14664,19 @@
           "type": "object"
         },
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGiven etag -- the event's last seen -- it's refused if the event's\nchanged since.",
           "properties": {
             "event_id": {
               "type": "string"
             },
             "counts_against_follow_through": {
               "type": "boolean"
+            },
+            "etag": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -14868,6 +15085,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },

@@ -169,7 +169,7 @@ impl Setup {
 
     pub fn append_note(&self, at: &str, description: Option<&str>) {
         let note = NotedTime { timestamp: time_at(at), description: description.map(str::to_string), compaction_id: None };
-        self.call(|c| c.notes.append(&note).unwrap());
+        self.call(|c| c.notes.append(&note, None).unwrap());
     }
 
     pub fn notes(&self, include_compacted: bool) -> Vec<SheetNote> {

@@ -93,10 +93,11 @@
     "compaction_id": null,
     "description": "lunch with Robin",
     "id": "2026-10-05T12:30:00-04:00#2",
-    "timestamp": "2026-10-05T12:30:00-04:00"
+    "timestamp": "2026-10-05T12:30:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T12:30:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T12:30:00-04:00\",\n  \"description\": \"lunch with Robin\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T12:30:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T12:30:00-04:00\",\n  \"description\": \"lunch with Robin\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -1710,6 +1711,7 @@
     "description": "Notes:\n- 12:30 lunch with Robin",
     "effective_priority": null,
     "end": "2026-10-05T13:00:00-04:00",
+    "etag": "\"0000000000000079\"",
     "event_label_id": null,
     "facts": {
      "commute": null,
@@ -1808,7 +1810,7 @@
     "summary": "Lunch"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-05T12:00:00-04:00\",\n  \"end\": \"2026-10-05T13:00:00-04:00\",\n  \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": {\n      \"co2yzn\": \"laughed a lot\"\n    },\n    \"commute\": null\n  },\n  \"judgments\": {\n    \"self\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 0,\n          \"scale\": 3,\n          \"reasoning\": \"on second thought\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"3dnjav\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    },\n    \"co2yzn\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"3dnjav\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    }\n  }\n}",
+   "text": "{\n  \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-05T12:00:00-04:00\",\n  \"end\": \"2026-10-05T13:00:00-04:00\",\n  \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": {\n      \"co2yzn\": \"laughed a lot\"\n    },\n    \"commute\": null\n  },\n  \"judgments\": {\n    \"self\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 0,\n          \"scale\": 3,\n          \"reasoning\": \"on second thought\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"3dnjav\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    },\n    \"co2yzn\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"3dnjav\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    }\n  },\n  \"etag\": \"\\\"0000000000000079\\\"\"\n}",
    "tool": "get_event"
   }
  ],
@@ -1913,7 +1915,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -2006,7 +2009,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -2967,7 +2971,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000069,
         "startColumnIndex": 0,
@@ -2996,7 +3000,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000069,
        "startColumnIndex": 0,
@@ -3005,7 +3009,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -3025,7 +3029,38 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
+        "endRowIndex": 1,
+        "sheetId": 1000069,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "timestamp",
+        "description",
+        "compaction_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000069,
         "startColumnIndex": 0,
@@ -3037,7 +3072,8 @@
        [
         "2026-10-05T12:30:00-04:00",
         "lunch with Robin",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -3363,7 +3399,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3586,7 +3622,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3851,7 +3887,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4243,7 +4279,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4391,7 +4427,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4601,7 +4637,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4749,7 +4785,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000069,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -5550,7 +5586,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -5581,7 +5618,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      },
@@ -5815,12 +5853,14 @@
        [
         "timestamp",
         "description",
-        "compaction_id"
+        "compaction_id",
+        "version"
        ],
        [
         "2026-10-05T12:30:00-04:00",
         "lunch with Robin",
-        "acc838f92e55r1"
+        "acc838f92e55r1",
+        "1"
        ]
       ]
      },

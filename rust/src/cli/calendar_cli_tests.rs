@@ -121,7 +121,7 @@ fn the_attributes_cover_every_writable_field() {
     let mut events = EVENT_ATTRIBUTES.to_vec();
     events.sort();
     assert_eq!(events, vec!["action_ids", "description", "end", "event_label_id", "facts", "is_end_of_day_sleep", "judgments", "location", "priority", "start", "status", "summary"]);
-    let mut actions: Vec<&str> = ACTION_ROW.fields.iter().map(|(n, _)| *n).filter(|n| !["id", "label_id"].contains(n)).collect();
+    let mut actions: Vec<&str> = ACTION_ROW.fields.iter().map(|(n, _)| *n).filter(|n| !["id", "label_id", "version"].contains(n)).collect();
     actions.sort();
     assert_eq!(actions, ACTION_ATTRIBUTES.to_vec());
     assert_eq!(RAW_LABEL_ATTRIBUTES, ["background_color", "name"]);

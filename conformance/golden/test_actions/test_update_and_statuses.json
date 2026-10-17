@@ -22,7 +22,8 @@
       "note": null,
       "path": "play guitar",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "created_id": "co2yzn",
@@ -30,7 +31,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {
@@ -57,7 +58,8 @@
       "note": "n",
       "path": "play piano",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "created_id": "3dnjav",
@@ -65,7 +67,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": \"#aa0000\",\n      \"priority\": null,\n      \"note\": \"n\",\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#aa0000\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": \"#aa0000\",\n      \"priority\": null,\n      \"note\": \"n\",\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#aa0000\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -91,14 +93,15 @@
       "note": null,
       "path": "practice guitar",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 2
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 2\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -126,14 +129,15 @@
       "note": null,
       "path": "play piano",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 2
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 2\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -158,14 +162,15 @@
       "note": null,
       "path": "play piano",
       "priority": null,
-      "status": "archived"
+      "status": "archived",
+      "version": 3
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"archived\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"archived\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false,\n      \"version\": 3\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -185,14 +190,15 @@
       "note": null,
       "path": "practice guitar",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 2
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 2\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -219,7 +225,8 @@
       "note": null,
       "path": "practice guitar",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 2
      },
      {
       "background_color": null,
@@ -234,14 +241,15 @@
       "note": null,
       "path": "play piano",
       "priority": null,
-      "status": "archived"
+      "status": "archived",
+      "version": 3
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"archived\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"practice guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": \"#00aa00\",\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"practice guitar\",\n      \"effective_color\": \"#00aa00\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 2\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"archived\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false,\n      \"version\": 3\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -266,14 +274,15 @@
       "note": null,
       "path": "play piano",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 4
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 4\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -298,14 +307,15 @@
       "note": null,
       "path": "play piano",
       "priority": null,
-      "status": "deleted"
+      "status": "deleted",
+      "version": 5
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"deleted\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"play piano\",\n      \"status\": \"deleted\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play piano\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": false,\n      \"version\": 5\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "update_action"
   },
   {
@@ -449,7 +459,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -542,7 +553,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1147,7 +1159,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1286,7 +1299,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
@@ -1297,7 +1311,8 @@
         "#aa0000",
         "",
         "n",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1441,7 +1456,8 @@
         "#00aa00",
         "",
         "",
-        ""
+        "",
+        "2"
        ],
        [
         "3dnjav",
@@ -1452,7 +1468,8 @@
         "#aa0000",
         "",
         "n",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1596,7 +1613,8 @@
         "#00aa00",
         "",
         "",
-        ""
+        "",
+        "2"
        ],
        [
         "3dnjav",
@@ -1607,7 +1625,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "2"
        ]
       ]
      }
@@ -1751,7 +1770,8 @@
         "#00aa00",
         "",
         "",
-        ""
+        "",
+        "2"
        ],
        [
         "3dnjav",
@@ -1762,7 +1782,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "3"
        ]
       ]
      }
@@ -2033,7 +2054,8 @@
         "#00aa00",
         "",
         "",
-        ""
+        "",
+        "2"
        ],
        [
         "3dnjav",
@@ -2044,7 +2066,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "4"
        ]
       ]
      }
@@ -2188,7 +2211,8 @@
         "#00aa00",
         "",
         "",
-        ""
+        "",
+        "2"
        ],
        [
         "3dnjav",
@@ -2199,7 +2223,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "5"
        ]
       ]
      }
@@ -2556,7 +2581,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -2587,7 +2613,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ],
        [
         "co2yzn",
@@ -2595,14 +2622,23 @@
         "practice guitar",
         "active",
         "bb82ecea-50c0-514b-956e-fe110410c9e6",
-        "#00aa00"
+        "#00aa00",
+        "",
+        "",
+        "",
+        "2"
        ],
        [
         "3dnjav",
         "",
         "play piano",
         "deleted",
-        "7a8759ac-8307-5cf3-937d-398ec33255fd"
+        "7a8759ac-8307-5cf3-937d-398ec33255fd",
+        "",
+        "",
+        "",
+        "",
+        "5"
        ]
       ]
      },

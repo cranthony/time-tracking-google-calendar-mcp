@@ -1,9 +1,10 @@
-//! Changing events several at once: a batch of updates, creates, cancels
-//! and shifts, checked whole -- nothing moved to make room, nothing before
+//! Changing events several at once: a batch of updates, creates and
+//! cancels, checked whole -- nothing moved to make room, nothing before
 //! the last compaction changed unless asked
 //! -- then written.
 
-use crate::event::{Event, Moment};
+use crate::event::{Etag, Event, Moment};
+use crate::google::status_of;
 use crate::py;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::cancellations::Cancellations;
@@ -59,12 +60,31 @@ impl ChangeError {
 pub struct Cancel {
     pub event_id: String,
     pub counts_against_follow_through: bool,
+    /// The etag the client last saw: the cancel is refused if it's
+    /// changed since.
+    pub etag: Option<String>,
 }
 
-pub struct Shift {
-    pub event_ids: Vec<String>,
-    pub minutes: i64,
+/// A change refused because the event isn't as the client last saw it
+/// (its etag): changed since, or gone. `event` is it as it is now (None
+/// if it's been deleted or cancelled).
+#[derive(Debug, Clone)]
+pub struct StaleEvent {
+    pub event_id: String,
+    pub expected: String,
+    pub event: Option<Event>,
 }
+
+impl std::fmt::Display for StaleEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.event {
+            None => write!(f, "event {} was deleted after it was read", py::repr(&self.event_id)),
+            Some(_) => write!(f, "event {} changed after it was read", py::repr(&self.event_id)),
+        }
+    }
+}
+
+impl std::error::Error for StaleEvent {}
 
 #[derive(Debug, Clone)]
 pub struct Placed {
@@ -176,6 +196,9 @@ pub struct Change {
 #[derive(Debug, Clone, Default)]
 pub struct Batch {
     pub changes: Vec<Change>,
+    /// Events the batch's changes were made to already -- each this
+    /// change, sent before -- as they are.
+    pub again: Vec<Event>,
     pub listing: Vec<Placed>,
     pub since: Option<Moment>,
     pub until: Option<Moment>,
@@ -202,7 +225,6 @@ impl EventChanges {
         updates: Vec<Event>,
         creates: Vec<Event>,
         cancels: Vec<Cancel>,
-        shifts: Vec<Shift>,
         history_until: Option<Moment>,
         allow_compacted: bool,
     ) -> anyhow::Result<Result<Batch, ChangeError>> {
@@ -250,21 +272,31 @@ impl EventChanges {
             Some(event)
         };
 
-        let mut patches: Vec<(Event, &str)> = updates.into_iter().map(|p| (p, "an update")).collect();
-        for shift in &shifts {
-            let by = Duration::minutes(shift.minutes);
-            for event_id in &shift.event_ids {
-                if let Some(event) = load(&mut problems, &mut current, event_id) {
-                    patches.push((
-                        Event { id: Some(event_id.clone()), start: Some(event.start() + by), end: Some(event.end() + by), ..Default::default() },
-                        "a shift",
-                    ));
-                }
+        // A change given the etag last seen (its version, as Calendar
+        // gives it) is made once, by the rules every kind the app writes
+        // keeps (see rows::Versioned): at that etag it's made; changed
+        // since, but already as it'd leave it -- `done`, this change sent
+        // before -- it's the same change again, and the event's given as
+        // it is; else it's refused, whole batch and all, with the event as
+        // it is now.
+        let mut again: Vec<Event> = Vec::new();
+        let fresh = |event_id: &str, expected: Option<&str>, done: &dyn Fn(&Event) -> bool| -> anyhow::Result<Option<Event>> {
+            let Some(expected) = expected else { return Ok(None) };
+            match self.client.get_event(event_id).ok() {
+                Some(now) if !now.is_cancelled() && now.etag.0.as_deref() == Some(expected) => Ok(None),
+                Some(now) if done(&now) => Ok(Some(now)),
+                now => Err(StaleEvent { event_id: event_id.into(), expected: expected.into(), event: now.filter(|e| !e.is_cancelled()) }.into()),
             }
-        }
+        };
+
         let mut changes: Vec<Change> = Vec::new();
-        for (mut patch, how) in patches {
-            if !claim(&mut problems, &mut named, patch.id.as_deref(), how) {
+        for mut patch in updates {
+            if !claim(&mut problems, &mut named, patch.id.as_deref(), "an update") {
+                continue;
+            }
+            let as_patched = |now: &Event| !now.is_cancelled() && patched(now, &patch) == *now;
+            if let Some(now) = fresh(patch.id.as_deref().unwrap(), patch.etag.0.as_deref(), &as_patched)? {
+                again.push(now);
                 continue;
             }
             let Some(before) = load(&mut problems, &mut current, patch.id.as_deref().unwrap()) else { continue };
@@ -312,6 +344,10 @@ impl EventChanges {
             if !claim(&mut problems, &mut named, Some(&cancel.event_id), "a cancel") {
                 continue;
             }
+            if let Some(now) = fresh(&cancel.event_id, cancel.etag.as_deref(), &Event::is_cancelled)? {
+                again.push(now);
+                continue;
+            }
             let Some(before) = load(&mut problems, &mut current, &cancel.event_id) else { continue };
             if let Some(guard) = guarded {
                 if before.start() < guard {
@@ -319,11 +355,12 @@ impl EventChanges {
                     continue;
                 }
             }
+            let patch = Event { id: before.id.clone(), status: Some("cancelled".into()), etag: Etag(cancel.etag.clone()), ..Default::default() };
             changes.push(Change {
                 action: "cancel".into(),
                 before: Some(before),
                 after: None,
-                patch: None,
+                patch: Some(patch),
                 counts_against_follow_through: cancel.counts_against_follow_through,
                 moved: false,
             });
@@ -336,6 +373,28 @@ impl EventChanges {
                 ));
                 continue;
             };
+            // An id of the client's own names it, so a create sent again
+            // finds the one it made. It's in Calendar's form (5 or more of
+            // a-v and 0-9), or it's refused: replaced, a create sent again
+            // would make another.
+            let id = event.id.clone().map(|i| i.trim().to_string()).filter(|i| !i.is_empty());
+            if let Some(bad) = id.as_ref().filter(|i| !own_event_id(i)) {
+                problems.push(Problem::new(
+                    "malformed_change",
+                    format!("new event {} ({}): an event's id is 5 to 1024 of a-v and 0-9: {} isn't", number + 1, summary_repr(&event), py::repr(bad)),
+                ));
+                continue;
+            }
+            if let Some(id) = &id {
+                if let Ok(made) = self.client.get_event(id) {
+                    if !made.is_cancelled() && patched(&made, &Event { id: None, ..event.clone() }) == made {
+                        again.push(made);
+                    } else {
+                        problems.push(Problem::new("malformed_change", format!("new event {} ({}): the id {} is already used", number + 1, summary_repr(&event), py::repr(id))));
+                    }
+                    continue;
+                }
+            }
             if let Some(guard) = guarded {
                 if start < guard {
                     problems.push(into_history(&event, "created", &guard));
@@ -345,7 +404,7 @@ impl EventChanges {
             changes.push(Change {
                 action: "create".into(),
                 before: None,
-                after: Some(Event { id: None, ..event }),
+                after: Some(Event { id, ..event }),
                 patch: None,
                 counts_against_follow_through: false,
                 moved: false,
@@ -358,7 +417,7 @@ impl EventChanges {
             }
             return Ok(Err(error));
         }
-        let mut batch = Batch { changes: changes.clone(), ..Default::default() };
+        let mut batch = Batch { changes: changes.clone(), again, ..Default::default() };
         let spans: Vec<(Moment, Moment)> = changes
             .iter()
             .filter(|c| c.action == "create" || c.moved)
@@ -415,16 +474,27 @@ impl EventChanges {
         Ok(Ok(batch))
     }
 
-    /// Write `batch`'s changes; the events as written.
+    /// Write `batch`'s changes; the events as written. A patch Calendar
+    /// refuses as made to an older version of the event (a 412, given its
+    /// etag) is a `StaleEvent`, with the event as it is now.
     pub fn apply(&self, batch: &Batch, source: &str) -> anyhow::Result<Vec<Event>> {
-        let mut written = Vec::new();
+        let patch = |patch: &Event| -> anyhow::Result<Event> {
+            self.client.update_event(patch).map_err(|error| match (&patch.etag.0, &patch.id) {
+                (Some(expected), Some(id)) if status_of(&error) == Some(412) => {
+                    let now = self.client.client().fresh_event(id).ok().filter(|e| !e.is_cancelled());
+                    StaleEvent { event_id: id.clone(), expected: expected.clone(), event: now }.into()
+                }
+                _ => error,
+            })
+        };
+        let mut written = batch.again.clone();
         for change in &batch.changes {
             match change.action.as_str() {
-                "update" => written.push(self.client.update_event(change.patch.as_ref().unwrap())?),
+                "update" => written.push(patch(change.patch.as_ref().unwrap())?),
                 "create" => written.push(self.client.create_event(change.after.as_ref().unwrap())?),
                 _ => {
                     let before = change.before.as_ref().unwrap();
-                    written.push(self.client.update_event(&Event { id: before.id.clone(), status: Some("cancelled".into()), ..Default::default() })?);
+                    written.push(patch(change.patch.as_ref().unwrap())?);
                     if change.counts_against_follow_through {
                         if let Some(cancellations) = &self.cancellations {
                             cancellations.record(before, source, None)?;
@@ -436,6 +506,12 @@ impl EventChanges {
         Ok(written)
     }
 
+}
+
+/// Whether `id` is one a client may give a new event: Calendar's form,
+/// 5 to 1024 of a-v and 0-9.
+pub fn own_event_id(id: &str) -> bool {
+    (5..=1024).contains(&id.len()) && id.chars().all(|c| matches!(c, 'a'..='v' | '0'..='9'))
 }
 
 /// The end of the night after `moment`, or a day on without one, of

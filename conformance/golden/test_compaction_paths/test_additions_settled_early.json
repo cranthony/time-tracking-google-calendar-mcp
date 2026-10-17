@@ -37,10 +37,11 @@
     "compaction_id": null,
     "description": "lunch with Sam at the office",
     "id": "2026-10-05T12:30:00-04:00#2",
-    "timestamp": "2026-10-05T12:30:00-04:00"
+    "timestamp": "2026-10-05T12:30:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T12:30:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T12:30:00-04:00\",\n  \"description\": \"lunch with Sam at the office\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T12:30:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T12:30:00-04:00\",\n  \"description\": \"lunch with Sam at the office\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -54,10 +55,11 @@
     "compaction_id": null,
     "description": "dinner with Alex",
     "id": "2026-10-05T19:00:00-04:00#3",
-    "timestamp": "2026-10-05T19:00:00-04:00"
+    "timestamp": "2026-10-05T19:00:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T19:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-05T19:00:00-04:00\",\n  \"description\": \"dinner with Alex\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T19:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-05T19:00:00-04:00\",\n  \"description\": \"dinner with Alex\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -5137,7 +5139,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -5230,7 +5233,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -5913,7 +5917,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000067,
         "startColumnIndex": 0,
@@ -5942,7 +5946,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000067,
        "startColumnIndex": 0,
@@ -5951,7 +5955,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -5971,7 +5975,38 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
+        "endRowIndex": 1,
+        "sheetId": 1000067,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "timestamp",
+        "description",
+        "compaction_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000067,
         "startColumnIndex": 0,
@@ -5983,7 +6018,8 @@
        [
         "2026-10-05T12:30:00-04:00",
         "lunch with Sam at the office",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -6000,7 +6036,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000067,
        "startColumnIndex": 0,
@@ -6009,7 +6045,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -6029,7 +6065,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 3,
         "sheetId": 1000067,
         "startColumnIndex": 0,
@@ -6041,7 +6077,8 @@
        [
         "2026-10-05T19:00:00-04:00",
         "dinner with Alex",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -6538,7 +6575,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -6761,7 +6798,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7056,7 +7093,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7155,7 +7192,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7254,7 +7291,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7353,7 +7390,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7813,7 +7850,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -8165,7 +8202,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -8388,7 +8425,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -8711,7 +8748,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -8965,7 +9002,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -10066,7 +10104,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -10097,14 +10136,20 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ],
        [
         "rs21so",
         "",
         "eat a meal",
         "active",
-        "951c537a-5b46-5d47-86de-35529f4a063b"
+        "951c537a-5b46-5d47-86de-35529f4a063b",
+        "",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -10592,17 +10637,20 @@
        [
         "timestamp",
         "description",
-        "compaction_id"
+        "compaction_id",
+        "version"
        ],
        [
         "2026-10-05T12:30:00-04:00",
         "lunch with Sam at the office",
-        "bdb7a77874dar4"
+        "bdb7a77874dar4",
+        "1"
        ],
        [
         "2026-10-05T19:00:00-04:00",
         "dinner with Alex",
-        "bdb7a77874dar4"
+        "bdb7a77874dar4",
+        "1"
        ]
       ]
      },

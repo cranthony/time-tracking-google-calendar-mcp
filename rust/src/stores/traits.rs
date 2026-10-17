@@ -822,6 +822,11 @@ impl Traits {
 
     pub fn create_trait(&self, given: &Trait) -> anyhow::Result<Trait> {
         let traits = self.all()?;
+        if given.id.as_deref().is_some_and(|i| !i.trim().is_empty()) {
+            if let rows::Created::Again(made) = rows::created(given, &traits, &[])? {
+                return Ok(made);
+            }
+        }
         let mut new = given.clone();
         if new.status.is_none() {
             new.status = Some(TraitStatus::Active);
@@ -833,8 +838,8 @@ impl Traits {
         }
         let taken: Vec<Option<&str>> = traits.iter().map(|t| t.id.as_deref()).collect();
         let id = match given.id.as_deref().map(str::trim).filter(|i| !i.is_empty()) {
-            // The client's own, if it may choose it.
-            Some(chosen) if rows::client_ids_allowed() => rows::chosen_id(Some(chosen), taken.clone())?,
+            // The client's own.
+            Some(chosen) => rows::chosen_id(Some(chosen), taken.clone())?,
             _ => {
                 let base = slug(new.name.as_deref().unwrap_or_default());
                 let mut id = base.clone();
@@ -928,6 +933,9 @@ fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {
         }
     }
 }
+
+// Written by the app: made once by their ids and versions.
+impl rows::Versioned for Trait {}
 
 #[cfg(test)]
 #[path = "traits_tests.rs"]
