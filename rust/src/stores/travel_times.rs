@@ -89,7 +89,10 @@ impl Locations {
     pub fn create_travel_time(&self, travel: &TravelTime, modes: &[String]) -> anyhow::Result<CreatedTravelTime> {
         self.prefetch(&self.all_tabs())?;
         let mut all = self.travel_times()?;
-        let id = rows::chosen_id(travel.id.as_deref(), all.iter().map(|t| t.id.as_deref()).collect::<Vec<_>>())?;
+        let id = match rows::created(travel, &all, &[])? {
+            rows::Created::New(id) => id,
+            rows::Created::Again(made) => return Ok(CreatedTravelTime { created_id: made.id.clone().unwrap_or_default(), travel_time: made }),
+        };
         let new = TravelTime { id: Some(id.clone()), version: None, ..travel.clone() };
         all.push(new.clone());
         self.write_travel_times(&all, modes)?;
@@ -117,7 +120,9 @@ impl Locations {
     pub fn delete_travel_time(&self, travel_time_id: &str, if_version: Option<i64>) -> anyhow::Result<TravelTime> {
         let all = self.travel_times()?;
         let found = all.iter().find(|t| t.id.as_deref() == Some(travel_time_id)).cloned();
-        rows::expect_item_version(travel_time_id, found.as_ref(), if_version)?;
+        if !rows::deleting(travel_time_id, found.as_ref(), if_version)? && if_version.is_some() {
+            return Ok(rows::gone(travel_time_id));
+        }
         let Some(deleted) = found else {
             bail!("There's no travel time with the id {} (get_travel_times lists them)", py::repr(travel_time_id));
         };
@@ -273,6 +278,9 @@ pub fn travel_problems(all: &[TravelTime], locations: &[Location], groups: &[Loc
     }
     problems
 }
+
+// Written by the app: made once by their ids and versions.
+impl rows::Versioned for TravelTime {}
 
 #[cfg(test)]
 #[path = "travel_times_tests.rs"]

@@ -172,7 +172,12 @@ impl Habits {
 
     pub fn create_habit(&self, habit: &Habit) -> anyhow::Result<CreatedHabit> {
         let habits = self.all()?;
-        let id = rows::chosen_id(habit.id.as_deref(), habits.iter().map(|h| h.id.as_deref()).collect::<Vec<_>>())?;
+        let id = match rows::created(habit, &habits, &[])? {
+            rows::Created::New(id) => id,
+            rows::Created::Again(made) => {
+                return Ok(CreatedHabit { habit: listed(&made, &self.paths()?), created_id: made.id.clone().unwrap_or_default() })
+            }
+        };
         let traits = habit.traits.as_ref().map(spec_with_new_part_ids);
         let new =
             Habit { id: Some(id.clone()), status: Some(habit.status.unwrap_or(Status::Active)), traits, version: None, ..habit.clone() };
@@ -371,6 +376,9 @@ fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {
         }
     }
 }
+
+// Written by the app: made once by their ids and versions.
+impl rows::Versioned for Habit {}
 
 #[cfg(test)]
 #[path = "habits_tests.rs"]

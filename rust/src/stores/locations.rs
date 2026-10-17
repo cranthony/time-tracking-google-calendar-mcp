@@ -190,21 +190,17 @@ impl Locations {
         Ok(listed_group(&find_group(&groups, id_or_name)?, &groups))
     }
 
-    /// An id that's neither a location's nor a group's, so either can be
-    /// named by it where both are taken: `given`, the client's choice, if
-    /// it can be (see rows::chosen_id), or else a new one.
-    fn new_id(given: Option<&str>, locations: &[Location], groups: &[LocationGroup]) -> anyhow::Result<String> {
-        rows::chosen_id(
-            given,
-            locations.iter().map(|l| l.id.as_deref()).chain(groups.iter().map(|g| g.id.as_deref())).collect::<Vec<_>>(),
-        )
-    }
-
     pub fn create_location(&self, location: &Location) -> anyhow::Result<CreatedLocation> {
         self.prefetch(&self.whole_tabs())?;
         let mut locations = self.all()?;
         let groups = self.groups()?;
-        let id = Self::new_id(location.id.as_deref(), &locations, &groups)?;
+        // Not a group's either, so either can be named by it where both
+        // are taken.
+        let taken: Vec<Option<&str>> = groups.iter().map(|g| g.id.as_deref()).collect();
+        let id = match rows::created(location, &locations, &taken)? {
+            rows::Created::New(id) => id,
+            rows::Created::Again(made) => return Ok(CreatedLocation { created_id: made.id.clone().unwrap_or_default(), location: made }),
+        };
         let new = Location { id: Some(id.clone()), version: None, ..location.clone() };
         locations.push(new.clone());
         self.write(&locations, &groups)?;
@@ -236,7 +232,9 @@ impl Locations {
         let deleted = match locations.iter().find(|l| l.id.as_deref() == Some(location_id)) {
             Some(found) => found.clone(),
             None => {
-                rows::expect_item_version::<Location>(location_id, None, if_version)?;
+                if !rows::deleting::<Location>(location_id, None, if_version)? {
+                    return Ok(rows::gone(location_id));
+                }
                 find(&locations, location_id)?
             }
         };
@@ -259,7 +257,14 @@ impl Locations {
     pub fn create_location_group(&self, group: &LocationGroup) -> anyhow::Result<CreatedLocationGroup> {
         self.prefetch(&self.whole_tabs())?;
         let mut groups = self.groups()?;
-        let id = Self::new_id(group.id.as_deref(), &self.all()?, &groups)?;
+        let locations = self.all()?;
+        let taken: Vec<Option<&str>> = locations.iter().map(|l| l.id.as_deref()).collect();
+        let id = match rows::created(group, &groups, &taken)? {
+            rows::Created::New(id) => id,
+            rows::Created::Again(made) => {
+                return Ok(CreatedLocationGroup { group: listed_group(&made, &groups), created_id: made.id.clone().unwrap_or_default() })
+            }
+        };
         let new = LocationGroup { id: Some(id.clone()), version: None, ..group.clone() };
         groups.push(new.clone());
         self.write_groups(&groups)?;
@@ -291,7 +296,9 @@ impl Locations {
         let deleted = match groups.iter().find(|g| g.id.as_deref() == Some(group_id)) {
             Some(found) => found.clone(),
             None => {
-                rows::expect_item_version::<LocationGroup>(group_id, None, if_version)?;
+                if !rows::deleting::<LocationGroup>(group_id, None, if_version)? {
+                    return Ok(DeletedLocationGroup { deleted: rows::gone(group_id), moved_groups: Vec::new(), moved_locations: Vec::new() });
+                }
                 find_group(&groups, group_id)?
             }
         };
@@ -616,6 +623,10 @@ pub fn location_problems(locations: &[Location]) -> Vec<String> {
     }
     problems
 }
+
+// Written by the app: made once by their ids and versions.
+impl rows::Versioned for Location {}
+impl rows::Versioned for LocationGroup {}
 
 #[cfg(test)]
 #[path = "locations_tests.rs"]

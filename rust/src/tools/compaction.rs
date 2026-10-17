@@ -1138,16 +1138,30 @@ pub fn edit_note(
 /// unaffected. Compacted notes can't be deleted. A proposal that included
 /// this note is planned again when it's confirmed.
 #[tool(writes)]
-pub fn delete_note(app: &App, note_id: String, if_version: Option<i64>) -> Result<NotedTime, ToolError> {
+pub fn delete_note(app: &App, note_id: String, if_version: Option<i64>) -> Result<DeletedNote, ToolError> {
     let compactor = compactor(app)?;
     shown(
         "delete_note",
-        compactor.delete_note(&note_id, if_version).map(|n| {
-            let mut shown = n.note.to_json();
-            shown["id"] = json!(n.own_id);
-            shown
+        compactor.delete_note(&note_id, if_version).map(|n| match n {
+            Some(n) => {
+                let mut shown = n.note.to_json();
+                shown["id"] = json!(n.id());
+                shown
+            }
+            None => json!({"id": note_id, "timestamp": null, "description": null, "compaction_id": null}),
         }),
     )
+}
+
+/// A note deleted, as it was: its id, then its fields -- none but its id
+/// if, given its version, it was gone already (deleted by this deletion
+/// sent before, say).
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct DeletedNote {
+    pub id: String,
+    pub timestamp: Option<DateTimeText>,
+    pub description: Option<String>,
+    pub compaction_id: Option<String>,
 }
 
 /// Step 1 of compacting notes into the calendar: proposing what

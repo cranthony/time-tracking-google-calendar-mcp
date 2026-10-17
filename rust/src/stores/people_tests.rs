@@ -128,7 +128,7 @@ fn another_person_cant_take_selfs_name_without_a_context() {
 fn assigns_an_id_and_is_active() {
     let f = fixture();
 
-    let created = f.held(|p| p.create_person(&person(json!({"id": "mine", "name": "Sam", "context": "met at salsa"})))).unwrap();
+    let created = f.held(|p| p.create_person(&person(json!({"name": "Sam", "context": "met at salsa"})))).unwrap();
 
     let id = created["created_id"].as_str().unwrap();
     assert!(id != "mine" && id.len() == 6);

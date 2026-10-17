@@ -1251,6 +1251,16 @@ impl NoteCompactor {
             edit.insert("action".into(), json!("as_planned"));
             add(&mut new_edits, &mut seq, Some(name.clone()), edit);
         }
+        // The revision after the one it was made from is this amend's own,
+        // made when it was sent before (its answer lost): the same edits,
+        // made to `revision`. It's given as it is, not made again -- a
+        // proposal's revision is its version (see rows::Versioned).
+        let made_from: Vec<(Option<String>, Map<String, Value>)> =
+            edit_rows.iter().filter(|(_, e)| e.base_revision == revision).map(|(_, e)| (e.event_id.clone(), e.edit.clone())).collect();
+        let these: Vec<(Option<String>, Map<String, Value>)> = new_edits.iter().map(|e| (e.event_id.clone(), e.edit.clone())).collect();
+        if meta.revision == revision + 1 && meta.by == "user" && !these.is_empty() && made_from == these && through.is_none_or(|t| t <= current.last().unwrap().now) {
+            return self.get_proposal(Some(proposal_id), None);
+        }
         let before = current.last().unwrap().now;
         if let Some(through) = through {
             if through < before {
@@ -1529,7 +1539,15 @@ impl NoteCompactor {
         if text.trim().is_empty() {
             return Err(ce("the note is empty", "empty"));
         }
-        let seq = self.journal.feedback(proposal_id)?.iter().map(|(_, f)| f.seq).max().unwrap_or(0) + 1;
+        let feedback = self.journal.feedback(proposal_id)?;
+        // The same note, still open: this one sent again, its answer lost.
+        if let Some((_, made)) = feedback
+            .iter()
+            .find(|(_, f)| f.status == "open" && f.by == "user" && f.text == text.trim() && f.event_id == event_id && f.note_id == note_id && f.at == at)
+        {
+            return Ok(made.clone());
+        }
+        let seq = feedback.iter().map(|(_, f)| f.seq).max().unwrap_or(0) + 1;
         let item = Feedback {
             id: feedback_id(proposal_id, seq),
             seq,
@@ -1582,6 +1600,26 @@ impl NoteCompactor {
 
     pub fn confirm(&self, proposal_id: &str, revision: i64) -> anyhow::Result<ProposalResult> {
         self.prefetch_tabs(true)?;
+        // Confirmed already, at this revision -- this confirm sent before,
+        // its answer lost: it's applied, or finished applying, not refused.
+        // Or planned again from it, by that confirm: given as it is.
+        if let Ok(days) = self.current(proposal_id) {
+            let meta = days[0].meta();
+            let applying = days.iter().any(|d| d.status == STAMPED || OPEN_STATUSES.contains(&d.status.as_str()));
+            if meta.revision == revision && applying {
+                return self.finish(proposal_id);
+            }
+            if meta.revision == revision + 1 && meta.base == Some(revision) && meta.reason == "recheck" && !applying {
+                return Ok(ProposalResult {
+                    status: "rechecked".into(),
+                    message: format!(
+                        "the notes or calendar changed since revision {revision}, so it was planned again as revision {}: review what changed, and confirm that",
+                        meta.revision
+                    ),
+                    proposal: Some(self.get_proposal(Some(proposal_id), Some(revision))?),
+                });
+            }
+        }
         let current = self.open(proposal_id)?;
         let meta = current[0].meta().clone();
         if current.iter().any(|d| OPEN_STATUSES.contains(&d.status.as_str())) {
@@ -2155,7 +2193,7 @@ impl NoteCompactor {
         edit_note(&self.notes, &self.journal, note_id, timestamp, description, if_version)
     }
 
-    pub fn delete_note(&self, note_id: &str, if_version: Option<i64>) -> anyhow::Result<SheetNote> {
+    pub fn delete_note(&self, note_id: &str, if_version: Option<i64>) -> anyhow::Result<Option<SheetNote>> {
         self.prefetch_tabs(false)?;
         delete_note(&self.notes, &self.journal, note_id, if_version)
     }
@@ -2656,7 +2694,7 @@ pub fn edit_note(
 }
 
 /// `delete_note`: `NotedTimeSheet::delete`, refused like `edit_note`.
-pub fn delete_note(notes: &NotedTimeSheet, journal: &CompactionJournal, note_id: &str, if_version: Option<i64>) -> anyhow::Result<SheetNote> {
+pub fn delete_note(notes: &NotedTimeSheet, journal: &CompactionJournal, note_id: &str, if_version: Option<i64>) -> anyhow::Result<Option<SheetNote>> {
     require_not_being_applied(journal, note_id)?;
     match notes.delete(note_id, if_version) {
         Ok(note) => Ok(note),

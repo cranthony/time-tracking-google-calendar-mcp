@@ -407,14 +407,14 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
                 if !given.iter().any(|g| g == "start" || g == "end") {
                     return Err(usage("update requires at least one of: end, start"));
                 }
-                changes.check(vec![event], Vec::new(), Vec::new(), Vec::new(), None, false)?
+                changes.check(vec![event], Vec::new(), Vec::new(), None, false)?
             } else {
                 let mut missing: Vec<&str> = ["end", "start", "summary"].into_iter().filter(|r| !given.iter().any(|g| g == r)).collect();
                 missing.sort();
                 if !missing.is_empty() {
                     return Err(usage(format!("create requires: {}", missing.join(", "))));
                 }
-                changes.check(Vec::new(), vec![event], Vec::new(), Vec::new(), None, false)?
+                changes.check(Vec::new(), vec![event], Vec::new(), None, false)?
             };
             let batch = checked.map_err(|refusal| Failure::Exit(refusal.message))?;
             for written in changes.apply(&batch, "calendar_cli")? {
@@ -582,7 +582,8 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
         "delete_note" => {
             let deleted = delete_note(&app.noted_time_sheet()?, &app.journal()?, positional(rest, 0, "note_id")?, None).map_err(refused)?;
             wln!(out, "Deleted:");
-            wln!(out, "{}", note_details(&deleted.note));
+            // Without a version, a note that isn't there is refused.
+            wln!(out, "{}", note_details(&deleted.expect("refused if it isn't there").note));
         }
         other => return Err(usage(format!("argument command: invalid choice: {}", py::repr(other)))),
     }

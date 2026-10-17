@@ -10,7 +10,7 @@ use crate::facts::{fact_problems, Facts as EventFacts};
 use crate::py;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::ActionTree;
-use crate::stores::event_changes::{self, Cancel, EventChanges, Shift, StaleEvent};
+use crate::stores::event_changes::{self, Cancel, EventChanges, StaleEvent};
 use crate::stores::notes::NotedTime as StoredNote;
 use crate::stores::schedule::ScheduleHint;
 use super::recurrences::{stored_repeat, Repeat};
@@ -151,14 +151,6 @@ pub struct EventCancel {
     pub etag: Option<String>,
 }
 
-/// Events to move together by `minutes` (later if positive, earlier if
-/// negative), keeping their lengths.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct EventShift {
-    pub event_ids: Vec<String>,
-    pub minutes: i64,
-}
-
 /// One event's update: `event` (its id and the fields to set), and the
 /// fields to remove (`clear_fields`).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -182,8 +174,8 @@ pub struct NotedTime {
     pub timestamp: DateTimeText,
     pub description: Option<String>,
     pub compaction_id: Option<String>,
-    /// The note's own id, if a client chose it: given to note in a call
-    /// made once (by its write_id), the note is named by it.
+    /// The note's own id, if a client chose it: given to note, the note is
+    /// named by it, and the same note sent again is given as it was made.
     pub id: Option<String>,
 }
 
@@ -371,13 +363,12 @@ fn change_events(
     updates: Vec<Event>,
     creates: Vec<Event>,
     cancels: Vec<Cancel>,
-    shifts: Vec<Shift>,
     allow_compacted: bool,
     dry_run: bool,
 ) -> Result<Value, ToolError> {
     let changes = EventChanges::new(ActionCalendar::new(app.calendar_client()?, app.actions()?), Some(app.cancellations()?));
     let history_until = app.journal()?.last_stamped_now()?;
-    let checked = match changes.check(updates, creates, cancels, shifts, history_until, allow_compacted).map_err(|e| stale(app, e))? {
+    let checked = match changes.check(updates, creates, cancels, history_until, allow_compacted).map_err(|e| stale(app, e))? {
         Ok(batch) => batch,
         Err(error) => {
             tracing::warn!(
@@ -391,9 +382,15 @@ fn change_events(
     let drawn = event_changes::timeline(&checked);
     let events: Vec<Event> = if dry_run {
         checked
-            .changes
+            .again
             .iter()
-            .map(|c| c.after.clone().unwrap_or_else(|| Event { status: Some("cancelled".into()), ..c.before.clone().unwrap() }))
+            .cloned()
+            .chain(
+                checked
+                    .changes
+                    .iter()
+                    .map(|c| c.after.clone().unwrap_or_else(|| Event { status: Some("cancelled".into()), ..c.before.clone().unwrap() })),
+            )
             .collect()
     } else {
         changes.apply(&checked, tool_name).map_err(|e| stale(app, e))?
@@ -486,9 +483,8 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// events, optionally with actions: action_ids, the first setting its
 /// color), `cancels` (each saying whether it counts against
 /// follow-through: a commitment dropped, rather than a change of plan --
-/// see delete_event) and `shifts` (events moved together by the same
-/// number of minutes, each as an update). An event can be in only one of
-/// them. Set action_ids to change an event's actions ([] for none), and
+/// see delete_event). An event can be in only one of them; to move
+/// events, update each with its new times. Set action_ids to change an event's actions ([] for none), and
 /// facts to replace its facts whole (see list_events). An update can't
 /// cancel an event (is_cancelled): put it in `cancels`.
 /// WHERE an event is (facts.location_ids), when you set it: keep a
@@ -530,7 +526,7 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// events changed, and a timeline of them beside the events around
 /// them.
 #[tool(writes)]
-pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Option<Vec<PublicEvent>>, cancels: Option<Vec<EventCancel>>, shifts: Option<Vec<EventShift>>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
+pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Option<Vec<PublicEvent>>, cancels: Option<Vec<EventCancel>>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
     prefetch_for_changes(app)?;
     let updates = updates.unwrap_or_default();
     let creates = creates.unwrap_or_default();
@@ -555,9 +551,8 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
     }
     let creates: Vec<Event> =
         creates.iter().map(|e| with_repeat(app, to_event(e, &[])?, e.repeat.as_ref())).collect::<Result<_, _>>()?;
-    let shifts: Vec<Shift> = shifts.unwrap_or_default().into_iter().map(|s| Shift { event_ids: s.event_ids, minutes: s.minutes }).collect();
     let cancels = to_cancels(cancels.unwrap_or_default());
-    from_store(change_events(app, "update_event", patches, creates, cancels, shifts, allow_compacted_changes, dry_run)?)
+    from_store(change_events(app, "update_event", patches, creates, cancels, allow_compacted_changes, dry_run)?)
 }
 
 /// Create new events, as one batch, optionally with actions
@@ -602,7 +597,7 @@ pub fn create_event(app: &App, events: Vec<PublicEvent>, #[schema(default = "fal
     }
     let creates: Vec<Event> =
         events.iter().map(|e| with_repeat(app, to_event(e, &[])?, e.repeat.as_ref())).collect::<Result<_, _>>()?;
-    from_store(change_events(app, "create_event", Vec::new(), creates, Vec::new(), Vec::new(), allow_compacted_changes, dry_run)?)
+    from_store(change_events(app, "create_event", Vec::new(), creates, Vec::new(), allow_compacted_changes, dry_run)?)
 }
 
 /// Delete (cancel) events, as one batch. Given one event of a recurring
@@ -623,7 +618,7 @@ pub fn create_event(app: &App, events: Vec<PublicEvent>, #[schema(default = "fal
 #[tool(writes)]
 pub fn delete_event(app: &App, cancels: Vec<EventCancel>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
     prefetch_for_changes(app)?;
-    from_store(change_events(app, "delete_event", Vec::new(), Vec::new(), to_cancels(cancels), Vec::new(), allow_compacted_changes, dry_run)?)
+    from_store(change_events(app, "delete_event", Vec::new(), Vec::new(), to_cancels(cancels), allow_compacted_changes, dry_run)?)
 }
 
 /// Record a new time note -- a timestamp, with an optional

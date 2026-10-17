@@ -243,15 +243,17 @@ impl People {
 
     pub fn create_person(&self, person: &Person) -> anyhow::Result<CreatedPerson> {
         let people = self.read_people()?;
-        let taken = std::iter::once(Some(SELF_ID)).chain(people.iter().map(|p| p.id.as_deref())).collect::<Vec<_>>();
-        let id = rows::chosen_id(person.id.as_deref(), taken)?;
+        let circles = self.circles()?;
+        let id = match rows::created(person, &people, &[Some(SELF_ID)])? {
+            rows::Created::New(id) => id,
+            rows::Created::Again(made) => return Ok(CreatedPerson { person: listed(&made, &circles), created_id: made.id.clone().unwrap_or_default() }),
+        };
         let traits = person.traits.as_ref().map(spec_with_new_part_ids);
         let new =
             Person { id: Some(id.clone()), status: Some(person.status.unwrap_or(Status::Active)), traits, version: None, ..person.clone() };
         let mut everyone = vec![self_person()];
         everyone.extend(people.iter().cloned());
         check_context(&new, &everyone)?;
-        let circles = self.circles()?;
         let mut all = people.clone();
         all.push(new.clone());
         self.write_people(&all, &circles, &id)?;
@@ -319,7 +321,12 @@ impl People {
 
     pub fn create_circle(&self, circle: &Circle) -> anyhow::Result<CreatedCircle> {
         let circles = self.circles()?;
-        let id = rows::chosen_id(circle.id.as_deref(), circles.iter().map(|c| c.id.as_deref()).collect::<Vec<_>>())?;
+        let id = match rows::created(circle, &circles, &[])? {
+            rows::Created::New(id) => id,
+            rows::Created::Again(made) => {
+                return Ok(CreatedCircle { circle: listed_circle(&made, &self.all()?), created_id: made.id.clone().unwrap_or_default() })
+            }
+        };
         let new = Circle { id: Some(id.clone()), version: None, ..circle.clone() };
         let mut all = circles.clone();
         all.push(new.clone());
@@ -351,7 +358,9 @@ impl People {
         let deleted = match circles.iter().find(|c| c.id.as_deref() == Some(circle_id)) {
             Some(found) => found.clone(),
             None => {
-                rows::expect_item_version::<Circle>(circle_id, None, if_version)?;
+                if !rows::deleting::<Circle>(circle_id, None, if_version)? {
+                    return Ok(DeletedCircle { deleted: rows::gone(circle_id), left: Vec::new() });
+                }
                 find_circle(&circles, circle_id)?
             }
         };
@@ -627,6 +636,10 @@ fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {
         }
     }
 }
+
+// Written by the app: made once by their ids and versions.
+impl rows::Versioned for Person {}
+impl rows::Versioned for Circle {}
 
 #[cfg(test)]
 #[path = "people_tests.rs"]

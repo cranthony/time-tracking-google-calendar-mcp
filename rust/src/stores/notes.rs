@@ -1,10 +1,13 @@
 //! The time notes tab: moments worth recording, each a timestamp and an
 //! optional description, stamped with the compaction that consumed it. A
-//! note's id is its own, if a client chose one when it made it (in a call
-//! made once, by its write_id), or else its timestamp and row. Each note
-//! has a version, which goes up by one whenever it's edited: an edit or
-//! deletion given the version last seen is refused with a `Conflict` if
-//! it's changed since.
+//! note's id is its own, if a client chose one when it made it, or else
+//! its timestamp and row. Each note has a version, which goes up by one
+//! whenever it's edited. A write sent again is made once by the rules
+//! every kind the app writes keeps (see rows::Versioned): a note made
+//! again under its id is given as it is; an edit or deletion given the
+//! version last seen is refused with a `Conflict` if it's changed since
+//! -- unless it's an edit one version on and already as it'd leave it, or
+//! a deletion of one gone already.
 
 use crate::event::{parse_iso, Moment};
 use crate::google::sheets::{Rows, SheetsClient, TabRange};
@@ -248,15 +251,18 @@ impl NotedTimeSheet {
     }
 
     /// Add `note` as a new row at the end, garbage-collecting first, at
-    /// version 1 -- with `own_id`, the id the client chose for it, in a
-    /// call that may choose it (see rows::chosen_id).
+    /// version 1 -- with `own_id`, the id the client chose for it, if it
+    /// gave one. One there already with that id and as `note` is, is the
+    /// same note made again: it's given as it is.
     pub fn append(&self, note: &NotedTime, own_id: Option<&str>) -> anyhow::Result<SheetNote> {
         let read = self.read_all()?;
-        let own_id = own_id
-            .map(str::trim)
-            .filter(|given| !given.is_empty() && rows::client_ids_allowed())
-            .map(|given| rows::chosen_id(Some(given), read.own_ids()))
-            .transpose()?;
+        let own_id = own_id.map(str::trim).filter(|given| !given.is_empty());
+        if let Some(made) = own_id.and_then(|id| read.notes.iter().find(|n| n.own_id.as_deref() == Some(id))) {
+            if made.note.timestamp == note.timestamp && made.note.description == note.description {
+                return Ok(made.clone());
+            }
+        }
+        let own_id = own_id.map(|given| rows::chosen_id(Some(given), read.own_ids())).transpose()?;
         let next_row = FIRST_DATA_ROW + read.row_count - self.garbage_collect_from(&read)?;
         let header = self.with_columns(&read.header, own_id.is_some())?;
         let new = SheetNote { row: next_row, note: note.clone(), own_id, version: Some(1) };
@@ -265,9 +271,11 @@ impl NotedTimeSheet {
     }
 
     /// Edit the note `note_id` -- unless it's changed since `if_version`,
-    /// if given.
+    /// if given (see the module's doc).
     pub fn edit(&self, note_id: &str, timestamp: Option<Moment>, description: Option<&str>, if_version: Option<i64>) -> anyhow::Result<SheetNote> {
-        let (found, header, original) = self.uncompacted_row(note_id, if_version)?;
+        let Some((found, header, original)) = self.uncompacted_row(note_id, if_version.is_some())? else {
+            return Err(Conflict { kind: "note", id: note_id.into(), expected: if_version.unwrap_or_default().into(), current: None }.into());
+        };
         let note = &found.note;
         let edited = NotedTime {
             timestamp: timestamp.unwrap_or(note.timestamp),
@@ -278,6 +286,13 @@ impl NotedTimeSheet {
             },
             compaction_id: note.compaction_id.clone(),
         };
+        if let Some(expected) = if_version.filter(|v| found.version != Some(*v)) {
+            // One on, and already so: this edit, sent again.
+            if found.version == Some(expected + 1) && edited == *note {
+                return Ok(found);
+            }
+            return Err(Conflict { kind: "note", id: note_id.into(), expected: expected.into(), current: Some(found.as_row()) }.into());
+        }
         let version = if edited != *note { Some(found.version.unwrap_or(0) + 1) } else { found.version };
         let header = self.with_columns(&header, false)?;
         let edited = SheetNote { note: edited, version, ..found };
@@ -286,9 +301,13 @@ impl NotedTimeSheet {
     }
 
     /// Delete the note `note_id` -- unless it's changed since
-    /// `if_version`, if given. Returns it as it was.
-    pub fn delete(&self, note_id: &str, if_version: Option<i64>) -> anyhow::Result<SheetNote> {
-        let (found, header, _) = self.uncompacted_row(note_id, if_version)?;
+    /// `if_version`, if given. Returns it as it was; None if, given a
+    /// version, it was gone already.
+    pub fn delete(&self, note_id: &str, if_version: Option<i64>) -> anyhow::Result<Option<SheetNote>> {
+        let Some((found, header, _)) = self.uncompacted_row(note_id, if_version.is_some())? else { return Ok(None) };
+        if let Some(expected) = if_version.filter(|v| found.version != Some(*v)) {
+            return Err(Conflict { kind: "note", id: note_id.into(), expected: expected.into(), current: Some(found.as_row()) }.into());
+        }
         let row = found.row;
         self.sheets.write_rows_in_sheet(
             &self.spreadsheet_id,
@@ -296,19 +315,18 @@ impl NotedTimeSheet {
             &format!("A{row}:{}{row}", column(header.len().max(1) - 1)),
             &vec![vec![String::new(); header.len()]],
         )?;
-        Ok(found)
+        Ok(Some(found))
     }
 
     /// The uncompacted note `note_id`, the header, and its row's cells --
-    /// refused if it's not there, or compacted, or (a `Conflict`) not
-    /// `if_version` if that's given.
-    fn uncompacted_row(&self, note_id: &str, if_version: Option<i64>) -> anyhow::Result<(SheetNote, Vec<String>, Vec<String>)> {
+    /// refused if it's not there, or compacted; but None if it's not there
+    /// and the client gave the version it saw (`versioned`), so it's
+    /// changed -- or gone -- since.
+    fn uncompacted_row(&self, note_id: &str, versioned: bool) -> anyhow::Result<Option<(SheetNote, Vec<String>, Vec<String>)>> {
         let read = self.read_all()?;
         let found = match read.find(note_id) {
             Ok(found) => found.clone(),
-            Err(_) if if_version.is_some() && (note_id.contains('#') || rows::chosen_id_shape(note_id)) => {
-                return Err(Conflict { kind: "note", id: note_id.into(), expected: if_version.unwrap().into(), current: None }.into());
-            }
+            Err(_) if versioned && (note_id.contains('#') || rows::chosen_id_shape(note_id)) => return Ok(None),
             Err(why) => return Err(why),
         };
         if let Some(compaction) = &found.note.compaction_id {
@@ -318,12 +336,9 @@ impl NotedTimeSheet {
                 py::repr(compaction)
             );
         }
-        if let Some(expected) = if_version.filter(|v| found.version != Some(*v)) {
-            return Err(Conflict { kind: "note", id: note_id.into(), expected: expected.into(), current: Some(found.as_row()) }.into());
-        }
         let offset = (found.row - FIRST_DATA_ROW) as usize;
         let cells = read.rows.get(offset).cloned().unwrap_or_default();
-        Ok((found, read.header, cells))
+        Ok(Some((found, read.header, cells)))
     }
 
     /// `header`, with a version column -- and an id column, if `own_id`

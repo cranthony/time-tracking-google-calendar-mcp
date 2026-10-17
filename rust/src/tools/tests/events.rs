@@ -232,7 +232,7 @@ fn an_overlap_is_refused_changing_nothing() {
 }
 
 #[test]
-fn moves_cancels_creates_and_shifts_together() {
+fn moves_cancels_and_creates_together() {
     let server = two();
 
     let result = server.ok(
@@ -249,15 +249,6 @@ fn moves_cancels_creates_and_shifts_together() {
     let listed = server.t.app.calendar_client().unwrap().list_events(&at(0, 0), &at(23, 0)).unwrap();
     assert!(listed.iter().any(|e| e.summary.as_deref() == Some("Walk")));
     assert!(result["timeline"].as_str().unwrap().contains("✕"));
-}
-
-#[test]
-fn a_shift_moves_its_events() {
-    let server = two();
-
-    server.ok("update_event", json!({"shifts": [{"event_ids": ["abc123", "def456"], "minutes": 60}]}));
-
-    assert_eq!((server.event("abc123").start, server.event("def456").start), (Some(at(10, 0)), Some(at(11, 0))));
 }
 
 #[test]

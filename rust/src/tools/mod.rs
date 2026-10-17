@@ -30,9 +30,6 @@ pub enum ToolError {
     /// client last saw: its message is shown, and the row as it is now is
     /// given (in the result's `_meta`), for the client to resolve.
     Conflict(crate::sheet::rows::Conflict),
-    /// A write sent again that was made already, whose result was too long
-    /// to keep: the client is only told it was made.
-    MadeAlready(String),
     /// Anything else: the client sees only that the tool failed.
     Unexpected(anyhow::Error),
 }
@@ -171,16 +168,10 @@ pub fn listed() -> Vec<(&'static str, bool)> {
 
 /// Run `name` with `arguments`: inside one call's read caches, holding
 /// WRITE_LOCK if it writes, telling the model to set a time zone if the
-/// calendar has none.
+/// calendar has none. A write sent again -- its answer lost on the way --
+/// is made once by what it names and the version it was made from (see
+/// rows::Versioned), not by anything kept of the call.
 pub fn run(app: &Arc<App>, name: &str, arguments: Value) -> Result<Outcome, ToolError> {
-    run_once(app, name, arguments, None).map(|(outcome, _)| outcome)
-}
-
-/// `run`, for a write the client gave `write_id`: made once, however many
-/// times it's sent. Sent again, it isn't made again -- the result it gave
-/// the first time is given, and whether it was is said (true). A write
-/// that failed isn't kept, so it's made when it's sent again.
-pub fn run_once(app: &Arc<App>, name: &str, arguments: Value, write_id: Option<&str>) -> Result<(Outcome, bool), ToolError> {
     let arguments = match arguments {
         Value::Object(map) => map,
         _ => Map::new(),
@@ -191,42 +182,14 @@ pub fn run_once(app: &Arc<App>, name: &str, arguments: Value, write_id: Option<&
     let _held = tool.writes.then(|| WRITE_LOCK.hold());
     let _reads = CachedReads::start();
     let _listings = CachedListings::start();
-    let write_id = write_id.filter(|_| tool.writes).map(str::trim).filter(|w| !w.is_empty());
-    if let Some(write_id) = write_id {
-        if let Some(made) = app.writes()?.find(write_id)? {
-            if made.tool.as_deref() != Some(name) {
-                return Err(ToolError::Message(format!(
-                    "The write_id {} was used for {} already",
-                    crate::py::repr(write_id),
-                    made.tool.as_deref().unwrap_or("another tool")
-                )));
-            }
-            return match made.result {
-                Some(result) => Ok((Outcome(result), true)),
-                None => Err(ToolError::MadeAlready(format!(
-                    "This write (write_id {}) was made already, when it was first sent; what it gave was too long to keep",
-                    crate::py::repr(write_id)
-                ))),
-            };
-        }
-    }
     let written = crate::sheet::rows::Written::start();
-    // A write made once may name what it makes (see rows::chosen_id).
-    let _ids = write_id.map(|_| crate::sheet::rows::ClientIds::allow());
     let outcome = (tool.run)(app, Value::Object(arguments));
     let outcome = outcome.map(|mut value| {
         written.stamp(&mut value);
         value
     });
-    if let (Some(write_id), Ok(value)) = (write_id, &outcome) {
-        // Made, whether or not it's kept: a failure to keep it is only
-        // logged, and the write's result given.
-        if let Err(error) = app.writes().and_then(|w| w.record(write_id, name, value, crate::determinism::now())) {
-            tracing::warn!("Couldn't keep write {}: {error:?}", crate::py::repr(write_id));
-        }
-    }
     match outcome {
-        Ok(value) => Ok((Outcome(value), false)),
+        Ok(value) => Ok(Outcome(value)),
         Err(ToolError::Unexpected(error)) if error.downcast_ref::<crate::sheet::rows::Conflict>().is_some() => {
             Err(ToolError::Conflict(error.downcast::<crate::sheet::rows::Conflict>().expect("checked above")))
         }

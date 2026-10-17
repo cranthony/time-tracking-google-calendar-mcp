@@ -11,7 +11,9 @@
 //! by one whenever a write changes it (a new row starts at 1), so a client
 //! can say which version it last saw. A row written with a version that
 //! isn't the one kept -- changed by someone else since it was read -- is
-//! refused with a `Conflict`, naming the row as it is now. A cell edited by hand that can't be read as its field's kind (a
+//! refused with a `Conflict`, naming the row as it is now; unless it's
+//! one on from it and already as the write would leave it, when it's the
+//! same write sent again, its answer lost (see `Versioned`). A cell edited by hand that can't be read as its field's kind (a
 //! number that isn't one, JSON that isn't JSON) makes the tab unreadable:
 //! reading it fails with a `CellError` naming each such cell, which every
 //! tool shows as it is, so the user can fix the cell.
@@ -216,6 +218,103 @@ pub fn expect_item_version<T: RowItem>(id: &str, current: Option<&T>, expected: 
     expect_version(T::ROW_TYPE.name, id, current.map(RowItem::to_row).as_ref(), expected)
 }
 
+/// A kind the app writes: each item named by an id -- the client's own,
+/// if it chose one, so it can name it before the server has it -- with a
+/// version that goes up by one each time it changes. A write sent again,
+/// its answer lost on the way, is made once by the same rules for every
+/// kind, from the id and version alone:
+///
+/// * A create naming a free id makes it; naming one that's there and
+///   already as the create gives it, it's the same create again, and the
+///   item's given as it is (`created`); naming one that's there and
+///   different, it's refused: the id's used.
+/// * An update from version n is made at n; at n + 1, already as the
+///   update would leave it, it's the same update again, and the item's
+///   given as it is; at anything else it's a `Conflict` with the item as
+///   it is now (RowSheet keeps both rules, for every write).
+/// * A delete at version n is made at n; with the item gone already, it's
+///   done (`deleting`); changed since, it's a `Conflict`.
+///
+/// Each kind gives only its fields (RowItem), its own checks, and how it's
+/// read and written.
+pub trait Versioned: RowItem {
+    fn id(&self) -> Option<String> {
+        self.to_row().get("id").and_then(Value::as_str).map(str::to_string)
+    }
+
+    fn version(&self) -> Option<i64> {
+        self.to_row().get("version").and_then(Value::as_i64)
+    }
+}
+
+/// What a create naming `given`'s id comes to.
+pub enum Created<T> {
+    /// It's new: made with this id.
+    New(String),
+    /// Made already -- this is the same create sent again -- as it is.
+    Again(T),
+}
+
+/// `given`, a create, among `items` (and the ids `taken` by others of the
+/// kinds it shares ids with): its id -- the client's, if it gave one free,
+/// or else a new one -- or, if it names one of `items` that's already as
+/// it gives it, that item (see `Versioned`).
+pub fn created<T: Versioned + Clone>(given: &T, items: &[T], taken: &[Option<&str>]) -> anyhow::Result<Created<T>> {
+    let chosen = given.id().map(|i| i.trim().to_string()).filter(|i| !i.is_empty());
+    if let Some(id) = &chosen {
+        if let Some(made) = items.iter().rev().find(|i| i.id().as_deref() == Some(id.as_str())) {
+            if already(&given.to_row(), &made.to_row(), &[]) {
+                return Ok(Created::Again(made.clone()));
+            }
+        }
+    }
+    let ids: Vec<Option<String>> = items.iter().map(Versioned::id).collect();
+    let all: Vec<Option<&str>> = ids.iter().map(Option::as_deref).chain(taken.iter().copied()).collect();
+    chosen_id(chosen.as_deref(), all).map(Created::New)
+}
+
+/// Whether `current` is already as `change` leaves it: each field it
+/// sets the same, and each it `clears` unset. Its id and version aren't
+/// compared.
+pub fn already(change: &Row, current: &Row, clears: &[String]) -> bool {
+    change
+        .iter()
+        .filter(|(k, v)| !v.is_null() && *k != "id" && *k != "version")
+        .all(|(k, v)| current.get(k).is_some_and(|c| covers(v, c)))
+        && clears.iter().all(|c| current.get(c).is_none_or(Value::is_null))
+}
+
+/// Whether `current` has what `given` does: objects each key `given` sets
+/// (what the server adds -- a part's key, say -- aside), lists the same
+/// length and each item so, anything else the same.
+fn covers(given: &Value, current: &Value) -> bool {
+    match (given, current) {
+        (Value::Null, _) => true,
+        (Value::Object(g), Value::Object(c)) => g.iter().all(|(k, v)| v.is_null() || c.get(k).is_some_and(|c| covers(v, c))),
+        (Value::Array(g), Value::Array(c)) => g.len() == c.len() && g.iter().zip(c).all(|(g, c)| covers(g, c)),
+        _ => given == current,
+    }
+}
+
+/// Whether to delete the `T` `id`, as it is now (`current`, None if it's
+/// gone), given the version the client last saw (`if_version`): true to
+/// delete it; false if it's gone and the client gave a version -- deleted
+/// already, by this delete sent before, say -- so it's done. Gone without
+/// one, the kind's own refusal is the caller's to give; changed since,
+/// it's a `Conflict` (see `Versioned`).
+pub fn deleting<T: Versioned>(id: &str, current: Option<&T>, if_version: Option<i64>) -> anyhow::Result<bool> {
+    if current.is_none() {
+        return Ok(if_version.is_none());
+    }
+    expect_item_version(id, current, if_version)?;
+    Ok(true)
+}
+
+/// A deleted item as a deletion found it gone gives it: just its id.
+pub fn gone<T: RowItem>(id: &str) -> T {
+    serde_json::from_value(serde_json::json!({ "id": id })).expect("an item may have just an id")
+}
+
 /// A typed row: a struct whose fields are its tab's columns (see
 /// `#[derive(RowItem)]`, which derives this).
 pub trait RowItem: serde::Serialize + serde::de::DeserializeOwned {
@@ -263,42 +362,13 @@ impl RowType {
     }
 }
 
-thread_local! {
-    /// Whether the tool call running on this thread may choose new items'
-    /// ids (see `ClientIds`).
-    static CLIENT_IDS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-/// Within this guard's life -- a call made once, by its write_id -- a new
-/// item may have the id the client chose (see `chosen_id`). Other calls'
-/// ids are assigned, whatever they give, as they always were.
-pub struct ClientIds {
-    was: bool,
-}
-
-impl ClientIds {
-    pub fn allow() -> ClientIds {
-        ClientIds { was: CLIENT_IDS.replace(true) }
-    }
-}
-
-/// Whether the call running on this thread may choose new items' ids.
-pub fn client_ids_allowed() -> bool {
-    CLIENT_IDS.get()
-}
-
-impl Drop for ClientIds {
-    fn drop(&mut self) {
-        CLIENT_IDS.set(self.was);
-    }
-}
-
 /// The id for a new item: `given`, the client's own choice -- so it can
-/// name the item before the server has it -- in a call that may choose
-/// it (see `ClientIds`), if it's well formed (2 to 40 lowercase letters,
-/// digits and dashes) and not `taken`; or else a new one.
+/// name the item before the server has it, and a create sent again names
+/// the one it made -- if it's well formed (2 to 40 lowercase letters,
+/// digits and dashes) and not `taken`; or else, given none, a new one.
+/// One that isn't well formed, or is taken, is refused: replaced, a create
+/// sent again would make another.
 pub fn chosen_id<'a>(given: Option<&str>, taken: impl IntoIterator<Item = Option<&'a str>> + Clone) -> anyhow::Result<String> {
-    let given = given.filter(|_| CLIENT_IDS.get());
     let Some(given) = given.map(str::trim).filter(|g| !g.is_empty()) else {
         return Ok(new_id(taken));
     };
@@ -581,7 +651,17 @@ impl RowSheet {
                     let was = version_column
                         .and_then(|i| original.get(i))
                         .and_then(|c| crate::event::python_int(c.trim()));
-                    if let Some(given) = given.filter(|g| Some(*g) != was) {
+                    let cells = cells(self.row_type, header, &item, Some(original));
+                    let changed = header.iter().enumerate().any(|(i, name)| {
+                        name != "version"
+                            && self.row_type.kind(name).is_some()
+                            && cells.get(i).map(String::as_str).unwrap_or("")
+                                != original.get(i).map(|c| c.trim()).unwrap_or("")
+                    });
+                    // One on from the version given, and already as it'd
+                    // leave it: the same write again (see Versioned).
+                    let again = |given: i64| !changed && was == Some(given + 1);
+                    if let Some(given) = given.filter(|g| Some(*g) != was && !again(*g)) {
                         let current = self.from_row(header, original, 0, &mut Vec::new());
                         return Err(Conflict {
                             kind: self.row_type.name,
@@ -591,13 +671,6 @@ impl RowSheet {
                         }
                         .into());
                     }
-                    let cells = cells(self.row_type, header, &item, Some(original));
-                    let changed = header.iter().enumerate().any(|(i, name)| {
-                        name != "version"
-                            && self.row_type.kind(name).is_some()
-                            && cells.get(i).map(String::as_str).unwrap_or("")
-                                != original.get(i).map(|c| c.trim()).unwrap_or("")
-                    });
                     match (was, changed) {
                         (Some(was), false) => was,
                         (was, _) => was.unwrap_or(0) + 1,

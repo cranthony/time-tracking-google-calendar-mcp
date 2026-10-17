@@ -178,10 +178,10 @@ fn refuses_a_color_that_isnt_hex_on_update_and_on_groups() {
 }
 
 #[test]
-fn ignores_an_id_or_label_id_given() {
+fn ignores_a_label_id_given() {
     let f = fixture();
 
-    let created = f.create(json!({"id": "mine", "label_id": "theirs", "name": "Walk"}));
+    let created = f.create(json!({"label_id": "theirs", "name": "Walk"}));
 
     assert_ne!(created, "mine");
     assert_ne!(f.label_of(&created), "theirs");

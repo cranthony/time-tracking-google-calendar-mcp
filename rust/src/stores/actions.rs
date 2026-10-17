@@ -413,7 +413,21 @@ impl Actions {
         check_color(action.background_color.as_deref())?;
         let actions = self.all()?;
         let groups = self.groups()?.groups;
-        let id = new_id(action.id.as_deref(), &actions, &groups)?;
+        // Not a group's either: a trait's part can name either.
+        let taken: Vec<Option<&str>> = groups.iter().map(|g| g.id.as_deref()).collect();
+        let id = match rows::created(action, &actions, &taken)? {
+            rows::Created::New(id) => id,
+            rows::Created::Again(made) => {
+                let id = made.id.clone().unwrap_or_default();
+                let list = self.get_actions(Some(ACTION_STATUSES.map(String::from).as_slice()))?;
+                return Ok(CreatedAction {
+                    changed: list.actions.into_iter().filter(|a| a.id.as_deref() == Some(id.as_str())).collect(),
+                    label_slots_used: list.label_slots_used,
+                    label_slots_total: MAX_LABELS,
+                    created_id: id,
+                });
+            }
+        };
         let namespace = uuid::Uuid::parse_str(LABEL_ID_NAMESPACE).unwrap();
         let new = Action {
             id: Some(id.clone()),
@@ -465,7 +479,20 @@ impl Actions {
         check_color(group.background_color.as_deref())?;
         let groups = self.groups()?.groups;
         let actions = self.all()?;
-        let id = new_id(group.id.as_deref(), &actions, &groups)?;
+        let taken: Vec<Option<&str>> = actions.iter().map(|a| a.id.as_deref()).collect();
+        let id = match rows::created(group, &groups, &taken)? {
+            rows::Created::New(id) => id,
+            rows::Created::Again(made) => {
+                let id = made.id.clone().unwrap_or_default();
+                return Ok(CreatedActionGroup {
+                    changed: vec![self.get_action_group(&id)?],
+                    affected_actions: Vec::new(),
+                    label_slots_used: self.get_actions(None)?.label_slots_used,
+                    label_slots_total: MAX_LABELS,
+                    created_id: id,
+                });
+            }
+        };
         let new = ActionGroup { id: Some(id.clone()), version: None, ..group.clone() };
         let mut after = groups.clone();
         after.push(new);
@@ -510,7 +537,15 @@ impl Actions {
         let deleted = match groups.iter().find(|g| g.id.as_deref() == Some(group_id)) {
             Some(found) => found.clone(),
             None => {
-                rows::expect_item_version::<ActionGroup>(group_id, None, if_version)?;
+                if !rows::deleting::<ActionGroup>(group_id, None, if_version)? {
+                    return Ok(DeletedActionGroup {
+                        changed: Vec::new(),
+                        affected_actions: Vec::new(),
+                        label_slots_used: self.get_actions(None)?.label_slots_used,
+                        label_slots_total: MAX_LABELS,
+                        deleted: rows::gone(group_id),
+                    });
+                }
                 find_group(&groups, group_id)?
             }
         };
@@ -623,13 +658,6 @@ impl Default for CommitOptions {
     fn default() -> Self {
         CommitOptions { write_actions: true, write_groups: true, changed_actions: Vec::new(), changed_groups: Vec::new(), priority_colors: None }
     }
-}
-
-/// An id that's neither an action's nor a group's (a trait's part can
-/// name either): `given`, the client's choice, if it can be (see
-/// rows::chosen_id), or else a new one.
-fn new_id(given: Option<&str>, actions: &[Action], groups: &[ActionGroup]) -> anyhow::Result<String> {
-    rows::chosen_id(given, actions.iter().map(|a| a.id.as_deref()).chain(groups.iter().map(|g| g.id.as_deref())).collect::<Vec<_>>())
 }
 
 /// The set of labels, compared as Python compares `{astuple(label)}`.
@@ -845,6 +873,10 @@ fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {
         }
     }
 }
+
+// Written by the app: made once by their ids and versions.
+impl rows::Versioned for Action {}
+impl rows::Versioned for ActionGroup {}
 
 #[cfg(test)]
 #[path = "actions_tests.rs"]

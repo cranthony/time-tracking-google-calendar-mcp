@@ -83,7 +83,7 @@ fn the_requests_each_tool_makes() {
         ("create_location_group", "create_location_group", json!({"group": {"name": "New York"}}), [1, 1, 0, 0]),
         ("update_location_group", "update_location_group", json!({"group": {"id": f.brooklyn, "note": "n"}}), [1, 1, 0, 0]),
         // Travel times: those, with the actions' tabs for their modes.
-        ("create_travel_time", "create_travel_time", json!({"travel_time": {"id": "x", "from_id": f.home, "to_id": f.brooklyn, "times": [{"mode_id": f.walk, "minutes": 10}]}}), [1, 1, 0, 0]),
+        ("create_travel_time", "create_travel_time", json!({"travel_time": {"from_id": f.home, "to_id": f.brooklyn, "times": [{"mode_id": f.walk, "minutes": 10}]}}), [1, 1, 0, 0]),
         ("get_travel_times", "get_travel_times", json!({}), [1, 0, 0, 0]),
         ("estimate_travel_time", "estimate_travel_time", json!({"from_id": f.home, "to_id": f.brooklyn, "mode_id": f.walk}), [1, 0, 0, 0]),
         // Habits, with the actions and traits they're checked against.

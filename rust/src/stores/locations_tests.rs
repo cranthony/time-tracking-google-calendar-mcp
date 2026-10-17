@@ -45,7 +45,7 @@ impl Fixture {
 fn creates_and_finds_a_location_by_id_or_name() {
     let f = fixture();
 
-    let id = f.create(json!({"id": "mine", "name": "Home", "hint": "the apartment"}));
+    let id = f.create(json!({"name": "Home", "hint": "the apartment"}));
 
     assert_ne!(id, "mine");
     assert_eq!(f.locations.get_location(&id).unwrap().name.as_deref(), Some("Home"));

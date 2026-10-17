@@ -145,11 +145,11 @@
    "content": {
     "compaction_id": null,
     "description": null,
-    "id": null,
+    "id": "2026-10-07T08:00:00-04:00#3",
     "timestamp": "2026-10-07T08:00:00-04:00"
    },
    "is_error": false,
-   "text": "{\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
    "tool": "delete_note"
   },
   {

@@ -169,9 +169,11 @@ async def test_refusals_while_applying(session, google, plan):
     pid = proposed["proposal_id"]
     google.fail_next.append(("PATCH", d5["Dinner"], 500, "Backend Error"))
     await session.call_error("confirm_proposal", proposal_id=pid, revision=proposed["revision"])
-    # Being applied: no notes for Claude, and no confirming it again.
+    # Being applied: no notes for Claude.
     await session.call_error("add_proposal_note", proposal_id=pid, text="one more thing")
-    await session.call_error("confirm_proposal", proposal_id=pid, revision=proposed["revision"])
+    # The same confirm sent again -- its answer lost, say -- finishes it.
+    again = await session.call("confirm_proposal", proposal_id=pid, revision=proposed["revision"])
+    assert again["status"] == "applied"
     finished = await session.call("finish_proposal", proposal_id=pid)
     assert finished["status"] == "applied"
 
@@ -198,3 +200,23 @@ async def test_journal_trimmed_once_it_grows(session, google, calendar_id):
         assert rounds <= 10
     assert rounds >= 5
     await session.call("get_compaction_status")
+
+
+async def test_writes_sent_again_are_made_once(session, plan):
+    d5 = plan[FIRST]
+    await notes(session, ("2026-10-05T12:40:00-04:00", "lunch done"))
+    note = ids_of(await session.call("prepare_compaction"))
+    proposed = await propose(session, updates=[{"event_id": d5["Lunch"], "end_note": note["lunch done"]}])
+    pid, revision = proposed["proposal_id"], proposed["revision"]
+    # An amend sent again -- its answer lost -- is given as it was made,
+    # not made into another revision.
+    edit = {"event": {"id": d5["Dinner"], "summary": "Late dinner"}}
+    amended = await session.call("amend_proposal", proposal_id=pid, revision=revision, updates=[edit])
+    again = await session.call("amend_proposal", proposal_id=pid, revision=revision, updates=[edit])
+    assert again["revision"] == amended["revision"] == revision + 1
+    assert len(again["user_edits"]) == 1
+    # And a note for Claude, once.
+    first = await session.call("add_proposal_note", proposal_id=pid, text="Dinner was late", event_id=d5["Dinner"])
+    second = await session.call("add_proposal_note", proposal_id=pid, text="Dinner was late", event_id=d5["Dinner"])
+    assert second["id"] == first["id"]
+    assert len((await session.call("get_proposal", proposal_id=pid))["feedback"]) == 1

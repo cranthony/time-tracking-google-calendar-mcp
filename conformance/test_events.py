@@ -130,20 +130,6 @@ async def test_move_resize_and_overlap_in_batch(session):
     assert [e["end"] for e in result["events"]] == ["2026-10-07T10:30:00-04:00", "2026-10-07T11:30:00-04:00"]
 
 
-async def test_shifts(session):
-    events = (await session.call(
-        "create_event",
-        events=[{"summary": "A", "start": at(9), "end": at(10)}, {"summary": "B", "start": at(10), "end": at(11)}, {"summary": "C", "start": at(13), "end": at(14)}],
-    ))["events"]
-    a, b, c = (e["id"] for e in events)
-    shifted = await session.call("update_event", shifts=[{"event_ids": [a, b], "minutes": 30}])
-    assert [e["start"] for e in shifted["events"]] == ["2026-10-07T09:30:00-04:00", "2026-10-07T10:30:00-04:00"]
-    await session.call_error("update_event", shifts=[{"event_ids": [b], "minutes": 150}])
-    await session.call("update_event", shifts=[{"event_ids": [c], "minutes": -60}])
-    # The same event twice in a batch.
-    await session.call_error("update_event", shifts=[{"event_ids": [a], "minutes": 5}], updates=[{"event": {"id": a, "summary": "x"}}])
-
-
 async def test_cancel(session):
     a, b = (e["id"] for e in (await session.call(
         "create_event",

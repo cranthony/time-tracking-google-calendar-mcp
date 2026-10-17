@@ -48,14 +48,13 @@ struct Asked {
     updates: Vec<Event>,
     creates: Vec<Event>,
     cancels: Vec<Cancel>,
-    shifts: Vec<Shift>,
     history_until: Option<Moment>,
     allow_compacted: bool,
 }
 
 impl Fixture {
     fn check(&self, asked: Asked) -> Result<Batch, ChangeError> {
-        self.changes.check(asked.updates, asked.creates, asked.cancels, asked.shifts, asked.history_until, asked.allow_compacted).unwrap()
+        self.changes.check(asked.updates, asked.creates, asked.cancels, asked.history_until, asked.allow_compacted).unwrap()
     }
 
     fn apply(&self, batch: &Batch, source: &str) -> Vec<Event> {
@@ -157,23 +156,10 @@ fn moving_whats_in_the_way_in_the_same_batch_passes() {
 }
 
 #[test]
-fn a_shift_moves_each_of_its_events_as_an_update() {
-    let f = fixture(day(), false);
-
-    let batch = f
-        .check(Asked { updates: vec![mv("coffee", "11:00", "11:45")], shifts: vec![Shift { event_ids: crate::testing::strings(&["gym", "lunch", "call"]), minutes: 15 }], ..Default::default() })
-        .unwrap();
-    f.apply(&batch, "update_event");
-
-    let starts: Vec<Option<Moment>> = ["gym", "lunch", "call"].iter().map(|id| f.event(id).start).collect();
-    assert_eq!(starts, vec![Some(time_at("11:45")), Some(time_at("12:45")), Some(time_at("13:30"))]);
-}
-
-#[test]
 fn an_event_can_have_only_one_change() {
     let f = fixture(day(), false);
 
-    let error = refused(f.check(Asked { updates: vec![mv("gym", "12:00", "13:00")], shifts: vec![Shift { event_ids: crate::testing::strings(&["gym"]), minutes: 5 }], ..Default::default() }));
+    let error = refused(f.check(Asked { updates: vec![mv("gym", "12:00", "13:00")], cancels: vec![cancel("gym", false)], ..Default::default() }));
 
     assert!(error.message.contains("event gym is in the batch twice"), "{}", error.message);
     assert_eq!(error.categories, vec!["duplicate_change".to_string()]);
@@ -256,7 +242,6 @@ fn what_started_before_the_last_compaction_cant_be_changed() {
         Asked { updates: vec![Event { id: Some("email".into()), summary: Some("Inbox".into()), ..Default::default() }], ..Default::default() },
         Asked { updates: vec![mv("report", "10:15", "11:00")], ..Default::default() },
         Asked { cancels: vec![cancel("email", false)], ..Default::default() },
-        Asked { shifts: vec![Shift { event_ids: crate::testing::strings(&["email"]), minutes: -10 }], ..Default::default() },
     ];
     let f = fixture(day(), false);
 
@@ -338,12 +323,12 @@ fn a_change_from_an_older_etag_is_stale_with_the_event_as_it_is_now() {
     f.apply(&f.check(Asked { updates: vec![Event { id: Some("email".into()), summary: Some("Inbox".into()), ..Default::default() }], ..Default::default() }).unwrap(), "update_event");
 
     let renamed = Event { id: Some("email".into()), summary: Some("Mail".into()), etag: Etag(Some(etag.clone())), ..Default::default() };
-    let error = f.changes.check(vec![renamed], vec![], vec![], vec![], None, false).unwrap_err();
+    let error = f.changes.check(vec![renamed], vec![], vec![], None, false).unwrap_err();
     let stale = error.downcast_ref::<StaleEvent>().unwrap();
     assert_eq!(stale.event.as_ref().unwrap().summary.as_deref(), Some("Inbox"));
 
     let cancel = Cancel { etag: Some(etag), ..cancel("email", false) };
-    assert!(f.changes.check(vec![], vec![], vec![cancel], vec![], None, false).unwrap_err().downcast_ref::<StaleEvent>().is_some());
+    assert!(f.changes.check(vec![], vec![], vec![cancel], None, false).unwrap_err().downcast_ref::<StaleEvent>().is_some());
     assert_eq!(f.event("email").summary.as_deref(), Some("Inbox"));
 }
 

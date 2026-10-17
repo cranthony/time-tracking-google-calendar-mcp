@@ -547,7 +547,7 @@ fn delete_blanks_the_row_without_moving_any_other_note() {
 
     let deleted = f.held(|s| s.delete(&id(T2, 3), None)).unwrap();
 
-    assert_eq!(deleted.note.description.as_deref(), Some("b"));
+    assert_eq!(deleted.unwrap().note.description.as_deref(), Some("b"));
     let notes: Vec<(String, Option<String>)> = f.sheet.read_with_rows(false).unwrap().into_iter().map(|n| (n.id(), n.note.description)).collect();
     assert_eq!(notes, vec![(id(T1, 2), Some("a".to_string())), (id(T2, 4), Some("c".to_string()))]);
 }
