@@ -63,9 +63,10 @@ pub fn create_action(app: &App, action: Action) -> Result<CreatedAction, ToolErr
 /// holds a label while there's room), active (holds a label), archived
 /// (not done any more) or deleted (shouldn't have existed); archiving or
 /// deleting frees its label, and making it active again restores it.
-/// Returns, as changed, the action as updated, plus any proposed action
-/// that gained or lost its label as a result, with label_slots_used of
-/// label_slots_total.
+/// Given version -- the version last seen -- it's refused if it's changed
+/// since. Returns, as changed, the action as updated, plus any proposed
+/// action that gained or lost its label as a result, with label_slots_used
+/// of label_slots_total.
 #[tool(writes)]
 pub fn update_action(app: &App, action: Action, clear_fields: Option<Vec<ClearableField>>) -> Result<ActionChanges, ToolError> {
     prefetch_stores(app)?;
@@ -137,7 +138,8 @@ pub fn update_priority_color(app: &App, priority: i64, color: String) -> Result<
 /// groups), background_color, priority or note. Omitted properties keep
 /// their value; list one in clear_fields to blank it instead. Its actions
 /// that don't set their own color follow its new one on the calendar.
-/// Returns, as changed, the group as updated, and as affected_actions,
+/// Given version -- the version last seen -- it's refused if it's changed
+/// since. Returns, as changed, the group as updated, and as affected_actions,
 /// every action whose path, effective_color or effective_priority
 /// changed as a result.
 #[tool(writes)]
@@ -151,9 +153,11 @@ pub fn update_action_group(app: &App, group: ActionGroup, clear_fields: Option<V
 /// aren't deleted: they move up into the group it was inside (or to the
 /// top level, if it was top-level). Returns the group as it was
 /// (deleted), as changed, the groups moved up out of it, and as
-/// affected_actions, every action moved or recolored as a result.
+/// affected_actions, every action moved or recolored as a result. Given
+/// if_version -- the version last seen -- it's refused if it's changed
+/// since.
 #[tool(writes)]
-pub fn delete_action_group(app: &App, group_id: String) -> Result<DeletedActionGroup, ToolError> {
+pub fn delete_action_group(app: &App, group_id: String, if_version: Option<i64>) -> Result<DeletedActionGroup, ToolError> {
     prefetch_stores(app)?;
-    app.actions()?.delete_action_group(&group_id).map_err(refused_or_conflict)
+    app.actions()?.delete_action_group(&group_id, if_version).map_err(refused_or_conflict)
 }

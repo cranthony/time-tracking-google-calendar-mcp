@@ -132,8 +132,8 @@ fn a_late_wake_up_extends_it_and_moves_the_rest_of_the_morning_as_decided() {
 fn edits_and_deletes_uncompacted_notes() {
     let setup = Setup::standard();
 
-    let edited = setup.call(|c| c.edit_note(&setup.note_id(2), None, Some("inbox zero"))).unwrap();
-    setup.call(|c| c.delete_note(&setup.note_id(3))).unwrap();
+    let edited = setup.call(|c| c.edit_note(&setup.note_id(2), None, Some("inbox zero"), None)).unwrap();
+    setup.call(|c| c.delete_note(&setup.note_id(3), None)).unwrap();
 
     let notes: Vec<(String, Option<String>)> = setup.notes(false).into_iter().map(|n| (n.id(), n.note.description)).collect();
     assert_eq!(notes, vec![(edited.id(), Some("inbox zero".to_string()))]);
@@ -143,9 +143,9 @@ fn edits_and_deletes_uncompacted_notes() {
 fn a_stale_id_is_a_compaction_error() {
     let setup = Setup::standard();
     let stale = setup.note_id(2);
-    setup.call(|c| c.edit_note(&stale, Some(time_at("09:10")), None)).unwrap();
+    setup.call(|c| c.edit_note(&stale, Some(time_at("09:10")), None, None)).unwrap();
 
-    refused(setup.call(|c| c.delete_note(&stale)), "no longer holds the note");
+    refused(setup.call(|c| c.delete_note(&stale, None)), "no longer holds the note");
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn a_planned_compaction_does_not_block_it_but_can_no_longer_be_committed() {
     let setup = Setup::standard();
     let id = setup.dry_run(setup.email_then_report()).compaction_id.unwrap();
 
-    setup.call(|c| c.edit_note(&setup.note_id(3), Some(time_at("10:25")), None)).unwrap();
+    setup.call(|c| c.edit_note(&setup.note_id(3), Some(time_at("10:25")), None, None)).unwrap();
 
     refused(setup.try_commit(&id), "changed since");
 }
@@ -167,9 +167,9 @@ fn refused_while_a_compaction_with_that_note_is_being_applied() {
         let note_id = setup.note_id(2);
 
         if edit {
-            refused(setup.call(|c| c.edit_note(&note_id, None, Some("x"))), "is applying");
+            refused(setup.call(|c| c.edit_note(&note_id, None, Some("x"), None)), "is applying");
         } else {
-            refused(setup.call(|c| c.delete_note(&note_id)), "is applying");
+            refused(setup.call(|c| c.delete_note(&note_id, None)), "is applying");
         }
 
         assert_eq!(setup.notes(false)[0].note.description.as_deref(), Some("email"));
@@ -183,7 +183,7 @@ fn a_note_outside_the_compaction_being_applied_can_still_change() {
     setup.set_status(&id, APPLYING);
     setup.append_note("08:00+1", Some("next day"));
 
-    setup.call(|c| c.edit_note(&setup.note_id(4), None, Some("tomorrow"))).unwrap();
+    setup.call(|c| c.edit_note(&setup.note_id(4), None, Some("tomorrow"), None)).unwrap();
 
     assert_eq!(setup.notes(false).last().unwrap().note.description.as_deref(), Some("tomorrow"));
 }

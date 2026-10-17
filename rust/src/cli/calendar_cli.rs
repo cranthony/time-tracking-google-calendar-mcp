@@ -534,7 +534,7 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
             let ago = duration(positional(rest, 0, "ago")?)?;
             let timestamp = now - chrono::Duration::milliseconds((ago * 1000.0).round() as i64);
             let noted = NotedTime { timestamp, description: rest.get(1).cloned(), compaction_id: None };
-            let appended = app.noted_time_sheet()?.append(&noted)?;
+            let appended = app.noted_time_sheet()?.append(&noted, None)?;
             wln!(out, "id: {}", appended.id());
             wln!(out, "{}", note_details(&noted));
         }
@@ -574,15 +574,15 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
             if timestamp.is_none() && description.is_none() {
                 return Err(usage("edit_note needs at least one of --ago, --at or --description"));
             }
-            let edited = edit_note(&app.noted_time_sheet()?, &app.journal()?, note_id, timestamp, description.as_deref())
+            let edited = edit_note(&app.noted_time_sheet()?, &app.journal()?, note_id, timestamp, description.as_deref(), None)
                 .map_err(|e| refused(e))?;
             wln!(out, "id: {}", edited.id());
             wln!(out, "{}", note_details(&edited.note));
         }
         "delete_note" => {
-            let deleted = delete_note(&app.noted_time_sheet()?, &app.journal()?, positional(rest, 0, "note_id")?).map_err(refused)?;
+            let deleted = delete_note(&app.noted_time_sheet()?, &app.journal()?, positional(rest, 0, "note_id")?, None).map_err(refused)?;
             wln!(out, "Deleted:");
-            wln!(out, "{}", note_details(&deleted));
+            wln!(out, "{}", note_details(&deleted.note));
         }
         other => return Err(usage(format!("argument command: invalid choice: {}", py::repr(other)))),
     }

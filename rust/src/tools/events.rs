@@ -10,7 +10,7 @@ use crate::facts::{fact_problems, Facts as EventFacts};
 use crate::py;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::ActionTree;
-use crate::stores::event_changes::{self, Cancel, EventChanges, Shift};
+use crate::stores::event_changes::{self, Cancel, EventChanges, Shift, StaleEvent};
 use crate::stores::notes::NotedTime as StoredNote;
 use crate::stores::schedule::ScheduleHint;
 use super::recurrences::{stored_repeat, Repeat};
@@ -133,14 +133,22 @@ pub struct PublicEvent {
     pub judgments: Option<Map<String, Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repeat: Option<Repeat>,
+    /// Which version of the event this is, as Calendar gives it; it
+    /// changes whenever the event does. Given to update_event, it's the
+    /// version last seen: the update is refused if the event's changed
+    /// since.
+    pub etag: Option<String>,
 }
 
 /// An event to cancel, and whether that counts against follow-through:
 /// a commitment dropped (true) rather than just a change of plan (false).
+/// Given etag -- the event's last seen -- it's refused if the event's
+/// changed since.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct EventCancel {
     pub event_id: String,
     pub counts_against_follow_through: bool,
+    pub etag: Option<String>,
 }
 
 /// Events to move together by `minutes` (later if positive, earlier if
@@ -174,6 +182,9 @@ pub struct NotedTime {
     pub timestamp: DateTimeText,
     pub description: Option<String>,
     pub compaction_id: Option<String>,
+    /// The note's own id, if a client chose it: given to note in a call
+    /// made once (by its write_id), the note is named by it.
+    pub id: Option<String>,
 }
 
 /// A note, with the id that edit_note and delete_note (and compaction)
@@ -184,6 +195,10 @@ pub struct NoteWithId {
     pub timestamp: DateTimeText,
     pub description: Option<String>,
     pub compaction_id: Option<String>,
+    /// Goes up by one each time it's edited. Given to edit_note (version)
+    /// or delete_note (if_version), it's the version last seen: the change
+    /// is refused if the note's changed since.
+    pub version: Option<i64>,
 }
 
 
@@ -242,6 +257,7 @@ pub fn public_event(event: &Event, tree: Option<&ActionTree>) -> Value {
     out.insert("recurring_event_id".into(), json!(event.recurring_event_id));
     out.insert("facts".into(), event.facts.as_ref().map(EventFacts::to_public).unwrap_or(Value::Null));
     out.insert("judgments".into(), event.judgments.clone().map(Value::Object).unwrap_or(Value::Null));
+    out.insert("etag".into(), json!(event.etag.0));
     Value::Object(out)
 }
 
@@ -266,6 +282,7 @@ pub fn to_event(event: &PublicEvent, clear_fields: &[EventField]) -> Result<Even
         facts: event.facts.as_ref().map(|f| EventFacts::from(f).normalized()),
         judgments: event.judgments.clone(),
         cleared: texts(clear_fields).into_iter().collect(),
+        etag: crate::event::Etag(event.etag.clone()),
         ..Default::default()
     };
     event.check_cleared().map_err(|e| ToolError::Message(e.to_string()))?;
@@ -360,7 +377,7 @@ fn change_events(
 ) -> Result<Value, ToolError> {
     let changes = EventChanges::new(ActionCalendar::new(app.calendar_client()?, app.actions()?), Some(app.cancellations()?));
     let history_until = app.journal()?.last_stamped_now()?;
-    let checked = match changes.check(updates, creates, cancels, shifts, history_until, allow_compacted)? {
+    let checked = match changes.check(updates, creates, cancels, shifts, history_until, allow_compacted).map_err(|e| stale(app, e))? {
         Ok(batch) => batch,
         Err(error) => {
             tracing::warn!(
@@ -379,7 +396,7 @@ fn change_events(
             .map(|c| c.after.clone().unwrap_or_else(|| Event { status: Some("cancelled".into()), ..c.before.clone().unwrap() }))
             .collect()
     } else {
-        changes.apply(&checked, tool_name)?
+        changes.apply(&checked, tool_name).map_err(|e| stale(app, e))?
     };
     Ok(json!({
         "events": public_events(app, &events)?,
@@ -401,7 +418,30 @@ fn schedule_time_zone(app: &App) -> anyhow::Result<Value> {
 // -- notes -----------------------------------------------------------------------------
 
 fn to_cancels(cancels: Vec<EventCancel>) -> Vec<Cancel> {
-    cancels.into_iter().map(|c| Cancel { event_id: c.event_id, counts_against_follow_through: c.counts_against_follow_through }).collect()
+    cancels
+        .into_iter()
+        .map(|c| Cancel { event_id: c.event_id, counts_against_follow_through: c.counts_against_follow_through, etag: c.etag })
+        .collect()
+}
+
+/// `error`, as a conflict if it's a change to an event that's changed
+/// since the client read it, with the event as it is now.
+fn stale(app: &App, error: anyhow::Error) -> ToolError {
+    let Some(stale) = error.downcast_ref::<StaleEvent>() else { return error.into() };
+    let current = match &stale.event {
+        Some(event) => match public_events(app, std::slice::from_ref(event)) {
+            Ok(Value::Array(mut shown)) => shown.pop().and_then(|e| e.as_object().cloned()),
+            Ok(_) => None,
+            Err(error) => return error.into(),
+        },
+        None => None,
+    };
+    ToolError::Conflict(crate::sheet::rows::Conflict {
+        kind: "event",
+        id: stale.event_id.clone(),
+        expected: crate::sheet::rows::Seen::Etag(stale.expected.clone()),
+        current,
+    })
 }
 
 // -- the tools ------------------------------------------------------------------
@@ -596,7 +636,7 @@ pub fn note(app: &App, noted_time: NotedTime) -> Result<NoteWithId, ToolError> {
         description: noted_time.description,
         compaction_id: None,
     };
-    from_store(app.noted_time_sheet()?.append(&recorded)?.with_id())
+    from_store(app.noted_time_sheet()?.append(&recorded, noted_time.id.as_deref())?.with_id())
 }
 
 /// List the recorded time notes, sorted by timestamp, each with the id

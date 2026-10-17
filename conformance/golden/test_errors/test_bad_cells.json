@@ -19,7 +19,8 @@
       "name": "Music",
       "note": null,
       "path": "Music",
-      "priority": 1
+      "priority": 1,
+      "version": 1
      }
     ],
     "created_id": "co2yzn",
@@ -27,7 +28,7 @@
     "label_slots_used": 4
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"Music\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"Music\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"path\": \"Music\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"version\": 1\n    }\n  ],\n  \"affected_actions\": [],\n  \"label_slots_used\": 4,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action_group"
   },
   {
@@ -54,7 +55,8 @@
       "note": null,
       "path": "Music › play guitar",
       "priority": 2,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "created_id": "3dnjav",
@@ -62,7 +64,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -168,11 +170,12 @@
      "name": "Music",
      "note": null,
      "path": "Music",
-     "priority": 1
+     "priority": 1,
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"Music\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": null,\n  \"path\": \"Music\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"Music\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": null,\n  \"path\": \"Music\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"version\": 1\n}",
    "tool": "get_action_groups"
   },
   {
@@ -253,14 +256,15 @@
       "note": null,
       "path": "Music › play guitar",
       "priority": 2,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   }
  ],
@@ -365,7 +369,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -458,7 +463,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1060,7 +1066,8 @@
         "Music",
         "",
         "1",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1194,7 +1201,8 @@
         "",
         "2",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -2665,12 +2673,15 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ],
        [
         "co2yzn",
         "",
         "Music",
+        "",
+        "1",
         "",
         "1"
        ]
@@ -2703,7 +2714,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ],
        [
         "3dnjav",
@@ -2712,7 +2724,10 @@
         "active",
         "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "",
-        "2"
+        "2",
+        "",
+        "",
+        "1"
        ]
       ]
      },

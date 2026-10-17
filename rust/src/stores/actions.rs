@@ -61,6 +61,7 @@ pub struct ListedAction {
     pub effective_color: Option<String>,
     pub effective_priority: Option<i64>,
     pub holds_label: Option<bool>,
+    pub version: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -87,6 +88,9 @@ pub struct Action {
     /// Whether it's a way of getting from one place to another ("drive",
     /// "walk"), which a travel time can be by.
     pub commute: Option<bool>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -119,6 +123,7 @@ pub struct ListedActionGroup {
     pub path: Option<String>,
     pub effective_color: Option<String>,
     pub effective_priority: Option<i64>,
+    pub version: Option<i64>,
 }
 
 /// One action group: a name that rolls actions up (see
@@ -131,6 +136,9 @@ pub struct ActionGroup {
     pub background_color: Option<String>,
     pub priority: Option<i64>,
     pub note: Option<String>,
+    /// Goes up by one each time it changes. Given to an update, it's the
+    /// version last seen: the update is refused if it's changed since.
+    pub version: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -404,15 +412,16 @@ impl Actions {
     pub fn create_action(&self, action: &Action) -> anyhow::Result<CreatedAction> {
         check_color(action.background_color.as_deref())?;
         let actions = self.all()?;
-        let id = rows::new_id(actions.iter().map(|a| a.id.as_deref()).collect::<Vec<_>>());
+        let groups = self.groups()?.groups;
+        let id = new_id(action.id.as_deref(), &actions, &groups)?;
         let namespace = uuid::Uuid::parse_str(LABEL_ID_NAMESPACE).unwrap();
         let new = Action {
             id: Some(id.clone()),
             label_id: Some(uuid::Uuid::new_v5(&namespace, id.as_bytes()).to_string()),
             status: Some(action.status.unwrap_or(ActionStatus::Proposed)),
+            version: None,
             ..action.clone()
         };
-        let groups = self.groups()?.groups;
         let mut after = actions.clone();
         after.push(new);
         let changes = self.commit(&actions, &after, &groups, &groups, CommitOptions { write_groups: false, ..Default::default() })?;
@@ -434,6 +443,7 @@ impl Actions {
         check_color(action.background_color.as_deref())?;
         let actions = self.all()?;
         let Some(index) = actions.iter().position(|a| a.id.as_deref() == Some(id.as_str())) else {
+            rows::expect_item_version::<Action>(&id, None, action.version)?;
             bail!("{}", unknown_message(&actions, &id));
         };
         let mut after = actions.clone();
@@ -454,9 +464,9 @@ impl Actions {
     pub fn create_action_group(&self, group: &ActionGroup) -> anyhow::Result<CreatedActionGroup> {
         check_color(group.background_color.as_deref())?;
         let groups = self.groups()?.groups;
-        let id = rows::new_id(groups.iter().map(|g| g.id.as_deref()).collect::<Vec<_>>());
-        let new = ActionGroup { id: Some(id.clone()), ..group.clone() };
         let actions = self.all()?;
+        let id = new_id(group.id.as_deref(), &actions, &groups)?;
+        let new = ActionGroup { id: Some(id.clone()), version: None, ..group.clone() };
         let mut after = groups.clone();
         after.push(new);
         let changes = self.commit(&actions, &actions, &groups, &after, CommitOptions { write_actions: false, ..Default::default() })?;
@@ -477,6 +487,7 @@ impl Actions {
         check_color(group.background_color.as_deref())?;
         let groups = self.groups()?.groups;
         let Some(index) = groups.iter().position(|g| g.id.as_deref() == Some(id.as_str())) else {
+            rows::expect_item_version::<ActionGroup>(&id, None, group.version)?;
             find_group(&groups, &id)?;
             unreachable!()
         };
@@ -492,12 +503,18 @@ impl Actions {
         })
     }
 
-    pub fn delete_action_group(&self, group_id: &str) -> anyhow::Result<DeletedActionGroup> {
+    /// Deletes a group -- unless it's changed since version `if_version`,
+    /// if given.
+    pub fn delete_action_group(&self, group_id: &str, if_version: Option<i64>) -> anyhow::Result<DeletedActionGroup> {
         let groups = self.groups()?.groups;
         let deleted = match groups.iter().find(|g| g.id.as_deref() == Some(group_id)) {
             Some(found) => found.clone(),
-            None => find_group(&groups, group_id)?,
+            None => {
+                rows::expect_item_version::<ActionGroup>(group_id, None, if_version)?;
+                find_group(&groups, group_id)?
+            }
         };
+        rows::expect_item_version(group_id, Some(&deleted), if_version)?;
         if deleted.id.as_deref() != Some(group_id) {
             bail!("Delete a group by its id: {} is {}", repr_or_none(deleted.name.as_deref()), str_or_none(deleted.id.as_deref()));
         }
@@ -606,6 +623,13 @@ impl Default for CommitOptions {
     fn default() -> Self {
         CommitOptions { write_actions: true, write_groups: true, changed_actions: Vec::new(), changed_groups: Vec::new(), priority_colors: None }
     }
+}
+
+/// An id that's neither an action's nor a group's (a trait's part can
+/// name either): `given`, the client's choice, if it can be (see
+/// rows::chosen_id), or else a new one.
+fn new_id(given: Option<&str>, actions: &[Action], groups: &[ActionGroup]) -> anyhow::Result<String> {
+    rows::chosen_id(given, actions.iter().map(|a| a.id.as_deref()).chain(groups.iter().map(|g| g.id.as_deref())).collect::<Vec<_>>())
 }
 
 /// The set of labels, compared as Python compares `{astuple(label)}`.
@@ -733,6 +757,7 @@ pub fn listed(action: &Action, tree: &GroupTree, holders: &[Option<String>]) -> 
         effective_color: Some(tree.color(action)),
         effective_priority: tree.priority(action),
         holds_label: Some(holders.contains(&action.id)),
+        version: action.version,
     }
 }
 

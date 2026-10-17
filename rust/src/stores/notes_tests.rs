@@ -240,7 +240,7 @@ fn the_latest_compacted_note_has_the_latest_timestamp_then_the_latest_row() {
 
 #[test]
 fn an_id_is_the_timestamp_and_the_row_together_and_round_trips() {
-    let note = SheetNote { row: 7, note: noted("2026-01-01T09:05:00+00:00", None) };
+    let note = SheetNote { row: 7, note: noted("2026-01-01T09:05:00+00:00", None), own_id: None, version: None };
 
     assert_eq!(note.id(), "2026-01-01T09:05:00+00:00#7");
     assert_eq!(parse_note_id(&note.id()).unwrap(), (at("2026-01-01T09:05:00+00:00"), 7));
@@ -264,9 +264,9 @@ fn appends_only_the_new_row_after_the_existing_ones() {
     // compaction stamp on one of them).
     let f = fixture(vec![row(&["2025-01-01T00:00:00+00:00", "Old"]), row(&[T2, "Older"])]);
 
-    let appended = f.held(|s| s.append(&noted(T1, Some("New")))).unwrap();
+    let appended = f.held(|s| s.append(&noted(T1, Some("New")), None)).unwrap();
 
-    assert_eq!(f.writes(), vec![("A4:C4".to_string(), json!([[T1, "New", ""]]))]);
+    assert_eq!(f.writes(), vec![("A1:D1".to_string(), json!([["timestamp", "description", "compaction_id", "version"]])), ("A4:D4".to_string(), json!([[T1, "New", "", "1"]]))]);
     assert_eq!(appended.id(), id(T1, 4));
 }
 
@@ -274,16 +274,16 @@ fn appends_only_the_new_row_after_the_existing_ones() {
 fn appends_to_an_empty_tab() {
     let f = fixture(vec![]);
 
-    f.held(|s| s.append(&noted(T1, None))).unwrap();
+    f.held(|s| s.append(&noted(T1, None), None)).unwrap();
 
-    assert_eq!(f.writes(), vec![("A2:C2".to_string(), json!([[T1, "", ""]]))]);
+    assert_eq!(f.writes(), vec![("A1:D1".to_string(), json!([["timestamp", "description", "compaction_id", "version"]])), ("A2:D2".to_string(), json!([[T1, "", "", "1"]]))]);
 }
 
 #[test]
 fn appends_after_the_last_row_reading_the_tab_once() {
     let f = fixture(vec![row(&[T1, "a"]), vec![], row(&[T1, "c"])]);
 
-    let appended = f.held(|s| s.append(&noted(T1, None))).unwrap();
+    let appended = f.held(|s| s.append(&noted(T1, None), None)).unwrap();
 
     // After the last row, even with a blank one before it.
     assert_eq!(appended.row, 5);
@@ -294,7 +294,7 @@ fn appends_after_the_last_row_reading_the_tab_once() {
 fn the_appended_note_is_read_back_by_its_id() {
     let f = fixture(vec![row(&[T1, "a"])]);
 
-    let appended = f.held(|s| s.append(&noted(T2, Some("b")))).unwrap();
+    let appended = f.held(|s| s.append(&noted(T2, Some("b")), None)).unwrap();
 
     assert_eq!(appended.id(), id(T2, 3));
     assert_eq!(f.ids(false), vec![id(T1, 2), id(T2, 3)]);
@@ -407,11 +407,11 @@ fn blank_rows_count_and_are_deleted_with_the_prefix() {
 fn append_garbage_collects_first_from_the_same_read() {
     let f = fixture(compacted(55, T1, "a"));
 
-    let appended = f.held(|s| s.append(&noted(T1, None))).unwrap();
+    let appended = f.held(|s| s.append(&noted(T1, None), None)).unwrap();
 
     let remaining = f.rows();
     assert_eq!(remaining.len(), 26); // trimmed from 55 to 25, + 1 appended
-    assert_eq!(remaining.last().unwrap(), &row(&[T1]));
+    assert_eq!(remaining.last().unwrap(), &row(&[T1, "", "", "1"]));
     assert_eq!(appended.row, 27);
     assert_eq!(f.reads().len(), 1);
 }
@@ -503,7 +503,7 @@ fn stamping_no_notes_does_nothing() {
 fn edit_changes_the_description_in_place() {
     let f = fixture(vec![row(&[T1, "a"]), row(&[T2, "b"])]);
 
-    let edited = f.held(|s| s.edit(&id(T1, 2), None, Some("started work"))).unwrap();
+    let edited = f.held(|s| s.edit(&id(T1, 2), None, Some("started work"), None)).unwrap();
 
     assert_eq!(edited.id(), id(T1, 2));
     let notes: Vec<(String, Option<String>)> = f.sheet.read_with_rows(false).unwrap().into_iter().map(|n| (n.id(), n.note.description)).collect();
@@ -515,7 +515,7 @@ fn changing_the_timestamp_changes_the_id_but_not_the_row() {
     let f = fixture(vec![row(&[T1, "a"]), row(&[T2, "b"])]);
     let later = "2026-01-01T09:30:00+00:00";
 
-    let edited = f.held(|s| s.edit(&id(T1, 2), Some(at(later)), None)).unwrap();
+    let edited = f.held(|s| s.edit(&id(T1, 2), Some(at(later)), None, None)).unwrap();
 
     assert_eq!(edited.id(), id(later, 2));
     assert_eq!(edited.note.description.as_deref(), Some("a"));
@@ -526,7 +526,7 @@ fn changing_the_timestamp_changes_the_id_but_not_the_row() {
 fn an_empty_description_clears_it() {
     let f = fixture(vec![row(&[T1, "a"])]);
 
-    f.held(|s| s.edit(&id(T1, 2), None, Some("  "))).unwrap();
+    f.held(|s| s.edit(&id(T1, 2), None, Some("  "), None)).unwrap();
 
     assert_eq!(f.sheet.read_with_rows(false).unwrap()[0].note.description, None);
 }
@@ -534,10 +534,10 @@ fn an_empty_description_clears_it() {
 #[test]
 fn edit_refuses_a_stale_id_or_a_compacted_note() {
     let f = fixture(vec![row(&[T2, "edited since it was read"])]);
-    assert!(f.held(|s| s.edit(&id(T1, 2), None, Some("x"))).unwrap_err().to_string().contains("no longer holds the note"));
+    assert!(f.held(|s| s.edit(&id(T1, 2), None, Some("x"), None)).unwrap_err().to_string().contains("no longer holds the note"));
 
     let f = fixture(vec![row(&[T1, "a", "cmp1"])]);
-    assert!(f.held(|s| s.edit(&id(T1, 2), None, Some("x"))).unwrap_err().to_string().contains("already compacted"));
+    assert!(f.held(|s| s.edit(&id(T1, 2), None, Some("x"), None)).unwrap_err().to_string().contains("already compacted"));
     assert_eq!(f.sheet.read_with_rows(true).unwrap()[0].note.description.as_deref(), Some("a"));
 }
 
@@ -545,9 +545,9 @@ fn edit_refuses_a_stale_id_or_a_compacted_note() {
 fn delete_blanks_the_row_without_moving_any_other_note() {
     let f = fixture(vec![row(&[T1, "a"]), row(&[T2, "b"]), row(&[T2, "c"])]);
 
-    let deleted = f.held(|s| s.delete(&id(T2, 3))).unwrap();
+    let deleted = f.held(|s| s.delete(&id(T2, 3), None)).unwrap();
 
-    assert_eq!(deleted.description.as_deref(), Some("b"));
+    assert_eq!(deleted.note.description.as_deref(), Some("b"));
     let notes: Vec<(String, Option<String>)> = f.sheet.read_with_rows(false).unwrap().into_iter().map(|n| (n.id(), n.note.description)).collect();
     assert_eq!(notes, vec![(id(T1, 2), Some("a".to_string())), (id(T2, 4), Some("c".to_string()))]);
 }
@@ -555,24 +555,24 @@ fn delete_blanks_the_row_without_moving_any_other_note() {
 #[test]
 fn a_deleted_id_is_stale_afterward() {
     let f = fixture(vec![row(&[T1, "a"])]);
-    f.held(|s| s.delete(&id(T1, 2))).unwrap();
+    f.held(|s| s.delete(&id(T1, 2), None)).unwrap();
 
-    assert!(f.held(|s| s.delete(&id(T1, 2))).unwrap_err().to_string().contains("no longer holds the note"));
+    assert!(f.held(|s| s.delete(&id(T1, 2), None)).unwrap_err().to_string().contains("no longer holds the note"));
 }
 
 #[test]
 fn delete_refuses_a_compacted_note() {
     let f = fixture(vec![row(&[T1, "a", "cmp1"])]);
 
-    assert!(f.held(|s| s.delete(&id(T1, 2))).unwrap_err().to_string().contains("already compacted"));
+    assert!(f.held(|s| s.delete(&id(T1, 2), None)).unwrap_err().to_string().contains("already compacted"));
 }
 
 #[test]
 fn the_next_note_still_appends_after_the_last_one() {
     let f = fixture(vec![row(&[T1, "a"]), row(&[T2, "b"])]);
-    f.held(|s| s.delete(&id(T1, 2))).unwrap();
+    f.held(|s| s.delete(&id(T1, 2), None)).unwrap();
 
-    let appended = f.held(|s| s.append(&noted(T2, Some("c")))).unwrap();
+    let appended = f.held(|s| s.append(&noted(T2, Some("c")), None)).unwrap();
 
     assert_eq!(appended.id(), id(T2, 4));
 }

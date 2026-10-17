@@ -53,7 +53,7 @@ fn a_public_event_shows_just_its_public_fields() {
         fields,
         vec![
             "id", "summary", "start", "end", "description", "location", "priority", "action_ids", "action_names", "actions_from_label",
-            "event_label_id", "is_cancelled", "effective_priority", "is_end_of_day_sleep", "recurring_event_id", "facts", "judgments",
+            "event_label_id", "is_cancelled", "effective_priority", "is_end_of_day_sleep", "recurring_event_id", "facts", "judgments", "etag",
         ]
     );
 }

@@ -2150,14 +2150,14 @@ impl NoteCompactor {
         Ok(checked)
     }
 
-    pub fn edit_note(&self, note_id: &str, timestamp: Option<Moment>, description: Option<&str>) -> anyhow::Result<SheetNote> {
+    pub fn edit_note(&self, note_id: &str, timestamp: Option<Moment>, description: Option<&str>, if_version: Option<i64>) -> anyhow::Result<SheetNote> {
         self.prefetch_tabs(false)?;
-        edit_note(&self.notes, &self.journal, note_id, timestamp, description)
+        edit_note(&self.notes, &self.journal, note_id, timestamp, description, if_version)
     }
 
-    pub fn delete_note(&self, note_id: &str) -> anyhow::Result<NotedTime> {
+    pub fn delete_note(&self, note_id: &str, if_version: Option<i64>) -> anyhow::Result<SheetNote> {
         self.prefetch_tabs(false)?;
-        delete_note(&self.notes, &self.journal, note_id)
+        delete_note(&self.notes, &self.journal, note_id, if_version)
     }
 
     pub fn abandon(&self, compaction_id: &str) -> anyhow::Result<CompactionResult> {
@@ -2637,22 +2637,30 @@ impl NoteCompactor {
 
 /// `edit_note`: `NotedTimeSheet::edit`, refused (a CompactionError) for a
 /// note a compaction is partway through applying -- it stamps its notes
-/// last, by their ids.
-pub fn edit_note(notes: &NotedTimeSheet, journal: &CompactionJournal, note_id: &str, timestamp: Option<Moment>, description: Option<&str>) -> anyhow::Result<SheetNote> {
+/// last, by their ids. A note changed since the version given is a
+/// `Conflict`, as it is.
+pub fn edit_note(
+    notes: &NotedTimeSheet,
+    journal: &CompactionJournal,
+    note_id: &str,
+    timestamp: Option<Moment>,
+    description: Option<&str>,
+    if_version: Option<i64>,
+) -> anyhow::Result<SheetNote> {
     require_not_being_applied(journal, note_id)?;
-    match notes.edit(note_id, timestamp, description) {
+    match notes.edit(note_id, timestamp, description, if_version) {
         Ok(note) => Ok(note),
-        Err(e) if google_status(&e).is_some() => Err(e),
+        Err(e) if google_status(&e).is_some() || e.downcast_ref::<crate::sheet::rows::Conflict>().is_some() => Err(e),
         Err(e) => Err(ce(e.to_string(), "note_edit")),
     }
 }
 
 /// `delete_note`: `NotedTimeSheet::delete`, refused like `edit_note`.
-pub fn delete_note(notes: &NotedTimeSheet, journal: &CompactionJournal, note_id: &str) -> anyhow::Result<NotedTime> {
+pub fn delete_note(notes: &NotedTimeSheet, journal: &CompactionJournal, note_id: &str, if_version: Option<i64>) -> anyhow::Result<SheetNote> {
     require_not_being_applied(journal, note_id)?;
-    match notes.delete(note_id) {
+    match notes.delete(note_id, if_version) {
         Ok(note) => Ok(note),
-        Err(e) if google_status(&e).is_some() => Err(e),
+        Err(e) if google_status(&e).is_some() || e.downcast_ref::<crate::sheet::rows::Conflict>().is_some() => Err(e),
         Err(e) => Err(ce(e.to_string(), "note_edit")),
     }
 }

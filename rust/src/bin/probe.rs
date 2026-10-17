@@ -463,7 +463,7 @@ fn batch(raw: &Raw) -> anyhow::Result<()> {
 
     println!("\n3. Fetch them in one batch");
     let gets: Vec<BatchRequest> =
-        ids.iter().map(|id| BatchRequest { method: "GET", path: format!("calendars/{}/events/{}", segment(&raw.calendar_id), segment(id)), query: Vec::new(), body: None }).collect();
+        ids.iter().map(|id| BatchRequest { method: "GET", path: format!("calendars/{}/events/{}", segment(&raw.calendar_id), segment(id)), query: Vec::new(), body: None, if_match: None }).collect();
     let answers = raw.google.calendar_batch(&gets)?;
     check("each fetched, in order", ids_of(&answers) == ids, shown(&answers));
     Ok(())
@@ -770,7 +770,7 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
     actions.update_action(&typed(json!({"id": walk, "group_id": outdoors})), &[])?;
     let color = client.list_event_labels()?.0.into_iter().find(|l| l.id.as_deref() == Some(walk_label.as_str())).map(|l| l.background_color).unwrap_or_default();
     step("an action's label takes its group's color", color.to_lowercase() == "#0b8043", &color)?;
-    actions.delete_action_group(&outdoors)?;
+    actions.delete_action_group(&outdoors, None)?;
     step(
         "deleting the group moves the action to the top",
         actions.get_action(&walk)?.group_id.is_none() && actions.get_action_groups()?.is_empty(),

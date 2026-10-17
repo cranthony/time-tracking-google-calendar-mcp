@@ -11,10 +11,11 @@
     "compaction_id": null,
     "description": "step 0 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:00:00-04:00#2",
-    "timestamp": "2026-10-07T10:00:00-04:00"
+    "timestamp": "2026-10-07T10:00:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": \"step 0 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": \"step 0 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -28,10 +29,11 @@
     "compaction_id": null,
     "description": "step 5 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:05:00-04:00#3",
-    "timestamp": "2026-10-07T10:05:00-04:00"
+    "timestamp": "2026-10-07T10:05:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:05:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T10:05:00-04:00\",\n  \"description\": \"step 5 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:05:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T10:05:00-04:00\",\n  \"description\": \"step 5 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -45,10 +47,11 @@
     "compaction_id": null,
     "description": "step 10 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:10:00-04:00#4",
-    "timestamp": "2026-10-07T10:10:00-04:00"
+    "timestamp": "2026-10-07T10:10:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:10:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T10:10:00-04:00\",\n  \"description\": \"step 10 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:10:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T10:10:00-04:00\",\n  \"description\": \"step 10 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -62,10 +65,11 @@
     "compaction_id": null,
     "description": "step 15 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:15:00-04:00#5",
-    "timestamp": "2026-10-07T10:15:00-04:00"
+    "timestamp": "2026-10-07T10:15:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:15:00-04:00#5\",\n  \"timestamp\": \"2026-10-07T10:15:00-04:00\",\n  \"description\": \"step 15 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:15:00-04:00#5\",\n  \"timestamp\": \"2026-10-07T10:15:00-04:00\",\n  \"description\": \"step 15 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -79,10 +83,11 @@
     "compaction_id": null,
     "description": "step 20 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:20:00-04:00#6",
-    "timestamp": "2026-10-07T10:20:00-04:00"
+    "timestamp": "2026-10-07T10:20:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:20:00-04:00#6\",\n  \"timestamp\": \"2026-10-07T10:20:00-04:00\",\n  \"description\": \"step 20 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:20:00-04:00#6\",\n  \"timestamp\": \"2026-10-07T10:20:00-04:00\",\n  \"description\": \"step 20 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -96,10 +101,11 @@
     "compaction_id": null,
     "description": "step 25 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:25:00-04:00#7",
-    "timestamp": "2026-10-07T10:25:00-04:00"
+    "timestamp": "2026-10-07T10:25:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:25:00-04:00#7\",\n  \"timestamp\": \"2026-10-07T10:25:00-04:00\",\n  \"description\": \"step 25 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:25:00-04:00#7\",\n  \"timestamp\": \"2026-10-07T10:25:00-04:00\",\n  \"description\": \"step 25 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -113,10 +119,11 @@
     "compaction_id": null,
     "description": "step 30 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:30:00-04:00#8",
-    "timestamp": "2026-10-07T10:30:00-04:00"
+    "timestamp": "2026-10-07T10:30:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:30:00-04:00#8\",\n  \"timestamp\": \"2026-10-07T10:30:00-04:00\",\n  \"description\": \"step 30 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:30:00-04:00#8\",\n  \"timestamp\": \"2026-10-07T10:30:00-04:00\",\n  \"description\": \"step 30 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -130,10 +137,11 @@
     "compaction_id": null,
     "description": "step 35 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:35:00-04:00#9",
-    "timestamp": "2026-10-07T10:35:00-04:00"
+    "timestamp": "2026-10-07T10:35:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:35:00-04:00#9\",\n  \"timestamp\": \"2026-10-07T10:35:00-04:00\",\n  \"description\": \"step 35 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:35:00-04:00#9\",\n  \"timestamp\": \"2026-10-07T10:35:00-04:00\",\n  \"description\": \"step 35 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -147,10 +155,11 @@
     "compaction_id": null,
     "description": "step 40 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:40:00-04:00#10",
-    "timestamp": "2026-10-07T10:40:00-04:00"
+    "timestamp": "2026-10-07T10:40:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:40:00-04:00#10\",\n  \"timestamp\": \"2026-10-07T10:40:00-04:00\",\n  \"description\": \"step 40 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:40:00-04:00#10\",\n  \"timestamp\": \"2026-10-07T10:40:00-04:00\",\n  \"description\": \"step 40 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -164,10 +173,11 @@
     "compaction_id": null,
     "description": "step 45 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:45:00-04:00#11",
-    "timestamp": "2026-10-07T10:45:00-04:00"
+    "timestamp": "2026-10-07T10:45:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:45:00-04:00#11\",\n  \"timestamp\": \"2026-10-07T10:45:00-04:00\",\n  \"description\": \"step 45 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:45:00-04:00#11\",\n  \"timestamp\": \"2026-10-07T10:45:00-04:00\",\n  \"description\": \"step 45 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -181,10 +191,11 @@
     "compaction_id": null,
     "description": "step 50 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:50:00-04:00#12",
-    "timestamp": "2026-10-07T10:50:00-04:00"
+    "timestamp": "2026-10-07T10:50:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:50:00-04:00#12\",\n  \"timestamp\": \"2026-10-07T10:50:00-04:00\",\n  \"description\": \"step 50 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:50:00-04:00#12\",\n  \"timestamp\": \"2026-10-07T10:50:00-04:00\",\n  \"description\": \"step 50 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -198,10 +209,11 @@
     "compaction_id": null,
     "description": "step 55 — café ☕ \"quoted\", comma",
     "id": "2026-10-07T10:55:00-04:00#13",
-    "timestamp": "2026-10-07T10:55:00-04:00"
+    "timestamp": "2026-10-07T10:55:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:55:00-04:00#13\",\n  \"timestamp\": \"2026-10-07T10:55:00-04:00\",\n  \"description\": \"step 55 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:55:00-04:00#13\",\n  \"timestamp\": \"2026-10-07T10:55:00-04:00\",\n  \"description\": \"step 55 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -211,77 +223,89 @@
      "compaction_id": null,
      "description": "step 0 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:00:00-04:00#2",
-     "timestamp": "2026-10-07T10:00:00-04:00"
+     "timestamp": "2026-10-07T10:00:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 5 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:05:00-04:00#3",
-     "timestamp": "2026-10-07T10:05:00-04:00"
+     "timestamp": "2026-10-07T10:05:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 10 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:10:00-04:00#4",
-     "timestamp": "2026-10-07T10:10:00-04:00"
+     "timestamp": "2026-10-07T10:10:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 15 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:15:00-04:00#5",
-     "timestamp": "2026-10-07T10:15:00-04:00"
+     "timestamp": "2026-10-07T10:15:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 20 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:20:00-04:00#6",
-     "timestamp": "2026-10-07T10:20:00-04:00"
+     "timestamp": "2026-10-07T10:20:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 25 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:25:00-04:00#7",
-     "timestamp": "2026-10-07T10:25:00-04:00"
+     "timestamp": "2026-10-07T10:25:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 30 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:30:00-04:00#8",
-     "timestamp": "2026-10-07T10:30:00-04:00"
+     "timestamp": "2026-10-07T10:30:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 35 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:35:00-04:00#9",
-     "timestamp": "2026-10-07T10:35:00-04:00"
+     "timestamp": "2026-10-07T10:35:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 40 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:40:00-04:00#10",
-     "timestamp": "2026-10-07T10:40:00-04:00"
+     "timestamp": "2026-10-07T10:40:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 45 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:45:00-04:00#11",
-     "timestamp": "2026-10-07T10:45:00-04:00"
+     "timestamp": "2026-10-07T10:45:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 50 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:50:00-04:00#12",
-     "timestamp": "2026-10-07T10:50:00-04:00"
+     "timestamp": "2026-10-07T10:50:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "step 55 — café ☕ \"quoted\", comma",
      "id": "2026-10-07T10:55:00-04:00#13",
-     "timestamp": "2026-10-07T10:55:00-04:00"
+     "timestamp": "2026-10-07T10:55:00-04:00",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T10:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": \"step 0 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:05:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T10:05:00-04:00\",\n  \"description\": \"step 5 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:10:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T10:10:00-04:00\",\n  \"description\": \"step 10 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:15:00-04:00#5\",\n  \"timestamp\": \"2026-10-07T10:15:00-04:00\",\n  \"description\": \"step 15 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:20:00-04:00#6\",\n  \"timestamp\": \"2026-10-07T10:20:00-04:00\",\n  \"description\": \"step 20 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:25:00-04:00#7\",\n  \"timestamp\": \"2026-10-07T10:25:00-04:00\",\n  \"description\": \"step 25 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:30:00-04:00#8\",\n  \"timestamp\": \"2026-10-07T10:30:00-04:00\",\n  \"description\": \"step 30 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:35:00-04:00#9\",\n  \"timestamp\": \"2026-10-07T10:35:00-04:00\",\n  \"description\": \"step 35 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:40:00-04:00#10\",\n  \"timestamp\": \"2026-10-07T10:40:00-04:00\",\n  \"description\": \"step 40 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:45:00-04:00#11\",\n  \"timestamp\": \"2026-10-07T10:45:00-04:00\",\n  \"description\": \"step 45 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:50:00-04:00#12\",\n  \"timestamp\": \"2026-10-07T10:50:00-04:00\",\n  \"description\": \"step 50 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T10:55:00-04:00#13\",\n  \"timestamp\": \"2026-10-07T10:55:00-04:00\",\n  \"description\": \"step 55 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T10:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T10:00:00-04:00\",\n  \"description\": \"step 0 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:05:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T10:05:00-04:00\",\n  \"description\": \"step 5 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:10:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T10:10:00-04:00\",\n  \"description\": \"step 10 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:15:00-04:00#5\",\n  \"timestamp\": \"2026-10-07T10:15:00-04:00\",\n  \"description\": \"step 15 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:20:00-04:00#6\",\n  \"timestamp\": \"2026-10-07T10:20:00-04:00\",\n  \"description\": \"step 20 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:25:00-04:00#7\",\n  \"timestamp\": \"2026-10-07T10:25:00-04:00\",\n  \"description\": \"step 25 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:30:00-04:00#8\",\n  \"timestamp\": \"2026-10-07T10:30:00-04:00\",\n  \"description\": \"step 30 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:35:00-04:00#9\",\n  \"timestamp\": \"2026-10-07T10:35:00-04:00\",\n  \"description\": \"step 35 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:40:00-04:00#10\",\n  \"timestamp\": \"2026-10-07T10:40:00-04:00\",\n  \"description\": \"step 40 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:45:00-04:00#11\",\n  \"timestamp\": \"2026-10-07T10:45:00-04:00\",\n  \"description\": \"step 45 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:50:00-04:00#12\",\n  \"timestamp\": \"2026-10-07T10:50:00-04:00\",\n  \"description\": \"step 50 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T10:55:00-04:00#13\",\n  \"timestamp\": \"2026-10-07T10:55:00-04:00\",\n  \"description\": \"step 55 — café ☕ \\\"quoted\\\", comma\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   }
  ],
@@ -390,7 +414,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -419,7 +443,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -428,7 +452,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -448,7 +472,38 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "timestamp",
+        "description",
+        "compaction_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -460,7 +515,8 @@
        [
         "2026-10-07T10:00:00-04:00",
         "step 0 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -477,7 +533,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -486,7 +542,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -506,7 +562,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 3,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -518,7 +574,8 @@
        [
         "2026-10-07T10:05:00-04:00",
         "step 5 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -535,7 +592,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -544,7 +601,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -564,7 +621,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 4,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -576,7 +633,8 @@
        [
         "2026-10-07T10:10:00-04:00",
         "step 10 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -593,7 +651,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -602,7 +660,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -622,7 +680,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 5,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -634,7 +692,8 @@
        [
         "2026-10-07T10:15:00-04:00",
         "step 15 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -651,7 +710,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -660,7 +719,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -680,7 +739,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 6,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -692,7 +751,8 @@
        [
         "2026-10-07T10:20:00-04:00",
         "step 20 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -709,7 +769,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -718,7 +778,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -738,7 +798,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 7,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -750,7 +810,8 @@
        [
         "2026-10-07T10:25:00-04:00",
         "step 25 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -767,7 +828,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -776,7 +837,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -796,7 +857,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 8,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -808,7 +869,8 @@
        [
         "2026-10-07T10:30:00-04:00",
         "step 30 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -825,7 +887,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -834,7 +896,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -854,7 +916,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 9,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -866,7 +928,8 @@
        [
         "2026-10-07T10:35:00-04:00",
         "step 35 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -883,7 +946,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -892,7 +955,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -912,7 +975,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 10,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -924,7 +987,8 @@
        [
         "2026-10-07T10:40:00-04:00",
         "step 40 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -941,7 +1005,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -950,7 +1014,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -970,7 +1034,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 11,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -982,7 +1046,8 @@
        [
         "2026-10-07T10:45:00-04:00",
         "step 45 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -999,7 +1064,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -1008,7 +1073,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -1028,7 +1093,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 12,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1040,7 +1105,8 @@
        [
         "2026-10-07T10:50:00-04:00",
         "step 50 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1057,7 +1123,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -1066,7 +1132,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -1086,7 +1152,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 13,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1098,7 +1164,8 @@
        [
         "2026-10-07T10:55:00-04:00",
         "step 55 — café ☕ \"quoted\", comma",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1115,7 +1182,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -1124,7 +1191,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -1189,55 +1256,80 @@
        [
         "timestamp",
         "description",
-        "compaction_id"
+        "compaction_id",
+        "version"
        ],
        [
         "2026-10-07T10:00:00-04:00",
-        "step 0 — café ☕ \"quoted\", comma"
+        "step 0 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:05:00-04:00",
-        "step 5 — café ☕ \"quoted\", comma"
+        "step 5 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:10:00-04:00",
-        "step 10 — café ☕ \"quoted\", comma"
+        "step 10 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:15:00-04:00",
-        "step 15 — café ☕ \"quoted\", comma"
+        "step 15 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:20:00-04:00",
-        "step 20 — café ☕ \"quoted\", comma"
+        "step 20 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:25:00-04:00",
-        "step 25 — café ☕ \"quoted\", comma"
+        "step 25 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:30:00-04:00",
-        "step 30 — café ☕ \"quoted\", comma"
+        "step 30 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:35:00-04:00",
-        "step 35 — café ☕ \"quoted\", comma"
+        "step 35 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:40:00-04:00",
-        "step 40 — café ☕ \"quoted\", comma"
+        "step 40 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:45:00-04:00",
-        "step 45 — café ☕ \"quoted\", comma"
+        "step 45 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:50:00-04:00",
-        "step 50 — café ☕ \"quoted\", comma"
+        "step 50 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ],
        [
         "2026-10-07T10:55:00-04:00",
-        "step 55 — café ☕ \"quoted\", comma"
+        "step 55 — café ☕ \"quoted\", comma",
+        "",
+        "1"
        ]
       ]
      },

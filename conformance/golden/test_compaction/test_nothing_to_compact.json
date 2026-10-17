@@ -138,7 +138,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -231,7 +232,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -819,7 +821,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000067,
         "startColumnIndex": 0,
@@ -1328,7 +1330,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1427,7 +1429,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000067,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -2044,7 +2046,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -2075,7 +2078,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      },

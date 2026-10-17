@@ -11,10 +11,11 @@
     "compaction_id": null,
     "description": "finished breakfast",
     "id": "2026-10-05T07:45:00-04:00#2",
-    "timestamp": "2026-10-05T07:45:00-04:00"
+    "timestamp": "2026-10-05T07:45:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T07:45:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T07:45:00-04:00\",\n  \"description\": \"finished breakfast\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T07:45:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T07:45:00-04:00\",\n  \"description\": \"finished breakfast\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -1330,11 +1331,12 @@
      "compaction_id": null,
      "description": "finished breakfast",
      "id": "2026-10-05T07:45:00-04:00#2",
-     "timestamp": "2026-10-05T07:45:00-04:00"
+     "timestamp": "2026-10-05T07:45:00-04:00",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T07:45:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T07:45:00-04:00\",\n  \"description\": \"finished breakfast\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T07:45:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T07:45:00-04:00\",\n  \"description\": \"finished breakfast\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   }
  ],
@@ -1443,7 +1445,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000053,
         "startColumnIndex": 0,
@@ -1472,7 +1474,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000053,
        "startColumnIndex": 0,
@@ -1481,7 +1483,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -1501,7 +1503,38 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
+        "endRowIndex": 1,
+        "sheetId": 1000053,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "timestamp",
+        "description",
+        "compaction_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000053,
         "startColumnIndex": 0,
@@ -1513,7 +1546,8 @@
        [
         "2026-10-05T07:45:00-04:00",
         "finished breakfast",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1594,7 +1628,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -1687,7 +1722,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -2687,7 +2723,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -2910,7 +2946,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3110,7 +3146,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3310,7 +3346,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3510,7 +3546,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3710,7 +3746,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3910,7 +3946,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4175,7 +4211,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4274,7 +4310,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4474,7 +4510,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4573,7 +4609,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4672,7 +4708,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4818,7 +4854,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -4917,7 +4953,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000053,
        "startColumnIndex": 0,
@@ -4926,7 +4962,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -5463,7 +5499,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -5494,7 +5531,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      },
@@ -5728,11 +5766,14 @@
        [
         "timestamp",
         "description",
-        "compaction_id"
+        "compaction_id",
+        "version"
        ],
        [
         "2026-10-05T07:45:00-04:00",
-        "finished breakfast"
+        "finished breakfast",
+        "",
+        "1"
        ]
       ]
      },

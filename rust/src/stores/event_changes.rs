@@ -3,7 +3,8 @@
 //! the last compaction changed unless asked
 //! -- then written.
 
-use crate::event::{Event, Moment};
+use crate::event::{Etag, Event, Moment};
+use crate::google::status_of;
 use crate::py;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::cancellations::Cancellations;
@@ -59,7 +60,31 @@ impl ChangeError {
 pub struct Cancel {
     pub event_id: String,
     pub counts_against_follow_through: bool,
+    /// The etag the client last saw: the cancel is refused if it's
+    /// changed since.
+    pub etag: Option<String>,
 }
+
+/// A change refused because the event isn't as the client last saw it
+/// (its etag): changed since, or gone. `event` is it as it is now (None
+/// if it's been deleted or cancelled).
+#[derive(Debug, Clone)]
+pub struct StaleEvent {
+    pub event_id: String,
+    pub expected: String,
+    pub event: Option<Event>,
+}
+
+impl std::fmt::Display for StaleEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.event {
+            None => write!(f, "event {} was deleted after it was read", py::repr(&self.event_id)),
+            Some(_) => write!(f, "event {} changed after it was read", py::repr(&self.event_id)),
+        }
+    }
+}
+
+impl std::error::Error for StaleEvent {}
 
 pub struct Shift {
     pub event_ids: Vec<String>,
@@ -250,6 +275,16 @@ impl EventChanges {
             Some(event)
         };
 
+        // A change given the etag last seen is refused, whole batch and
+        // all, if the event's changed since.
+        let stale = |event_id: &str, expected: Option<&str>| -> anyhow::Result<()> {
+            let Some(expected) = expected else { return Ok(()) };
+            match self.client.get_event(event_id).ok() {
+                Some(now) if !now.is_cancelled() && now.etag.0.as_deref() == Some(expected) => Ok(()),
+                now => Err(StaleEvent { event_id: event_id.into(), expected: expected.into(), event: now.filter(|e| !e.is_cancelled()) }.into()),
+            }
+        };
+
         let mut patches: Vec<(Event, &str)> = updates.into_iter().map(|p| (p, "an update")).collect();
         for shift in &shifts {
             let by = Duration::minutes(shift.minutes);
@@ -267,6 +302,7 @@ impl EventChanges {
             if !claim(&mut problems, &mut named, patch.id.as_deref(), how) {
                 continue;
             }
+            stale(patch.id.as_deref().unwrap(), patch.etag.0.as_deref())?;
             let Some(before) = load(&mut problems, &mut current, patch.id.as_deref().unwrap()) else { continue };
             let event_id = patch.id.clone().unwrap_or_default();
             if before.recurrence.as_ref().is_some_and(|r| !r.is_empty()) {
@@ -312,6 +348,7 @@ impl EventChanges {
             if !claim(&mut problems, &mut named, Some(&cancel.event_id), "a cancel") {
                 continue;
             }
+            stale(&cancel.event_id, cancel.etag.as_deref())?;
             let Some(before) = load(&mut problems, &mut current, &cancel.event_id) else { continue };
             if let Some(guard) = guarded {
                 if before.start() < guard {
@@ -319,11 +356,12 @@ impl EventChanges {
                     continue;
                 }
             }
+            let patch = Event { id: before.id.clone(), status: Some("cancelled".into()), etag: Etag(cancel.etag.clone()), ..Default::default() };
             changes.push(Change {
                 action: "cancel".into(),
                 before: Some(before),
                 after: None,
-                patch: None,
+                patch: Some(patch),
                 counts_against_follow_through: cancel.counts_against_follow_through,
                 moved: false,
             });
@@ -415,16 +453,27 @@ impl EventChanges {
         Ok(Ok(batch))
     }
 
-    /// Write `batch`'s changes; the events as written.
+    /// Write `batch`'s changes; the events as written. A patch Calendar
+    /// refuses as made to an older version of the event (a 412, given its
+    /// etag) is a `StaleEvent`, with the event as it is now.
     pub fn apply(&self, batch: &Batch, source: &str) -> anyhow::Result<Vec<Event>> {
+        let patch = |patch: &Event| -> anyhow::Result<Event> {
+            self.client.update_event(patch).map_err(|error| match (&patch.etag.0, &patch.id) {
+                (Some(expected), Some(id)) if status_of(&error) == Some(412) => {
+                    let now = self.client.client().fresh_event(id).ok().filter(|e| !e.is_cancelled());
+                    StaleEvent { event_id: id.clone(), expected: expected.clone(), event: now }.into()
+                }
+                _ => error,
+            })
+        };
         let mut written = Vec::new();
         for change in &batch.changes {
             match change.action.as_str() {
-                "update" => written.push(self.client.update_event(change.patch.as_ref().unwrap())?),
+                "update" => written.push(patch(change.patch.as_ref().unwrap())?),
                 "create" => written.push(self.client.create_event(change.after.as_ref().unwrap())?),
                 _ => {
                     let before = change.before.as_ref().unwrap();
-                    written.push(self.client.update_event(&Event { id: before.id.clone(), status: Some("cancelled".into()), ..Default::default() })?);
+                    written.push(patch(change.patch.as_ref().unwrap())?);
                     if change.counts_against_follow_through {
                         if let Some(cancellations) = &self.cancellations {
                             cancellations.record(before, source, None)?;

@@ -305,7 +305,7 @@ fn takes_on_at_most_a_week_at_a_time() {
     let setup = Setup::new(&[], Some(events), "11:30");
     for day in 0..9 {
         let note = NotedTime { timestamp: start + Duration::days(day), description: Some(format!("day {day}")), compaction_id: None };
-        setup.call(|c| c.notes.append(&note).unwrap());
+        setup.call(|c| c.notes.append(&note, None).unwrap());
     }
     setup.set_moment(start + Duration::days(8) + Duration::hours(1));
 

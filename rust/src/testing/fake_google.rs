@@ -689,7 +689,15 @@ impl State {
                 Ok(Some(Self::present(cal, &event)))
             }
             ("PUT", ["calendar", "v3", "calendars", cid, "events", eid]) => self.update_event(cid, eid, body).map(Some),
-            ("PATCH", ["calendar", "v3", "calendars", cid, "events", eid]) => self.patch_event(cid, eid, body).map(Some),
+            ("PATCH", ["calendar", "v3", "calendars", cid, "events", eid]) => {
+                if let Some(wanted) = if_match {
+                    let (event, _) = Self::find(self.calendar(cid)?, eid)?;
+                    if event["etag"].as_str() != Some(wanted) {
+                        return Err(err(412, "Precondition Failed"));
+                    }
+                }
+                self.patch_event(cid, eid, body).map(Some)
+            }
             ("DELETE", ["calendar", "v3", "calendars", cid, "events", eid]) => {
                 let etag = self.etag();
                 let cal = self.calendar(cid)?;

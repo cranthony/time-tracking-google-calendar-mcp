@@ -18,10 +18,11 @@
     "compaction_id": null,
     "description": "started work",
     "id": "2026-10-07T09:05:00-04:00#2",
-    "timestamp": "2026-10-07T09:05:00-04:00"
+    "timestamp": "2026-10-07T09:05:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -34,10 +35,11 @@
     "compaction_id": null,
     "description": null,
     "id": "2026-10-07T08:00:00-04:00#3",
-    "timestamp": "2026-10-07T08:00:00-04:00"
+    "timestamp": "2026-10-07T08:00:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -52,10 +54,11 @@
     "compaction_id": null,
     "description": "lunch",
     "id": "2026-10-07T12:00:00-04:00#4",
-    "timestamp": "2026-10-07T12:00:00-04:00"
+    "timestamp": "2026-10-07T12:00:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -65,23 +68,26 @@
      "compaction_id": null,
      "description": null,
      "id": "2026-10-07T08:00:00-04:00#3",
-     "timestamp": "2026-10-07T08:00:00-04:00"
+     "timestamp": "2026-10-07T08:00:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "started work",
      "id": "2026-10-07T09:05:00-04:00#2",
-     "timestamp": "2026-10-07T09:05:00-04:00"
+     "timestamp": "2026-10-07T09:05:00-04:00",
+     "version": 1
     },
     {
      "compaction_id": null,
      "description": "lunch",
      "id": "2026-10-07T12:00:00-04:00#4",
-     "timestamp": "2026-10-07T12:00:00-04:00"
+     "timestamp": "2026-10-07T12:00:00-04:00",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T08:00:00-04:00#3\",\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work\",\n  \"compaction_id\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   },
   {
@@ -93,10 +99,11 @@
     "compaction_id": null,
     "description": "started work late",
     "id": "2026-10-07T09:05:00-04:00#2",
-    "timestamp": "2026-10-07T09:05:00-04:00"
+    "timestamp": "2026-10-07T09:05:00-04:00",
+    "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T09:05:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:05:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null,\n  \"version\": 2\n}",
    "tool": "edit_note"
   },
   {
@@ -108,10 +115,11 @@
     "compaction_id": null,
     "description": "started work late",
     "id": "2026-10-07T09:15:00-04:00#2",
-    "timestamp": "2026-10-07T09:15:00-04:00"
+    "timestamp": "2026-10-07T09:15:00-04:00",
+    "version": 3
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": \"started work late\",\n  \"compaction_id\": null,\n  \"version\": 3\n}",
    "tool": "edit_note"
   },
   {
@@ -123,10 +131,11 @@
     "compaction_id": null,
     "description": null,
     "id": "2026-10-07T09:15:00-04:00#2",
-    "timestamp": "2026-10-07T09:15:00-04:00"
+    "timestamp": "2026-10-07T09:15:00-04:00",
+    "version": 4
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}",
    "tool": "edit_note"
   },
   {
@@ -136,10 +145,11 @@
    "content": {
     "compaction_id": null,
     "description": null,
+    "id": null,
     "timestamp": "2026-10-07T08:00:00-04:00"
    },
    "is_error": false,
-   "text": "{\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"timestamp\": \"2026-10-07T08:00:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"id\": null\n}",
    "tool": "delete_note"
   },
   {
@@ -149,17 +159,19 @@
      "compaction_id": null,
      "description": null,
      "id": "2026-10-07T09:15:00-04:00#2",
-     "timestamp": "2026-10-07T09:15:00-04:00"
+     "timestamp": "2026-10-07T09:15:00-04:00",
+     "version": 4
     },
     {
      "compaction_id": null,
      "description": "lunch",
      "id": "2026-10-07T12:00:00-04:00#4",
-     "timestamp": "2026-10-07T12:00:00-04:00"
+     "timestamp": "2026-10-07T12:00:00-04:00",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   },
   {
@@ -176,9 +188,9 @@
     "description": "x",
     "note_id": "nosuch"
    },
-   "content": "Error executing tool edit_note: 'nosuch' isn't a note id (expected e.g. '2026-01-01T09:05:00+00:00#5')",
+   "content": "Error executing tool edit_note: there's no note 'nosuch' -- it was deleted since it was read; list the notes again for current ids",
    "is_error": true,
-   "text": "Error executing tool edit_note: 'nosuch' isn't a note id (expected e.g. '2026-01-01T09:05:00+00:00#5')",
+   "text": "Error executing tool edit_note: there's no note 'nosuch' -- it was deleted since it was read; list the notes again for current ids",
    "tool": "edit_note"
   },
   {
@@ -190,17 +202,19 @@
      "compaction_id": null,
      "description": null,
      "id": "2026-10-07T09:15:00-04:00#2",
-     "timestamp": "2026-10-07T09:15:00-04:00"
+     "timestamp": "2026-10-07T09:15:00-04:00",
+     "version": 4
     },
     {
      "compaction_id": null,
      "description": "lunch",
      "id": "2026-10-07T12:00:00-04:00#4",
-     "timestamp": "2026-10-07T12:00:00-04:00"
+     "timestamp": "2026-10-07T12:00:00-04:00",
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T09:15:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:15:00-04:00\",\n  \"description\": null,\n  \"compaction_id\": null,\n  \"version\": 4\n}\n{\n  \"id\": \"2026-10-07T12:00:00-04:00#4\",\n  \"timestamp\": \"2026-10-07T12:00:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   }
  ],
@@ -309,7 +323,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -338,7 +352,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -347,7 +361,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -366,7 +380,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -375,7 +389,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -395,7 +409,38 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "timestamp",
+        "description",
+        "compaction_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -407,7 +452,8 @@
        [
         "2026-10-07T09:05:00-04:00",
         "started work",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -424,7 +470,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -433,7 +479,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -453,7 +499,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 3,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -465,7 +511,8 @@
        [
         "2026-10-07T08:00:00-04:00",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -482,7 +529,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -491,7 +538,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -511,7 +558,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 4,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -523,7 +570,8 @@
        [
         "2026-10-07T12:00:00-04:00",
         "lunch",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -540,7 +588,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -549,7 +597,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -632,7 +680,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -725,7 +774,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1725,7 +1775,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1753,7 +1803,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1765,7 +1815,8 @@
        [
         "2026-10-07T09:05:00-04:00",
         "started work late",
-        ""
+        "",
+        "2"
        ]
       ]
      }
@@ -1782,7 +1833,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1810,7 +1861,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1822,7 +1873,8 @@
        [
         "2026-10-07T09:15:00-04:00",
         "started work late",
-        ""
+        "",
+        "3"
        ]
       ]
      }
@@ -1839,7 +1891,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1867,7 +1919,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1879,7 +1931,8 @@
        [
         "2026-10-07T09:15:00-04:00",
         "",
-        ""
+        "",
+        "4"
        ]
       ]
      }
@@ -1896,7 +1949,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1924,7 +1977,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 3,
         "sheetId": 1000005,
         "startColumnIndex": 0,
@@ -1934,6 +1987,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
+        "",
         "",
         "",
         ""
@@ -1953,7 +2007,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -1962,7 +2016,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -1981,7 +2035,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -2008,7 +2062,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -2035,7 +2089,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -2044,7 +2098,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000005,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -2200,7 +2254,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -2231,7 +2286,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      },
@@ -2431,15 +2487,21 @@
        [
         "timestamp",
         "description",
-        "compaction_id"
+        "compaction_id",
+        "version"
        ],
        [
-        "2026-10-07T09:15:00-04:00"
+        "2026-10-07T09:15:00-04:00",
+        "",
+        "",
+        "4"
        ],
        [],
        [
         "2026-10-07T12:00:00-04:00",
-        "lunch"
+        "lunch",
+        "",
+        "1"
        ]
       ]
      },

@@ -23,7 +23,8 @@
       "note": null,
       "path": "attend standup",
       "priority": 1,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "created_id": "co2yzn",
@@ -31,7 +32,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"attend standup\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"attend standup\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"attend standup\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"attend standup\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {
@@ -47,6 +48,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-05T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261005T130000Z",
@@ -66,6 +68,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-06T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261006T130000Z",
@@ -85,6 +88,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-07T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261007T130000Z",
@@ -104,6 +108,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-08T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261008T130000Z",
@@ -123,6 +128,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-09T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261009T130000Z",
@@ -142,6 +148,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-10T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261010T130000Z",
@@ -161,6 +168,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-11T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261011T130000Z",
@@ -180,6 +188,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-12T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261012T130000Z",
@@ -199,6 +208,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-13T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261013T130000Z",
@@ -218,6 +228,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-14T09:30:00-04:00",
+     "etag": "\"0000000000000026\"",
      "event_label_id": null,
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261014T130000Z",
@@ -232,7 +243,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261006T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261007T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261008T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-08T09:00:00-04:00\",\n  \"end\": \"2026-10-08T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261010T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-10T09:00:00-04:00\",\n  \"end\": \"2026-10-10T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261011T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261012T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-12T09:00:00-04:00\",\n  \"end\": \"2026-10-12T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261014T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-14T09:00:00-04:00\",\n  \"end\": \"2026-10-14T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261006T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261007T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261008T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-08T09:00:00-04:00\",\n  \"end\": \"2026-10-08T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261010T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-10T09:00:00-04:00\",\n  \"end\": \"2026-10-10T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261011T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261012T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-12T09:00:00-04:00\",\n  \"end\": \"2026-10-12T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261014T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-14T09:00:00-04:00\",\n  \"end\": \"2026-10-14T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000026\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -258,6 +269,7 @@
       "description": "special",
       "effective_priority": null,
       "end": "2026-10-09T09:45:00-04:00",
+      "etag": "\"0000000000000035\"",
       "event_label_id": null,
       "facts": null,
       "id": "983cc1ee90e3562d53bf2811fa_20261009T130000Z",
@@ -274,7 +286,7 @@
     "timeline": "09:15 ┌ Standup · ⇢15m (was 09:00–09:30)\n09:45 └ Standup ends\n09:00 ┌ Standup\n09:30 └ Standup ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"983cc1ee90e3562d53bf2811fa_20261009T130000Z\",\n      \"summary\": \"Standup\",\n      \"start\": \"2026-10-09T09:15:00-04:00\",\n      \"end\": \"2026-10-09T09:45:00-04:00\",\n      \"description\": \"special\",\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": null,\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:15 ┌ Standup · ⇢15m (was 09:00–09:30)\\n09:45 └ Standup ends\\n09:00 ┌ Standup\\n09:30 └ Standup ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"983cc1ee90e3562d53bf2811fa_20261009T130000Z\",\n      \"summary\": \"Standup\",\n      \"start\": \"2026-10-09T09:15:00-04:00\",\n      \"end\": \"2026-10-09T09:45:00-04:00\",\n      \"description\": \"special\",\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": null,\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"09:15 ┌ Standup · ⇢15m (was 09:00–09:30)\\n09:45 └ Standup ends\\n09:00 ┌ Standup\\n09:30 └ Standup ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -345,6 +357,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-05T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261005T130000Z",
@@ -368,6 +381,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-06T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261006T130000Z",
@@ -391,6 +405,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-07T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261007T130000Z",
@@ -414,6 +429,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-08T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261008T130000Z",
@@ -437,6 +453,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-09T09:45:00-04:00",
+     "etag": null,
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261009T130000Z",
@@ -460,6 +477,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-10T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261010T130000Z",
@@ -483,6 +501,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-11T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261011T130000Z",
@@ -506,6 +525,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-12T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261012T130000Z",
@@ -529,6 +549,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-13T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261013T130000Z",
@@ -552,6 +573,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-14T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261014T130000Z",
@@ -566,7 +588,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261005T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261006T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261007T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261008T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-08T09:00:00-04:00\",\n  \"end\": \"2026-10-08T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261009T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-09T09:15:00-04:00\",\n  \"end\": \"2026-10-09T09:45:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261010T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-10T09:00:00-04:00\",\n  \"end\": \"2026-10-10T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261011T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261012T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-12T09:00:00-04:00\",\n  \"end\": \"2026-10-12T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261013T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261014T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-14T09:00:00-04:00\",\n  \"end\": \"2026-10-14T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261005T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261006T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261007T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261008T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-08T09:00:00-04:00\",\n  \"end\": \"2026-10-08T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261009T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-09T09:15:00-04:00\",\n  \"end\": \"2026-10-09T09:45:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261010T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-10T09:00:00-04:00\",\n  \"end\": \"2026-10-10T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261011T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261012T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-12T09:00:00-04:00\",\n  \"end\": \"2026-10-12T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261013T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261014T130000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-14T09:00:00-04:00\",\n  \"end\": \"2026-10-14T09:30:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -645,6 +667,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-05T10:15:00-04:00",
+     "etag": "\"0000000000000037\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261005T140000Z",
@@ -668,6 +691,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-08T10:15:00-04:00",
+     "etag": "\"0000000000000037\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261008T140000Z",
@@ -691,6 +715,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-12T10:15:00-04:00",
+     "etag": "\"0000000000000037\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261012T140000Z",
@@ -714,6 +739,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-15T10:15:00-04:00",
+     "etag": "\"0000000000000037\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261015T140000Z",
@@ -737,6 +763,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-19T10:15:00-04:00",
+     "etag": "\"0000000000000037\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261019T140000Z",
@@ -760,6 +787,7 @@
      "description": null,
      "effective_priority": 1,
      "end": "2026-10-22T10:15:00-04:00",
+     "etag": "\"0000000000000037\"",
      "event_label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
      "facts": null,
      "id": "983cc1ee90e3562d53bf2811fa_20261022T140000Z",
@@ -774,7 +802,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261005T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-05T10:00:00-04:00\",\n  \"end\": \"2026-10-05T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261008T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-08T10:00:00-04:00\",\n  \"end\": \"2026-10-08T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261012T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-12T10:00:00-04:00\",\n  \"end\": \"2026-10-12T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261015T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-15T10:00:00-04:00\",\n  \"end\": \"2026-10-15T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261019T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-19T10:00:00-04:00\",\n  \"end\": \"2026-10-19T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261022T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-22T10:00:00-04:00\",\n  \"end\": \"2026-10-22T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261005T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-05T10:00:00-04:00\",\n  \"end\": \"2026-10-05T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000037\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261008T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-08T10:00:00-04:00\",\n  \"end\": \"2026-10-08T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000037\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261012T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-12T10:00:00-04:00\",\n  \"end\": \"2026-10-12T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000037\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261015T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-15T10:00:00-04:00\",\n  \"end\": \"2026-10-15T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000037\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261019T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-19T10:00:00-04:00\",\n  \"end\": \"2026-10-19T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000037\\\"\"\n}\n{\n  \"id\": \"983cc1ee90e3562d53bf2811fa_20261022T140000Z\",\n  \"summary\": \"Team standup\",\n  \"start\": \"2026-10-22T10:00:00-04:00\",\n  \"end\": \"2026-10-22T10:15:00-04:00\",\n  \"description\": null,\n  \"location\": \"Room 1\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"attend standup\"\n  ],\n  \"actions_from_label\": false,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 1,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"983cc1ee90e3562d53bf2811fa\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000037\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -974,7 +1002,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -1067,7 +1096,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1672,7 +1702,8 @@
         "",
         "1",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -3187,7 +3218,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -3218,7 +3250,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ],
        [
         "co2yzn",
@@ -3226,6 +3259,9 @@
         "attend standup",
         "active",
         "bb82ecea-50c0-514b-956e-fe110410c9e6",
+        "",
+        "1",
+        "",
         "",
         "1"
        ]

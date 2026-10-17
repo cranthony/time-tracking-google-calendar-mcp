@@ -150,3 +150,80 @@ fn every_versioned_kind_starts_at_one() {
     ];
     assert!(made.iter().all(|v| *v == json!(1)), "{made:?}");
 }
+
+#[test]
+fn actions_and_their_groups_have_versions_and_conflicts() {
+    let s = Server::new();
+    let made = s.raw("create_action", json!({"action": {"id": "act-guitar", "name": "play guitar"}}), json!({"write_id": "w-a1"}));
+    let group = s.raw("create_action_group", json!({"group": {"id": "grp-creative", "name": "Creative"}}), json!({"write_id": "w-a2"}));
+    assert_eq!(made["structuredContent"]["created_id"], json!("act-guitar"));
+    assert_eq!(made["structuredContent"]["changed"][0]["version"], json!(1));
+    assert_eq!(group["structuredContent"]["created_id"], json!("grp-creative"));
+    assert_eq!(group["structuredContent"]["changed"][0]["version"], json!(1));
+    // An action's id can't be a group's: a trait's part may name either.
+    let taken = s.raw("create_action", json!({"action": {"id": "grp-creative", "name": "draw"}}), json!({"write_id": "w-a3"}));
+    assert!(taken["content"][0]["text"].as_str().unwrap().contains("already used"));
+
+    let moved = s.ok("update_action", json!({"action": {"id": "act-guitar", "group_id": "grp-creative", "version": 1}}));
+    assert_eq!(moved["changed"][0]["version"], json!(2));
+    let stale = s.raw("update_action", json!({"action": {"id": "act-guitar", "note": "x", "version": 1}}), json!({}));
+    assert_eq!(stale["_meta"]["conflict"]["current"]["group_id"], json!("grp-creative"));
+    assert_eq!(stale["_meta"]["conflict"]["current"]["version"], json!(2));
+
+    s.ok("update_action_group", json!({"group": {"id": "grp-creative", "note": "making things", "version": 1}}));
+    let stale = s.raw("delete_action_group", json!({"group_id": "grp-creative", "if_version": 1}), json!({}));
+    assert_eq!(stale["_meta"]["conflict"]["current"]["note"], json!("making things"));
+    s.ok("delete_action_group", json!({"group_id": "grp-creative", "if_version": 2}));
+    let gone = s.raw("update_action_group", json!({"group": {"id": "grp-creative", "note": "y", "version": 2}}), json!({}));
+    assert_eq!(gone["_meta"]["conflict"]["current"], Value::Null);
+    // Moved up out of the group it was in: a change, so a new version.
+    assert_eq!(s.ok("get_action", json!({"id_or_name": "act-guitar"}))["version"], json!(3));
+}
+
+#[test]
+fn a_note_made_once_is_named_by_its_own_id_and_versioned() {
+    let s = Server::new();
+    let made = s.raw("note", json!({"noted_time": {"timestamp": "2026-01-01T09:00:00+00:00", "description": "up", "id": "note-1"}}), json!({"write_id": "w-n1"}));
+    assert_eq!(made["structuredContent"]["id"], json!("note-1"));
+    assert_eq!(made["structuredContent"]["version"], json!(1));
+    // Without a write_id, as always: named by when it is and its row.
+    let plain = s.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T10:00:00+00:00", "id": "note-2"}}));
+    assert!(plain["id"].as_str().unwrap().contains('#'), "{plain}");
+
+    // Its id stays when its time changes.
+    let moved = s.ok("edit_note", json!({"note_id": "note-1", "timestamp": "2026-01-01T09:05:00+00:00", "version": 1}));
+    assert_eq!((moved["id"].clone(), moved["version"].clone()), (json!("note-1"), json!(2)));
+    let stale = s.raw("edit_note", json!({"note_id": "note-1", "description": "awake", "version": 1}), json!({}));
+    assert_eq!(stale["isError"], json!(true));
+    assert_eq!(stale["_meta"]["conflict"]["current"]["version"], json!(2));
+    assert_eq!(stale["_meta"]["conflict"]["current"]["description"], json!("up"));
+    let stale = s.raw("delete_note", json!({"note_id": "note-1", "if_version": 1}), json!({}));
+    assert_eq!(stale["_meta"]["conflict"]["kind"], json!("note"));
+
+    let deleted = s.ok("delete_note", json!({"note_id": "note-1", "if_version": 2}));
+    assert_eq!(deleted["id"], json!("note-1"));
+    let gone = s.raw("edit_note", json!({"note_id": "note-1", "description": "awake", "version": 2}), json!({}));
+    assert_eq!(gone["_meta"]["conflict"]["current"], Value::Null);
+    let gone = s.raw("delete_note", json!({"note_id": "note-1"}), json!({}));
+    assert!(gone["content"][0]["text"].as_str().unwrap().contains("there's no note 'note-1'"), "{gone}");
+}
+
+#[test]
+fn an_event_changed_since_its_etag_was_read_is_a_conflict() {
+    let s = Server::new();
+    let made = s.ok("create_event", json!({"events": [{"summary": "Walk", "start": "2026-03-02T11:00:00+00:00", "end": "2026-03-02T11:30:00+00:00"}]}));
+    let (id, etag) = (made["events"][0]["id"].clone(), made["events"][0]["etag"].clone());
+    assert!(etag.is_string(), "{made}");
+    let renamed = s.ok("update_event", json!({"updates": [{"event": {"id": id, "summary": "Stroll", "etag": etag}}]}));
+
+    let stale = s.raw("update_event", json!({"updates": [{"event": {"id": id, "summary": "Run", "etag": etag}}]}), json!({}));
+
+    assert_eq!(stale["isError"], json!(true));
+    let conflict = &stale["_meta"]["conflict"];
+    assert_eq!((conflict["kind"].clone(), conflict["expected"].clone()), (json!("event"), etag.clone()));
+    assert_eq!(conflict["current"]["summary"], json!("Stroll"));
+    assert_eq!(conflict["current"]["etag"], renamed["events"][0]["etag"]);
+    assert!(stale["content"][0]["text"].as_str().unwrap().contains("changed after it was read"));
+    let cancelled = s.raw("delete_event", json!({"cancels": [{"event_id": id, "counts_against_follow_through": false, "etag": etag}]}), json!({}));
+    assert_eq!(cancelled["_meta"]["conflict"]["current"]["summary"], json!("Stroll"));
+}

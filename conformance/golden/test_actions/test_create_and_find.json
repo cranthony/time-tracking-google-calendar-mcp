@@ -24,7 +24,8 @@
       "note": "every day",
       "path": "play guitar",
       "priority": 1,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "created_id": "co2yzn",
@@ -32,7 +33,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {
@@ -56,7 +57,8 @@
       "note": null,
       "path": "read a book",
       "priority": null,
-      "status": "proposed"
+      "status": "proposed",
+      "version": 1
      }
     ],
     "created_id": "3dnjav",
@@ -64,7 +66,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -84,7 +86,8 @@
       "note": "every day",
       "path": "play guitar",
       "priority": 1,
-      "status": "active"
+      "status": "active",
+      "version": 1
      },
      {
       "background_color": null,
@@ -99,14 +102,15 @@
       "note": null,
       "path": "read a book",
       "priority": null,
-      "status": "proposed"
+      "status": "proposed",
+      "version": 1
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": \"every day\",\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true,\n      \"version\": 1\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"read a book\",\n      \"status\": \"proposed\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read a book\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -126,10 +130,11 @@
     "note": "every day",
     "path": "play guitar",
     "priority": 1,
-    "status": "active"
+    "status": "active",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"commute\": null,\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"commute\": null,\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true,\n  \"version\": 1\n}",
    "tool": "get_action"
   },
   {
@@ -149,10 +154,11 @@
     "note": "every day",
     "path": "play guitar",
     "priority": 1,
-    "status": "active"
+    "status": "active",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"commute\": null,\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"group_id\": null,\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"background_color\": null,\n  \"priority\": 1,\n  \"note\": \"every day\",\n  \"commute\": null,\n  \"path\": \"play guitar\",\n  \"effective_color\": \"#fbd75b\",\n  \"effective_priority\": 1,\n  \"holds_label\": true,\n  \"version\": 1\n}",
    "tool": "get_action"
   },
   {
@@ -300,7 +306,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -393,7 +400,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -998,7 +1006,8 @@
         "",
         "1",
         "every day",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1137,7 +1146,8 @@
         "",
         "1",
         "every day",
-        ""
+        "",
+        "1"
        ],
        [
         "3dnjav",
@@ -1148,7 +1158,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1772,7 +1783,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -1803,7 +1815,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ],
        [
         "co2yzn",
@@ -1813,14 +1826,21 @@
         "bb82ecea-50c0-514b-956e-fe110410c9e6",
         "",
         "1",
-        "every day"
+        "every day",
+        "",
+        "1"
        ],
        [
         "3dnjav",
         "",
         "read a book",
         "proposed",
-        "7a8759ac-8307-5cf3-937d-398ec33255fd"
+        "7a8759ac-8307-5cf3-937d-398ec33255fd",
+        "",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },

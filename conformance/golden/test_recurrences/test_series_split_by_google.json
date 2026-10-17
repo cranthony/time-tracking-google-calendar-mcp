@@ -13,6 +13,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-05T19:00:00-04:00",
+     "etag": "\"0000000000000004\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261005T220000Z",
@@ -32,6 +33,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-06T19:00:00-04:00",
+     "etag": "\"0000000000000004\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261006T220000Z",
@@ -51,6 +53,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-12T19:00:00-04:00",
+     "etag": "\"0000000000000004\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261012T220000Z",
@@ -70,6 +73,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-13T19:00:00-04:00",
+     "etag": "\"0000000000000004\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261013T220000Z",
@@ -89,6 +93,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-19T19:00:00-04:00",
+     "etag": "\"0000000000000004\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261019T220000Z",
@@ -108,6 +113,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-20T19:00:00-04:00",
+     "etag": "\"0000000000000004\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261020T220000Z",
@@ -127,6 +133,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-26T19:00:00-04:00",
+     "etag": "\"0000000000000004\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261026T220000Z",
@@ -146,6 +153,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-27T19:00:00-04:00",
+     "etag": "\"0000000000000004\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261027T220000Z",
@@ -160,7 +168,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"gymbase0001_R20261005T220000_20261005T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261006T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261012T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-12T18:00:00-04:00\",\n  \"end\": \"2026-10-12T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261013T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-13T18:00:00-04:00\",\n  \"end\": \"2026-10-13T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261019T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-19T18:00:00-04:00\",\n  \"end\": \"2026-10-19T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261020T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-20T18:00:00-04:00\",\n  \"end\": \"2026-10-20T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261026T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-26T18:00:00-04:00\",\n  \"end\": \"2026-10-26T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261027T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-27T18:00:00-04:00\",\n  \"end\": \"2026-10-27T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"gymbase0001_R20261005T220000_20261005T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261006T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261012T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-12T18:00:00-04:00\",\n  \"end\": \"2026-10-12T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261013T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-13T18:00:00-04:00\",\n  \"end\": \"2026-10-13T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261019T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-19T18:00:00-04:00\",\n  \"end\": \"2026-10-19T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261020T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-20T18:00:00-04:00\",\n  \"end\": \"2026-10-20T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261026T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-26T18:00:00-04:00\",\n  \"end\": \"2026-10-26T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261027T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-27T18:00:00-04:00\",\n  \"end\": \"2026-10-27T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -283,6 +291,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-05T19:00:00-04:00",
+     "etag": "\"0000000000000027\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261005T220000Z",
@@ -302,6 +311,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-06T19:00:00-04:00",
+     "etag": "\"0000000000000027\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261006T220000Z",
@@ -321,6 +331,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-12T19:00:00-04:00",
+     "etag": "\"0000000000000027\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261012T220000Z",
@@ -340,6 +351,7 @@
      "description": null,
      "effective_priority": null,
      "end": "2026-10-13T19:00:00-04:00",
+     "etag": "\"0000000000000027\"",
      "event_label_id": null,
      "facts": null,
      "id": "gymbase0001_R20261005T220000_20261013T220000Z",
@@ -354,7 +366,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"gymbase0001_R20261005T220000_20261005T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261006T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261012T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-12T18:00:00-04:00\",\n  \"end\": \"2026-10-12T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261013T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-13T18:00:00-04:00\",\n  \"end\": \"2026-10-13T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null\n}",
+   "text": "{\n  \"id\": \"gymbase0001_R20261005T220000_20261005T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261006T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261012T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-12T18:00:00-04:00\",\n  \"end\": \"2026-10-12T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_R20261005T220000_20261013T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-13T18:00:00-04:00\",\n  \"end\": \"2026-10-13T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}",
    "tool": "list_events"
   }
  ],
@@ -459,7 +471,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -552,7 +565,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1730,7 +1744,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -1761,7 +1776,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      },

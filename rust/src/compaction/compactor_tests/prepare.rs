@@ -189,7 +189,7 @@ fn the_days_between_the_last_compaction_and_the_notes_are_proposed_too() {
     stamp_a_compaction_at(&setup, "19:45");
     let later = time_at("09:05+1") + Duration::days(2);
     let note = setup.note_id(2);
-    setup.call(|c| c.notes.edit(&note, Some(later), None).unwrap());
+    setup.call(|c| c.notes.edit(&note, Some(later), None, None).unwrap());
     setup.set_moment(later + Duration::hours(1));
 
     let context = setup.prepare();

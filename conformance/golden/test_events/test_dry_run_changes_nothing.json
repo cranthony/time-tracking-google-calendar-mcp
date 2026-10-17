@@ -21,6 +21,7 @@
       "description": null,
       "effective_priority": null,
       "end": "2026-10-07T10:00:00-04:00",
+      "etag": null,
       "event_label_id": null,
       "facts": null,
       "id": null,
@@ -37,7 +38,7 @@
     "timeline": "09:00 ┌ Maybe · new\n10:00 └ Maybe ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": null,\n      \"summary\": \"Maybe\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": null,\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Maybe · new\\n10:00 └ Maybe ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": true\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": null,\n      \"summary\": \"Maybe\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"event_label_id\": null,\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": null\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Maybe · new\\n10:00 └ Maybe ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": true\n}",
    "tool": "create_event"
   },
   {
@@ -152,7 +153,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -245,7 +247,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1570,7 +1573,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -1601,7 +1605,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      },

@@ -240,6 +240,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -523,6 +530,13 @@
               "type": "null"
             }
           ]
+        },
+        "etag": {
+          "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "type": "object",
@@ -803,13 +817,19 @@
       "type": "object",
       "$defs": {
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGiven etag -- the event's last seen -- it's refused if the event's\nchanged since.",
           "properties": {
             "event_id": {
               "type": "string"
             },
             "counts_against_follow_through": {
               "type": "boolean"
+            },
+            "etag": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -1070,6 +1090,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -1446,6 +1473,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -3653,6 +3687,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -4029,6 +4070,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -4199,13 +4247,19 @@
       "type": "object",
       "$defs": {
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGiven etag -- the event's last seen -- it's refused if the event's\nchanged since.",
           "properties": {
             "event_id": {
               "type": "string"
             },
             "counts_against_follow_through": {
               "type": "boolean"
+            },
+            "etag": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -4447,6 +4501,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -5144,6 +5205,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -5255,6 +5322,12 @@
             "boolean",
             "null"
           ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "type": "object"
@@ -5338,6 +5411,13 @@
               "description": "Whether it's a way of getting from one place to another (\"drive\",\n\"walk\"), which a travel time can be by.",
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -5464,6 +5544,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -5472,7 +5558,7 @@
     }
   },
   {
-    "description": "Update an action by id: its group_id, name (still unique),\nstatus, background_color, priority, note or commute. Omitted\nproperties keep their value; list one in clear_fields to blank it instead. label_id\ncan't be changed. status is proposed (not yet reviewed by the user;\nholds a label while there's room), active (holds a label), archived\n(not done any more) or deleted (shouldn't have existed); archiving or\ndeleting frees its label, and making it active again restores it.\nReturns, as changed, the action as updated, plus any proposed action\nthat gained or lost its label as a result, with label_slots_used of\nlabel_slots_total.",
+    "description": "Update an action by id: its group_id, name (still unique),\nstatus, background_color, priority, note or commute. Omitted\nproperties keep their value; list one in clear_fields to blank it instead. label_id\ncan't be changed. status is proposed (not yet reviewed by the user;\nholds a label while there's room), active (holds a label), archived\n(not done any more) or deleted (shouldn't have existed); archiving or\ndeleting frees its label, and making it active again restores it.\nGiven version -- the version last seen -- it's refused if it's changed\nsince. Returns, as changed, the action as updated, plus any proposed\naction that gained or lost its label as a result, with label_slots_used\nof label_slots_total.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -5564,6 +5650,13 @@
               "description": "Whether it's a way of getting from one place to another (\"drive\",\n\"walk\"), which a travel time can be by.",
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -5686,6 +5779,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -5771,6 +5870,12 @@
                 "integer",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -5849,6 +5954,12 @@
             "integer",
             "null"
           ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "type": "object"
@@ -5903,6 +6014,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -6036,6 +6154,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6092,6 +6216,12 @@
               ]
             },
             "effective_priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "version": {
               "type": [
                 "integer",
                 "null"
@@ -6287,6 +6417,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6315,7 +6451,7 @@
     }
   },
   {
-    "description": "Update an action group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups), background_color, priority or note. Omitted properties keep\ntheir value; list one in clear_fields to blank it instead. Its actions\nthat don't set their own color follow its new one on the calendar.\nReturns, as changed, the group as updated, and as affected_actions,\nevery action whose path, effective_color or effective_priority\nchanged as a result.",
+    "description": "Update an action group by id: its group_id (move it inside another\ngroup; clear it to make it top-level), name (still unique among\ngroups), background_color, priority or note. Omitted properties keep\ntheir value; list one in clear_fields to blank it instead. Its actions\nthat don't set their own color follow its new one on the calendar.\nGiven version -- the version last seen -- it's refused if it's changed\nsince. Returns, as changed, the group as updated, and as affected_actions,\nevery action whose path, effective_color or effective_priority\nchanged as a result.",
     "inputSchema": {
       "properties": {
         "group": {
@@ -6378,6 +6514,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -6507,6 +6650,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6567,6 +6716,12 @@
                 "integer",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6575,11 +6730,17 @@
     }
   },
   {
-    "description": "Delete an action group, by id. Its actions and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), as changed, the groups moved up out of it, and as\naffected_actions, every action moved or recolored as a result.",
+    "description": "Delete an action group, by id. Its actions and the groups inside it\naren't deleted: they move up into the group it was inside (or to the\ntop level, if it was top-level). Returns the group as it was\n(deleted), as changed, the groups moved up out of it, and as\naffected_actions, every action moved or recolored as a result. Given\nif_version -- the version last seen -- it's refused if it's changed\nsince.",
     "inputSchema": {
       "properties": {
         "group_id": {
           "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -6658,6 +6819,13 @@
             "note": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Given to an update, it's the\nversion last seen: the update is refused if it's changed since.",
+              "type": [
+                "integer",
                 "null"
               ]
             }
@@ -6754,6 +6922,12 @@
                 "boolean",
                 "null"
               ]
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "type": "object"
@@ -6810,6 +6984,12 @@
               ]
             },
             "effective_priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "version": {
               "type": [
                 "integer",
                 "null"
@@ -11006,6 +11186,13 @@
                 "string",
                 "null"
               ]
+            },
+            "id": {
+              "description": "The note's own id, if a client chose it: given to note in a call\nmade once (by its write_id), the note is named by it.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -11088,6 +11275,13 @@
                 "string",
                 "null"
               ]
+            },
+            "id": {
+              "description": "The note's own id, if a client chose it: given to note in a call\nmade once (by its write_id), the note is named by it.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -11117,6 +11311,13 @@
         "compaction_id": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it's edited. Given to edit_note (version)\nor delete_note (if_version), it's the version last seen: the change\nis refused if the note's changed since.",
+          "type": [
+            "integer",
             "null"
           ]
         }
@@ -11176,6 +11377,13 @@
                 "string",
                 "null"
               ]
+            },
+            "version": {
+              "description": "Goes up by one each time it's edited. Given to edit_note (version)\nor delete_note (if_version), it's the version last seen: the change\nis refused if the note's changed since.",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -11207,6 +11415,12 @@
             "string",
             "null"
           ]
+        },
+        "version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -11236,6 +11450,13 @@
             "string",
             "null"
           ]
+        },
+        "version": {
+          "description": "Goes up by one each time it's edited. Given to edit_note (version)\nor delete_note (if_version), it's the version last seen: the change\nis refused if the note's changed since.",
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -11251,6 +11472,12 @@
       "properties": {
         "note_id": {
           "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -11273,6 +11500,13 @@
           ]
         },
         "compaction_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "The note's own id, if a client chose it: given to note in a call\nmade once (by its write_id), the note is named by it.",
           "type": [
             "string",
             "null"
@@ -12472,13 +12706,19 @@
           "type": "object"
         },
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGiven etag -- the event's last seen -- it's refused if the event's\nchanged since.",
           "properties": {
             "event_id": {
               "type": "string"
             },
             "counts_against_follow_through": {
               "type": "boolean"
+            },
+            "etag": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -14453,13 +14693,19 @@
           "type": "object"
         },
         "EventCancel": {
-          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).",
+          "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGiven etag -- the event's last seen -- it's refused if the event's\nchanged since.",
           "properties": {
             "event_id": {
               "type": "string"
             },
             "counts_against_follow_through": {
               "type": "boolean"
+            },
+            "etag": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -14868,6 +15114,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "etag": {
+              "description": "Which version of the event this is, as Calendar gives it; it\nchanges whenever the event does. Given to update_event, it's the\nversion last seen: the update is refused if the event's changed\nsince.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },

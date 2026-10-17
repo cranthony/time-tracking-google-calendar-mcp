@@ -370,6 +370,17 @@ impl CalendarClient {
         Event::from_api(&self.get_event_resource(event_id)?)
     }
 
+    /// The event `event_id` as Calendar has it now, not as it was read
+    /// earlier in this call.
+    pub fn fresh_event(&self, event_id: &str) -> anyhow::Result<Event> {
+        let event = self.call("GET", &self.event_path(event_id), &[], None)?;
+        EVENTS.with(|e| e.borrow_mut().retain(|(c, i, _)| !(*c == self.calendar_id && i == event_id)));
+        if caching() {
+            EVENTS.with(|e| e.borrow_mut().push((self.calendar_id.clone(), event_id.to_string(), event.clone())));
+        }
+        Event::from_api(&event)
+    }
+
     pub fn get_event_resource(&self, event_id: &str) -> anyhow::Result<Value> {
         if let Some(event) = cached_event(&self.calendar_id, event_id) {
             return Ok(event);
@@ -399,7 +410,7 @@ impl CalendarClient {
         }
         for chunk in missing.chunks(BATCH_SIZE) {
             let requests: Vec<BatchRequest> =
-                chunk.iter().map(|id| BatchRequest { method: "GET", path: self.event_path(id), query: Vec::new(), body: None }).collect();
+                chunk.iter().map(|id| BatchRequest { method: "GET", path: self.event_path(id), query: Vec::new(), body: None, if_match: None }).collect();
             for (id, answer) in chunk.iter().zip(self.google.calendar_batch(&requests)?) {
                 if let Ok(event) = answer {
                     EVENTS.with(|e| e.borrow_mut().push((self.calendar_id.clone(), (*id).clone(), event)));
@@ -432,7 +443,8 @@ impl CalendarClient {
     }
 
     fn send(&self, request: &BatchRequest) -> anyhow::Result<Value> {
-        self.call(request.method, &request.path, &request.query, request.body.as_ref())
+        let url = self.google.calendar_url(&request.path);
+        self.google.request(request.method, &url, &request.query, request.body.as_ref(), request.if_match.as_deref())
     }
 
     fn label_version(body: &Map<String, Value>) -> Vec<(&'static str, String)> {
@@ -457,7 +469,7 @@ impl CalendarClient {
             body.insert("id".into(), json!(id));
         }
         let query = Self::label_version(&body);
-        Ok(BatchRequest { method: "POST", path: self.events_path(), query, body: Some(Value::Object(body)) })
+        Ok(BatchRequest { method: "POST", path: self.events_path(), query, body: Some(Value::Object(body)), if_match: None })
     }
 
     /// Import `event` with the iCalendar UID `ical_uid` (events.import),
@@ -532,7 +544,7 @@ impl CalendarClient {
             }
         }
         let query = Self::label_version(&body);
-        Ok(BatchRequest { method: "PATCH", path: self.event_path(id), query, body: Some(Value::Object(body)) })
+        Ok(BatchRequest { method: "PATCH", path: self.event_path(id), query, body: Some(Value::Object(body)), if_match: event.etag.0.clone() })
     }
 
     /// The instances of series `event_id` starting before `time_max`,

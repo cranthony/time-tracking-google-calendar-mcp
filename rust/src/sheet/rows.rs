@@ -59,8 +59,32 @@ pub struct Conflict {
     pub kind: &'static str,
     pub id: String,
     /// The version the client last saw.
-    pub expected: i64,
+    pub expected: Seen,
     pub current: Option<Row>,
+}
+
+/// Which version of something a client last saw: a row's version, or an
+/// event's etag (as Calendar gives it).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(untagged)]
+pub enum Seen {
+    Version(i64),
+    Etag(String),
+}
+
+impl From<i64> for Seen {
+    fn from(version: i64) -> Seen {
+        Seen::Version(version)
+    }
+}
+
+impl std::fmt::Display for Seen {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Seen::Version(version) => write!(f, "version {version}"),
+            Seen::Etag(_) => f.write_str("it"),
+        }
+    }
 }
 
 impl Conflict {
@@ -74,20 +98,20 @@ impl std::fmt::Display for Conflict {
         match self.current_version() {
             _ if self.current.is_none() => write!(
                 f,
-                "{} {} was deleted after version {} was read",
+                "{} {} was deleted after {} was read",
                 self.kind,
                 py::repr(&self.id),
                 self.expected
             ),
             Some(now) => write!(
                 f,
-                "{} {} changed after version {} was read: it's version {} now",
+                "{} {} changed after {} was read: it's version {} now",
                 self.kind,
                 py::repr(&self.id),
                 self.expected,
                 now
             ),
-            None => write!(f, "{} {} changed after version {} was read", self.kind, py::repr(&self.id), self.expected),
+            None => write!(f, "{} {} changed after {} was read", self.kind, py::repr(&self.id), self.expected),
         }
     }
 }
@@ -184,7 +208,7 @@ pub fn expect_version(kind: &'static str, id: &str, current: Option<&Row>, expec
     if current.is_some() && now == Some(expected) {
         return Ok(());
     }
-    Err(Conflict { kind, id: id.into(), expected, current: current.cloned() }.into())
+    Err(Conflict { kind, id: id.into(), expected: expected.into(), current: current.cloned() }.into())
 }
 
 /// `expect_version` for a typed item.
@@ -278,15 +302,18 @@ pub fn chosen_id<'a>(given: Option<&str>, taken: impl IntoIterator<Item = Option
     let Some(given) = given.map(str::trim).filter(|g| !g.is_empty()) else {
         return Ok(new_id(taken));
     };
-    let formed = (2..=40).contains(&given.len())
-        && given.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
-    if !formed {
+    if !chosen_id_shape(given) {
         bail!("An id is 2 to 40 lowercase letters, digits and dashes: {} isn't", py::repr(given));
     }
     if taken.into_iter().any(|t| t == Some(given)) {
         bail!("The id {} is already used", py::repr(given));
     }
     Ok(given.into())
+}
+
+/// Whether `id` is shaped as a client's own id may be (see `chosen_id`).
+pub fn chosen_id_shape(id: &str) -> bool {
+    (2..=40).contains(&id.len()) && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
 /// A short random id not in `taken`.
@@ -559,7 +586,7 @@ impl RowSheet {
                         return Err(Conflict {
                             kind: self.row_type.name,
                             id: text(&item, "id").unwrap_or_default().into(),
-                            expected: given,
+                            expected: given.into(),
                             current: Some(current),
                         }
                         .into());

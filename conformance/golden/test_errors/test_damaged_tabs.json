@@ -22,7 +22,8 @@
       "note": null,
       "path": "play guitar",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "created_id": "co2yzn",
@@ -30,7 +31,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {
@@ -87,10 +88,11 @@
     "compaction_id": null,
     "description": "x",
     "id": "2026-10-07T09:00:00-04:00#2",
-    "timestamp": "2026-10-07T09:00:00-04:00"
+    "timestamp": "2026-10-07T09:00:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-07T09:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n  \"description\": \"x\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-07T09:00:00-04:00#2\",\n  \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n  \"description\": \"x\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -110,14 +112,15 @@
       "note": null,
       "path": "play guitar",
       "priority": null,
-      "status": "active"
+      "status": "active",
+      "version": 1
      }
     ],
     "label_slots_total": 200,
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn (edited)\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn (edited)\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -545,7 +548,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -638,7 +642,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -1243,7 +1248,8 @@
         "",
         "",
         "",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -1618,7 +1624,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000027,
         "startColumnIndex": 0,
@@ -1647,7 +1653,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000027,
        "startColumnIndex": 0,
@@ -1656,7 +1662,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -1676,7 +1682,38 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
+        "endRowIndex": 1,
+        "sheetId": 1000027,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "timestamp",
+        "description",
+        "compaction_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000027,
         "startColumnIndex": 0,
@@ -1688,7 +1725,8 @@
        [
         "2026-10-07T09:00:00-04:00",
         "x",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -2479,7 +2517,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000027,
        "startColumnIndex": 0,
@@ -2488,7 +2526,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -2637,7 +2675,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -2736,7 +2774,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -3157,7 +3195,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -3188,14 +3227,20 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ],
        [
         "co2yzn (edited)",
         "",
         "play guitar",
         "active",
-        "bb82ecea-50c0-514b-956e-fe110410c9e6"
+        "bb82ecea-50c0-514b-956e-fe110410c9e6",
+        "",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -3431,11 +3476,14 @@
        [
         "timestamp",
         "description",
-        "compaction_id"
+        "compaction_id",
+        "version"
        ],
        [
         "2026-10-07T09:00:00-04:00 (edited)",
-        "x"
+        "x",
+        "",
+        "1"
        ]
       ]
      },

@@ -53,6 +53,9 @@ pub struct BatchRequest {
     pub path: String,
     pub query: Vec<(&'static str, String)>,
     pub body: Option<Value>,
+    /// The etag the resource must still have (If-Match): else Google
+    /// answers 412.
+    pub if_match: Option<String>,
 }
 
 /// The status of `error` if it's a Google error.
@@ -304,6 +307,9 @@ impl Google {
                 path.push_str(&format!("{key}={}", segment(value)));
             }
             body.push_str(&format!("--{boundary}\r\nContent-Type: application/http\r\nContent-ID: <item-{i}>\r\n\r\n{} {path} HTTP/1.1\r\n", request.method));
+            if let Some(etag) = &request.if_match {
+                body.push_str(&format!("If-Match: {etag}\r\n"));
+            }
             match &request.body {
                 Some(json) => body.push_str(&format!("Content-Type: application/json\r\n\r\n{json}\r\n")),
                 None => body.push_str("\r\n"),

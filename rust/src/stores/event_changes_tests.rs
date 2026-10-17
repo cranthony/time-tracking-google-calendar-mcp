@@ -39,7 +39,7 @@ fn mv(event_id: &str, start: &str, end: &str) -> Event {
 }
 
 fn cancel(event_id: &str, counts: bool) -> Cancel {
-    Cancel { event_id: event_id.into(), counts_against_follow_through: counts }
+    Cancel { event_id: event_id.into(), counts_against_follow_through: counts, etag: None }
 }
 
 /// What `check` takes, Python's keyword arguments.
@@ -314,4 +314,50 @@ fn without_a_compaction_nothing_is_history() {
     let f = fixture(day(), false);
 
     assert!(f.check(Asked { updates: vec![Event { id: Some("email".into()), summary: Some("Inbox".into()), ..Default::default() }], ..Default::default() }).is_ok());
+}
+
+// -- etags -------------------------------------------------------------------------
+
+#[test]
+fn a_change_from_the_etag_last_seen_is_made() {
+    let f = fixture(day(), false);
+    let etag = f.event("email").etag.0.unwrap();
+
+    let renamed = Event { id: Some("email".into()), summary: Some("Inbox".into()), etag: Etag(Some(etag.clone())), ..Default::default() };
+    let written = f.apply(&f.check(Asked { updates: vec![renamed], ..Default::default() }).unwrap(), "update_event");
+
+    assert_eq!(written[0].summary.as_deref(), Some("Inbox"));
+    assert_ne!(written[0].etag.0.as_deref(), Some(etag.as_str()));
+    assert_eq!(f.t.fake.requests().iter().filter(|r| r.method == "PATCH").last().unwrap().if_match.as_deref(), Some(etag.as_str()));
+}
+
+#[test]
+fn a_change_from_an_older_etag_is_stale_with_the_event_as_it_is_now() {
+    let f = fixture(day(), false);
+    let etag = f.event("email").etag.0.unwrap();
+    f.apply(&f.check(Asked { updates: vec![Event { id: Some("email".into()), summary: Some("Inbox".into()), ..Default::default() }], ..Default::default() }).unwrap(), "update_event");
+
+    let renamed = Event { id: Some("email".into()), summary: Some("Mail".into()), etag: Etag(Some(etag.clone())), ..Default::default() };
+    let error = f.changes.check(vec![renamed], vec![], vec![], vec![], None, false).unwrap_err();
+    let stale = error.downcast_ref::<StaleEvent>().unwrap();
+    assert_eq!(stale.event.as_ref().unwrap().summary.as_deref(), Some("Inbox"));
+
+    let cancel = Cancel { etag: Some(etag), ..cancel("email", false) };
+    assert!(f.changes.check(vec![], vec![], vec![cancel], vec![], None, false).unwrap_err().downcast_ref::<StaleEvent>().is_some());
+    assert_eq!(f.event("email").summary.as_deref(), Some("Inbox"));
+}
+
+#[test]
+fn a_change_made_elsewhere_after_the_check_is_stale_when_its_written() {
+    let f = fixture(day(), false);
+    let etag = f.event("email").etag.0.unwrap();
+    let renamed = Event { id: Some("email".into()), summary: Some("Mail".into()), etag: Etag(Some(etag)), ..Default::default() };
+    let batch = f.check(Asked { updates: vec![renamed], ..Default::default() }).unwrap();
+    // Changed by someone else between the check and the write.
+    f.apply(&f.check(Asked { updates: vec![Event { id: Some("email".into()), summary: Some("Inbox".into()), ..Default::default() }], ..Default::default() }).unwrap(), "update_event");
+
+    let _held = WRITE_LOCK.hold();
+    let error = f.changes.apply(&batch, "update_event").unwrap_err();
+    let stale = error.downcast_ref::<StaleEvent>().unwrap();
+    assert_eq!(stale.event.as_ref().unwrap().summary.as_deref(), Some("Inbox"));
 }

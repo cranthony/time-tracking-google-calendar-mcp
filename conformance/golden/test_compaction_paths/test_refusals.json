@@ -11,10 +11,11 @@
     "compaction_id": null,
     "description": "finished breakfast",
     "id": "2026-10-05T07:45:00-04:00#2",
-    "timestamp": "2026-10-05T07:45:00-04:00"
+    "timestamp": "2026-10-05T07:45:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T07:45:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T07:45:00-04:00\",\n  \"description\": \"finished breakfast\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T07:45:00-04:00#2\",\n  \"timestamp\": \"2026-10-05T07:45:00-04:00\",\n  \"description\": \"finished breakfast\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -28,10 +29,11 @@
     "compaction_id": null,
     "description": "lunch",
     "id": "2026-10-05T12:30:00-04:00#3",
-    "timestamp": "2026-10-05T12:30:00-04:00"
+    "timestamp": "2026-10-05T12:30:00-04:00",
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"2026-10-05T12:30:00-04:00#3\",\n  \"timestamp\": \"2026-10-05T12:30:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null\n}",
+   "text": "{\n  \"id\": \"2026-10-05T12:30:00-04:00#3\",\n  \"timestamp\": \"2026-10-05T12:30:00-04:00\",\n  \"description\": \"lunch\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "note"
   },
   {
@@ -4771,7 +4773,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 5,
         "endRowIndex": 1,
         "sheetId": 1000053,
         "startColumnIndex": 0,
@@ -4800,7 +4802,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000053,
        "startColumnIndex": 0,
@@ -4809,7 +4811,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -4829,7 +4831,38 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
+        "endRowIndex": 1,
+        "sheetId": 1000053,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "timestamp",
+        "description",
+        "compaction_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 4,
         "endRowIndex": 2,
         "sheetId": 1000053,
         "startColumnIndex": 0,
@@ -4841,7 +4874,8 @@
        [
         "2026-10-05T07:45:00-04:00",
         "finished breakfast",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -4858,7 +4892,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "endRowIndex": 1,
        "sheetId": 1000053,
        "startColumnIndex": 0,
@@ -4867,7 +4901,7 @@
      },
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 1
@@ -4887,7 +4921,7 @@
      {
       "dataFilter": {
        "gridRange": {
-        "endColumnIndex": 3,
+        "endColumnIndex": 4,
         "endRowIndex": 3,
         "sheetId": 1000053,
         "startColumnIndex": 0,
@@ -4899,7 +4933,8 @@
        [
         "2026-10-05T12:30:00-04:00",
         "lunch",
-        ""
+        "",
+        "1"
        ]
       ]
      }
@@ -4980,7 +5015,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      }
@@ -5073,7 +5109,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      }
@@ -6073,7 +6110,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -6296,7 +6333,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -6496,7 +6533,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -6595,207 +6632,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -6995,7 +6832,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7195,7 +7032,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7395,205 +7232,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7793,7 +7432,205 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -7993,304 +7830,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -8490,7 +8030,304 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -8690,403 +8527,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -9286,7 +8727,603 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-04T07:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-04T07:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "14"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-04T07:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "21"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-04T07:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -9561,7 +9598,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -9660,7 +9697,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -9759,7 +9796,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -9858,7 +9895,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -9957,7 +9994,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -10056,7 +10093,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -10155,207 +10192,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -10555,7 +10392,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -10755,7 +10592,207 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-04T07:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-04T07:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "14"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-04T07:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "pageToken": [
+     "21"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-04T07:30:00-04:00"
+    ]
+   }
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -10854,7 +10891,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -10953,7 +10990,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -11052,7 +11089,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -11079,106 +11116,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
-       "sheetId": 1000053,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000069,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000055,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000057,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000059,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000061,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000063,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000065,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000071,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000073,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000075,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -11277,7 +11215,106 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
+       "sheetId": 1000053,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 8,
+       "sheetId": 1000069,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000055,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000057,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000059,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000061,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000063,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000065,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000071,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000073,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000075,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -11619,7 +11656,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -11819,7 +11856,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -12324,7 +12361,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -12423,7 +12460,7 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 3,
+       "endColumnIndex": 5,
        "sheetId": 1000053,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -13164,7 +13201,8 @@
         "name",
         "background_color",
         "priority",
-        "note"
+        "note",
+        "version"
        ]
       ]
      },
@@ -13195,7 +13233,8 @@
         "background_color",
         "priority",
         "note",
-        "commute"
+        "commute",
+        "version"
        ]
       ]
      },
@@ -13605,15 +13644,20 @@
        [
         "timestamp",
         "description",
-        "compaction_id"
+        "compaction_id",
+        "version"
        ],
        [
         "2026-10-05T07:45:00-04:00",
-        "finished breakfast"
+        "finished breakfast",
+        "",
+        "1"
        ],
        [
         "2026-10-05T12:30:00-04:00",
-        "lunch"
+        "lunch",
+        "",
+        "1"
        ]
       ]
      },
