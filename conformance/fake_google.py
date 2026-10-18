@@ -721,6 +721,10 @@ class FakeGoogle:
                 for name in args["fields"].split(","):
                     tab["properties"][name] = args["properties"][name]
                 replies.append({})
+            elif kind == "updateSpreadsheetProperties":
+                for name in args["fields"].split(","):
+                    spreadsheet["properties"][name] = args["properties"][name]
+                replies.append({})
             elif kind == "createDeveloperMetadata":
                 metadata = dict(args["developerMetadata"])
                 metadata["metadataId"] = next(self._ids)

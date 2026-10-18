@@ -350,7 +350,7 @@ The ideas behind the tools.
 
 ### Calendar metadata sheets
 
-Each calendar this app manages has one shared **calendar metadata spreadsheet** ([`rust/src/sheet/mod.rs`](rust/src/sheet/mod.rs)), titled "Calendar Metadata" — one tab per kind of Sheet-backed data this app keeps for that calendar. Today that's:
+Each calendar this app manages has one shared **calendar metadata spreadsheet** ([`rust/src/sheet/mod.rs`](rust/src/sheet/mod.rs)), titled "Calendar Metadata (do not edit by hand)" — one tab per kind of Sheet-backed data this app keeps for that calendar. Only the server should change it: change what's in it through the tools. A spreadsheet made under the old title, "Calendar Metadata", is renamed when the server starts, and so is one renamed by hand. Today it holds:
 
 - **Actions** and **Action Groups**, **People** and **Circles**, **Locations**, **Location Groups** and **Travel Times** — one row per item, read by header name (so you can reorder columns or add your own; see [Actions](#actions) and [People, circles and locations](#people-circles-and-locations) below). Ids are short and assigned; a list or object (a person's circles, their traits) is JSON in its cell. A cell edited by hand that can't be read as its column's kind (a priority that isn't a whole number, JSON that isn't JSON) makes its tab unreadable until it's fixed: every tool that reads the tab refuses, naming the tab and each such cell by row and column.
 - **Traits** — one row per trait: id, name, status, definition and parts (JSON). See [Traits](#traits) below.

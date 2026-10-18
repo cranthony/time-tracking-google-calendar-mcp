@@ -1309,6 +1309,10 @@ impl FakeGoogle {
         })
     }
 
+    pub fn spreadsheet_title(&self, spreadsheet_id: &str) -> String {
+        self.with(|s| s.spreadsheets[spreadsheet_id].properties["title"].as_str().unwrap_or("").to_string())
+    }
+
     pub fn tab_titles(&self, spreadsheet_id: &str) -> Vec<String> {
         self.with(|s| s.spreadsheets[spreadsheet_id].sheets.iter().map(|t| t.properties["title"].as_str().unwrap_or("").to_string()).collect())
     }

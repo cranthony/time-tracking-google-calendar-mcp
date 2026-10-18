@@ -7,7 +7,7 @@ use crate::google::calendar::CalendarClient;
 use crate::google::sheets::SheetsClient;
 use crate::google::Google;
 use crate::health::{HealthRecorder, HealthTab, HealthWriter};
-use crate::sheet::ensure_spreadsheet;
+use crate::sheet::{ensure_spreadsheet, retitle_spreadsheet};
 use crate::stores::actions::Actions;
 use crate::stores::cancellations::Cancellations;
 use crate::stores::goals::Goals;
@@ -294,9 +294,15 @@ impl App {
 
     /// The Health tab, for the writer: finding (or making) the metadata
     /// spreadsheet may write to the calendar, so this holds WRITE_LOCK.
+    /// The writer opens it as the server starts, so this is also where a
+    /// spreadsheet found under another title gets its own back.
     pub fn health_tab(&self) -> anyhow::Result<HealthTab> {
         let _held = WRITE_LOCK.hold();
-        let (_, sheets, id) = self.spreadsheet()?;
+        let (calendar, sheets) = self.clients()?;
+        let (id, new) = ensure_spreadsheet(&calendar, &sheets)?;
+        if !new {
+            retitle_spreadsheet(&sheets, &id)?;
+        }
         HealthTab::ensure(&sheets, &id)
     }
 

@@ -193,6 +193,21 @@ fn the_tab_is_written_under_its_own_lock_keeping_others_rows() {
 }
 
 #[test]
+fn opening_the_tab_gives_a_spreadsheet_under_another_title_its_own() {
+    let t = test_app();
+    let spreadsheet = t.spreadsheet();
+    {
+        let (_, sheets) = t.app.clients().unwrap();
+        let _held = crate::write_lock::WRITE_LOCK.hold();
+        sheets.set_spreadsheet_title(&spreadsheet, "Calendar Metadata").unwrap();
+    }
+
+    t.app.health_tab().unwrap();
+
+    assert_eq!(t.fake.spreadsheet_title(&spreadsheet), crate::sheet::SPREADSHEET_TITLE);
+}
+
+#[test]
 fn nothing_else_writes_without_a_lock() {
     let t = test_app();
     let (_, sheets) = t.app.clients().unwrap();

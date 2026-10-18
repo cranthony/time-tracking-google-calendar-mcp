@@ -30,6 +30,21 @@ fn creates_a_spreadsheet_when_nothing_is_tracked_then_reuses_it() {
 }
 
 #[test]
+fn retitling_is_one_write_and_no_read() {
+    let fake = FakeGoogle::start();
+    let (_, sheets) = clients(&fake);
+    let _held = WRITE_LOCK.hold();
+    let spreadsheet = sheets.create_spreadsheet("Calendar Metadata").unwrap();
+    let before = fake.quota_counts();
+
+    retitle_spreadsheet(&sheets, &spreadsheet).unwrap();
+
+    let after = fake.quota_counts();
+    assert_eq!([after[0] - before[0], after[1] - before[1]], [0, 1]);
+    assert_eq!(fake.spreadsheet_title(&spreadsheet), "Calendar Metadata (do not edit by hand)");
+}
+
+#[test]
 fn adds_and_tags_a_new_tab_then_reuses_it() {
     let fake = FakeGoogle::start();
     let (_, sheets) = clients(&fake);
