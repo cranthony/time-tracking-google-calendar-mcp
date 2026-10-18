@@ -258,6 +258,7 @@ The tools are built with the server (see [Setup](#setup)), into `rust/target/rel
 - `metadata_tabs` — the actions, groups, people, circles and locations tabs end to end, and facts on events. It leaves its scratch spreadsheet in Drive, for you to trash by hand: this app can't.
 - `series_edits`, `series_deletes`, `series_splits` — which of a recurring series' instances an edit or delete reaches, and ending a series Google split itself.
 - `sync_tokens`, `sync_masters` — how `syncToken` listings expand recurring series (never-ending ones are capped at 730 instances from their start) and what each kind of edit sends in the next incremental listing, with and without `singleEvents`.
+- `local_expansion`, `expansion_on_calendar` — that expanding recurring series locally ([`rust/src/google/expand.rs`](rust/src/google/expand.rs), from a listing with `singleEvents=false`) gives what Google's own expansion does, every field the server reads, etags included: on a scratch calendar with series of every kind, and (read only) on the configured one.
 - `sheets_version` — whether a Sheets write says which version it made, and how Drive's file `version` moves with the server's writes.
 - `server` — the server itself, over MCP against Google, on a scratch calendar: the stores, events, a whole compaction (a proposal, an edit, confirming, judging), a habit backfill and health. Run it before deploying a change you're unsure of.
 

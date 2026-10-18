@@ -18,11 +18,7 @@ use std::sync::LazyLock;
 static SPLIT_BY_GOOGLE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(?P<base>.+)_R\d{8}T\d{6}$").unwrap());
 static BYDAY_TOKEN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([+-]?\d+)?([A-Z]{2})$").unwrap());
 
-/// Google expands a series into at most this many instances, counted from
-/// its start, even for a listing later on: past them it lists nothing, and
-/// they aren't there to get or edit by id (the instance_cap probe). A daily
-/// series runs out after two years, a weekly one after 14.
-pub const INSTANCE_CAP: usize = 730;
+pub use crate::google::expand::INSTANCE_CAP;
 /// How long before a series runs out of instances `renew` splits it.
 pub const RENEW_DAYS_AHEAD: i64 = 180;
 

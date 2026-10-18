@@ -4,8 +4,10 @@
 //! they talk to Google, through their own HTTP client.
 //!
 //! It's faithful where the server depends on Google's behaviour, as the
-//! probes found it: recurring series expanded into instances -- at most
-//! 730 of them, counted from the series' start (INSTANCE_CAP) -- instances
+//! probes found it: recurring series expanded into instances, through
+//! google::expand (which the local_expansion probes check against Google)
+//! -- at most 730 of them, counted from the series' start (INSTANCE_CAP),
+//! named after the base series for a series Google split -- instances
 //! edited on their own as exceptions, series listed unexpanded
 //! (singleEvents=false), what a patch to a series' master
 //! does to them, a series ended early by UNTIL, series split by importing
@@ -16,8 +18,7 @@
 //! batchUpdateByDataFilter doesn't. Every request is logged.
 
 use crate::google::Google;
-use crate::stores::recurrences::INSTANCE_CAP;
-use chrono::{DateTime, Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
@@ -77,62 +78,19 @@ fn err(status: u16, message: impl Into<String>) -> GoogleError {
 
 type Result<T> = std::result::Result<T, GoogleError>;
 
-/// An event time: a moment, or a day for an all-day event.
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum When {
-    At(DateTime<Utc>),
-    Day(NaiveDate),
-}
-
-impl When {
-    fn key(&self, zone: Tz) -> DateTime<Utc> {
-        match self {
-            When::At(m) => *m,
-            When::Day(d) => zone.from_local_datetime(&d.and_time(NaiveTime::MIN)).earliest().unwrap().with_timezone(&Utc),
-        }
-    }
-
-    fn suffix(&self) -> String {
-        match self {
-            When::At(m) => m.format("%Y%m%dT%H%M%SZ").to_string(),
-            When::Day(d) => d.format("%Y%m%d").to_string(),
-        }
-    }
-}
+use crate::google::expand::{self, When};
 
 fn zone_of(name: Option<&str>) -> Tz {
-    name.and_then(|n| n.parse().ok()).unwrap_or(chrono_tz::UTC)
+    expand::zone_of(name)
 }
 
+/// `expand::parse_moment`, of a time the fake has taken.
 fn parse_moment(value: &Value, zone: Tz) -> When {
-    if let (Some(day), None) = (value.get("date").and_then(Value::as_str), value.get("dateTime")) {
-        return When::Day(NaiveDate::parse_from_str(day, "%Y-%m-%d").unwrap());
-    }
-    let raw = value["dateTime"].as_str().unwrap_or_default().replace('Z', "+00:00");
-    if let Ok(m) = DateTime::parse_from_rfc3339(&raw) {
-        return When::At(m.with_timezone(&Utc));
-    }
-    let naive = NaiveDateTime::parse_from_str(&raw, "%Y-%m-%dT%H:%M:%S").unwrap();
-    let zone = value.get("timeZone").and_then(Value::as_str).map(|z| zone_of(Some(z))).unwrap_or(zone);
-    When::At(zone.from_local_datetime(&naive).earliest().unwrap().with_timezone(&Utc))
+    expand::parse_moment(value, zone).expect("a time the fake took")
 }
 
 fn render_moment(when: When, zone: Tz, time_zone: Option<&str>) -> Value {
-    match when {
-        When::At(m) => {
-            let local = m.with_timezone(&time_zone.map(|z| zone_of(Some(z))).unwrap_or(zone));
-            let mut text = local.format("%Y-%m-%dT%H:%M:%S%:z").to_string();
-            if let Some(stripped) = text.strip_suffix("+00:00") {
-                text = format!("{stripped}Z");
-            }
-            let mut out = json!({"dateTime": text});
-            if let Some(z) = time_zone {
-                out["timeZone"] = json!(z);
-            }
-            out
-        }
-        When::Day(d) => json!({"date": d.format("%Y-%m-%d").to_string()}),
-    }
+    expand::render_moment(when, zone, time_zone)
 }
 
 fn parse_rfc3339(text: &str) -> Result<DateTime<Utc>> {
@@ -341,107 +299,12 @@ impl State {
     // -- series --
 
     fn occurrences(cal: &Calendar, master: &Value, until: Option<DateTime<Utc>>) -> Vec<When> {
-        let zone = cal.zone();
-        let start = parse_moment(&master["start"], zone);
-        let lines: Vec<String> = master["recurrence"].as_array().map(|a| a.iter().filter_map(|l| l.as_str().map(str::to_string)).collect()).unwrap_or_default();
-        let Some(rule) = lines.iter().find(|l| l.starts_with("RRULE:")) else { return vec![start] };
-        let parts: Vec<(String, String)> =
-            rule["RRULE:".len()..].split(';').filter(|p| !p.is_empty()).filter_map(|p| p.split_once('=').map(|(k, v)| (k.to_string(), v.to_string()))).collect();
-        let all_day = matches!(start, When::Day(_));
-        let local_zone = master["start"].get("timeZone").and_then(Value::as_str).map(|z| zone_of(Some(z))).unwrap_or(zone);
-        let naive_start = match start {
-            When::Day(d) => d.and_time(NaiveTime::MIN),
-            When::At(m) => m.with_timezone(&local_zone).naive_local(),
-        };
-        let mut rule_until: Option<DateTime<Utc>> = None;
-        for (k, v) in &parts {
-            if k == "UNTIL" {
-                rule_until = Some(if let Some(t) = v.strip_suffix('Z') {
-                    Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(t, "%Y%m%dT%H%M%S").unwrap())
-                } else if v.contains('T') {
-                    local_zone.from_local_datetime(&NaiveDateTime::parse_from_str(v, "%Y%m%dT%H%M%S").unwrap()).earliest().unwrap().with_timezone(&Utc)
-                } else {
-                    let day = NaiveDate::parse_from_str(v, "%Y%m%d").unwrap();
-                    local_zone.from_local_datetime(&day.and_hms_opt(23, 59, 59).unwrap()).earliest().unwrap().with_timezone(&Utc)
-                });
-            }
-        }
-        let rule_text: Vec<String> = parts.iter().filter(|(k, _)| k != "UNTIL").map(|(k, v)| format!("{k}={v}")).collect();
-        // The expansion runs in UTC on the local wall clock, as dateutil's
-        // naive one does; each start is then put in the local zone.
-        let mut text = format!("DTSTART:{}Z\nRRULE:{}", naive_start.format("%Y%m%dT%H%M%S"), rule_text.join(";"));
-        for line in lines.iter().filter(|l| l.starts_with("EXDATE")) {
-            for value in line.split_once(':').map(|(_, v)| v).unwrap_or("").split(',') {
-                let naive = if value.contains('T') {
-                    if let Some(t) = value.strip_suffix('Z') {
-                        Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(t, "%Y%m%dT%H%M%S").unwrap()).with_timezone(&local_zone).naive_local()
-                    } else {
-                        NaiveDateTime::parse_from_str(value, "%Y%m%dT%H%M%S").unwrap()
-                    }
-                } else {
-                    NaiveDate::parse_from_str(value, "%Y%m%d").unwrap().and_time(NaiveTime::MIN)
-                };
-                text.push_str(&format!("\nEXDATE:{}Z", naive.format("%Y%m%dT%H%M%S")));
-            }
-        }
-        let set: rrule::RRuleSet = match text.parse() {
-            Ok(set) => set,
-            Err(e) => panic!("fake: couldn't expand {text:?}: {e}"),
-        };
-        let mut found = Vec::new();
-        for naive in set.into_iter() {
-            let naive = naive.naive_utc();
-            let when = if all_day {
-                When::Day(naive.date())
-            } else {
-                match local_zone.from_local_datetime(&naive).earliest() {
-                    Some(m) => When::At(m.with_timezone(&Utc)),
-                    None => continue,
-                }
-            };
-            let key = when.key(zone);
-            if rule_until.is_some_and(|u| key > u) || until.is_some_and(|u| key >= u) {
-                break;
-            }
-            found.push(when);
-            // Google expands no further, even for a range later on.
-            if found.len() >= INSTANCE_CAP {
-                break;
-            }
-        }
-        found
+        expand::occurrences(cal.zone(), master, until)
     }
 
     fn instance(cal: &Calendar, master: &Value, original: When) -> Value {
-        let master_id = master["id"].as_str().unwrap();
-        let instance_id = format!("{master_id}_{}", original.suffix());
-        if let Some(stored) = cal.events.get(&instance_id) {
-            return under(master, stored);
-        }
-        let zone = cal.zone();
-        let start = parse_moment(&master["start"], zone);
-        let end = parse_moment(&master["end"], zone);
-        let time_zone = master["start"].get("timeZone").and_then(Value::as_str);
-        let mut instance = Map::new();
-        for (k, v) in master.as_object().unwrap() {
-            if !["recurrence", "id", "start", "end"].contains(&k.as_str()) {
-                instance.insert(k.clone(), v.clone());
-            }
-        }
-        instance.insert("id".into(), json!(instance_id));
-        instance.insert("recurringEventId".into(), json!(master_id));
-        instance.insert("originalStartTime".into(), render_moment(original, zone, time_zone));
-        instance.insert("start".into(), render_moment(original, zone, time_zone));
-        let end_when = match (original, start, end) {
-            (When::At(o), When::At(s), When::At(e)) => When::At(o + (e - s)),
-            (When::Day(o), When::Day(s), When::Day(e)) => When::Day(o + (e - s)),
-            _ => end,
-        };
-        instance.insert("end".into(), render_moment(end_when, zone, master["end"].get("timeZone").and_then(Value::as_str)));
-        if master["status"] == "cancelled" {
-            instance.insert("status".into(), json!("cancelled"));
-        }
-        Value::Object(instance)
+        let id = expand::instance_id(master["id"].as_str().unwrap_or_default(), original);
+        expand::instance(cal.zone(), master, original, cal.events.get(&id))
     }
 
     fn exceptions(cal: &Calendar, master_id: &str) -> Vec<Value> {
@@ -449,42 +312,8 @@ impl State {
     }
 
     fn expanded(cal: &Calendar, time_min: Option<DateTime<Utc>>, time_max: Option<DateTime<Utc>>, show_deleted: bool) -> Vec<Value> {
-        let zone = cal.zone();
         let horizon = time_max.unwrap_or_else(Utc::now) + Duration::days(HORIZON_DAYS);
-        let mut found = Vec::new();
-        for event in cal.ordered() {
-            if event.get("recurringEventId").is_some_and(|r| !r.is_null()) {
-                continue;
-            }
-            if event.get("recurrence").is_some_and(|r| !r.is_null() && r.as_array().is_some_and(|a| !a.is_empty())) {
-                let mut seen = Vec::new();
-                for original in Self::occurrences(cal, &event, Some(time_max.unwrap_or(horizon))) {
-                    let instance = Self::instance(cal, &event, original);
-                    seen.push(instance["id"].clone());
-                    found.push(instance);
-                }
-                for exception in Self::exceptions(cal, event["id"].as_str().unwrap()) {
-                    if !seen.contains(&exception["id"]) && Self::is_occurrence(cal, &event, &exception) {
-                        found.push(under(&event, &exception));
-                    }
-                }
-            } else {
-                found.push(event);
-            }
-        }
-        let mut listed: Vec<Value> = found
-            .into_iter()
-            .filter(|e| show_deleted || e["status"] != "cancelled")
-            .filter(|e| {
-                let (s, en) = (parse_moment(&e["start"], zone).key(zone), parse_moment(&e["end"], zone).key(zone));
-                !(time_min.is_some_and(|m| en <= m) || time_max.is_some_and(|m| s >= m))
-            })
-            .collect();
-        listed.sort_by(|a, b| {
-            (parse_moment(&a["start"], zone).key(zone), a["id"].as_str().unwrap_or("").to_string())
-                .cmp(&(parse_moment(&b["start"], zone).key(zone), b["id"].as_str().unwrap_or("").to_string()))
-        });
-        listed
+        expand::expand(cal.zone(), &cal.ordered(), time_min, time_max, show_deleted, horizon)
     }
 
     /// A singleEvents=false listing: events, and series (not their
@@ -511,25 +340,21 @@ impl State {
         found
     }
 
-    fn is_occurrence(cal: &Calendar, master: &Value, exception: &Value) -> bool {
-        let original = parse_moment(&exception["originalStartTime"], cal.zone());
-        Self::occurrences(cal, master, Some(original.key(cal.zone()) + Duration::seconds(1))).contains(&original)
-    }
-
     /// (event, its master if it's an instance) for `event_id`.
     fn find(cal: &Calendar, event_id: &str) -> Result<(Value, Option<Value>)> {
         if let Some(event) = cal.events.get(event_id) {
             let master = event["recurringEventId"].as_str().and_then(|m| cal.events.get(m)).cloned();
             return Ok((master.as_ref().map(|m| under(m, event)).unwrap_or_else(|| event.clone()), master));
         }
-        if let Some((master_id, when)) = instance_id_parts(event_id) {
-            if let Some(master) = cal.events.get(master_id) {
-                let until = when.contains('T').then(|| {
-                    Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(&when[..15], "%Y%m%dT%H%M%S").unwrap()) + Duration::seconds(1)
-                });
-                for original in Self::occurrences(cal, master, until) {
+        if let Some((base, when)) = instance_id_parts(event_id) {
+            let until = when.contains('T').then(|| {
+                Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(&when[..15], "%Y%m%dT%H%M%S").unwrap()) + Duration::seconds(1)
+            });
+            let parts = cal.ordered().into_iter().filter(|m| expand::is_master(m) && m["id"].as_str().map(expand::instance_base) == Some(base));
+            for master in parts {
+                for original in Self::occurrences(cal, &master, until) {
                     if original.suffix() == when {
-                        return Ok((Self::instance(cal, master, original), Some(master.clone())));
+                        return Ok((Self::instance(cal, &master, original), Some(master.clone())));
                     }
                 }
             }
@@ -1025,7 +850,7 @@ impl State {
         for mut exception in moved {
             cal.remove(exception["id"].as_str().unwrap());
             let original = parse_moment(&exception["originalStartTime"], zone);
-            let id = format!("{new_id}_{}", original.suffix());
+            let id = expand::instance_id(&new_id, original);
             exception["id"] = json!(id);
             exception["recurringEventId"] = json!(new_id);
             cal.put(&id, exception);
@@ -1190,12 +1015,7 @@ impl State {
 }
 
 fn under(master: &Value, exception: &Value) -> Value {
-    if master["status"] == "cancelled" && exception["status"] != "cancelled" {
-        let mut e = exception.clone();
-        e["status"] = json!("cancelled");
-        return e;
-    }
-    exception.clone()
+    expand::under(master, exception)
 }
 
 fn check_event(event: &Value, zone: Tz) -> Result<()> {

@@ -106,10 +106,11 @@ def _parse_moment(value: dict, zone: ZoneInfo) -> datetime | date:
 
 
 def _render_moment(moment: datetime | date, zone: ZoneInfo, time_zone: str | None) -> dict:
-    """An event time as Google returns it: in the event's own zone if it
-    has one, else the calendar's, with "Z" for UTC."""
+    """An event time as Google returns it: at the calendar's offset, even
+    for an event in another zone (named in "timeZone"), with "Z" for UTC --
+    as the local_expansion probe found."""
     if isinstance(moment, datetime):
-        local = moment.astimezone(ZoneInfo(time_zone) if time_zone else zone)
+        local = moment.astimezone(zone)
         text = local.isoformat()
         if text.endswith("+00:00"):
             text = text[:-6] + "Z"
@@ -127,12 +128,22 @@ def _sort_key(moment: datetime | date, zone: ZoneInfo) -> datetime:
 
 
 def _overlaps(start, end, zone, time_min: datetime | None, time_max: datetime | None) -> bool:
+    """Whether an event is listed for the range: it ends after `time_min`
+    (or, taking no time, is at it) and starts before `time_max`."""
     s, e = _sort_key(start, zone), _sort_key(end, zone)
-    if time_min is not None and e <= time_min:
+    if time_min is not None and e <= time_min and not (s == e == time_min):
         return False
     if time_max is not None and s >= time_max:
         return False
     return True
+
+
+def _instance_base(master_id: str) -> str:
+    """The id a series' instances are named after: its own, or for a series
+    Google split itself ("<base>_R<time>"), the base's -- as the
+    expansion_on_calendar probe found."""
+    split = re.fullmatch(r"(?P<base>.+)_R\d{8}T\d{6}", master_id)
+    return split["base"] if split else master_id
 
 
 def _instance_suffix(moment: datetime | date) -> str:
@@ -312,7 +323,7 @@ class FakeGoogle:
     def _instance(self, calendar: FakeCalendar, master: dict, original: datetime | date) -> dict:
         """`master`'s instance at `original`, as generated (or as edited on
         its own, if it's an exception)."""
-        instance_id = f"{master['id']}_{_instance_suffix(original)}"
+        instance_id = f"{_instance_base(master['id'])}_{_instance_suffix(original)}"
         stored = calendar.events.get(instance_id)
         if stored is not None:
             return self._under(master, stored)
@@ -400,11 +411,14 @@ class FakeGoogle:
             master = calendar.events.get(event.get("recurringEventId") or "")
             return (self._under(master, event) if master else event), master
         match = re.fullmatch(r"(?P<master>.+)_(?P<when>\d{8}(T\d{6}Z)?)", event_id)
-        if match and match["master"] in calendar.events:
-            master = calendar.events[match["master"]]
-            for original in self._occurrences(calendar, master, None if "T" not in match["when"] else datetime.strptime(match["when"], "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC) + timedelta(seconds=1)):
-                if _instance_suffix(original) == match["when"]:
-                    return self._instance(calendar, master, original), master
+        if match:
+            # The series, or any part of it Google split ("<base>_R<time>").
+            parts = [e for e in calendar.events.values() if e.get("recurrence") and not e.get("recurringEventId") and _instance_base(e["id"]) == match["master"]]
+            until = None if "T" not in match["when"] else datetime.strptime(match["when"], "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC) + timedelta(seconds=1)
+            for master in parts:
+                for original in self._occurrences(calendar, master, until):
+                    if _instance_suffix(original) == match["when"]:
+                        return self._instance(calendar, master, original), master
         raise GoogleError(404, "Not Found")
 
     # -- events: requests --
@@ -552,7 +566,7 @@ class FakeGoogle:
         for exception in moved:
             del calendar.events[exception["id"]]
             original = _parse_moment(exception["originalStartTime"], zone)
-            exception["id"] = f"{new_id}_{_instance_suffix(original)}"
+            exception["id"] = f"{_instance_base(new_id)}_{_instance_suffix(original)}"
             exception["recurringEventId"] = new_id
             calendar.events[exception["id"]] = exception
         return self._present(calendar, rest)
