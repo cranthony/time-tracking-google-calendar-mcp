@@ -17,6 +17,7 @@ fn main() -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread().enable_all().build()?;
     app.start_health_writer();
     app.start_series_renewal();
+    app.start_sheets_refresher();
     let served = match transport.as_str() {
         "streamable-http" => runtime.block_on(mcp::http::serve(app.clone())),
         _ => runtime.block_on(mcp::stdio::serve(app.clone())),

@@ -734,7 +734,7 @@ class FakeGoogle:
                 properties = args.get("properties", {})
                 if any(t["properties"]["title"] == properties.get("title") for t in spreadsheet["sheets"]):
                     raise GoogleError(400, f"A sheet with the name \"{properties.get('title')}\" already exists.")
-                sheet_id = 1_000_000 + next(self._ids)
+                sheet_id = properties.get("sheetId", 1_000_000 + next(self._ids))
                 tab = _new_tab(sheet_id, properties.get("title", f"Sheet{len(spreadsheet['sheets']) + 1}"))
                 if "tabColor" in properties:
                     tab["properties"]["tabColor"] = properties["tabColor"]

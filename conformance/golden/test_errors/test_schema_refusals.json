@@ -845,65 +845,6 @@
    "query": {}
   },
   {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000007,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000009,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000011,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000015,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
    "body": null,
    "if_match": null,
    "method": "GET",

@@ -106,7 +106,7 @@
       "effective_priority": null,
       "group_id": null,
       "holds_label": true,
-      "id": "co2yzn (edited)",
+      "id": "co2yzn",
       "label_id": "bb82ecea-50c0-514b-956e-fe110410c9e6",
       "name": "play guitar",
       "note": null,
@@ -120,7 +120,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn (edited)\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -134,7 +134,7 @@
    "arguments": {},
    "content": [
     {
-     "id": "3dnjav (edited)",
+     "id": "3dnjav",
      "member_ids": [],
      "name": "Family",
      "note": null,
@@ -143,7 +143,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav (edited)\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [],\n  \"version\": 1\n}",
    "tool": "get_circles"
   },
   {
@@ -373,9 +373,17 @@
   },
   {
    "arguments": {},
-   "content": "Error executing tool get_notes",
-   "is_error": true,
-   "text": "Error executing tool get_notes",
+   "content": [
+    {
+     "compaction_id": null,
+     "description": "x",
+     "id": "rs21so",
+     "timestamp": "2026-10-07T09:00:00-04:00",
+     "version": 1
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"rs21so\",\n  \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n  \"description\": \"x\",\n  \"compaction_id\": null,\n  \"version\": 1\n}",
    "tool": "get_notes"
   },
   {
@@ -383,7 +391,7 @@
    "content": {
     "hints": [
      {
-      "id": "a0g0jc (edited)",
+      "id": "a0g0jc",
       "label": null,
       "time": "07:30"
      }
@@ -391,21 +399,81 @@
     "time_zone": "America/New_York"
    },
    "is_error": false,
-   "text": "{\n  \"hints\": [\n    {\n      \"id\": \"a0g0jc (edited)\",\n      \"time\": \"07:30\",\n      \"label\": null\n    }\n  ],\n  \"time_zone\": \"America/New_York\"\n}",
+   "text": "{\n  \"hints\": [\n    {\n      \"id\": \"a0g0jc\",\n      \"time\": \"07:30\",\n      \"label\": null\n    }\n  ],\n  \"time_zone\": \"America/New_York\"\n}",
    "tool": "get_compaction_schedule_hints"
   },
   {
    "arguments": {},
-   "content": "Error executing tool get_compaction_status",
-   "is_error": true,
-   "text": "Error executing tool get_compaction_status",
+   "content": {
+    "judgments_pending": null,
+    "last_compaction": null,
+    "latest_compacted_note": null,
+    "proposal": null
+   },
+   "is_error": false,
+   "text": "{\n  \"last_compaction\": null,\n  \"latest_compacted_note\": null,\n  \"judgments_pending\": null,\n  \"proposal\": null\n}",
    "tool": "get_compaction_status"
   },
   {
    "arguments": {},
-   "content": "Error executing tool prepare_compaction",
-   "is_error": true,
-   "text": "Error executing tool prepare_compaction",
+   "content": {
+    "actions": [
+     {
+      "id": "co2yzn",
+      "name": "play guitar",
+      "note": null
+     }
+    ],
+    "compaction_window_start": "2026-10-07T09:00:00-04:00",
+    "day_end": "2026-10-08T09:00:00-04:00",
+    "days": null,
+    "events": [],
+    "goals": [],
+    "instructions": "`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (✓), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\"play guitar\", \"eat a meal\"); an event can have several, the first setting its color. For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations` -- usually one; several when it moved between places; see WHERE below), with_ids (people from `people` who were there; never \"self\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \"self\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot) -- and commute: true for getting from one place to another (an event with a commute action: one `actions` lists with `commute` true; an action without it isn't one), which takes no location_ids. The notes aren't judgments: you don't know the traits, so just record what happened. WHERE: keep the location an event already has in the plan (its `facts`) unless the events and notes around it clearly show the user was somewhere else. An event without one is where the previous event was -- the user stays put -- unless there's evidence they moved in between: the previous event, or one between, is a commute (a commute action, or the commute fact); the notes clearly put them somewhere other than planned ('stopped by the office', 'ended up at Sam's'); or the event clearly matches another location's hint (a 'gym workout' when a location's hint is the gym) -- then say in `unsure` that no commute was recorded. After a commute they're somewhere other than before it: tell where from the location of the event after it (that one event only), or else from the locations' hints. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, ▸ marks facts an event has and ▹ ones it's being given. Once proposed, ⚠ marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave); with neither, the whole event is for it. An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \"new:\" (\"new:ukulele\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
+    "judgments_pending": null,
+    "locations": [],
+    "notes": [
+     {
+      "candidates": [],
+      "description": "x",
+      "id": "rs21so",
+      "timestamp": "2026-10-07T09:00:00-04:00"
+     }
+    ],
+    "now": "2026-10-07T15:30:00-04:00",
+    "open_compaction": null,
+    "people": [
+     {
+      "context": null,
+      "id": "self",
+      "name": "Me",
+      "what_matters": null
+     }
+    ],
+    "previous_note": null,
+    "proposal": null,
+    "remaining_note_count": 0,
+    "timeline": {
+     "decided": false,
+     "events": [],
+     "last_compaction": null,
+     "notes": [
+      {
+       "anchors": [],
+       "annotates": null,
+       "compacted": false,
+       "id": "rs21so",
+       "ignored": false,
+       "text": "x",
+       "time": "2026-10-07T09:00:00-04:00"
+      }
+     ],
+     "now": "2026-10-07T15:30:00-04:00",
+     "text": "09:00 ● x\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"notes\": [\n    {\n      \"id\": \"rs21so\",\n      \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n      \"description\": \"x\",\n      \"candidates\": []\n    }\n  ],\n  \"events\": [],\n  \"now\": \"2026-10-07T15:30:00-04:00\",\n  \"day_end\": \"2026-10-08T09:00:00-04:00\",\n  \"remaining_note_count\": 0,\n  \"days\": null,\n  \"open_compaction\": null,\n  \"judgments_pending\": null,\n  \"compaction_window_start\": \"2026-10-07T09:00:00-04:00\",\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"rs21so\",\n        \"time\": \"2026-10-07T09:00:00-04:00\",\n        \"text\": \"x\",\n        \"anchors\": [],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": false,\n    \"text\": \"09:00 ● x\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\"\n  },\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"note\": null\n    }\n  ],\n  \"people\": [\n    {\n      \"id\": \"self\",\n      \"name\": \"Me\",\n      \"context\": null,\n      \"what_matters\": null\n    }\n  ],\n  \"locations\": [],\n  \"goals\": [],\n  \"previous_note\": null,\n  \"proposal\": null,\n  \"instructions\": \"`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (✓), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\\\"play guitar\\\", \\\"eat a meal\\\"); an event can have several, the first setting its color. For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations` -- usually one; several when it moved between places; see WHERE below), with_ids (people from `people` who were there; never \\\"self\\\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \\\"self\\\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot) -- and commute: true for getting from one place to another (an event with a commute action: one `actions` lists with `commute` true; an action without it isn't one), which takes no location_ids. The notes aren't judgments: you don't know the traits, so just record what happened. WHERE: keep the location an event already has in the plan (its `facts`) unless the events and notes around it clearly show the user was somewhere else. An event without one is where the previous event was -- the user stays put -- unless there's evidence they moved in between: the previous event, or one between, is a commute (a commute action, or the commute fact); the notes clearly put them somewhere other than planned ('stopped by the office', 'ended up at Sam's'); or the event clearly matches another location's hint (a 'gym workout' when a location's hint is the gym) -- then say in `unsure` that no commute was recorded. After a commute they're somewhere other than before it: tell where from the location of the event after it (that one event only), or else from the locations' hints. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, ▸ marks facts an event has and ▹ ones it's being given. Once proposed, ⚠ marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave); with neither, the whole event is for it. An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \\\"new:\\\" (\\\"new:ukulele\\\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\"\n}",
    "tool": "prepare_compaction"
   },
   {
@@ -1159,65 +1227,6 @@
    "query": {}
   },
   {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000007,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000009,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000011,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000015,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
    "body": null,
    "if_match": null,
    "method": "GET",
@@ -1348,6 +1357,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1387,6 +1404,73 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
   },
   {
@@ -1488,34 +1572,6 @@
   },
   {
    "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "endRowIndex": 1,
-       "sheetId": 1000025,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000025,
-       "startColumnIndex": 0,
-       "startRowIndex": 1
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
     "data": [
      {
       "dataFilter": {
@@ -1549,6 +1605,81 @@
    "if_match": null,
    "method": "GET",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
   },
   {
@@ -1646,34 +1777,6 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "endRowIndex": 1,
-       "sheetId": 1000027,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "sheetId": 1000027,
-       "startColumnIndex": 0,
-       "startRowIndex": 1
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
   },
   {
@@ -1790,6 +1893,250 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "",
+        "play guitar",
+        "active",
+        "bb82ecea-50c0-514b-956e-fe110410c9e6",
+        "",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000011,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "3dnjav",
+        "Family",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000025,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "a0g0jc",
+        "07:30"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000027,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "2026-10-07T09:00:00-04:00",
+        "x",
+        "",
+        "rs21so",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1856,6 +2203,30 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1863,13 +2234,6 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
    "query": {}
   },
   {
@@ -1919,6 +2283,30 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2363,7 +2751,23 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000033,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2383,30 +2787,11 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
      },
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000033,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2422,14 +2807,6 @@
   {
    "body": {
     "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000031,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
      {
       "gridRange": {
        "endColumnIndex": 26,
@@ -2449,6 +2826,62 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
        "sheetId": 1000029,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -2457,7 +2890,42 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
        "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2477,23 +2945,11 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
+     },
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
-       "sheetId": 1000029,
+       "sheetId": 1000013,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2501,55 +2957,15 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000029,
-       "startColumnIndex": 0,
-       "startRowIndex": 1
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "endRowIndex": 1,
-       "sheetId": 1000027,
+       "sheetId": 1000015,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
      },
      {
       "gridRange": {
-       "endColumnIndex": 5,
-       "sheetId": 1000027,
-       "startColumnIndex": 0,
-       "startRowIndex": 1
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
        "endColumnIndex": 26,
-       "endRowIndex": 1,
-       "sheetId": 1000025,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2559,7 +2975,360 @@
        "endColumnIndex": 26,
        "sheetId": 1000025,
        "startColumnIndex": 0,
-       "startRowIndex": 1
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000029,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000029,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000029,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000029,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
       }
      }
     ],
@@ -2783,22 +3552,6 @@
     "dataFilters": [
      {
       "gridRange": {
-       "endColumnIndex": 5,
-       "sheetId": 1000027,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000035,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000005,
        "startColumnIndex": 0,
@@ -2848,7 +3601,23 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000037,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2873,6 +3642,22 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000035,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2886,111 +3671,27 @@
    "query": {}
   },
   {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "sheetId": 1000027,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 8,
-       "sheetId": 1000035,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000007,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000009,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000011,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000015,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000037,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000029,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000031,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000033,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
+   "body": null,
    "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "orderBy": [
+     "startTime"
+    ],
+    "singleEvents": [
+     "true"
+    ],
+    "timeMax": [
+     "2026-10-09T15:30:00-04:00"
+    ],
+    "timeMin": [
+     "2026-10-06T08:45:00-04:00"
+    ]
+   }
   },
   {
    "body": {
@@ -3039,6 +3740,70 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000029,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000035,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3105,6 +3870,70 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000029,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000035,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3363,7 +4192,7 @@
         "version"
        ],
        [
-        "co2yzn (edited)",
+        "co2yzn",
         "",
         "play guitar",
         "active",
@@ -3435,7 +4264,7 @@
         "version"
        ],
        [
-        "3dnjav (edited)",
+        "3dnjav",
         "Family",
         "",
         "",
@@ -3467,7 +4296,7 @@
         "label"
        ],
        [
-        "a0g0jc (edited)",
+        "a0g0jc",
         "07:30"
        ]
       ]
@@ -3613,7 +4442,7 @@
         "version"
        ],
        [
-        "2026-10-07T09:00:00-04:00 (edited)",
+        "2026-10-07T09:00:00-04:00",
         "x",
         "",
         "rs21so",

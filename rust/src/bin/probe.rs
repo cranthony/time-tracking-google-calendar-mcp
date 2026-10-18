@@ -23,6 +23,7 @@
 //!     series_edits      which instances an edit to a recurring series reaches
 //!     series_deletes    what deleting a series (whole, or from an event on) leaves
 //!     series_splits     ending a series Google split itself ("_R" ids), and Recurrences on it
+//!     raw_round_trip    that what the server writes to a tab reads back exactly as written
 //!     server            the server binary (cargo build first) end to end over MCP, on Google
 //!     sheets_version    whether a Sheets write says which version it made, and how Drive's moves
 //!     sync_masters      syncToken listings of series masters, and the 730-instance cap
@@ -73,7 +74,7 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: probe <batch|cancelled_events|clear_fields|instance_cap|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
+    let usage = "usage: probe <batch|cancelled_events|clear_fields|instance_cap|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|raw_round_trip|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
     let Some(name) = args.first().cloned() else { anyhow::bail!("{usage}") };
     let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None, client: None };
     let mut i = 1;
@@ -117,7 +118,7 @@ fn run() -> anyhow::Result<()> {
         "series_deletes" => ("Time tracker series delete probe (safe to delete)", Some(TIME_ZONE)),
         "series_splits" => ("Time tracker series split probe (safe to delete)", Some(TIME_ZONE)),
         "server" => ("Time tracker server probe (safe to delete)", Some(TIME_ZONE)),
-        "sheets_version" | "sync_masters" | "sync_tokens" => ("Time tracker sync probe (safe to delete)", Some(TIME_ZONE)),
+        "raw_round_trip" | "sheets_version" | "sync_masters" | "sync_tokens" => ("Time tracker sync probe (safe to delete)", Some(TIME_ZONE)),
         _ => anyhow::bail!("{usage}"),
     };
     let calendar_id = CalendarClient::new(google.clone(), "").create_calendar(title, None, zone)?;
@@ -132,6 +133,7 @@ fn run() -> anyhow::Result<()> {
         "series_edits" => series_edits(&raw, &options),
         "series_deletes" => series_deletes(&raw, &options),
         "series_splits" => series_splits(&raw, &config),
+        "raw_round_trip" => raw_round_trip(&raw),
         "sheets_version" => sheets_version(&raw),
         "sync_masters" => sync_masters(&raw),
         "sync_tokens" => sync_tokens(&raw),
@@ -2028,6 +2030,44 @@ fn instance_cap(raw: &Raw) -> anyhow::Result<()> {
     let again = recurrences.renew(&now.fixed_offset())?;
     check("renewing again changes nothing", again.is_empty(), again.len());
     let _ = young;
+    Ok(())
+}
+
+// -- raw_round_trip -------------------------------------------------------------
+
+/// Whether what the server writes to a tab (valueInputOption RAW) reads
+/// back exactly as written, as batchGetByDataFilter gives it: the server
+/// keeps its own copy of each tab and compares the spreadsheet with it,
+/// so any value Sheets changes on the way in would look like a hand edit.
+///
+/// Found (2026-10-18): all 34 values read back exactly as written --
+/// "True" and "true" as they were (not "TRUE"), "007", "1.50" and "1e3"
+/// unchanged, "=1+1" as text, a leading apostrophe kept, spaces, tabs and
+/// line breaks kept, and the empty string read back empty. So comparing
+/// the spreadsheet with the server's copy needs no normalizing.
+fn raw_round_trip(raw: &Raw) -> anyhow::Result<()> {
+    use time_tracker::google::sheets::{SheetsClient, TabWrite};
+    let sheets = SheetsClient::new(raw.google.clone());
+    let (id, _) = time_tracker::sheet::ensure_spreadsheet(&raw.client(), &sheets)?;
+    let tab = sheets.add_sheet(&id, "Round trip", None)?;
+    let values = [
+        "True", "False", "true", "TRUE", "5", "-3", "007", "1.50", "1e3", "3.0", "12345678901234567890", "0.1",
+        "2026-10-07", "2026-10-07T09:00:00-04:00", "09:30", "1/2", "$5", "50%",
+        "=1+1", "'quoted", "+1", "-", " padded ", "trailing ", "\ttab", "line\nbreak", "",
+        r#"{"a": 1, "b": [true, null]}"#, r#"["x","y"]"#, "null", "None", "NaN", "Infinity", "é ✓ 日本",
+    ];
+    let rows: Vec<Vec<String>> = values.iter().map(|v| vec![format!("{:?}", v), v.to_string()]).collect();
+    sheets.write_tabs(&id, &[TabWrite { sheet_id: tab, range: "A1:B".into(), rows: rows.clone() }, TabWrite { sheet_id: tab, range: "D1:D1".into(), rows: vec![vec!["x".into()]] }])?;
+    let back = sheets.read_rows_in_sheet(&id, tab, "A1:B")?;
+    let mut changed = 0;
+    for (i, row) in rows.iter().enumerate() {
+        let got = back.get(i).and_then(|r| r.get(1)).cloned().unwrap_or_default();
+        if got != row[1] {
+            changed += 1;
+            println!("  CHANGED {:<32} -> {:?}", row[0], got);
+        }
+    }
+    println!("{} of {} values read back changed", changed, rows.len());
     Ok(())
 }
 

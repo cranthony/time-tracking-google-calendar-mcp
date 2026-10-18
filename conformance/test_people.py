@@ -3,6 +3,8 @@ them, and what refers to them."""
 
 from __future__ import annotations
 
+import pytest
+
 
 async def test_people(session):
     people = await session.call("get_people")
@@ -130,11 +132,14 @@ async def test_travel_times(session):
     assert await session.call("get_travel_times") == []
 
 
+@pytest.mark.server_env(TIME_TRACKER_SHEETS_REFRESH="every_call")
 async def test_rows_edited_by_hand(session, google):
-    """A tab edited in the spreadsheet by hand is read as it now is."""
+    """A tab edited in the spreadsheet by hand while the server runs is put
+    back as the server keeps it, before the next call reads it."""
     await session.call("create_location", location={"name": "Home"})
     spreadsheet = next(iter(google.spreadsheets.values()))
     tab = next(t for t in spreadsheet["sheets"] if t["properties"]["title"] == "Locations")
     name_column = next(c for (r, c), v in tab["cells"].items() if r == 0 and v == "name")
     tab["cells"][(1, name_column)] = "Cabin"
-    assert [loc["name"] for loc in await session.call("get_locations")] == ["Cabin"]
+    assert [loc["name"] for loc in await session.call("get_locations")] == ["Home"]
+    assert tab["cells"][(1, name_column)] == "Home"

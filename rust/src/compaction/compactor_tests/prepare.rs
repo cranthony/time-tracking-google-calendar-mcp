@@ -291,14 +291,15 @@ fn both_timelines_show_the_latest_compacted_note_and_the_last_compaction() {
 #[test]
 fn a_later_round_reads_its_notes_and_the_previous_note_in_one_request() {
     // Google Sheets caps read requests per minute, so the notes tab costs a
-    // later round's prepare one read, with the previous note found among
-    // its rows.
+    // later round's prepare (in a server just started, keeping nothing yet)
+    // one read, with the previous note found among its rows.
     let setup = Setup::new(&[("09:05+1", "email"), ("09:58+1", "done with work")], Some(window_events()), "10:05+1");
     let first = setup.dry_run(vec![]).compaction_id.unwrap();
     setup.commit(&first);
     setup.append_note("10:20+1", Some("report"));
     setup.set_now("10:30+1");
     let notes_tab = setup.compactor.notes.whole_tab().sheet_id;
+    setup.t.fake.forget_kept(&setup.t.spreadsheet());
     setup.t.fake.clear_requests();
 
     let context = setup.prepare();

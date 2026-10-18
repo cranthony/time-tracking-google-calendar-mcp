@@ -5,6 +5,8 @@ the golden record (see harness._masked_timings)."""
 
 from __future__ import annotations
 
+import pytest
+
 
 async def test_schema_refusals(session):
     """Arguments the input schema refuses, before the tool runs."""
@@ -33,8 +35,10 @@ async def test_missing_things(session):
     await session.call_error("compact_notes", recap={"overview": "x", "did": [], "unsure": []}, proposal_id="nosuch", revision=1)
 
 
+@pytest.mark.server_env(TIME_TRACKER_SHEETS_REFRESH="every_call")
 async def test_damaged_tabs(session, google):
-    """Tabs damaged by hand: a header renamed, a row with a bad cell."""
+    """Tabs damaged by hand while the server runs -- a header renamed --
+    are put back before the next call reads them."""
     await session.call("create_action", action={"name": "play guitar", "status": "active"})
     await session.call("create_circle", circle={"name": "Family"})
     await session.call("set_compaction_schedule_hints", hints=[{"time": "07:30"}])
@@ -80,10 +84,13 @@ def set_cell(google, title: str, row: int, column: str, text: str) -> None:
     tab["cells"][(row, index)] = text
 
 
+@pytest.mark.server_env(TIME_TRACKER_SHEETS_REFRESH="every_call")
 async def test_bad_cells(session, google):
-    """Cells edited by hand that can't be read as their column's kind: a
-    number that isn't one, JSON that isn't JSON. Every tool reading the tab
-    says which cell, and the others go on working."""
+    """Cells edited by hand while the server runs that can't be read as
+    their column's kind -- a number that isn't one, JSON that isn't JSON --
+    are put back before the next call reads them. (Read as they are, after
+    a restart, they make every tool reading the tab say which cell: see
+    the Rust tests.)"""
     group = (await session.call("create_action_group", group={"name": "Music", "priority": 1}))["created_id"]
     await session.call("create_action", action={"name": "play guitar", "status": "active", "group_id": group, "priority": 2})
     family = (await session.call("create_circle", circle={"name": "Family"}))["created_id"]

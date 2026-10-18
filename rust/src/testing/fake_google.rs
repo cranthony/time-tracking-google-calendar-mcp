@@ -1377,8 +1377,17 @@ impl FakeGoogle {
         })
     }
 
-    /// Replace everything below a tab's header row with `rows`.
+    /// Forget what the server keeps of `spreadsheet_id`, as a restart
+    /// would: a test that edits it behind the server's back, as setup,
+    /// means the server to read it as edited.
+    pub fn forget_kept(&self, spreadsheet_id: &str) {
+        crate::google::kept::forget_spreadsheet(&self.root, spreadsheet_id);
+    }
+
+    /// Replace everything below a tab's header row with `rows` (and forget
+    /// what's kept of the spreadsheet: see `forget_kept`).
     pub fn replace_rows(&self, spreadsheet_id: &str, title: &str, rows: Vec<Vec<String>>) {
+        self.forget_kept(spreadsheet_id);
         self.with(|s| {
             let sheet = s.spreadsheets.get_mut(spreadsheet_id).unwrap();
             let tab = sheet.sheets.iter_mut().find(|t| t.properties["title"] == json!(title)).unwrap();
@@ -1393,7 +1402,34 @@ impl FakeGoogle {
         })
     }
 
+    /// Set one cell by hand while the server runs: what it keeps isn't
+    /// told (unlike `set_cell`).
+    pub fn edit_by_hand(&self, spreadsheet_id: &str, title: &str, row: usize, column: usize, text: &str) {
+        self.with(|s| {
+            let sheet = s.spreadsheets.get_mut(spreadsheet_id).unwrap();
+            let tab = sheet.sheets.iter_mut().find(|t| t.properties["title"] == json!(title)).unwrap();
+            if text.is_empty() {
+                tab.cells.remove(&(row, column));
+            } else {
+                tab.cells.insert((row, column), text.to_string());
+            }
+        })
+    }
+
+    /// Delete a tab, and its tags, by hand while the server runs.
+    pub fn delete_tab_by_hand(&self, spreadsheet_id: &str, title: &str) {
+        self.with(|s| {
+            let sheet = s.spreadsheets.get_mut(spreadsheet_id).unwrap();
+            let id = sheet.sheets.iter().find(|t| t.properties["title"] == json!(title)).unwrap().properties["sheetId"].clone();
+            sheet.sheets.retain(|t| t.properties["sheetId"] != id);
+            sheet.metadata.retain(|m| m["location"]["sheetId"] != id);
+        })
+    }
+
+    /// Set one cell (and forget what's kept of the spreadsheet: see
+    /// `forget_kept`).
     pub fn set_cell(&self, spreadsheet_id: &str, title: &str, row: usize, column: usize, text: &str) {
+        self.forget_kept(spreadsheet_id);
         self.with(|s| {
             let sheet = s.spreadsheets.get_mut(spreadsheet_id).unwrap();
             let tab = sheet.sheets.iter_mut().find(|t| t.properties["title"] == json!(title)).unwrap();

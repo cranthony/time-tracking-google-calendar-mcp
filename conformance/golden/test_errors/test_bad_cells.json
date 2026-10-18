@@ -144,18 +144,54 @@
   },
   {
    "arguments": {},
-   "content": "Error executing tool get_actions: The Actions tab has cells that can't be read: row 2, column priority: 'high' isn't a whole number. Fix them in the spreadsheet, or clear them.",
-   "is_error": true,
-   "text": "Error executing tool get_actions: The Actions tab has cells that can't be read: row 2, column priority: 'high' isn't a whole number. Fix them in the spreadsheet, or clear them.",
+   "content": {
+    "actions": [
+     {
+      "background_color": null,
+      "commute": null,
+      "effective_color": "#a4bdfc",
+      "effective_priority": 2,
+      "group_id": "co2yzn",
+      "holds_label": true,
+      "id": "3dnjav",
+      "label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
+      "name": "play guitar",
+      "note": null,
+      "path": "Music › play guitar",
+      "priority": 2,
+      "status": "active",
+      "version": 1
+     }
+    ],
+    "label_slots_total": 200,
+    "label_slots_used": 5
+   },
+   "is_error": false,
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
    "arguments": {
     "id_or_name": "play guitar"
    },
-   "content": "Error executing tool get_action: The Actions tab has cells that can't be read: row 2, column priority: 'high' isn't a whole number. Fix them in the spreadsheet, or clear them.",
-   "is_error": true,
-   "text": "Error executing tool get_action: The Actions tab has cells that can't be read: row 2, column priority: 'high' isn't a whole number. Fix them in the spreadsheet, or clear them.",
+   "content": {
+    "background_color": null,
+    "commute": null,
+    "effective_color": "#a4bdfc",
+    "effective_priority": 2,
+    "group_id": "co2yzn",
+    "holds_label": true,
+    "id": "3dnjav",
+    "label_id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
+    "name": "play guitar",
+    "note": null,
+    "path": "Music › play guitar",
+    "priority": 2,
+    "status": "active",
+    "version": 1
+   },
+   "is_error": false,
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"background_color\": null,\n  \"priority\": 2,\n  \"note\": null,\n  \"commute\": null,\n  \"path\": \"Music › play guitar\",\n  \"effective_color\": \"#a4bdfc\",\n  \"effective_priority\": 2,\n  \"holds_label\": true,\n  \"version\": 1\n}",
    "tool": "get_action"
   },
   {
@@ -183,9 +219,9 @@
     "max_time": "2026-10-08T00:00:00-04:00",
     "min_time": "2026-10-07T00:00:00-04:00"
    },
-   "content": "Error executing tool list_events: The Actions tab has cells that can't be read: row 2, column priority: 'high' isn't a whole number. Fix them in the spreadsheet, or clear them.",
-   "is_error": true,
-   "text": "Error executing tool list_events: The Actions tab has cells that can't be read: row 2, column priority: 'high' isn't a whole number. Fix them in the spreadsheet, or clear them.",
+   "content": [],
+   "is_error": false,
+   "text": "",
    "tool": "list_events"
   },
   {
@@ -194,9 +230,31 @@
      "name": "read"
     }
    },
-   "content": "Error executing tool create_action: The Actions tab has cells that can't be read: row 2, column priority: 'high' isn't a whole number. Fix them in the spreadsheet, or clear them.",
-   "is_error": true,
-   "text": "Error executing tool create_action: The Actions tab has cells that can't be read: row 2, column priority: 'high' isn't a whole number. Fix them in the spreadsheet, or clear them.",
+   "content": {
+    "changed": [
+     {
+      "background_color": null,
+      "commute": null,
+      "effective_color": "#a4bdfc",
+      "effective_priority": null,
+      "group_id": null,
+      "holds_label": true,
+      "id": "lejxa2",
+      "label_id": "10199877-95e7-5c0a-b7b8-6aeb6b3225e8",
+      "name": "read",
+      "note": null,
+      "path": "read",
+      "priority": null,
+      "status": "proposed",
+      "version": 1
+     }
+    ],
+    "created_id": "lejxa2",
+    "label_slots_total": 200,
+    "label_slots_used": 6
+   },
+   "is_error": false,
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"lejxa2\",\n      \"group_id\": null,\n      \"name\": \"read\",\n      \"status\": \"proposed\",\n      \"label_id\": \"10199877-95e7-5c0a-b7b8-6aeb6b3225e8\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"lejxa2\"\n}",
    "tool": "create_action"
   },
   {
@@ -218,25 +276,83 @@
   },
   {
    "arguments": {},
-   "content": "Error executing tool get_people: The People tab has cells that can't be read: row 2, column circles: 'family' isn't valid JSON. Fix them in the spreadsheet, or clear them.",
-   "is_error": true,
-   "text": "Error executing tool get_people: The People tab has cells that can't be read: row 2, column circles: 'family' isn't valid JSON. Fix them in the spreadsheet, or clear them.",
+   "content": [
+    {
+     "cancelled_events": [],
+     "circle_names": null,
+     "circles": null,
+     "context": null,
+     "foundations": null,
+     "id": "self",
+     "name": "Me",
+     "status": "active",
+     "traits": null,
+     "version": 0,
+     "what_matters": null
+    },
+    {
+     "cancelled_events": [],
+     "circle_names": [
+      "Family"
+     ],
+     "circles": [
+      "a0g0jc"
+     ],
+     "context": null,
+     "foundations": null,
+     "id": "rs21so",
+     "name": "Sam Example",
+     "status": "active",
+     "traits": null,
+     "version": 1,
+     "what_matters": null
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_people"
   },
   {
    "arguments": {
     "id_or_name": "Sam Example"
    },
-   "content": "Error executing tool get_person: The People tab has cells that can't be read: row 2, column circles: 'family' isn't valid JSON. Fix them in the spreadsheet, or clear them.",
-   "is_error": true,
-   "text": "Error executing tool get_person: The People tab has cells that can't be read: row 2, column circles: 'family' isn't valid JSON. Fix them in the spreadsheet, or clear them.",
+   "content": {
+    "cancelled_events": [],
+    "circle_names": [
+     "Family"
+    ],
+    "circles": [
+     "a0g0jc"
+    ],
+    "context": null,
+    "foundations": null,
+    "id": "rs21so",
+    "name": "Sam Example",
+    "status": "active",
+    "traits": null,
+    "version": 1,
+    "what_matters": null
+   },
+   "is_error": false,
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
    "arguments": {},
-   "content": "Error executing tool get_circles: The People tab has cells that can't be read: row 2, column circles: 'family' isn't valid JSON. Fix them in the spreadsheet, or clear them.",
-   "is_error": true,
-   "text": "Error executing tool get_circles: The People tab has cells that can't be read: row 2, column circles: 'family' isn't valid JSON. Fix them in the spreadsheet, or clear them.",
+   "content": [
+    {
+     "id": "a0g0jc",
+     "member_ids": [
+      "rs21so"
+     ],
+     "name": "Family",
+     "note": null,
+     "scoring": null,
+     "version": 1
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
    "tool": "get_circles"
   },
   {
@@ -258,13 +374,29 @@
       "priority": 2,
       "status": "active",
       "version": 1
+     },
+     {
+      "background_color": null,
+      "commute": null,
+      "effective_color": "#a4bdfc",
+      "effective_priority": null,
+      "group_id": null,
+      "holds_label": true,
+      "id": "lejxa2",
+      "label_id": "10199877-95e7-5c0a-b7b8-6aeb6b3225e8",
+      "name": "read",
+      "note": null,
+      "path": "read",
+      "priority": null,
+      "status": "proposed",
+      "version": 1
      }
     ],
     "label_slots_total": 200,
-    "label_slots_used": 5
+    "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    },\n    {\n      \"id\": \"lejxa2\",\n      \"group_id\": null,\n      \"name\": \"read\",\n      \"status\": \"proposed\",\n      \"label_id\": \"10199877-95e7-5c0a-b7b8-6aeb6b3225e8\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   }
  ],
@@ -980,65 +1112,6 @@
    "query": {}
   },
   {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000007,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000009,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000011,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000015,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
    "body": null,
    "if_match": null,
    "method": "GET",
@@ -1158,6 +1231,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1301,6 +1382,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1392,6 +1481,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1443,6 +1540,38 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
        "sheetId": 1000013,
        "startColumnIndex": 0,
        "startRowIndex": 0
@@ -1452,6 +1581,14 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1547,6 +1684,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1554,6 +1699,50 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "3dnjav",
+        "co2yzn",
+        "play guitar",
+        "active",
+        "7a8759ac-8307-5cf3-937d-398ec33255fd",
+        "",
+        "2",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
    "query": {}
   },
   {
@@ -1606,62 +1795,11 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
      },
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000007,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000009,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000011,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1728,6 +1866,88 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -1813,6 +2033,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1823,8 +2051,126 @@
    "query": {}
   },
   {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 3,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 2
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "lejxa2",
+        "",
+        "read",
+        "proposed",
+        "10199877-95e7-5c0a-b7b8-6aeb6b3225e8",
+        "",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "labelProperties": {
+     "eventLabels": [
+      {
+       "backgroundColor": "#e1e1e1",
+       "id": "495cdbf8-ca71-5284-8fe0-31ec6b15fbbe",
+       "name": "Priority 0"
+      },
+      {
+       "backgroundColor": "#fbd75b",
+       "id": "261822bd-b719-5bcf-864c-1efdfff66600",
+       "name": "Priority 1"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "d47efd31-3b45-5318-88a5-73959ba725fa",
+       "name": "Priority 2"
+      },
+      {
+       "backgroundColor": "#7ae7bf",
+       "id": "927e6090-d147-5e11-b220-0aa54ff3be5f",
+       "name": "Priority 3"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
+       "name": "play guitar"
+      },
+      {
+       "backgroundColor": "#a4bdfc",
+       "id": "10199877-95e7-5c0a-b7b8-6aeb6b3225e8",
+       "name": "read"
+      }
+     ]
+    }
+   },
+   "if_match": "\"0000000000000029\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
      {
       "gridRange": {
        "endColumnIndex": 26,
@@ -1840,6 +2186,14 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -1847,6 +2201,109 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "rs21so",
+        "Sam Example",
+        "",
+        "active",
+        "[\"a0g0jc\"]",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
    "query": {}
   },
   {
@@ -1902,7 +2359,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000030,
+        "sheetId": 1000037,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1936,7 +2393,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000030,
+        "sheetId": 1000037,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -2005,7 +2462,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000030
+         "sheetId": 1000037
         },
         "metadataKey": "sheet-role",
         "metadataValue": "traits",
@@ -2073,7 +2530,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000032,
+        "sheetId": 1000039,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2107,7 +2564,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000032
+         "sheetId": 1000039
         },
         "metadataKey": "sheet-role",
         "metadataValue": "habits",
@@ -2175,7 +2632,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000034,
+        "sheetId": 1000041,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -2212,7 +2669,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000034
+         "sheetId": 1000041
         },
         "metadataKey": "sheet-role",
         "metadataValue": "cancellations",
@@ -2281,7 +2738,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000034,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2289,7 +2746,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000030,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2297,7 +2754,15 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000032,
+       "sheetId": 1000039,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000041,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2364,7 +2829,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000034,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2372,7 +2837,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000030,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2380,7 +2845,15 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000032,
+       "sheetId": 1000039,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000041,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2443,22 +2916,11 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
+     },
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000017,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2466,7 +2928,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000007,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2474,7 +2936,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000009,
+       "sheetId": 1000039,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2482,23 +2944,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000011,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000015,
+       "sheetId": 1000041,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2553,6 +2999,11 @@
         "backgroundColor": "#a4bdfc",
         "id": "7a8759ac-8307-5cf3-937d-398ec33255fd",
         "name": "play guitar"
+       },
+       {
+        "backgroundColor": "#a4bdfc",
+        "id": "10199877-95e7-5c0a-b7b8-6aeb6b3225e8",
+        "name": "read"
        }
       ]
      },
@@ -2622,7 +3073,7 @@
      },
      {
       "location": {
-       "sheetId": 1000030
+       "sheetId": 1000037
       },
       "metadataKey": "sheet-role",
       "metadataValue": "traits",
@@ -2630,7 +3081,7 @@
      },
      {
       "location": {
-       "sheetId": 1000032
+       "sheetId": 1000039
       },
       "metadataKey": "sheet-role",
       "metadataValue": "habits",
@@ -2638,7 +3089,7 @@
      },
      {
       "location": {
-       "sheetId": 1000034
+       "sheetId": 1000041
       },
       "metadataKey": "sheet-role",
       "metadataValue": "cancellations",
@@ -2728,6 +3179,18 @@
         "",
         "",
         "1"
+       ],
+       [
+        "lejxa2",
+        "",
+        "read",
+        "proposed",
+        "10199877-95e7-5c0a-b7b8-6aeb6b3225e8",
+        "",
+        "",
+        "",
+        "",
+        "1"
        ]
       ]
      },
@@ -2739,7 +3202,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000034,
+       "sheetId": 1000041,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2806,7 +3269,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000032,
+       "sheetId": 1000039,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2925,7 +3388,7 @@
         "Sam Example",
         "",
         "active",
-        "family",
+        "[\"a0g0jc\"]",
         "",
         "",
         "",
@@ -2955,7 +3418,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000030,
+       "sheetId": 1000037,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,

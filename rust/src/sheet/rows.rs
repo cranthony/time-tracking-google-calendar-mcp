@@ -625,7 +625,7 @@ impl RowSheet {
         seed: &[Row],
     ) -> anyhow::Result<RowSheet> {
         let header: Vec<String> = row_type.fields.iter().map(|(n, _)| n.to_string()).collect();
-        let sheet_id = match find_tab(sheets, spreadsheet_id, role)? {
+        let sheet_id = match find_tab(sheets, spreadsheet_id, role, title)? {
             Some(id) => id,
             None => create_tab(sheets, spreadsheet_id, role, title, None, |new_id| {
                 sheets.write_rows_in_sheet(spreadsheet_id, new_id, HEADER_RANGE, &vec![header.clone()])?;

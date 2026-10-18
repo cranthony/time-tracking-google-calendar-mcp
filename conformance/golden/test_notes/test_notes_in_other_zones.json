@@ -190,34 +190,6 @@
   },
   {
    "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "endRowIndex": 1,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 1
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
     "data": [
      {
       "dataFilter": {
@@ -282,34 +254,6 @@
   },
   {
    "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "endRowIndex": 1,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 1
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
     "data": [
      {
       "dataFilter": {
@@ -338,34 +282,6 @@
    "if_match": null,
    "method": "POST",
    "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "endRowIndex": 1,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 5,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 1
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
    "query": {}
   }
  ],

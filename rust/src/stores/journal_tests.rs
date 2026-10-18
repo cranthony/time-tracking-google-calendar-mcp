@@ -237,9 +237,10 @@ fn load_finds_any_compaction_not_just_the_latest() {
 }
 
 #[test]
-fn reads_only_the_whole_data_range() {
+fn reads_its_tab_once_then_from_what_is_kept() {
     let f = fixture();
     start(&f.journal, "first");
+    f.fake.forget_kept(&f.journal.spreadsheet_id);
     f.fake.clear_requests();
 
     f.journal.open_compactions().unwrap();
@@ -256,9 +257,8 @@ fn reads_only_the_whole_data_range() {
         .flat_map(|r| r.body["dataFilters"].as_array().unwrap().clone())
         .map(|filter| filter["gridRange"].clone())
         .collect();
-    assert!(!ranges.is_empty());
-    let whole = json!({"sheetId": f.journal.sheet_id, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": 8});
-    assert!(ranges.iter().all(|r| *r == whole), "{ranges:?}");
+    let whole = json!({"sheetId": f.journal.sheet_id, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": 26});
+    assert_eq!(ranges, vec![whole]);
 }
 
 // -- status -----------------------------------------------------------------------
