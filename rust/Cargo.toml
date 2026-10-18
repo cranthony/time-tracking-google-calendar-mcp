@@ -10,6 +10,7 @@ name = "time-tracker-server"
 path = "src/main.rs"
 
 [dependencies]
+rrule = "0.14.0"
 time-tracker-derive = { path = "derive" }
 indexmap = { version = "2.2.6", features = ["serde"] }
 anyhow = "1.0.86"
@@ -37,4 +38,3 @@ uuid = { version = "1.17.0", features = ["v4", "v5"] }
 debug = false
 
 [dev-dependencies]
-rrule = "0.14.0"

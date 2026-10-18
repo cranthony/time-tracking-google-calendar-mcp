@@ -17,8 +17,11 @@ fn at_in(month: u32, day: u32, hour: u32) -> Moment {
 }
 
 /// An instance of `series` at 09:00 New York (13:00 UTC) on October `day`.
+/// Series `series`' instance on Oct `day` at 09:00 New York time, named --
+/// as Google names it -- after the series a split series ("<base>_R...")
+/// was split from.
 fn instance(series: &str, day: u32) -> String {
-    format!("{series}_202610{day:02}T130000Z")
+    format!("{}_202610{day:02}T130000Z", crate::google::expand::instance_base(series))
 }
 
 fn strings(items: &[&str]) -> Vec<String> {

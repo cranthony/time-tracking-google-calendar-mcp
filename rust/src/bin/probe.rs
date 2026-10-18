@@ -7,7 +7,8 @@
 //! delete)") and trashed -- which needs the Drive API enabled in this
 //! app's Google Cloud project; without it, it's left in Drive, renamed.
 //! `--keep` keeps both, the spreadsheet renamed.
-//! `cancelled_events` and `other_client` only read the configured calendar.
+//! `cancelled_events`, `expansion_on_calendar` and `other_client` only read
+//! the configured calendar.
 //!
 //! Usage:
 //!     probe <name> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]
@@ -17,7 +18,9 @@
 //!     cancelled_events  whether events.list shows cancelled events, and what they keep
 //!     instance_cap      how far Google expands a long series, and reaching instances past that
 //!     clear_fields      that clearing an event's fields (clear_fields) removes them
+//!     expansion_on_calendar  local_expansion's comparison on the configured calendar, read only
 //!     label_lifecycle   what an event does when its label is removed, then added back
+//!     local_expansion   that expanding series locally gives what Google's expansion does
 //!     metadata_tabs     the metadata spreadsheet's tabs end to end, and facts on events
 //!     other_client      whether another OAuth client (--client PATH) sees the configured calendar
 //!     series_edits      which instances an edit to a recurring series reaches
@@ -74,7 +77,7 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: probe <batch|cancelled_events|clear_fields|instance_cap|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|raw_round_trip|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
+    let usage = "usage: probe <batch|cancelled_events|clear_fields|instance_cap|expansion_on_calendar|label_lifecycle|local_expansion|metadata_tabs|other_client|series_edits|series_deletes|series_splits|raw_round_trip|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
     let Some(name) = args.first().cloned() else { anyhow::bail!("{usage}") };
     let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None, client: None };
     let mut i = 1;
@@ -108,6 +111,9 @@ fn run() -> anyhow::Result<()> {
     if name == "cancelled_events" {
         return cancelled_events(&google, config.calendar_id()?, &options);
     }
+    if name == "expansion_on_calendar" {
+        return expansion_on_calendar(&google, config.calendar_id()?, &options);
+    }
     let (title, zone) = match name.as_str() {
         "batch" => ("Time tracker batch probe (safe to delete)", Some(TIME_ZONE)),
         "clear_fields" => ("Time tracker clear-fields probe (safe to delete)", Some(TIME_ZONE)),
@@ -118,7 +124,7 @@ fn run() -> anyhow::Result<()> {
         "series_deletes" => ("Time tracker series delete probe (safe to delete)", Some(TIME_ZONE)),
         "series_splits" => ("Time tracker series split probe (safe to delete)", Some(TIME_ZONE)),
         "server" => ("Time tracker server probe (safe to delete)", Some(TIME_ZONE)),
-        "raw_round_trip" | "sheets_version" | "sync_masters" | "sync_tokens" => ("Time tracker sync probe (safe to delete)", Some(TIME_ZONE)),
+        "local_expansion" | "raw_round_trip" | "sheets_version" | "sync_masters" | "sync_tokens" => ("Time tracker sync probe (safe to delete)", Some(TIME_ZONE)),
         _ => anyhow::bail!("{usage}"),
     };
     let calendar_id = CalendarClient::new(google.clone(), "").create_calendar(title, None, zone)?;
@@ -133,6 +139,7 @@ fn run() -> anyhow::Result<()> {
         "series_edits" => series_edits(&raw, &options),
         "series_deletes" => series_deletes(&raw, &options),
         "series_splits" => series_splits(&raw, &config),
+        "local_expansion" => local_expansion(&raw),
         "raw_round_trip" => raw_round_trip(&raw),
         "sheets_version" => sheets_version(&raw),
         "sync_masters" => sync_masters(&raw),
@@ -2068,6 +2075,131 @@ fn raw_round_trip(raw: &Raw) -> anyhow::Result<()> {
         }
     }
     println!("{} of {} values read back changed", changed, rows.len());
+    Ok(())
+}
+
+// -- local_expansion ------------------------------------------------------------
+
+/// Whether expanding series locally (google::expand, from a listing with
+/// singleEvents=false) gives what Google's own expansion (singleEvents=true)
+/// does -- every field the server reads, the etag above all, since a patch
+/// sends it back as If-Match. Series of every kind the server makes or
+/// meets: across a change of DST, weekly by day, all day, in another time
+/// zone, with an EXDATE, ended by UNTIL; with instances edited, moved and
+/// deleted on their own; and after the master is edited.
+///
+/// Found (2026-10-18): every instance the same, and every field the
+/// server reads -- etag included -- the same, both after the instance
+/// edits and after the master's (163 instances over 70 days, across the
+/// end of DST). An instance not edited on its own has its master's etag.
+/// Its times are written at the calendar's offset, even for a series in
+/// another zone (labelled with that zone's "timeZone"): Europe/London's
+/// 08:00 is "03:00:00-04:00" on a New York calendar.
+fn local_expansion(raw: &Raw) -> anyhow::Result<()> {
+    let zone: Tz = TIME_ZONE.parse().unwrap();
+    let start = tomorrow_at(9);
+    let private = |p: i64| json!({"private": {key("priority"): p.to_string()}});
+    let make = |body: Value| -> anyhow::Result<String> { Ok(raw.insert(body)?["id"].as_str().unwrap().to_string()) };
+    let at = |m: &Moment| when(m);
+    let daily = make(json!({"summary": "Daily", "description": "d", "start": at(&start), "end": at(&(start + Duration::minutes(30))),
+        "recurrence": ["RRULE:FREQ=DAILY"], "extendedProperties": private(2)}))?;
+    let weekly_start = start + Duration::hours(2);
+    let weekly = make(json!({"summary": "Weekly", "start": at(&weekly_start), "end": at(&(weekly_start + Duration::hours(1))),
+        "recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR"]}))?;
+    let day = start.date_naive();
+    let all_day = make(json!({"summary": "All day", "start": {"date": day.to_string()}, "end": {"date": (day + Duration::days(1)).to_string()},
+        "recurrence": ["RRULE:FREQ=DAILY;COUNT=10"]}))?;
+    let london = make(json!({"summary": "London", "start": {"dateTime": format!("{}T08:00:00", day + Duration::days(1)), "timeZone": "Europe/London"},
+        "end": {"dateTime": format!("{}T08:30:00", day + Duration::days(1)), "timeZone": "Europe/London"}, "recurrence": ["RRULE:FREQ=DAILY;COUNT=40"]}))?;
+    let ex_day = start + Duration::days(3);
+    let exdated = make(json!({"summary": "With EXDATE", "start": at(&(start + Duration::hours(4))), "end": at(&(start + Duration::hours(5))),
+        "recurrence": ["RRULE:FREQ=DAILY;COUNT=8", format!("EXDATE;TZID={TIME_ZONE}:{}", (ex_day + Duration::hours(4)).format("%Y%m%dT%H%M%S"))]}))?;
+    let until_end = start + Duration::days(5);
+    make(json!({"summary": "Until", "start": at(&(start + Duration::hours(6))), "end": at(&(start + Duration::hours(7))),
+        "recurrence": [format!("RRULE:FREQ=DAILY;UNTIL={}Z", stamp(&until_end))]}))?;
+    raw.insert(json!({"summary": "Single", "start": at(&(start + Duration::hours(8))), "end": at(&(start + Duration::hours(9)))}))?;
+
+    let instances = raw.instances(&daily, false)?;
+    raw.patch(instances[1]["id"].as_str().unwrap(), json!({"summary": "Daily (renamed)", "extendedProperties": private(5)}))?;
+    let moved = moment_of(&instances[2]["start"]).unwrap() + Duration::hours(1);
+    raw.patch(instances[2]["id"].as_str().unwrap(), json!({"start": at(&moved), "end": at(&(moved + Duration::minutes(30)))}))?;
+    raw.call("DELETE", &format!("/events/{}", segment(instances[3]["id"].as_str().unwrap())), &[], None)?;
+    let weekly_instances = raw.instances(&weekly, false)?;
+    raw.patch(weekly_instances[0]["id"].as_str().unwrap(), json!({"description": "just this one"}))?;
+    let _ = (all_day, london, exdated);
+
+    let (time_min, time_max) = (start - Duration::days(1), start + Duration::days(70));
+    compare_expansion(raw, zone, &time_min, &time_max, "After instance edits")?;
+
+    raw.patch(&daily, json!({"description": "edited series", "extendedProperties": private(3)}))?;
+    compare_expansion(raw, zone, &time_min, &time_max, "After the master is edited")?;
+    Ok(())
+}
+
+/// The same comparison on the configured calendar, read only: the last
+/// `--days` days and the next 60.
+///
+/// Found (2026-10-18), on a calendar of 1665 events, series and
+/// exceptions: at first, the instances of series Google split itself (its
+/// "this and following" edits: "<base>_R<time>") weren't Google's -- it
+/// names their instances after the base series ("<base>_<start>"), not the
+/// split one. Expanded so, all 1900 events of 400 days back and 60 ahead
+/// are the same, every field the server reads. (A listing with
+/// showDeleted=true also gives cancelled instances past a series' UNTIL,
+/// left from ending it early; the server's listings leave cancelled ones
+/// out, as this does.)
+fn expansion_on_calendar(google: &Arc<Google>, calendar_id: &str, options: &Options) -> anyhow::Result<()> {
+    let raw = Raw { google: google.clone(), calendar_id: calendar_id.into() };
+    let zone = raw.client().get_time_zone()?;
+    let now = Utc::now().fixed_offset();
+    compare_expansion(&raw, zone, &(now - Duration::days(options.days)), &(now + Duration::days(60)), "The configured calendar")
+}
+
+/// Compare Google's expansion of [`time_min`, `time_max`) with
+/// google::expand's, from the calendar's singleEvents=false listing.
+fn compare_expansion(raw: &Raw, zone: Tz, time_min: &Moment, time_max: &Moment, label: &str) -> anyhow::Result<()> {
+    use time_tracker::google::expand;
+    let iso = |m: &Moment| time_tracker::py::isoformat(m);
+    // As list_events lists: cancelled events left out. (The cache keeps the
+    // masters as a sync gives them: cancelled ones included.)
+    let google = raw.list(&[("singleEvents", "true".into()), ("timeMin", iso(time_min)), ("timeMax", iso(time_max)), ("maxResults", "2500".into())])?;
+    let masters = raw.list(&[("singleEvents", "false".into()), ("showDeleted", "true".into()), ("maxResults", "2500".into())])?;
+    let local = expand::expand(zone, &masters, Some(time_min.with_timezone(&Utc)), Some(time_max.with_timezone(&Utc)), false, time_max.with_timezone(&Utc));
+    let ids = |items: &[Value]| -> Vec<String> { items.iter().map(|i| i["id"].as_str().unwrap_or("").to_string()).collect() };
+    let (g_ids, l_ids) = (ids(&google), ids(&local));
+    let only_google: Vec<&String> = g_ids.iter().filter(|i| !l_ids.contains(i)).collect();
+    let only_local: Vec<&String> = l_ids.iter().filter(|i| !g_ids.contains(i)).collect();
+    println!("\n{label}: Google {} events, local {} (from {} unexpanded)", google.len(), local.len(), masters.len());
+    let series_of = |id: &str| id.rsplit_once('_').map_or(id.to_string(), |(m, _)| m.to_string());
+    let mut missing: std::collections::BTreeMap<String, (usize, usize)> = Default::default();
+    for id in &only_google {
+        missing.entry(series_of(id)).or_default().0 += 1;
+    }
+    for id in &only_local {
+        missing.entry(series_of(id)).or_default().1 += 1;
+    }
+    for (series, (google_only, local_only)) in &missing {
+        let master = masters.iter().find(|m| m["id"].as_str() == Some(series.as_str()));
+        println!(
+            "  {series}: {google_only} only Google's, {local_only} only ours; master {}",
+            master.map_or("not listed".to_string(), |m| format!("start {} recurrence {} status {}", m["start"], m["recurrence"], m["status"]))
+        );
+    }
+    check(&format!("{label}: the same events"), only_google.is_empty() && only_local.is_empty(), missing.len());
+    let mut differs: std::collections::BTreeMap<&str, Vec<String>> = Default::default();
+    for g in &google {
+        let Some(l) = local.iter().find(|l| l["id"] == g["id"]) else { continue };
+        // Exactly as written: the server keeps a time's offset as given.
+        for field in ["summary", "description", "location", "status", "recurringEventId", "eventLabelId", "etag", "extendedProperties", "recurrence", "start", "end", "originalStartTime"] {
+            if g.get(field) != l.get(field) {
+                differs.entry(field).or_default().push(format!("{}: {:?} vs {:?}", g["id"], g.get(field), l.get(field)));
+            }
+        }
+    }
+    for (field, examples) in &differs {
+        println!("  {field}: {} differ, e.g. {}", examples.len(), examples[0]);
+    }
+    check(&format!("{label}: every field the server reads is the same"), differs.is_empty(), differs.keys().collect::<Vec<_>>());
     Ok(())
 }
 
