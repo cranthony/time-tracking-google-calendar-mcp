@@ -150,6 +150,33 @@ fn ce_of(problems: &[String], category: &str) -> anyhow::Error {
     error_of(&issues, category).into()
 }
 
+/// The action shares and the people's and places' shares `plan` gives
+/// events must fit in their events.
+fn check_shares(plan: &CompactionPlan) -> anyhow::Result<()> {
+    let mut problems: Vec<String> = Vec::new();
+    for change in &plan.changes {
+        let Some(after) = &change.after else { continue };
+        let before = change.before.as_ref();
+        let minutes = match (after.start, after.end) {
+            (Some(start), Some(end)) => (end - start).num_minutes(),
+            _ => continue,
+        };
+        let who = format!("{} {}", change.action, repr_opt(change.event_id.as_deref().or(after.summary.as_deref())));
+        if after.action_ids.is_some() && after.action_ids.as_ref() != before.and_then(|b| b.action_ids.as_ref()) {
+            let shares = after.action_ids.as_deref().unwrap_or_default();
+            problems.extend(crate::stores::shares::share_problems(shares, minutes).into_iter().map(|p| format!("{who}: {p}")));
+        }
+        if after.facts.is_some() && after.facts.as_ref() != before.and_then(|b| b.facts.as_ref()) {
+            let facts = super::plan::facts_from_dict(after.facts.as_ref());
+            problems.extend(facts.share_problems(minutes).into_iter().map(|p| format!("{who}: its facts' {p}")));
+        }
+    }
+    if !problems.is_empty() {
+        return Err(ce_of(&problems, "shares"));
+    }
+    Ok(())
+}
+
 /// The CompactionError `error` is, if it's one.
 pub fn compaction_error(error: &anyhow::Error) -> Option<&ChangeError> {
     error.downcast_ref::<ChangeError>()
@@ -2512,6 +2539,7 @@ impl NoteCompactor {
         )
         .map_err(anyhow::Error::from)?;
         self.check_goals(&plan)?;
+        check_shares(&plan)?;
         self.check_before_window(day, &plan)?;
         self.show_follow_through(day, decisions, &mut plan)?;
         if let Some(tree) = &tree {

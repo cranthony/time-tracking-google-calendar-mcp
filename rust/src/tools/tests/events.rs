@@ -539,6 +539,26 @@ fn an_events_action_shares_must_fit_in_it() {
     assert_eq!(server.event_writes(), 0);
 }
 
+#[test]
+fn an_events_people_and_places_take_shares_of_it() {
+    let server = two();
+    server.ok("create_person", json!({"person": {"id": "sam", "name": "Sam"}}));
+    server.ok("create_location", json!({"location": {"id": "home", "name": "Home", "hint": "home"}}));
+
+    let facts = json!({"location_ids": [{"location_id": "home", "minutes": 30, "remaining": true}], "with_ids": ["sam"]});
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"facts": facts}))]}));
+
+    let got = server.ok("get_event", json!({"id": "abc123"}));
+    assert_eq!(got["facts"]["location_ids"], json!([{"location_id": "home", "minutes": 30, "remaining": true}]));
+    assert_eq!(got["facts"]["with_ids"], json!(["sam"]));
+
+    server.refused(
+        "update_event",
+        json!({"updates": [update("abc123", json!({"facts": {"with_ids": [{"person_id": "sam", "minutes": 61}]}}))]}),
+        "its people's minutes add up to 61, more than the event's 60",
+    );
+}
+
 // -- goals -----------------------------------------------------------------------------
 
 fn with_goal(server: &Server, id: &str) {

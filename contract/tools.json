@@ -55,7 +55,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -69,7 +69,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -78,7 +86,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -87,7 +103,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -141,6 +165,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -176,8 +230,38 @@
           ],
           "type": "object"
         },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole. Each place and person can take a share of the event:\n{location_id or person_id, minutes?, percent?, remaining?} in place of\nthe id -- minutes (a fixed share), percent (of what the minutes leave),\nand remaining true for the rest too. One given as a bare id takes the\nremaining time, what the minutes and percents leave: each person all of\nit, and the places an even part each. Each list's minutes must fit in\nthe event, and its percents add up to no more than 100.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -655,7 +739,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -669,7 +753,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -678,7 +770,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -687,7 +787,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -741,6 +849,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -773,6 +911,36 @@
           "required": [
             "nth",
             "weekday"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -980,7 +1148,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -1044,7 +1212,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -1053,7 +1229,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -1062,7 +1246,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -1116,6 +1308,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -1151,8 +1373,38 @@
           ],
           "type": "object"
         },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole. Each place and person can take a share of the event:\n{location_id or person_id, minutes?, percent?, remaining?} in place of\nthe id -- minutes (a fixed share), percent (of what the minutes leave),\nand remaining true for the rest too. One given as a bare id takes the\nremaining time, what the minutes and percents leave: each person all of\nit, and the places an even part each. Each list's minutes must fit in\nthe event, and its percents add up to no more than 100.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -1489,7 +1741,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -1503,7 +1755,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -1512,7 +1772,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -1521,7 +1789,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -1575,6 +1851,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -1610,8 +1916,38 @@
           ],
           "type": "object"
         },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole. Each place and person can take a share of the event:\n{location_id or person_id, minutes?, percent?, remaining?} in place of\nthe id -- minutes (a fixed share), percent (of what the minutes leave),\nand remaining true for the rest too. One given as a bare id takes the\nremaining time, what the minutes and percents leave: each person all of\nit, and the places an even part each. Each list's minutes must fit in\nthe event, and its percents add up to no more than 100.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -2070,7 +2406,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -2084,7 +2420,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2093,7 +2437,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2102,7 +2454,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2156,6 +2516,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -2188,6 +2578,36 @@
           "required": [
             "nth",
             "weekday"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -2388,7 +2808,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -2402,7 +2822,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2411,7 +2839,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2420,7 +2856,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2474,6 +2918,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -2506,6 +2980,36 @@
           "required": [
             "nth",
             "weekday"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -2819,7 +3323,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -2833,7 +3337,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2842,7 +3354,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2851,7 +3371,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2905,6 +3433,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -2937,6 +3495,36 @@
           "required": [
             "nth",
             "weekday"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -3265,7 +3853,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -3279,7 +3867,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -3288,7 +3884,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -3297,7 +3901,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -3351,6 +3963,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -3383,6 +4025,36 @@
           "required": [
             "nth",
             "weekday"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -3717,7 +4389,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -3731,7 +4403,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -3740,7 +4420,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -3749,7 +4437,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -3803,6 +4499,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -3835,6 +4561,36 @@
           "required": [
             "nth",
             "weekday"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -4158,7 +4914,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -4172,7 +4928,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -4181,7 +4945,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -4190,7 +4962,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -4244,6 +5024,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -4279,8 +5089,38 @@
           ],
           "type": "object"
         },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole. Each place and person can take a share of the event:\n{location_id or person_id, minutes?, percent?, remaining?} in place of\nthe id -- minutes (a fixed share), percent (of what the minutes leave),\nand remaining true for the rest too. One given as a bare id takes the\nremaining time, what the minutes and percents leave: each person all of\nit, and the places an even part each. Each list's minutes must fit in\nthe event, and its percents add up to no more than 100.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -4617,7 +5457,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -4631,7 +5471,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -4640,7 +5488,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -4649,7 +5505,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -4703,6 +5567,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -4738,8 +5632,38 @@
           ],
           "type": "object"
         },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole. Each place and person can take a share of the event:\n{location_id or person_id, minutes?, percent?, remaining?} in place of\nthe id -- minutes (a fixed share), percent (of what the minutes leave),\nand remaining true for the rest too. One given as a bare id takes the\nremaining time, what the minutes and percents leave: each person all of\nit, and the places an even part each. Each list's minutes must fit in\nthe event, and its percents add up to no more than 100.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -5125,7 +6049,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -5139,7 +6063,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -5148,7 +6080,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -5157,7 +6097,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -5211,6 +6159,36 @@
           ],
           "type": "object"
         },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
         "NthWeekday": {
           "description": "One weekday of a month: the first Monday, the last Friday.",
           "properties": {
@@ -5246,8 +6224,38 @@
           ],
           "type": "object"
         },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
+          ],
+          "type": "object"
+        },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole. Each place and person can take a share of the event:\n{location_id or person_id, minutes?, percent?, remaining?} in place of\nthe id -- minutes (a fixed share), percent (of what the minutes leave),\nand remaining true for the rest too. One given as a bare id takes the\nremaining time, what the minutes and percents leave: each person all of\nit, and the places an even part each. Each list's minutes must fit in\nthe event, and its percents add up to no more than 100.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -14064,7 +15072,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -14355,7 +15363,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -14364,7 +15380,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -14373,7 +15397,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -14477,6 +15509,66 @@
             "seq",
             "text",
             "created"
+          ],
+          "type": "object"
+        },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -15037,7 +16129,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -15251,7 +16343,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -15260,7 +16360,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -15269,7 +16377,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -15336,6 +16452,36 @@
           },
           "required": [
             "goal_id"
+          ],
+          "type": "object"
+        },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
           ],
           "type": "object"
         },
@@ -15523,6 +16669,36 @@
           ],
           "type": "object"
         },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
+          ],
+          "type": "object"
+        },
         "Recap": {
           "description": "Claude's account of a revision, for the user reviewing it in the\napp: a short `overview`, then each thing it `did` -- what it decided,\nand from which notes -- and each thing it's `unsure` of, saying what\nit assumed (empty if nothing: say so by sending it empty). One point\neach, citing the events and notes it's about. Written afresh for every\nrevision: the proposal as it now stands, not what changed.",
           "properties": {
@@ -15686,7 +16862,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -16438,7 +17614,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -16621,7 +17797,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -16630,7 +17814,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -16639,7 +17831,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -16772,6 +17972,66 @@
           },
           "required": [
             "goal_id"
+          ],
+          "type": "object"
+        },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -17385,7 +18645,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -17466,7 +18726,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -17475,7 +18743,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -17484,7 +18760,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -17535,6 +18819,36 @@
           },
           "required": [
             "goal_id"
+          ],
+          "type": "object"
+        },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
           ],
           "type": "object"
         },
@@ -17596,6 +18910,36 @@
           "required": [
             "nth",
             "weekday"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -17787,7 +19131,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole. Each place and person can take a share of the event:\n{location_id or person_id, minutes?, percent?, remaining?} in place of\nthe id -- minutes (a fixed share), percent (of what the minutes leave),\nand remaining true for the rest too. One given as a bare id takes the\nremaining time, what the minutes and percents leave: each person all of\nit, and the places an even part each. Each list's minutes must fit in\nthe event, and its percents add up to no more than 100.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -18269,7 +19613,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -18452,7 +19796,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -18461,7 +19813,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -18470,7 +19830,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -18603,6 +19971,66 @@
           },
           "required": [
             "goal_id"
+          ],
+          "type": "object"
+        },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -19402,7 +20830,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -19585,7 +21013,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -19594,7 +21030,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -19603,7 +21047,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -19736,6 +21188,66 @@
           },
           "required": [
             "goal_id"
+          ],
+          "type": "object"
+        },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -20484,7 +21996,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },
@@ -20667,7 +22179,15 @@
           "properties": {
             "location_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/LocationSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -20676,7 +22196,15 @@
             },
             "with_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -20685,7 +22213,15 @@
             },
             "for_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "A person's id: they take the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/PersonSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -20818,6 +22354,66 @@
           },
           "required": [
             "goal_id"
+          ],
+          "type": "object"
+        },
+        "LocationSplit": {
+          "additionalProperties": false,
+          "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "location_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "location_id"
+          ],
+          "type": "object"
+        },
+        "PersonSplit": {
+          "additionalProperties": false,
+          "description": "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "person_id"
           ],
           "type": "object"
         },
@@ -22084,7 +23680,7 @@
             },
             "remaining": {
               "default": false,
-              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "description": "The remaining time too, what the minutes and percents\nleave, as one given as a bare id takes.",
               "type": "boolean"
             }
           },

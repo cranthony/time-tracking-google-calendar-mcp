@@ -615,6 +615,7 @@ pub struct GoalShare {
 
 impl Share for GoalShare {
     const KIND: &'static str = "goal";
+    const THEIRS: &'static str = "goals'";
     const NEITHER: &'static str = "the remaining time";
 
     fn new(goal_id: String, minutes: Option<i64>, percent: Option<i64>, remaining: bool) -> Self {

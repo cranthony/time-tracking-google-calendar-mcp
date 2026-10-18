@@ -6,7 +6,7 @@ use super::{from_store, refused, texts, ToolError};
 use crate::app::App;
 use crate::event::{parse_iso, Event, Moment};
 use crate::contract::{tool, DateTimeText, Schema};
-use crate::facts::{fact_problems, Facts as EventFacts};
+use crate::facts::{fact_problems, Facts as EventFacts, LocationShare, PersonShare};
 use crate::py;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::{share_ids, ActionShare, ActionTree};
@@ -43,9 +43,9 @@ pub enum EventField {
 /// Every field is optional.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Facts {
-    pub location_ids: Option<Vec<String>>,
-    pub with_ids: Option<Vec<String>>,
-    pub for_ids: Option<Vec<String>>,
+    pub location_ids: Option<Vec<LocationShare>>,
+    pub with_ids: Option<Vec<PersonShare>>,
+    pub for_ids: Option<Vec<PersonShare>>,
     pub notes: Option<IndexMap<String, String>>,
     pub commute: Option<bool>,
 }
@@ -111,7 +111,13 @@ pub struct Facts {
 /// weren't there), notes ({person id: a subjective note on how it was
 /// for them}, "self" for the user) and commute (true for getting from
 /// one place to another). Compaction writes them; set them to replace
-/// them whole.
+/// them whole. Each place and person can take a share of the event:
+/// {location_id or person_id, minutes?, percent?, remaining?} in place of
+/// the id -- minutes (a fixed share), percent (of what the minutes leave),
+/// and remaining true for the rest too. One given as a bare id takes the
+/// remaining time, what the minutes and percents leave: each person all of
+/// it, and the places an even part each. Each list's minutes must fit in
+/// the event, and its percents add up to no more than 100.
 ///
 /// judgments are how the event went for each person, judged after
 /// compaction against each judgment part of the traits that apply to them

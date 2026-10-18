@@ -928,24 +928,10 @@ pub fn settle_refs(decision: &EventDecision, settled: &Dict<AdditionSettled>) ->
             None => Some(v.to_string()),
         }
     };
-    let named = |values: &[String]| -> Vec<String> {
-        let mut out: Vec<String> = Vec::new();
-        for v in values {
-            if let Some(id) = id_of(v) {
-                if !out.contains(&id) {
-                    out.push(id);
-                }
-            }
-        }
-        out
-    };
     let named_value = |value: &Option<Value>| -> Option<Value> {
         match value {
             None => None,
-            Some(Value::Array(items)) => {
-                let strings: Vec<String> = items.iter().filter_map(|i| i.as_str().map(str::to_string)).collect();
-                Some(json!(named(&strings)))
-            }
+            Some(Value::Array(items)) => Some(Value::Array(crate::facts::renamed_items(items, &id_of))),
             Some(other) => Some(other.clone()),
         }
     };
