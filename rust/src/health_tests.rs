@@ -295,3 +295,55 @@ fn get_health_of_a_tool_never_called_says_which_were() {
 
     assert!(text.contains("No calls of 'nothing' are recorded; those that are: note"), "{text}");
 }
+
+// -- spreadsheet warnings ----------------------------------------------------------------------
+
+fn warning(at_ms: i64, tab: &str) -> SheetWarning {
+    SheetWarning { at_ms, kind: "edited".into(), tab: Some(tab.into()), cells: Vec::new(), cell_count: 1, restored: true }
+}
+
+#[test]
+fn a_refresh_becomes_a_warning_per_tab_naming_its_first_cells() {
+    use crate::google::kept::Differs;
+    use crate::google::sheets::{ChangedTab, DeletedTab, Refreshed};
+    let cells: Vec<Differs> = (0..25).map(|row| Differs { row, column: 1, found: format!("x{row}"), kept: String::new() }).collect();
+    let refreshed = Refreshed {
+        changed: vec![ChangedTab { sheet_id: 1, title: Some("People".into()), cells, restored: true }],
+        deleted: vec![DeletedTab { sheet_id: 2, title: None, restored: false }],
+        deferred: false,
+    };
+
+    let warnings = SheetWarning::of(&refreshed, 5);
+
+    assert_eq!(warnings.len(), 2);
+    assert_eq!((warnings[0].kind.as_str(), warnings[0].cells.len(), warnings[0].cell_count), ("edited", WARNING_CELLS, 25));
+    assert_eq!(warnings[0].cells[2], WarnedCell { cell: "B3".into(), found: "x2".into(), kept: String::new() });
+    assert_eq!((warnings[1].kind.as_str(), warnings[1].tab.clone(), warnings[1].restored), ("deleted", None, false));
+}
+
+#[test]
+fn warnings_are_written_to_the_tab_and_taken_in_again_after_a_restart() {
+    let before = recorder();
+    before.record_sheet_warnings(vec![warning(10, "People"), warning(20, "Actions")]);
+    let rows = before.take_dirty().unwrap();
+    assert_eq!(ids(&rows), vec!["server:sheet-warnings"]);
+    assert_eq!(rows[0].count, Some(2));
+
+    let after = recorder();
+    after.record_sheet_warnings(vec![warning(30, "Locations")]);
+    after.merge(&rows);
+
+    let tabs: Vec<Option<String>> = after.sheet_warnings().into_iter().map(|w| w.tab).collect();
+    assert_eq!(tabs, vec![Some("People".into()), Some("Actions".into()), Some("Locations".into())]);
+}
+
+#[test]
+fn only_warnings_from_the_last_week_are_recent() {
+    let recorder = recorder();
+    let day = 24 * 60 * 60 * 1000;
+    let now = 100 * day;
+    recorder.record_sheet_warnings(vec![warning(now - 8 * day, "Old"), warning(now - 2 * day, "A"), warning(now - day, "B")]);
+
+    assert_eq!(recorder.recent_sheet_warnings(now), (2, Some(now - day)));
+    assert_eq!(recorder.recent_sheet_warnings(now + 7 * day), (0, None));
+}
