@@ -52,11 +52,12 @@ pub fn with<T>(root: &str, spreadsheet_id: &str, f: impl FnOnce(&mut Tabs) -> T)
     f(kept.entry((root.to_string(), spreadsheet_id.to_string())).or_default())
 }
 
-/// About how many bytes `rows` take in memory: each cell's text, and a
-/// String's and a Vec's own size for each cell and row.
+/// About how many bytes `rows` take on the heap (see crate::heap): the
+/// list of rows, each row's list of cells, and each cell's text -- as
+/// much as each has room for.
 pub fn estimated_bytes(rows: &Rows) -> usize {
-    const HEADER: usize = std::mem::size_of::<String>();
-    rows.iter().map(|row| HEADER + row.iter().map(|cell| HEADER + cell.len()).sum::<usize>()).sum()
+    crate::heap::buffer::<Vec<String>>(rows.capacity())
+        + rows.iter().map(|row| crate::heap::buffer::<String>(row.capacity()) + row.iter().map(|cell| crate::heap::block(cell.capacity())).sum::<usize>()).sum::<usize>()
 }
 
 /// Each kept tab of every spreadsheet, for Sheets at `root`: its title
