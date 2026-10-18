@@ -52,6 +52,34 @@ pub fn with<T>(root: &str, spreadsheet_id: &str, f: impl FnOnce(&mut Tabs) -> T)
     f(kept.entry((root.to_string(), spreadsheet_id.to_string())).or_default())
 }
 
+/// About how many bytes `rows` take in memory: each cell's text, and a
+/// String's and a Vec's own size for each cell and row.
+pub fn estimated_bytes(rows: &Rows) -> usize {
+    const HEADER: usize = std::mem::size_of::<String>();
+    rows.iter().map(|row| HEADER + row.iter().map(|cell| HEADER + cell.len()).sum::<usize>()).sum()
+}
+
+/// Each kept tab of every spreadsheet, for Sheets at `root`: its title
+/// (or "tab <id>", for one not identified) and about how many bytes it
+/// takes (see `estimated_bytes`).
+pub fn sizes(root: &str) -> Vec<(String, usize)> {
+    let kept = KEPT.lock().unwrap_or_else(|e| e.into_inner());
+    let mut sizes = Vec::new();
+    for ((r, _), tabs) in kept.iter() {
+        if r != root {
+            continue;
+        }
+        for (id, tab) in tabs {
+            if let Some(rows) = &tab.rows {
+                let title = tab.identity.as_ref().map_or_else(|| format!("tab {id}"), |i| i.title.clone());
+                sizes.push((title, estimated_bytes(rows)));
+            }
+        }
+    }
+    sizes.sort();
+    sizes
+}
+
 /// The spreadsheets anything is kept of, for Sheets at `root`.
 pub fn spreadsheets(root: &str) -> Vec<String> {
     let kept = KEPT.lock().unwrap_or_else(|e| e.into_inner());

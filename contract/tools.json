@@ -22800,7 +22800,7 @@
     }
   },
   {
-    "description": "The server's health metrics, to graph or look for patterns in: for\neach tool, its last 100 calls -- when each ended, how long the tool's\nown work took and how long the whole request took (auth and transport\nincluded), and whether it succeeded -- with the median, 95th\npercentile and slowest of each; the server's memory after each of its\nlast 100 calls, whichever tool; and its last 100 restarts. Kept across\nrestarts, in the Health tab of the calendar's metadata spreadsheet;\nthe last few seconds' may not be written yet, but are given here.\nAlso auth: \"required\", or \"disabled\" for a build that skips sign-in;\nand sheet_warnings: what the server found changed by hand in the\nmetadata spreadsheet (which is its alone), each time, and whether it\nput back its own copy.\n\n`tool_name`: just that tool's calls. `samples`: false for just the\nsummaries, without each call and memory sample. Read-only.",
+    "description": "The server's health metrics, to graph or look for patterns in: for\neach tool, its last 100 calls -- when each ended, how long the tool's\nown work took and how long the whole request took (auth and transport\nincluded), and whether it succeeded -- with the median, 95th\npercentile and slowest of each; the server's memory, at its highest\nin each of the last 500 seconds anything happened in, with what made\nit up; and its last 100 restarts. Kept across\nrestarts, in the Health tab of the calendar's metadata spreadsheet;\nthe last few seconds' may not be written yet, but are given here.\nAlso auth: \"required\", or \"disabled\" for a build that skips sign-in;\nand sheet_warnings: what the server found changed by hand in the\nmetadata spreadsheet (which is its alone), each time, and whether it\nput back its own copy.\n\n`tool_name`: just that tool's calls. `samples`: false for just the\nsummaries, without each call and memory sample. Read-only.",
     "inputSchema": {
       "properties": {
         "tool_name": {
@@ -22931,14 +22931,39 @@
           ],
           "type": "object"
         },
+        "MemoryPart": {
+          "description": "One part of the server's memory at a sample, in MiB.",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "mib": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "mib"
+          ],
+          "type": "object"
+        },
         "MemorySample": {
-          "description": "The server's resident memory (RSS), in MiB, after a tool call --\nany tool's -- ended (UTC).",
+          "description": "The server's resident memory (RSS), in MiB, at its highest in one\nsecond (UTC) -- sampled after each tool call, and after each\nbackground refresh of what the server keeps -- and, when they were\nmeasured, what made it up (`parts`), to stack: each Sheet tab kept\n(\"Sheet: <title>\"), the calendar kept (\"Calendar\"), and \"Rest of\nserver\". The parts kept are estimates of what's held; the rest is the\ntotal less them.",
           "properties": {
             "at": {
               "type": "string"
             },
             "rss_mib": {
               "type": "number"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/MemoryPart"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             }
           },
           "required": [

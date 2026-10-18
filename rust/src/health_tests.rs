@@ -86,8 +86,9 @@ fn keeps_each_tools_last_hundred_and_the_memory_across_them() {
 
     assert_eq!(calls_of(&recorder, "get_notes").len(), 60);
     assert_eq!(calls_of(&recorder, "note").len(), 60);
-    // Across tools, not per tool: the last hundred calls, whichever.
-    assert_eq!(recorder.memory().len(), KEEP);
+    // Across tools, not per tool: a sample after each call, whichever (each
+    // in a second of its own, on the tests' clock).
+    assert_eq!(recorder.memory().len(), KEEP + 20);
     assert_eq!(recorder.memory().last().unwrap().at_ms, calls_of(&recorder, "get_notes").last().unwrap().at_ms);
     assert_eq!(calls_of(&recorder, "note").last().unwrap().work_ms, KEEP as i64 + 18);
 
@@ -346,4 +347,93 @@ fn only_warnings_from_the_last_week_are_recent() {
 
     assert_eq!(recorder.recent_sheet_warnings(now), (2, Some(now - day)));
     assert_eq!(recorder.recent_sheet_warnings(now + 7 * day), (0, None));
+}
+
+// -- memory by the second, and what made it up ----------------------------------------------
+
+/// A recorder whose clock reads `times` (ms) in turn, its memory `rss`
+/// KiB each time, and whose parts are `parts`.
+fn sampled(samples: &[(i64, i64)], parts: MemoryParts) -> HealthRecorder {
+    let recorder = HealthRecorder::new();
+    recorder.set_parts_source(Arc::new(move || parts.clone()));
+    for (at, rss) in samples {
+        // The tests' clock reads 1234 ms on from what it's set to.
+        TEST_CLOCK_MS.with(|c| c.set(Some(at - 1234)));
+        TEST_RSS.with(|c| c.set(Some(Some(*rss))));
+        recorder.sample_memory();
+    }
+    recorder
+}
+
+#[test]
+fn memory_is_kept_per_second_at_its_highest_in_each() {
+    let recorder = sampled(&[(10_100, 500), (10_400, 700), (10_900, 600), (11_000, 400), (12_500, 450)], vec![("Calendar".into(), 30)]);
+
+    let kept: Vec<(i64, i64)> = recorder.memory().iter().map(|m| (m.at_ms, m.rss_kib)).collect();
+
+    assert_eq!(kept, vec![(10_400, 700), (11_000, 400), (12_500, 450)]);
+    assert_eq!(recorder.memory_parts().keys().copied().collect::<Vec<_>>(), vec![10_400, 11_000, 12_500]);
+}
+
+#[test]
+fn the_last_five_hundred_seconds_are_kept() {
+    let samples: Vec<(i64, i64)> = (0..(MEMORY_KEEP as i64 + 7)).map(|i| (i * 1000, 100 + i)).collect();
+
+    let recorder = sampled(&samples, vec![("Sheet: Actions".into(), 2)]);
+
+    assert_eq!(recorder.memory().len(), MEMORY_KEEP);
+    assert_eq!(recorder.memory()[0].at_ms, 7000);
+    assert_eq!(recorder.memory_parts().len(), MEMORY_KEEP);
+}
+
+#[test]
+fn parts_are_written_to_the_tab_and_taken_in_again_after_a_restart() {
+    let before = sampled(&[(5_000, 900), (6_000, 950)], vec![("Calendar".into(), 120), ("Sheet: Notes".into(), 3)]);
+    let rows = before.take_dirty().unwrap();
+    assert_eq!(ids(&rows), vec!["server:memory", "server:memory-parts"]);
+
+    let after = HealthRecorder::new();
+    after.merge(&rows);
+
+    assert_eq!(after.memory_parts(), before.memory_parts());
+    assert_eq!(after.memory_parts()[&6_000], vec![("Calendar".to_string(), 120), ("Sheet: Notes".to_string(), 3)]);
+}
+
+#[test]
+fn parts_encode_compactly_with_a_part_missing_from_some_samples() {
+    let parts: Vec<(i64, MemoryParts)> = vec![(1_000, vec![("Calendar".into(), 10)]), (2_000, vec![("Calendar".into(), 12), ("Sheet: People".into(), 4)])];
+
+    assert_eq!(decode_parts(&encode_parts(&parts)).unwrap(), parts);
+    // Five hundred samples of twenty parts fit a cell with room to spare.
+    let many: Vec<(i64, MemoryParts)> = (0..500).map(|i| (i * 1000, (0..20).map(|p| (format!("Sheet: Tab {p}"), 100 + (i * p) % 37)).collect())).collect();
+    assert!(encode_parts(&many).len() < 25_000, "{}", encode_parts(&many).len());
+}
+
+#[test]
+fn get_health_gives_each_samples_parts_and_the_rest_of_the_server() {
+    let t = test_app();
+    TEST_CLOCK_MS.with(|c| c.set(Some(1_791_000_000_000)));
+    TEST_RSS.with(|c| c.set(Some(Some(10 * 1024))));
+    t.app.health.set_parts_source(Arc::new(|| vec![("Calendar".into(), 2048), ("Sheet: Actions".into(), 1024)]));
+    t.app.health.sample_memory();
+
+    let Ok(report) = crate::tools::run(&t.app, "get_health", json!({})).map(|o| o.0) else { panic!("get_health failed") };
+
+    assert_eq!(
+        report["memory"][0]["parts"],
+        json!([{"name": "Calendar", "mib": 2.0}, {"name": "Sheet: Actions", "mib": 1.0}, {"name": "Rest of server", "mib": 7.0}])
+    );
+}
+
+#[test]
+fn the_app_measures_each_kept_tab_and_the_kept_calendar() {
+    let t = test_app();
+    t.app.actions().unwrap().all().unwrap();
+    t.app.calendar_client().unwrap().list_events(&crate::testing::time_at("00:00"), &crate::testing::time_at("23:00")).unwrap();
+
+    let parts = t.app.memory_parts();
+
+    let names: Vec<&str> = parts.iter().map(|(n, _)| n.as_str()).collect();
+    assert!(names.contains(&"Sheet: Actions") && names.contains(&"Calendar"), "{names:?}");
+    assert!(parts.iter().all(|(_, kib)| *kib >= 0));
 }

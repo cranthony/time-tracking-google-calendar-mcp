@@ -243,6 +243,21 @@ impl App {
     /// checked against the Traits tab when they're set).
     pub fn set_self(self: &Arc<Self>) {
         let _ = self.me.set(Arc::downgrade(self));
+        let me = Arc::downgrade(self);
+        self.health.set_parts_source(Arc::new(move || me.upgrade().map(|app| app.memory_parts()).unwrap_or_default()));
+    }
+
+    /// What each part of what the server keeps takes now, in KiB (see
+    /// health::MemoryParts): each kept Sheet tab, and the kept calendar.
+    pub fn memory_parts(&self) -> crate::health::MemoryParts {
+        let Some(google) = self.google.get() else { return Vec::new() };
+        let kib = |bytes: usize| bytes.div_ceil(1024) as i64;
+        let mut parts: crate::health::MemoryParts =
+            SheetsClient::new(google.clone()).kept_sizes().into_iter().map(|(title, bytes)| (format!("Sheet: {title}"), kib(bytes))).collect();
+        if let Ok(calendar) = self.calendar_client() {
+            parts.push(("Calendar".into(), kib(calendar.kept_size())));
+        }
+        parts
     }
 
     fn me(&self) -> Arc<App> {
@@ -419,6 +434,7 @@ impl App {
             tracing::warn!("couldn't sync the calendar: {error:#}");
         }
         self.warn_of_outside_changes();
+        self.health.sample_memory();
     }
 
     /// Warn of the events syncs brought that the server didn't write --
@@ -469,6 +485,7 @@ impl App {
                 Err(error) => tracing::warn!("couldn't check the metadata spreadsheet {spreadsheet_id}: {error:#}"),
             }
         }
+        self.health.sample_memory();
     }
 
     /// Refresh the spreadsheets every so often from a thread of its own

@@ -356,6 +356,11 @@ impl CalendarClient {
         self.store(|store| std::mem::take(&mut store.outside))
     }
 
+    /// About how many bytes the events kept take (see synced::size).
+    pub fn kept_size(&self) -> usize {
+        synced::size(&self.root())
+    }
+
     /// What changed since `token` (everything, for `None`): every event,
     /// series master and exception, cancelled ones included, unexpanded.
     fn changes(&self, token: Option<&str>) -> anyhow::Result<Changes> {

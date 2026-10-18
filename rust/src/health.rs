@@ -1,7 +1,13 @@
-//! Health metrics: each tool call's latency, the memory after it, and the
-//! server's starts -- the last KEEP of each, recorded in memory and written
-//! to the Health tab in the background, in the same encoding Python reads
-//! and writes (so either server carries on the other's series).
+//! Health metrics: each tool call's latency, the server's memory, and its
+//! starts -- the last KEEP of each (MEMORY_KEEP of memory), recorded in
+//! memory and written to the Health tab in the background, in the same
+//! encoding Python reads and writes (so either server carries on the
+//! other's series).
+//!
+//! Memory is sampled after each tool call and each background refresh of
+//! what the server keeps, and kept per second: of the samples in one
+//! second, the one with the highest total, with what each part of what's
+//! kept took then (`MemoryParts`).
 
 use crate::google::sheets::SheetsClient;
 use crate::contract::RowItem;
@@ -12,15 +18,21 @@ use base64::Engine;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::io::{Read, Write};
 use std::sync::{Arc, Condvar, Mutex};
 
 pub const KEEP: usize = 100;
+/// How many seconds' memory samples are kept.
+pub const MEMORY_KEEP: usize = 500;
 pub const FLUSH_SECONDS: u64 = 30;
 pub const SERVER: &str = "server";
 pub const MEMORY: &str = "memory";
 pub const RESTARTS: &str = "restarts";
+/// The series of what each part of what's kept took, by memory sample.
+pub const MEMORY_PARTS: &str = "memory-parts";
+/// What get_health calls the memory not in any part kept.
+pub const REST: &str = "Rest of server";
 pub const TOOL_PREFIX: &str = "tool:";
 /// The series of what the spreadsheet refreshes found changed by hand.
 pub const SHEET_WARNINGS: &str = "sheet-warnings";
@@ -95,7 +107,17 @@ fn take(data: &[u8], mut at: usize) -> anyhow::Result<(u64, usize)> {
 }
 
 fn pack(columns: &[Vec<i64>]) -> String {
+    pack_with(&[], columns)
+}
+
+/// `pack`, with `header` (its length, then its bytes) before the columns:
+/// nothing at all for an empty one, as `pack` writes.
+fn pack_with(header: &[u8], columns: &[Vec<i64>]) -> String {
     let mut out = Vec::new();
+    if !header.is_empty() {
+        put(&mut out, header.len() as u64);
+        out.extend_from_slice(header);
+    }
     put(&mut out, columns.first().map(|c| c.len()).unwrap_or(0) as u64);
     for column in columns {
         let mut previous = 0i64;
@@ -110,19 +132,34 @@ fn pack(columns: &[Vec<i64>]) -> String {
     format!("{VERSION}{}", base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(compressed))
 }
 
-fn unpack(text: &str, width: usize) -> anyhow::Result<Vec<Vec<i64>>> {
+/// What `pack_with` wrote: the header, the bytes, and where the columns
+/// begin in them.
+fn unpack_header(text: &str) -> anyhow::Result<(Vec<u8>, Vec<u8>, usize)> {
+    let data = unpacked_bytes(text)?;
+    let (length, at) = take(&data, 0)?;
+    let end = at + length as usize;
+    let header = data.get(at..end).ok_or_else(|| anyhow::anyhow!("index out of range"))?.to_vec();
+    Ok((header, data, end))
+}
+
+fn unpacked_bytes(text: &str) -> anyhow::Result<Vec<u8>> {
     let Some(body) = text.strip_prefix(VERSION) else {
         anyhow::bail!("unknown health data format {}", crate::py::repr(&text.chars().take(1).collect::<String>()));
     };
     let compressed = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(body.trim_end_matches('='))?;
     let mut data = Vec::new();
     flate2::read::ZlibDecoder::new(&compressed[..]).read_to_end(&mut data)?;
-    let (count, mut at) = take(&data, 0)?;
+    Ok(data)
+}
+
+/// `width` columns, as `pack` wrote them, from `at` in `data`.
+fn unpack_columns(data: &[u8], at: usize, width: usize) -> anyhow::Result<Vec<Vec<i64>>> {
+    let (count, mut at) = take(data, at)?;
     let mut columns = Vec::new();
     for _ in 0..width {
         let (mut column, mut previous) = (Vec::new(), 0i64);
         for _ in 0..count {
-            let (delta, next) = take(&data, at)?;
+            let (delta, next) = take(data, at)?;
             at = next;
             previous += unzigzag(delta);
             column.push(previous);
@@ -130,6 +167,10 @@ fn unpack(text: &str, width: usize) -> anyhow::Result<Vec<Vec<i64>>> {
         columns.push(column);
     }
     Ok(columns)
+}
+
+fn unpack(text: &str, width: usize) -> anyhow::Result<Vec<Vec<i64>>> {
+    unpack_columns(&unpacked_bytes(text)?, 0, width)
 }
 
 pub fn encode_calls(calls: &[CallSample]) -> String {
@@ -158,6 +199,30 @@ pub fn encode_memory(samples: &[MemorySample]) -> String {
 pub fn decode_memory(text: &str) -> anyhow::Result<Vec<MemorySample>> {
     let columns = unpack(text, 2)?;
     Ok((0..columns[0].len()).map(|i| MemorySample { at_ms: columns[0][i], rss_kib: columns[1][i] }).collect())
+}
+
+/// `parts`, compactly: every part's name once (JSON), then a column of
+/// times and one of KiB for each name (0 where a sample hasn't it), as
+/// `pack` writes columns.
+pub fn encode_parts(parts: &[(i64, MemoryParts)]) -> String {
+    let mut names: Vec<&str> = parts.iter().flat_map(|(_, p)| p.iter().map(|(n, _)| n.as_str())).collect();
+    names.sort();
+    names.dedup();
+    let mut columns: Vec<Vec<i64>> = vec![parts.iter().map(|(at, _)| *at).collect()];
+    for name in &names {
+        columns.push(parts.iter().map(|(_, p)| p.iter().find(|(n, _)| n == name).map_or(0, |(_, kib)| *kib)).collect());
+    }
+    let header = serde_json::to_vec(&names).expect("names are JSON");
+    pack_with(&header, &columns)
+}
+
+pub fn decode_parts(text: &str) -> anyhow::Result<Vec<(i64, MemoryParts)>> {
+    let (header, data, at) = unpack_header(text)?;
+    let names: Vec<String> = serde_json::from_slice(&header)?;
+    let columns = unpack_columns(&data, at, names.len() + 1)?;
+    Ok((0..columns[0].len())
+        .map(|i| (columns[0][i], names.iter().enumerate().filter(|(j, _)| columns[j + 1][i] != 0).map(|(j, n)| (n.clone(), columns[j + 1][i])).collect()))
+        .collect())
 }
 
 pub fn encode_times(times: &[i64]) -> String {
@@ -268,17 +333,33 @@ impl SheetWarning {
 struct Series {
     calls: Vec<(String, VecDeque<CallSample>)>,
     memory: VecDeque<MemorySample>,
+    /// What each part took, by the time of its memory sample.
+    memory_parts: BTreeMap<i64, MemoryParts>,
     restarts: VecDeque<i64>,
     warnings: VecDeque<SheetWarning>,
     dirty: Vec<String>,
 }
 
+/// What each part of what the server keeps took at a memory sample, in
+/// KiB: each kept Sheet tab ("Sheet: <title>") and the kept calendar
+/// ("Calendar"). The rest of the total is the rest of the server.
+pub type MemoryParts = Vec<(String, i64)>;
+
+/// Where a memory sample's parts come from (the app, as it is then).
+pub type PartsSource = Arc<dyn Fn() -> MemoryParts + Send + Sync>;
+
 pub struct HealthRecorder {
     series: Mutex<Series>,
+    parts: Mutex<Option<PartsSource>>,
 }
 
 /// The latest KEEP of `older` and `newer` by time, each sample once.
 fn merged<T: Copy + PartialEq>(older: Vec<T>, newer: &VecDeque<T>, at: impl Fn(&T) -> i64) -> VecDeque<T> {
+    merged_keeping(older, newer, at, KEEP)
+}
+
+/// The latest `keep` of `older` and `newer` by time, each sample once.
+fn merged_keeping<T: Copy + PartialEq>(older: Vec<T>, newer: &VecDeque<T>, at: impl Fn(&T) -> i64, keep: usize) -> VecDeque<T> {
     let mut seen: Vec<T> = Vec::new();
     for sample in older.into_iter().chain(newer.iter().copied()) {
         if !seen.contains(&sample) {
@@ -286,7 +367,7 @@ fn merged<T: Copy + PartialEq>(older: Vec<T>, newer: &VecDeque<T>, at: impl Fn(&
         }
     }
     seen.sort_by_key(|s| at(s));
-    let skip = seen.len().saturating_sub(KEEP);
+    let skip = seen.len().saturating_sub(keep);
     seen.into_iter().skip(skip).collect()
 }
 
@@ -299,7 +380,54 @@ fn push_kept<T>(deque: &mut VecDeque<T>, item: T) {
 
 impl HealthRecorder {
     pub fn new() -> HealthRecorder {
-        HealthRecorder { series: Mutex::new(Series::default()) }
+        HealthRecorder { series: Mutex::new(Series::default()), parts: Mutex::new(None) }
+    }
+
+    /// Take each memory sample's parts from `source` from now on.
+    pub fn set_parts_source(&self, source: PartsSource) {
+        *self.parts.lock().unwrap_or_else(|e| e.into_inner()) = Some(source);
+    }
+
+    fn parts_now(&self) -> MemoryParts {
+        let source = self.parts.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        source.map(|s| s()).unwrap_or_default()
+    }
+
+    /// Sample the server's memory, and what each part takes, now: after
+    /// background work that changes what's kept.
+    pub fn sample_memory(&self) {
+        let at = now_ms();
+        let Some(rss) = rss_kib() else { return };
+        let parts = self.parts_now();
+        Self::record_memory(&mut self.lock(), at, rss, parts);
+    }
+
+    /// Keep a memory sample: in place of one earlier in the same second
+    /// with a lower total, or not at all if that one's is as high.
+    fn record_memory(series: &mut Series, at_ms: i64, rss_kib: i64, parts: MemoryParts) {
+        if let Some(last) = series.memory.back().copied() {
+            if last.at_ms.div_euclid(1000) == at_ms.div_euclid(1000) {
+                if rss_kib <= last.rss_kib {
+                    return;
+                }
+                series.memory.pop_back();
+                series.memory_parts.remove(&last.at_ms);
+            }
+        }
+        let parts_before = series.memory_parts.len();
+        series.memory.push_back(MemorySample { at_ms, rss_kib });
+        if !parts.is_empty() {
+            series.memory_parts.insert(at_ms, parts);
+        }
+        while series.memory.len() > MEMORY_KEEP {
+            if let Some(old) = series.memory.pop_front() {
+                series.memory_parts.remove(&old.at_ms);
+            }
+        }
+        Self::dirty(series, MEMORY.into());
+        if series.memory_parts.len() != parts_before || series.memory_parts.contains_key(&at_ms) {
+            Self::dirty(series, MEMORY_PARTS.into());
+        }
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Series> {
@@ -315,6 +443,7 @@ impl HealthRecorder {
     pub fn record_call(&self, tool: &str, work_ms: i64, total_ms: Option<i64>, ok: bool) {
         let at = now_ms();
         let rss = rss_kib();
+        let parts = if rss.is_some() { self.parts_now() } else { Vec::new() };
         let mut series = self.lock();
         let index = match series.calls.iter().position(|(n, _)| n == tool) {
             Some(i) => i,
@@ -326,8 +455,7 @@ impl HealthRecorder {
         push_kept(&mut series.calls[index].1, CallSample { at_ms: at, work_ms, total_ms, ok });
         Self::dirty(&mut series, format!("{TOOL_PREFIX}{tool}"));
         if let Some(rss) = rss {
-            push_kept(&mut series.memory, MemorySample { at_ms: at, rss_kib: rss });
-            Self::dirty(&mut series, MEMORY.into());
+            Self::record_memory(&mut series, at, rss, parts);
         }
     }
 
@@ -387,7 +515,11 @@ impl HealthRecorder {
                 } else if name == MEMORY {
                     let older = decode_memory(data)?;
                     let mine = series.memory.clone();
-                    series.memory = merged(older, &mine, |s| s.at_ms);
+                    series.memory = merged_keeping(older, &mine, |s| s.at_ms, MEMORY_KEEP);
+                } else if name == MEMORY_PARTS {
+                    for (at_ms, parts) in decode_parts(data)? {
+                        series.memory_parts.entry(at_ms).or_insert(parts);
+                    }
                 } else if name == RESTARTS {
                     let older = decode_times(data)?;
                     let mine = series.restarts.clone();
@@ -409,6 +541,9 @@ impl HealthRecorder {
                 tracing::warn!("health: skipping unreadable row {}: {error}", row.id.as_deref().unwrap_or_default());
             }
         }
+        // Only the parts of the samples kept.
+        let kept: std::collections::BTreeSet<i64> = series.memory.iter().map(|s| s.at_ms).collect();
+        series.memory_parts.retain(|at, _| kept.contains(at));
     }
 
     pub fn take_dirty(&self) -> Option<Vec<HealthRow>> {
@@ -442,6 +577,11 @@ impl HealthRecorder {
         self.lock().memory.iter().copied().collect()
     }
 
+    /// What each part took, by the time of its memory sample.
+    pub fn memory_parts(&self) -> BTreeMap<i64, MemoryParts> {
+        self.lock().memory_parts.clone()
+    }
+
     pub fn restarts(&self) -> Vec<i64> {
         self.lock().restarts.iter().copied().collect()
     }
@@ -453,6 +593,9 @@ impl HealthRecorder {
         } else if name == MEMORY {
             let samples: Vec<MemorySample> = series.memory.iter().copied().collect();
             (encode_memory(&samples), samples.last().map(|s| s.at_ms), samples.len())
+        } else if name == MEMORY_PARTS {
+            let parts: Vec<(i64, MemoryParts)> = series.memory_parts.iter().map(|(at, p)| (*at, p.clone())).collect();
+            (encode_parts(&parts), parts.last().map(|(at, _)| *at), parts.len())
         } else if name == SHEET_WARNINGS {
             let warnings: Vec<&SheetWarning> = series.warnings.iter().collect();
             (serde_json::to_string(&warnings).expect("warnings are JSON"), warnings.last().map(|w| w.at_ms), warnings.len())
