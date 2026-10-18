@@ -18,6 +18,14 @@ use std::sync::LazyLock;
 static SPLIT_BY_GOOGLE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(?P<base>.+)_R\d{8}T\d{6}$").unwrap());
 static BYDAY_TOKEN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([+-]?\d+)?([A-Z]{2})$").unwrap());
 
+/// Google expands a series into at most this many instances, counted from
+/// its start, even for a listing later on: past them it lists nothing, and
+/// they aren't there to get or edit by id (the instance_cap probe). A daily
+/// series runs out after two years, a weekly one after 14.
+pub const INSTANCE_CAP: usize = 730;
+/// How long before a series runs out of instances `renew` splits it.
+pub const RENEW_DAYS_AHEAD: i64 = 180;
+
 const FREQS: [(&str, &str); 4] = [("day", "DAILY"), ("week", "WEEKLY"), ("month", "MONTHLY"), ("year", "YEARLY")];
 const WEEKDAYS: [(&str, &str); 7] = [("mon", "MO"), ("tue", "TU"), ("wed", "WE"), ("thu", "TH"), ("fri", "FR"), ("sat", "SA"), ("sun", "SU")];
 const NTHS: [(i64, &str); 6] = [(1, "first"), (2, "second"), (3, "third"), (4, "fourth"), (5, "fifth"), (-1, "last")];
@@ -493,6 +501,12 @@ fn ends_before(series: &Event, at: &Moment) -> bool {
     NaiveDate::parse_from_str(until, "%Y%m%d").is_ok_and(|d| d < at.date_naive())
 }
 
+/// Whether `series` ends after a COUNT of instances Google expands them all.
+fn counts_within_cap(series: &Event) -> bool {
+    let Ok((_, _, parts)) = rrule(series) else { return false };
+    parts.iter().rev().find(|(k, _)| k == "COUNT").and_then(|(_, count)| count.parse::<usize>().ok()).is_some_and(|c| c <= INSTANCE_CAP)
+}
+
 /// The id of the series split from `series_id` at `at`.
 pub fn split_series_id(series_id: &str, at: &Moment) -> String {
     let utc = py::isoformat(&at.with_timezone(&Utc).fixed_offset());
@@ -753,6 +767,36 @@ impl Recurrences {
                 }
             }
         }
+    }
+
+    /// Split each series whose instances run out within RENEW_DAYS_AHEAD
+    /// of `now` -- Google expands only INSTANCE_CAP of them -- at its last
+    /// one, so it goes on as a new series with instances of its own. The
+    /// series that end by their own rules by then are left alone. Splitting
+    /// at the last instance, not now, leaves the series' edited instances
+    /// in place: only an edit to that last one is lost. Returns the new
+    /// series; one that can't be split is logged and skipped.
+    pub fn renew(&self, now: &Moment) -> anyhow::Result<Vec<Event>> {
+        let client = self.calendar.client();
+        let horizon = *now + Duration::days(RENEW_DAYS_AHEAD);
+        let going_on: Vec<String> = client.list_series(&horizon, None)?.into_iter().filter_map(|s| s.id).collect();
+        let mut renewed = Vec::new();
+        for series in client.list_series(now, Some(&horizon))? {
+            let Some(series_id) = series.id.clone().filter(|id| !going_on.contains(id)) else { continue };
+            if ends_before(&series, &horizon) || counts_within_cap(&series) {
+                continue;
+            }
+            let Some(last) = client.instances_from(&series_id, now)?.pop() else { continue };
+            match self.split(last.id.as_deref().unwrap_or_default()) {
+                Ok((_, later)) if later.id.as_deref() == Some(series_id.as_str()) => {}
+                Ok((_, later)) => {
+                    tracing::info!("renewed series {series_id} as {} from {}", later.id.as_deref().unwrap_or(""), py::isoformat(&later.start()));
+                    renewed.push(later);
+                }
+                Err(error) => tracing::warn!("couldn't renew series {series_id}, which Google stops expanding soon: {error:#}"),
+            }
+        }
+        Ok(renewed)
     }
 
     fn end_before(&self, series: &Event, at: &Moment) -> anyhow::Result<Event> {

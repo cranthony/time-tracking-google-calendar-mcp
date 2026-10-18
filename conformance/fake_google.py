@@ -4,8 +4,9 @@ talks to it exactly as it talks to Google, through its own HTTP client.
 
 It's faithful where the server depends on Google's behaviour, as the
 probes (rust/src/bin/probe.rs) found it: recurring series expanded into
-instances (with singleEvents), instances edited on their own as
-exceptions, what a patch to a series' master does to them, a series
+instances (with singleEvents) -- at most 730 of them, counted from the
+series' start (_INSTANCE_CAP) -- instances edited on their own as
+exceptions, series listed unexpanded (singleEvents=false), what a patch to a series' master does to them, a series
 ended early by UNTIL, series split by importing
 "<id>_R<time>@google.com", extendedProperties.private merged by a patch
 with null removing a key, calendar etags checked by If-Match, deleted
@@ -49,6 +50,9 @@ DEFAULT_PAGE_CAP = 7
 
 # How far past a listing's end an endless series is expanded, at most.
 _EXPANSION_HORIZON = timedelta(days=800)
+# Google expands a series into at most this many instances, counted from
+# its start (probe instance_cap).
+_INSTANCE_CAP = 730
 
 _DROPPED_QUERY = {"alt", "prettyPrint", "key"}
 """Query parameters a client library adds that say nothing to Google about
@@ -301,8 +305,8 @@ class FakeGoogle:
             if until is not None and key >= until:
                 break
             found.append(moment)
-            if len(found) > 5000:
-                break
+            if len(found) >= _INSTANCE_CAP:
+                break  # Google expands no further, even for a range later on.
         return found
 
     def _instance(self, calendar: FakeCalendar, master: dict, original: datetime | date) -> dict:
@@ -366,6 +370,24 @@ class FakeGoogle:
         listed.sort(key=lambda e: (_sort_key(_parse_moment(e["start"], zone), zone), e["id"]))
         return listed
 
+    def _unexpanded(self, calendar: FakeCalendar, time_min: datetime | None, time_max: datetime | None, show_deleted: bool) -> list[dict]:
+        """A singleEvents=false listing: events, and series (not their
+        instances) with an instance in the range, and their instances
+        edited on their own."""
+        found, series = [], set()
+        for item in self._expanded(calendar, time_min, time_max, show_deleted):
+            master_id = item.get("recurringEventId")
+            if not master_id:
+                found.append(item)
+                continue
+            if master_id not in series:
+                series.add(master_id)
+                if master_id in calendar.events:
+                    found.append(calendar.events[master_id])
+            if item["id"] in calendar.events:
+                found.append(item)
+        return found
+
     def _is_occurrence(self, calendar: FakeCalendar, master: dict, exception: dict) -> bool:
         original = _parse_moment(exception["originalStartTime"], calendar.zone)
         return original in self._occurrences(calendar, master, _sort_key(original, calendar.zone) + timedelta(seconds=1))
@@ -409,11 +431,10 @@ class FakeGoogle:
     def list_events(self, calendar_id: str, query: dict[str, list[str]]) -> dict:
         calendar = self.calendar(calendar_id)
         one = lambda name: query.get(name, [None])[0]
-        if one("singleEvents") != "true":
-            raise GoogleError(400, "fake: only singleEvents=true listings are supported")
         time_min = _parse_rfc3339(one("timeMin")) if one("timeMin") else None
         time_max = _parse_rfc3339(one("timeMax")) if one("timeMax") else None
-        items = self._expanded(calendar, time_min, time_max, one("showDeleted") == "true")
+        listing = self._expanded if one("singleEvents") == "true" else self._unexpanded
+        items = listing(calendar, time_min, time_max, one("showDeleted") == "true")
         for prop in query.get("privateExtendedProperty", []):
             key, _, value = prop.partition("=")
             items = [e for e in items if e.get("extendedProperties", {}).get("private", {}).get(key) == value]
@@ -427,6 +448,7 @@ class FakeGoogle:
         if master is None or not master.get("recurrence"):
             raise GoogleError(404, "Not Found")
         one = lambda name: query.get(name, [None])[0]
+        time_min = _parse_rfc3339(one("timeMin")) if one("timeMin") else None
         time_max = _parse_rfc3339(one("timeMax")) if one("timeMax") else None
         show_deleted = one("showDeleted") == "true"
         zone = calendar.zone
@@ -436,6 +458,8 @@ class FakeGoogle:
             if instance.get("status") == "cancelled" and not show_deleted:
                 continue
             if time_max is not None and _sort_key(_parse_moment(instance["start"], zone), zone) >= time_max:
+                continue
+            if time_min is not None and _sort_key(_parse_moment(instance["end"], zone), zone) <= time_min:
                 continue
             items.append(instance)
         return self._page(calendar, items, one("maxResults"), one("pageToken"))

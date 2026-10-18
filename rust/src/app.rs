@@ -316,6 +316,39 @@ impl App {
         let _ = self.writer.set(HealthWriter::start(self.clone()));
     }
 
+    /// Renew recurring series before Google stops expanding them
+    /// (Recurrences::renew) from a thread of its own: a minute after the
+    /// server starts, then daily -- hourly while it fails (before Google is
+    /// set up, say). Not with TIME_TRACKER_SERIES_RENEWAL=off (conformance/
+    /// compares each tool's requests, which these would interleave with).
+    pub fn start_series_renewal(self: &Arc<Self>) {
+        if std::env::var("TIME_TRACKER_SERIES_RENEWAL").as_deref() == Ok("off") {
+            return;
+        }
+        let app = Arc::downgrade(self);
+        let spawned = std::thread::Builder::new().name("series-renewal".into()).spawn(move || {
+            let mut wait = std::time::Duration::from_secs(60);
+            loop {
+                std::thread::sleep(wait);
+                let Some(app) = app.upgrade() else { return };
+                let renewed = (|| {
+                    let _held = WRITE_LOCK.hold();
+                    app.recurrences()?.renew(&crate::determinism::now())
+                })();
+                wait = match renewed {
+                    Ok(_) => std::time::Duration::from_secs(24 * 60 * 60),
+                    Err(error) => {
+                        tracing::warn!("series renewal: {error:#}");
+                        std::time::Duration::from_secs(60 * 60)
+                    }
+                };
+            }
+        });
+        if let Err(error) = spawned {
+            tracing::error!("couldn't start series renewal: {error}");
+        }
+    }
+
     pub fn health_writer(&self) -> Option<&Arc<HealthWriter>> {
         self.writer.get()
     }

@@ -4,8 +4,10 @@
 //! they talk to Google, through their own HTTP client.
 //!
 //! It's faithful where the server depends on Google's behaviour, as the
-//! probes found it: recurring series expanded into instances, instances
-//! edited on their own as exceptions, what a patch to a series' master
+//! probes found it: recurring series expanded into instances -- at most
+//! 730 of them, counted from the series' start (INSTANCE_CAP) -- instances
+//! edited on their own as exceptions, series listed unexpanded
+//! (singleEvents=false), what a patch to a series' master
 //! does to them, a series ended early by UNTIL, series split by importing
 //! "<id>_R<time>@google.com", extendedProperties.private merged by a patch
 //! with null removing a key, calendar etags checked by If-Match, deleted
@@ -14,6 +16,7 @@
 //! batchUpdateByDataFilter doesn't. Every request is logged.
 
 use crate::google::Google;
+use crate::stores::recurrences::INSTANCE_CAP;
 use chrono::{DateTime, Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use serde_json::{json, Map, Value};
@@ -401,7 +404,8 @@ impl State {
                 break;
             }
             found.push(when);
-            if found.len() > 5000 {
+            // Google expands no further, even for a range later on.
+            if found.len() >= INSTANCE_CAP {
                 break;
             }
         }
@@ -481,6 +485,30 @@ impl State {
                 .cmp(&(parse_moment(&b["start"], zone).key(zone), b["id"].as_str().unwrap_or("").to_string()))
         });
         listed
+    }
+
+    /// A singleEvents=false listing: events, and series (not their
+    /// instances) with an instance in the range, and their instances edited
+    /// on their own.
+    fn unexpanded(cal: &Calendar, time_min: Option<DateTime<Utc>>, time_max: Option<DateTime<Utc>>, show_deleted: bool) -> Vec<Value> {
+        let mut found = Vec::new();
+        let mut series: Vec<String> = Vec::new();
+        for item in Self::expanded(cal, time_min, time_max, show_deleted) {
+            let Some(master_id) = item["recurringEventId"].as_str().map(str::to_string) else {
+                found.push(item);
+                continue;
+            };
+            if !series.contains(&master_id) {
+                if let Some(master) = cal.events.get(&master_id) {
+                    found.push(master.clone());
+                }
+                series.push(master_id);
+            }
+            if item["id"].as_str().is_some_and(|id| cal.events.contains_key(id)) {
+                found.push(item);
+            }
+        }
+        found
     }
 
     fn is_occurrence(cal: &Calendar, master: &Value, exception: &Value) -> bool {
@@ -621,12 +649,13 @@ impl State {
             ("PATCH", ["calendar", "v3", "users", "me", "calendarList", cid]) => Ok(Some(json!({"id": cid, "hidden": true}))),
             ("GET", ["calendar", "v3", "calendars", cid, "events"]) => {
                 let cal = self.calendar(cid)?;
-                if one("singleEvents") != Some("true") {
-                    return Err(err(400, "fake: only singleEvents=true listings are supported"));
-                }
                 let time_min = one("timeMin").map(parse_rfc3339).transpose()?;
                 let time_max = one("timeMax").map(parse_rfc3339).transpose()?;
-                let mut items = Self::expanded(cal, time_min, time_max, one("showDeleted") == Some("true"));
+                let mut items = if one("singleEvents") == Some("true") {
+                    Self::expanded(cal, time_min, time_max, one("showDeleted") == Some("true"))
+                } else {
+                    Self::unexpanded(cal, time_min, time_max, one("showDeleted") == Some("true"))
+                };
                 for (k, v) in query.iter().filter(|(k, _)| k == "privateExtendedProperty") {
                     let _ = k;
                     let (key, value) = v.split_once('=').unwrap_or((v, ""));
@@ -667,6 +696,7 @@ impl State {
             ("GET", ["calendar", "v3", "calendars", cid, "events", eid, "instances"]) => {
                 let cal = self.calendar(cid)?;
                 let master = cal.events.get(*eid).cloned().filter(|m| m.get("recurrence").is_some_and(|r| !r.is_null())).ok_or_else(|| err(404, "Not Found"))?;
+                let time_min = one("timeMin").map(parse_rfc3339).transpose()?;
                 let time_max = one("timeMax").map(parse_rfc3339).transpose()?;
                 let show_deleted = one("showDeleted") == Some("true");
                 let zone = cal.zone();
@@ -677,6 +707,9 @@ impl State {
                         continue;
                     }
                     if time_max.is_some_and(|m| parse_moment(&instance["start"], zone).key(zone) >= m) {
+                        continue;
+                    }
+                    if time_min.is_some_and(|m| parse_moment(&instance["end"], zone).key(zone) <= m) {
                         continue;
                     }
                     items.push(instance);

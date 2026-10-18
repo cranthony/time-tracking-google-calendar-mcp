@@ -572,6 +572,55 @@ impl CalendarClient {
         }
     }
 
+    /// The instances of series `event_id` from `time_min` on (ending after
+    /// it), cancelled ones left out -- as far as Google expands the series.
+    pub fn instances_from(&self, event_id: &str, time_min: &Moment) -> anyhow::Result<Vec<Event>> {
+        let mut events = Vec::new();
+        let mut page_token: Option<String> = None;
+        loop {
+            let mut query = vec![("timeMin", py::isoformat(time_min)), ("maxResults", LIST_PAGE_SIZE.to_string())];
+            if let Some(token) = &page_token {
+                query.push(("pageToken", token.clone()));
+            }
+            let response = self.call("GET", &format!("{}/instances", self.event_path(event_id)), &query, None)?;
+            for item in response.get("items").and_then(Value::as_array).into_iter().flatten() {
+                events.push(Event::from_api(item)?);
+            }
+            page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
+            if page_token.is_none() {
+                return Ok(events);
+            }
+        }
+    }
+
+    /// The recurring series with an instance from `time_min` on (and
+    /// before `time_max`, if given): their masters, unexpanded. Google only
+    /// counts the instances it expands, so a series past its last one
+    /// (see Recurrences::renew) isn't listed.
+    pub fn list_series(&self, time_min: &Moment, time_max: Option<&Moment>) -> anyhow::Result<Vec<Event>> {
+        let mut series = Vec::new();
+        let mut page_token: Option<String> = None;
+        loop {
+            let mut query = vec![("timeMin", py::isoformat(time_min)), ("singleEvents", "false".to_string()), ("maxResults", LIST_PAGE_SIZE.to_string())];
+            if let Some(time_max) = time_max {
+                query.push(("timeMax", py::isoformat(time_max)));
+            }
+            if let Some(token) = &page_token {
+                query.push(("pageToken", token.clone()));
+            }
+            let response = self.call("GET", &self.events_path(), &query, None)?;
+            for item in response.get("items").and_then(Value::as_array).into_iter().flatten() {
+                if item.get("recurrence").and_then(Value::as_array).is_some_and(|r| !r.is_empty()) {
+                    series.push(Event::from_api(item)?);
+                }
+            }
+            page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
+            if page_token.is_none() {
+                return Ok(series);
+            }
+        }
+    }
+
     pub fn delete_event(&self, event_id: &str) -> anyhow::Result<()> {
         writing("CalendarClient.delete_event")?;
         self.call("DELETE", &self.event_path(event_id), &[], None)?;

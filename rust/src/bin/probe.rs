@@ -15,6 +15,7 @@
 //! where <name> is one of:
 //!     batch             that Calendar's batch endpoint answers each request in it on its own
 //!     cancelled_events  whether events.list shows cancelled events, and what they keep
+//!     instance_cap      how far Google expands a long series, and reaching instances past that
 //!     clear_fields      that clearing an event's fields (clear_fields) removes them
 //!     label_lifecycle   what an event does when its label is removed, then added back
 //!     metadata_tabs     the metadata spreadsheet's tabs end to end, and facts on events
@@ -72,7 +73,7 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: probe <batch|cancelled_events|clear_fields|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
+    let usage = "usage: probe <batch|cancelled_events|clear_fields|instance_cap|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
     let Some(name) = args.first().cloned() else { anyhow::bail!("{usage}") };
     let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None, client: None };
     let mut i = 1;
@@ -109,6 +110,7 @@ fn run() -> anyhow::Result<()> {
     let (title, zone) = match name.as_str() {
         "batch" => ("Time tracker batch probe (safe to delete)", Some(TIME_ZONE)),
         "clear_fields" => ("Time tracker clear-fields probe (safe to delete)", Some(TIME_ZONE)),
+        "instance_cap" => ("Time tracker instance cap probe (safe to delete)", Some(TIME_ZONE)),
         "label_lifecycle" => ("Time tracker label probe (safe to delete)", None),
         "metadata_tabs" => ("Time tracker tabs probe (safe to delete)", None),
         "series_edits" => ("Time tracker series probe (safe to delete)", Some(TIME_ZONE)),
@@ -124,6 +126,7 @@ fn run() -> anyhow::Result<()> {
     let outcome = match name.as_str() {
         "batch" => batch(&raw),
         "clear_fields" => clear_fields(&raw),
+        "instance_cap" => instance_cap(&raw),
         "label_lifecycle" => label_lifecycle(&raw, &options),
         "metadata_tabs" => metadata_tabs(&raw, &config),
         "series_edits" => series_edits(&raw, &options),
@@ -1746,6 +1749,285 @@ fn sheets_version(raw: &Raw) -> anyhow::Result<()> {
     }
     wait(3000);
     println!("three writes in a row: +{}", version()?.0 - before.0);
+    Ok(())
+}
+
+// -- instance_cap ---------------------------------------------------------------
+
+/// Find out how far Google Calendar expands a long recurring series, and
+/// how to reach the instances past that.
+///
+/// A probe on 2026-10-17 found that events.list with singleEvents=true
+/// expands each series into at most 730 instances counted from its start,
+/// even when timeMin/timeMax are given: a daily series begun 1000 days ago
+/// lists none of its current instances. CalendarClient lists that way
+/// (list_events, list_event_resources), so such a series would vanish.
+///
+/// It creates a throwaway calendar and a daily series, 9:00 New York time,
+/// begun 1000 days ago, then:
+///
+/// 1. lists events (singleEvents=true) from now to 30 days on, as
+///    list_events does;
+/// 2. lists the series' instances (events.instances) with timeMin now and
+///    timeMax 30 days on; with only timeMax; and with neither;
+/// 3. lists events with singleEvents=false, to see whether Google split the
+///    series itself;
+/// 4. gets, patches and cancels instances past the 730th by their ids, and
+///    lists events and instances again to see whether those exceptions
+///    show up;
+/// 5. lists a weekly series begun 1000 days ago (which has had ~143
+///    instances), to tell a cap on instances from one on time;
+/// 6. lists a daily series with an EXDATE early on, to see whether a
+///    skipped occurrence counts;
+/// 7. lists events with singleEvents=false from now on, to see which
+///    series are listed;
+/// 8. splits a series past the cap by ending it and inserting a new series
+///    from tomorrow (as Recurrences::split does), and another by importing
+///    "<id>_R<time>@google.com" (Google's own split);
+/// 9. runs Recurrences::renew on a daily series begun 600 days ago, beside
+///    one begun 10 days ago, and again.
+///
+/// Found (2026-10-18), all checks passing:
+///
+/// - The cap is on instances, counted from the series' start: a daily
+///   series begun 1000 days ago lists none of its current instances --
+///   events.list (singleEvents=true) and events.instances alike, with or
+///   without timeMin/timeMax; an instances listing from day 900 is empty,
+///   and an unbounded one has exactly 730, its first through day 729. A
+///   weekly series of the same age lists fine.
+/// - Instances past the 730th aren't there at all: getting or patching one
+///   by its id (<series>_<time>Z) answers 404, so they can't be edited or
+///   cancelled either -- expanding the rules locally wouldn't give the
+///   server events it could change.
+/// - An EXDATE'd occurrence doesn't count: with the 3rd skipped, the 730th
+///   instance is a day later.
+/// - Google doesn't split a long series itself: singleEvents=false lists it
+///   as the one master. But with timeMin now, a series past the cap isn't
+///   listed at all (nor one long ended by COUNT), while one begun 60 days
+///   ago is: the listing counts only the instances Google expands.
+/// - Ending a series past the cap with UNTIL works, and a new series from
+///   tomorrow lists its instances as any new series does. Importing an
+///   "_R" split there gives a series with "FREQ=DAILY;COUNT=1" and no
+///   instances, leaving the original's rules as they were: a COUNT set from
+///   the original's start, as series_splits found, past the cap.
+/// - Recurrences::renew splits the old series at its 730th instance (UNTIL
+///   just before it), and the new series lists instances 400 days on, past
+///   where the old one stops; the young series is left alone, and renewing
+///   again changes nothing.
+fn instance_cap(raw: &Raw) -> anyhow::Result<()> {
+    let now = Utc::now().with_timezone(&zone());
+    let today = now.date_naive();
+    let begun = today - Duration::days(1000);
+    let first = zone().with_ymd_and_hms(begun.year(), begun.month(), begun.day(), 9, 0, 0).earliest().unwrap().fixed_offset();
+    let master = raw.insert(json!({
+        "summary": "Probe", "start": when(&first), "end": when(&(first + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?;
+    let master_id = master["id"].as_str().unwrap().to_string();
+    println!("  made daily series {master_id} from {}", first.format("%Y-%m-%d"));
+    let span = |items: &[Value]| -> String {
+        let mut starts: Vec<String> = items.iter().map(original_start).collect();
+        starts.sort();
+        match (starts.first(), starts.last()) {
+            (Some(a), Some(b)) => format!("{} from {} to {}", items.len(), &a[..10], &b[..10]),
+            _ => "0".into(),
+        }
+    };
+    let instances = |query: &[(&str, String)]| -> anyhow::Result<Vec<Value>> {
+        let mut items = Vec::new();
+        let mut token: Option<String> = None;
+        loop {
+            let mut q: Vec<(&str, String)> = query.to_vec();
+            q.push(("maxResults", "2500".into()));
+            if let Some(t) = &token {
+                q.push(("pageToken", t.clone()));
+            }
+            let page = raw.call("GET", &format!("/events/{}/instances", segment(&master_id)), &q, None)?;
+            items.extend(page["items"].as_array().cloned().unwrap_or_default());
+            token = page["nextPageToken"].as_str().map(str::to_string);
+            if token.is_none() {
+                return Ok(items);
+            }
+        }
+    };
+    let iso = |m: &Moment| time_tracker::py::isoformat(m);
+    let ahead = now.fixed_offset() + Duration::days(30);
+    let window = |extra: &[(&str, String)]| -> anyhow::Result<Vec<Value>> {
+        let mut q = vec![("timeMin", iso(&now.fixed_offset())), ("timeMax", iso(&ahead)), ("singleEvents", "true".to_string())];
+        q.extend(extra.iter().cloned());
+        raw.list(&q)
+    };
+
+    println!("\n  1. events.list singleEvents=true, now to +30 days:");
+    let listed = window(&[])?;
+    println!("     {}", span(&listed));
+    check("events.list lists none of its current instances", listed.is_empty(), listed.len());
+
+    println!("\n  2. events.instances:");
+    let bounded = instances(&[("timeMin", iso(&now.fixed_offset())), ("timeMax", iso(&ahead))])?;
+    println!("     timeMin now, timeMax +30 days: {}", span(&bounded));
+    check("nor does events.instances with timeMin", bounded.is_empty(), bounded.len());
+    let late = first + Duration::days(900);
+    let from_late = instances(&[("timeMin", iso(&late)), ("timeMax", iso(&(late + Duration::days(10))))])?;
+    println!("     timeMin day 900, timeMax day 910: {}", span(&from_late));
+    let until = instances(&[("timeMax", iso(&ahead))])?;
+    println!("     timeMax +30 days only: {}", span(&until));
+    let all = instances(&[])?;
+    println!("     unbounded: {}", span(&all));
+    let long = instances(&[("timeMin", iso(&first)), ("timeMax", iso(&ahead))])?;
+    println!("     timeMin its start, timeMax +30 days: {}", span(&long));
+
+    println!("\n  3. events.list singleEvents=false:");
+    let masters = raw.list(&[("singleEvents", "false".to_string())])?;
+    for m in &masters {
+        println!("     {} {} {}", m["id"].as_str().unwrap_or(""), m.pointer("/start/dateTime").and_then(Value::as_str).unwrap_or(""), m["recurrence"]);
+    }
+    check("Google left it one series", masters.len() == 1, masters.len());
+
+    println!("\n  4. instances past the 730th, by id:");
+    let id_on = |days: i64| {
+        let at = first + Duration::days(days);
+        format!("{master_id}_{}Z", stamp(&at))
+    };
+    let tomorrow = (today + Duration::days(1) - begun).num_days();
+    let after = (today + Duration::days(2) - begun).num_days();
+    match raw.get(&id_on(tomorrow)) {
+        Ok(event) => println!("     get tomorrow's: {} {}", event["id"], event.pointer("/start/dateTime").and_then(Value::as_str).unwrap_or("")),
+        Err(error) => println!("     get tomorrow's: {error:#}"),
+    }
+    match raw.patch(&id_on(tomorrow), json!({"summary": "Probe, edited"})) {
+        Ok(event) => println!("     patched tomorrow's: {} {}", event["id"], event["summary"]),
+        Err(error) => println!("     patch tomorrow's: {error:#}"),
+    }
+    match raw.patch(&id_on(after), json!({"status": "cancelled"})) {
+        Ok(event) => println!("     cancelled the day after's: {} {}", event["id"], event["status"]),
+        Err(error) => println!("     cancel the day after's: {error:#}"),
+    }
+    let listed = window(&[])?;
+    println!("     events.list now to +30 days: {}", span(&listed));
+    for e in &listed {
+        println!("       {} {} {}", e["id"].as_str().unwrap_or(""), e["summary"].as_str().unwrap_or(""), e["status"].as_str().unwrap_or(""));
+    }
+    let deleted = window(&[("showDeleted", "true".to_string())])?;
+    println!("     ... with showDeleted: {}", span(&deleted));
+    let bounded = instances(&[("timeMin", iso(&now.fixed_offset())), ("timeMax", iso(&ahead)), ("showDeleted", "true".to_string())])?;
+    println!("     events.instances now to +30 days, showDeleted: {}", span(&bounded));
+    for e in bounded.iter().take(4) {
+        println!("       {} {} {}", e["id"].as_str().unwrap_or(""), e["summary"].as_str().unwrap_or(""), e["status"].as_str().unwrap_or(""));
+    }
+    let edited = bounded.iter().any(|e| e["summary"] == json!("Probe, edited"));
+    let cancelled = bounded.iter().any(|e| e["status"] == json!("cancelled"));
+    check("nothing past the 730th instance can be edited, so none is listed", !edited && !cancelled, (edited, cancelled));
+    let masters = raw.list(&[("singleEvents", "false".to_string()), ("showDeleted", "true".to_string())])?;
+    println!("     events.list singleEvents=false showDeleted: {} items", masters.len());
+    for m in &masters {
+        println!("       {} {} {}", m["id"].as_str().unwrap_or(""), m["status"].as_str().unwrap_or(""), m["summary"].as_str().unwrap_or(""));
+    }
+    println!("\n  5. a weekly series (Mondays) begun 1000 days ago:");
+    let weekly = raw.insert(json!({
+        "summary": "Probe weekly", "start": when(&first), "end": when(&(first + Duration::hours(1))), "recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=MO"],
+    }))?;
+    let weekly_id = weekly["id"].as_str().unwrap().to_string();
+    let listed: Vec<Value> = window(&[])?.into_iter().filter(|e| e["recurringEventId"] == json!(weekly_id)).collect();
+    println!("     events.list now to +30 days: {}", span(&listed));
+    check("a weekly series 1000 days old lists its current instances", listed.len() >= 4, listed.len());
+
+    println!("\n  6. a daily series begun 1000 days ago with its 3rd event skipped (EXDATE):");
+    let skipped = first + Duration::days(2);
+    let exdated = raw.insert(json!({
+        "summary": "Probe exdate", "start": when(&first), "end": when(&(first + Duration::hours(1))),
+        "recurrence": ["RRULE:FREQ=DAILY", format!("EXDATE;TZID={TIME_ZONE}:{}", skipped.format("%Y%m%dT%H%M%S"))],
+    }))?;
+    let exdated_id = exdated["id"].as_str().unwrap().to_string();
+    let page = raw.call("GET", &format!("/events/{}/instances", segment(&exdated_id)), &[("maxResults", "2500".into())], None)?;
+    let items = page["items"].as_array().cloned().unwrap_or_default();
+    println!("     unbounded instances: {} (the 730th occurrence of its rule is {})", span(&items), (first + Duration::days(729)).format("%Y-%m-%d"));
+
+    println!("\n  7. events.list singleEvents=false, now to +30 days:");
+    let masters = raw.list(&[("singleEvents", "false".to_string()), ("timeMin", iso(&now.fixed_offset())), ("timeMax", iso(&ahead))])?;
+    for m in &masters {
+        println!("     {} {} {}", m["id"].as_str().unwrap_or(""), m["summary"].as_str().unwrap_or(""), m["recurrence"]);
+    }
+    check("singleEvents=false with timeMin now lists only the series not past their 730th instance", masters.len() == 1, masters.len());
+    let near = first + Duration::days(1000 - 60);
+    let near_series = raw.insert(json!({
+        "summary": "Probe near", "start": when(&near), "end": when(&(near + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY;UNTIL=20991231T000000Z"],
+    }))?;
+    let ended = raw.insert(json!({
+        "summary": "Probe ended", "start": when(&first), "end": when(&(first + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY;COUNT=20"],
+    }))?;
+    let masters = raw.list(&[("singleEvents", "false".to_string()), ("timeMin", iso(&now.fixed_offset())), ("timeMax", iso(&ahead))])?;
+    let ids: Vec<&str> = masters.iter().filter_map(|m| m["summary"].as_str()).collect();
+    println!("     with a series begun 60 days ago and one that ended after 20 events: {ids:?}");
+    check("a series long ended isn't listed", !masters.iter().any(|m| m["id"] == ended["id"]), &ids);
+    check("a series begun 60 days ago is listed", masters.iter().any(|m| m["id"] == near_series["id"]), &ids);
+
+    println!("\n  8. splitting a series past the cap:");
+    let base = raw.insert(json!({
+        "summary": "Probe split", "start": when(&first), "end": when(&(first + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?;
+    let base_id = base["id"].as_str().unwrap().to_string();
+    let at = first + Duration::days((today + Duration::days(1) - begun).num_days());
+    let ended_before = raw.patch(&base_id, json!({"recurrence": [format!("RRULE:FREQ=DAILY;UNTIL={}Z", stamp(&(at - Duration::seconds(1))))]}));
+    println!("     ended it before tomorrow: {}", ended_before.map(|e| e["recurrence"].to_string()).unwrap_or_else(|e| format!("{e:#}")));
+    let fresh = raw.insert(json!({
+        "summary": "Probe split, later", "start": when(&at), "end": when(&(at + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?;
+    let listed: Vec<Value> = window(&[])?.into_iter().filter(|e| e["recurringEventId"] == fresh["id"]).collect();
+    println!("     a new series from tomorrow lists: {}", span(&listed));
+    check("a new series from then on lists the current instances", listed.len() >= 28, listed.len());
+    let google = raw.insert(json!({
+        "summary": "Probe google split", "start": when(&first), "end": when(&(first + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?;
+    let google_id = google["id"].as_str().unwrap().to_string();
+    match raw.import(json!({
+        "summary": "Probe google split, later", "start": when(&at), "end": when(&(at + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY"],
+        "iCalUID": format!("{google_id}_R{}@google.com", stamp(&at)),
+    })) {
+        Ok(rest) => {
+            let rest_id = rest["id"].as_str().unwrap_or("").to_string();
+            println!("     imported {rest_id}: {}", rest["recurrence"]);
+            println!("     the series it split now {}", raw.get(&google_id)?["recurrence"]);
+            let listed: Vec<Value> = window(&[])?.into_iter().filter(|e| e["recurringEventId"] == json!(rest_id)).collect();
+            println!("     its \"_R\" part lists: {}", span(&listed));
+            check("Google's own split (\"_R\") past the cap lists nothing", listed.is_empty(), listed.len());
+        }
+        Err(error) => println!("     importing an \"_R\" split past the cap: {error:#}"),
+    }
+    println!("\n  9. Recurrences::renew on a daily series begun 600 days ago, and one begun 10 days ago:");
+    let start = first + Duration::days(400);
+    let due = raw.insert(json!({
+        "summary": "Probe renew", "start": when(&start), "end": when(&(start + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?;
+    let young_start = first + Duration::days(990);
+    let young = raw.insert(json!({
+        "summary": "Probe young", "start": when(&young_start), "end": when(&(young_start + Duration::hours(1))), "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?;
+    let due_id = due["id"].as_str().unwrap().to_string();
+    let recurrences = recurrences_for(raw)?;
+    let renewed = recurrences.renew(&now.fixed_offset())?;
+    for series in &renewed {
+        println!("     renewed as {} from {}", series.id.as_deref().unwrap_or(""), series.start().with_timezone(&zone()).format("%Y-%m-%d %H:%M"));
+    }
+    let last = start + Duration::days(729);
+    check(
+        "renew split just the old series, at its 730th instance",
+        renewed.len() == 1 && renewed[0].start() == last && renewed[0].id.as_deref() == Some(split_series_id(&due_id, &last).as_str()),
+        renewed.iter().map(|s| (s.id.clone(), s.start())).collect::<Vec<_>>(),
+    );
+    println!("     the old series now {}", raw.get(&due_id)?["recurrence"]);
+    if let Some(later) = renewed.first() {
+        let past = now.fixed_offset() + Duration::days(400);
+        let listed: Vec<Value> = raw
+            .list(&[("timeMin", iso(&past)), ("timeMax", iso(&(past + Duration::days(7)))), ("singleEvents", "true".to_string())])?
+            .into_iter()
+            .filter(|e| e["recurringEventId"].as_str() == later.id.as_deref())
+            .collect();
+        println!("     400 days on, the new series lists: {}", span(&listed));
+        check("the renewed series lists instances past the old one's 730th", listed.len() == 7, listed.len());
+    }
+    let again = recurrences.renew(&now.fixed_offset())?;
+    check("renewing again changes nothing", again.is_empty(), again.len());
+    let _ = young;
     Ok(())
 }
 

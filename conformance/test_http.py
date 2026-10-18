@@ -60,6 +60,7 @@ class HttpServer:
             "TIME_TRACKER_NOW": DEFAULT_NOW,
             "TIME_TRACKER_DETERMINISTIC_IDS": "1",
             "TIME_TRACKER_HEALTH_WRITER": "off",
+            "TIME_TRACKER_SERIES_RENEWAL": "off",
             "PYTHONIOENCODING": "utf-8",
         }
         self._log = open(os.environ.get("TIME_TRACKER_SERVER_LOG") or tmp / "server.log", "w+", encoding="utf-8")
