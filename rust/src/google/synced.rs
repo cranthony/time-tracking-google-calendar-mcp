@@ -92,6 +92,31 @@ pub fn sync_lock(root: &str, calendar_id: &str) -> Arc<Mutex<()>> {
     locks.entry((root.to_string(), calendar_id.to_string())).or_default().clone()
 }
 
+/// About how many bytes `value` takes in memory, as serde_json holds it:
+/// each string's text, and a fixed size for each value, entry and
+/// collection.
+pub fn estimated_bytes(value: &Value) -> usize {
+    const VALUE: usize = std::mem::size_of::<Value>();
+    VALUE
+        + match value {
+            Value::String(text) => text.len(),
+            Value::Array(items) => items.iter().map(estimated_bytes).sum(),
+            Value::Object(entries) => entries.iter().map(|(key, v)| std::mem::size_of::<String>() + key.len() + estimated_bytes(v)).sum(),
+            _ => 0,
+        }
+}
+
+/// About how many bytes the events kept of every calendar take, for
+/// Calendar at `root` (see `estimated_bytes`).
+pub fn size(root: &str) -> usize {
+    let stores = STORES.lock().unwrap_or_else(|e| e.into_inner());
+    stores
+        .iter()
+        .filter(|((r, _), _)| r == root)
+        .flat_map(|(_, store)| store.events.iter().map(|(id, event)| id.len() + estimated_bytes(event)))
+        .sum()
+}
+
 /// Forget what's kept of `calendar_id`, so it's synced afresh -- as when
 /// the server starts. Tests call this after changing a fake's calendar
 /// behind the server's back.

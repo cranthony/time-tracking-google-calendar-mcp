@@ -30,12 +30,25 @@ pub struct LatencySummary {
     pub max_ms: i64,
 }
 
-/// The server's resident memory (RSS), in MiB, after a tool call --
-/// any tool's -- ended (UTC).
+/// The server's resident memory (RSS), in MiB, at its highest in one
+/// second (UTC) -- sampled after each tool call, and after each
+/// background refresh of what the server keeps -- and, when they were
+/// measured, what made it up (`parts`), to stack: each Sheet tab kept
+/// ("Sheet: <title>"), the calendar kept ("Calendar"), and "Rest of
+/// server". The parts kept are estimates of what's held; the rest is the
+/// total less them.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct MemorySample {
     pub at: String,
     pub rss_mib: Number,
+    pub parts: Option<Vec<MemoryPart>>,
+}
+
+/// One part of the server's memory at a sample, in MiB.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct MemoryPart {
+    pub name: String,
+    pub mib: Number,
 }
 
 /// One tool's last calls (up to 100): how many, how many failed, and
@@ -96,8 +109,9 @@ pub struct HealthReport {
 /// each tool, its last 100 calls -- when each ended, how long the tool's
 /// own work took and how long the whole request took (auth and transport
 /// included), and whether it succeeded -- with the median, 95th
-/// percentile and slowest of each; the server's memory after each of its
-/// last 100 calls, whichever tool; and its last 100 restarts. Kept across
+/// percentile and slowest of each; the server's memory, at its highest
+/// in each of the last 500 seconds anything happened in, with what made
+/// it up; and its last 100 restarts. Kept across
 /// restarts, in the Health tab of the calendar's metadata spreadsheet;
 /// the last few seconds' may not be written yet, but are given here.
 /// Also auth: "required", or "disabled" for a build that skips sign-in;
@@ -147,13 +161,21 @@ pub fn get_health(app: &App, tool_name: Option<String>, #[schema(default = "true
         })
         .collect();
     let memory = app.health.memory();
+    let parts = app.health.memory_parts();
     let mib: Vec<f64> = memory.iter().map(|m| round1(m.rss_kib as f64 / 1024.0)).collect();
+    let parts_of = |m: &crate::health::MemorySample| -> Value {
+        let Some(kept) = parts.get(&m.at_ms) else { return Value::Null };
+        let held: i64 = kept.iter().map(|(_, kib)| kib).sum();
+        let mut out: Vec<Value> = kept.iter().map(|(name, kib)| json!({"name": name, "mib": round1(*kib as f64 / 1024.0)})).collect();
+        out.push(json!({"name": crate::health::REST, "mib": round1((m.rss_kib - held).max(0) as f64 / 1024.0)}));
+        Value::Array(out)
+    };
     let min = mib.iter().copied().fold(None, |a: Option<f64>, b| Some(a.map_or(b, |a| a.min(b))));
     let max = mib.iter().copied().fold(None, |a: Option<f64>, b| Some(a.map_or(b, |a| a.max(b))));
     from_store(json!({
         "tools": tools,
         "memory": if samples {
-            Value::Array(memory.iter().zip(&mib).map(|(m, v)| json!({"at": iso(m.at_ms), "rss_mib": v})).collect())
+            Value::Array(memory.iter().zip(&mib).map(|(m, v)| json!({"at": iso(m.at_ms), "rss_mib": v, "parts": parts_of(m)})).collect())
         } else {
             Value::Null
         },

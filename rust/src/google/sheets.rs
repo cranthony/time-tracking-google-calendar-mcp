@@ -672,6 +672,11 @@ impl SheetsClient {
         kept::spreadsheets(&self.root())
     }
 
+    /// Each kept tab's title and about how many bytes it takes.
+    pub fn kept_sizes(&self) -> Vec<(String, usize)> {
+        kept::sizes(&self.root())
+    }
+
     /// Read every kept tab of `spreadsheet_id` (but those tagged with one
     /// of `skip`) in one request, without the write lock, and compare each
     /// with what's kept; then put back whatever was changed or deleted by
