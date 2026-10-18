@@ -33,9 +33,14 @@ pub const CANCELLATIONS: (&str, &str) = ("cancellations", "Cancellations");
 pub const HEALTH: (&str, &str) = ("health", "Health");
 pub const SCORING_DEFAULTS: (&str, &str) = ("scoring-defaults", "Scoring Defaults");
 
+/// This calendar's metadata spreadsheet id, if it has one yet.
+pub fn spreadsheet_of(calendar: &CalendarClient) -> anyhow::Result<Option<String>> {
+    calendar.get_calendar_metadata(SPREADSHEET_ID_METADATA_KEY)
+}
+
 /// This calendar's metadata spreadsheet id, and whether it was just made.
 pub fn ensure_spreadsheet(calendar: &CalendarClient, sheets: &SheetsClient) -> anyhow::Result<(String, bool)> {
-    if let Some(id) = calendar.get_calendar_metadata(SPREADSHEET_ID_METADATA_KEY)? {
+    if let Some(id) = spreadsheet_of(calendar)? {
         return Ok((id, false));
     }
     let id = sheets.create_spreadsheet(SPREADSHEET_TITLE)?;
