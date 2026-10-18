@@ -256,6 +256,8 @@ The tools are built with the server (see [Setup](#setup)), into `rust/target/rel
 - `other_client --client PATH` — whether another OAuth client (a web application's, for [`/setup`](#setting-up-google-access-from-a-browser)) can see the calendar `GOOGLE_CALENDAR_ID` names, which your usual client made: it signs in with that client in the browser (register `http://localhost:8765/` as one of its redirect URIs) into a throwaway token, and only reads.
 - `metadata_tabs` — the actions, groups, people, circles and locations tabs end to end, and facts on events. It leaves its scratch spreadsheet in Drive, for you to trash by hand: this app can't.
 - `series_edits`, `series_deletes`, `series_splits` — which of a recurring series' instances an edit or delete reaches, and ending a series Google split itself.
+- `sync_tokens`, `sync_masters` — how `syncToken` listings expand recurring series (never-ending ones are capped at 730 instances from their start) and what each kind of edit sends in the next incremental listing, with and without `singleEvents`.
+- `sheets_version` — whether a Sheets write says which version it made, and how Drive's file `version` moves with the server's writes.
 - `server` — the server itself, over MCP against Google, on a scratch calendar: the stores, events, a whole compaction (a proposal, an edit, confirming, judging), a habit backfill and health. Run it before deploying a change you're unsure of.
 
 [`calendar_cli`](rust/src/cli/calendar_cli.rs) is a dev tool for calling the calendar directly from a terminal, without going through an MCP host — useful for poking around or debugging.

@@ -23,6 +23,9 @@
 //!     series_deletes    what deleting a series (whole, or from an event on) leaves
 //!     series_splits     ending a series Google split itself ("_R" ids), and Recurrences on it
 //!     server            the server binary (cargo build first) end to end over MCP, on Google
+//!     sheets_version    whether a Sheets write says which version it made, and how Drive's moves
+//!     sync_masters      syncToken listings of series masters, and the 730-instance cap
+//!     sync_tokens       how syncToken listings expand never-ending series, and what edits send
 //!
 //! Each probe's findings, from when it was last run, are in its doc
 //! comment below.
@@ -69,7 +72,7 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: probe <batch|cancelled_events|clear_fields|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|server> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
+    let usage = "usage: probe <batch|cancelled_events|clear_fields|label_lifecycle|metadata_tabs|other_client|series_edits|series_deletes|series_splits|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
     let Some(name) = args.first().cloned() else { anyhow::bail!("{usage}") };
     let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None, client: None };
     let mut i = 1;
@@ -112,6 +115,7 @@ fn run() -> anyhow::Result<()> {
         "series_deletes" => ("Time tracker series delete probe (safe to delete)", Some(TIME_ZONE)),
         "series_splits" => ("Time tracker series split probe (safe to delete)", Some(TIME_ZONE)),
         "server" => ("Time tracker server probe (safe to delete)", Some(TIME_ZONE)),
+        "sheets_version" | "sync_masters" | "sync_tokens" => ("Time tracker sync probe (safe to delete)", Some(TIME_ZONE)),
         _ => anyhow::bail!("{usage}"),
     };
     let calendar_id = CalendarClient::new(google.clone(), "").create_calendar(title, None, zone)?;
@@ -125,6 +129,9 @@ fn run() -> anyhow::Result<()> {
         "series_edits" => series_edits(&raw, &options),
         "series_deletes" => series_deletes(&raw, &options),
         "series_splits" => series_splits(&raw, &config),
+        "sheets_version" => sheets_version(&raw),
+        "sync_masters" => sync_masters(&raw),
+        "sync_tokens" => sync_tokens(&raw),
         _ => {
             let beside = std::env::current_exe()?.with_file_name(format!("time-tracker-server{}", std::env::consts::EXE_SUFFIX));
             server(&raw, &config, options.server.as_deref().unwrap_or(&beside))
@@ -1409,6 +1416,336 @@ fn series_splits(raw: &Raw, _config: &Config) -> anyhow::Result<()> {
         show(earlier.id.as_deref().unwrap(), "earlier")?;
     }
     show(later.id.as_deref().unwrap(), "later")?;
+    Ok(())
+}
+
+// -- sync_tokens ----------------------------------------------------------------
+
+/// Find out empirically how events.list's syncToken treats recurring
+/// series, a never-ending one especially: how far a full listing expands
+/// it (singleEvents=true, no timeMin/timeMax -- syncToken allows neither),
+/// and what each kind of edit sends in the next incremental listing.
+///
+/// Found (2026-10-17):
+///
+/// - A full listing expands every never-ending series into exactly 730
+///   instances, whatever its frequency: two years of a daily series,
+///   fourteen of a weekly one. They're counted from the series' start, so
+///   a daily series begun 400 days ago lists only 330 days ahead. A
+///   timeMax three years out doesn't change it: still 730 of the daily
+///   ones. With 3 series and a single event: 2191 items, ~2.4 MB, 1.7 s,
+///   in one page of 2500. The masters alone (singleEvents=false): 4 items,
+///   ~4 KB, 0.2 s.
+/// - An incremental listing with nothing changed: 0 items, ~130 ms.
+/// - Editing or deleting one instance resends all 730 of its series'
+///   instances (~0.8 MB): the edited one changed, the deleted one
+///   cancelled, the rest as they were. So does renaming the master, or
+///   deleting the series (all 730 cancelled).
+/// - Moving the master sends 1460: the 730 old instances cancelled (with
+///   no summary), and 730 new ones. Ending it with UNTIL sends all 730:
+///   those past the end cancelled.
+/// - A syncToken from a singleEvents=false listing, used with
+///   singleEvents=true, isn't refused: it answered with every instance, as
+///   a full listing would. The docs call mixing parameters undefined.
+/// - A made-up syncToken is a 400 ("Invalid sync token value."), not 410.
+fn sync_tokens(raw: &Raw) -> anyhow::Result<()> {
+    let start = tomorrow_at(9);
+    let forever = raw.insert(json!({
+        "summary": "Daily forever",
+        "start": when(&start),
+        "end": when(&(start + Duration::minutes(30))),
+        "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?["id"].as_str().unwrap().to_string();
+    let weekly_start = start + Duration::hours(2);
+    let weekly = raw.insert(json!({
+        "summary": "Weekly forever",
+        "start": when(&weekly_start),
+        "end": when(&(weekly_start + Duration::minutes(30))),
+        "recurrence": ["RRULE:FREQ=WEEKLY"],
+    }))?["id"].as_str().unwrap().to_string();
+    let past_start = start - Duration::days(400);
+    let past_daily = raw.insert(json!({
+        "summary": "Daily forever, from 400 days ago",
+        "start": when(&past_start),
+        "end": when(&(past_start + Duration::minutes(30))),
+        "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?["id"].as_str().unwrap().to_string();
+    let single_start = start + Duration::hours(4);
+    raw.insert(json!({"summary": "Single", "start": when(&single_start), "end": when(&(single_start + Duration::minutes(30)))}))?;
+    println!("Series: daily {forever}, weekly {weekly}, daily-from-past {past_daily}; and one single event");
+
+    // One listing, page by page: (items, pages, nextSyncToken, elapsed).
+    let listing = |query: &[(&str, String)]| -> anyhow::Result<(Vec<Value>, usize, Option<String>, std::time::Duration)> {
+        let began = std::time::Instant::now();
+        let mut items = Vec::new();
+        let mut pages = 0;
+        let mut token: Option<String> = None;
+        loop {
+            let mut q: Vec<(&str, String)> = query.to_vec();
+            if let Some(t) = &token {
+                q.push(("pageToken", t.clone()));
+            }
+            let page = raw.call("GET", "/events", &q, None)?;
+            pages += 1;
+            items.extend(page["items"].as_array().cloned().unwrap_or_default());
+            token = page["nextPageToken"].as_str().map(str::to_string);
+            if token.is_none() {
+                return Ok((items, pages, page["nextSyncToken"].as_str().map(str::to_string), began.elapsed()));
+            }
+        }
+    };
+    let summarize = |items: &[Value]| {
+        let mut by_summary: std::collections::BTreeMap<String, (usize, usize, String, String)> = Default::default();
+        for item in items {
+            let name = format!("{} [{}]", item["summary"].as_str().unwrap_or("(no summary)"), item["status"].as_str().unwrap_or("?"));
+            let at = original_start(item);
+            let entry = by_summary.entry(name).or_insert((0, 0, at.clone(), at.clone()));
+            entry.0 += 1;
+            if item.get("recurrence").is_some() {
+                entry.1 += 1;
+            }
+            if at < entry.2 {
+                entry.2 = at.clone();
+            }
+            if at > entry.3 {
+                entry.3 = at;
+            }
+        }
+        for (name, (count, masters, first, last)) in by_summary {
+            println!("    {count:>5} x {name}{}  {} .. {}", if masters > 0 { format!(" ({masters} master)") } else { String::new() }, local(&first), local(&last));
+        }
+    };
+    let bytes = |items: &[Value]| items.iter().map(|i| i.to_string().len()).sum::<usize>();
+
+    let single = |extra: &[(&'static str, String)]| -> Vec<(&'static str, String)> {
+        let mut q = vec![("singleEvents", "true".to_string()), ("showDeleted", "true".to_string()), ("maxResults", "2500".to_string())];
+        q.extend(extra.iter().cloned());
+        q
+    };
+
+    println!("\n1. Full listing, singleEvents=true, showDeleted=true, maxResults=2500, no time bounds");
+    let (items, pages, sync, took) = listing(&single(&[]))?;
+    println!("  {} items, {} pages, {} bytes, {:?}, nextSyncToken: {}", items.len(), pages, bytes(&items), took, sync.is_some());
+    summarize(&items);
+    let mut token = sync.context("no nextSyncToken")?;
+
+    println!("\n1b. Full listing, singleEvents=false (masters only)");
+    let (masters, pages, sync_masters, took) = listing(&[("showDeleted", "true".to_string())])?;
+    println!("  {} items, {} pages, {} bytes, {:?}, nextSyncToken: {}", masters.len(), pages, bytes(&masters), took, sync_masters.is_some());
+    summarize(&masters);
+
+    println!("\n1c. singleEvents=true with timeMax 3 years out (no syncToken possible)");
+    let three_years = start + Duration::days(3 * 366);
+    let (bounded, _, sync_bounded, _) = listing(&single(&[("timeMax", time_tracker::py::isoformat(&three_years))]))?;
+    println!("  {} items, nextSyncToken: {}", bounded.len(), sync_bounded.is_some());
+    summarize(&bounded);
+
+    let mut incremental = |step: &str| -> anyhow::Result<Vec<Value>> {
+        let (items, pages, sync, took) = listing(&single(&[("syncToken", token.clone())]))?;
+        println!("  {step}: {} items, {} pages, {} bytes, {:?}", items.len(), pages, bytes(&items), took);
+        summarize(&items);
+        token = sync.context("no nextSyncToken from an incremental listing")?;
+        Ok(items)
+    };
+
+    println!("\n2. Incremental listing straight away");
+    incremental("nothing changed")?;
+
+    let instances = raw.instances(&forever, false)?;
+    println!("\n3. Rename one instance (the 3rd) of the daily series");
+    raw.patch(instances[2]["id"].as_str().unwrap(), json!({"summary": "Daily forever (one renamed)"}))?;
+    incremental("after one instance edit")?;
+
+    println!("\n4. Delete one instance (the 4th)");
+    raw.call("DELETE", &format!("/events/{}", segment(instances[3]["id"].as_str().unwrap())), &[], None)?;
+    incremental("after one instance delete")?;
+
+    println!("\n5. Rename the daily series' master (summary only)");
+    raw.patch(&forever, json!({"summary": "Daily forever (renamed)"}))?;
+    incremental("after a master rename")?;
+
+    println!("\n6. Move the daily series' master 30 minutes later");
+    let later = start + Duration::minutes(30);
+    raw.patch(&forever, json!({"start": when(&later), "end": when(&(later + Duration::minutes(30)))}))?;
+    incremental("after a master move")?;
+
+    println!("\n7. End the daily series after 10 days (UNTIL)");
+    let until = later + Duration::days(10);
+    raw.patch(&forever, json!({"recurrence": [format!("RRULE:FREQ=DAILY;UNTIL={}Z", stamp(&until))]}))?;
+    let ended = incremental("after ending the series")?;
+    let cancelled = ended.iter().filter(|i| i["status"] == "cancelled").count();
+    println!("  of which cancelled: {cancelled}");
+
+    println!("\n8. Rename the weekly series' master");
+    raw.patch(&weekly, json!({"summary": "Weekly forever (renamed)"}))?;
+    incremental("after a weekly master rename")?;
+
+    println!("\n9. Delete the weekly series whole");
+    raw.call("DELETE", &format!("/events/{}", segment(&weekly)), &[], None)?;
+    incremental("after deleting the weekly series")?;
+
+    println!("\n10. A syncToken from singleEvents=false, used with singleEvents=true");
+    if let Some(t) = sync_masters {
+        match raw.call("GET", "/events", &single(&[("syncToken", t)]), None) {
+            Ok(page) => println!("  answered: {} items", page["items"].as_array().map_or(0, Vec::len)),
+            Err(error) => println!("  refused: {error:#}"),
+        }
+    }
+
+    println!("\n11. A made-up syncToken");
+    match raw.call("GET", "/events", &single(&[("syncToken", "bogus".into())]), None) {
+        Ok(_) => println!("  answered"),
+        Err(error) => println!("  refused ({:?}): {error:#}", status_of(&error)),
+    }
+    Ok(())
+}
+
+// -- sync_masters ---------------------------------------------------------------
+
+/// The same edits, synced with singleEvents=false: what an incremental
+/// listing of masters sends; and whether a timeMin listing's 730-instance
+/// cap counts from timeMin or from the series' start.
+///
+/// Found (2026-10-17):
+///
+/// - The cap counts from the series' start, even with timeMin: a daily
+///   series begun 1000 days ago lists none of its instances in the coming
+///   year, and unbounded, only its first 730 (from its start to two years
+///   on). So any listing with singleEvents=true loses a daily series once
+///   it's two years old.
+/// - Incremental listings of masters are small: an instance edited sends
+///   the master and that instance (~2 KB); one deleted, also the cancelled
+///   instance; renaming the master, the master and both exceptions,
+///   renamed too (the edited one losing its own name). Never the series'
+///   other instances.
+/// - Moving the master sends it and its exceptions as cancelled -- the
+///   edited instance's edit is gone -- and the exceptions lose their
+///   recurringEventId. Ending it with UNTIL sends only the master, with
+///   its new rule: the instances past the end aren't sent.
+fn sync_masters(raw: &Raw) -> anyhow::Result<()> {
+    let start = tomorrow_at(9);
+    let past_start = start - Duration::days(1000);
+    let old = raw.insert(json!({
+        "summary": "Daily forever, from 1000 days ago",
+        "start": when(&past_start),
+        "end": when(&(past_start + Duration::minutes(30))),
+        "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?["id"].as_str().unwrap().to_string();
+    let forever = raw.insert(json!({
+        "summary": "Daily forever",
+        "start": when(&start),
+        "end": when(&(start + Duration::minutes(30))),
+        "recurrence": ["RRULE:FREQ=DAILY"],
+    }))?["id"].as_str().unwrap().to_string();
+    let show = |items: &[Value]| {
+        for item in items {
+            println!("    {} [{}] id={} recurringEventId={} original={} recurrence={}", item["summary"].as_str().unwrap_or("-"), item["status"].as_str().unwrap_or("?"), item["id"].as_str().unwrap_or("-"), item["recurringEventId"].as_str().unwrap_or("-"), local(&original_start(item)), item.get("recurrence").map(|r| r.to_string()).unwrap_or("-".into()));
+        }
+    };
+
+    println!("1. singleEvents=true, timeMin now, timeMax 1 year out: the series from 1000 days ago");
+    let in_year = raw.list(&[("singleEvents", "true".into()), ("timeMin", time_tracker::py::isoformat(&(start - Duration::days(1)))), ("timeMax", time_tracker::py::isoformat(&(start + Duration::days(365)))), ("maxResults", "2500".into())])?;
+    let of_old = in_year.iter().filter(|i| i["recurringEventId"] == json!(old)).count();
+    println!("  {} instances of it in the coming year (365 expected if the cap counts from timeMin)", of_old);
+    let unbounded = raw.list(&[("singleEvents", "true".into()), ("maxResults", "2500".into())])?;
+    let of_old: Vec<_> = unbounded.iter().filter(|i| i["recurringEventId"] == json!(old)).collect();
+    println!("  unbounded: {} instances, {} .. {}", of_old.len(), of_old.first().map(|i| original_start(i)).unwrap_or_default(), of_old.last().map(|i| original_start(i)).unwrap_or_default());
+
+    let (first, mut token) = {
+        let page = raw.call("GET", "/events", &[("showDeleted", "true".into())], None)?;
+        (page["items"].as_array().cloned().unwrap_or_default(), page["nextSyncToken"].as_str().unwrap().to_string())
+    };
+    println!("\n2. Full listing of masters: {} items", first.len());
+    let mut incremental = |step: &str| -> anyhow::Result<()> {
+        let page = raw.call("GET", "/events", &[("showDeleted", "true".into()), ("syncToken", token.clone())], None)?;
+        let items = page["items"].as_array().cloned().unwrap_or_default();
+        println!("  {step}: {} items, {} bytes", items.len(), items.iter().map(|i| i.to_string().len()).sum::<usize>());
+        show(&items);
+        token = page["nextSyncToken"].as_str().unwrap().to_string();
+        Ok(())
+    };
+    let instances = raw.instances(&forever, false)?;
+    println!("\n3. Rename one instance");
+    raw.patch(instances[2]["id"].as_str().unwrap(), json!({"summary": "Daily forever (one renamed)"}))?;
+    incremental("after one instance edit")?;
+    println!("\n4. Delete one instance");
+    raw.call("DELETE", &format!("/events/{}", segment(instances[3]["id"].as_str().unwrap())), &[], None)?;
+    incremental("after one instance delete")?;
+    println!("\n5. Rename the master");
+    raw.patch(&forever, json!({"summary": "Daily forever (renamed)"}))?;
+    incremental("after a master rename")?;
+    println!("\n6. Move the master 30 minutes later");
+    let later = start + Duration::minutes(30);
+    raw.patch(&forever, json!({"start": when(&later), "end": when(&(later + Duration::minutes(30)))}))?;
+    incremental("after a master move")?;
+    println!("\n7. End the series after 10 days");
+    raw.patch(&forever, json!({"recurrence": [format!("RRULE:FREQ=DAILY;UNTIL={}Z", stamp(&(later + Duration::days(10))))]}))?;
+    incremental("after ending the series")?;
+    Ok(())
+}
+
+// -- sheets_version -------------------------------------------------------------
+
+/// Whether a Sheets write says which version of the spreadsheet it made,
+/// and how Drive's file `version` moves with our writes: by how much, how
+/// soon, and for writes that change nothing.
+///
+/// Found (2026-10-17):
+///
+/// - A values write answers with only the spreadsheet's id and what it
+///   updated (rows, columns, cells, sheets, the updated range): nothing
+///   that says which version it made.
+/// - Drive's `version` lags our writes and lumps them together: the first
+///   write showed up 1 to 5 seconds later (+1), then six more writes over
+///   ~40 seconds, a three-range write and three writes in a row didn't
+///   move it at all. `modifiedTime` didn't move for any of them. So Drive
+///   can't say whether the spreadsheet changed since we last wrote it.
+fn sheets_version(raw: &Raw) -> anyhow::Result<()> {
+    use time_tracker::google::sheets::SheetsClient;
+    let google = raw.google.clone();
+    let sheets = SheetsClient::new(google.clone());
+    let (id, _) = time_tracker::sheet::ensure_spreadsheet(&raw.client(), &sheets)?;
+    let version = || -> anyhow::Result<(i64, String)> {
+        let file = google.request("GET", &format!("{DRIVE_ROOT}files/{}", segment(&id)), &[("fields", "version,modifiedTime".into())], None, None)?;
+        Ok((file["version"].as_str().and_then(|v| v.parse().ok()).unwrap_or(-1), file["modifiedTime"].as_str().unwrap_or("").to_string()))
+    };
+    let write = |range: &str, value: &str| -> anyhow::Result<Value> {
+        let url = google.sheets_url(&format!("v4/spreadsheets/{}/values:batchUpdate", segment(&id)));
+        google.request("POST", &url, &[], Some(&json!({"valueInputOption": "RAW", "data": [{"range": range, "values": [[value]]}]})), None)
+    };
+    let wait = |ms: u64| std::thread::sleep(std::time::Duration::from_millis(ms));
+    println!("Spreadsheet {id}; version {:?}", version()?);
+    let answer = write("A1", "first")?;
+    println!("A write's answer: {}", answer);
+    for i in 0..6 {
+        let before = version()?;
+        write("A1", &format!("value {i}"))?;
+        let at_once = version()?;
+        wait(1000);
+        let after_1s = version()?;
+        wait(4000);
+        let after_5s = version()?;
+        println!("write {i}: before {} -> at once {} (+{}), 1s {} (+{}), 5s {} (+{})  modified {} -> {}", before.0, at_once.0, at_once.0 - before.0, after_1s.0, after_1s.0 - before.0, after_5s.0, after_5s.0 - before.0, before.1, after_5s.1);
+    }
+    let before = version()?;
+    write("A1", "value 5")?;
+    wait(3000);
+    println!("a write that changes nothing: +{}", version()?.0 - before.0);
+    let before = version()?;
+    sheets.read_rows(&id, "A1:B")?;
+    wait(3000);
+    println!("a read: +{}", version()?.0 - before.0);
+    let before = version()?;
+    let url = google.sheets_url(&format!("v4/spreadsheets/{}/values:batchUpdate", segment(&id)));
+    google.request("POST", &url, &[], Some(&json!({"valueInputOption": "RAW", "data": [{"range": "A2", "values": [["x"]]}, {"range": "A3", "values": [["y"]]}, {"range": "A4", "values": [["z"]]}]})), None)?;
+    wait(3000);
+    println!("one request writing three ranges: +{}", version()?.0 - before.0);
+    let before = version()?;
+    for i in 0..3 {
+        write("B1", &format!("burst {i}"))?;
+    }
+    wait(3000);
+    println!("three writes in a row: +{}", version()?.0 - before.0);
     Ok(())
 }
 
