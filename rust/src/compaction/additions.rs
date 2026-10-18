@@ -281,13 +281,6 @@ fn mapped(ids: &[(String, String)], value: &str) -> String {
     ids.iter().rev().find(|(k, _)| k == value).map(|(_, v)| v.clone()).unwrap_or_else(|| value.to_string())
 }
 
-fn mapped_value(ids: &[(String, String)], value: &Value) -> Value {
-    match value {
-        Value::String(s) => Value::String(mapped(ids, s)),
-        other => other.clone(),
-    }
-}
-
 /// `resolve`: `event` with every ref in its actions and facts replaced.
 pub fn resolve(event: &Event, ids: &[(String, String)]) -> Event {
     if ids.is_empty() {
@@ -300,7 +293,7 @@ pub fn resolve(event: &Event, ids: &[(String, String)]) -> Event {
     if let Some(facts) = &event.facts {
         let list = |value: &Option<Value>| -> Option<Value> {
             value.as_ref().map(|v| match v {
-                Value::Array(items) => Value::Array(items.iter().map(|i| mapped_value(ids, i)).collect()),
+                Value::Array(items) => Value::Array(crate::facts::renamed_items(items, &|id| Some(mapped(ids, id)))),
                 other => other.clone(),
             })
         };

@@ -2,6 +2,11 @@
 //! place or several), who with, who for, and a note on each person there
 //! -- and whether it's a commute, getting from one place to another.
 //!
+//! Each place and person is an id, or, with a share of the event
+//! (`LocationShare`, `PersonShare`), an object: {location_id or
+//! person_id, minutes?, percent?, remaining?}. Ids stored before shares
+//! were are read as they always were.
+//!
 //! The fields hold JSON values rather than typed ones: facts read back
 //! from an event someone edited by hand can be any shape, and the checks
 //! below report those shapes exactly as the Python server does.
@@ -16,6 +21,69 @@ pub const MAX_FACTS_CHARS: usize = 8 * 1024;
 pub const MAX_NOTE_CHARS: usize = 1000;
 
 static SPACES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
+
+crate::stores::shares::id_share! {
+    /// A person an event was with or for, and how much of the event they
+    /// take: minutes (a fixed share), percent (of what the minutes leave),
+    /// or neither -- the remaining time, what the minutes and percents
+    /// leave, all of it, as each person with neither takes it.
+    PersonShare, PersonSplit, person_id, "person", "people's", "the remaining time",
+    "A person's id: they take the remaining time, what the minutes and percents leave.",
+    "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave)."
+}
+
+crate::stores::shares::id_share! {
+    /// A place an event was at, and how much of the event it takes:
+    /// minutes (a fixed share), percent (of what the minutes leave), or
+    /// neither -- an even part of the remaining time, what the minutes and
+    /// percents leave, with the other places that take it.
+    LocationShare, LocationSplit, location_id, "location", "locations'", "an even part of the remaining time",
+    "A location's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+    "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave)."
+}
+
+/// The keys an id is under in a list's objects.
+const ID_KEYS: [&str; 2] = ["person_id", "location_id"];
+
+/// The id of an item of a facts list: the item, or its object's
+/// person_id or location_id.
+pub fn item_id(item: &Value) -> Option<&str> {
+    match item {
+        Value::String(s) => Some(s),
+        Value::Object(map) => ID_KEYS.iter().find_map(|k| map.get(*k)).and_then(Value::as_str),
+        _ => None,
+    }
+}
+
+/// `item` with its id as `id`.
+fn with_item_id(item: &Value, id: String) -> Value {
+    match item {
+        Value::Object(map) => {
+            let mut map = map.clone();
+            if let Some(key) = ID_KEYS.iter().find(|k| map.contains_key(**k)) {
+                map.insert(key.to_string(), Value::String(id));
+            }
+            Value::Object(map)
+        }
+        _ => Value::String(id),
+    }
+}
+
+/// A facts list's items with each id as `rename` gives it -- those it
+/// gives none dropped -- each id once.
+pub fn renamed_items(items: &[Value], rename: &dyn Fn(&str) -> Option<String>) -> Vec<Value> {
+    let mut seen: Vec<String> = Vec::new();
+    let mut out = Vec::new();
+    for item in items {
+        let Some(id) = item_id(item).and_then(rename) else { continue };
+        if seen.contains(&id) {
+            continue;
+        }
+        seen.push(id.clone());
+        out.push(with_item_id(item, id));
+    }
+    out
+}
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Facts {
@@ -62,16 +130,8 @@ impl Facts {
         fn ids(value: &Option<Value>) -> Option<Value> {
             match value {
                 Some(Value::Array(items)) => {
-                    let mut seen: Vec<String> = Vec::new();
-                    for item in items {
-                        if let Value::String(s) = item {
-                            let trimmed = s.trim();
-                            if !trimmed.is_empty() && !seen.iter().any(|x| x == trimmed) {
-                                seen.push(trimmed.to_string());
-                            }
-                        }
-                    }
-                    Some(Value::Array(seen.into_iter().map(Value::String).collect()))
+                    let trimmed = |id: &str| Some(id.trim().to_string()).filter(|t| !t.is_empty());
+                    Some(Value::Array(renamed_items(items, &trimmed)))
                 }
                 other => other.clone(),
             }
@@ -104,11 +164,46 @@ impl Facts {
         self.commute == Some(Value::Bool(true))
     }
 
+    /// A list's ids, whether each is an id or an object with a share.
     fn strings(value: &Option<Value>) -> Vec<String> {
         match value {
-            Some(Value::Array(items)) => items.iter().filter_map(|v| v.as_str().map(str::to_string)).collect(),
+            Some(Value::Array(items)) => items.iter().filter_map(|v| item_id(v).map(str::to_string)).collect(),
             _ => Vec::new(),
         }
+    }
+
+    /// A list's items as shares; those that aren't one left out.
+    fn shares<S: serde::de::DeserializeOwned>(value: &Option<Value>) -> Vec<S> {
+        match value {
+            Some(Value::Array(items)) => items.iter().filter_map(|v| serde_json::from_value(v.clone()).ok()).collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// The people it was with, and how much of it each takes.
+    pub fn with_shares(&self) -> Vec<PersonShare> {
+        Self::shares(&self.with_ids)
+    }
+
+    /// The people it was for, and how much of it each takes.
+    pub fn for_shares(&self) -> Vec<PersonShare> {
+        Self::shares(&self.for_ids)
+    }
+
+    /// The places it was, and how much of it each takes.
+    pub fn location_shares(&self) -> Vec<LocationShare> {
+        Self::shares(&self.location_ids)
+    }
+
+    /// What's wrong with its people's and places' shares on an event
+    /// `event_minutes` long, each after the list it's in.
+    pub fn share_problems(&self, event_minutes: i64) -> Vec<String> {
+        use crate::stores::shares::share_problems;
+        let named = |name: &str, problems: Vec<String>| problems.into_iter().map(|p| format!("\"{name}\": {p}")).collect::<Vec<_>>();
+        let mut problems = named("location_ids", share_problems(&self.location_shares(), event_minutes));
+        problems.extend(named("with_ids", share_problems(&self.with_shares(), event_minutes)));
+        problems.extend(named("for_ids", share_problems(&self.for_shares(), event_minutes)));
+        problems
     }
 
     pub fn with(&self) -> Vec<String> {
@@ -191,9 +286,22 @@ impl Facts {
     }
 }
 
-fn is_id_list(value: &Value) -> bool {
+/// Whether `value` is a list of ids, each a non-empty id, or an object
+/// with one under `key` and a share (see `PersonShare`).
+fn is_id_list(value: &Value, key: &str) -> bool {
     match value {
-        Value::Array(items) => items.iter().all(|i| matches!(i, Value::String(s) if !s.is_empty())),
+        Value::Array(items) => items.iter().all(|i| match i {
+            Value::String(s) => !s.is_empty(),
+            Value::Object(map) => {
+                map.get(key).and_then(Value::as_str).is_some_and(|s| !s.is_empty())
+                    && map.iter().all(|(k, v)| match k.as_str() {
+                        "minutes" | "percent" => v.is_null() || v.is_i64(),
+                        "remaining" => v.is_boolean(),
+                        _ => k == key,
+                    })
+            }
+            _ => false,
+        }),
         _ => false,
     }
 }
@@ -205,13 +313,13 @@ pub fn fact_problems(facts: &Facts) -> Vec<String> {
         [("location_ids", &facts.location_ids, "location"), ("with_ids", &facts.with_ids, "person"), ("for_ids", &facts.for_ids, "person")]
     {
         if let Some(v) = value {
-            if !v.is_null() && !is_id_list(v) {
-                problems.push(format!("\"{name}\" must be a list of {of} ids"));
+            if !v.is_null() && !is_id_list(v, &format!("{of}_id")) {
+                problems.push(format!("\"{name}\" must be a list of {of} ids, each an id or {{{of}_id, minutes?, percent?, remaining?}}"));
             }
         }
     }
     if let Some(Value::Array(items)) = &facts.with_ids {
-        if items.iter().any(|i| i.as_str() == Some(SELF_ID)) {
+        if items.iter().any(|i| item_id(i) == Some(SELF_ID)) {
             problems.push("\"with_ids\" never names \"self\": the user is at every event".to_string());
         }
     }
@@ -337,6 +445,52 @@ mod tests {
             let found = fact_problems(&facts(given.clone()));
             assert!(found.first().is_some_and(|f| f.starts_with(problem)), "{given}: {found:?}");
         }
+    }
+
+    #[test]
+    fn people_and_places_can_take_shares_and_bare_ids_still_read() {
+        let given = facts(json!({
+            "location_ids": ["home", {"location_id": "park", "minutes": 20}],
+            "with_ids": [{"person_id": "sam", "percent": 50, "remaining": true}, "kim"],
+            "for_ids": ["mom"],
+        }));
+
+        assert_eq!(given.locations(), vec!["home", "park"]);
+        assert_eq!(given.with(), vec!["sam", "kim"]);
+        assert_eq!(given.location_shares(), vec![LocationShare::whole("home"), LocationShare { location_id: "park".into(), minutes: Some(20), ..Default::default() }]);
+        assert_eq!(given.with_shares()[0], PersonShare { person_id: "sam".into(), percent: Some(50), remaining: true, ..Default::default() });
+        assert!(fact_problems(&given).is_empty());
+        assert_eq!(Facts::from_json(&given.to_json()), Some(given));
+    }
+
+    #[test]
+    fn normalized_trims_and_dedupes_shares_by_id() {
+        let given = facts(json!({"with_ids": [{"person_id": " sam ", "minutes": 10}, "sam", "kim"]}));
+        assert_eq!(given.normalized(), facts(json!({"with_ids": [{"person_id": "sam", "minutes": 10}, "kim"]})));
+    }
+
+    #[test]
+    fn a_share_must_be_well_formed_and_fit_in_its_event() {
+        for given in [
+            json!({"with_ids": [{"location_id": "sam"}]}),
+            json!({"with_ids": [{"person_id": "sam", "hours": 1}]}),
+            json!({"location_ids": [{"location_id": "home", "minutes": "ten"}]}),
+            json!({"with_ids": [{"person_id": "self", "minutes": 5}]}),
+        ] {
+            assert!(!fact_problems(&facts(given.clone())).is_empty(), "{given}");
+        }
+        let long = facts(json!({"with_ids": [{"person_id": "sam", "minutes": 40}, {"person_id": "kim", "minutes": 30}], "for_ids": [{"person_id": "mom", "minutes": 60}]}));
+        assert_eq!(long.share_problems(60), vec!["\"with_ids\": its people's minutes add up to 70, more than the event's 60"]);
+    }
+
+    #[test]
+    fn renamed_items_keep_their_shares() {
+        let items = vec![json!("new:sam"), json!({"person_id": "new:kim", "minutes": 5}), json!("gone")];
+        let rename = |id: &str| match id {
+            "gone" => None,
+            other => Some(other.trim_start_matches("new:").to_string()),
+        };
+        assert_eq!(renamed_items(&items, &rename), vec![json!("sam"), json!({"person_id": "kim", "minutes": 5})]);
     }
 
     #[test]
