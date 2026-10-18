@@ -2,7 +2,11 @@
 //! behave where their docs don't say -- and check the server's own writes.
 //! Each makes a throwaway calendar (this app's calendar.app.created scope
 //! allows that), runs its steps, prints what it finds and deletes the
-//! calendar again; nothing else in your account is touched.
+//! calendar again; nothing else in your account is touched. A metadata
+//! spreadsheet the calendar got is renamed after it ("... (safe to
+//! delete)") and trashed -- which needs the Drive API enabled in this
+//! app's Google Cloud project; without it, it's left in Drive, renamed.
+//! `--keep` keeps both, the spreadsheet renamed.
 //! `cancelled_events` and `other_client` only read the configured calendar.
 //!
 //! Usage:
@@ -126,11 +130,17 @@ fn run() -> anyhow::Result<()> {
             server(&raw, &config, options.server.as_deref().unwrap_or(&beside))
         }
     };
+    let spreadsheet = time_tracker::sheet::spreadsheet_of(&raw.client());
     if options.keep {
         println!("Kept scratch calendar {calendar_id}");
     } else {
         raw.delete_calendar()?;
         println!("Deleted scratch calendar");
+    }
+    match spreadsheet {
+        Ok(Some(id)) => tidy_spreadsheet(&google, &id, title, options.keep),
+        Ok(None) => {}
+        Err(error) => println!("Couldn't look for the scratch calendar's spreadsheet: {error:#}"),
     }
     outcome?;
     let failures = FAILURES.load(Ordering::SeqCst);
@@ -144,6 +154,34 @@ fn run() -> anyhow::Result<()> {
 }
 
 // -- shared ------------------------------------------------------------------
+
+const DRIVE_ROOT: &str = "https://www.googleapis.com/drive/v3/";
+
+/// Rename the scratch calendar's metadata spreadsheet `title` (its
+/// calendar's, "... (safe to delete)"), so it's never taken for the real
+/// one, and trash it unless it's kept. Trashing takes the Drive API
+/// (drive.file lets this app trash what it made), which this app's Google
+/// Cloud project may not enable: then it's left in Drive, renamed.
+fn tidy_spreadsheet(google: &Google, id: &str, title: &str, keep: bool) {
+    let link = format!("https://docs.google.com/spreadsheets/d/{id}");
+    let rename = json!({"requests": [{"updateSpreadsheetProperties": {"properties": {"title": title}, "fields": "title"}}]});
+    let url = google.sheets_url(&format!("v4/spreadsheets/{}:batchUpdate", segment(id)));
+    if let Err(error) = google.request("POST", &url, &[], Some(&rename), None) {
+        println!("Couldn't rename the scratch spreadsheet {link}: {error:#}");
+    }
+    if keep {
+        println!("Kept scratch spreadsheet {link}");
+        return;
+    }
+    let url = format!("{DRIVE_ROOT}files/{}", segment(id));
+    match google.request("PATCH", &url, &[("fields", "id".into())], Some(&json!({"trashed": true})), None) {
+        Ok(_) => println!("Trashed scratch spreadsheet"),
+        Err(error) => println!(
+            "Left scratch spreadsheet {link} in Drive as \"{title}\": couldn't trash it \
+             (that needs the Drive API enabled in this app's Google Cloud project): {error:#}"
+        ),
+    }
+}
 
 static FAILURES: AtomicUsize = AtomicUsize::new(0);
 static CHECKED: AtomicUsize = AtomicUsize::new(0);
@@ -731,8 +769,8 @@ fn typed<T: serde::de::DeserializeOwned>(pairs: Value) -> T {
 /// allows that), which gets its own metadata spreadsheet, runs every step
 /// against them, prints what happened, then deletes the calendar --
 /// nothing else in your account is touched. The spreadsheet is renamed
-/// "Time tracker tabs probe (safe to delete)" and left in Drive: this app's Google
-/// Cloud project doesn't enable the Drive API, so it can't trash it.
+/// "Time tracker tabs probe (safe to delete)" and trashed (see
+/// tidy_spreadsheet).
 fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
     let mut config = Config { calendar_id: Some(raw.calendar_id.clone()), token_path: base.token_path.clone(), credentials_path: base.credentials_path.clone() };
     config.calendar_id = Some(raw.calendar_id.clone());
@@ -842,9 +880,7 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
     step("and shorter ones", client.get_event(&instance)?.facts == Some(short_facts), ())?;
     client.update_event(&Event { id: Some(instance.clone()), cleared: ["facts", "judgments", "priority"].iter().map(|s| s.to_string()).collect(), ..Default::default() })?;
     step("and clearing them, and what it never had", client.get_event(&instance)?.facts.is_none(), ())?;
-    println!("\nAll steps passed.");
-    println!("(The scratch spreadsheet stays in Drive: this app can't trash it.)");
-    Ok(())
+    println!("\nAll steps passed.");    Ok(())
 }
 
 // -- series_edits ---------------------------------------------------------------
@@ -1457,8 +1493,8 @@ impl Drop for Mcp {
 /// it (with a copy of your token, so a refresh can't touch the real one),
 /// and walks a compaction through: actions, people and locations, notes, a
 /// proposal, the user's edit, confirming it, judging it -- then the event
-/// tools and health. Its metadata spreadsheet is left in Drive: this app
-/// can't trash it (see metadata_tabs).
+/// tools and health. Its metadata spreadsheet is renamed and trashed
+/// afterward (see tidy_spreadsheet).
 fn server(raw: &Raw, config: &Config, binary: &std::path::Path) -> anyhow::Result<()> {
     let days = seed_planned_days(raw)?;
     let scratch = std::env::temp_dir().join(format!("time-tracker-probe-{}", std::process::id()));

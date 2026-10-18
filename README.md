@@ -248,7 +248,7 @@ The tools are built with the server (see [Setup](#setup)), into `rust/target/rel
 
 [`create_calendar`](rust/src/cli/create_calendar.rs) makes the calendar this app needs — see [Calendar access model](#calendar-access-model).
 
-[`probe <name>`](rust/src/bin/probe.rs) runs one of the probes: each finds out empirically, against Google, how its APIs behave where their docs don't say, or checks the server's own writes, on a scratch calendar it deletes afterward (`--keep` keeps it). What each found is in its comments.
+[`probe <name>`](rust/src/bin/probe.rs) runs one of the probes: each finds out empirically, against Google, how its APIs behave where their docs don't say, or checks the server's own writes, on a scratch calendar it deletes afterward. If the calendar got a metadata spreadsheet, that's renamed after it ("… (safe to delete)") and trashed; trashing needs the Drive API enabled in the app's Google Cloud project, and without it the spreadsheet stays in Drive, renamed. `--keep` keeps both. What each found is in its comments.
 
 - `cancelled_events [--days N] [--raw]` — what Google Calendar returns for your cancelled events. Nothing reads them from Calendar any more (`list_events` leaves them out, and the Cancellations tab records the ones that count). It lists the configured calendar's last days with and without `showDeleted`, and only reads.
 - `clear_fields` — that clearing an event's fields (`clear_fields`) removes them, on events and series.
