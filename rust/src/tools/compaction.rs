@@ -211,6 +211,8 @@ pub enum ProposalUpdateClearFields {
     Facts,
     #[serde(rename = "judgments")]
     Judgments,
+    #[serde(rename = "goals")]
+    Goals,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -828,6 +830,7 @@ pub struct ProposalCreate {
     pub is_end_of_day_sleep: Option<bool>,
     pub recurring_event_id: Option<String>,
     pub facts: Option<PublicFacts>,
+    pub goals: Option<Vec<GoalShare>>,
     pub judgments: Option<Map<String, Value>>,
     pub start_note: Option<String>,
     pub end_note: Option<String>,
@@ -1058,7 +1061,7 @@ fn proposal_decision(
     if action == "keep" && id.is_none() {
         problems.push("an update needs the event's id (or a new event's key)".into());
     }
-    let set = [("description", event.description.is_some()), ("location", event.location.is_some()), ("facts", event.facts.is_some())];
+    let set = [("description", event.description.is_some()), ("location", event.location.is_some()), ("facts", event.facts.is_some()), ("goals", event.goals.is_some())];
     let mut both: Vec<&str> = set.iter().filter(|(f, given)| *given && clear_fields.iter().any(|c| c == f)).map(|(f, _)| *f).collect();
     both.sort();
     if !both.is_empty() {
@@ -1108,6 +1111,7 @@ fn proposed_event(c: &ProposalCreate) -> PublicEvent {
         is_end_of_day_sleep: c.is_end_of_day_sleep,
         recurring_event_id: c.recurring_event_id.clone(),
         facts: c.facts.clone(),
+        goals: c.goals.clone(),
         judgments: c.judgments.clone(),
         ..Default::default()
     }
