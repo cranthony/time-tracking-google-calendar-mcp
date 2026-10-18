@@ -2367,11 +2367,13 @@ fn walk_server(mcp: &mut Mcp, days: &[PlannedDay]) -> anyhow::Result<()> {
 
     println!("Events");
     mcp.call("list_events", json!({"min_time": at(first, "00:00"), "max_time": at(second, "23:59")}))?;
-    mcp.call("update_event", json!({"updates": [{"event": {"id": d1["Breakfast"], "action_ids": [eat]}}]}))?;
+    // A write names the version it read (the etag), as a client does.
+    let breakfast = mcp.call("get_event", json!({"id": d1["Breakfast"]}))?;
+    mcp.call("update_event", json!({"updates": [{"event": {"id": d1["Breakfast"], "etag": breakfast["etag"], "action_ids": [eat]}}]}))?;
     let walked = mcp.call("create_event", json!({"events": [{"summary": "Probe walk", "start": at(second, "19:15"), "end": at(second, "19:45")}]}))?;
     let walk = walked.pointer("/events/0/id").or_else(|| walked.pointer("/0/id")).and_then(Value::as_str).unwrap_or_default().to_string();
-    mcp.call("get_event", json!({"id": walk}))?;
-    mcp.call("delete_event", json!({"cancels": [{"event_id": walk, "counts_against_follow_through": false}]}))?;
+    let walk_event = mcp.call("get_event", json!({"id": walk}))?;
+    mcp.call("delete_event", json!({"cancels": [{"event_id": walk, "etag": walk_event["etag"], "counts_against_follow_through": false}]}))?;
 
     println!("Compaction");
     for (when, text) in [(at(first, "07:45"), "finished breakfast"), (at(first, "12:30"), "lunch with the friend at the cafe"), (at(second, "19:20"), "dinner done")] {

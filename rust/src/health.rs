@@ -246,6 +246,22 @@ impl SheetWarning {
         }
         warnings
     }
+
+    /// The warning for events a calendar sync brought that the server
+    /// didn't write -- changed outside it, and taken as they are: each as a
+    /// "cell" naming the event, with its summary and status as found.
+    pub fn of_calendar(changed: &[Value], at_ms: i64) -> SheetWarning {
+        let cells = changed
+            .iter()
+            .take(WARNING_CELLS)
+            .map(|e| WarnedCell {
+                cell: e["id"].as_str().unwrap_or_default().to_string(),
+                found: format!("{} ({})", e["summary"].as_str().unwrap_or("no summary"), e["status"].as_str().unwrap_or("confirmed")),
+                kept: String::new(),
+            })
+            .collect();
+        SheetWarning { at_ms, kind: "calendar".into(), tab: None, cells, cell_count: changed.len(), restored: false }
+    }
 }
 
 #[derive(Default)]

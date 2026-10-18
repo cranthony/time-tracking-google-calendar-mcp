@@ -4,13 +4,14 @@ The server is the Rust build in rust/target (debug, or else release --
 `cargo build` first), or whatever command line `TIME_TRACKER_SERVER` names. It's
 started as a subprocess over stdio, with its Google API root pointed at
 the fake, a fixed clock (`TIME_TRACKER_NOW`), deterministic ids
-(`TIME_TRACKER_DETERMINISTIC_IDS`) and no background health writer, series renewal
-or spreadsheet refresh (`TIME_TRACKER_HEALTH_WRITER=off`,
-`TIME_TRACKER_SERIES_RENEWAL=off`, `TIME_TRACKER_SHEETS_REFRESH=off`) -- see
-rust/src/determinism.rs. A scenario that edits the spreadsheet by hand marks
-itself `@pytest.mark.server_env(TIME_TRACKER_SHEETS_REFRESH="every_call")`, so
-the server checks the spreadsheet before each call, where the requests it
-makes are recorded in order.
+(`TIME_TRACKER_DETERMINISTIC_IDS`) and no background health writer, series renewal,
+spreadsheet refresh or calendar sync (`TIME_TRACKER_HEALTH_WRITER=off`,
+`TIME_TRACKER_SERIES_RENEWAL=off`, `TIME_TRACKER_SHEETS_REFRESH=off`,
+`TIME_TRACKER_CALENDAR_SYNC=off`) -- see rust/src/determinism.rs. A scenario that
+edits the spreadsheet or the calendar by hand marks itself
+`@pytest.mark.server_env(TIME_TRACKER_SHEETS_REFRESH="every_call")` (or
+`TIME_TRACKER_CALENDAR_SYNC`), so the server checks it before each call, where
+the requests it makes are recorded in order.
 
 What each call returned, the requests the server sent Google, and the
 fake's state afterwards are all recorded on the `Session`, for a
@@ -364,6 +365,7 @@ async def running_server(google: FakeGoogle, calendar_id: str, *, now: str = DEF
             "TIME_TRACKER_HEALTH_WRITER": "off",
             "TIME_TRACKER_SERIES_RENEWAL": "off",
             "TIME_TRACKER_SHEETS_REFRESH": "off",
+            "TIME_TRACKER_CALENDAR_SYNC": "off",
             "PYTHONIOENCODING": "utf-8",
             **(env or {}),
         }

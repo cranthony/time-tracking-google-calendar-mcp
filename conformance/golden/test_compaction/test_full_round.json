@@ -9655,17 +9655,11 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
+    "singleEvents": [
+     "false"
     ]
    }
   },
@@ -9677,21 +9671,15 @@
    "query": {
     "maxResults": [
      "2500"
-    ],
-    "orderBy": [
-     "startTime"
     ],
     "pageToken": [
      "7"
     ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
+    "singleEvents": [
+     "false"
     ]
    }
   },
@@ -9703,21 +9691,15 @@
    "query": {
     "maxResults": [
      "2500"
-    ],
-    "orderBy": [
-     "startTime"
     ],
     "pageToken": [
      "14"
     ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
+    "singleEvents": [
+     "false"
     ]
    }
   },
@@ -9729,21 +9711,15 @@
    "query": {
     "maxResults": [
      "2500"
-    ],
-    "orderBy": [
-     "startTime"
     ],
     "pageToken": [
      "21"
     ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
+    "singleEvents": [
+     "false"
     ]
    }
   },
@@ -9756,118 +9732,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T06:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-09-07T06:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
+    "syncToken": [
+     "24"
     ]
    }
   },
@@ -10057,316 +9929,6 @@
    "query": {}
   },
   {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/d820ae0f22570a19812dcb76c2",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
    "body": {
     "data": [
      {
@@ -10439,95 +10001,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
+    "syncToken": [
+     "24"
     ]
    }
   },
@@ -10806,95 +10287,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "21"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-04T07:30:00-04:00"
+    "syncToken": [
+     "24"
     ]
    }
   },
@@ -11013,36 +10413,24 @@
    "query": {}
   },
   {
-   "batched": true,
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/d820ae0f22570a19812dcb76c2",
-   "query": {}
-  },
-  {
-   "batched": true,
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
-   "batched": true,
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
-   "query": {}
-  },
-  {
-   "batched": true,
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/ee7f6f96ac6a86131c31dc7199",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "24"
+    ]
+   }
   },
   {
    "batched": true,
@@ -11337,59 +10725,16 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "24"
     ]
    }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/d820ae0f22570a19812dcb76c2",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
-   "query": {}
   },
   {
    "body": null,
@@ -11407,17 +10752,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "29"
     ]
    }
   },
@@ -11430,118 +10772,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "29"
     ]
    }
   },
@@ -11567,17 +10805,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "29"
     ]
    }
   },
@@ -11590,20 +10825,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "30"
     ]
    }
   },
@@ -11616,141 +10845,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "30"
     ]
    }
   },
@@ -11776,17 +10878,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "30"
     ]
    }
   },
@@ -11799,20 +10898,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "31"
     ]
    }
   },
@@ -11825,17 +10918,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "31"
     ]
    }
   },
@@ -11848,50 +10938,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "31"
     ]
    }
   },
@@ -11904,20 +10958,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "31"
     ]
    }
   },
@@ -11930,136 +10978,16 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
+    "syncToken": [
+     "31"
     ]
    }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-05T19:30:01-04:00"
-    ],
-    "timeMin": [
-     "2026-07-07T12:00:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
-   "query": {}
   },
   {
    "body": {

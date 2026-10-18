@@ -237,7 +237,8 @@ fn a_new_priority_relabels_an_event_without_an_actions_label() {
     let sent = f.update(Event { id: Some("e1".into()), priority: Some(0), ..Default::default() });
 
     assert_eq!(sent["eventLabelId"], json!(priority_label_id(Some(0))));
-    assert_eq!(f.event_reads(), 1);
+    // Read from the calendar as kept, not asked of Calendar.
+    assert_eq!(f.event_reads(), 0);
 }
 
 #[test]

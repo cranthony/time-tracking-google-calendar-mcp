@@ -1,9 +1,12 @@
 //! Google Calendar, behind a thin client (CalendarClient):
 //! list/get/create/update/delete events, labels guarded by the calendar's
-//! etag, and this app's metadata in the calendar's description. Listings
-//! inside one tool call are cached (see `CachedListings`), and so are
-//! events prefetched in a batch (`prefetch_events`).
+//! etag, and this app's metadata in the calendar's description. Events are
+//! listed and got from what the client keeps of the calendar, synced with
+//! Calendar's incremental sync (see `synced`), not asked of Calendar each
+//! time.
 
+use super::expand::{self, instance_base, When};
+use super::synced;
 use super::{segment, status_of, BatchRequest, Google};
 use crate::event::{Event, Moment};
 use crate::py;
@@ -12,10 +15,29 @@ use anyhow::{anyhow, bail};
 use chrono_tz::Tz;
 use regex::Regex;
 use serde_json::{json, Map, Value};
-use std::cell::RefCell;
 use std::sync::{Arc, LazyLock, Mutex};
 
 const LIST_PAGE_SIZE: usize = 2500;
+
+/// A write under way: as it ends, it moves what's kept on again (see
+/// `synced`).
+pub struct Writing {
+    client: CalendarClient,
+}
+
+impl Drop for Writing {
+    fn drop(&mut self) {
+        self.client.store(|store| store.generation += 1);
+    }
+}
+
+/// What a sync brought: the events changed, where the next starts, and
+/// the calendar's time zone.
+struct Changes {
+    items: Vec<Value>,
+    token: String,
+    zone: Option<Tz>,
+}
 
 /// The most requests Calendar takes in one batch.
 pub const BATCH_SIZE: usize = 50;
@@ -82,105 +104,15 @@ impl EventLabel {
     }
 }
 
-struct Listing {
-    calendar_id: String,
-    time_min: Moment,
-    time_max: Moment,
-    events: Vec<Event>,
-    /// The events as Calendar sent them.
-    resources: Vec<Value>,
-}
-
-thread_local! {
-    static LISTINGS: RefCell<Option<Vec<Listing>>> = const { RefCell::new(None) };
-    /// Events prefetched: (calendar id, event id, the event's resource).
-    static EVENTS: RefCell<Vec<(String, String, Value)>> = const { RefCell::new(Vec::new()) };
-}
-
-/// Within this guard's life, a listing inside one made earlier (same
-/// calendar, range within it) is answered from memory, and so is an event
-/// fetched earlier (or in a listing); any write forgets them all first.
-pub struct CachedListings {
-    outer: bool,
-}
-
-impl CachedListings {
-    pub fn start() -> CachedListings {
-        let outer = LISTINGS.with(|l| {
-            let mut listings = l.borrow_mut();
-            if listings.is_none() {
-                *listings = Some(Vec::new());
-                true
-            } else {
-                false
-            }
-        });
-        CachedListings { outer }
-    }
-}
-
-impl Drop for CachedListings {
-    fn drop(&mut self) {
-        if self.outer {
-            LISTINGS.with(|l| *l.borrow_mut() = None);
-            EVENTS.with(|e| e.borrow_mut().clear());
-        }
-    }
-}
-
-/// Whether Calendar lists `event` for the range: it ends after
-/// `time_min` (or, taking no time, is at it) and starts before `time_max`.
-fn overlaps(event: &Event, time_min: &Moment, time_max: &Moment) -> bool {
-    let (start, end) = (event.start(), event.end());
-    (end > *time_min || (start == end && start == *time_min)) && start < *time_max
-}
-
-fn cached_listing(calendar_id: &str, time_min: &Moment, time_max: &Moment) -> Option<Vec<Event>> {
-    LISTINGS.with(|l| {
-        let listings = l.borrow();
-        for listing in listings.as_ref()? {
-            if listing.calendar_id == calendar_id && listing.time_min <= *time_min && *time_max <= listing.time_max {
-                return Some(listing.events.iter().filter(|e| overlaps(e, time_min, time_max)).cloned().collect());
-            }
-        }
-        None
-    })
-}
-
-fn remember_listing(listing: Listing) {
-    LISTINGS.with(|l| {
-        if let Some(listings) = l.borrow_mut().as_mut() {
-            listings.push(listing);
-        }
-    });
-}
-
-fn caching() -> bool {
-    LISTINGS.with(|l| l.borrow().is_some())
-}
-
-/// Event `event_id`, prefetched or in a cached listing.
-fn cached_event(calendar_id: &str, event_id: &str) -> Option<Value> {
-    let prefetched = EVENTS.with(|e| e.borrow().iter().find(|(c, id, _)| c == calendar_id && id == event_id).map(|(_, _, event)| event.clone()));
-    prefetched.or_else(|| {
-        LISTINGS.with(|l| {
-            let listings = l.borrow();
-            listings.as_ref()?.iter().filter(|l| l.calendar_id == calendar_id).flat_map(|l| &l.resources).find(|r| r["id"] == json!(event_id)).cloned()
-        })
-    })
-}
-
-/// `requires_write_lock`, and forget every cached listing and event
-/// before writing.
+/// Fail loudly when a write is attempted without the write lock.
 fn writing(what: &str) -> anyhow::Result<()> {
-    write_lock::require(what)?;
-    LISTINGS.with(|l| {
-        if let Some(listings) = l.borrow_mut().as_mut() {
-            listings.clear();
-        }
-    });
-    EVENTS.with(|e| e.borrow_mut().clear());
-    Ok(())
+    write_lock::require(what)
+}
+
+/// The event a request's path names: its last segment, after "/events/".
+fn event_of(path: &str) -> Option<&str> {
+    let (_, rest) = path.split_once("/events/")?;
+    Some(rest.split('/').next().unwrap_or(rest)).filter(|id| !id.is_empty() && *id != "import")
 }
 
 /// Whether `error` is Calendar asking for requests to slow down.
@@ -271,6 +203,8 @@ impl CalendarClient {
 
     pub fn set_time_zone(&self, time_zone: &str) -> anyhow::Result<Tz> {
         writing("CalendarClient.set_time_zone")?;
+        // Every event's times are written at the calendar's offset.
+        synced::forget(&self.root(), &self.calendar_id);
         let zone: Tz = time_zone.parse().map_err(|_| {
             anyhow!("{} isn't a time zone; use an IANA name like 'America/New_York'", py::repr(time_zone))
         })?;
@@ -280,34 +214,13 @@ impl CalendarClient {
     }
 
     pub fn list_event_resources(&self, time_min: &Moment, time_max: &Moment, private_property: Option<&str>) -> anyhow::Result<Vec<Value>> {
-        let mut items = Vec::new();
-        let mut page_token: Option<String> = None;
-        loop {
-            let mut query = vec![
-                ("timeMin", py::isoformat(time_min)),
-                ("timeMax", py::isoformat(time_max)),
-                ("singleEvents", "true".to_string()),
-                ("maxResults", LIST_PAGE_SIZE.to_string()),
-            ];
-            if let Some(token) = &page_token {
-                query.push(("pageToken", token.clone()));
-            }
-            if let Some(property) = private_property {
-                query.push(("privateExtendedProperty", property.to_string()));
-            }
-            let response = self.call("GET", &self.events_path(), &query, None)?;
-            items.extend(response.get("items").and_then(Value::as_array).cloned().unwrap_or_default());
-            page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
-            if page_token.is_none() {
-                return Ok(items);
-            }
-        }
+        self.listed(time_min, time_max, private_property)
     }
 
     /// Create the event `event_id` from `body`, or replace it in full if
     /// it's already there (a 409 on insert).
     pub fn replace_event_resource(&self, event_id: &str, body: &Map<String, Value>) -> anyhow::Result<Value> {
-        writing("CalendarClient.replace_event_resource")?;
+        let _writing = self.writing_event("CalendarClient.replace_event_resource", Some(event_id))?;
         let mut full = body.clone();
         full.insert("id".into(), json!(event_id));
         let full = Value::Object(full);
@@ -321,7 +234,7 @@ impl CalendarClient {
 
     /// Delete `event_id` if it's there: one already gone is fine.
     pub fn delete_event_resource(&self, event_id: &str) -> anyhow::Result<()> {
-        writing("CalendarClient.delete_event_resource")?;
+        let _writing = self.writing_event("CalendarClient.delete_event_resource", Some(event_id))?;
         match self.call("DELETE", &self.event_path(event_id), &[], None) {
             Ok(_) => Ok(()),
             Err(error) if matches!(status_of(&error), Some(404) | Some(410)) => Ok(()),
@@ -330,94 +243,181 @@ impl CalendarClient {
     }
 
     pub fn list_events(&self, time_min: &Moment, time_max: &Moment) -> anyhow::Result<Vec<Event>> {
-        if let Some(cached) = cached_listing(&self.calendar_id, time_min, time_max) {
-            return Ok(cached);
-        }
-        let mut events = Vec::new();
-        let mut resources = Vec::new();
-        let mut page_token: Option<String> = None;
-        loop {
-            let mut query = vec![
-                ("timeMin", py::isoformat(time_min)),
-                ("timeMax", py::isoformat(time_max)),
-                ("singleEvents", "true".to_string()),
-                ("orderBy", "startTime".to_string()),
-                ("maxResults", LIST_PAGE_SIZE.to_string()),
-            ];
-            if let Some(token) = &page_token {
-                query.push(("pageToken", token.clone()));
-            }
-            let response = self.call("GET", &self.events_path(), &query, None)?;
-            for item in response.get("items").and_then(Value::as_array).into_iter().flatten() {
-                events.push(Event::from_api(item)?);
-                resources.push(item.clone());
-            }
-            page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
-            if page_token.is_none() {
-                remember_listing(Listing {
-                    calendar_id: self.calendar_id.clone(),
-                    time_min: *time_min,
-                    time_max: *time_max,
-                    events: events.clone(),
-                    resources,
-                });
-                return Ok(events);
-            }
-        }
+        self.listed(time_min, time_max, None)?.iter().map(Event::from_api).collect()
     }
 
     pub fn get_event(&self, event_id: &str) -> anyhow::Result<Event> {
         Event::from_api(&self.get_event_resource(event_id)?)
     }
 
-    /// The event `event_id` as Calendar has it now, not as it was read
-    /// earlier in this call.
+    /// The event `event_id` as Calendar has it now: asked of Calendar.
     pub fn fresh_event(&self, event_id: &str) -> anyhow::Result<Event> {
-        let event = self.call("GET", &self.event_path(event_id), &[], None)?;
-        EVENTS.with(|e| e.borrow_mut().retain(|(c, i, _)| !(*c == self.calendar_id && i == event_id)));
-        if caching() {
-            EVENTS.with(|e| e.borrow_mut().push((self.calendar_id.clone(), event_id.to_string(), event.clone())));
-        }
-        Event::from_api(&event)
+        Event::from_api(&self.call("GET", &self.event_path(event_id), &[], None)?)
     }
 
+    /// Event `event_id` as kept -- an instance of a series made from its
+    /// master, as Google makes it -- or, one not kept (or cancelled), as
+    /// Calendar answers for it.
     pub fn get_event_resource(&self, event_id: &str) -> anyhow::Result<Value> {
-        if let Some(event) = cached_event(&self.calendar_id, event_id) {
+        self.ensure_synced()?;
+        if let Some(event) = self.kept_event(event_id) {
             return Ok(event);
         }
-        let event = self.call("GET", &self.event_path(event_id), &[], None)?;
-        if caching() {
-            EVENTS.with(|e| e.borrow_mut().push((self.calendar_id.clone(), event_id.to_string(), event.clone())));
-        }
-        Ok(event)
+        self.call("GET", &self.event_path(event_id), &[], None)
     }
 
-    /// Inside a tool call, fetch each of `event_ids` not cached yet in
-    /// batches, so getting them later comes from memory. One that can't be
-    /// fetched is left for its own get to fail on.
-    pub fn prefetch_events(&self, event_ids: &[String]) -> anyhow::Result<()> {
-        if !caching() {
-            return Ok(());
-        }
-        let mut missing: Vec<&String> = Vec::new();
-        for id in event_ids {
-            if cached_event(&self.calendar_id, id).is_none() && !missing.contains(&id) {
-                missing.push(id);
-            }
-        }
-        if missing.len() < 2 {
-            return Ok(());
-        }
-        for chunk in missing.chunks(BATCH_SIZE) {
-            let requests: Vec<BatchRequest> =
-                chunk.iter().map(|id| BatchRequest { method: "GET", path: self.event_path(id), query: Vec::new(), body: None, if_match: None }).collect();
-            for (id, answer) in chunk.iter().zip(self.google.calendar_batch(&requests)?) {
-                if let Ok(event) = answer {
-                    EVENTS.with(|e| e.borrow_mut().push((self.calendar_id.clone(), (*id).clone(), event)));
-                }
-            }
+    /// Bring what's kept up to date first, if it's stale, so getting each of
+    /// `event_ids` comes from memory.
+    pub fn prefetch_events(&self, _event_ids: &[String]) -> anyhow::Result<()> {
+        self.ensure_synced()
+    }
+
+    // -- what's kept: see `synced` --
+
+    fn root(&self) -> String {
+        self.google.calendar_url("")
+    }
+
+    fn store<T>(&self, f: impl FnOnce(&mut synced::Store) -> T) -> T {
+        synced::with(&self.root(), &self.calendar_id, f)
+    }
+
+    /// `writing`, noting the write to event `event_id` (or, `None`, to
+    /// anything) in what's kept, so the next read syncs first; keep the
+    /// guard until the write is made, so a sync under way meanwhile isn't
+    /// taken as up to date.
+    fn writing_event(&self, what: &str, event_id: Option<&str>) -> anyhow::Result<Writing> {
+        writing(what)?;
+        self.store(|store| store.writing(event_id));
+        Ok(Writing { client: self.clone() })
+    }
+
+    /// The event a write is to, for its path or, for one made, its body.
+    fn written_by(request: &BatchRequest) -> Option<String> {
+        event_of(&request.path).map(str::to_string).or_else(|| request.body.as_ref()?.get("id")?.as_str().map(str::to_string))
+    }
+
+    /// Have the next read sync first.
+    pub fn mark_stale(&self) {
+        self.store(|store| store.stale = true);
+    }
+
+    /// Sync, if nothing's kept yet or a write has made it stale.
+    pub fn ensure_synced(&self) -> anyhow::Result<()> {
+        if self.store(|store| store.token.is_none() || store.stale) {
+            self.sync()?;
         }
         Ok(())
+    }
+
+    /// Bring what's kept up to date with Calendar's incremental sync -- or a
+    /// full listing, the first time or once Calendar says the sync token
+    /// is too old (410). Keeps what changed that the server didn't write
+    /// itself (`take_outside`).
+    pub fn sync(&self) -> anyhow::Result<()> {
+        let lock = synced::sync_lock(&self.root(), &self.calendar_id);
+        let _syncing = lock.lock().unwrap_or_else(|e| e.into_inner());
+        let (token, generation) = self.store(|store| (store.token.clone(), store.generation));
+        let (changes, full) = match token {
+            Some(token) => match self.changes(Some(&token)) {
+                Ok(changes) => (changes, false),
+                Err(error) if status_of(&error) == Some(410) => (self.changes(None)?, true),
+                Err(error) => return Err(error),
+            },
+            None => (self.changes(None)?, true),
+        };
+        self.store(|store| {
+            if full {
+                store.events.clear();
+            }
+            for item in changes.items {
+                if !full && !store.is_ours(&item) {
+                    store.outside.push(item.clone());
+                }
+                if let Some(id) = item["id"].as_str() {
+                    store.events.insert(id.to_string(), item);
+                }
+            }
+            store.token = Some(changes.token);
+            store.zone = changes.zone.or(store.zone);
+            // Up to date only if no write began or ended while this ran.
+            if store.generation == generation {
+                store.stale = false;
+                store.written.clear();
+                store.written_all = false;
+            }
+        });
+        Ok(())
+    }
+
+    /// The events a sync brought that the server didn't write itself --
+    /// changed elsewhere -- since this was last asked.
+    pub fn take_outside(&self) -> Vec<Value> {
+        self.store(|store| std::mem::take(&mut store.outside))
+    }
+
+    /// What changed since `token` (everything, for `None`): every event,
+    /// series master and exception, cancelled ones included, unexpanded.
+    fn changes(&self, token: Option<&str>) -> anyhow::Result<Changes> {
+        let mut items = Vec::new();
+        let mut page_token: Option<String> = None;
+        loop {
+            let mut query = vec![("singleEvents", "false".to_string()), ("showDeleted", "true".to_string()), ("maxResults", LIST_PAGE_SIZE.to_string())];
+            if let Some(token) = token {
+                query.push(("syncToken", token.to_string()));
+            }
+            if let Some(page) = &page_token {
+                query.push(("pageToken", page.clone()));
+            }
+            let response = self.call("GET", &self.events_path(), &query, None)?;
+            items.extend(response.get("items").and_then(Value::as_array).cloned().unwrap_or_default());
+            page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
+            if page_token.is_none() {
+                let token = response.get("nextSyncToken").and_then(Value::as_str).ok_or_else(|| anyhow!("Calendar gave no nextSyncToken"))?;
+                let zone = response.get("timeZone").and_then(Value::as_str).and_then(|z| z.parse().ok());
+                return Ok(Changes { items, token: token.to_string(), zone });
+            }
+        }
+    }
+
+    /// The events in [`time_min`, `time_max`) as a singleEvents=true listing
+    /// gives them (cancelled ones left out), from what's kept; with
+    /// `private_property` ("key=value"), only those with that private
+    /// extended property.
+    fn listed(&self, time_min: &Moment, time_max: &Moment, private_property: Option<&str>) -> anyhow::Result<Vec<Value>> {
+        self.ensure_synced()?;
+        let (events, zone) = self.store(|store| (store.events.values().cloned().collect::<Vec<Value>>(), store.zone));
+        let (min, max) = (time_min.with_timezone(&chrono::Utc), time_max.with_timezone(&chrono::Utc));
+        let mut listed = expand::expand(zone.unwrap_or(chrono_tz::UTC), &events, Some(min), Some(max), false, max);
+        if let Some((key, value)) = private_property.map(|p| p.split_once('=').unwrap_or((p, ""))) {
+            listed.retain(|e| e.pointer("/extendedProperties/private").and_then(|p| p.get(key)).and_then(Value::as_str) == Some(value));
+        }
+        Ok(listed)
+    }
+
+    /// Event `event_id` as kept: stored, or an instance made from its
+    /// series' master. `None` for one not kept, or cancelled.
+    fn kept_event(&self, event_id: &str) -> Option<Value> {
+        self.store(|store| {
+            let zone = store.zone.unwrap_or(chrono_tz::UTC);
+            let live = |e: Value| (e["status"] != "cancelled").then_some(e);
+            if let Some(event) = store.events.get(event_id) {
+                let master = event["recurringEventId"].as_str().and_then(|m| store.events.get(m));
+                return live(master.map_or_else(|| event.clone(), |m| expand::under(m, event)));
+            }
+            let (base, when) = event_id.rsplit_once('_')?;
+            let until = chrono::NaiveDateTime::parse_from_str(when.trim_end_matches('Z'), "%Y%m%dT%H%M%S")
+                .ok()
+                .map(|t| chrono::TimeZone::from_utc_datetime(&chrono::Utc, &t) + chrono::Duration::seconds(1));
+            let parts = store.events.values().filter(|m| expand::is_master(m) && m["id"].as_str().map(instance_base) == Some(base));
+            for master in parts {
+                let original: Option<When> = expand::occurrences(zone, master, until).into_iter().find(|o| o.suffix() == when);
+                if let Some(original) = original {
+                    return live(expand::instance(zone, master, original, None));
+                }
+            }
+            None
+        })
     }
 
     /// Send `writes` (made by `create_event_request` and
@@ -427,6 +427,8 @@ impl CalendarClient {
     /// Any Calendar asks to slow down are sent again, one at a time.
     pub fn send_writes(&self, writes: &[BatchRequest]) -> anyhow::Result<Vec<anyhow::Result<Value>>> {
         writing("CalendarClient.send_writes")?;
+        let _writing: Vec<Writing> =
+            writes.iter().map(|write| self.writing_event("CalendarClient.send_writes", Self::written_by(write).as_deref())).collect::<anyhow::Result<_>>()?;
         if writes.len() == 1 {
             return Ok(vec![self.send(&writes[0])]);
         }
@@ -458,8 +460,11 @@ impl CalendarClient {
     /// Create `event`, with its own id if it has one (a retried create
     /// then fails with a 409 rather than making a second).
     pub fn create_event(&self, event: &Event) -> anyhow::Result<Event> {
-        writing("CalendarClient.create_event")?;
-        Event::from_api(&self.send(&self.create_event_request(event)?)?)
+        let request = self.create_event_request(event)?;
+        let _writing = self.writing_event("CalendarClient.create_event", Self::written_by(&request).as_deref())?;
+        let created = self.send(&request)?;
+        let _made = self.writing_event("CalendarClient.create_event", created["id"].as_str())?;
+        Event::from_api(&created)
     }
 
     /// The request `create_event` sends, for `send_writes`.
@@ -488,10 +493,13 @@ impl CalendarClient {
     /// own move to it. Found with the series_splits probe; see
     /// stores::recurrences.
     pub fn import_event(&self, event: &Event, ical_uid: &str) -> anyhow::Result<Event> {
-        writing("CalendarClient.import_event")?;
+        // It may split the series the UID names, moving its exceptions.
+        let _writing = self.writing_event("CalendarClient.import_event", Some(instance_base(ical_uid.trim_end_matches("@google.com"))))?;
         let mut body = event.insert_body()?;
         body.insert("iCalUID".into(), json!(ical_uid));
-        Event::from_api(&self.call("POST", &format!("{}/import", self.events_path()), &[], Some(&Value::Object(body)))?)
+        let imported = self.call("POST", &format!("{}/import", self.events_path()), &[], Some(&Value::Object(body)))?;
+        let _made = self.writing_event("CalendarClient.import_event", imported["id"].as_str())?;
+        Event::from_api(&imported)
     }
 
     /// Patch the event `event.id` with `event`'s fields that are set;
@@ -510,7 +518,7 @@ impl CalendarClient {
     pub fn update_event(&self, event: &Event) -> anyhow::Result<Event> {
         // Built first: building it may read the event, perhaps from memory.
         let request = self.update_event_request(event)?;
-        writing("CalendarClient.update_event")?;
+        let _writing = self.writing_event("CalendarClient.update_event", Self::written_by(&request).as_deref())?;
         Event::from_api(&self.send(&request)?)
     }
 
@@ -622,7 +630,7 @@ impl CalendarClient {
     }
 
     pub fn delete_event(&self, event_id: &str) -> anyhow::Result<()> {
-        writing("CalendarClient.delete_event")?;
+        let _writing = self.writing_event("CalendarClient.delete_event", Some(event_id))?;
         self.call("DELETE", &self.event_path(event_id), &[], None)?;
         Ok(())
     }
@@ -635,7 +643,7 @@ impl CalendarClient {
     }
 
     pub fn create_event_label(&self, background_color: &str, name: Option<&str>) -> anyhow::Result<EventLabel> {
-        writing("CalendarClient.create_event_label")?;
+        let _writing = self.writing_event("CalendarClient.create_event_label", None)?;
         let (etag, mut labels) = self.raw_event_labels()?;
         let existing: Vec<String> = labels.iter().filter_map(|l| l["id"].as_str().map(str::to_string)).collect();
         labels.push(EventLabel { id: None, background_color: background_color.into(), name: name.map(str::to_string) }.to_api_body());
@@ -647,7 +655,7 @@ impl CalendarClient {
     }
 
     pub fn update_event_label(&self, label_id: &str, background_color: Option<&str>, name: Option<&str>) -> anyhow::Result<EventLabel> {
-        writing("CalendarClient.update_event_label")?;
+        let _writing = self.writing_event("CalendarClient.update_event_label", None)?;
         let (etag, mut labels) = self.raw_event_labels()?;
         let index = labels
             .iter()
@@ -665,7 +673,7 @@ impl CalendarClient {
     }
 
     pub fn delete_event_label(&self, label_id: &str) -> anyhow::Result<EventLabel> {
-        writing("CalendarClient.delete_event_label")?;
+        let _writing = self.writing_event("CalendarClient.delete_event_label", None)?;
         let (etag, labels) = self.raw_event_labels()?;
         let removed = labels
             .iter()
@@ -679,7 +687,7 @@ impl CalendarClient {
 
     /// Replace the calendar's whole set of labels, guarded by `etag`.
     pub fn replace_event_labels(&self, labels: &[EventLabel], etag: Option<&str>) -> anyhow::Result<Vec<EventLabel>> {
-        writing("CalendarClient.replace_event_labels")?;
+        let _writing = self.writing_event("CalendarClient.replace_event_labels", None)?;
         self.patch_event_labels(etag, labels.iter().map(EventLabel::to_api_body).collect())
     }
 

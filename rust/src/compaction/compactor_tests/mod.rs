@@ -6,7 +6,6 @@
 use super::*;
 use crate::compaction::plan::EventDecision;
 use crate::compaction::proposals::{AdditionChoice, NoteEdit, Proposal, ProposalEvent};
-use crate::google::calendar::CachedListings;
 use crate::sheet::{ACTIONS, GOALS, LOCATIONS, PEOPLE, TRAITS};
 use crate::stores::journal::{PlannedDay, ABANDONED, APPLYING, PLANNED, PROPOSED, STAMPED, SUPERSEDED};
 use crate::testing::app::{test_app, TestApp};
@@ -165,7 +164,6 @@ impl Setup {
     /// cache of Calendar listings.
     pub fn call<T>(&self, f: impl FnOnce(&NoteCompactor) -> T) -> T {
         let _held = WRITE_LOCK.hold();
-        let _listings = CachedListings::start();
         f(&self.compactor)
     }
 

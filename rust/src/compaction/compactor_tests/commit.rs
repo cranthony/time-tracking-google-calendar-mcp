@@ -274,7 +274,8 @@ fn the_requests_a_compaction_of_many_events_and_notes_makes() {
     // HTTP requests to Calendar: committing makes the changes in one batch
     // and marks them done in the journal together, so neither grows with
     // the number of events changed. The tabs were read as the setup made
-    // them, and are kept, so no step reads Sheets.
+    // them, and are kept, so no step reads Sheets; the calendar is kept
+    // too, so only the first step reads it (a sync).
     let at = |minutes: usize| format!("{:02}:{:02}", 8 + minutes / 60, minutes % 60);
     let mut events: Vec<Event> = (0..6).map(|i| event_at(&format!("{}-{}", at(30 * i), at(30 * i + 30))).id(&format!("w{i}")).summary("Work").priority(2).build()).collect();
     events.push(event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build());
@@ -300,7 +301,7 @@ fn the_requests_a_compaction_of_many_events_and_notes_makes() {
     assert_eq!(setup.commit(&id).status, "applied");
     step("commit");
 
-    assert_eq!(made, vec![("prepare", [0, 0, 2, 0], 2), ("dry_run", [0, 1, 1, 0], 1), ("commit", [0, 4, 1, 6], 2)]);
+    assert_eq!(made, vec![("prepare", [0, 0, 1, 0], 1), ("dry_run", [0, 1, 0, 0], 0), ("commit", [0, 4, 0, 6], 1)]);
 }
 
 #[test]

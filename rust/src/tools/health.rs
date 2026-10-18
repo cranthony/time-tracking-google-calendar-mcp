@@ -62,7 +62,10 @@ pub struct WarnedCell {
 /// What a check of the metadata spreadsheet found changed by hand (UTC):
 /// a tab's cells edited ("edited") -- the first 20 of them, and how many
 /// -- or the tab deleted ("deleted"); and whether the server put back its
-/// own copy (`restored`). It's the server's alone: see the README.
+/// own copy (`restored`). It's the server's alone: see the README. Or
+/// ("calendar") events a calendar sync found changed outside the server,
+/// taken as they are: each cell an event's id, found its summary and
+/// status.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct SheetWarning {
     pub at: String,
