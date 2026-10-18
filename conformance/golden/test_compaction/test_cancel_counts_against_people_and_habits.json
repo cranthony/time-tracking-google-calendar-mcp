@@ -2623,8 +2623,78 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/a3ed657f83d6a4bc6c3589c096",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "pageToken": [
+     "7"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "pageToken": [
+     "14"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "pageToken": [
+     "21"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ]
+   }
   },
   {
    "body": null,
@@ -2837,8 +2907,21 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/a3ed657f83d6a4bc6c3589c096",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "24"
+    ]
+   }
   },
   {
    "body": {
@@ -3135,17 +3218,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-05T18:15:00-04:00"
+    "syncToken": [
+     "24"
     ]
    }
   },
@@ -3158,118 +3238,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-05T18:15:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-06T06:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-09-08T06:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-06T06:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-09-08T06:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-05T18:15:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-05T18:15:00-04:00"
+    "syncToken": [
+     "25"
     ]
    }
   },
@@ -3347,43 +3323,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-05T18:15:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-09T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-05T18:15:00-04:00"
+    "syncToken": [
+     "25"
     ]
    }
   },
@@ -3598,17 +3545,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-07T15:30:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-06-02T15:30:00-04:00"
+    "syncToken": [
+     "25"
     ]
    }
   },
@@ -3621,69 +3565,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-07T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-06-02T15:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "14"
-    ],
     "singleEvents": [
-     "true"
+     "false"
     ],
-    "timeMax": [
-     "2026-10-07T15:30:00-04:00"
-    ],
-    "timeMin": [
-     "2026-06-02T15:30:00-04:00"
-    ]
-   }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
-   "query": {
-    "maxResults": [
-     "2500"
-    ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
-     "true"
-    ],
-    "timeMax": [
-     "2026-10-08T21:00:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-07T20:00:00-04:00"
+    "syncToken": [
+     "26"
     ]
    }
   },
@@ -3722,17 +3611,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-07T22:00:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-07T17:00:00-04:00"
+    "syncToken": [
+     "26"
     ]
    }
   },
@@ -3740,15 +3626,21 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/dfa6cbed18a0964226210645ba",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/dfa6cbed18a0964226210645ba",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "27"
+    ]
+   }
   },
   {
    "body": {

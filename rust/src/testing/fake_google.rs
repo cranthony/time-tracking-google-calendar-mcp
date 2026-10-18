@@ -104,6 +104,11 @@ struct Calendar {
     events: BTreeMap<String, Value>,
     /// Insertion order of `events`, as Python's dict keeps it.
     order: Vec<String>,
+    /// Each event changed, in order: a sync token is how many of these
+    /// the listing it came with had seen.
+    changes: Vec<String>,
+    /// Events deleted, as a sync gives them: cancelled.
+    gone: BTreeMap<String, Value>,
 }
 
 impl Calendar {
@@ -116,10 +121,16 @@ impl Calendar {
             self.order.push(id.to_string());
         }
         self.events.insert(id.to_string(), event);
+        self.gone.remove(id);
+        self.changes.push(id.to_string());
     }
 
     fn remove(&mut self, id: &str) {
-        self.events.remove(id);
+        if let Some(mut event) = self.events.remove(id) {
+            event["status"] = json!("cancelled");
+            self.gone.insert(id.to_string(), event);
+        }
+        self.changes.push(id.to_string());
         self.order.retain(|o| o != id);
     }
 
@@ -264,8 +275,22 @@ impl State {
         if let Some(d) = description {
             resource.insert("description".into(), json!(d));
         }
-        self.calendars.insert(id.clone(), Calendar { resource, events: BTreeMap::new(), order: Vec::new() });
+        self.calendars.insert(id.clone(), Calendar { resource, events: BTreeMap::new(), order: Vec::new(), changes: Vec::new(), gone: BTreeMap::new() });
         id
+    }
+
+    /// Change `fields` of event `event_id` behind the server's back, as
+    /// someone in Google Calendar would: a new etag, and a change a sync
+    /// brings.
+    pub fn edit_event_by_hand(&mut self, calendar_id: &str, event_id: &str, fields: Value) {
+        let etag = self.etag();
+        let cal = self.calendars.get_mut(calendar_id).expect("a calendar");
+        let mut event = cal.events[event_id].clone();
+        for (k, v) in fields.as_object().expect("fields") {
+            event[k] = v.clone();
+        }
+        event["etag"] = json!(etag);
+        cal.put(event_id, event);
     }
 
     pub fn add_event(&mut self, calendar_id: &str, body: Value) -> String {
@@ -476,10 +501,28 @@ impl State {
                 let cal = self.calendar(cid)?;
                 let time_min = one("timeMin").map(parse_rfc3339).transpose()?;
                 let time_max = one("timeMax").map(parse_rfc3339).transpose()?;
-                let mut items = if one("singleEvents") == Some("true") {
-                    Self::expanded(cal, time_min, time_max, one("showDeleted") == Some("true"))
+                let show_deleted = one("showDeleted") == Some("true");
+                let mut items = if let Some(token) = one("syncToken") {
+                    // What changed since the token's listing: each event as
+                    // it is now, a deleted one cancelled.
+                    let seen: usize = token.parse().map_err(|_| err(400, "Invalid sync token value."))?;
+                    if seen > cal.changes.len() {
+                        return Err(err(410, "Sync token is no longer valid, a full sync is required."));
+                    }
+                    let mut ids: Vec<&String> = Vec::new();
+                    for id in &cal.changes[seen..] {
+                        if !ids.contains(&id) {
+                            ids.push(id);
+                        }
+                    }
+                    ids.into_iter().filter_map(|id| cal.events.get(id).or_else(|| cal.gone.get(id)).cloned()).collect()
+                } else if one("singleEvents") == Some("true") {
+                    Self::expanded(cal, time_min, time_max, show_deleted)
+                } else if time_min.is_none() && time_max.is_none() {
+                    // Every event, series and exception, as a full sync has them.
+                    cal.ordered().into_iter().filter(|e| show_deleted || e["status"] != "cancelled").collect()
                 } else {
-                    Self::unexpanded(cal, time_min, time_max, one("showDeleted") == Some("true"))
+                    Self::unexpanded(cal, time_min, time_max, show_deleted)
                 };
                 for (k, v) in query.iter().filter(|(k, _)| k == "privateExtendedProperty") {
                     let _ = k;
@@ -491,6 +534,9 @@ impl State {
                 }
                 let mut out = Self::page(cal, &items, one("maxResults"), one("pageToken"));
                 out["timeZone"] = cal.resource.get("timeZone").cloned().unwrap_or(json!("UTC"));
+                if out.get("nextPageToken").is_none() {
+                    out["nextSyncToken"] = json!(cal.changes.len().to_string());
+                }
                 Ok(Some(out))
             }
             ("POST", ["calendar", "v3", "calendars", cid, "events"]) => {
@@ -1115,8 +1161,18 @@ impl FakeGoogle {
         self.with(|s| s.add_calendar("Time Tracking", time_zone, None))
     }
 
+    /// Add an event behind the server's back (forgetting what it keeps of
+    /// the calendar, as a restart would: see `forget_synced`).
     pub fn add_event(&self, calendar_id: &str, body: Value) -> String {
+        self.forget_synced(calendar_id);
         self.with(|s| s.add_event(calendar_id, body))
+    }
+
+    /// Forget what the server keeps of `calendar_id`, so it syncs afresh:
+    /// a test that changes the calendar behind the server's back, as
+    /// setup, means the server to see it as changed.
+    pub fn forget_synced(&self, calendar_id: &str) {
+        crate::google::synced::forget(&format!("{}calendar/v3/", self.root), calendar_id);
     }
 
     pub fn requests(&self) -> Vec<LoggedRequest> {

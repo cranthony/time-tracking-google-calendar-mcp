@@ -94,17 +94,14 @@ fn query<'a>(request: &'a LoggedRequest, name: &str) -> Option<&'a str> {
 // -- events -----------------------------------------------------------------------------
 
 #[test]
-fn list_events_maps_response_items() {
+fn list_events_maps_each_event_kept() {
     let f = fixture();
     f.day();
 
     let events = f.client.list_events(&hour(0, 0), &at("2026-01-02T00:00:00+00:00")).unwrap();
 
     assert_eq!(ids(&events), vec!["ev1", "ev2", "ev3"]);
-    let listing = &f.requests("GET", "/events")[0];
-    assert_eq!(query(listing, "timeMin"), Some("2026-01-01T00:00:00+00:00"));
-    assert_eq!(query(listing, "timeMax"), Some("2026-01-02T00:00:00+00:00"));
-    assert_eq!((query(listing, "singleEvents"), query(listing, "orderBy"), query(listing, "maxResults")), (Some("true"), Some("startTime"), Some("2500")));
+    assert_eq!(events[0].summary.as_deref(), Some("Busy"));
 }
 
 #[test]
@@ -555,7 +552,7 @@ fn set_calendar_metadata_on_a_changed_calendar_is_a_conflict() {
 // -- side calendars and time zones ---------------------------------------------------------
 
 #[test]
-fn lists_raw_events_by_private_property_across_pages() {
+fn lists_raw_events_by_private_property_synced_across_pages() {
     let f = fixture();
     for i in 0..9 {
         let mut body = event(Some(&format!("ev{i}")), &format!("2026-09-0{}T09:00:00+00:00", i + 1), &format!("2026-09-0{}T10:00:00+00:00", i + 1)).insert_body().unwrap();
@@ -566,8 +563,8 @@ fn lists_raw_events_by_private_property_across_pages() {
     let items = f.client.list_event_resources(&at("2026-09-01T00:00:00+00:00"), &at("2026-10-01T00:00:00+00:00"), Some("k=v")).unwrap();
 
     assert_eq!(items.len(), 6);
-    let pages = f.requests("GET", "/events");
-    assert!(pages.iter().all(|r| query(r, "privateExtendedProperty") == Some("k=v")));
+    // The fake's pages are small: the sync took several.
+    assert!(f.requests("GET", "/events").len() > 1);
 }
 
 #[test]
@@ -654,26 +651,25 @@ fn for_calendar_shares_the_credentials() {
     assert!(Arc::ptr_eq(other.google(), f.client.google()));
 }
 
-// -- cached listings -----------------------------------------------------------------------
-
-fn cached<T>(f: impl FnOnce() -> T) -> T {
-    let _listings = CachedListings::start();
-    f()
-}
+// -- what's kept: the calendar, synced -------------------------------------------------------
 
 #[test]
-fn a_listing_within_an_earlier_one_is_answered_from_it() {
+fn the_first_listing_syncs_the_whole_calendar_and_later_ones_read_nothing() {
     let f = fixture();
     f.day();
 
-    let events = cached(|| {
-        f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
-        f.client.list_events(&hour(10, 30), &hour(13, 0)).unwrap()
-    });
+    let all = f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    let some = f.client.list_events(&hour(10, 30), &hour(13, 0)).unwrap();
+    let again = CalendarClient::new(f.fake.google(), &f.calendar_id).list_events(&hour(0, 0), &hour(23, 0)).unwrap();
 
+    assert_eq!(ids(&all), vec!["ev1", "ev2", "ev3"]);
     // Calendar's own rule: ends after the start, starts before the end.
-    assert_eq!(ids(&events), vec!["ev2"]);
+    assert_eq!(ids(&some), vec!["ev2"]);
+    assert_eq!(ids(&again), ids(&all));
+    let sync = &f.requests("GET", "/events")[0];
     assert_eq!(f.listings(), 1);
+    assert_eq!((query(sync, "singleEvents"), query(sync, "showDeleted"), query(sync, "maxResults")), (Some("false"), Some("true"), Some("2500")));
+    assert_eq!((query(sync, "timeMin"), query(sync, "syncToken")), (None, None));
 }
 
 #[test]
@@ -681,98 +677,107 @@ fn an_edge_touching_the_range_is_left_out_as_calendar_does() {
     let f = fixture();
     f.day();
 
-    let events = cached(|| {
-        f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
-        f.client.list_events(&hour(10, 0), &hour(11, 0)).unwrap()
-    });
-
-    assert!(events.is_empty());
+    assert!(f.client.list_events(&hour(10, 0), &hour(11, 0)).unwrap().is_empty());
 }
 
 #[test]
-fn a_listing_past_the_earlier_one_lists_again() {
-    let f = fixture();
-    f.day();
-
-    cached(|| {
-        f.client.list_events(&hour(8, 0), &hour(12, 0)).unwrap();
-        f.client.list_events(&hour(8, 0), &hour(14, 0)).unwrap();
-    });
-
-    assert_eq!(f.listings(), 2);
-}
-
-#[test]
-fn another_calendar_lists_its_own() {
+fn another_calendar_is_kept_on_its_own() {
     let f = fixture();
     f.day();
     let other = f.fake.add_calendar(Some("UTC"));
 
-    cached(|| {
-        f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
-        f.client.for_calendar(&other).list_events(&hour(0, 0), &hour(23, 0)).unwrap();
-    });
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    assert!(f.client.for_calendar(&other).list_events(&hour(0, 0), &hour(23, 0)).unwrap().is_empty());
 
     assert_eq!(f.listings(), 2);
 }
 
 #[test]
-fn what_a_cached_listing_answers_is_a_copy() {
-    let f = fixture();
-    f.day();
-
-    let events = cached(|| {
-        f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap()[0].summary = Some("changed".into());
-        f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap()
-    });
-
-    assert!(events.iter().all(|e| e.summary.as_deref() == Some("Busy")));
-}
-
-#[test]
-fn any_write_forgets_every_listing() {
+fn a_write_has_the_next_read_sync_only_what_changed() {
     for delete_resource in [true, false] {
         let f = fixture();
         f.day();
+        f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
         let _held = WRITE_LOCK.hold();
 
-        cached(|| {
-            f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
-            if delete_resource {
-                f.client.delete_event_resource("ev1").unwrap();
-            } else {
-                f.client.delete_event("ev1").unwrap();
-            }
-            f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
-        });
+        if delete_resource {
+            f.client.delete_event_resource("ev1").unwrap();
+        } else {
+            f.client.delete_event("ev1").unwrap();
+        }
+        let after = f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+        f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
 
-        assert_eq!(f.listings(), 2);
+        assert_eq!(ids(&after), vec!["ev2", "ev3"]);
+        let listings = f.requests("GET", "/events");
+        assert_eq!(listings.len(), 2);
+        assert!(query(&listings[1], "syncToken").is_some());
     }
 }
 
 #[test]
-fn nothing_is_kept_outside_the_block_or_after_it() {
+fn a_sync_token_calendar_refuses_syncs_the_whole_calendar_again() {
     let f = fixture();
     f.day();
-
     f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
-    cached(|| f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap());
-    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    f.fake.with(|s| s.fail_next.push(("GET".into(), "/events".into(), 410, "Sync token is no longer valid".into())));
 
-    assert_eq!(f.listings(), 3);
+    f.client.sync().unwrap();
+
+    let listings = f.requests("GET", "/events");
+    assert_eq!(listings.len(), 3);
+    assert!(query(&listings[2], "syncToken").is_none());
+    assert_eq!(ids(&f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap()), vec!["ev1", "ev2", "ev3"]);
+    assert!(f.client.take_outside().is_empty());
 }
 
 #[test]
-fn a_nested_block_shares_the_outer_ones() {
+fn what_changed_elsewhere_is_kept_to_warn_of_and_the_servers_own_changes_are_not() {
+    let f = fixture();
+    f.day();
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.delete_event("ev1").unwrap();
+    }
+    // Changed elsewhere: not through the server.
+    f.fake.with(|s| s.edit_event_by_hand(&f.calendar_id, "ev2", json!({"summary": "Moved by hand"})));
+
+    f.client.sync().unwrap();
+
+    let outside = f.client.take_outside();
+    assert_eq!(outside.iter().map(|e| e["id"].as_str().unwrap()).collect::<Vec<_>>(), vec!["ev2"]);
+    assert_eq!(f.client.get_event("ev2").unwrap().summary.as_deref(), Some("Moved by hand"));
+    assert!(f.client.take_outside().is_empty());
+}
+
+#[test]
+fn an_instance_is_got_from_its_kept_series_and_one_not_kept_from_calendar() {
+    let f = fixture();
+    let mut series = event(Some("series1"), "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00").insert_body().unwrap();
+    series.insert("id".into(), json!("series1"));
+    series.insert("recurrence".into(), json!(["RRULE:FREQ=DAILY;COUNT=3"]));
+    f.fake.add_event(&f.calendar_id, Value::Object(series));
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    f.fake.clear_requests();
+
+    let instance = f.client.get_event("series1_20260102T090000Z").unwrap();
+    let missing = f.client.get_event("nosuch");
+
+    assert_eq!((instance.recurring_event_id.as_deref(), instance.start), (Some("series1"), Some(at("2026-01-02T09:00:00+00:00"))));
+    assert!(missing.is_err());
+    assert_eq!(f.fake.requests().iter().map(|r| r.path.rsplit('/').next().unwrap().to_string()).collect::<Vec<_>>(), vec!["nosuch"]);
+}
+
+#[test]
+fn what_a_listing_answers_is_a_copy() {
     let f = fixture();
     f.day();
 
-    cached(|| {
-        f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
-        cached(|| f.client.list_events(&hour(9, 0), &hour(10, 0)).unwrap());
-    });
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap()[0].summary = Some("changed".into());
+    let events = f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
 
-    assert_eq!(f.listings(), 1);
+    assert!(events.iter().all(|e| e.summary.as_deref() == Some("Busy")));
 }
 
 // -- the write lock ---------------------------------------------------------------------------
@@ -814,4 +819,20 @@ fn a_read_needs_no_lock() {
     f.day();
 
     assert_eq!(f.client.get_event("ev1").unwrap().id.as_deref(), Some("ev1"));
+}
+
+#[test]
+fn a_write_moves_what_is_kept_on_as_it_begins_and_again_as_it_ends() {
+    // So a sync that read the calendar while the write was under way isn't
+    // taken as up to date: what it read may be older than the write.
+    let f = fixture();
+    f.day();
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    let generation = || synced::with(&f.client.root(), &f.calendar_id, |store| store.generation);
+    let before = generation();
+    let _held = WRITE_LOCK.hold();
+
+    f.client.delete_event("ev1").unwrap();
+
+    assert_eq!(generation(), before + 2);
 }

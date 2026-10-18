@@ -22002,7 +22002,7 @@
           "type": "object"
         },
         "SheetWarning": {
-          "description": "What a check of the metadata spreadsheet found changed by hand (UTC):\na tab's cells edited (\"edited\") -- the first 20 of them, and how many\n-- or the tab deleted (\"deleted\"); and whether the server put back its\nown copy (`restored`). It's the server's alone: see the README.",
+          "description": "What a check of the metadata spreadsheet found changed by hand (UTC):\na tab's cells edited (\"edited\") -- the first 20 of them, and how many\n-- or the tab deleted (\"deleted\"); and whether the server put back its\nown copy (`restored`). It's the server's alone: see the README. Or\n(\"calendar\") events a calendar sync found changed outside the server,\ntaken as they are: each cell an event's id, found its summary and\nstatus.",
           "properties": {
             "at": {
               "type": "string"

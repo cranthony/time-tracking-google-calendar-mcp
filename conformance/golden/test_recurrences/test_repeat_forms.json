@@ -1676,8 +1676,18 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ]
+   }
   },
   {
    "body": {
@@ -1699,17 +1709,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2027-12-31T00:00:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-01T00:00:00-04:00"
+    "syncToken": [
+     "1"
     ]
    }
   },
@@ -1722,29 +1729,16 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "pageToken": [
-     "7"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2027-12-31T00:00:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-01T00:00:00-04:00"
+    "syncToken": [
+     "2"
     ]
    }
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
-   "query": {}
   },
   {
    "body": {
@@ -1766,17 +1760,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2027-12-31T00:00:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-01T00:00:00-04:00"
+    "syncToken": [
+     "2"
     ]
    }
   },
@@ -1784,8 +1775,21 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "3"
+    ]
+   }
   },
   {
    "body": {
@@ -1807,17 +1811,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2027-12-31T00:00:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-01T00:00:00-04:00"
+    "syncToken": [
+     "3"
     ]
    }
   },
@@ -1825,8 +1826,21 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "4"
+    ]
+   }
   },
   {
    "body": {
@@ -1848,17 +1862,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2027-12-31T00:00:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-01T00:00:00-04:00"
+    "syncToken": [
+     "4"
     ]
    }
   },
@@ -1866,8 +1877,21 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "5"
+    ]
+   }
   },
   {
    "body": {
@@ -1889,17 +1913,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2027-12-31T00:00:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-01T00:00:00-04:00"
+    "syncToken": [
+     "5"
     ]
    }
   },
@@ -1907,8 +1928,21 @@
    "body": null,
    "if_match": null,
    "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
-   "query": {}
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "6"
+    ]
+   }
   },
   {
    "body": {
@@ -1932,17 +1966,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2027-12-31T00:00:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-01T00:00:00-04:00"
+    "syncToken": [
+     "6"
     ]
    }
   }

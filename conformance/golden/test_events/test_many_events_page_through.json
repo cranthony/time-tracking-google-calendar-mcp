@@ -2355,17 +2355,11 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-08T17:59:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-07T06:00:00-04:00"
+    "singleEvents": [
+     "false"
     ]
    }
   },
@@ -2897,17 +2891,14 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-07T23:59:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-07T00:00:00-04:00"
+    "syncToken": [
+     "0"
     ]
    }
   },
@@ -2919,21 +2910,18 @@
    "query": {
     "maxResults": [
      "2500"
-    ],
-    "orderBy": [
-     "startTime"
     ],
     "pageToken": [
      "7"
     ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-07T23:59:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-07T00:00:00-04:00"
+    "syncToken": [
+     "0"
     ]
    }
   },
@@ -2945,21 +2933,18 @@
    "query": {
     "maxResults": [
      "2500"
-    ],
-    "orderBy": [
-     "startTime"
     ],
     "pageToken": [
      "14"
     ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-07T23:59:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-07T00:00:00-04:00"
+    "syncToken": [
+     "0"
     ]
    }
   },
@@ -2972,20 +2957,17 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
     "pageToken": [
      "21"
     ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-07T23:59:00-04:00"
+    "singleEvents": [
+     "false"
     ],
-    "timeMin": [
-     "2026-10-07T00:00:00-04:00"
+    "syncToken": [
+     "0"
     ]
    }
   }

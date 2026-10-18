@@ -78,33 +78,52 @@ pub struct App {
     scoring_defaults: OnceLock<ScoringDefaultsTab>,
     recurrences: OnceLock<Recurrences>,
     writer: OnceLock<Arc<HealthWriter>>,
-    sheets_refresh: OnceLock<SheetsRefresh>,
+    sheets_refresh: OnceLock<Refresh>,
+    calendar_sync: OnceLock<Refresh>,
     me: OnceLock<std::sync::Weak<App>>,
 }
 
-/// How often the server checks the metadata spreadsheet against what it
-/// keeps of it (TIME_TRACKER_SHEETS_REFRESH): every so many seconds, in
-/// the background (the default, every 300); before every tool call
-/// ("every_call", for tests that edit it by hand); or never ("off").
+/// How often the server brings what it keeps up to date: the metadata
+/// spreadsheet checked against its copy (TIME_TRACKER_SHEETS_REFRESH), or
+/// the calendar synced (TIME_TRACKER_CALENDAR_SYNC). Every so many
+/// seconds, in the background (the default, every 300); before every tool
+/// call ("every_call", for tests that change things behind its back); or
+/// never ("off"). A tool that writes syncs the calendar as it first reads
+/// it, whatever this says.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SheetsRefresh {
+pub enum Refresh {
     Every(std::time::Duration),
     EveryCall,
     Off,
 }
 
-pub const SHEETS_REFRESH_SECONDS: u64 = 300;
+pub const REFRESH_SECONDS: u64 = 300;
 
-impl SheetsRefresh {
-    pub fn from_var(value: Option<&str>) -> SheetsRefresh {
+impl Refresh {
+    pub fn from_var(value: Option<&str>) -> Refresh {
         match value.map(str::trim) {
-            Some("off") => SheetsRefresh::Off,
-            Some("every_call") => SheetsRefresh::EveryCall,
+            Some("off") => Refresh::Off,
+            Some("every_call") => Refresh::EveryCall,
             Some(seconds) => match seconds.parse::<u64>() {
-                Ok(n) if n > 0 => SheetsRefresh::Every(std::time::Duration::from_secs(n)),
-                _ => SheetsRefresh::Every(std::time::Duration::from_secs(SHEETS_REFRESH_SECONDS)),
+                Ok(n) if n > 0 => Refresh::Every(std::time::Duration::from_secs(n)),
+                _ => Refresh::Every(std::time::Duration::from_secs(REFRESH_SECONDS)),
             },
-            None => SheetsRefresh::Every(std::time::Duration::from_secs(SHEETS_REFRESH_SECONDS)),
+            None => Refresh::Every(std::time::Duration::from_secs(REFRESH_SECONDS)),
+        }
+    }
+
+    /// Run `work` from a thread of its own named `name`, every period this
+    /// says, while `app` lives.
+    fn start(self, app: &Arc<App>, name: &str, work: fn(&App)) {
+        let Refresh::Every(period) = self else { return };
+        let app = Arc::downgrade(app);
+        let spawned = std::thread::Builder::new().name(name.into()).spawn(move || loop {
+            std::thread::sleep(period);
+            let Some(app) = app.upgrade() else { return };
+            work(&app);
+        });
+        if let Err(error) = spawned {
+            tracing::error!("couldn't start {name}: {error}");
         }
     }
 }
@@ -148,6 +167,7 @@ impl App {
             recurrences: OnceLock::new(),
             writer: OnceLock::new(),
             sheets_refresh: OnceLock::new(),
+            calendar_sync: OnceLock::new(),
             me: OnceLock::new(),
         }
     }
@@ -379,8 +399,55 @@ impl App {
         }
     }
 
-    pub fn sheets_refresh(&self) -> SheetsRefresh {
-        *self.sheets_refresh.get_or_init(|| SheetsRefresh::from_var(std::env::var("TIME_TRACKER_SHEETS_REFRESH").ok().as_deref()))
+    pub fn sheets_refresh(&self) -> Refresh {
+        *self.sheets_refresh.get_or_init(|| Refresh::from_var(std::env::var("TIME_TRACKER_SHEETS_REFRESH").ok().as_deref()))
+    }
+
+    pub fn calendar_sync(&self) -> Refresh {
+        *self.calendar_sync.get_or_init(|| Refresh::from_var(std::env::var("TIME_TRACKER_CALENDAR_SYNC").ok().as_deref()))
+    }
+
+    /// Sync what the server keeps of the calendar (see CalendarClient::sync)
+    /// and warn of what changed elsewhere. Its failures are logged, not
+    /// returned: a read syncs again when it needs to, and fails then.
+    pub fn sync_calendar(&self) {
+        if self.google.get().is_none() {
+            return;
+        }
+        let Ok(client) = self.calendar_client() else { return };
+        if let Err(error) = client.sync() {
+            tracing::warn!("couldn't sync the calendar: {error:#}");
+        }
+        self.warn_of_outside_changes();
+    }
+
+    /// Warn of the events syncs brought that the server didn't write --
+    /// changed outside it -- since this last looked: one warning for them
+    /// all (see HealthRecorder::sheet_warnings).
+    pub fn warn_of_outside_changes(&self) {
+        let Some(client) = self.google.get().and_then(|_| self.calendar_client().ok()) else { return };
+        let changed = client.take_outside();
+        if changed.is_empty() {
+            return;
+        }
+        tracing::warn!("{} event(s) were changed outside the server", changed.len());
+        self.health.record_sheet_warnings(vec![SheetWarning::of_calendar(&changed, crate::health::now_ms())]);
+    }
+
+    /// Have the next read of the calendar sync first: before a tool that
+    /// writes, so it writes on what's there now. Free for one that never
+    /// reads the calendar.
+    pub fn calendar_stale(&self) {
+        if let Some(client) = self.google.get().and_then(|_| self.calendar_client().ok()) {
+            client.mark_stale();
+        }
+    }
+
+    /// Sync the calendar every so often from a thread of its own (unless
+    /// TIME_TRACKER_CALENDAR_SYNC says otherwise), as well as before every
+    /// tool that writes. It never holds the write lock.
+    pub fn start_calendar_sync(self: &Arc<Self>) {
+        self.calendar_sync().start(self, "calendar-sync", App::sync_calendar);
     }
 
     /// Check each spreadsheet the server keeps against Sheets, putting back
@@ -409,16 +476,7 @@ impl App {
     /// tools: it reads without the write lock, and puts back what it finds
     /// only when no tool holds the lock.
     pub fn start_sheets_refresher(self: &Arc<Self>) {
-        let SheetsRefresh::Every(period) = self.sheets_refresh() else { return };
-        let app = Arc::downgrade(self);
-        std::thread::Builder::new()
-            .name("sheets-refresher".into())
-            .spawn(move || loop {
-                std::thread::sleep(period);
-                let Some(app) = app.upgrade() else { return };
-                app.refresh_sheets(false);
-            })
-            .expect("starting the sheets refresher");
+        self.sheets_refresh().start(self, "sheets-refresher", |app| app.refresh_sheets(false));
     }
 
     pub fn health_writer(&self) -> Option<&Arc<HealthWriter>> {

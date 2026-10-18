@@ -740,17 +740,11 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-07T23:00:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-07T00:00:00-04:00"
+    "singleEvents": [
+     "false"
     ]
    }
   },

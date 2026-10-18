@@ -149,19 +149,16 @@ fn formats_an_events_details_with_just_what_is_set() {
 fn lists_events_in_the_window_around_now() {
     let t = test_app();
     t.seed_event(&focus("abc123", "2026-01-01T11:00:00+00:00", "2026-01-01T11:30:00+00:00"));
+    t.seed_event(&focus("mid1", "2026-01-01T13:15:00+00:00", "2026-01-01T13:45:00+00:00"));
     t.seed_event(&focus("later1", "2026-01-01T15:00:00+00:00", "2026-01-01T16:00:00+00:00"));
 
     let out = ok(&t, &["list", "1h", "2h"]);
 
     assert!(out.contains("abc123\t2026-01-01T11:00:00+00:00 - 2026-01-01T11:30:00+00:00\tFocus block"), "{out}");
-    assert!(!out.contains("later1"));
+    assert!(out.contains("mid1") && !out.contains("later1"), "{out}");
     // The default window: an hour either side.
-    let listing = t.fake.requests().into_iter().rfind(|r| r.path.ends_with("/events")).unwrap();
-    let query = |name: &str| listing.query.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone()).unwrap();
-    assert_eq!((query("timeMin"), query("timeMax")), ("2026-01-01T11:00:00+00:00".to_string(), "2026-01-01T14:00:00+00:00".to_string()));
-    ok(&t, &["list"]);
-    let listing = t.fake.requests().into_iter().rfind(|r| r.path.ends_with("/events")).unwrap();
-    assert!(listing.query.contains(&("timeMax".to_string(), "2026-01-01T13:00:00+00:00".to_string())));
+    let out = ok(&t, &["list"]);
+    assert!(out.contains("abc123") && !out.contains("mid1"), "{out}");
 }
 
 #[test]

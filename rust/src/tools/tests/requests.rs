@@ -5,8 +5,11 @@
 //! the tabs are read -- here, by `filled` -- no tool reads Sheets at all,
 //! and a write sends only the rows it changes, in one request. The first
 //! read of a tool's tabs is one request: a tool that reads more than one
-//! tab prefetches them together. Calendar's quota is looser, but each
-//! request is still a round trip. If a count goes up, find a way not to;
+//! tab prefetches them together. The calendar is kept too (google::synced):
+//! a tool that writes syncs it as it first reads it -- one Calendar read
+//! of what changed -- and a tool that only reads, after one that didn't
+//! write, reads nothing. Calendar's quota is looser, but each request is
+//! still a round trip. If a count goes up, find a way not to;
 //! compaction's tools are pinned in the compactor's tests.
 
 use super::*;
@@ -94,9 +97,9 @@ fn the_requests_each_tool_makes() {
         ("update_habit", "update_habit", json!({"habit": {"id": f.outside, "traits": {"select": "all"}}}), [0, 1, 0, 0]),
         // Events: the actions', people's and locations' tabs together.
         ("list_events", "list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"}), [0, 0, 1, 0]),
-        ("get_event", "get_event", json!({"id": "walked"}), [0, 0, 1, 0]),
+        ("get_event", "get_event", json!({"id": "walked"}), [0, 0, 0, 0]),
         ("update_event (facts)", "update_event", json!({"updates": [{"event": {"id": "walked", "facts": {"location_ids": [f.home], "notes": {"self": "nice"}}}}]}), [0, 0, 1, 1]),
-        ("update_event", "update_event", json!({"updates": [{"event": {"id": "evening", "start": "2026-01-01T20:15:00Z"}}]}), [0, 0, 2, 1]),
+        ("update_event", "update_event", json!({"updates": [{"event": {"id": "evening", "start": "2026-01-01T20:15:00Z"}}]}), [0, 0, 1, 1]),
         ("create_event", "create_event", json!({"events": [{"summary": "Stroll", "start": "2026-01-04T10:00:00Z", "end": "2026-01-04T11:00:00Z"}]}), [0, 0, 2, 1]),
         // The priority labels are made sure of once, not every call.
         ("create_event (again)", "create_event", json!({"events": [{"summary": "Stroll", "start": "2026-01-05T10:00:00Z", "end": "2026-01-05T11:00:00Z"}]}), [0, 0, 1, 1]),

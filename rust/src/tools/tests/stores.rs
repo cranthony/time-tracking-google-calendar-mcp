@@ -381,3 +381,23 @@ fn a_refresh_puts_back_what_was_edited_by_hand_and_keeps_what_it_found() {
     s.t.app.refresh_sheets(true);
     assert_eq!(s.t.app.health.sheet_warnings().len(), 1);
 }
+
+// -- the calendar changed elsewhere ---------------------------------------------------------------
+
+#[test]
+fn an_event_changed_outside_the_server_is_taken_in_and_warned_of() {
+    let s = Server::new();
+    s.seed(&[crate::testing::event_at("08:00-09:00").id("walked").summary("Walk").build()]);
+    s.ok("list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"}));
+    let calendar = s.t.calendar_id.clone();
+    s.t.fake.with(|state| state.edit_event_by_hand(&calendar, "walked", json!({"summary": "Long walk"})));
+
+    s.t.app.sync_calendar();
+
+    assert_eq!(s.ok("get_event", json!({"id": "walked"}))["summary"], json!("Long walk"));
+    let warnings = s.ok("get_health", json!({"samples": false}))["sheet_warnings"].clone();
+    assert_eq!(warnings[0]["kind"], json!("calendar"));
+    assert_eq!(warnings[0]["cells"], json!([{"cell": "walked", "found": "Long walk (confirmed)", "kept": ""}]));
+    s.t.app.sync_calendar();
+    assert_eq!(s.t.app.health.sheet_warnings().len(), 1);
+}

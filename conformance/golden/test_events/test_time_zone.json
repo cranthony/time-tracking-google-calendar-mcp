@@ -1269,17 +1269,11 @@
     "maxResults": [
      "2500"
     ],
-    "orderBy": [
-     "startTime"
-    ],
-    "singleEvents": [
+    "showDeleted": [
      "true"
     ],
-    "timeMax": [
-     "2026-10-08T10:00:00-04:00"
-    ],
-    "timeMin": [
-     "2026-10-07T09:00:00-04:00"
+    "singleEvents": [
+     "false"
     ]
    }
   },

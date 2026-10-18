@@ -162,11 +162,34 @@ def _parse_rfc3339(text: str) -> datetime:
 # --- calendar --------------------------------------------------------------
 
 
+class LoggedEvents(dict):
+    """A calendar's events by id, logging each change as Calendar's
+    incremental sync sees it: a sync token is how many changes the listing
+    it came with had seen. An event changed must be set again (not changed
+    in place) to be logged."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.changes: list[str] = []
+        self.gone: dict[str, dict] = {}
+        """Events deleted, as a sync gives them: cancelled."""
+
+    def __setitem__(self, key: str, value: dict) -> None:
+        super().__setitem__(key, value)
+        self.gone.pop(key, None)
+        self.changes.append(key)
+
+    def __delitem__(self, key: str) -> None:
+        self.gone[key] = {**self[key], "status": "cancelled"}
+        super().__delitem__(key)
+        self.changes.append(key)
+
+
 @dataclass
 class FakeCalendar:
     id: str
     resource: dict
-    events: dict[str, dict] = field(default_factory=dict)
+    events: dict[str, dict] = field(default_factory=LoggedEvents)
     """Every stored event by id: single events, series masters, and
     instances edited (or cancelled) on their own -- exceptions, stored
     under their instance id with recurringEventId set."""
@@ -447,13 +470,33 @@ class FakeGoogle:
         one = lambda name: query.get(name, [None])[0]
         time_min = _parse_rfc3339(one("timeMin")) if one("timeMin") else None
         time_max = _parse_rfc3339(one("timeMax")) if one("timeMax") else None
-        listing = self._expanded if one("singleEvents") == "true" else self._unexpanded
-        items = listing(calendar, time_min, time_max, one("showDeleted") == "true")
+        show_deleted = one("showDeleted") == "true"
+        events: LoggedEvents = calendar.events
+        if one("syncToken") is not None:
+            # What changed since the token's listing: each event as it is
+            # now, a deleted one cancelled.
+            try:
+                seen = int(one("syncToken"))
+            except ValueError:
+                raise GoogleError(400, "Invalid sync token value.") from None
+            if seen > len(events.changes):
+                raise GoogleError(410, "Sync token is no longer valid, a full sync is required.")
+            ids = list(dict.fromkeys(events.changes[seen:]))
+            items = [events[i] if i in events else events.gone[i] for i in ids if i in events or i in events.gone]
+        elif one("singleEvents") == "true":
+            items = self._expanded(calendar, time_min, time_max, show_deleted)
+        elif time_min is None and time_max is None:
+            # Every event, series and exception, as a full sync has them.
+            items = [e for e in events.values() if show_deleted or e.get("status") != "cancelled"]
+        else:
+            items = self._unexpanded(calendar, time_min, time_max, show_deleted)
         for prop in query.get("privateExtendedProperty", []):
             key, _, value = prop.partition("=")
             items = [e for e in items if e.get("extendedProperties", {}).get("private", {}).get(key) == value]
         response = self._page(calendar, items, one("maxResults"), one("pageToken"))
         response["timeZone"] = calendar.resource.get("timeZone", "UTC")
+        if "nextPageToken" not in response:
+            response["nextSyncToken"] = str(len(events.changes))
         return response
 
     def list_instances(self, calendar_id: str, event_id: str, query: dict[str, list[str]]) -> dict:
@@ -560,6 +603,7 @@ class FakeGoogle:
         ended["UNTIL"] = until.strftime("%Y%m%dT%H%M%SZ")
         current["recurrence"] = [("RRULE:" + ";".join(f"{k}={v}" for k, v in ended.items())) if line.startswith("RRULE:") else line for line in lines]
         current["etag"] = self._etag()
+        calendar.events[current["id"]] = current
         rest = self._new_event(calendar, {k: v for k, v in body.items() if k != "iCalUID"}, new_id)
         rest["iCalUID"] = uid
         calendar.events[new_id] = rest
@@ -696,6 +740,7 @@ class FakeGoogle:
         event["status"] = "cancelled"
         event["recurrence"] = ["RRULE:FREQ=DAILY;COUNT=1"]
         event["etag"] = self._etag()
+        calendar.events[event_id] = event
         for exception in self._exceptions(calendar, event_id):
             del calendar.events[exception["id"]]
         return self._present(calendar, event)
