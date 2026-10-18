@@ -13,6 +13,7 @@ pub mod event;
 pub mod facts;
 pub mod google;
 pub mod health;
+pub mod heap;
 pub mod mcp;
 pub mod py;
 pub mod setup;

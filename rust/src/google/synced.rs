@@ -92,18 +92,26 @@ pub fn sync_lock(root: &str, calendar_id: &str) -> Arc<Mutex<()>> {
     locks.entry((root.to_string(), calendar_id.to_string())).or_default().clone()
 }
 
-/// About how many bytes `value` takes in memory, as serde_json holds it:
-/// each string's text, and a fixed size for each value, entry and
-/// collection.
+/// About how many bytes of the heap `value` owns (see crate::heap), as
+/// serde_json holds it: each string's text, each list's values, and each
+/// object's entries (a hash, a key and a value each, in order) and its
+/// hash table of their places, with room for as many entries as the table
+/// has.
 pub fn estimated_bytes(value: &Value) -> usize {
-    const VALUE: usize = std::mem::size_of::<Value>();
-    VALUE
-        + match value {
-            Value::String(text) => text.len(),
-            Value::Array(items) => items.iter().map(estimated_bytes).sum(),
-            Value::Object(entries) => entries.iter().map(|(key, v)| std::mem::size_of::<String>() + key.len() + estimated_bytes(v)).sum(),
-            _ => 0,
+    use crate::heap::{block, buffer, hash_capacity, hash_table};
+    use std::mem::size_of;
+    match value {
+        Value::String(text) => block(text.capacity()),
+        Value::Array(items) => buffer::<Value>(items.capacity()) + items.iter().map(estimated_bytes).sum::<usize>(),
+        Value::Object(entries) if entries.is_empty() => 0,
+        Value::Object(entries) => {
+            let entry = size_of::<usize>() + size_of::<String>() + size_of::<Value>();
+            block(hash_capacity(entries.len()) * entry)
+                + hash_table(entries.len(), size_of::<usize>())
+                + entries.iter().map(|(key, v)| block(key.capacity()) + estimated_bytes(v)).sum::<usize>()
         }
+        _ => 0,
+    }
 }
 
 /// About how many bytes the events kept of every calendar take, for
@@ -113,7 +121,11 @@ pub fn size(root: &str) -> usize {
     stores
         .iter()
         .filter(|((r, _), _)| r == root)
-        .flat_map(|(_, store)| store.events.iter().map(|(id, event)| id.len() + estimated_bytes(event)))
+        .map(|(_, store)| {
+            let entry = std::mem::size_of::<String>() + std::mem::size_of::<Value>();
+            crate::heap::btree(store.events.len(), entry)
+                + store.events.iter().map(|(id, event)| crate::heap::block(id.capacity()) + estimated_bytes(event)).sum::<usize>()
+        })
         .sum()
 }
 
